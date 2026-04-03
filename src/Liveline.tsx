@@ -15,6 +15,7 @@ import {
   useBadge,
   useCanvasLayout,
   useChartPaths,
+  useCrosshair,
   useGrid,
   useLiveDot,
   useMomentum,
@@ -22,7 +23,9 @@ import {
 } from "./hooks";
 
 import { BadgeOverlay } from "./components/BadgeOverlay";
+import { CrosshairOverlay } from "./components/CrosshairOverlay";
 import { DotOverlay } from "./components/DotOverlay";
+import { GestureDetector } from "react-native-gesture-handler";
 import { GridOverlay } from "./components/GridOverlay";
 import type { LivelineProps } from "./types";
 import { TimeAxisOverlay } from "./components/TimeAxisOverlay";
@@ -46,11 +49,14 @@ export function Liveline({
   badgeTail = true,
   momentum = true,
   pulse = true,
+  scrub = false,
+  scrubTooltip = true,
   lineWidth: lineWidthProp,
   formatValue = defaultFormatValue,
   formatTime = defaultFormatTime,
   backgroundColor,
   padding,
+  onScrub,
   style,
 }: LivelineProps) {
   const palette = resolveTheme(color, theme);
@@ -109,66 +115,92 @@ export function Liveline({
     momentumSV,
   );
 
+  const crosshair = useCrosshair(
+    engine,
+    effectivePadding,
+    palette,
+    formatValue,
+    formatTime,
+    font,
+    scrub,
+    onScrub,
+  );
+
   const bgColor =
     backgroundColor ??
     `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
   const gradientEnd = Math.max(1, layoutHeight - effectivePadding.bottom);
 
   return (
-    <View
-      style={[{ flex: 1, backgroundColor: bgColor }, style]}
-      onLayout={onLayout}
-    >
-      <Canvas style={{ flex: 1 }}>
-        {grid && (
-          <GridOverlay
-            entries={gridEntries}
+    <GestureDetector gesture={crosshair.gesture}>
+      <View
+        style={[{ flex: 1, backgroundColor: bgColor }, style]}
+        onLayout={onLayout}
+      >
+        <Canvas style={{ flex: 1 }}>
+          {grid && (
+            <GridOverlay
+              entries={gridEntries}
+              engine={engine}
+              padding={effectivePadding}
+              palette={palette}
+              font={font}
+              badge={badge}
+            />
+          )}
+
+          {fill && (
+            <Path path={fillPath} style="fill">
+              <LinearGradient
+                start={vec(0, effectivePadding.top)}
+                end={vec(0, gradientEnd)}
+                colors={[palette.fillTop, palette.fillBottom]}
+              />
+            </Path>
+          )}
+
+          <Path
+            path={linePath}
+            style="stroke"
+            strokeWidth={strokeWidth}
+            color={palette.line}
+            strokeCap="round"
+            strokeJoin="round"
+          />
+
+          <TimeAxisOverlay
+            entries={timeEntries}
             engine={engine}
             padding={effectivePadding}
             palette={palette}
             font={font}
-            badge={badge}
           />
-        )}
 
-        {fill && (
-          <Path path={fillPath} style="fill">
-            <LinearGradient
-              start={vec(0, effectivePadding.top)}
-              end={vec(0, gradientEnd)}
-              colors={[palette.fillTop, palette.fillBottom]}
+          {badge && <BadgeOverlay badge={badgeData} font={font} />}
+
+          <DotOverlay
+            dotX={dotX}
+            dotY={dotY}
+            momentum={momentumSV}
+            palette={palette}
+            engine={engine}
+            pulse={pulse}
+          />
+
+          {scrub && (
+            <CrosshairOverlay
+              scrubX={crosshair.scrubX}
+              crosshairOpacity={crosshair.crosshairOpacity}
+              tooltipLayout={crosshair.tooltipLayout}
+              engine={engine}
+              padding={effectivePadding}
+              palette={palette}
+              font={font}
+              showTooltip={scrubTooltip}
             />
-          </Path>
-        )}
-
-        <Path
-          path={linePath}
-          style="stroke"
-          strokeWidth={strokeWidth}
-          color={palette.line}
-          strokeCap="round"
-          strokeJoin="round"
-        />
-
-        <TimeAxisOverlay
-          entries={timeEntries}
-          engine={engine}
-          padding={effectivePadding}
-          palette={palette}
-          font={font}
-        />
-
-        {badge && <BadgeOverlay badge={badgeData} font={font} />}
-
-        <DotOverlay
-          dotX={dotX}
-          dotY={dotY}
-          momentum={momentumSV}
-          palette={palette}
-          engine={engine}
-          pulse={pulse}
-        />
-      </Canvas>
-    </View>
+          )}
+        </Canvas>
+      </View>
+    </GestureDetector>
   );
 }

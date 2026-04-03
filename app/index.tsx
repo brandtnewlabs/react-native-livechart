@@ -7,10 +7,15 @@ import {
   TextInput,
   View,
 } from "react-native";
-import Animated, { useAnimatedProps } from "react-native-reanimated";
+import Animated, {
+  useAnimatedProps,
+  useSharedValue,
+} from "react-native-reanimated";
 import type { VolatilityMode } from "../sim/generators";
 import { useSimulatedData, type TradeSource } from "../sim/useSimulatedData";
+import type { ScrubPoint } from "../src";
 import { Liveline } from "../src";
+import { formatTime } from "../src/format";
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
@@ -51,10 +56,20 @@ export default function Index() {
     startValue,
   });
 
-  const subtitleProps = useAnimatedProps(() => ({
-    text: `${value.value.toFixed(6)} · ${volatilityMode}`,
-    defaultValue: `${value.value.toFixed(6)} · ${volatilityMode}`,
-  }));
+  // Shared value updated by onScrub on the JS thread; null = live mode
+  const scrubPoint = useSharedValue<ScrubPoint | null>(null);
+
+  const subtitleProps = useAnimatedProps(() => {
+    const sp = scrubPoint.value;
+    if (sp !== null) {
+      // Scrub mode: show the historical price and its local timestamp
+      const text = `${sp.value.toFixed(6)} · ${formatTime(sp.time)}`;
+      return { text, defaultValue: text };
+    }
+    // Live mode: show current value and volatility label
+    const text = `${value.value.toFixed(6)} · ${volatilityMode}`;
+    return { text, defaultValue: text };
+  });
 
   return (
     <View style={styles.container}>
@@ -69,7 +84,17 @@ export default function Index() {
       </View>
 
       <View style={styles.chartContainer}>
-        <Liveline data={data} value={value} color="#3b82f6" theme="dark" />
+        <Liveline
+          data={data}
+          value={value}
+          color="#3b82f6"
+          theme="dark"
+          scrub
+          scrubTooltip={false}
+          onScrub={(point) => {
+            scrubPoint.value = point;
+          }}
+        />
       </View>
 
       <ScrollView

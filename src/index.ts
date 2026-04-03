@@ -16,6 +16,7 @@ export { Liveline };
     OrderbookData,
     Padding,
     ReferenceLine,
+    ScrubPoint,
     ThemeMode,
     TradeEvent,
     WindowOption,
