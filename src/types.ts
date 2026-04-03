@@ -1,3 +1,4 @@
+import type { SharedValue } from "react-native-reanimated";
 import type { ViewStyle } from "react-native";
 
 export interface LivelinePoint {
@@ -70,8 +71,8 @@ export interface CandlePoint {
 }
 
 export interface LivelineProps {
-  data: LivelinePoint[];
-  value: number;
+  data: SharedValue<LivelinePoint[]>;
+  value: SharedValue<number>;
 
   series?: LivelineSeries[];
 

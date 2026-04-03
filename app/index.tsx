@@ -1,8 +1,11 @@
-import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import Animated, { useAnimatedProps } from "react-native-reanimated";
 import type { VolatilityMode } from "../sim/generators";
 import { useSimulatedData, type TradeSource } from "../sim/useSimulatedData";
 import { Liveline } from "../src";
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 const VOLATILITY_MODES: VolatilityMode[] = [
   "calm",
@@ -25,13 +28,21 @@ export default function Index() {
     paused,
   });
 
+  const subtitleProps = useAnimatedProps(() => ({
+    text: `${value.value.toFixed(2)} · ${volatilityMode} · ${tradeSource}`,
+    defaultValue: `${value.value.toFixed(2)} · ${volatilityMode} · ${tradeSource}`,
+  }));
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>react-native-liveline</Text>
-        <Text style={styles.subtitle}>
-          {value.toFixed(2)} · {volatilityMode} · {tradeSource}
-        </Text>
+        <AnimatedTextInput
+          editable={false}
+          underlineColorAndroid="transparent"
+          style={styles.subtitle}
+          animatedProps={subtitleProps}
+        />
       </View>
 
       <View style={styles.chartContainer}>
@@ -116,6 +127,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "monospace",
     marginTop: 4,
+    padding: 0,
   },
   chartContainer: {
     height: 300,
@@ -138,6 +150,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     flexWrap: "wrap",
+    marginBottom: 8,
   },
   chip: {
     paddingHorizontal: 14,
