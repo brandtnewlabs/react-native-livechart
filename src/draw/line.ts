@@ -14,11 +14,23 @@ export const DEFAULT_PADDING: ChartPadding = {
   left: 12,
 };
 
-export function resolvePadding(override?: Padding): ChartPadding {
-  if (!override) return DEFAULT_PADDING;
+/** Auto-right-padding: badge needs space for the pill, grid labels need less. */
+export function resolveAutoRight(grid: boolean, badge: boolean): number {
+  if (badge) return 64;
+  if (grid) return 44;
+  return DEFAULT_PADDING.right;
+}
+
+export function resolvePadding(
+  override?: Padding,
+  grid = false,
+  badge = false,
+): ChartPadding {
+  const autoRight = resolveAutoRight(grid, badge);
+  if (!override) return { ...DEFAULT_PADDING, right: autoRight };
   return {
     top: override.top ?? DEFAULT_PADDING.top,
-    right: override.right ?? DEFAULT_PADDING.right,
+    right: override.right ?? autoRight,
     bottom: override.bottom ?? DEFAULT_PADDING.bottom,
     left: override.left ?? DEFAULT_PADDING.left,
   };

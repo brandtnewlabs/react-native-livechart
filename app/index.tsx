@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import Animated, { useAnimatedProps } from "react-native-reanimated";
 import type { VolatilityMode } from "../sim/generators";
 import { useSimulatedData, type TradeSource } from "../sim/useSimulatedData";
@@ -16,21 +23,37 @@ const VOLATILITY_MODES: VolatilityMode[] = [
 
 const TRADE_SOURCES: TradeSource[] = ["orderbook", "bonding-curve"];
 
+const PRICE_RANGES: { label: string; value: number }[] = [
+  { label: "0.001", value: 0.001 },
+  { label: "0.5", value: 0.5 },
+  { label: "50", value: 50 },
+  { label: "100", value: 100 },
+  { label: "1K", value: 1_000 },
+  { label: "10K", value: 10_000 },
+  { label: "67.5K", value: 67_500 },
+  { label: "100K", value: 100_000 },
+  { label: "1M", value: 1_000_000 },
+  { label: "10M", value: 10_000_000 },
+  { label: "100M", value: 100_000_000 },
+];
+
 export default function Index() {
   const [volatilityMode, setVolatilityMode] =
     useState<VolatilityMode>("normal");
   const [tradeSource, setTradeSource] = useState<TradeSource>("orderbook");
   const [paused, setPaused] = useState(false);
+  const [startValue, setStartValue] = useState(100);
 
   const { data, value } = useSimulatedData({
     volatilityMode,
     tradeSource,
     paused,
+    startValue,
   });
 
   const subtitleProps = useAnimatedProps(() => ({
-    text: `${value.value.toFixed(2)} · ${volatilityMode} · ${tradeSource}`,
-    defaultValue: `${value.value.toFixed(2)} · ${volatilityMode} · ${tradeSource}`,
+    text: `${value.value.toFixed(6)} · ${volatilityMode}`,
+    defaultValue: `${value.value.toFixed(6)} · ${volatilityMode}`,
   }));
 
   return (
@@ -49,7 +72,30 @@ export default function Index() {
         <Liveline data={data} value={value} color="#3b82f6" theme="dark" />
       </View>
 
-      <View style={styles.controls}>
+      <ScrollView
+        style={styles.controlsScroll}
+        contentContainerStyle={styles.controls}
+      >
+        <Text style={styles.sectionLabel}>Price Range</Text>
+        <View style={styles.buttonRow}>
+          {PRICE_RANGES.map((r) => (
+            <Pressable
+              key={r.label}
+              style={[styles.chip, startValue === r.value && styles.chipActive]}
+              onPress={() => setStartValue(r.value)}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  startValue === r.value && styles.chipTextActive,
+                ]}
+              >
+                {r.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         <Text style={styles.sectionLabel}>Volatility</Text>
         <View style={styles.buttonRow}>
           {VOLATILITY_MODES.map((mode) => (
@@ -101,7 +147,7 @@ export default function Index() {
             {paused ? "Resume" : "Pause"}
           </Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -133,9 +179,13 @@ const styles = StyleSheet.create({
     height: 300,
     marginHorizontal: 12,
   },
+  controlsScroll: {
+    flex: 1,
+  },
   controls: {
     paddingHorizontal: 20,
     paddingTop: 20,
+    paddingBottom: 40,
   },
   sectionLabel: {
     color: "rgba(255,255,255,0.4)",
