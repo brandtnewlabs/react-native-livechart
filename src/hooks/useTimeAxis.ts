@@ -4,6 +4,7 @@ import type { ChartPadding } from "../draw/line";
 import type { EngineState } from "../useLivelineEngine";
 import type { SkFont } from "@shopify/react-native-skia";
 import { lerp } from "../math/lerp";
+import { measureFontTextWidth } from "../measureFontTextWidth";
 import { niceTimeInterval } from "../math/intervals";
 
 export interface TimeEntry {
@@ -144,11 +145,11 @@ export function useTimeAxis(
     const drawn: TimeEntry[] = [];
     for (let i = 0; i < raw.length; i++) {
       const entry = raw[i];
-      const textW = font.getTextWidth(entry.label);
+      const textW = measureFontTextWidth(font, entry.label);
       const left = entry.x - textW / 2;
       if (drawn.length > 0) {
         const prev = drawn[drawn.length - 1];
-        const prevW = font.getTextWidth(prev.label);
+        const prevW = measureFontTextWidth(font, prev.label);
         const prevRight = prev.x + prevW / 2;
         if (left < prevRight + 8) {
           if (entry.alpha > prev.alpha) {

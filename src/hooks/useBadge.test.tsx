@@ -1,18 +1,26 @@
-import { renderHook } from "@testing-library/react-native";
-import { DEFAULT_PADDING } from "../draw/line";
-import { resolveTheme } from "../theme";
+import { DEFAULT_PADDING, badgeTailAndCap, pillTextLeftX } from "../draw/line";
+
+import { BADGE_DOT_GAP } from "../constants";
 import type { EngineState } from "../useLivelineEngine";
+import type { SkFont } from "@shopify/react-native-skia";
+import { measureFontTextWidth } from "../measureFontTextWidth";
+import { renderHook } from "@testing-library/react-native";
+import { resolveTheme } from "../theme";
 import { useBadge } from "./useBadge";
+import { useSharedValue } from "react-native-reanimated";
 
 const font = {
   getSize: () => 12,
-  getTextWidth: (s: string) => s.length * 7,
-} as never;
+  measureText: (s: string) => ({
+    x: 0,
+    y: 0,
+    width: s.length * 7,
+    height: 12,
+  }),
+  getMetrics: () => ({ ascent: -9.6, descent: 2.4, leading: 0 }),
+} as unknown as SkFont;
 
-function makeEngine(
-  w: number,
-  h: number,
-): EngineState {
+function makeEngine(w: number, h: number): EngineState {
   return {
     data: { value: [] },
     value: { value: 1 },
@@ -59,6 +67,46 @@ describe("useBadge", () => {
     expect(result.current.value.text).toBeTruthy();
   });
 
+  it("badge text matches pillTextLeftX — same horizontal position as y-axis labels", () => {
+    const w = 400;
+    // minPaddingRightForBadgeYAxisAlign(12, 35) = 8 + 14 + 20 + 35 + 4 = 81
+    const pad = { ...DEFAULT_PADDING, right: 81 };
+    const { result } = renderHook(() =>
+      useBadge(
+        makeEngine(w, 300),
+        pad,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+      ),
+    );
+    const textW = measureFontTextWidth(font, "50.00");
+    const tl = badgeTailAndCap(font.getSize());
+    expect(result.current.value.textX).toBeCloseTo(
+      pillTextLeftX(w, pad.right, BADGE_DOT_GAP + tl, textW),
+      4,
+    );
+  });
+
+  it("still lays out badge with a custom right padding override", () => {
+    const pad = { ...DEFAULT_PADDING, right: 81 };
+    const { result } = renderHook(() =>
+      useBadge(
+        makeEngine(400, 300),
+        pad,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+      ),
+    );
+    expect(result.current.value.text).toBe("50.00");
+    expect(Number.isFinite(result.current.value.textX)).toBe(true);
+  });
+
   it("uses minimal colors and no tail", () => {
     const { result } = renderHook(() =>
       useBadge(
@@ -74,6 +122,22 @@ describe("useBadge", () => {
     expect(result.current.value.bgColor).toContain("255");
   });
 
+  it("no-tail pill uses minimal variant colors", () => {
+    const pad = { ...DEFAULT_PADDING, right: 81 };
+    const { result } = renderHook(() =>
+      useBadge(
+        makeEngine(400, 300),
+        pad,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "minimal",
+        false,
+      ),
+    );
+    expect(result.current.value.text).toBe("50.00");
+  });
+
   it("centers badge vertically when value range is zero", () => {
     const eng = {
       ...makeEngine(400, 300),
@@ -85,5 +149,59 @@ describe("useBadge", () => {
       useBadge(eng, DEFAULT_PADDING, palette, (v) => v.toFixed(2), font),
     );
     expect(result.current.value.text).toBeTruthy();
+  });
+
+  it("lerps badge background when momentum shared value is provided", () => {
+    const eng = makeEngine(400, 300);
+    const { result } = renderHook(() => {
+      const momentum = useSharedValue<"up" | "down" | "flat">("up");
+      return useBadge(
+        eng,
+        DEFAULT_PADDING,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+        momentum,
+      );
+    });
+    expect(result.current.value.bgColor.startsWith("rgb")).toBe(true);
+  });
+
+  it("lerps toward down momentum target", () => {
+    const eng = makeEngine(400, 300);
+    const { result } = renderHook(() => {
+      const momentum = useSharedValue<"up" | "down" | "flat">("down");
+      return useBadge(
+        eng,
+        DEFAULT_PADDING,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+        momentum,
+      );
+    });
+    expect(result.current.value.bgColor.startsWith("rgb")).toBe(true);
+  });
+
+  it("lerps toward flat momentum target", () => {
+    const eng = makeEngine(400, 300);
+    const { result } = renderHook(() => {
+      const momentum = useSharedValue<"up" | "down" | "flat">("flat");
+      return useBadge(
+        eng,
+        DEFAULT_PADDING,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+        momentum,
+      );
+    });
+    expect(result.current.value.bgColor.startsWith("rgb")).toBe(true);
   });
 });

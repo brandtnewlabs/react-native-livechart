@@ -1,8 +1,12 @@
-import type { LivelinePalette, Padding } from "../types";
-import { resolveAutoRight, resolvePadding } from "../draw/line";
-
-import type { ChartPadding } from "../draw/line";
 import type { SkFont } from "@shopify/react-native-skia";
+import {
+  minPaddingRightForBadgeYAxisAlign,
+  resolveAutoRight,
+  resolvePadding,
+  type ChartPadding,
+} from "../draw/line";
+import { measureFontTextWidth } from "../measureFontTextWidth";
+import type { LivelinePalette, Padding } from "../types";
 
 export interface ChartLayoutConfig {
   palette: LivelinePalette;
@@ -30,16 +34,16 @@ export function resolveChartLayout(
   if (config.paddingOverride?.right != null) {
     rightPad = config.paddingOverride.right;
   } else if (config.font && config.formatValue && config.currentValue != null) {
-    // Measure the current value and a 10x smaller value (drift protection)
-    const s1 = config.formatValue(config.currentValue);
-    const s2 = config.formatValue(config.currentValue / 10);
+    // Sample across multiple magnitudes so the gutter fits the widest label
+    // the chart will plausibly show (handles all price ranges: 0.001 → 10M+).
+    const v = config.currentValue;
+    const samples = [v, v / 10, v / 100, v * 10].map(config.formatValue);
     const textWidth = Math.max(
-      config.font.getTextWidth(s1),
-      config.font.getTextWidth(s2),
+      ...samples.map((s) => measureFontTextWidth(config.font!, s)),
     );
-    // Badge pill structure: tail(5) + padX(10) + text + padX(10) + gap(4) = text + 29
-    const margin = config.badge ? 38 : 16;
-    rightPad = Math.max(textWidth + margin, config.badge ? 60 : 42);
+    rightPad = config.badge
+      ? minPaddingRightForBadgeYAxisAlign(config.font.getSize(), textWidth)
+      : Math.max(textWidth + 16, 44);
   } else {
     rightPad = resolveAutoRight(config.grid, config.badge);
   }

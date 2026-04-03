@@ -1,6 +1,5 @@
 import {
   Canvas,
-  Circle,
   LinearGradient,
   Path,
   matchFont,
@@ -18,10 +17,12 @@ import {
   useChartPaths,
   useGrid,
   useLiveDot,
+  useMomentum,
   useTimeAxis,
 } from "./hooks";
 
 import { BadgeOverlay } from "./components/BadgeOverlay";
+import { DotOverlay } from "./components/DotOverlay";
 import { GridOverlay } from "./components/GridOverlay";
 import type { LivelineProps } from "./types";
 import { TimeAxisOverlay } from "./components/TimeAxisOverlay";
@@ -43,6 +44,8 @@ export function Liveline({
   badge = true,
   badgeVariant = "default",
   badgeTail = true,
+  momentum = true,
+  pulse = true,
   lineWidth: lineWidthProp,
   formatValue = defaultFormatValue,
   formatTime = defaultFormatTime,
@@ -81,6 +84,7 @@ export function Liveline({
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const { linePath, fillPath } = useChartPaths(engine, effectivePadding);
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
+  const momentumSV = useMomentum(engine, momentum);
   const { gridEntries } = useGrid(
     engine,
     effectivePadding,
@@ -102,6 +106,7 @@ export function Liveline({
     font,
     badgeVariant,
     badgeTail,
+    momentumSV,
   );
 
   const bgColor =
@@ -122,6 +127,7 @@ export function Liveline({
             padding={effectivePadding}
             palette={palette}
             font={font}
+            badge={badge}
           />
         )}
 
@@ -152,9 +158,16 @@ export function Liveline({
           font={font}
         />
 
-        <Circle cx={dotX} cy={dotY} r={4} color={palette.line} />
-
         {badge && <BadgeOverlay badge={badgeData} font={font} />}
+
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          momentum={momentumSV}
+          palette={palette}
+          engine={engine}
+          pulse={pulse}
+        />
       </Canvas>
     </View>
   );

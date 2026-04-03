@@ -1,18 +1,20 @@
 import { act, renderHook } from "@testing-library/react-native";
+
 import { DEFAULT_PADDING } from "../draw/line";
 import type { EngineState } from "../useLivelineEngine";
 import { useTimeAxis } from "./useTimeAxis";
 
 const font = {
   getSize: () => 12,
-  getTextWidth: (s: string) => s.length * 8,
+  measureText: (s: string) => ({
+    x: 0,
+    y: 0,
+    width: s.length * 8,
+    height: 12,
+  }),
 } as never;
 
-function makeEngine(
-  w: number,
-  h: number,
-  windowSecs: number,
-): EngineState {
+function makeEngine(w: number, h: number, windowSecs: number): EngineState {
   return {
     data: { value: [] },
     value: { value: 1 },
@@ -79,12 +81,7 @@ describe("useTimeAxis", () => {
   it("drops labels when they leave the target window", () => {
     const eng = makeEngine(400, 200, 30);
     const { result, rerender } = renderHook(() =>
-      useTimeAxis(
-        eng,
-        DEFAULT_PADDING,
-        (t) => `lbl${Math.floor(t)}`,
-        font,
-      ),
+      useTimeAxis(eng, DEFAULT_PADDING, (t) => `lbl${Math.floor(t)}`, font),
     );
     const initialCount = result.current.timeEntries.value.length;
     act(() => {
@@ -100,12 +97,7 @@ describe("useTimeAxis", () => {
   it("updates when timestamp advances", () => {
     const eng = makeEngine(400, 200, 120);
     const { result, rerender } = renderHook(() =>
-      useTimeAxis(
-        eng,
-        DEFAULT_PADDING,
-        (t) => `t${Math.floor(t)}`,
-        font,
-      ),
+      useTimeAxis(eng, DEFAULT_PADDING, (t) => `t${Math.floor(t)}`, font),
     );
     const first = result.current.timeEntries.value.length;
     act(() => {

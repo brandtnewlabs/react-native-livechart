@@ -85,6 +85,9 @@ export interface LivelineProps {
   /** Minimum pixel gap between Y-axis grid lines (default 36). Higher = fewer labels. */
   gridMinGap?: number;
   badge?: boolean;
+  /**
+   * Tint live dot glow and badge from price direction (`true` = auto, `false` = neutral, or force `'up'|'down'|'flat'`).
+   */
   momentum?: boolean | Momentum;
   fill?: boolean;
   loading?: boolean;

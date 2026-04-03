@@ -1,0 +1,13 @@
+/** Extra speed applied to catch up when the live dot lags behind the target. */
+export const ADAPTIVE_SPEED_BOOST = 0.12;
+
+/** Horizontal padding inside the badge pill, on each side of the label. */
+export const BADGE_PILL_PAD_X = 10;
+/** Vertical padding above and below the label inside the badge pill. */
+export const BADGE_PILL_PAD_Y = 3;
+/** Length of the badge tail (the pointed spike toward the dot). */
+export const BADGE_TAIL_LEN = 5;
+/** Gap between the pill's right edge and the canvas right edge. */
+export const BADGE_MARGIN_RIGHT = 4;
+/** Gap between the live dot and the badge tail tip. */
+export const BADGE_DOT_GAP = 12;

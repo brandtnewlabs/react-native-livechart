@@ -1,11 +1,16 @@
-import { renderHook } from "@testing-library/react-native";
 import { DEFAULT_PADDING } from "../draw/line";
 import type { EngineState } from "../useLivelineEngine";
+import { renderHook } from "@testing-library/react-native";
 import { useGrid } from "./useGrid";
 
 const font = {
   getSize: () => 12,
-  getTextWidth: (s: string) => s.length * 7,
+  measureText: (s: string) => ({
+    x: 0,
+    y: 0,
+    width: s.length * 7,
+    height: 12,
+  }),
 } as never;
 
 function makeEngine(): EngineState {

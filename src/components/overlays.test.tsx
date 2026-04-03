@@ -1,18 +1,25 @@
-import { render } from "@testing-library/react-native";
-import { Skia } from "@shopify/react-native-skia";
-import { useSharedValue } from "react-native-reanimated";
-import React from "react";
-import { DEFAULT_PADDING } from "../draw/line";
-import type { EngineState } from "../useLivelineEngine";
-import { resolveTheme } from "../theme";
 import { AnimatedLabel } from "./AnimatedLabel";
 import { BadgeOverlay } from "./BadgeOverlay";
+import { DEFAULT_PADDING } from "../draw/line";
+import { DotOverlay } from "./DotOverlay";
+import type { EngineState } from "../useLivelineEngine";
 import { GridOverlay } from "./GridOverlay";
+import React from "react";
+import { Skia } from "@shopify/react-native-skia";
 import { TimeAxisOverlay } from "./TimeAxisOverlay";
+import { render } from "@testing-library/react-native";
+import { resolveTheme } from "../theme";
+import { useSharedValue } from "react-native-reanimated";
 
 const font = {
   getSize: () => 12,
-  getTextWidth: (s: string) => s.length * 7,
+  measureText: (s: string) => ({
+    x: 0,
+    y: 0,
+    width: s.length * 7,
+    height: 12,
+  }),
+  getMetrics: () => ({ ascent: -9.6, descent: 2.4, leading: 0 }),
 } as never;
 
 const palette = resolveTheme("#3b82f6", "dark");
@@ -71,6 +78,116 @@ describe("GridOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+});
+
+describe("DotOverlay", () => {
+  it("renders pulse ring when pulse is on and timestamp is in active segment", () => {
+    function Fixture() {
+      const dotX = useSharedValue(100);
+      const dotY = useSharedValue(120);
+      const momentum = useSharedValue<"up" | "down" | "flat">("flat");
+      const eng = {
+        ...engine(),
+        timestamp: { value: 0 },
+      } as unknown as EngineState;
+      return (
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          momentum={momentum}
+          palette={palette}
+          engine={eng}
+          pulse
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("defaults pulse to on when the prop is omitted", () => {
+    function Fixture() {
+      const dotX = useSharedValue(100);
+      const dotY = useSharedValue(120);
+      const momentum = useSharedValue<"up" | "down" | "flat">("flat");
+      const eng = {
+        ...engine(),
+        timestamp: { value: 0 },
+      } as unknown as EngineState;
+      return (
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          momentum={momentum}
+          palette={palette}
+          engine={eng}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("skips pulse ring math when pulse is off", () => {
+    function Fixture() {
+      const dotX = useSharedValue(100);
+      const dotY = useSharedValue(120);
+      const momentum = useSharedValue<"up" | "down" | "flat">("up");
+      const eng = engine();
+      return (
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          momentum={momentum}
+          palette={palette}
+          engine={eng}
+          pulse={false}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("uses glow colors for up and down momentum", () => {
+    function Fixture({ m }: { m: "up" | "down" }) {
+      const dotX = useSharedValue(100);
+      const dotY = useSharedValue(120);
+      const momentum = useSharedValue<"up" | "down" | "flat">(m);
+      return (
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          momentum={momentum}
+          palette={palette}
+          engine={engine()}
+          pulse={false}
+        />
+      );
+    }
+    render(<Fixture m="up" />);
+    render(<Fixture m="down" />);
+  });
+
+  it("zeros pulse radius when the cycle is past the active window", () => {
+    function Fixture() {
+      const dotX = useSharedValue(100);
+      const dotY = useSharedValue(120);
+      const momentum = useSharedValue<"up" | "down" | "flat">("flat");
+      const eng = {
+        ...engine(),
+        timestamp: { value: 1 },
+      } as unknown as EngineState;
+      return (
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          momentum={momentum}
+          palette={palette}
+          engine={eng}
+          pulse
         />
       );
     }

@@ -139,6 +139,7 @@ export function computeGridEntries(
     const key = Number(targetKeys[i]);
     /* istanbul ignore else -- key already tracked after phase 2 when targets repeat across frames */
     if (labelAlphas[key] === undefined) {
+      /* istanbul ignore next -- targets keys always map to a number; ?? keeps types safe */
       labelAlphas[key] = (targets[key] ?? 0) * FADE_IN;
     }
   }
