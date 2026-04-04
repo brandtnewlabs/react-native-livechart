@@ -33,6 +33,9 @@ jest.mock("@shopify/react-native-skia", () => {
     Canvas: View,
     Circle: View,
     Group: View,
+    Line: View,
+    Rect: View,
+    RoundedRect: View,
     Text: View,
     Path: ({ children, ...props }) =>
       React.createElement(View, props, children),

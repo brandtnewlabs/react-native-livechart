@@ -48,6 +48,7 @@ export default function Index() {
   const [tradeSource, setTradeSource] = useState<TradeSource>("orderbook");
   const [paused, setPaused] = useState(false);
   const [startValue, setStartValue] = useState(100);
+  const [loading, setLoading] = useState(false);
 
   const { data, value } = useSimulatedData({
     volatilityMode,
@@ -91,6 +92,7 @@ export default function Index() {
           theme="dark"
           scrub
           scrubTooltip={false}
+          loading={loading}
           onScrub={(point) => {
             scrubPoint.value = point;
           }}
@@ -164,14 +166,29 @@ export default function Index() {
           ))}
         </View>
 
-        <Pressable
-          style={[styles.chip, paused && styles.chipActive]}
-          onPress={() => setPaused((p) => !p)}
-        >
-          <Text style={[styles.chipText, paused && styles.chipTextActive]}>
-            {paused ? "Resume" : "Pause"}
-          </Text>
-        </Pressable>
+        <View style={styles.buttonRow}>
+          <Pressable
+            style={[styles.chip, paused && styles.chipActive]}
+            onPress={() => setPaused((p) => !p)}
+          >
+            <Text style={[styles.chipText, paused && styles.chipTextActive]}>
+              {paused ? "Resume" : "Pause"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.chip, loading && styles.chipActive]}
+            onPress={() => {
+              setLoading(true);
+              setTimeout(() => setLoading(false), 2000);
+            }}
+            disabled={loading}
+          >
+            <Text style={[styles.chipText, loading && styles.chipTextActive]}>
+              {loading ? "Loading…" : "Reload"}
+            </Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </View>
   );
