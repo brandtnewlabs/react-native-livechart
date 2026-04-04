@@ -1,12 +1,11 @@
 import { fireEvent, render } from "@testing-library/react-native";
+
+import { Liveline } from "./Liveline";
 import React from "react";
 import { View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
-import { Liveline } from "./Liveline";
 
-function Harness(
-  props: Partial<React.ComponentProps<typeof Liveline>>,
-) {
+function Harness(props: Partial<React.ComponentProps<typeof Liveline>>) {
   const data = useSharedValue([{ time: 1700000000, value: 50 }]);
   const value = useSharedValue(50);
   return <Liveline data={data} value={value} {...props} />;
@@ -37,10 +36,7 @@ describe("Liveline", () => {
 
   it("accepts custom formatters", () => {
     render(
-      <Harness
-        formatValue={(v) => v.toFixed(4)}
-        formatTime={() => "x"}
-      />,
+      <Harness formatValue={(v) => v.toFixed(4)} formatTime={() => "x"} />,
     );
   });
 
@@ -66,5 +62,9 @@ describe("Liveline", () => {
 
   it("renders with paused=true", () => {
     render(<Harness paused />);
+  });
+
+  it("renders with valueLine enabled", () => {
+    render(<Harness valueLine />);
   });
 });

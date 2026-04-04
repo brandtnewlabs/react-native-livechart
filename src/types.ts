@@ -104,6 +104,8 @@ export interface LivelineProps {
   scrub?: boolean;
   /** Show the value+time tooltip pill when scrubbing. Defaults to true. */
   scrubTooltip?: boolean;
+  /** Show a dashed horizontal line tracking the live value, aligned with the badge. */
+  valueLine?: boolean;
   exaggerate?: boolean;
   showValue?: boolean;
   valueMomentumColor?: boolean;
