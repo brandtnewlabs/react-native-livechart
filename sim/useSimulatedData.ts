@@ -99,9 +99,11 @@ export function useSimulatedData(
     if (prevResetKey.current === key) return;
     prevResetKey.current = key;
 
+    // 24h of history at 60s intervals gives enough points for every window
+    // (1440 pts total, ~60 visible per 1h, ~288 visible per 24h).
     const history = generateHistory({
-      count: 150,
-      interval: 0.2,
+      count: 1440,
+      interval: 60,
       startValue,
       volatility: volatilityFor(volatilityMode),
     });

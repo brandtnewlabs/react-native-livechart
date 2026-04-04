@@ -186,6 +186,7 @@ export function useCrosshair(
   // Binary-search interpolated value at the scrub time
   const scrubValue = useDerivedValue(() => {
     if (!scrubActive.value || scrubTime.value < 0) return null;
+    /* istanbul ignore next -- only reachable on UI thread after gesture activates */
     return interpolateAtTime(engine.data.value, scrubTime.value);
   });
 
@@ -215,10 +216,12 @@ export function useCrosshair(
   );
 
   // JS-thread callbacks — called via runOnJS from the gesture worklet
+  /* istanbul ignore next -- invoked only via runOnJS from UI-thread gesture */
   function handleScrub(x: number, y: number, time: number, value: number) {
     onScrub?.({ time, value, x, y });
   }
 
+  /* istanbul ignore next -- invoked only via runOnJS from UI-thread gesture */
   function handleScrubEnd() {
     onScrub?.(null);
   }
@@ -230,13 +233,13 @@ export function useCrosshair(
     .activateAfterLongPress(0)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
-    .onBegin((e) => {
+    .onBegin(/* istanbul ignore next */ (e) => {
       "worklet";
       if (!enabled) return;
       scrubX.value = e.x;
       scrubActive.value = true;
     })
-    .onUpdate((e) => {
+    .onUpdate(/* istanbul ignore next */ (e) => {
       "worklet";
       if (!enabled) return;
       scrubX.value = e.x;
@@ -264,13 +267,13 @@ export function useCrosshair(
         }
       }
     })
-    .onFinalize(() => {
+    .onFinalize(/* istanbul ignore next */ () => {
       "worklet";
       scrubActive.value = false;
       if (hasOnScrub) runOnJS(handleScrubEnd)();
     });
 
-  // Android needs explicit axis offsets to avoid conflicting with scroll views
+  /* istanbul ignore next -- Android-only gesture axis config */
   if (Platform.OS === "android") {
     gesture = gesture.activeOffsetX([-25, 25]).failOffsetY([-25, 25]);
   }

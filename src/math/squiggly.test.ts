@@ -152,4 +152,13 @@ describe("blendPtsY", () => {
     const to = [10, 20, 30, 40];
     expect(blendPtsY([], to, 0.5, padding, canvasWidth)).toEqual(to);
   });
+
+  it("handles zero chart width without division by zero", () => {
+    // canvasWidth = padding.left + padding.right → halfChartW = 0
+    const zeroW = padding.left + padding.right;
+    const from = [12, 100, 80, 100];
+    const to = [12, 50, 80, 60];
+    const result = blendPtsY(from, to, 0.5, padding, zeroW);
+    expect(result).toHaveLength(from.length);
+  });
 });

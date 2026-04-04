@@ -43,4 +43,28 @@ describe("Liveline", () => {
       />,
     );
   });
+
+  it("renders with scrub enabled", () => {
+    const screen = render(<Harness scrub scrubTooltip />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
+
+  it("renders in loading state", () => {
+    const screen = render(<Harness loading />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
+
+  it("renders loading state without layout (zero canvas size)", () => {
+    render(<Harness loading />);
+  });
+
+  it("renders with paused=true", () => {
+    render(<Harness paused />);
+  });
 });

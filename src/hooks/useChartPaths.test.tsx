@@ -1,4 +1,5 @@
 import { renderHook } from "@testing-library/react-native";
+import { useSharedValue } from "react-native-reanimated";
 import { DEFAULT_PADDING } from "../draw/line";
 import type { EngineState } from "../useLivelineEngine";
 import { useChartPaths } from "./useChartPaths";
@@ -39,5 +40,26 @@ describe("useChartPaths", () => {
       ),
     );
     expect(result.current.linePath.value).toBeDefined();
+  });
+
+  it("blends toward squiggly when morphT < 1", () => {
+    const { result } = renderHook(() => {
+      const morphT = useSharedValue(0.5);
+      return useChartPaths(
+        makeEngine({
+          data: {
+            value: [
+              { time: 980, value: 1 },
+              { time: 990, value: 1.5 },
+              { time: 1000, value: 2 },
+            ],
+          },
+        } as unknown as Partial<EngineState>),
+        DEFAULT_PADDING,
+        morphT,
+      );
+    });
+    expect(result.current.linePath.value).toBeDefined();
+    expect(result.current.fillPath.value).toBeDefined();
   });
 });

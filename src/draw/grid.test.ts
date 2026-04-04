@@ -16,6 +16,12 @@ describe("fineLineTargetAlpha", () => {
     expect(fineLineTargetAlpha(fineMin, 36)).toBe(0);
     expect(fineLineTargetAlpha(fineMax, 36)).toBe(1);
   });
+
+  it("uses minGap=36 when second argument is omitted", () => {
+    // Omitting minGap exercises the default parameter branch.
+    expect(fineLineTargetAlpha(30)).toBe(0);
+    expect(fineLineTargetAlpha(70)).toBe(1);
+  });
 });
 
 describe("pickInterval", () => {
