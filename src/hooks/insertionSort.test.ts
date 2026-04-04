@@ -1,8 +1,8 @@
-import { insertionSortByX, type TimeEntry } from "./useTimeAxis";
+import { insertionSortByX, type XAxisEntry } from "./useXAxis";
 
 describe("insertionSortByX", () => {
   it("sorts entries by x ascending", () => {
-    const arr: TimeEntry[] = [
+    const arr: XAxisEntry[] = [
       { x: 30, label: "c", alpha: 1 },
       { x: 10, label: "a", alpha: 1 },
       { x: 20, label: "b", alpha: 1 },
@@ -12,11 +12,11 @@ describe("insertionSortByX", () => {
   });
 
   it("handles already sorted and single element", () => {
-    const one: TimeEntry[] = [{ x: 5, label: "x", alpha: 1 }];
+    const one: XAxisEntry[] = [{ x: 5, label: "x", alpha: 1 }];
     insertionSortByX(one);
     expect(one).toHaveLength(1);
 
-    const sorted: TimeEntry[] = [
+    const sorted: XAxisEntry[] = [
       { x: 1, label: "a", alpha: 1 },
       { x: 2, label: "b", alpha: 1 },
     ];

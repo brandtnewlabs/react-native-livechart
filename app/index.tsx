@@ -100,17 +100,16 @@ export default function Index() {
         <Liveline
           data={data}
           value={value}
-          color="#3b82f6"
+          accentColor="#3b82f6"
           theme="dark"
-          window={windowSecs}
+          timeWindow={windowSecs}
           paused={paused}
           exaggerate={exaggerate}
           valueLine={valueLine}
           referenceLine={
             showRefLine ? { value: startValue * 1.05, label: "+5%" } : undefined
           }
-          scrub
-          scrubTooltip={false}
+          scrub={{ tooltip: true }}
           loading={loading}
           onScrub={(point) => {
             scrubPoint.value = point;

@@ -1,7 +1,7 @@
 import { DEFAULT_PADDING } from "../draw/line";
 import type { EngineState } from "../useLivelineEngine";
 import { renderHook } from "@testing-library/react-native";
-import { useGrid } from "./useGrid";
+import { useYAxis } from "./useYAxis";
 
 const font = {
   getSize: () => 12,
@@ -27,12 +27,12 @@ function makeEngine(): EngineState {
   } as unknown as EngineState;
 }
 
-describe("useGrid", () => {
-  it("returns grid entries derived from engine", () => {
+describe("useYAxis", () => {
+  it("returns y-axis entries derived from engine", () => {
     const { result } = renderHook(() =>
-      useGrid(makeEngine(), DEFAULT_PADDING, (v) => v.toFixed(0), font),
+      useYAxis(makeEngine(), DEFAULT_PADDING, (v) => v.toFixed(0), font),
     );
-    expect(result.current.gridEntries.value.length).toBeGreaterThanOrEqual(0);
+    expect(result.current.yAxisEntries.value.length).toBeGreaterThanOrEqual(0);
     expect(result.current.font).toBe(font);
   });
 });

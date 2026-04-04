@@ -23,7 +23,7 @@ describe("resolveChartLayout", () => {
   it("uses palette lineWidth when no override", () => {
     const { strokeWidth } = resolveChartLayout({
       palette,
-      grid: false,
+      yAxis: false,
       badge: false,
     });
     expect(strokeWidth).toBe(palette.lineWidth);
@@ -33,7 +33,7 @@ describe("resolveChartLayout", () => {
     const { strokeWidth } = resolveChartLayout({
       palette,
       lineWidthOverride: 4,
-      grid: false,
+      yAxis: false,
       badge: false,
     });
     expect(strokeWidth).toBe(4);
@@ -44,7 +44,7 @@ describe("resolveChartLayout", () => {
   it("uses default padding when no features and no font", () => {
     const { padding } = resolveChartLayout({
       palette,
-      grid: false,
+      yAxis: false,
       badge: false,
     });
     expect(padding).toEqual({ top: 12, right: 12, bottom: 28, left: 12 });
@@ -53,7 +53,7 @@ describe("resolveChartLayout", () => {
   it("expands right padding for grid (static fallback)", () => {
     const { padding } = resolveChartLayout({
       palette,
-      grid: true,
+      yAxis: true,
       badge: false,
     });
     expect(padding.right).toBe(44);
@@ -62,7 +62,7 @@ describe("resolveChartLayout", () => {
   it("expands right padding for badge (static fallback)", () => {
     const { padding } = resolveChartLayout({
       palette,
-      grid: false,
+      yAxis: false,
       badge: true,
     });
     // minPaddingRightForBadgeYAxisAlign(12, 49) = 12 + 14 + 20 + 49 + 4 = 99
@@ -72,7 +72,7 @@ describe("resolveChartLayout", () => {
   it("badge takes precedence over grid (static fallback)", () => {
     const { padding } = resolveChartLayout({
       palette,
-      grid: true,
+      yAxis: true,
       badge: true,
     });
     expect(padding.right).toBe(99);
@@ -81,8 +81,8 @@ describe("resolveChartLayout", () => {
   it("respects explicit padding override over everything", () => {
     const { padding } = resolveChartLayout({
       palette,
-      paddingOverride: { right: 100 },
-      grid: true,
+      insetsOverride: { right: 100 },
+      yAxis: true,
       badge: true,
       font: mockFont(),
       formatValue: fmt,
@@ -98,14 +98,14 @@ describe("resolveChartLayout", () => {
     const font = mockFont(7);
     const { padding } = resolveChartLayout({
       palette,
-      grid: true,
+      yAxis: true,
       badge: false,
       font,
       formatValue: fmt,
       currentValue: 42,
     });
     // samples: "42.00"(5ch), "4.20"(4ch), "0.42"(4ch), "420.00"(6ch) → max 6ch×7=42px
-    // grid: max(42+16, 44) = 58
+    // yAxis: max(42+16, 44) = 58
     expect(padding.right).toBe(58);
   });
 
@@ -113,7 +113,7 @@ describe("resolveChartLayout", () => {
     const font = mockFont(7);
     const { padding } = resolveChartLayout({
       palette,
-      grid: true,
+      yAxis: true,
       badge: true,
       font,
       formatValue: fmt,
@@ -128,7 +128,7 @@ describe("resolveChartLayout", () => {
     const font = mockFont(7);
     const { padding } = resolveChartLayout({
       palette,
-      grid: false,
+      yAxis: false,
       badge: true,
       font,
       formatValue: () => "1",
@@ -142,7 +142,7 @@ describe("resolveChartLayout", () => {
     const font = mockFont(7);
     const { padding } = resolveChartLayout({
       palette,
-      grid: true,
+      yAxis: true,
       badge: true,
       font,
       formatValue: (v) => v.toPrecision(4),
@@ -156,7 +156,7 @@ describe("resolveChartLayout", () => {
   it("falls back to static when font is missing", () => {
     const { padding } = resolveChartLayout({
       palette,
-      grid: true,
+      yAxis: true,
       badge: true,
       formatValue: fmt,
       currentValue: 42,
@@ -167,7 +167,7 @@ describe("resolveChartLayout", () => {
   it("falls back to static when formatValue is missing", () => {
     const { padding } = resolveChartLayout({
       palette,
-      grid: true,
+      yAxis: true,
       badge: true,
       font: mockFont(),
       currentValue: 42,
@@ -178,11 +178,41 @@ describe("resolveChartLayout", () => {
   it("falls back to static when currentValue is missing", () => {
     const { padding } = resolveChartLayout({
       palette,
-      grid: true,
+      yAxis: true,
       badge: true,
       font: mockFont(),
       formatValue: fmt,
     });
     expect(padding.right).toBe(99);
+  });
+
+  // ─── left badge ──────────────────────────────────────────────────────────
+
+  it("auto-sizes left padding when badgeOnLeft and font are provided", () => {
+    const font = mockFont(7);
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: true,
+      badgeOnLeft: true,
+      font,
+      formatValue: fmt,
+      currentValue: 42,
+    });
+    // Right should shrink to default (badge not on right, no grid)
+    expect(padding.right).toBe(12);
+    // Left should be auto-sized to fit the badge
+    expect(padding.left).toBeGreaterThan(12);
+  });
+
+  it("respects explicit insetsOverride.left", () => {
+    const { padding } = resolveChartLayout({
+      palette,
+      insetsOverride: { left: 80 },
+      yAxis: false,
+      badge: true,
+      badgeOnLeft: true,
+    });
+    expect(padding.left).toBe(80);
   });
 });

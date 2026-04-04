@@ -10,8 +10,8 @@ import type { LivelinePoint } from "./types";
 export interface EngineConfig {
   data: SharedValue<LivelinePoint[]>;
   value: SharedValue<number>;
-  window: number;
-  lerpSpeed: number;
+  timeWindow: number;
+  smoothing: number;
   exaggerate?: boolean;
   referenceValue?: number;
   paused?: boolean;
@@ -39,8 +39,8 @@ export interface EngineFrameRefs {
   canvasWidth: SharedValue<number>;
   canvasHeight: SharedValue<number>;
   timestamp: SharedValue<number>;
-  windowSize: SharedValue<number>;
-  lerpSpeed: SharedValue<number>;
+  timeWindow: SharedValue<number>;
+  smoothing: SharedValue<number>;
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
   pausedSV: SharedValue<boolean>;
@@ -67,8 +67,8 @@ export function applyLivelineEngineFrame(
     dt,
     canvasWidth: sv.canvasWidth.value,
     canvasHeight: sv.canvasHeight.value,
-    windowSize: sv.windowSize.value,
-    lerpSpeed: sv.lerpSpeed.value,
+    timeWindow: sv.timeWindow.value,
+    smoothing: sv.smoothing.value,
     exaggerate: sv.exaggerateSV.value,
     referenceValue: sv.referenceValue.value,
     targetValue: sv.value.value,
@@ -85,8 +85,8 @@ export function applyLivelineEngineFrame(
 
 export function useLivelineEngine(config: EngineConfig): EngineState {
   // Low-frequency config → UI thread via useDerivedValue
-  const windowSize = useDerivedValue(() => config.window);
-  const lerpSpeed = useDerivedValue(() => config.lerpSpeed);
+  const timeWindow = useDerivedValue(() => config.timeWindow);
+  const smoothing = useDerivedValue(() => config.smoothing);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
   const pausedSV = useDerivedValue(() => config.paused ?? false);
@@ -95,7 +95,7 @@ export function useLivelineEngine(config: EngineConfig): EngineState {
   const displayValue = useSharedValue(0);
   const displayMin = useSharedValue(0);
   const displayMax = useSharedValue(1);
-  const displayWindow = useSharedValue(config.window);
+  const displayWindow = useSharedValue(config.timeWindow);
   const canvasWidth = useSharedValue(0);
   const canvasHeight = useSharedValue(0);
   const timestamp = useSharedValue(Date.now() / 1000);
@@ -104,7 +104,6 @@ export function useLivelineEngine(config: EngineConfig): EngineState {
   // no useDerivedValue bridging, no closure serialization per tick.
   const { data, value } = config;
 
-  /* istanbul ignore start -- runs on UI thread; logic covered via applyLivelineEngineFrame */
   useFrameCallback((frameInfo) => {
     "worklet";
     applyLivelineEngineFrame(frameInfo, {
@@ -117,14 +116,13 @@ export function useLivelineEngine(config: EngineConfig): EngineState {
       timestamp,
       canvasWidth,
       canvasHeight,
-      windowSize,
-      lerpSpeed,
+      timeWindow,
+      smoothing,
       exaggerateSV,
       referenceValue,
       pausedSV,
     });
   });
-  /* istanbul ignore end */
 
   return {
     data,

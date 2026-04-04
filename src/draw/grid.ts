@@ -1,6 +1,6 @@
 import { lerp } from "../math/lerp";
 
-export interface GridEntry {
+export interface YAxisEntry {
   y: number;
   label: string;
   alpha: number;
@@ -81,7 +81,7 @@ export function computeGridEntries(
   formatValue: (v: number) => string,
   dt: number,
   minGap = 36,
-): { entries: GridEntry[]; interval: number } {
+): { entries: YAxisEntry[]; interval: number } {
   "worklet";
   const chartH = canvasHeight - padTop - padBottom;
   if (chartH <= 0) return { entries: [], interval: prevInterval };
@@ -145,7 +145,7 @@ export function computeGridEntries(
   }
 
   // Phase 3: build entries
-  const entries: GridEntry[] = [];
+  const entries: YAxisEntry[] = [];
   const allKeys = Object.keys(labelAlphas);
   for (let i = 0; i < allKeys.length; i++) {
     const key = Number(allKeys[i]);

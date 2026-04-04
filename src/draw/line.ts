@@ -5,7 +5,7 @@ import {
   BADGE_PILL_PAD_Y,
   BADGE_TAIL_LEN,
 } from "../constants";
-import type { LivelinePoint, Padding } from "../types";
+import type { ChartInsets, LivelinePoint } from "../types";
 export {
   BADGE_DOT_GAP,
   BADGE_MARGIN_RIGHT,
@@ -88,27 +88,55 @@ export function minPaddingRightForBadgeYAxisAlign(
   );
 }
 
-/** Auto-right-padding: badge needs space for the pill, grid labels need less. */
-export function resolveAutoRight(grid: boolean, badge: boolean): number {
+/** Auto-right-padding: badge needs space for the pill, y-axis labels need less. */
+export function resolveAutoRight(yAxis: boolean, badge: boolean): number {
   // Fallback when no font/value is available for measurement.
   // Assumes a typical label ~7 chars × 7px = 49px at 12px font size.
   if (badge) return minPaddingRightForBadgeYAxisAlign(12, 49);
-  if (grid) return 44;
+  if (yAxis) return 44;
   return DEFAULT_PADDING.right;
 }
 
+/**
+ * Minimum `padding.left` for a left-positioned badge pill.
+ * Layout: |canvas edge| BADGE_MARGIN_RIGHT | PAD_X | text | PAD_X | BADGE_DOT_GAP | chart area
+ */
+export function minPaddingLeftForBadge(textWidth: number): number {
+  return Math.ceil(
+    BADGE_MARGIN_RIGHT + 2 * BADGE_PILL_PAD_X + textWidth + BADGE_DOT_GAP,
+  );
+}
+
+/** Auto-left-padding: left badge needs space for the pill. */
+export function resolveAutoLeft(badgeOnLeft: boolean): number {
+  // Fallback assumes ~7 chars × 7px = 49px at 12px font size.
+  if (badgeOnLeft) return minPaddingLeftForBadge(49);
+  return DEFAULT_PADDING.left;
+}
+
 export function resolvePadding(
-  override?: Padding,
-  grid = false,
+  override?: ChartInsets,
+  yAxis = false,
   badge = false,
+  badgeOnLeft = false,
+  xAxis = true,
 ): ChartPadding {
-  const autoRight = resolveAutoRight(grid, badge);
-  if (!override) return { ...DEFAULT_PADDING, right: autoRight };
+  const autoRight = resolveAutoRight(yAxis, badge && !badgeOnLeft);
+  const autoLeft = resolveAutoLeft(badgeOnLeft);
+  const autoBottom = xAxis ? DEFAULT_PADDING.bottom : 8;
+  if (!override) {
+    return {
+      ...DEFAULT_PADDING,
+      right: autoRight,
+      left: autoLeft,
+      bottom: autoBottom,
+    };
+  }
   return {
     top: override.top ?? DEFAULT_PADDING.top,
     right: override.right ?? autoRight,
-    bottom: override.bottom ?? DEFAULT_PADDING.bottom,
-    left: override.left ?? DEFAULT_PADDING.left,
+    bottom: override.bottom ?? autoBottom,
+    left: override.left ?? autoLeft,
   };
 }
 

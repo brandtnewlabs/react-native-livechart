@@ -12,131 +12,177 @@ import {
   formatValue as defaultFormatValue,
 } from "./format";
 import {
+  resolveBadge,
+  resolveFontConfig,
+  resolveGradient,
+  resolvePulse,
+  resolveReferenceLineConfig,
+  resolveScrub,
+  resolveValueLine,
+  resolveXAxis,
+  resolveYAxis,
+} from "./resolveConfig";
+import {
   resolveChartLayout,
   useBadge,
   useCanvasLayout,
+  useChartColors,
   useChartPaths,
   useChartReveal,
   useCrosshair,
-  useGrid,
   useLiveDot,
   useMomentum,
   useReferenceLine,
-  useTimeAxis,
+  useXAxis,
+  useYAxis,
 } from "./hooks";
 
 import { BadgeOverlay } from "./components/BadgeOverlay";
 import { CrosshairOverlay } from "./components/CrosshairOverlay";
 import { DotOverlay } from "./components/DotOverlay";
 import { GestureDetector } from "react-native-gesture-handler";
-import { GridOverlay } from "./components/GridOverlay";
 import type { LivelineProps } from "./types";
 import { LoadingOverlay } from "./components/LoadingOverlay";
 import { ReferenceLineOverlay } from "./components/ReferenceLineOverlay";
-import { TimeAxisOverlay } from "./components/TimeAxisOverlay";
 import { ValueLineOverlay } from "./components/ValueLineOverlay";
+import { XAxisOverlay } from "./components/XAxisOverlay";
+import { YAxisOverlay } from "./components/YAxisOverlay";
 import { resolveTheme } from "./theme";
 import { useLivelineEngine } from "./useLivelineEngine";
 
 export function Liveline({
+  // ── Data ────────────────────────────────────────────────────────────────
   data,
   value,
+
+  // ── Appearance ──────────────────────────────────────────────────────────
   theme = "dark",
-  color = "#3b82f6",
-  window: windowSecs = 30,
+  accentColor = "#3b82f6",
+  gradient = true,
+  line: lineProp,
+  font: fontProp,
+  insets,
+  style,
+
+  // ── Behaviour ───────────────────────────────────────────────────────────
+  timeWindow = 30,
   paused = false,
-  lerpSpeed = 0.08,
-  exaggerate = false,
-  referenceLine,
-  fill = true,
-  grid = true,
-  gridMinGap = 36,
-  badge = true,
-  badgeVariant = "default",
-  badgeTail = true,
-  momentum = true,
-  pulse = true,
-  scrub = false,
-  scrubTooltip = true,
-  valueLine = false,
   loading = false,
+  smoothing = 0.08,
+  exaggerate = false,
   emptyText = "No data",
-  lineWidth: lineWidthProp,
   formatValue = defaultFormatValue,
   formatTime = defaultFormatTime,
-  backgroundColor,
-  padding,
-  onScrub,
-  style,
-}: LivelineProps) {
-  const palette = resolveTheme(color, theme);
 
-  const font = matchFont({
-    fontFamily: Platform.select({ ios: "Menlo", default: "monospace" }),
-    fontSize: palette.labelFontSize,
-    fontWeight: "500",
-  });
+  // ── Overlays ────────────────────────────────────────────────────────────
+  yAxis = true,
+  xAxis = true,
+  badge = true,
+  momentum = true,
+  pulse = true,
+  valueLine = false,
+  referenceLine,
+  scrub = false,
+
+  // ── Callbacks ───────────────────────────────────────────────────────────
+  onScrub,
+}: LivelineProps) {
+  // ── Resolve feature configs ────────────────────────────────────────────
+  const yAxisCfg = resolveYAxis(yAxis);
+  const xAxisCfg = resolveXAxis(xAxis);
+  const badgeCfg = resolveBadge(badge);
+  const scrubCfg = resolveScrub(scrub);
+  const gradientCfg = resolveGradient(gradient);
+  const valueLineCfg = resolveValueLine(valueLine);
+  const pulseCfg = resolvePulse(pulse);
+  const refLineCfg = resolveReferenceLineConfig(referenceLine);
+
+  const badgeOnLeft = badgeCfg?.position === "left";
+
+  // ── Theme, font and layout ─────────────────────────────────────────────
+  const palette = resolveTheme(accentColor, theme);
+
+  const skiaFont = matchFont(
+    resolveFontConfig(
+      fontProp,
+      Platform.select({ ios: "Menlo", default: "monospace" }) as string,
+      palette.labelFontSize,
+    ),
+  );
 
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
-    lineWidthOverride: lineWidthProp,
-    paddingOverride: padding,
-    grid,
-    badge,
-    font,
+    lineWidthOverride: lineProp?.width,
+    insetsOverride: insets,
+    yAxis: yAxisCfg !== null,
+    badge: badgeCfg !== null,
+    badgeOnLeft,
+    xAxis: xAxisCfg !== null,
+    font: skiaFont,
     formatValue,
     currentValue: value.value,
   });
 
+  // ── Engine and reveal state ────────────────────────────────────────────
   const engine = useLivelineEngine({
     data,
     value,
-    window: windowSecs,
+    timeWindow,
     paused,
-    lerpSpeed,
+    smoothing,
     exaggerate,
     referenceValue: referenceLine?.value,
   });
 
   const reveal = useChartReveal(loading);
 
+  // ── Per-frame derived values ───────────────────────────────────────────
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
+
   const { linePath, fillPath } = useChartPaths(
     engine,
     effectivePadding,
     reveal.morphT,
   );
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
+
   const momentumSV = useMomentum(engine, momentum);
+
+  // ── Overlay hooks ─────────────────────────────────────────────────────
   const referenceLineLayout = useReferenceLine(
     engine,
     effectivePadding,
     referenceLine,
     formatValue,
-    font,
+    skiaFont,
   );
-  const { gridEntries } = useGrid(
+
+  const { yAxisEntries } = useYAxis(
     engine,
     effectivePadding,
     formatValue,
-    font,
-    gridMinGap,
+    skiaFont,
+    yAxisCfg?.minGap ?? 36,
   );
-  const { timeEntries } = useTimeAxis(
+
+  const { xAxisEntries } = useXAxis(
     engine,
     effectivePadding,
     formatTime,
-    font,
+    skiaFont,
   );
+
   const badgeData = useBadge(
     engine,
     effectivePadding,
     palette,
     formatValue,
-    font,
-    badgeVariant,
-    badgeTail,
+    skiaFont,
+    badgeCfg?.variant ?? "default",
+    badgeCfg?.tail ?? true,
     momentumSV,
+    badgeCfg?.position ?? "right",
+    badgeCfg?.background,
   );
 
   const crosshair = useCrosshair(
@@ -145,88 +191,107 @@ export function Liveline({
     palette,
     formatValue,
     formatTime,
-    font,
-    scrub,
+    skiaFont,
+    scrubCfg !== null,
     onScrub,
   );
 
-  const bgColor =
-    backgroundColor ??
-    `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
-  const gradientEnd = Math.max(1, layoutHeight - effectivePadding.bottom);
+  // ── Derived render values ──────────────────────────────────────────────
+  const {
+    backgroundColor,
+    gradientEnd,
+    gradientTopColor,
+    gradientBottomColor,
+  } = useChartColors(
+    palette,
+    gradientCfg,
+    accentColor,
+    layoutHeight,
+    effectivePadding,
+  );
 
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <GestureDetector gesture={crosshair.gesture}>
-      <View
-        style={[{ flex: 1, backgroundColor: bgColor }, style]}
-        onLayout={onLayout}
-      >
+      <View style={[{ flex: 1, backgroundColor }, style]} onLayout={onLayout}>
         <Canvas style={{ flex: 1 }}>
-          {grid && (
-            <Group opacity={reveal.gridOpacity}>
-              <GridOverlay
-                entries={gridEntries}
+          {/* Y-axis grid */}
+          {yAxisCfg && (
+            <Group opacity={reveal.yAxisOpacity}>
+              <YAxisOverlay
+                entries={yAxisEntries}
                 engine={engine}
                 padding={effectivePadding}
                 palette={palette}
-                font={font}
-                badge={badge}
+                font={skiaFont}
+                badge={badgeCfg !== null && !badgeOnLeft}
               />
             </Group>
           )}
 
-          {fill && (
+          {/* Area gradient fill */}
+          {gradientCfg && (
             <Group opacity={reveal.fillOpacity}>
               <Path path={fillPath} style="fill">
                 <LinearGradient
                   start={vec(0, effectivePadding.top)}
                   end={vec(0, gradientEnd)}
-                  colors={[palette.fillTop, palette.fillBottom]}
+                  colors={[gradientTopColor, gradientBottomColor]}
                 />
               </Path>
             </Group>
           )}
 
-          {valueLine && (
+          {/* Value line + reference line (behind chart line) */}
+          {valueLineCfg && (
             <ValueLineOverlay
               dotY={dotY}
               engine={engine}
               padding={effectivePadding}
-              palette={palette}
+              strokeWidth={valueLineCfg.strokeWidth}
+              intervals={valueLineCfg.intervals}
+              color={valueLineCfg.color ?? palette.dashLine}
             />
           )}
 
-          {referenceLine && (
+          {refLineCfg && (
             <ReferenceLineOverlay
               layout={referenceLineLayout}
-              palette={palette}
-              font={font}
+              strokeWidth={refLineCfg.strokeWidth}
+              intervals={refLineCfg.intervals}
+              color={refLineCfg.color ?? palette.refLine}
+              labelColor={palette.refLabel}
+              font={skiaFont}
             />
           )}
 
-          {/* Line path: always rendered; morph handles transition via blended pts */}
+          {/* Chart line — always rendered; morph blends loading → data */}
           <Group opacity={reveal.lineOpacity}>
             <Path
               path={linePath}
               style="stroke"
               strokeWidth={strokeWidth}
-              color={palette.line}
+              color={lineProp?.color ?? palette.line}
               strokeCap="round"
               strokeJoin="round"
             />
           </Group>
 
-          <TimeAxisOverlay
-            entries={timeEntries}
-            engine={engine}
-            padding={effectivePadding}
-            palette={palette}
-            font={font}
-          />
+          {/* X-axis time labels */}
+          {xAxisCfg && (
+            <XAxisOverlay
+              entries={xAxisEntries}
+              engine={engine}
+              padding={effectivePadding}
+              palette={palette}
+              font={skiaFont}
+            />
+          )}
 
-          {badge && (
+          {/* Badge and live dot */}
+          {badgeCfg && (
             <Group opacity={reveal.badgeOpacity}>
-              <BadgeOverlay badge={badgeData} font={font} />
+              <BadgeOverlay badge={badgeData} font={skiaFont} />
             </Group>
           )}
 
@@ -237,24 +302,26 @@ export function Liveline({
               momentum={momentumSV}
               palette={palette}
               engine={engine}
-              pulse={pulse}
+              pulse={pulseCfg}
             />
           </Group>
 
+          {/* Loading / empty state — rendered last so it sits on top */}
           <LoadingOverlay
             engine={engine}
             padding={effectivePadding}
             palette={palette}
-            font={font}
+            font={skiaFont}
             morphT={reveal.morphT}
             isLoading={reveal.isLoading}
             isEmpty={reveal.isEmpty}
             emptyText={emptyText}
             strokeWidth={strokeWidth}
-            badge={badge}
+            badge={badgeCfg !== null}
           />
 
-          {scrub && (
+          {/* Crosshair scrub */}
+          {scrubCfg && (
             <CrosshairOverlay
               scrubX={crosshair.scrubX}
               crosshairOpacity={crosshair.crosshairOpacity}
@@ -262,8 +329,8 @@ export function Liveline({
               engine={engine}
               padding={effectivePadding}
               palette={palette}
-              font={font}
-              showTooltip={scrubTooltip}
+              font={skiaFont}
+              showTooltip={scrubCfg.tooltip}
             />
           )}
         </Canvas>

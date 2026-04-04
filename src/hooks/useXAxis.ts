@@ -7,7 +7,7 @@ import { lerp } from "../math/lerp";
 import { measureFontTextWidth } from "../measureFontTextWidth";
 import { niceTimeInterval } from "../math/intervals";
 
-export interface TimeEntry {
+export interface XAxisEntry {
   x: number;
   label: string;
   alpha: number;
@@ -16,7 +16,7 @@ export interface TimeEntry {
 const FADE = 0.08;
 
 /** Insertion sort — worklet-safe, no callback functions. */
-export function insertionSortByX(arr: TimeEntry[]) {
+export function insertionSortByX(arr: XAxisEntry[]) {
   "worklet";
   for (let i = 1; i < arr.length; i++) {
     const item = arr[i];
@@ -31,7 +31,7 @@ export function insertionSortByX(arr: TimeEntry[]) {
   }
 }
 
-export function useTimeAxis(
+export function useXAxis(
   engine: EngineState,
   padding: ChartPadding,
   formatTime: (t: number) => string,
@@ -41,10 +41,10 @@ export function useTimeAxis(
     Record<number, { alpha: number; text: string }>
   >({});
 
-  const timeEntries = useDerivedValue(() => {
+  const xAxisEntries = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
     const h = engine.canvasHeight.value;
-    if (w === 0 || h === 0) return [] as TimeEntry[];
+    if (w === 0 || h === 0) return [] as XAxisEntry[];
 
     const now = engine.timestamp.value;
     const windowSecs = engine.displayWindow.value;
@@ -54,7 +54,7 @@ export function useTimeAxis(
     const chartRight = w - padding.right;
     const chartW = chartRight - chartLeft;
     /* istanbul ignore next -- defensive; Reanimated test mock rarely executes this guard with non-zero w/h */
-    if (chartW <= 0) return [] as TimeEntry[];
+    if (chartW <= 0) return [] as XAxisEntry[];
 
     const fadeZone = 50;
 
@@ -125,7 +125,7 @@ export function useTimeAxis(
     labelAlphas.value = alphas;
 
     // Collect visible labels
-    const raw: TimeEntry[] = [];
+    const raw: XAxisEntry[] = [];
     const visibleKeys = Object.keys(alphas);
     for (let i = 0; i < visibleKeys.length; i++) {
       const key = Number(visibleKeys[i]);
@@ -142,7 +142,7 @@ export function useTimeAxis(
     insertionSortByX(raw);
 
     // Overlap resolution: keep higher-alpha label when two collide
-    const drawn: TimeEntry[] = [];
+    const drawn: XAxisEntry[] = [];
     for (let i = 0; i < raw.length; i++) {
       const entry = raw[i];
       const textW = measureFontTextWidth(font, entry.label);
@@ -164,5 +164,5 @@ export function useTimeAxis(
     return drawn;
   });
 
-  return { timeEntries, font };
+  return { xAxisEntries, font };
 }

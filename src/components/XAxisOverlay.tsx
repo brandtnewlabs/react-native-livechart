@@ -1,22 +1,22 @@
 import { Group, Path, Skia, type SkFont } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ChartPadding } from "../draw/line";
-import type { TimeEntry } from "../hooks/useTimeAxis";
+import type { XAxisEntry } from "../hooks/useXAxis";
 import { measureFontTextWidth } from "../measureFontTextWidth";
 import type { LivelinePalette } from "../types";
 import type { EngineState } from "../useLivelineEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
-const MAX_TIME_LABELS = 10;
+const MAX_X_LABELS = 10;
 
-export function TimeAxisOverlay({
+export function XAxisOverlay({
   entries,
   engine,
   padding,
   palette,
   font,
 }: {
-  entries: SharedValue<TimeEntry[]>;
+  entries: SharedValue<XAxisEntry[]>;
   engine: EngineState;
   padding: ChartPadding;
   palette: LivelinePalette;
@@ -41,7 +41,7 @@ export function TimeAxisOverlay({
     return path;
   });
 
-  // Transform TimeEntry[] into { x, y, label, alpha } for AnimatedLabel
+  // Transform XAxisEntry[] into { x, y, label, alpha } for AnimatedLabel
   const labelEntries = useDerivedValue(() => {
     const items = entries.value;
     const h = engine.canvasHeight.value;
@@ -62,7 +62,7 @@ export function TimeAxisOverlay({
         strokeWidth={1}
         color={palette.gridLine}
       />
-      {Array.from({ length: MAX_TIME_LABELS }, (_, i) => (
+      {Array.from({ length: MAX_X_LABELS }, (_, i) => (
         <AnimatedLabel
           key={i}
           entries={labelEntries}

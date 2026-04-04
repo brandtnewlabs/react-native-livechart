@@ -16,8 +16,8 @@ export interface EngineTickInput {
   dt: number;
   canvasWidth: number;
   canvasHeight: number;
-  windowSize: number;
-  lerpSpeed: number;
+  timeWindow: number;
+  smoothing: number;
   exaggerate: boolean;
   referenceValue: number | undefined;
   targetValue: number;
@@ -44,7 +44,7 @@ export function tickLivelineEngineFrame(
 
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
 
-  const speed = input.lerpSpeed;
+  const speed = input.smoothing;
   const target = input.targetValue;
 
   const range = state.displayMax - state.displayMin;
@@ -61,7 +61,7 @@ export function tickLivelineEngineFrame(
 
   state.displayWindow = lerp(
     state.displayWindow,
-    input.windowSize,
+    input.timeWindow,
     speed,
     input.dt,
   );

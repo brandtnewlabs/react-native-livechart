@@ -204,4 +204,42 @@ describe("useBadge", () => {
     });
     expect(result.current.value.bgColor.startsWith("rgb")).toBe(true);
   });
+
+  it("renders a left-position badge (no tail, pill in left gutter)", () => {
+    const leftPadding = { top: 12, right: 12, bottom: 28, left: 80 };
+    const eng = makeEngine(400, 300);
+    const { result } = renderHook(() =>
+      useBadge(
+        eng,
+        leftPadding,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+        undefined,
+        "left",
+      ),
+    );
+    expect(result.current.value.path).toBeDefined();
+  });
+
+  it("uses fixed background color when background override is provided", () => {
+    const eng = makeEngine(400, 300);
+    const { result } = renderHook(() =>
+      useBadge(
+        eng,
+        DEFAULT_PADDING,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+        undefined,
+        "right",
+        "#ff0000",
+      ),
+    );
+    expect(result.current.value.bgColor).toBe("#ff0000");
+  });
 });

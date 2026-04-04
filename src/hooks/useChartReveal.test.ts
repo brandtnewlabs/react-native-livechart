@@ -50,8 +50,8 @@ describe("revealRamp", () => {
     expect(revealRamp(1, 1)).toBe(0);
   });
 
-  it("fill reveals before grid (lower delay)", () => {
-    // fill delay=0.05, grid delay=0.15; at morphT=0.1 fill > 0, grid = 0
+  it("fill reveals before y-axis (lower delay)", () => {
+    // fill delay=0.05, yAxis delay=0.15; at morphT=0.1 fill > 0, yAxis = 0
     expect(revealRamp(0.1, 0.05)).toBeGreaterThan(0);
     expect(revealRamp(0.1, 0.15)).toBe(0);
   });
@@ -93,7 +93,7 @@ describe("useChartReveal (hook)", () => {
 
   it("all stagger opacities are 0 when morphT=0 (loading=true)", () => {
     const { result } = renderHook(() => useChartReveal(true));
-    expect(result.current.gridOpacity.value).toBe(0);
+    expect(result.current.yAxisOpacity.value).toBe(0);
     expect(result.current.fillOpacity.value).toBe(0);
     expect(result.current.dotOpacity.value).toBe(0);
     expect(result.current.badgeOpacity.value).toBe(0);
@@ -101,7 +101,7 @@ describe("useChartReveal (hook)", () => {
 
   it("all stagger opacities are 1 when morphT=1 (loading=false)", () => {
     const { result } = renderHook(() => useChartReveal(false));
-    expect(result.current.gridOpacity.value).toBeCloseTo(1);
+    expect(result.current.yAxisOpacity.value).toBeCloseTo(1);
     expect(result.current.fillOpacity.value).toBeCloseTo(1);
     expect(result.current.dotOpacity.value).toBeCloseTo(1);
     expect(result.current.badgeOpacity.value).toBeCloseTo(1);

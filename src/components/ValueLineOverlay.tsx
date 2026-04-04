@@ -2,7 +2,6 @@ import { DashPathEffect, Path, Skia } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { ChartPadding } from "../draw/line";
-import type { LivelinePalette } from "../types";
 import type { EngineState } from "../useLivelineEngine";
 
 /**
@@ -13,12 +12,16 @@ export function ValueLineOverlay({
   dotY,
   engine,
   padding,
-  palette,
+  strokeWidth,
+  intervals,
+  color,
 }: {
   dotY: SharedValue<number>;
   engine: EngineState;
   padding: ChartPadding;
-  palette: LivelinePalette;
+  strokeWidth: number;
+  intervals: [number, number];
+  color: string;
 }) {
   const path = useDerivedValue(() => {
     const p = Skia.Path.Make();
@@ -30,8 +33,8 @@ export function ValueLineOverlay({
   });
 
   return (
-    <Path path={path} style="stroke" strokeWidth={1} color={palette.dashLine}>
-      <DashPathEffect intervals={[4, 4]} />
+    <Path path={path} style="stroke" strokeWidth={strokeWidth} color={color}>
+      <DashPathEffect intervals={intervals} />
     </Path>
   );
 }
