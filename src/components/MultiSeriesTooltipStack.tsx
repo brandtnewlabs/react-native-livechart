@@ -48,13 +48,7 @@ function TooltipStackLine({
   });
   return (
     <Group opacity={opacity}>
-      <SkiaText
-        x={x}
-        y={y}
-        text={text as unknown as string}
-        font={font}
-        color={color as unknown as string}
-      />
+      <SkiaText x={x} y={y} text={text} font={font} color={color} />
     </Group>
   );
 }

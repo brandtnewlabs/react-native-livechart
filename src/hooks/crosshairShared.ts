@@ -8,7 +8,10 @@ import { measureFontTextWidth } from "../measureFontTextWidth";
 const TOOLTIP_PAD_X = 8;
 const TOOLTIP_PAD_Y = 6;
 const TOOLTIP_LINE_GAP = 4;
-export const FADE_ZONE = 4;
+const TOOLTIP_OFFSET_X = 12;
+const TOOLTIP_EDGE_GAP = 4;
+const TOOLTIP_TOP_MARGIN = 8;
+const FADE_ZONE = 4;
 
 export interface TooltipLayout {
   x: number;
@@ -126,11 +129,11 @@ export function computeTooltipLayout(
 
   const rightEdge = canvasWidth - padding.right;
 
-  let pillX = scrubX + 12;
-  if (pillX + pillW > rightEdge - 4) {
-    pillX = scrubX - pillW - 12;
+  let pillX = scrubX + TOOLTIP_OFFSET_X;
+  if (pillX + pillW > rightEdge - TOOLTIP_EDGE_GAP) {
+    pillX = scrubX - pillW - TOOLTIP_OFFSET_X;
   }
-  const pillY = padding.top + 8;
+  const pillY = padding.top + TOOLTIP_TOP_MARGIN;
 
   const line1Y = pillY + TOOLTIP_PAD_Y - fm.ascent;
   const line2Y = line1Y + lineH + TOOLTIP_LINE_GAP;
@@ -183,11 +186,11 @@ export function computeTooltipLayoutMulti(
   const pillW = contentW + TOOLTIP_PAD_X * 2;
 
   const rightEdge = canvasWidth - padding.right;
-  let pillX = scrubX + 12;
-  if (pillX + pillW > rightEdge - 4) {
-    pillX = scrubX - pillW - 12;
+  let pillX = scrubX + TOOLTIP_OFFSET_X;
+  if (pillX + pillW > rightEdge - TOOLTIP_EDGE_GAP) {
+    pillX = scrubX - pillW - TOOLTIP_OFFSET_X;
   }
-  const pillY = padding.top + 8;
+  const pillY = padding.top + TOOLTIP_TOP_MARGIN;
 
   const stackedLines: {
     text: string;

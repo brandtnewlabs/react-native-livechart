@@ -3,9 +3,9 @@ import {
   resolveMultiSeriesLineColorsSnapshot,
 } from "./multiSeriesLayout";
 
-import type { SeriesConfig } from "./types";
 import { MAX_MULTI_SERIES } from "./constants";
 import { SERIES_COLORS } from "./theme";
+import type { SeriesConfig } from "./types";
 
 describe("lineColorsSignatureFromArray", () => {
   it("joins id and color for each series", () => {
@@ -27,9 +27,7 @@ describe("resolveMultiSeriesLineColorsSnapshot", () => {
   });
 
   it("uses explicit series color when set", () => {
-    const a: SeriesConfig[] = [
-      { id: "a", data: [], value: 1, color: "#abc" },
-    ];
+    const a: SeriesConfig[] = [{ id: "a", data: [], value: 1, color: "#abc" }];
     expect(resolveMultiSeriesLineColorsSnapshot(a)[0]).toBe("#abc");
   });
 

@@ -1,10 +1,16 @@
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 
-import type { ChartEngineLayout } from "../useLiveChartEngine";
-import type { ChartPadding } from "../draw/line";
 import type { SkFont } from "@shopify/react-native-skia";
+import { MS_PER_FRAME_60FPS } from "../constants";
 import { computeGridEntries } from "../draw/grid";
+import type { ChartPadding } from "../draw/line";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 
+/**
+ * Compute Y-axis grid entries (values + labels) with animated fade-in/out.
+ * Uses `computeGridEntries` to pick nice intervals and track label alpha for
+ * smooth transitions when the value range changes.
+ */
 export function useYAxis(
   engine: ChartEngineLayout,
   padding: ChartPadding,
@@ -16,7 +22,7 @@ export function useYAxis(
   const labelAlphas = useSharedValue<Record<number, number>>({});
 
   const yAxisEntries = useDerivedValue(() => {
-    const dt = 16.67;
+    const dt = MS_PER_FRAME_60FPS;
 
     const alphas = labelAlphas.value;
     const result = computeGridEntries(

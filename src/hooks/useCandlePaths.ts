@@ -5,6 +5,7 @@ import {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import { MS_PER_FRAME_60FPS } from "../constants";
 import { buildCandleGeometry } from "../draw/candle";
 import type { ChartPadding } from "../draw/line";
 import { lerp } from "../math/lerp";
@@ -27,7 +28,7 @@ export function useCandlePaths(
   useFrameCallback((frameInfo) => {
     "worklet";
     if (!active) return;
-    const dt = frameInfo.timeSincePreviousFrame ?? 16.67;
+    const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
     displayCandleWidth.value = lerp(
       displayCandleWidth.value,
       targetCandleWidth.value,

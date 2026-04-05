@@ -1,8 +1,4 @@
-import {
-  computeGridEntries,
-  fineLineTargetAlpha,
-  pickInterval,
-} from "./grid";
+import { computeGridEntries, fineLineTargetAlpha, pickInterval } from "./grid";
 
 describe("fineLineTargetAlpha", () => {
   it("maps fine pixel spacing to 0, blend, and 1 bands (default minGap)", () => {

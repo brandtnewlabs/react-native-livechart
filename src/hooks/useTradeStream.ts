@@ -3,6 +3,7 @@ import {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import { MS_PER_FRAME_60FPS } from "../constants";
 import type { ChartPadding } from "../draw/line";
 import {
   createTradeStreamState,
@@ -14,6 +15,11 @@ import {
 import type { TradeEvent } from "../types";
 import type { SingleEngineState } from "../useLiveChartEngine";
 
+/**
+ * Process live trade events into projected on-chart markers.
+ * Runs a frame callback that ticks the trade-stream state and produces
+ * `TradeMarker[]` positioned within the chart area.
+ */
 export function useTradeStream(
   engine: SingleEngineState,
   tradeStream: SharedValue<TradeEvent[]>,
@@ -33,10 +39,11 @@ export function useTradeStream(
         return;
       }
 
-      const dt = frameInfo.timeSincePreviousFrame ?? 16.67;
+      const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
       const h = engine.canvasHeight.value;
       const chartTop = padding.top;
-      const chartBottom = h - padding.bottom - 6;
+      const LABEL_CLEARANCE = 6;
+      const chartBottom = h - padding.bottom - LABEL_CLEARANCE;
 
       if (chartBottom <= chartTop) return;
 

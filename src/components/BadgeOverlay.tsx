@@ -32,18 +32,8 @@ export function BadgeOverlay({
 
   return (
     <Group>
-      <Path
-        path={badgePath}
-        style="fill"
-        color={bgColor as unknown as string}
-      />
-      <SkiaText
-        x={textX}
-        y={textY}
-        text={text as unknown as string}
-        font={font}
-        color={textColor as unknown as string}
-      />
+      <Path path={badgePath} style="fill" color={bgColor} />
+      <SkiaText x={textX} y={textY} text={text} font={font} color={textColor} />
     </Group>
   );
 }

@@ -35,13 +35,7 @@ export function AnimatedLabel({
 
   return (
     <Group opacity={opacity}>
-      <SkiaText
-        x={x}
-        y={y}
-        text={text as unknown as string}
-        font={font}
-        color={color}
-      />
+      <SkiaText x={x} y={y} text={text} font={font} color={color} />
     </Group>
   );
 }

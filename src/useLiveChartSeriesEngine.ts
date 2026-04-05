@@ -4,6 +4,7 @@ import {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import { MS_PER_FRAME_60FPS } from "./constants";
 import { tickLiveChartSeriesEngineFrame } from "./liveChartSeriesEngineTick";
 import type { LiveChartPoint, SeriesConfig } from "./types";
 import type { MultiEngineState } from "./useLiveChartEngine";
@@ -34,12 +35,18 @@ export interface MultiEngineFrameRefs {
   pausedSV: SharedValue<boolean>;
 }
 
+/**
+ * One frame of the multi-series chart engine.
+ * Mirrors `applyLiveChartEngineFrame` but iterates over each series
+ * to lerp per-series display values and opacities. Extracted as a
+ * pure function so it can be called from both `useFrameCallback` and tests.
+ */
 export function applyLiveChartSeriesEngineFrame(
   frameInfo: { timeSincePreviousFrame?: number | null },
   sv: MultiEngineFrameRefs,
 ): void {
   "worklet";
-  const dt = frameInfo.timeSincePreviousFrame ?? 16.67;
+  const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
   const seriesSnap = sv.series.value;
   const displayValues = sv.displaySeriesValues.value.slice();
   const opacities = sv.seriesOpacities.value.slice();

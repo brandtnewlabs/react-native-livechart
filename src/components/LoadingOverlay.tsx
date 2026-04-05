@@ -130,7 +130,7 @@ export function LoadingOverlay({
 
   const emptyTextX = useDerivedValue(() => emptyLayout.value.x);
   const emptyTextY = useDerivedValue(() => emptyLayout.value.y);
-  const showText = useDerivedValue(() => isEmpty.value);
+  const showText = useDerivedValue(() => (isEmpty.value ? 1 : 0));
 
   return (
     <Group opacity={groupOpacity}>
@@ -182,10 +182,10 @@ export function LoadingOverlay({
       <SkiaText
         x={emptyTextX}
         y={emptyTextY}
-        text={showText.value ? emptyText : ("" as unknown as string)}
+        text={showText.value > 0 ? emptyText : ""}
         font={font}
         color={palette.gridLabel}
-        opacity={showText as unknown as number}
+        opacity={showText}
       />
     </Group>
   );

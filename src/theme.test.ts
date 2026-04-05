@@ -32,13 +32,15 @@ describe("resolveTheme", () => {
     const p = resolveTheme("#ff0000", "dark");
     expect(p.line).toBe("#ff0000");
     expect(p.bgRgb).toEqual([10, 10, 10]);
-    expect(p.gridLine).toContain("255");
+    expect(p.gridLine).toMatch(/^rgba\(/);
+    expect(p.tooltipText).toBe("#e5e5e5");
   });
 
   it("builds light palette", () => {
     const p = resolveTheme("#00ff00", "light");
     expect(p.bgRgb).toEqual([255, 255, 255]);
-    expect(p.gridLine).toContain("0");
+    expect(p.gridLine).toMatch(/^rgba\(/);
+    expect(p.tooltipText).toBe("#171717");
   });
 });
 

@@ -1,10 +1,12 @@
-import type { SeriesConfig } from "./types";
 import { MAX_MULTI_SERIES } from "./constants";
 import { SERIES_COLORS } from "./theme";
+import type { SeriesConfig } from "./types";
 
 /** Stable signature when series id/color change (not every data tick). */
 export function lineColorsSignatureFromArray(arr: SeriesConfig[]): string {
   "worklet";
+  // U+001F (unit separator) and U+001E (record separator) are ASCII control
+  // chars that will never appear in series IDs or color strings.
   return arr.map((x) => `${x.id}\x1f${x.color ?? ""}`).join("\x1e");
 }
 

@@ -6,25 +6,13 @@ import {
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ChartPadding } from "../draw/line";
 import type { TradeMarker } from "../draw/trade";
+import { lerpColor } from "../math/color";
 import type { LiveChartPalette } from "../types";
 
 const MAX_TRADE_LABELS = 20;
 
 const GREEN: [number, number, number] = [34, 197, 94];
 const RED: [number, number, number] = [239, 68, 68];
-
-/* istanbul ignore next -- worklet */
-function mixColor(
-  from: [number, number, number],
-  to: [number, number, number],
-  t: number,
-): string {
-  "worklet";
-  const r = Math.round(from[0] + (to[0] - from[0]) * t);
-  const g = Math.round(from[1] + (to[1] - from[1]) * t);
-  const b = Math.round(from[2] + (to[2] - from[2]) * t);
-  return `rgb(${r},${g},${b})`;
-}
 
 function TapeLabel({
   index,
@@ -51,7 +39,7 @@ function TapeLabel({
     const m = markers.value[index];
     if (!m) return "transparent";
     const base = m.green ? GREEN : RED;
-    return mixColor(base, bgRgb, 1 - m.alpha);
+    return lerpColor(base, bgRgb, 1 - m.alpha);
   });
 
   /* istanbul ignore next -- worklet */
@@ -73,20 +61,14 @@ function TapeLabel({
       <SkiaText
         x={labelX}
         y={y}
-        text={text as unknown as string}
+        text={text}
         font={font}
-        color={outlineColor as unknown as string}
+        color={outlineColor}
         style="stroke"
         strokeWidth={0.5}
         opacity={0.75}
       />
-      <SkiaText
-        x={labelX}
-        y={y}
-        text={text as unknown as string}
-        font={font}
-        color={fillColor as unknown as string}
-      />
+      <SkiaText x={labelX} y={y} text={text} font={font} color={fillColor} />
     </Group>
   );
 }

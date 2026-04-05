@@ -1,10 +1,10 @@
 import {
-  DashPathEffect,
-  Group,
-  Path,
-  Skia,
-  Text as SkiaText,
-  type SkFont,
+    DashPathEffect,
+    Group,
+    Path,
+    Skia,
+    Text as SkiaText,
+    type SkFont,
 } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
@@ -57,7 +57,7 @@ export function ReferenceLineOverlay({
       <SkiaText
         x={labelX}
         y={labelY}
-        text={labelText as unknown as string}
+        text={labelText}
         font={font}
         color={labelColor}
       />

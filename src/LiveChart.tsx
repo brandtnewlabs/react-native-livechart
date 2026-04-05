@@ -405,7 +405,7 @@ export function LiveChart({
               </Group>
             )}
 
-            {/* Trade stream tape (behind chart content) */}
+            {/* Trade stream labels */}
             {tradeStreamResolved && (
               <TradeStreamOverlay
                 markers={tradeMarkers}

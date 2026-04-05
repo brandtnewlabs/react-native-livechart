@@ -1,8 +1,67 @@
 import type { LiveChartPalette, SeriesConfig, ThemeMode } from "./types";
 
-/** Parse any CSS color string to [r, g, b]. Handles hex (#rgb, #rrggbb), rgb(), rgba(). */
+/**
+ * Tailwind CSS v3 default palette — literal hex only (no tailwindcss dependency).
+ * Values match https://tailwindcss.com/docs/customizing-colors
+ */
+const TW = {
+  white: "#ffffff",
+  black: "#000000",
+  neutral: {
+    /** neutral-200 */
+    200: "#e5e5e5",
+    /** neutral-900 */
+    900: "#171717",
+    /** neutral-950 */
+    950: "#0a0a0a",
+  },
+  zinc: {
+    /** zinc-900 */
+    900: "#18181b",
+    /** zinc-950 */
+    950: "#09090b",
+  },
+  green: {
+    /** green-500 */
+    500: "#22c55e",
+    /** green-600 */
+    600: "#16a34a",
+  },
+  red: {
+    /** red-500 */
+    500: "#ef4444",
+    /** red-600 */
+    600: "#dc2626",
+  },
+  blue: {
+    /** blue-500 */
+    500: "#3b82f6",
+  },
+  amber: {
+    /** amber-500 */
+    500: "#f59e0b",
+  },
+  violet: {
+    /** violet-500 */
+    500: "#8b5cf6",
+  },
+  pink: {
+    /** pink-500 */
+    500: "#ec4899",
+  },
+  cyan: {
+    /** cyan-500 */
+    500: "#06b6d4",
+  },
+  orange: {
+    /** orange-500 */
+    500: "#f97316",
+  },
+} as const;
+
+/** Parse a CSS color string to [r, g, b]. Supports `#rgb`, `#rrggbb`, `rgb()`, and `rgba()`. */
 export function parseColorRgb(color: string): [number, number, number] {
-  const hex = color.match(/^#([0-9a-f]{3,8})$/i);
+  const hex = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
   if (hex) {
     let h = hex[1];
     if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
@@ -21,6 +80,11 @@ function rgba(r: number, g: number, b: number, a: number): string {
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
+function twAlpha(hex: string, a: number): string {
+  const [r, g, b] = parseColorRgb(hex);
+  return rgba(r, g, b, a);
+}
+
 /**
  * Derive a full palette from a single accent color + theme mode.
  * Momentum colors are always semantic green/red regardless of accent.
@@ -28,6 +92,10 @@ function rgba(r: number, g: number, b: number, a: number): string {
 export function resolveTheme(color: string, mode: ThemeMode): LiveChartPalette {
   const [r, g, b] = parseColorRgb(color);
   const isDark = mode === "dark";
+  const [g5r, g5g, g5b] = parseColorRgb(TW.green[500]);
+  const [g6r, g6g, g6b] = parseColorRgb(TW.green[600]);
+  const [r5r, r5g, r5b] = parseColorRgb(TW.red[500]);
+  const [r6r, r6g, r6b] = parseColorRgb(TW.red[600]);
 
   return {
     line: color,
@@ -36,43 +104,44 @@ export function resolveTheme(color: string, mode: ThemeMode): LiveChartPalette {
     fillTop: rgba(r, g, b, isDark ? 0.12 : 0.08),
     fillBottom: rgba(r, g, b, 0),
 
-    gridLine: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)",
-    gridLabel: isDark ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.35)",
+    // white/6, black/6 (Tailwind opacity on base)
+    gridLine: isDark ? twAlpha(TW.white, 0.06) : twAlpha(TW.black, 0.06),
+    gridLabel: isDark ? twAlpha(TW.white, 0.4) : twAlpha(TW.black, 0.35),
 
-    dotUp: "#22c55e",
-    dotDown: "#ef4444",
+    dotUp: TW.green[500],
+    dotDown: TW.red[500],
     dotFlat: color,
-    glowUp: "rgba(34, 197, 94, 0.18)",
-    glowDown: "rgba(239, 68, 68, 0.18)",
+    glowUp: twAlpha(TW.green[500], 0.18),
+    glowDown: twAlpha(TW.red[500], 0.18),
     glowFlat: rgba(r, g, b, 0.12),
 
     badgeOuterBg: isDark
-      ? "rgba(40, 40, 40, 0.95)"
-      : "rgba(255, 255, 255, 0.95)",
-    badgeOuterShadow: isDark ? "rgba(0, 0, 0, 0.4)" : "rgba(0, 0, 0, 0.15)",
+      ? twAlpha(TW.zinc[900], 0.95)
+      : twAlpha(TW.white, 0.95),
+    badgeOuterShadow: isDark ? twAlpha(TW.black, 0.4) : twAlpha(TW.black, 0.15),
     badgeBg: color,
-    badgeText: "#ffffff",
+    badgeText: TW.white,
 
-    candleUp: "#22c55e",
-    candleDown: "#ef4444",
-    wickUp: isDark ? "rgba(34, 197, 94, 0.7)" : "rgba(22, 163, 74, 0.8)",
-    wickDown: isDark ? "rgba(239, 68, 68, 0.7)" : "rgba(220, 38, 38, 0.8)",
+    candleUp: TW.green[500],
+    candleDown: TW.red[500],
+    wickUp: isDark ? rgba(g5r, g5g, g5b, 0.7) : rgba(g6r, g6g, g6b, 0.8),
+    wickDown: isDark ? rgba(r5r, r5g, r5b, 0.7) : rgba(r6r, r6g, r6b, 0.8),
 
     dashLine: rgba(r, g, b, 0.4),
 
-    refLine: isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.12)",
-    refLabel: isDark ? "rgba(255, 255, 255, 0.45)" : "rgba(0, 0, 0, 0.4)",
+    refLine: isDark ? twAlpha(TW.white, 0.15) : twAlpha(TW.black, 0.12),
+    refLabel: isDark ? twAlpha(TW.white, 0.45) : twAlpha(TW.black, 0.4),
 
-    timeLabel: isDark ? "rgba(255, 255, 255, 0.35)" : "rgba(0, 0, 0, 0.3)",
+    timeLabel: isDark ? twAlpha(TW.white, 0.35) : twAlpha(TW.black, 0.3),
 
-    crosshairLine: isDark ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.12)",
-    tooltipBg: isDark ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)",
-    tooltipText: isDark ? "#e5e5e5" : "#1a1a1a",
-    tooltipBorder: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)",
+    crosshairLine: isDark ? twAlpha(TW.white, 0.2) : twAlpha(TW.black, 0.12),
+    tooltipBg: isDark ? twAlpha(TW.zinc[950], 0.95) : twAlpha(TW.white, 0.95),
+    tooltipText: isDark ? TW.neutral[200] : TW.neutral[900],
+    tooltipBorder: isDark ? twAlpha(TW.white, 0.1) : twAlpha(TW.black, 0.08),
 
     bgRgb: isDark
-      ? ([10, 10, 10] as [number, number, number])
-      : ([255, 255, 255] as [number, number, number]),
+      ? (parseColorRgb(TW.neutral[950]) as [number, number, number])
+      : (parseColorRgb(TW.white) as [number, number, number]),
 
     labelFontSize: 11,
     valueFontSize: 11,
@@ -80,16 +149,19 @@ export function resolveTheme(color: string, mode: ThemeMode): LiveChartPalette {
   };
 }
 
-/** Default color palette for multi-series when no colors specified. */
+/**
+ * Default multi-series line colors — Tailwind 500 scale, order: blue, red, green,
+ * amber, violet, pink, cyan, orange.
+ */
 export const SERIES_COLORS = [
-  "#3b82f6", // blue
-  "#ef4444", // red
-  "#22c55e", // green
-  "#f59e0b", // amber
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#f97316", // orange
+  TW.blue[500],
+  TW.red[500],
+  TW.green[500],
+  TW.amber[500],
+  TW.violet[500],
+  TW.pink[500],
+  TW.cyan[500],
+  TW.orange[500],
 ];
 
 /** Derive per-series palettes from series definitions. */

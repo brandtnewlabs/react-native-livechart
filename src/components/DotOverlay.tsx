@@ -5,6 +5,8 @@ import type { LiveChartPalette } from "../types";
 import type { ChartEngineLayout } from "../useLiveChartEngine";
 
 const MIN_PULSE_RADIUS = 9;
+const DOT_OUTER_RADIUS = 6.5;
+const DOT_INNER_RADIUS = 3.5;
 
 export function DotOverlay({
   dotX,
@@ -37,7 +39,6 @@ export function DotOverlay({
 
   return (
     <Group>
-      {/* Pulse ring */}
       {pulse && (
         <Circle
           cx={dotX}
@@ -50,11 +51,14 @@ export function DotOverlay({
         />
       )}
 
-      {/* Outer ring */}
-      <Circle cx={dotX} cy={dotY} r={6.5} color={palette.badgeOuterBg} />
+      <Circle
+        cx={dotX}
+        cy={dotY}
+        r={DOT_OUTER_RADIUS}
+        color={palette.badgeOuterBg}
+      />
 
-      {/* Inner dot */}
-      <Circle cx={dotX} cy={dotY} r={3.5} color={palette.line} />
+      <Circle cx={dotX} cy={dotY} r={DOT_INNER_RADIUS} color={palette.line} />
     </Group>
   );
 }

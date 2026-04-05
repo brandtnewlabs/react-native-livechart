@@ -1,7 +1,7 @@
-import type { MultiEngineState } from "../useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
-import { useMultiSeriesLinePaths } from "./useMultiSeriesPaths";
 import { useSharedValue } from "react-native-reanimated";
+import type { MultiEngineState } from "../useLiveChartEngine";
+import { useMultiSeriesLinePaths } from "./useMultiSeriesLinePaths";
 
 describe("useMultiSeriesLinePaths", () => {
   it("returns path array derived value", () => {

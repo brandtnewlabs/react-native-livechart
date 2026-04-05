@@ -1,8 +1,8 @@
+import { useMemo } from "react";
 import type { ChartPadding } from "../draw/line";
-import type { LiveChartPalette } from "../types";
 import type { ResolvedGradientConfig } from "../resolveConfig";
 import { parseColorRgb } from "../theme";
-import { useMemo } from "react";
+import type { LiveChartPalette } from "../types";
 
 export interface ChartColors {
   /** Background color derived from the theme palette. */
@@ -17,7 +17,7 @@ export interface ChartColors {
 
 /**
  * Derives background and gradient colors from the resolved palette and
- * optional GradientConfig opacities. Memoised so strings are only
+ * optional GradientConfig opacities. Memoized so strings are only
  * recomputed when inputs change.
  */
 export function useChartColors(

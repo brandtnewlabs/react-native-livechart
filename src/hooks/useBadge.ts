@@ -9,6 +9,7 @@ import {
   BADGE_MARGIN_RIGHT,
   BADGE_PILL_PAD_Y,
   BADGE_TAIL_LEN,
+  MS_PER_FRAME_60FPS,
 } from "../constants";
 import {
   badgeTailAndCap,
@@ -146,9 +147,9 @@ export function useBadge(
     } else if (momentum) {
       const m = momentum.value;
       const targetRgb = m === "up" ? upRgb : m === "down" ? downRgb : accentRgb;
-      colorR.value = lerp(colorR.value, targetRgb[0], 0.08, 16.67);
-      colorG.value = lerp(colorG.value, targetRgb[1], 0.08, 16.67);
-      colorB.value = lerp(colorB.value, targetRgb[2], 0.08, 16.67);
+      colorR.value = lerp(colorR.value, targetRgb[0], 0.08, MS_PER_FRAME_60FPS);
+      colorG.value = lerp(colorG.value, targetRgb[1], 0.08, MS_PER_FRAME_60FPS);
+      colorB.value = lerp(colorB.value, targetRgb[2], 0.08, MS_PER_FRAME_60FPS);
       bgColor = lerpColor(
         [colorR.value, colorG.value, colorB.value],
         [colorR.value, colorG.value, colorB.value],

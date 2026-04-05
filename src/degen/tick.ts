@@ -1,5 +1,24 @@
+/**
+ * Particle system for "degen" momentum bursts.
+ *
+ * Particles live in a packed `Float64Array` ring buffer.  Each slot occupies
+ * `DEGEN_STRIDE` (7) contiguous floats:
+ *
+ * | offset | field    | description                          |
+ * | ------ | -------- | ------------------------------------ |
+ * |   0    | x        | current x position (px)              |
+ * |   1    | y        | current y position (px)              |
+ * |   2    | vx       | velocity x (px/s)                    |
+ * |   3    | vy       | velocity y (px/s)                    |
+ * |   4    | t0       | spawn timestamp (seconds)            |
+ * |   5    | active   | 1 = alive, 0 = expired               |
+ * |   6    | size     | particle radius (px, pre-scaled)      |
+ *
+ * All functions are worklet-safe for UI-thread execution.
+ */
 import { DEGEN_STRIDE } from "../constants";
 
+/** Deterministic pseudo-random hash for reproducible particle variation. */
 export function hash(a: number, b: number): number {
   "worklet";
   const x = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
@@ -7,27 +26,43 @@ export function hash(a: number, b: number): number {
 }
 
 export interface SpawnParams {
+  /** Origin x — center of the burst (px). */
   ox: number;
+  /** Origin y — center of the burst (px). */
   oy: number;
+  /** Scale multiplier applied to speed and size. */
   sc: number;
+  /** Number of particles to spawn in this burst. */
   burst: number;
+  /** Central emission angle (radians). */
   baseAngle: number;
+  /** Angular spread around `baseAngle` (radians). */
   spread: number;
+  /** Horizontal position jitter (±half, px). */
   jx: number;
+  /** Vertical position jitter (±half, px). */
   jy: number;
+  /** Minimum initial speed (px/s, before `sc`). */
   sMin: number;
+  /** Maximum initial speed (px/s, before `sc`). */
   sMax: number;
+  /** Minimum particle radius (px, before `sc`). */
   szMin: number;
+  /** Maximum particle radius (px, before `sc`). */
   szMax: number;
+  /** Current timestamp (seconds). */
   now: number;
+  /** Ring-buffer rotation index for slot allocation. */
   baseRot: number;
+  /** Total number of slots in the ring buffer. */
   slots: number;
 }
 
+/** Write `p.burst` particles into the ring buffer starting at `p.baseRot`. Returns the next rotation index. */
 export function spawnBurst(buf: Float64Array, p: SpawnParams): number {
   "worklet";
   const stride = DEGEN_STRIDE;
-  let rot = p.baseRot;
+  const rot = p.baseRot;
   for (let k = 0; k < p.burst; k++) {
     const slot = (rot + k) % p.slots;
     const b = slot * stride;
@@ -52,6 +87,7 @@ export interface ShakeResult {
   active: boolean;
 }
 
+/** Compute screen-shake displacement with exponential decay envelope. */
 export function computeShake(
   elapsed: number,
   dur: number,
@@ -70,6 +106,7 @@ export function computeShake(
   };
 }
 
+/** Advance all particles by `dtSec`: apply velocity, drag, and expire particles older than `burstDur`. */
 export function tickParticles(
   buf: Float64Array,
   slots: number,

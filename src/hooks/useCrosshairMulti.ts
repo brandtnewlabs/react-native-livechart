@@ -2,27 +2,27 @@ import { type SkFont } from "@shopify/react-native-skia";
 import { Platform } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import {
-    useAnimatedReaction,
-    useDerivedValue,
-    useSharedValue,
+  useAnimatedReaction,
+  useDerivedValue,
+  useSharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { type ChartPadding } from "../draw/line";
 import type {
-    LiveChartPalette,
-    ScrubPointMulti,
-    ScrubSeriesValue,
+  LiveChartPalette,
+  ScrubPointMulti,
+  ScrubSeriesValue,
 } from "../types";
 import type { MultiEngineState } from "../useLiveChartEngine";
 import {
-    computeMultiSeriesScrubTooltipLayout,
-    deriveScrubValueMulti,
-    interpolateMultiSeriesAtTime,
+  computeMultiSeriesScrubTooltipLayout,
+  deriveScrubValueMulti,
+  interpolateMultiSeriesAtTime,
 } from "./crosshairMulti";
 import {
-    computeCrosshairOpacity,
-    computeScrubTime,
-    type CrosshairState,
+  computeCrosshairOpacity,
+  computeScrubTime,
+  type CrosshairState,
 } from "./crosshairShared";
 
 /**

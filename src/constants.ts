@@ -1,3 +1,6 @@
+/** Milliseconds per frame at 60 fps — baseline for frame-rate-independent lerp. */
+export const MS_PER_FRAME_60FPS = 16.67;
+
 /** Extra speed applied to catch up when the live dot lags behind the target. */
 export const ADAPTIVE_SPEED_BOOST = 0.12;
 

@@ -43,7 +43,7 @@ export function MultiSeriesStroke({
         path={path}
         style="stroke"
         strokeWidth={strokeWidth}
-        color={color as unknown as string}
+        color={color}
         strokeCap="round"
         strokeJoin="round"
       />
