@@ -1,15 +1,42 @@
 import { fireEvent, render } from "@testing-library/react-native";
 
-import { Liveline } from "./Liveline";
-import type { LivelineSingleProps } from "./types";
 import React from "react";
 import { View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
+import { Liveline } from "./Liveline";
+import type { CandlePoint, LivelineSingleProps } from "./types";
 
 function Harness(props: Partial<LivelineSingleProps>) {
   const data = useSharedValue([{ time: 1700000000, value: 50 }]);
   const value = useSharedValue(50);
   return <Liveline data={data} value={value} {...props} />;
+}
+
+function CandleHarness(props: Partial<LivelineSingleProps>) {
+  const data = useSharedValue([{ time: 1700000000, value: 50 }]);
+  const value = useSharedValue(50);
+  const candles: SharedValue<CandlePoint[]> = useSharedValue([
+    { time: 1700000000, open: 48, high: 52, low: 47, close: 50 },
+    { time: 1700000060, open: 50, high: 55, low: 49, close: 53 },
+  ]);
+  const liveCandle: SharedValue<CandlePoint | null> = useSharedValue({
+    time: 1700000120,
+    open: 53,
+    high: 56,
+    low: 51,
+    close: 54,
+  });
+  return (
+    <Liveline
+      data={data}
+      value={value}
+      mode="candle"
+      candles={candles}
+      liveCandle={liveCandle}
+      candleWidth={60}
+      {...props}
+    />
+  );
 }
 
 describe("Liveline", () => {
@@ -114,5 +141,21 @@ describe("Liveline", () => {
         font={{ fontFamily: "Courier", fontSize: 13, fontWeight: "700" }}
       />,
     );
+  });
+
+  it("renders in candle mode", () => {
+    const screen = render(<CandleHarness />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
+
+  it("renders candle mode with scrub enabled", () => {
+    render(<CandleHarness scrub />);
+  });
+
+  it("disables gradient in candle mode", () => {
+    render(<CandleHarness gradient />);
   });
 });

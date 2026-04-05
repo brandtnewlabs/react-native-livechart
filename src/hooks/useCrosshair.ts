@@ -4,32 +4,42 @@ import { Gesture } from "react-native-gesture-handler";
 import {
   useDerivedValue,
   useSharedValue,
+  type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { type ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
-import type { LivelinePalette, ScrubPoint } from "../types";
+import { pickCandleAtTime } from "../math/pickCandle";
+import type { CandlePoint, LivelinePalette, ScrubPoint } from "../types";
 import type { SingleEngineState } from "../useLivelineEngine";
 import {
+  computeCandleTooltipLayout,
   computeCrosshairOpacity,
   computeScrubTime,
-  type CrosshairState,
   deriveCrosshairTooltipSingle,
-  deriveScrubValueSingle,
+  type CrosshairState,
 } from "./crosshairShared";
 
 export type { CrosshairState, TooltipLayout } from "./crosshairShared";
 export type { ScrubPoint };
 
-export {
-  computeCrosshairOpacity,
-  computeScrubTime,
-  computeTooltipLayout,
-  computeTooltipLayoutMulti,
-  deriveCrosshairTooltipSingle,
-  deriveScrubValueSingle,
-  HIDDEN_TOOLTIP,
-} from "./crosshairShared";
+  export {
+    computeCandleTooltipLayout,
+    computeCrosshairOpacity,
+    computeScrubTime,
+    computeTooltipLayout,
+    computeTooltipLayoutMulti,
+    deriveCrosshairTooltipSingle,
+    deriveScrubValueSingle,
+    HIDDEN_TOOLTIP
+  } from "./crosshairShared";
+
+export interface CrosshairCandleOpts {
+  mode: "line" | "candle";
+  candles?: SharedValue<CandlePoint[]>;
+  liveCandle?: SharedValue<CandlePoint | null>;
+  candleWidthSecs: number;
+}
 
 /**
  * Single-series crosshair + scrub. Use `useCrosshairMulti` for multi-series charts.
@@ -43,6 +53,7 @@ export function useCrosshair(
   font: SkFont,
   enabled: boolean,
   onScrub?: (point: ScrubPoint | null) => void,
+  candleOpts?: CrosshairCandleOpts,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -58,13 +69,34 @@ export function useCrosshair(
     ),
   );
 
-  const scrubValue = useDerivedValue(() =>
-    deriveScrubValueSingle(
-      scrubActive.value,
+  const isCandleMode = candleOpts?.mode === "candle";
+  const candlesSV = candleOpts?.candles;
+  const liveCandleSV = candleOpts?.liveCandle;
+  const candleWidthSecs = candleOpts?.candleWidthSecs ?? 60;
+
+  const scrubCandle = useDerivedValue(() => {
+    if (
+      !isCandleMode ||
+      !candlesSV ||
+      !scrubActive.value ||
+      scrubTime.value < 0
+    )
+      return null;
+    return pickCandleAtTime(
+      candlesSV.value,
+      liveCandleSV?.value ?? null,
       scrubTime.value,
-      engine.data.value,
-    ),
-  );
+      candleWidthSecs,
+    );
+  });
+
+  const scrubValue = useDerivedValue(() => {
+    if (!scrubActive.value || scrubTime.value < 0) return null;
+    if (isCandleMode) {
+      return scrubCandle.value?.close ?? null;
+    }
+    return interpolateAtTime(engine.data.value, scrubTime.value);
+  });
 
   const crosshairOpacity = useDerivedValue(() =>
     computeCrosshairOpacity(
@@ -75,8 +107,21 @@ export function useCrosshair(
     ),
   );
 
-  const tooltipLayout = useDerivedValue(() =>
-    deriveCrosshairTooltipSingle(
+  const tooltipLayout = useDerivedValue(() => {
+    if (isCandleMode) {
+      return computeCandleTooltipLayout(
+        scrubActive.value,
+        scrubX.value,
+        scrubCandle.value,
+        scrubTime.value,
+        padding,
+        engine.canvasWidth.value,
+        formatValue,
+        formatTime,
+        font,
+      );
+    }
+    return deriveCrosshairTooltipSingle(
       scrubActive.value,
       scrubX.value,
       scrubTime.value,
@@ -86,12 +131,21 @@ export function useCrosshair(
       formatValue,
       formatTime,
       font,
-    ),
-  );
+    );
+  });
 
   /* istanbul ignore next -- invoked only via scheduleOnRN from UI-thread gesture */
-  function handleScrub(x: number, y: number, time: number, value: number) {
-    onScrub?.({ time, value, x, y });
+  function handleScrub(
+    x: number,
+    y: number,
+    time: number,
+    value: number,
+    candleJson: string | null,
+  ) {
+    const candle: CandlePoint | undefined = candleJson
+      ? (JSON.parse(candleJson) as CandlePoint)
+      : undefined;
+    onScrub?.({ time, value, x, y, candle });
   }
 
   /* istanbul ignore next */
@@ -132,14 +186,32 @@ export function useCrosshair(
             const h = engine.canvasHeight.value;
             const chartH = h - padding.top - padding.bottom;
             const valRange = engine.displayMax.value - engine.displayMin.value;
-            const value = interpolateAtTime(engine.data.value, time);
+
+            let value: number | null = null;
+            let candleJson: string | null = null;
+
+            if (isCandleMode && candlesSV) {
+              const picked = pickCandleAtTime(
+                candlesSV.value,
+                liveCandleSV?.value ?? null,
+                time,
+                candleWidthSecs,
+              );
+              if (picked) {
+                value = picked.close;
+                candleJson = JSON.stringify(picked);
+              }
+            } else {
+              value = interpolateAtTime(engine.data.value, time);
+            }
+
             if (value !== null) {
               const dotY =
                 valRange === 0
                   ? padding.top + chartH / 2
                   : padding.top +
                     ((engine.displayMax.value - value) / valRange) * chartH;
-              scheduleOnRN(handleScrub, e.x, dotY, time, value);
+              scheduleOnRN(handleScrub, e.x, dotY, time, value, candleJson);
             }
           }
         }

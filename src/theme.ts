@@ -53,6 +53,11 @@ export function resolveTheme(color: string, mode: ThemeMode): LivelinePalette {
     badgeBg: color,
     badgeText: "#ffffff",
 
+    candleUp: "#22c55e",
+    candleDown: "#ef4444",
+    wickUp: isDark ? "rgba(34, 197, 94, 0.7)" : "rgba(22, 163, 74, 0.8)",
+    wickDown: isDark ? "rgba(239, 68, 68, 0.7)" : "rgba(220, 38, 38, 0.8)",
+
     dashLine: rgba(r, g, b, 0.4),
 
     refLine: isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.12)",

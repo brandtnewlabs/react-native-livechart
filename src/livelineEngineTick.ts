@@ -1,5 +1,6 @@
+import type { CandlePoint, LivelinePoint } from "./types";
+
 import { ADAPTIVE_SPEED_BOOST } from "./constants";
-import type { LivelinePoint } from "./types";
 import { lerp } from "./math/lerp";
 
 export { ADAPTIVE_SPEED_BOOST } from "./constants";
@@ -26,6 +27,12 @@ export interface EngineTickInput {
   nowSeconds?: number;
   /** When true, freeze the viewport timestamp and skip displayWindow lerp */
   paused?: boolean;
+  /** Chart mode — `"candle"` uses OHLC bars for Y range instead of line points. */
+  mode?: "line" | "candle";
+  /** Committed OHLC bars (sorted by time). Used when mode is `"candle"`. */
+  candles?: CandlePoint[];
+  /** In-progress candle. Included in Y range when mode is `"candle"`. */
+  liveCandle?: CandlePoint | null;
 }
 
 /**
@@ -45,7 +52,10 @@ export function tickLivelineEngineFrame(
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
 
   const speed = input.smoothing;
-  const target = input.targetValue;
+  let target = input.targetValue;
+  if (input.mode === "candle" && input.liveCandle) {
+    target = input.liveCandle.close;
+  }
 
   const range = state.displayMax - state.displayMin;
   const gapRatio =
@@ -66,23 +76,46 @@ export function tickLivelineEngineFrame(
     input.dt,
   );
 
-  const points = input.points;
   const winStart = state.timestamp - state.displayWindow;
-
-  let lo = 0;
-  let hi = points.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (points[mid].time < winStart) lo = mid + 1;
-    else hi = mid;
-  }
 
   let tMin = Infinity;
   let tMax = -Infinity;
-  for (let i = lo; i < points.length; i++) {
-    const v = points[i].value;
-    if (v < tMin) tMin = v;
-    if (v > tMax) tMax = v;
+
+  if (input.mode === "candle") {
+    const candles = input.candles;
+    if (candles && candles.length > 0) {
+      let lo = 0;
+      let hi = candles.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (candles[mid].time < winStart) lo = mid + 1;
+        else hi = mid;
+      }
+      for (let i = lo; i < candles.length; i++) {
+        if (candles[i].time > state.timestamp) break;
+        if (candles[i].low < tMin) tMin = candles[i].low;
+        if (candles[i].high > tMax) tMax = candles[i].high;
+      }
+    }
+    const lc = input.liveCandle;
+    if (lc) {
+      if (lc.low < tMin) tMin = lc.low;
+      if (lc.high > tMax) tMax = lc.high;
+    }
+  } else {
+    const points = input.points;
+    let lo = 0;
+    let hi = points.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (points[mid].time < winStart) lo = mid + 1;
+      else hi = mid;
+    }
+    for (let i = lo; i < points.length; i++) {
+      const v = points[i].value;
+      if (v < tMin) tMin = v;
+      if (v > tMax) tMax = v;
+    }
   }
 
   const cv = state.displayValue;

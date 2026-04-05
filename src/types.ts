@@ -1,5 +1,5 @@
-import type { SharedValue } from "react-native-reanimated";
 import type { ViewStyle } from "react-native";
+import type { SharedValue } from "react-native-reanimated";
 
 export interface LivelinePoint {
   time: number;
@@ -178,14 +178,25 @@ export interface LivelineSingleProps extends LivelineCoreProps {
   windows?: WindowOption[];
   windowStyle?: WindowStyle;
   onWindowChange?: (secs: number) => void;
+
+  // ── Candlestick mode ──────────────────────────────────────────────────
+  /** Chart display mode (default `"line"`). `"candle"` renders OHLC bars. */
   mode?: "line" | "candle";
-  candles?: CandlePoint[];
+  /** Committed OHLC bars, sorted by `time`. Must be a SharedValue for UI-thread reads. */
+  candles?: SharedValue<CandlePoint[]>;
+  /** Seconds per candle bucket (e.g. 60 for 1-minute bars). */
   candleWidth?: number;
-  liveCandle?: CandlePoint;
+  /** In-progress candle updated each tick. Must be a SharedValue for UI-thread reads. */
+  liveCandle?: SharedValue<CandlePoint | null>;
+  /** Morph candles into a line display (future — not wired in Phase 10). */
   lineMode?: boolean;
+  /** Tick-level data for line-mode density during morph (future — not wired in Phase 10). */
   lineData?: LivelinePoint[];
+  /** Current tick value for line-mode morph (future — not wired in Phase 10). */
   lineValue?: number;
+  /** Callback when the built-in line/candle toggle fires (future — no built-in UI in Phase 10). */
   onModeChange?: (mode: "line" | "candle") => void;
+
   orderbook?: OrderbookData;
   tradeEvents?: TradeEvent[];
   degen?: boolean | DegenOptions;
@@ -222,6 +233,11 @@ export interface LivelinePalette {
   badgeOuterShadow: string;
   badgeBg: string;
   badgeText: string;
+
+  candleUp: string;
+  candleDown: string;
+  wickUp: string;
+  wickDown: string;
 
   dashLine: string;
 

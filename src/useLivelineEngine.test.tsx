@@ -23,6 +23,7 @@ describe("applyLivelineEngineFrame", () => {
       exaggerateSV: { value: false },
       referenceValue: { value: undefined as number | undefined },
       pausedSV: { value: false },
+      modeSV: { value: "line" as const },
     };
     applyLivelineEngineFrame(
       { timeSincePreviousFrame: 16.67 },
