@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import type {
   CandlePoint,
@@ -36,6 +36,11 @@ export interface SimulatedDataOptions {
   candleAggregation?: boolean;
   /** Skip synthetic trade events when not displayed (default true). */
   tradeStream?: boolean;
+  /**
+   * When using multi-series, merge `visible` from this ref each tick so `onSeriesToggle`
+   * can persist (demo / gallery).
+   */
+  seriesVisibilityRef?: RefObject<Record<string, boolean>>;
 }
 
 export interface SimulatedData {
@@ -74,6 +79,7 @@ export function useSimulatedData(
     multiSeries = true,
     candleAggregation = true,
     tradeStream: tradeStreamEnabled = true,
+    seriesVisibilityRef,
   } = opts;
 
   // JS-side buffers — fast O(1) reads in the tick callback
@@ -200,7 +206,14 @@ export function useSimulatedData(
 
       // Multi-series — skip when not displayed
       if (multiSeries) {
-        b.series = b.series.map((s) => ({ ...s, data: [...s.data] }));
+        b.series = b.series.map((s) => {
+          const vis = seriesVisibilityRef?.current[s.id];
+          return {
+            ...s,
+            data: [...s.data],
+            ...(vis !== undefined ? { visible: vis } : {}),
+          };
+        });
         stepMultiSeries(b.series, true);
         for (let i = 0; i < b.series.length; i++) {
           if (b.series[i].data.length > maxPoints) {
