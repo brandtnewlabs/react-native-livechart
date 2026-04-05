@@ -1,6 +1,7 @@
 import { Liveline } from "./Liveline";
+import { LivelineMulti } from "./LivelineMulti";
 
-export { Liveline };
+export { Liveline, LivelineMulti };
 
   export type {
     BadgeConfig,
@@ -12,24 +13,28 @@ export { Liveline };
     FontConfig,
     FontWeight,
     GradientConfig,
-    YAxisConfig,
-    HoverPoint,
     LineConfig,
+    LivelineCoreProps,
+    LivelineMultiProps,
     LivelinePalette,
     LivelinePoint,
-    LivelineProps,
     LivelineSeries,
+    LivelineSingleProps,
     Momentum,
     OrderbookData,
     PulseConfig,
     ReferenceLine,
     ScrubConfig,
     ScrubPoint,
+    ScrubPointCore,
+    ScrubPointMulti,
+    ScrubSeriesValue,
     ThemeMode,
-    XAxisConfig,
     TradeEvent,
     ValueLineConfig,
     WindowOption,
-    WindowStyle
+    WindowStyle,
+    XAxisConfig,
+    YAxisConfig
   } from "./types";
 

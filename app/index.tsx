@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -13,8 +13,8 @@ import Animated, {
 } from "react-native-reanimated";
 import type { VolatilityMode } from "../sim/generators";
 import { useSimulatedData, type TradeSource } from "../sim/useSimulatedData";
-import type { ScrubPoint } from "../src";
-import { Liveline } from "../src";
+import type { ScrubPoint, ScrubPointMulti } from "../src";
+import { Liveline, LivelineMulti } from "../src";
 import { formatTime } from "../src/format";
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
@@ -62,25 +62,44 @@ export default function Index() {
   const [valueLine, setValueLine] = useState(false);
   const [exaggerate, setExaggerate] = useState(false);
 
-  const { data, value } = useSimulatedData({
+  const { data, value, series } = useSimulatedData({
     volatilityMode,
     tradeSource,
     paused,
     startValue,
   });
 
+  const [chartMode, setChartMode] = useState<"single" | "multi">("single");
+  const chartModeSv = useSharedValue<"single" | "multi">("single");
+  const volatilitySv = useSharedValue(volatilityMode);
+  useEffect(() => {
+    chartModeSv.value = chartMode;
+  }, [chartMode, chartModeSv]);
+  useEffect(() => {
+    volatilitySv.value = volatilityMode;
+  }, [volatilityMode, volatilitySv]);
+
   // Shared value updated by onScrub on the JS thread; null = live mode
-  const scrubPoint = useSharedValue<ScrubPoint | null>(null);
+  const scrubPoint = useSharedValue<ScrubPoint | ScrubPointMulti | null>(null);
 
   const subtitleProps = useAnimatedProps(() => {
     const sp = scrubPoint.value;
     if (sp !== null) {
-      // Scrub mode: show the historical price and its local timestamp
       const text = `${sp.value.toFixed(6)} · ${formatTime(sp.time)}`;
       return { text, defaultValue: text };
     }
-    // Live mode: show current value and volatility label
-    const text = `${value.value.toFixed(6)} · ${volatilityMode}`;
+    if (chartModeSv.value === "multi") {
+      const rows = series.value;
+      let txt = "";
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].visible === false) continue;
+        if (txt) txt += " · ";
+        txt += `${rows[i].label ?? rows[i].id}: ${rows[i].value.toFixed(2)}`;
+      }
+      if (!txt) txt = "—";
+      return { text: txt, defaultValue: txt };
+    }
+    const text = `${value.value.toFixed(6)} · ${volatilitySv.value}`;
     return { text, defaultValue: text };
   });
 
@@ -97,30 +116,83 @@ export default function Index() {
       </View>
 
       <View style={styles.chartContainer}>
-        <Liveline
-          data={data}
-          value={value}
-          accentColor="#3b82f6"
-          theme="dark"
-          timeWindow={windowSecs}
-          paused={paused}
-          exaggerate={exaggerate}
-          valueLine={valueLine}
-          referenceLine={
-            showRefLine ? { value: startValue * 1.05, label: "+5%" } : undefined
-          }
-          scrub={{ tooltip: true }}
-          loading={loading}
-          onScrub={(point) => {
-            scrubPoint.value = point;
-          }}
-        />
+        {chartMode === "single" ? (
+          <Liveline
+            data={data}
+            value={value}
+            accentColor="#3b82f6"
+            theme="dark"
+            timeWindow={windowSecs}
+            paused={paused}
+            exaggerate={exaggerate}
+            valueLine={valueLine}
+            referenceLine={
+              showRefLine
+                ? { value: startValue * 1.05, label: "+5%" }
+                : undefined
+            }
+            scrub={{ tooltip: true }}
+            loading={loading}
+            onScrub={(point) => {
+              scrubPoint.value = point;
+            }}
+          />
+        ) : (
+          <LivelineMulti
+            series={series}
+            accentColor="#3b82f6"
+            theme="dark"
+            timeWindow={windowSecs}
+            paused={paused}
+            exaggerate={exaggerate}
+            referenceLine={
+              showRefLine
+                ? { value: startValue * 1.05, label: "+5%" }
+                : undefined
+            }
+            scrub={{ tooltip: true }}
+            loading={loading}
+            onScrub={(point) => {
+              scrubPoint.value = point;
+            }}
+          />
+        )}
       </View>
 
       <ScrollView
         style={styles.controlsScroll}
         contentContainerStyle={styles.controls}
       >
+        <Text style={styles.sectionLabel}>Chart Mode</Text>
+        <View style={styles.buttonRow}>
+          <Pressable
+            style={[styles.chip, chartMode === "single" && styles.chipActive]}
+            onPress={() => setChartMode("single")}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                chartMode === "single" && styles.chipTextActive,
+              ]}
+            >
+              Single series
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.chip, chartMode === "multi" && styles.chipActive]}
+            onPress={() => setChartMode("multi")}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                chartMode === "multi" && styles.chipTextActive,
+              ]}
+            >
+              Multi-series
+            </Text>
+          </Pressable>
+        </View>
+
         <Text style={styles.sectionLabel}>Time Window</Text>
         <View style={styles.buttonRow}>
           {TIME_WINDOWS.map((w) => (

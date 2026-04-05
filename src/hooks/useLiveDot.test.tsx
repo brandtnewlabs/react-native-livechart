@@ -1,15 +1,17 @@
-import { renderHook } from "@testing-library/react-native";
 import { DEFAULT_PADDING } from "../draw/line";
-import type { EngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLivelineEngine";
+import { renderHook } from "@testing-library/react-native";
 import { useLiveDot } from "./useLiveDot";
 
-function engine(partial: Partial<{
-  canvasWidth: number;
-  canvasHeight: number;
-  displayMin: number;
-  displayMax: number;
-  displayValue: number;
-}>): EngineState {
+function engine(
+  partial: Partial<{
+    canvasWidth: number;
+    canvasHeight: number;
+    displayMin: number;
+    displayMax: number;
+    displayValue: number;
+  }>,
+): SingleEngineState {
   return {
     data: { value: [] },
     value: { value: 0 },
@@ -20,7 +22,7 @@ function engine(partial: Partial<{
     canvasWidth: { value: partial.canvasWidth ?? 200 },
     canvasHeight: { value: partial.canvasHeight ?? 100 },
     timestamp: { value: 0 },
-  } as unknown as EngineState;
+  } as unknown as SingleEngineState;
 }
 
 describe("useLiveDot", () => {

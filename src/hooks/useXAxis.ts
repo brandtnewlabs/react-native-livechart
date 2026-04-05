@@ -1,7 +1,7 @@
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 
+import type { ChartEngineLayout } from "../useLivelineEngine";
 import type { ChartPadding } from "../draw/line";
-import type { EngineState } from "../useLivelineEngine";
 import type { SkFont } from "@shopify/react-native-skia";
 import { lerp } from "../math/lerp";
 import { measureFontTextWidth } from "../measureFontTextWidth";
@@ -32,7 +32,7 @@ export function insertionSortByX(arr: XAxisEntry[]) {
 }
 
 export function useXAxis(
-  engine: EngineState,
+  engine: ChartEngineLayout,
   padding: ChartPadding,
   formatTime: (t: number) => string,
   font: SkFont,

@@ -3,7 +3,7 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { SkFont } from "@shopify/react-native-skia";
 import type { ChartPadding } from "../draw/line";
 import type { ReferenceLine } from "../types";
-import type { EngineState } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLivelineEngine";
 
 export interface ReferenceLineLayout {
   y: number;
@@ -20,7 +20,7 @@ export interface ReferenceLineLayout {
  * Returns a shared value that updates each frame as displayMin/Max animate.
  */
 export function useReferenceLine(
-  engine: EngineState,
+  engine: ChartEngineLayout,
   padding: ChartPadding,
   referenceLine: ReferenceLine | undefined,
   formatValue: (v: number) => string,

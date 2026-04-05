@@ -6,11 +6,12 @@ import {
   Text as SkiaText,
   type SkFont,
 } from "@shopify/react-native-skia";
+import type { ReactNode } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { type ChartPadding } from "../draw/line";
-import { type TooltipLayout } from "../hooks/useCrosshair";
+import { type TooltipLayout } from "../hooks/crosshairShared";
 import type { LivelinePalette } from "../types";
-import type { EngineState } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLivelineEngine";
 
 const TOOLTIP_RADIUS = 5;
 
@@ -23,17 +24,18 @@ export function CrosshairOverlay({
   palette,
   font,
   showTooltip = true,
+  tooltipBody,
 }: {
   scrubX: SharedValue<number>;
   crosshairOpacity: SharedValue<number>;
   tooltipLayout: SharedValue<TooltipLayout>;
-  engine: EngineState;
+  engine: ChartEngineLayout;
   padding: ChartPadding;
   palette: LivelinePalette;
   font: SkFont;
   showTooltip?: boolean;
+  tooltipBody?: ReactNode;
 }) {
-  // Crosshair line endpoints
   const p1 = useDerivedValue(() => ({
     x: scrubX.value,
     y: padding.top,
@@ -43,7 +45,6 @@ export function CrosshairOverlay({
     y: engine.canvasHeight.value - padding.bottom,
   }));
 
-  // Dim overlay: from crosshair X to the right chart edge
   const dimWidth = useDerivedValue(() => {
     const rightEdge = engine.canvasWidth.value - padding.right;
     return Math.max(0, rightEdge - scrubX.value);
@@ -52,13 +53,11 @@ export function CrosshairOverlay({
     () => engine.canvasHeight.value - padding.top - padding.bottom,
   );
 
-  // Tooltip pill geometry
   const tipX = useDerivedValue(() => tooltipLayout.value.x);
   const tipY = useDerivedValue(() => tooltipLayout.value.y);
   const tipW = useDerivedValue(() => tooltipLayout.value.w);
   const tipH = useDerivedValue(() => tooltipLayout.value.h);
 
-  // Tooltip text
   const valueStr = useDerivedValue(() => tooltipLayout.value.valueStr);
   const timeStr = useDerivedValue(() => tooltipLayout.value.timeStr);
   const valueTextX = useDerivedValue(() => tooltipLayout.value.valueTextX);
@@ -68,7 +67,6 @@ export function CrosshairOverlay({
 
   return (
     <Group opacity={crosshairOpacity}>
-      {/* Dim right of crosshair */}
       <Rect
         x={scrubX}
         y={padding.top}
@@ -77,12 +75,10 @@ export function CrosshairOverlay({
         color="rgba(0, 0, 0, 0.12)"
       />
 
-      {/* Vertical crosshair line */}
       <Line p1={p1} p2={p2} color={palette.crosshairLine} strokeWidth={1} />
 
       {showTooltip && (
         <>
-          {/* Tooltip background */}
           <RoundedRect
             x={tipX}
             y={tipY}
@@ -92,7 +88,6 @@ export function CrosshairOverlay({
             color={palette.tooltipBg}
           />
 
-          {/* Tooltip border */}
           <RoundedRect
             x={tipX}
             y={tipY}
@@ -104,23 +99,24 @@ export function CrosshairOverlay({
             strokeWidth={1}
           />
 
-          {/* Value string — primary text */}
-          <SkiaText
-            x={valueTextX}
-            y={line1Y}
-            text={valueStr as unknown as string}
-            font={font}
-            color={palette.tooltipText}
-          />
-
-          {/* Time string — secondary / dimmer text */}
-          <SkiaText
-            x={timeTextX}
-            y={line2Y}
-            text={timeStr as unknown as string}
-            font={font}
-            color={palette.gridLabel}
-          />
+          {tooltipBody ?? (
+            <Group>
+              <SkiaText
+                x={valueTextX}
+                y={line1Y}
+                text={valueStr as unknown as string}
+                font={font}
+                color={palette.tooltipText}
+              />
+              <SkiaText
+                x={timeTextX}
+                y={line2Y}
+                text={timeStr as unknown as string}
+                font={font}
+                color={palette.gridLabel}
+              />
+            </Group>
+          )}
         </>
       )}
     </Group>

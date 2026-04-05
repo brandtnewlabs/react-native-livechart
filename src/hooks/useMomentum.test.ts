@@ -1,7 +1,7 @@
 import { resolveMomentumProp, useMomentum } from "./useMomentum";
 
-import type { EngineState } from "../useLivelineEngine";
 import type { LivelinePoint } from "../types";
+import type { SingleEngineState } from "../useLivelineEngine";
 import { renderHook } from "@testing-library/react-native";
 
 const makeData = (values: number[]) =>
@@ -40,7 +40,7 @@ describe("resolveMomentumProp", () => {
   });
 });
 
-function engineWithData(data: LivelinePoint[]): EngineState {
+function engineWithData(data: LivelinePoint[]): SingleEngineState {
   return {
     data: { value: data },
     value: { value: 0 },
@@ -51,7 +51,7 @@ function engineWithData(data: LivelinePoint[]): EngineState {
     canvasWidth: { value: 400 },
     canvasHeight: { value: 300 },
     timestamp: { value: 0 },
-  } as unknown as EngineState;
+  } as unknown as SingleEngineState;
 }
 
 describe("useMomentum", () => {

@@ -41,7 +41,7 @@ import { BadgeOverlay } from "./components/BadgeOverlay";
 import { CrosshairOverlay } from "./components/CrosshairOverlay";
 import { DotOverlay } from "./components/DotOverlay";
 import { GestureDetector } from "react-native-gesture-handler";
-import type { LivelineProps } from "./types";
+import type { LivelineSingleProps } from "./types";
 import { LoadingOverlay } from "./components/LoadingOverlay";
 import { ReferenceLineOverlay } from "./components/ReferenceLineOverlay";
 import { ValueLineOverlay } from "./components/ValueLineOverlay";
@@ -86,7 +86,7 @@ export function Liveline({
 
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
-}: LivelineProps) {
+}: LivelineSingleProps) {
   // ── Resolve feature configs ────────────────────────────────────────────
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);

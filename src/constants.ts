@@ -11,3 +11,6 @@ export const BADGE_TAIL_LEN = 5;
 export const BADGE_MARGIN_RIGHT = 4;
 /** Gap between the live dot and the badge tail tip. */
 export const BADGE_DOT_GAP = 12;
+
+/** Maximum simultaneous series rendered (paths/dots slots). */
+export const MAX_MULTI_SERIES = 12;

@@ -5,11 +5,12 @@ import { DEFAULT_PADDING } from "../draw/line";
 import { DotOverlay } from "./DotOverlay";
 import type { EngineState } from "../useLivelineEngine";
 import { LoadingOverlay } from "./LoadingOverlay";
+import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
 import React from "react";
 import type { ReferenceLineLayout } from "../hooks/useReferenceLine";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
 import { Skia } from "@shopify/react-native-skia";
-import type { TooltipLayout } from "../hooks/useCrosshair";
+import type { TooltipLayout } from "../hooks/crosshairShared";
 import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
@@ -302,6 +303,28 @@ describe("LoadingOverlay", () => {
     }
     render(<Fixture />);
   });
+
+  it("renders empty-state label when isEmpty", () => {
+    function Fixture() {
+      const morphT = useSharedValue(1);
+      const isLoading = useSharedValue(false);
+      const isEmpty = useSharedValue(true);
+      return (
+        <LoadingOverlay
+          engine={makeLoadingEngine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          morphT={morphT}
+          isLoading={isLoading}
+          isEmpty={isEmpty}
+          emptyText="Nothing here"
+          strokeWidth={2}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
 });
 
 describe("CrosshairOverlay", () => {
@@ -316,6 +339,7 @@ describe("CrosshairOverlay", () => {
     timeTextX: -400,
     line1Y: 0,
     line2Y: 0,
+    stackedLines: undefined,
   };
 
   it("renders crosshair line and dim rect", () => {
@@ -353,6 +377,7 @@ describe("CrosshairOverlay", () => {
         timeTextX: 115,
         line1Y: 30,
         line2Y: 45,
+        stackedLines: undefined,
       });
       return (
         <CrosshairOverlay
@@ -364,6 +389,49 @@ describe("CrosshairOverlay", () => {
           palette={palette}
           font={font}
           showTooltip
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders stacked multi-series tooltip lines", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const tooltipLayout = useSharedValue<TooltipLayout>({
+        x: 110,
+        y: 20,
+        w: 120,
+        h: 56,
+        valueStr: "",
+        timeStr: "",
+        valueTextX: -400,
+        timeTextX: -400,
+        line1Y: 0,
+        line2Y: 0,
+        stackedLines: [
+          { text: "12:00:00", textX: 118, baselineY: 30, dim: true },
+          { text: "A: 5.00", textX: 116, baselineY: 48, dim: false },
+        ],
+      });
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          showTooltip
+          tooltipBody={
+            <MultiSeriesTooltipStack
+              tooltipLayout={tooltipLayout}
+              font={font}
+              palette={palette}
+            />
+          }
         />
       );
     }

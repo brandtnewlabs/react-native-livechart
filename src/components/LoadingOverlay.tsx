@@ -17,7 +17,7 @@ import {
 import { drawSpline } from "../math/spline";
 import { buildSquigglyPts } from "../math/squiggly";
 import type { LivelinePalette } from "../types";
-import type { EngineState } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLivelineEngine";
 
 const PLACEHOLDER_LABEL_COUNT = 4;
 const RECT_W = 16;
@@ -47,7 +47,7 @@ export function LoadingOverlay({
   strokeWidth,
   badge = false,
 }: {
-  engine: EngineState;
+  engine: ChartEngineLayout;
   padding: ChartPadding;
   palette: LivelinePalette;
   font: SkFont;
@@ -182,7 +182,7 @@ export function LoadingOverlay({
       <SkiaText
         x={emptyTextX}
         y={emptyTextY}
-        text={/* istanbul ignore next */ showText.value ? emptyText : ("" as unknown as string)}
+        text={showText.value ? emptyText : ("" as unknown as string)}
         font={font}
         color={palette.gridLabel}
         opacity={showText as unknown as number}

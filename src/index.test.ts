@@ -2,8 +2,9 @@ import * as entry from "./index";
 import * as hooks from "./hooks";
 
 describe("package entry", () => {
-  it("exports Liveline runtime", () => {
+  it("exports Liveline and LivelineMulti", () => {
     expect(entry.Liveline).toBeDefined();
+    expect(entry.LivelineMulti).toBeDefined();
   });
 });
 
@@ -16,5 +17,6 @@ describe("hooks barrel", () => {
     expect(hooks.useReferenceLine).toBeDefined();
     expect(hooks.useXAxis).toBeDefined();
     expect(hooks.useYAxis).toBeDefined();
+    expect(hooks.useCrosshairMulti).toBeDefined();
   });
 });

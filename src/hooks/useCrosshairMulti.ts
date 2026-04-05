@@ -1,48 +1,34 @@
 import { type SkFont } from "@shopify/react-native-skia";
 import { Platform } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
-import {
-  useDerivedValue,
-  useSharedValue,
-} from "react-native-reanimated";
+import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { type ChartPadding } from "../draw/line";
-import { interpolateAtTime } from "../math/interpolate";
-import type { LivelinePalette, ScrubPoint } from "../types";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { LivelinePalette, ScrubPointMulti, ScrubSeriesValue } from "../types";
+import type { MultiEngineState } from "../useLivelineEngine";
 import {
   computeCrosshairOpacity,
   computeScrubTime,
   type CrosshairState,
-  deriveCrosshairTooltipSingle,
-  deriveScrubValueSingle,
 } from "./crosshairShared";
-
-export type { CrosshairState, TooltipLayout } from "./crosshairShared";
-export type { ScrubPoint };
-
-export {
-  computeCrosshairOpacity,
-  computeScrubTime,
-  computeTooltipLayout,
-  computeTooltipLayoutMulti,
-  deriveCrosshairTooltipSingle,
-  deriveScrubValueSingle,
-  HIDDEN_TOOLTIP,
-} from "./crosshairShared";
+import {
+  computeMultiSeriesScrubTooltipLayout,
+  deriveScrubValueMulti,
+  interpolateMultiSeriesAtTime,
+} from "./crosshairMulti";
 
 /**
- * Single-series crosshair + scrub. Use `useCrosshairMulti` for multi-series charts.
+ * Multi-series crosshair + scrub. Requires `engine.series`.
  */
-export function useCrosshair(
-  engine: SingleEngineState,
+export function useCrosshairMulti(
+  engine: MultiEngineState,
   padding: ChartPadding,
   _palette: LivelinePalette,
   formatValue: (v: number) => string,
   formatTime: (t: number) => string,
   font: SkFont,
   enabled: boolean,
-  onScrub?: (point: ScrubPoint | null) => void,
+  onScrub?: (point: ScrubPointMulti | null) => void,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -59,10 +45,10 @@ export function useCrosshair(
   );
 
   const scrubValue = useDerivedValue(() =>
-    deriveScrubValueSingle(
+    deriveScrubValueMulti(
       scrubActive.value,
       scrubTime.value,
-      engine.data.value,
+      engine.series.value,
     ),
   );
 
@@ -76,11 +62,11 @@ export function useCrosshair(
   );
 
   const tooltipLayout = useDerivedValue(() =>
-    deriveCrosshairTooltipSingle(
+    computeMultiSeriesScrubTooltipLayout(
       scrubActive.value,
       scrubX.value,
       scrubTime.value,
-      scrubValue.value,
+      engine.series.value,
       padding,
       engine.canvasWidth.value,
       formatValue,
@@ -89,9 +75,15 @@ export function useCrosshair(
     ),
   );
 
-  /* istanbul ignore next -- invoked only via scheduleOnRN from UI-thread gesture */
-  function handleScrub(x: number, y: number, time: number, value: number) {
-    onScrub?.({ time, value, x, y });
+  /* istanbul ignore next */
+  function handleScrubMulti(
+    x: number,
+    y: number,
+    time: number,
+    value: number,
+    seriesValues: ScrubSeriesValue[],
+  ) {
+    onScrub?.({ time, value, x, y, seriesValues });
   }
 
   /* istanbul ignore next */
@@ -132,14 +124,22 @@ export function useCrosshair(
             const h = engine.canvasHeight.value;
             const chartH = h - padding.top - padding.bottom;
             const valRange = engine.displayMax.value - engine.displayMin.value;
-            const value = interpolateAtTime(engine.data.value, time);
-            if (value !== null) {
+            const r = interpolateMultiSeriesAtTime(engine.series.value, time);
+            if (r.primary !== null) {
               const dotY =
                 valRange === 0
                   ? padding.top + chartH / 2
                   : padding.top +
-                    ((engine.displayMax.value - value) / valRange) * chartH;
-              scheduleOnRN(handleScrub, e.x, dotY, time, value);
+                    ((engine.displayMax.value - r.primary) / valRange) *
+                      chartH;
+              scheduleOnRN(
+                handleScrubMulti,
+                e.x,
+                dotY,
+                time,
+                r.primary,
+                r.seriesValues,
+              );
             }
           }
         }
@@ -153,7 +153,7 @@ export function useCrosshair(
       },
     );
 
-  /* istanbul ignore next -- Android-only gesture axis config */
+  /* istanbul ignore next */
   if (Platform.OS === "android") {
     gesture = gesture.activeOffsetX([-25, 25]).failOffsetY([-25, 25]);
   }

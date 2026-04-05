@@ -1,11 +1,12 @@
 import { fireEvent, render } from "@testing-library/react-native";
 
 import { Liveline } from "./Liveline";
+import type { LivelineSingleProps } from "./types";
 import React from "react";
 import { View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 
-function Harness(props: Partial<React.ComponentProps<typeof Liveline>>) {
+function Harness(props: Partial<LivelineSingleProps>) {
   const data = useSharedValue([{ time: 1700000000, value: 50 }]);
   const value = useSharedValue(50);
   return <Liveline data={data} value={value} {...props} />;

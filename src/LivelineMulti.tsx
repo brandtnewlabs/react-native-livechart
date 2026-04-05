@@ -1,0 +1,276 @@
+import { Canvas, Group, matchFont } from "@shopify/react-native-skia";
+import { useCallback, useEffect, useState } from "react";
+import { Platform, View } from "react-native";
+import { GestureDetector } from "react-native-gesture-handler";
+import {
+  runOnJS,
+  useAnimatedReaction,
+  type SharedValue,
+} from "react-native-reanimated";
+import { CrosshairOverlay } from "./components/CrosshairOverlay";
+import { LoadingOverlay } from "./components/LoadingOverlay";
+import { MultiSeriesDots } from "./components/MultiSeriesDots";
+import { MultiSeriesStroke } from "./components/MultiSeriesStroke";
+import { MultiSeriesTooltipStack } from "./components/MultiSeriesTooltipStack";
+import { ReferenceLineOverlay } from "./components/ReferenceLineOverlay";
+import { SeriesToggleChips } from "./components/SeriesToggleChips";
+import { XAxisOverlay } from "./components/XAxisOverlay";
+import { YAxisOverlay } from "./components/YAxisOverlay";
+import { MAX_MULTI_SERIES } from "./constants";
+import {
+  formatTime as defaultFormatTime,
+  formatValue as defaultFormatValue,
+} from "./format";
+import {
+  resolveChartLayout,
+  useCanvasLayout,
+  useChartReveal,
+  useCrosshairMulti,
+  useMultiSeriesLinePaths,
+  useReferenceLine,
+  useXAxis,
+  useYAxis,
+} from "./hooks";
+import {
+  lineColorsSignatureFromArray,
+  resolveMultiSeriesLineColorsSnapshot,
+} from "./multiSeriesLayout";
+import {
+  resolveFontConfig,
+  resolveReferenceLineConfig,
+  resolveScrub,
+  resolveXAxis,
+  resolveYAxis,
+} from "./resolveConfig";
+import { resolveTheme } from "./theme";
+import type { LivelineMultiProps, LivelineSeries } from "./types";
+import { useLivelineMultiSeriesEngine } from "./useLivelineMultiSeriesEngine";
+
+function lineColorsSig(s: SharedValue<LivelineSeries[]>) {
+  "worklet";
+  return lineColorsSignatureFromArray(s.value);
+}
+
+export function LivelineMulti({
+  series,
+  theme = "dark",
+  accentColor = "#3b82f6",
+  line: lineProp,
+  font: fontProp,
+  insets,
+  style,
+  timeWindow = 30,
+  paused = false,
+  loading = false,
+  smoothing = 0.08,
+  exaggerate = false,
+  emptyText = "No data",
+  formatValue = defaultFormatValue,
+  formatTime = defaultFormatTime,
+  yAxis = true,
+  xAxis = true,
+  referenceLine,
+  scrub = false,
+  onScrub,
+  onSeriesToggle,
+  seriesToggleCompact,
+}: LivelineMultiProps) {
+  const yAxisCfg = resolveYAxis(yAxis);
+  const xAxisCfg = resolveXAxis(xAxis);
+  const scrubCfg = resolveScrub(scrub);
+  const refLineCfg = resolveReferenceLineConfig(referenceLine);
+
+  const palette = resolveTheme(accentColor, theme);
+
+  const skiaFont = matchFont(
+    resolveFontConfig(
+      fontProp,
+      Platform.select({ ios: "Menlo", default: "monospace" }) as string,
+      palette.labelFontSize,
+    ),
+  );
+
+  const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
+    palette,
+    lineWidthOverride: lineProp?.width,
+    insetsOverride: insets,
+    yAxis: yAxisCfg !== null,
+    badge: false,
+    badgeOnLeft: false,
+    xAxis: xAxisCfg !== null,
+    font: skiaFont,
+    formatValue,
+    currentValue: 0,
+  });
+
+  const engine = useLivelineMultiSeriesEngine({
+    series,
+    timeWindow,
+    paused,
+    smoothing,
+    exaggerate,
+    referenceValue: referenceLine?.value,
+  });
+
+  const reveal = useChartReveal(loading);
+  const { layoutHeight, onLayout } = useCanvasLayout(engine);
+  const linePaths = useMultiSeriesLinePaths(engine, effectivePadding);
+
+  const [lineColors, setLineColors] = useState<string[]>(() =>
+    Array.from({ length: MAX_MULTI_SERIES }, () => "#ffffff"),
+  );
+
+  const syncColors = useCallback((sv: SharedValue<LivelineSeries[]>) => {
+    setLineColors(resolveMultiSeriesLineColorsSnapshot(sv.value));
+  }, []);
+
+  useAnimatedReaction(
+    () => lineColorsSig(series),
+    /* istanbul ignore next -- runOnJS from UI-thread reaction */
+    (sig, prev) => {
+      if (sig !== prev) runOnJS(syncColors)(series);
+    },
+    [series, syncColors],
+  );
+
+  useEffect(() => {
+    syncColors(series);
+  }, [series, syncColors]);
+
+  const referenceLineLayout = useReferenceLine(
+    engine,
+    effectivePadding,
+    referenceLine,
+    formatValue,
+    skiaFont,
+  );
+
+  const { yAxisEntries } = useYAxis(
+    engine,
+    effectivePadding,
+    formatValue,
+    skiaFont,
+    yAxisCfg?.minGap ?? 36,
+  );
+
+  const { xAxisEntries } = useXAxis(
+    engine,
+    effectivePadding,
+    formatTime,
+    skiaFont,
+  );
+
+  const crosshair = useCrosshairMulti(
+    engine,
+    effectivePadding,
+    palette,
+    formatValue,
+    formatTime,
+    skiaFont,
+    scrubCfg !== null,
+    onScrub,
+  );
+
+  const backgroundColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
+
+  return (
+    <GestureDetector gesture={crosshair.gesture}>
+      <View style={[{ flex: 1, backgroundColor }, style]} onLayout={onLayout}>
+        <SeriesToggleChips
+          series={series}
+          compact={seriesToggleCompact}
+          onSeriesToggle={onSeriesToggle}
+        />
+        <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
+          {yAxisCfg && (
+            <Group opacity={reveal.yAxisOpacity}>
+              <YAxisOverlay
+                entries={yAxisEntries}
+                engine={engine}
+                padding={effectivePadding}
+                palette={palette}
+                font={skiaFont}
+                badge={false}
+              />
+            </Group>
+          )}
+
+          {refLineCfg && (
+            <ReferenceLineOverlay
+              layout={referenceLineLayout}
+              strokeWidth={refLineCfg.strokeWidth}
+              intervals={refLineCfg.intervals}
+              color={refLineCfg.color ?? palette.refLine}
+              labelColor={palette.refLabel}
+              font={skiaFont}
+            />
+          )}
+
+          <Group opacity={reveal.lineOpacity}>
+            {Array.from({ length: MAX_MULTI_SERIES }, (_, i) => (
+              <MultiSeriesStroke
+                key={i}
+                index={i}
+                paths={linePaths}
+                opacities={engine.seriesOpacities}
+                series={series}
+                strokeWidth={strokeWidth}
+              />
+            ))}
+          </Group>
+
+          {xAxisCfg && (
+            <XAxisOverlay
+              entries={xAxisEntries}
+              engine={engine}
+              padding={effectivePadding}
+              palette={palette}
+              font={skiaFont}
+            />
+          )}
+
+          <Group opacity={reveal.dotOpacity}>
+            <MultiSeriesDots
+              engine={engine}
+              padding={effectivePadding}
+              colors={lineColors}
+            />
+          </Group>
+
+          <LoadingOverlay
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            font={skiaFont}
+            morphT={reveal.morphT}
+            isLoading={reveal.isLoading}
+            isEmpty={reveal.isEmpty}
+            emptyText={emptyText}
+            strokeWidth={strokeWidth}
+            badge={false}
+          />
+
+          {scrubCfg && (
+            <CrosshairOverlay
+              scrubX={crosshair.scrubX}
+              crosshairOpacity={crosshair.crosshairOpacity}
+              tooltipLayout={crosshair.tooltipLayout}
+              engine={engine}
+              padding={effectivePadding}
+              palette={palette}
+              font={skiaFont}
+              showTooltip={scrubCfg.tooltip}
+              tooltipBody={
+                <MultiSeriesTooltipStack
+                  tooltipLayout={crosshair.tooltipLayout}
+                  font={skiaFont}
+                  palette={palette}
+                />
+              }
+            />
+          )}
+        </Canvas>
+      </View>
+    </GestureDetector>
+  );
+}
