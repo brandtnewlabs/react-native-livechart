@@ -1,4 +1,4 @@
-import type { CandlePoint, LivelinePoint } from "./types";
+import type { CandlePoint, LiveChartPoint } from "./types";
 
 import { ADAPTIVE_SPEED_BOOST } from "./constants";
 import { lerp } from "./math/lerp";
@@ -22,7 +22,7 @@ export interface EngineTickInput {
   exaggerate: boolean;
   referenceValue: number | undefined;
   targetValue: number;
-  points: LivelinePoint[];
+  points: LiveChartPoint[];
   /** Seconds since Unix epoch; defaults to `Date.now() / 1000` */
   nowSeconds?: number;
   /** When true, freeze the viewport timestamp and skip displayWindow lerp */
@@ -36,10 +36,10 @@ export interface EngineTickInput {
 }
 
 /**
- * One frame of the liveline engine (mirrors `useLivelineEngine` worklet body).
+ * One frame of the live chart engine (mirrors `useLiveChartEngine` worklet body).
  * Mutates `state` in place for testability and reuse from the hook.
  */
-export function tickLivelineEngineFrame(
+export function tickLiveChartEngineFrame(
   state: EngineTickMutable,
   input: EngineTickInput,
 ): void {

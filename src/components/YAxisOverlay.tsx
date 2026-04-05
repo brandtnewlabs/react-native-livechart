@@ -9,8 +9,8 @@ import {
   type ChartPadding,
 } from "../draw/line";
 import { measureFontTextWidth } from "../measureFontTextWidth";
-import type { LivelinePalette } from "../types";
-import type { ChartEngineLayout } from "../useLivelineEngine";
+import type { LiveChartPalette } from "../types";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
 const MAX_Y_LABELS = 15;
@@ -26,7 +26,7 @@ export function YAxisOverlay({
   entries: SharedValue<YAxisEntry[]>;
   engine: ChartEngineLayout;
   padding: ChartPadding;
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
   font: SkFont;
   /** When true, use the asymmetric pill centering formula so labels align with badge text. */
   badge?: boolean;

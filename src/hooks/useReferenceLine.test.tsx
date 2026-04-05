@@ -1,5 +1,5 @@
 import { DEFAULT_PADDING } from "../draw/line";
-import type { EngineState } from "../useLivelineEngine";
+import type { EngineState } from "../useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
 import { useReferenceLine } from "./useReferenceLine";
 

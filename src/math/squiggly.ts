@@ -2,7 +2,7 @@ import type { ChartPadding } from "../draw/line";
 
 /**
  * Composite sine squiggly — two overlapping frequencies with a breathing
- * amplitude envelope. Matches the original web Liveline loading animation.
+ * amplitude envelope. Matches the original web LiveChart loading animation.
  *
  * amplitude = 14 * (0.4 + 0.6 * sin(0.8 * t))   // 5.6 → 22.4px breathing range
  * y = centerY + amplitude * (sin(0.035*x + 1.2*t) + 0.45*sin(0.08*x + 2.1*t))

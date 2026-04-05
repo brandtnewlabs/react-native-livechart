@@ -1,4 +1,4 @@
-import type { LivelinePoint, Momentum } from "../types";
+import type { LiveChartPoint, Momentum } from "../types";
 
 /**
  * Auto-detect momentum from recent data points.
@@ -6,7 +6,7 @@ import type { LivelinePoint, Momentum } from "../types";
  * but only the last 5 points for active velocity.
  */
 export function detectMomentum(
-  points: LivelinePoint[],
+  points: LiveChartPoint[],
   lookback = 20,
 ): Momentum {
   "worklet";

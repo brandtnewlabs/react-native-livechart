@@ -1,14 +1,14 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
-import { LivelineMulti } from "./LivelineMulti";
-import type { LivelineSeries } from "./types";
+import { LiveChartSeries } from "./LiveChartSeries";
+import type { SeriesConfig } from "./types";
 import React from "react";
 import { View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 
-describe("LivelineMulti", () => {
+describe("LiveChartSeries", () => {
   it("renders with default scrub when scrub prop is omitted", async () => {
-    const initial: LivelineSeries[] = [
+    const initial: SeriesConfig[] = [
       {
         id: "a",
         label: "A",
@@ -21,15 +21,15 @@ describe("LivelineMulti", () => {
       },
     ];
     function H() {
-      const series = useSharedValue<LivelineSeries[]>(initial);
-      return <LivelineMulti series={series} />;
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return <LiveChartSeries series={series} />;
     }
     const screen = render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
   });
 
   it("renders with scrub, reference line, and compact chips", async () => {
-    const initial: LivelineSeries[] = [
+    const initial: SeriesConfig[] = [
       {
         id: "a",
         label: "A",
@@ -42,9 +42,9 @@ describe("LivelineMulti", () => {
       },
     ];
     function H() {
-      const series = useSharedValue<LivelineSeries[]>(initial);
+      const series = useSharedValue<SeriesConfig[]>(initial);
       return (
-        <LivelineMulti
+        <LiveChartSeries
           series={series}
           scrub={{ tooltip: true }}
           referenceLine={{ value: 11 }}
@@ -62,7 +62,7 @@ describe("LivelineMulti", () => {
   });
 
   it("renders with explicit non-default props", async () => {
-    const initial: LivelineSeries[] = [
+    const initial: SeriesConfig[] = [
       {
         id: "a",
         label: "A",
@@ -75,9 +75,9 @@ describe("LivelineMulti", () => {
       },
     ];
     function H() {
-      const sv = useSharedValue<LivelineSeries[]>(initial);
+      const sv = useSharedValue<SeriesConfig[]>(initial);
       return (
-        <LivelineMulti
+        <LiveChartSeries
           series={sv}
           theme="light"
           accentColor="#ef4444"

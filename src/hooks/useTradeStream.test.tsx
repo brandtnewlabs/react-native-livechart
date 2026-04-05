@@ -2,7 +2,7 @@ import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
 import { DEFAULT_PADDING } from "../draw/line";
 import type { TradeEvent } from "../types";
-import { useLivelineEngine } from "../useLivelineEngine";
+import { useLiveChartEngine } from "../useLiveChartEngine";
 import { useTradeStream } from "./useTradeStream";
 
 describe("useTradeStream", () => {
@@ -10,7 +10,7 @@ describe("useTradeStream", () => {
     const { result } = renderHook(() => {
       const data = useSharedValue([{ time: 1_700_000_000, value: 50 }]);
       const value = useSharedValue(50);
-      const engine = useLivelineEngine({
+      const engine = useLiveChartEngine({
         data,
         value,
         timeWindow: 100,
@@ -29,7 +29,7 @@ describe("useTradeStream", () => {
     const { result } = renderHook(() => {
       const data = useSharedValue([{ time: 1_700_000_000, value: 50 }]);
       const value = useSharedValue(50);
-      const engine = useLivelineEngine({
+      const engine = useLiveChartEngine({
         data,
         value,
         timeWindow: 100,

@@ -3,13 +3,13 @@ import {
   resolveMultiSeriesLineColorsSnapshot,
 } from "./multiSeriesLayout";
 
-import type { LivelineSeries } from "./types";
+import type { SeriesConfig } from "./types";
 import { MAX_MULTI_SERIES } from "./constants";
 import { SERIES_COLORS } from "./theme";
 
 describe("lineColorsSignatureFromArray", () => {
   it("joins id and color for each series", () => {
-    const a: LivelineSeries[] = [
+    const a: SeriesConfig[] = [
       { id: "a", data: [], value: 1, color: "#f00" },
       { id: "b", data: [], value: 2 },
     ];
@@ -19,7 +19,7 @@ describe("lineColorsSignatureFromArray", () => {
 
 describe("resolveMultiSeriesLineColorsSnapshot", () => {
   it("fills palette slots and pads with white", () => {
-    const a: LivelineSeries[] = [{ id: "a", data: [], value: 1 }];
+    const a: SeriesConfig[] = [{ id: "a", data: [], value: 1 }];
     const snap = resolveMultiSeriesLineColorsSnapshot(a, 3);
     expect(snap[0]).toBe("#3b82f6");
     expect(snap[1]).toBe("#ffffff");
@@ -27,7 +27,7 @@ describe("resolveMultiSeriesLineColorsSnapshot", () => {
   });
 
   it("uses explicit series color when set", () => {
-    const a: LivelineSeries[] = [
+    const a: SeriesConfig[] = [
       { id: "a", data: [], value: 1, color: "#abc" },
     ];
     expect(resolveMultiSeriesLineColorsSnapshot(a)[0]).toBe("#abc");
@@ -40,7 +40,7 @@ describe("resolveMultiSeriesLineColorsSnapshot", () => {
   });
 
   it("cycles SERIES_COLORS by index", () => {
-    const many: LivelineSeries[] = Array.from({ length: 3 }, (_, i) => ({
+    const many: SeriesConfig[] = Array.from({ length: 3 }, (_, i) => ({
       id: `${i}`,
       data: [],
       value: i,

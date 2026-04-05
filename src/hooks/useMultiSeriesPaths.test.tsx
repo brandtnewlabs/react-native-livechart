@@ -1,4 +1,4 @@
-import type { MultiEngineState } from "../useLivelineEngine";
+import type { MultiEngineState } from "../useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
 import { useMultiSeriesLinePaths } from "./useMultiSeriesPaths";
 import { useSharedValue } from "react-native-reanimated";

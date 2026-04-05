@@ -6,7 +6,7 @@ import {
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ChartPadding } from "../draw/line";
 import type { TradeMarker } from "../draw/trade";
-import type { LivelinePalette } from "../types";
+import type { LiveChartPalette } from "../types";
 
 const MAX_TRADE_LABELS = 20;
 
@@ -100,7 +100,7 @@ export function TradeStreamOverlay({
   labelOffsetX = 8,
 }: {
   markers: SharedValue<TradeMarker[]>;
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
   padding: ChartPadding;
   font: SkFont;
   opacity: SharedValue<number>;

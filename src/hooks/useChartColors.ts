@@ -1,5 +1,5 @@
 import type { ChartPadding } from "../draw/line";
-import type { LivelinePalette } from "../types";
+import type { LiveChartPalette } from "../types";
 import type { ResolvedGradientConfig } from "../resolveConfig";
 import { parseColorRgb } from "../theme";
 import { useMemo } from "react";
@@ -21,7 +21,7 @@ export interface ChartColors {
  * recomputed when inputs change.
  */
 export function useChartColors(
-  palette: LivelinePalette,
+  palette: LiveChartPalette,
   gradientCfg: ResolvedGradientConfig | null,
   accentColor: string,
   layoutHeight: number,

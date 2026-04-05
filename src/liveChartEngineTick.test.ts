@@ -1,4 +1,4 @@
-import { tickLivelineEngineFrame } from "./livelineEngineTick";
+import { tickLiveChartEngineFrame } from "./liveChartEngineTick";
 
 function baseState() {
   return {
@@ -10,10 +10,10 @@ function baseState() {
   };
 }
 
-describe("tickLivelineEngineFrame", () => {
+describe("tickLiveChartEngineFrame", () => {
   it("updates timestamp and returns early when canvas has zero size", () => {
     const s = baseState();
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 0,
       canvasHeight: 100,
@@ -31,7 +31,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("lerps display value toward target", () => {
     const s = baseState();
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -48,7 +48,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("uses gap ratio zero when display range is zero", () => {
     const s = { ...baseState(), displayMin: 5, displayMax: 5 };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -65,7 +65,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("uses adaptive speed when range is positive", () => {
     const s = { ...baseState(), displayMin: 0, displayMax: 10 };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -82,7 +82,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("still applies margin from display value when points array is empty", () => {
     const s = baseState();
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -100,7 +100,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("includes reference line in range", () => {
     const s = baseState();
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -117,7 +117,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("applies exaggerate min range branch", () => {
     const s = baseState();
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -137,7 +137,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("applies margin when raw range exceeds minRange", () => {
     const s = baseState();
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -157,7 +157,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("lerps displayMin inward when tMin is greater", () => {
     const s = { ...baseState(), displayMin: 100, displayMax: 200 };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -177,7 +177,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("lerps displayMax inward when tMax is smaller", () => {
     const s = { ...baseState(), displayMin: 0, displayMax: 5 };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -203,7 +203,7 @@ describe("tickLivelineEngineFrame", () => {
       displayWindow: 30,
       timestamp: 1000,
     };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -229,7 +229,7 @@ describe("tickLivelineEngineFrame", () => {
       displayWindow: 30,
       timestamp: 1000,
     };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -253,7 +253,7 @@ describe("tickLivelineEngineFrame", () => {
       time: 900 + i * 0.2,
       value: i * 0.1,
     }));
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -270,7 +270,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("uses minRange fallback when rawRange is zero (exaggerate on)", () => {
     const s = { ...baseState(), displayValue: 7 };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -290,7 +290,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("uses minRange fallback when rawRange is zero (exaggerate off)", () => {
     const s = { ...baseState(), displayValue: 7 };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -310,7 +310,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("skips y-range block when extrema stay invalid (NaN display value)", () => {
     const s = { ...baseState(), displayValue: NaN };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -328,7 +328,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("uses default clock when nowSeconds is omitted", () => {
     const s = baseState();
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -344,7 +344,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("does not move bounds when reference is inside data span", () => {
     const s = baseState();
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -371,7 +371,7 @@ describe("tickLivelineEngineFrame", () => {
       displayWindow: 30,
       timestamp: 1000,
     };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -388,7 +388,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("freezes timestamp when paused=true", () => {
     const s = { ...baseState(), timestamp: 999 };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -406,7 +406,7 @@ describe("tickLivelineEngineFrame", () => {
 
   it("still lerps displayWindow when paused=true", () => {
     const s = { ...baseState(), displayWindow: 30 };
-    tickLivelineEngineFrame(s, {
+    tickLiveChartEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -427,7 +427,7 @@ describe("tickLivelineEngineFrame", () => {
   describe("candle mode Y range", () => {
     it("computes displayMin/Max from candle low/high", () => {
       const s = baseState();
-      tickLivelineEngineFrame(s, {
+      tickLiveChartEngineFrame(s, {
         dt: 16.67,
         canvasWidth: 200,
         canvasHeight: 100,
@@ -448,7 +448,7 @@ describe("tickLivelineEngineFrame", () => {
 
     it("includes liveCandle in Y range", () => {
       const s = baseState();
-      tickLivelineEngineFrame(s, {
+      tickLiveChartEngineFrame(s, {
         dt: 16.67,
         canvasWidth: 200,
         canvasHeight: 100,
@@ -469,7 +469,7 @@ describe("tickLivelineEngineFrame", () => {
 
     it("targets liveCandle.close for displayValue", () => {
       const s = baseState();
-      tickLivelineEngineFrame(s, {
+      tickLiveChartEngineFrame(s, {
         dt: 16.67,
         canvasWidth: 200,
         canvasHeight: 100,
@@ -489,7 +489,7 @@ describe("tickLivelineEngineFrame", () => {
 
     it("uses line mode Y range when mode is 'line'", () => {
       const s = baseState();
-      tickLivelineEngineFrame(s, {
+      tickLiveChartEngineFrame(s, {
         dt: 16.67,
         canvasWidth: 200,
         canvasHeight: 100,
@@ -508,7 +508,7 @@ describe("tickLivelineEngineFrame", () => {
 
     it("excludes candles before the visible window", () => {
       const s = baseState();
-      tickLivelineEngineFrame(s, {
+      tickLiveChartEngineFrame(s, {
         dt: 16.67,
         canvasWidth: 200,
         canvasHeight: 100,
@@ -531,7 +531,7 @@ describe("tickLivelineEngineFrame", () => {
 
     it("excludes future candles beyond timestamp", () => {
       const s = baseState();
-      tickLivelineEngineFrame(s, {
+      tickLiveChartEngineFrame(s, {
         dt: 16.67,
         canvasWidth: 200,
         canvasHeight: 100,

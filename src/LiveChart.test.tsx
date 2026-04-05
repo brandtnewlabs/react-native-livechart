@@ -3,13 +3,13 @@ import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
-import { Liveline } from "./Liveline";
-import type { CandlePoint, LivelineSingleProps, TradeEvent } from "./types";
+import { LiveChart } from "./LiveChart";
+import type { CandlePoint, LiveChartProps, TradeEvent } from "./types";
 
-function Harness(props: Partial<LivelineSingleProps>) {
+function Harness(props: Partial<LiveChartProps>) {
   const data = useSharedValue([{ time: 1700000000, value: 50 }]);
   const value = useSharedValue(50);
-  return <Liveline data={data} value={value} {...props} />;
+  return <LiveChart data={data} value={value} {...props} />;
 }
 
 function TradeStreamHarness() {
@@ -19,7 +19,7 @@ function TradeStreamHarness() {
   return <Harness tradeStream={tradeStream} degen={{ scale: 1.2 }} />;
 }
 
-function CandleHarness(props: Partial<LivelineSingleProps>) {
+function CandleHarness(props: Partial<LiveChartProps>) {
   const data = useSharedValue([{ time: 1700000000, value: 50 }]);
   const value = useSharedValue(50);
   const candles: SharedValue<CandlePoint[]> = useSharedValue([
@@ -34,7 +34,7 @@ function CandleHarness(props: Partial<LivelineSingleProps>) {
     close: 54,
   });
   return (
-    <Liveline
+    <LiveChart
       data={data}
       value={value}
       mode="candle"
@@ -46,7 +46,7 @@ function CandleHarness(props: Partial<LivelineSingleProps>) {
   );
 }
 
-describe("Liveline", () => {
+describe("LiveChart", () => {
   it("renders with defaults", () => {
     const screen = render(<Harness />);
     const views = screen.UNSAFE_getAllByType(View);

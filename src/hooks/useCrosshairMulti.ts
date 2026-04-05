@@ -9,11 +9,11 @@ import {
 import { scheduleOnRN } from "react-native-worklets";
 import { type ChartPadding } from "../draw/line";
 import type {
-    LivelinePalette,
+    LiveChartPalette,
     ScrubPointMulti,
     ScrubSeriesValue,
 } from "../types";
-import type { MultiEngineState } from "../useLivelineEngine";
+import type { MultiEngineState } from "../useLiveChartEngine";
 import {
     computeMultiSeriesScrubTooltipLayout,
     deriveScrubValueMulti,
@@ -31,7 +31,7 @@ import {
 export function useCrosshairMulti(
   engine: MultiEngineState,
   padding: ChartPadding,
-  _palette: LivelinePalette,
+  _palette: LiveChartPalette,
   formatValue: (v: number) => string,
   formatTime: (t: number) => string,
   font: SkFont,

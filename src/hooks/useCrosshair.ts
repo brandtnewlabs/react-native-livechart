@@ -11,8 +11,8 @@ import { scheduleOnRN } from "react-native-worklets";
 import { type ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
 import { pickCandleAtTime } from "../math/pickCandle";
-import type { CandlePoint, LivelinePalette, ScrubPoint } from "../types";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { CandlePoint, LiveChartPalette, ScrubPoint } from "../types";
+import type { SingleEngineState } from "../useLiveChartEngine";
 import {
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
@@ -48,7 +48,7 @@ export interface CrosshairCandleOpts {
 export function useCrosshair(
   engine: SingleEngineState,
   padding: ChartPadding,
-  _palette: LivelinePalette,
+  _palette: LiveChartPalette,
   formatValue: (v: number) => string,
   formatTime: (t: number) => string,
   font: SkFont,

@@ -9,7 +9,7 @@ import {
 import { computeShake, spawnBurst, tickParticles } from "../degen/tick";
 import type { ResolvedDegenConfig } from "../resolveConfig";
 import type { Momentum } from "../types";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLiveChartEngine";
 
 export function useDegen(
   engine: SingleEngineState,

@@ -3,8 +3,8 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ChartPadding } from "../draw/line";
 import type { XAxisEntry } from "../hooks/useXAxis";
 import { measureFontTextWidth } from "../measureFontTextWidth";
-import type { LivelinePalette } from "../types";
-import type { ChartEngineLayout } from "../useLivelineEngine";
+import type { LiveChartPalette } from "../types";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
 const MAX_X_LABELS = 10;
@@ -19,7 +19,7 @@ export function XAxisOverlay({
   entries: SharedValue<XAxisEntry[]>;
   engine: ChartEngineLayout;
   padding: ChartPadding;
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
   font: SkFont;
 }) {
   const axisPath = useDerivedValue(() => {

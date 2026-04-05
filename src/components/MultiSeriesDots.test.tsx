@@ -1,4 +1,4 @@
-import type { MultiEngineState } from "../useLivelineEngine";
+import type { MultiEngineState } from "../useLiveChartEngine";
 import { MultiSeriesDots } from "./MultiSeriesDots";
 import React from "react";
 import { render } from "@testing-library/react-native";

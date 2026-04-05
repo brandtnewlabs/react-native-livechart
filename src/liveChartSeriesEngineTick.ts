@@ -1,6 +1,6 @@
 import { ADAPTIVE_SPEED_BOOST } from "./constants";
 import { lerp } from "./math/lerp";
-import type { LivelineSeries } from "./types";
+import type { SeriesConfig } from "./types";
 
 export interface MultiEngineTickMutable {
   displayMin: number;
@@ -19,7 +19,7 @@ export interface MultiEngineTickInput {
   smoothing: number;
   exaggerate: boolean;
   referenceValue: number | undefined;
-  series: LivelineSeries[];
+  series: SeriesConfig[];
   nowSeconds?: number;
   paused?: boolean;
 }
@@ -27,9 +27,9 @@ export interface MultiEngineTickInput {
 /**
  * Multi-series frame tick: lerps per-series tips and visibility opacities,
  * combines Y-range over visible series (same margin rules as single-series).
- * Used by `useLivelineMultiSeriesEngine`.
+ * Used by `useLiveChartSeriesEngine`.
  */
-export function tickLivelineEngineMultiFrame(
+export function tickLiveChartSeriesEngineFrame(
   state: MultiEngineTickMutable,
   input: MultiEngineTickInput,
 ): void {

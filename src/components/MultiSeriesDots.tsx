@@ -2,7 +2,7 @@ import { Circle, Group } from "@shopify/react-native-skia";
 
 import type { ChartPadding } from "../draw/line";
 import { MAX_MULTI_SERIES } from "../constants";
-import type { MultiEngineState } from "../useLivelineEngine";
+import type { MultiEngineState } from "../useLiveChartEngine";
 import { useDerivedValue } from "react-native-reanimated";
 
 function SeriesDotAtIndex({

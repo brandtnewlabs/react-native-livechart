@@ -1,11 +1,11 @@
-import type { LivelinePoint } from "../types";
+import type { LiveChartPoint } from "../types";
 
 /**
  * Compute visible Y range from data points + current value.
  * Returns { min, max } with margin applied.
  */
 export function computeRange(
-  visible: LivelinePoint[],
+  visible: LiveChartPoint[],
   currentValue: number,
   referenceValue?: number,
   exaggerate?: boolean,

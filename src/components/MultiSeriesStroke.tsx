@@ -1,7 +1,7 @@
 import { Group, Path, Skia } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { SERIES_COLORS } from "../theme";
-import type { LivelineSeries } from "../types";
+import type { SeriesConfig } from "../types";
 
 export function MultiSeriesStroke({
   index,
@@ -13,7 +13,7 @@ export function MultiSeriesStroke({
   index: number;
   paths: SharedValue<ReturnType<typeof Skia.Path.Make>[]>;
   opacities: SharedValue<number[]>;
-  series: SharedValue<LivelineSeries[]>;
+  series: SharedValue<SeriesConfig[]>;
   strokeWidth: number;
 }) {
   const path = useDerivedValue(

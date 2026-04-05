@@ -16,8 +16,8 @@ import {
 } from "../draw/line";
 import { drawSpline } from "../math/spline";
 import { buildSquigglyPts } from "../math/squiggly";
-import type { LivelinePalette } from "../types";
-import type { ChartEngineLayout } from "../useLivelineEngine";
+import type { LiveChartPalette } from "../types";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 
 const PLACEHOLDER_LABEL_COUNT = 4;
 const RECT_W = 16;
@@ -49,7 +49,7 @@ export function LoadingOverlay({
 }: {
   engine: ChartEngineLayout;
   padding: ChartPadding;
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
   font: SkFont;
   morphT: SharedValue<number>;
   isLoading: SharedValue<boolean>;

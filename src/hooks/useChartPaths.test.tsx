@@ -1,5 +1,5 @@
 import { DEFAULT_PADDING } from "../draw/line";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
 import { useChartPaths } from "./useChartPaths";
 import { useSharedValue } from "react-native-reanimated";

@@ -3,7 +3,7 @@ import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DEFAULT_PADDING } from "../draw/line";
 import { DotOverlay } from "./DotOverlay";
-import type { EngineState } from "../useLivelineEngine";
+import type { EngineState } from "../useLiveChartEngine";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
 import React from "react";

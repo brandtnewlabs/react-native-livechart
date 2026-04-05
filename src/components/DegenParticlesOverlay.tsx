@@ -1,8 +1,8 @@
 import { Circle, Group } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { DEGEN_STRIDE } from "../constants";
-import type { LivelinePalette } from "../types";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { LiveChartPalette } from "../types";
+import type { SingleEngineState } from "../useLiveChartEngine";
 
 type DegenPack = SharedValue<Float64Array<ArrayBuffer>>;
 
@@ -86,7 +86,7 @@ export function DegenParticlesOverlay({
   pack: DegenPack;
   packRevision: SharedValue<number>;
   engine: SingleEngineState;
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
   particleSlotCount: number;
   particleBurstDurationSec: number;
   particleOpacity: number;

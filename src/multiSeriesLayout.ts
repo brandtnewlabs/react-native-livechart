@@ -1,16 +1,16 @@
-import type { LivelineSeries } from "./types";
+import type { SeriesConfig } from "./types";
 import { MAX_MULTI_SERIES } from "./constants";
 import { SERIES_COLORS } from "./theme";
 
 /** Stable signature when series id/color change (not every data tick). */
-export function lineColorsSignatureFromArray(arr: LivelineSeries[]): string {
+export function lineColorsSignatureFromArray(arr: SeriesConfig[]): string {
   "worklet";
   return arr.map((x) => `${x.id}\x1f${x.color ?? ""}`).join("\x1e");
 }
 
 /** Per-slot stroke colors for chips + Skia (empty slots → white). */
 export function resolveMultiSeriesLineColorsSnapshot(
-  arr: LivelineSeries[],
+  arr: SeriesConfig[],
   maxSlots = MAX_MULTI_SERIES,
 ): string[] {
   return Array.from({ length: maxSlots }, (_, i) =>

@@ -1,7 +1,7 @@
 import { DEFAULT_PADDING, badgeTailAndCap, pillTextLeftX } from "../draw/line";
 
 import { BADGE_DOT_GAP } from "../constants";
-import type { EngineState } from "../useLivelineEngine";
+import type { EngineState } from "../useLiveChartEngine";
 import type { SkFont } from "@shopify/react-native-skia";
 import { measureFontTextWidth } from "../measureFontTextWidth";
 import { renderHook } from "@testing-library/react-native";

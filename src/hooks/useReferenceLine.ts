@@ -3,7 +3,7 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { SkFont } from "@shopify/react-native-skia";
 import type { ChartPadding } from "../draw/line";
 import type { ReferenceLine } from "../types";
-import type { ChartEngineLayout } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 
 export interface ReferenceLineLayout {
   y: number;

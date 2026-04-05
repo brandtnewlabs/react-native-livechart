@@ -1,7 +1,7 @@
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { detectMomentum } from "../math/momentum";
 import type { Momentum } from "../types";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLiveChartEngine";
 
 /**
  * Resolve the momentum prop to a detected or forced momentum value.

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react-native";
 
 import { DEFAULT_PADDING } from "../draw/line";
-import type { EngineState } from "../useLivelineEngine";
+import type { EngineState } from "../useLiveChartEngine";
 import { useXAxis } from "./useXAxis";
 
 const font = {

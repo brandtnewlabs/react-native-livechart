@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react-native";
-import type { EngineState } from "../useLivelineEngine";
+import type { EngineState } from "../useLiveChartEngine";
 import { useCanvasLayout } from "./useCanvasLayout";
 
 function makeEngine(): EngineState {

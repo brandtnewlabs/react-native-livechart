@@ -1,4 +1,4 @@
-import type { LivelinePalette, LivelineSeries, ThemeMode } from "./types";
+import type { LiveChartPalette, SeriesConfig, ThemeMode } from "./types";
 
 /** Parse any CSS color string to [r, g, b]. Handles hex (#rgb, #rrggbb), rgb(), rgba(). */
 export function parseColorRgb(color: string): [number, number, number] {
@@ -25,7 +25,7 @@ function rgba(r: number, g: number, b: number, a: number): string {
  * Derive a full palette from a single accent color + theme mode.
  * Momentum colors are always semantic green/red regardless of accent.
  */
-export function resolveTheme(color: string, mode: ThemeMode): LivelinePalette {
+export function resolveTheme(color: string, mode: ThemeMode): LiveChartPalette {
   const [r, g, b] = parseColorRgb(color);
   const isDark = mode === "dark";
 
@@ -94,10 +94,10 @@ export const SERIES_COLORS = [
 
 /** Derive per-series palettes from series definitions. */
 export function resolveSeriesPalettes(
-  series: LivelineSeries[],
+  series: SeriesConfig[],
   mode: ThemeMode,
-): Map<string, LivelinePalette> {
-  const map = new Map<string, LivelinePalette>();
+): Map<string, LiveChartPalette> {
+  const map = new Map<string, LiveChartPalette>();
   for (let i = 0; i < series.length; i++) {
     const s = series[i];
     const color =

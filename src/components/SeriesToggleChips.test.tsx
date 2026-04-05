@@ -1,7 +1,7 @@
 import { SeriesToggleChips, seriesMetaSig } from "./SeriesToggleChips";
 import { fireEvent, render } from "@testing-library/react-native";
 
-import type { LivelineSeries } from "../types";
+import type { SeriesConfig } from "../types";
 import React from "react";
 import { useSharedValue } from "react-native-reanimated";
 
@@ -12,7 +12,7 @@ function ChipsHarness({
   onToggle: (id: string, visible: boolean) => void;
   compact?: boolean;
 }) {
-  const series = useSharedValue<LivelineSeries[]>([
+  const series = useSharedValue<SeriesConfig[]>([
     {
       id: "a",
       label: "Alpha",
@@ -77,7 +77,7 @@ describe("SeriesToggleChips", () => {
 
   it("uses id as chip text when label is omitted", () => {
     function IdOnlyHarness() {
-      const series = useSharedValue<LivelineSeries[]>([
+      const series = useSharedValue<SeriesConfig[]>([
         { id: "idOnly", data: [], value: 1, color: "#333" },
       ]);
       return <SeriesToggleChips series={series} />;
@@ -93,7 +93,7 @@ describe("SeriesToggleChips", () => {
   it("maps multiple series so only the toggled index updates", () => {
     const onToggle = jest.fn();
     function TwoHarness() {
-      const series = useSharedValue<LivelineSeries[]>([
+      const series = useSharedValue<SeriesConfig[]>([
         {
           id: "a",
           label: "A",
@@ -118,7 +118,7 @@ describe("SeriesToggleChips", () => {
 
   it("uses neutral swatch when color is missing", () => {
     function NoColorHarness() {
-      const series = useSharedValue<LivelineSeries[]>([
+      const series = useSharedValue<SeriesConfig[]>([
         {
           id: "plain",
           label: "Plain",

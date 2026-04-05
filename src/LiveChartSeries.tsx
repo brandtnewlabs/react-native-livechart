@@ -43,15 +43,15 @@ import {
   resolveYAxis,
 } from "./resolveConfig";
 import { resolveTheme } from "./theme";
-import type { LivelineMultiProps, LivelineSeries } from "./types";
-import { useLivelineMultiSeriesEngine } from "./useLivelineMultiSeriesEngine";
+import type { LiveChartSeriesProps, SeriesConfig } from "./types";
+import { useLiveChartSeriesEngine } from "./useLiveChartSeriesEngine";
 
-function lineColorsSig(s: SharedValue<LivelineSeries[]>) {
+function lineColorsSig(s: SharedValue<SeriesConfig[]>) {
   "worklet";
   return lineColorsSignatureFromArray(s.value);
 }
 
-export function LivelineMulti({
+export function LiveChartSeries({
   series,
   theme = "dark",
   accentColor = "#3b82f6",
@@ -74,7 +74,7 @@ export function LivelineMulti({
   onScrub,
   onSeriesToggle,
   seriesToggleCompact,
-}: LivelineMultiProps) {
+}: LiveChartSeriesProps) {
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
   const scrubCfg = resolveScrub(scrub);
@@ -103,7 +103,7 @@ export function LivelineMulti({
     currentValue: 0,
   });
 
-  const engine = useLivelineMultiSeriesEngine({
+  const engine = useLiveChartSeriesEngine({
     series,
     timeWindow,
     paused,
@@ -120,7 +120,7 @@ export function LivelineMulti({
     Array.from({ length: MAX_MULTI_SERIES }, () => "#ffffff"),
   );
 
-  const syncColors = useCallback((sv: SharedValue<LivelineSeries[]>) => {
+  const syncColors = useCallback((sv: SharedValue<SeriesConfig[]>) => {
     setLineColors(resolveMultiSeriesLineColorsSnapshot(sv.value));
   }, []);
 
