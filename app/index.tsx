@@ -61,6 +61,8 @@ export default function Index() {
   const [showRefLine, setShowRefLine] = useState(false);
   const [valueLine, setValueLine] = useState(false);
   const [exaggerate, setExaggerate] = useState(false);
+  const [degen, setDegen] = useState(true);
+  const [simTradeStream, setSimTradeStream] = useState(true);
 
   const [chartMode, setChartMode] = useState<"single" | "multi">("single");
   const [displayMode, setDisplayMode] = useState<"line" | "candle">("line");
@@ -68,15 +70,17 @@ export default function Index() {
   // ~20 candles visible in the window; minimum 5s bars
   const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
 
-  const { data, value, series, candles, liveCandle } = useSimulatedData({
-    volatilityMode,
-    tradeSource,
-    paused,
-    startValue,
-    candleWidth: candleWidthSecs,
-    multiSeries: chartMode === "multi",
-    candleAggregation: chartMode === "single" && displayMode === "candle",
-  });
+  const { data, value, series, candles, liveCandle, tradeStream } =
+    useSimulatedData({
+      volatilityMode,
+      tradeSource,
+      paused,
+      startValue,
+      candleWidth: candleWidthSecs,
+      multiSeries: chartMode === "multi",
+      candleAggregation: chartMode === "single" && displayMode === "candle",
+      tradeStream: simTradeStream,
+    });
   const chartModeSv = useSharedValue<"single" | "multi">("single");
   const volatilitySv = useSharedValue(volatilityMode);
   useEffect(() => {
@@ -147,6 +151,8 @@ export default function Index() {
             onScrub={(point) => {
               scrubPoint.value = point;
             }}
+            tradeStream={tradeStream}
+            degen={degen ? true : undefined}
           />
         ) : (
           <LivelineMulti
@@ -329,6 +335,34 @@ export default function Index() {
 
         <Text style={styles.sectionLabel}>Chart Options</Text>
         <View style={styles.buttonRow}>
+          <Pressable
+            style={styles.chip}
+            onPress={() => {
+              setDegen(true);
+              setExaggerate(true);
+              setVolatilityMode("chaotic");
+            }}
+          >
+            <Text style={styles.chipText}>Degen demo</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.chip, simTradeStream && styles.chipActive]}
+            onPress={() => setSimTradeStream((v) => !v)}
+          >
+            <Text
+              style={[styles.chipText, simTradeStream && styles.chipTextActive]}
+            >
+              Trade stream
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.chip, degen && styles.chipActive]}
+            onPress={() => setDegen((v) => !v)}
+          >
+            <Text style={[styles.chipText, degen && styles.chipTextActive]}>
+              Degen
+            </Text>
+          </Pressable>
           <Pressable
             style={[styles.chip, valueLine && styles.chipActive]}
             onPress={() => setValueLine((v) => !v)}

@@ -4,12 +4,19 @@ import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { Liveline } from "./Liveline";
-import type { CandlePoint, LivelineSingleProps } from "./types";
+import type { CandlePoint, LivelineSingleProps, TradeEvent } from "./types";
 
 function Harness(props: Partial<LivelineSingleProps>) {
   const data = useSharedValue([{ time: 1700000000, value: 50 }]);
   const value = useSharedValue(50);
   return <Liveline data={data} value={value} {...props} />;
+}
+
+function TradeStreamHarness() {
+  const tradeStream = useSharedValue<TradeEvent[]>([
+    { time: 1_700_000_050, price: 50, size: 1, side: "buy" },
+  ]);
+  return <Harness tradeStream={tradeStream} degen={{ scale: 1.2 }} />;
 }
 
 function CandleHarness(props: Partial<LivelineSingleProps>) {
@@ -19,7 +26,7 @@ function CandleHarness(props: Partial<LivelineSingleProps>) {
     { time: 1700000000, open: 48, high: 52, low: 47, close: 50 },
     { time: 1700000060, open: 50, high: 55, low: 49, close: 53 },
   ]);
-  const liveCandle: SharedValue<CandlePoint | null> = useSharedValue({
+  const liveCandle = useSharedValue<CandlePoint | null>({
     time: 1700000120,
     open: 53,
     high: 56,
@@ -157,5 +164,13 @@ describe("Liveline", () => {
 
   it("disables gradient in candle mode", () => {
     render(<CandleHarness gradient />);
+  });
+
+  it("renders with tradeStream and degen", () => {
+    const screen = render(<TradeStreamHarness />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
   });
 });

@@ -528,5 +528,28 @@ describe("tickLivelineEngineFrame", () => {
       });
       expect(s.displayMax).toBeLessThan(500);
     });
+
+    it("excludes future candles beyond timestamp", () => {
+      const s = baseState();
+      tickLivelineEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 105,
+        points: [],
+        nowSeconds: 1000,
+        mode: "candle",
+        candles: [
+          { time: 990, open: 100, high: 110, low: 90, close: 105 },
+          { time: 1010, open: 105, high: 999, low: 1, close: 500 },
+        ],
+        liveCandle: null,
+      });
+      expect(s.displayMax).toBeLessThan(999);
+    });
   });
 });

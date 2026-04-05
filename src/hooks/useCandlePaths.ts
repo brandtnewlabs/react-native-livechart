@@ -36,6 +36,7 @@ export function useCandlePaths(
     );
   });
 
+  /* istanbul ignore next -- worklet */
   const geometry = useDerivedValue(() => {
     if (!active || !candles) return { bodies: [], wicks: [] };
     return buildCandleGeometry(
@@ -52,6 +53,7 @@ export function useCandlePaths(
     );
   });
 
+  /* istanbul ignore next -- worklet */
   const upBodiesPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
     const { bodies } = geometry.value;
@@ -65,6 +67,7 @@ export function useCandlePaths(
     return path;
   });
 
+  /* istanbul ignore next -- worklet */
   const downBodiesPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
     const { bodies } = geometry.value;
@@ -78,6 +81,7 @@ export function useCandlePaths(
     return path;
   });
 
+  /* istanbul ignore next -- worklet */
   const upWicksPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
     const { wicks } = geometry.value;
@@ -90,6 +94,7 @@ export function useCandlePaths(
     return path;
   });
 
+  /* istanbul ignore next -- worklet */
   const downWicksPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
     const { wicks } = geometry.value;

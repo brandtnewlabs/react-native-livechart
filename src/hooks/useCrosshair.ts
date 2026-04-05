@@ -74,6 +74,7 @@ export function useCrosshair(
   const liveCandleSV = candleOpts?.liveCandle;
   const candleWidthSecs = candleOpts?.candleWidthSecs ?? 60;
 
+  /* istanbul ignore next -- worklet */
   const scrubCandle = useDerivedValue(() => {
     if (
       !isCandleMode ||
@@ -90,6 +91,7 @@ export function useCrosshair(
     );
   });
 
+  /* istanbul ignore next -- worklet */
   const scrubValue = useDerivedValue(() => {
     if (!scrubActive.value || scrubTime.value < 0) return null;
     if (isCandleMode) {

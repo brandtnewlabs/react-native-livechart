@@ -1,6 +1,7 @@
 import { Liveline } from "./Liveline";
 import { LivelineMulti } from "./LivelineMulti";
 
+export { useDegen, useTradeStream } from "./hooks";
 export { Liveline, LivelineMulti };
 
   export type {

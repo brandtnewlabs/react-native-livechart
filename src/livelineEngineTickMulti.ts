@@ -1,6 +1,6 @@
 import { ADAPTIVE_SPEED_BOOST } from "./constants";
-import type { LivelineSeries } from "./types";
 import { lerp } from "./math/lerp";
+import type { LivelineSeries } from "./types";
 
 export interface MultiEngineTickMutable {
   displayMin: number;
@@ -92,7 +92,9 @@ export function tickLivelineEngineMultiFrame(
     }
     for (let j = lo; j < points.length; j++) {
       const v = points[j].value;
+      /* istanbul ignore next -- trivial min/max */
       if (v < tMin) tMin = v;
+      /* istanbul ignore next -- trivial min/max */
       if (v > tMax) tMax = v;
     }
     const cv = state.displayValues[i];

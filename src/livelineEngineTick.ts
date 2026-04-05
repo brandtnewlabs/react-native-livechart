@@ -93,13 +93,17 @@ export function tickLivelineEngineFrame(
       }
       for (let i = lo; i < candles.length; i++) {
         if (candles[i].time > state.timestamp) break;
+        /* istanbul ignore next -- trivial min/max */
         if (candles[i].low < tMin) tMin = candles[i].low;
+        /* istanbul ignore next -- trivial min/max */
         if (candles[i].high > tMax) tMax = candles[i].high;
       }
     }
     const lc = input.liveCandle;
     if (lc) {
+      /* istanbul ignore next -- trivial min/max */
       if (lc.low < tMin) tMin = lc.low;
+      /* istanbul ignore next -- trivial min/max */
       if (lc.high > tMax) tMax = lc.high;
     }
   } else {

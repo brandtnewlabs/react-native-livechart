@@ -1,16 +1,20 @@
 import type {
   BadgeConfig,
   BadgeVariant,
+  DegenOptions,
   FontConfig,
   FontWeight,
   GradientConfig,
-  YAxisConfig,
   PulseConfig,
   ReferenceLine,
   ScrubConfig,
-  XAxisConfig,
+  TradeEvent,
   ValueLineConfig,
+  XAxisConfig,
+  YAxisConfig,
 } from "./types";
+
+import type { SharedValue } from "react-native-reanimated";
 
 // ─── Resolved types (all fields required, no optionals) ──────────────────────
 
@@ -66,6 +70,34 @@ export interface ResolvedFontConfig {
   fontFamily: string;
   fontSize: number;
   fontWeight: FontWeight;
+}
+
+export interface ResolvedDegenConfig {
+  scale: number;
+  downMomentum: boolean;
+  shake: boolean;
+  shakeIntensity: number;
+  shakeDurationSec: number;
+  particleSlotCount: number;
+  particleBurstDurationSec: number;
+  burstParticleCount: number;
+  drag: number;
+  particleSizeMin: number;
+  particleSizeMax: number;
+  particleOpacity: number;
+  spreadAngle: number;
+  positionJitterX: number;
+  positionJitterY: number;
+  speedMin: number;
+  speedMax: number;
+  /** `null` = use palette.line at render time. */
+  colors: string[] | null;
+}
+
+export interface ResolvedTradeStreamConfig {
+  maxCount: number;
+  /** Horizontal offset from `padding.left` for the label text (default 8). */
+  labelOffsetX: number;
 }
 
 // ─── Resolver functions ───────────────────────────────────────────────────────
@@ -227,5 +259,126 @@ export function resolveReferenceLineConfig(
     strokeWidth: rl.strokeWidth ?? REFERENCE_LINE_VISUAL_DEFAULTS.strokeWidth,
     intervals: rl.intervals ?? REFERENCE_LINE_VISUAL_DEFAULTS.intervals,
     color: rl.color,
+  };
+}
+
+const DEGEN_SHAKE_DURATION_DEFAULT_SEC = 0.45;
+const DEGEN_PARTICLE_SLOT_DEFAULT = 60;
+const DEGEN_PARTICLE_BURST_DURATION_DEFAULT_SEC = 1.0;
+const DEGEN_BURST_PARTICLE_DEFAULT = 20;
+
+function clampDegenParticleSlotCount(n: number): number {
+  return Math.max(4, Math.min(80, Math.round(n)));
+}
+
+function clampDegenParticleBurstDurationSec(n: number): number {
+  return Math.max(0.05, Math.min(5, n));
+}
+
+function clampDegenBurstParticleCount(n: number, slotCount: number): number {
+  return Math.max(1, Math.min(slotCount, Math.round(n)));
+}
+
+const DEGEN_DEFAULTS: ResolvedDegenConfig = {
+  scale: 1,
+  downMomentum: false,
+  shake: true,
+  shakeIntensity: 1,
+  shakeDurationSec: DEGEN_SHAKE_DURATION_DEFAULT_SEC,
+  particleSlotCount: DEGEN_PARTICLE_SLOT_DEFAULT,
+  particleBurstDurationSec: DEGEN_PARTICLE_BURST_DURATION_DEFAULT_SEC,
+  burstParticleCount: DEGEN_BURST_PARTICLE_DEFAULT,
+  drag: 0.95,
+  particleSizeMin: 1,
+  particleSizeMax: 2.2,
+  particleOpacity: 0.55,
+  spreadAngle: Math.PI * 1.2,
+  positionJitterX: 24,
+  positionJitterY: 8,
+  speedMin: 60,
+  speedMax: 160,
+  colors: null,
+};
+
+function resolveDegenColors(
+  input: string | string[] | undefined,
+): string[] | null {
+  if (!input) return null;
+  if (typeof input === "string") return [input];
+  return input.length > 0 ? input : null;
+}
+
+/**
+ * Resolves `degen` prop to a fully-typed config or null (disabled).
+ */
+export function resolveDegen(
+  prop: boolean | DegenOptions | undefined,
+): ResolvedDegenConfig | null {
+  if (!prop) return null;
+  if (prop === true) return DEGEN_DEFAULTS;
+  const slots = clampDegenParticleSlotCount(
+    prop.particleSlotCount ?? DEGEN_DEFAULTS.particleSlotCount,
+  );
+  return {
+    scale: prop.scale ?? DEGEN_DEFAULTS.scale,
+    downMomentum: prop.downMomentum ?? DEGEN_DEFAULTS.downMomentum,
+    shake: prop.shake ?? DEGEN_DEFAULTS.shake,
+    shakeIntensity: prop.shakeIntensity ?? DEGEN_DEFAULTS.shakeIntensity,
+    shakeDurationSec: prop.shakeDurationSec ?? DEGEN_DEFAULTS.shakeDurationSec,
+    particleSlotCount: slots,
+    particleBurstDurationSec: clampDegenParticleBurstDurationSec(
+      prop.particleBurstDurationSec ?? DEGEN_DEFAULTS.particleBurstDurationSec,
+    ),
+    burstParticleCount: clampDegenBurstParticleCount(
+      prop.burstParticleCount ?? DEGEN_DEFAULTS.burstParticleCount,
+      slots,
+    ),
+    drag: Math.max(0, Math.min(1, prop.drag ?? DEGEN_DEFAULTS.drag)),
+    particleSizeMin: Math.max(
+      0.1,
+      prop.particleSizeMin ?? DEGEN_DEFAULTS.particleSizeMin,
+    ),
+    particleSizeMax: Math.max(
+      0.1,
+      prop.particleSizeMax ?? DEGEN_DEFAULTS.particleSizeMax,
+    ),
+    particleOpacity: Math.max(
+      0,
+      Math.min(1, prop.particleOpacity ?? DEGEN_DEFAULTS.particleOpacity),
+    ),
+    spreadAngle: prop.spreadAngle ?? DEGEN_DEFAULTS.spreadAngle,
+    positionJitterX: Math.max(
+      0,
+      prop.positionJitterX ?? DEGEN_DEFAULTS.positionJitterX,
+    ),
+    positionJitterY: Math.max(
+      0,
+      prop.positionJitterY ?? DEGEN_DEFAULTS.positionJitterY,
+    ),
+    speedMin: Math.max(0, prop.speedMin ?? DEGEN_DEFAULTS.speedMin),
+    speedMax: Math.max(0, prop.speedMax ?? DEGEN_DEFAULTS.speedMax),
+    colors: resolveDegenColors(prop.colors),
+  };
+}
+
+const TRADE_STREAM_DEFAULTS: ResolvedTradeStreamConfig = {
+  maxCount: 50,
+  labelOffsetX: 8,
+};
+
+/**
+ * Whether trade stream markers should run, and cap for mapped trades per frame.
+ * Extend `input` when display options are added to props.
+ */
+export function resolveTradeStream(
+  stream: SharedValue<TradeEvent[]> | undefined,
+  input?: boolean | { maxCount?: number; labelOffsetX?: number },
+): ResolvedTradeStreamConfig | null {
+  if (stream === undefined) return null;
+  if (input === false) return null;
+  if (input === undefined || input === true) return TRADE_STREAM_DEFAULTS;
+  return {
+    maxCount: input.maxCount ?? TRADE_STREAM_DEFAULTS.maxCount,
+    labelOffsetX: input.labelOffsetX ?? TRADE_STREAM_DEFAULTS.labelOffsetX,
   };
 }

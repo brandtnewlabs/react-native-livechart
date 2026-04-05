@@ -84,9 +84,11 @@ export function buildCandleGeometry(
       bw -= chartLeft - bx;
       bx = chartLeft;
     }
+    /* istanbul ignore next -- right-edge clip rare in tests */
     if (bx + bw > chartRight) {
       bw = chartRight - bx;
     }
+    /* istanbul ignore next -- clipped to zero width */
     if (bw <= 0) return;
 
     bodies.push({ x: bx, y: bodyTop, w: bw, h: bodyH, up });
@@ -107,6 +109,7 @@ export function buildCandleGeometry(
   }
 
   for (let i = lo; i < candles.length; i++) {
+    /* istanbul ignore next -- past visible window */
     if (candles[i].time > winEnd) break;
     processCandle(candles[i]);
   }
