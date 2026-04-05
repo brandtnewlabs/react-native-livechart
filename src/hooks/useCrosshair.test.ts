@@ -407,6 +407,25 @@ describe("useCrosshair (hook)", () => {
     expect(result.current.gesture).toBeDefined();
   });
 
+  it("accepts onScrub and still initialises (sync reaction path)", () => {
+    const onScrub = jest.fn();
+    const engine = makeEngine();
+    const { result } = renderHook(() =>
+      useCrosshair(
+        engine,
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+        onScrub,
+      ),
+    );
+    expect(result.current.gesture).toBeDefined();
+    expect(result.current.scrubActive.value).toBe(false);
+  });
+
   it("uses Android pan minDistance when Platform.OS is android", () => {
     const prev = Platform.OS;
     Object.defineProperty(Platform, "OS", {
