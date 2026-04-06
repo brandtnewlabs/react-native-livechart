@@ -3,7 +3,7 @@ import { renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
 import { interpolateAtTime } from "../math/interpolate";
 import { resolveTheme } from "../theme";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLiveChartEngine";
 import {
   computeCandleTooltipLayout,
   computeCrosshairOpacity,

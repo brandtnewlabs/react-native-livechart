@@ -3,7 +3,7 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { drawSpline } from "../math/spline";
 import { blendPtsY, squigglifyPts } from "../math/squiggly";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLiveChartEngine";
 
 export function useChartPaths(
   engine: SingleEngineState,

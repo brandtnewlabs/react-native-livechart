@@ -6,7 +6,7 @@ import {
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";
 import type { TooltipLayout } from "../hooks/crosshairShared";
-import type { LivelinePalette } from "../types";
+import type { LiveChartPalette } from "../types";
 
 const TOOLTIP_STACK_SLOTS = MAX_MULTI_SERIES + 1;
 
@@ -19,7 +19,7 @@ function TooltipStackLine({
   index: number;
   tooltipLayout: SharedValue<TooltipLayout>;
   font: SkFont;
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
 }) {
   const opacity = useDerivedValue(() => {
     const sl = tooltipLayout.value.stackedLines;
@@ -66,7 +66,7 @@ export function MultiSeriesTooltipStack({
 }: {
   tooltipLayout: SharedValue<TooltipLayout>;
   font: SkFont;
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
 }) {
   return (
     <Group>

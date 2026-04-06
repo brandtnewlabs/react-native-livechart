@@ -5,16 +5,16 @@ import {
   useAnimatedReaction,
   type SharedValue,
 } from "react-native-reanimated";
-import type { LivelineSeries } from "../types";
+import type { SeriesConfig } from "../types";
 
 export interface SeriesToggleChipsProps {
-  series: SharedValue<LivelineSeries[]>;
+  series: SharedValue<SeriesConfig[]>;
   compact?: boolean;
   onSeriesToggle?: (id: string, visible: boolean) => void;
 }
 
 /** Exported for tests — mirrors chip labels without subscribing to every data tick. */
-export function seriesMetaSig(s: LivelineSeries[]): string {
+export function seriesMetaSig(s: SeriesConfig[]): string {
   "worklet";
   return s
     .map(
@@ -32,9 +32,9 @@ export function SeriesToggleChips({
   compact,
   onSeriesToggle,
 }: SeriesToggleChipsProps) {
-  const [snapshot, setSnapshot] = useState<LivelineSeries[]>([]);
+  const [snapshot, setSnapshot] = useState<SeriesConfig[]>([]);
 
-  const pullSnapshot = useCallback((sv: SharedValue<LivelineSeries[]>) => {
+  const pullSnapshot = useCallback((sv: SharedValue<SeriesConfig[]>) => {
     setSnapshot(sv.value.slice());
   }, []);
 

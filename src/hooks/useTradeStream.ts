@@ -12,7 +12,7 @@ import {
   type TradeStreamState,
 } from "../draw/trade";
 import type { TradeEvent } from "../types";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLiveChartEngine";
 
 export function useTradeStream(
   engine: SingleEngineState,

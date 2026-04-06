@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "react-native-liveline",
-    "slug": "react-native-liveline",
+    "name": "react-native-livechart",
+    "slug": "react-native-livechart",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "reactnativeliveline",
+    "scheme": "reactnativelivechart",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.brandtnewlabs.react-native-liveline",
+      "bundleIdentifier": "com.brandtnewlabs.react-native-livechart",
       "appleTeamId": "MCL33ZBD7G"
     },
     "android": {
@@ -22,7 +22,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.brandtnewlabs.reactnativeliveline"
+      "package": "com.brandtnewlabs.reactnativelivechart"
     },
     "web": {
       "output": "static",

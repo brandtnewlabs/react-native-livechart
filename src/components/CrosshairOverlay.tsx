@@ -10,8 +10,8 @@ import type { ReactNode } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { type ChartPadding } from "../draw/line";
 import { type TooltipLayout } from "../hooks/crosshairShared";
-import type { LivelinePalette } from "../types";
-import type { ChartEngineLayout } from "../useLivelineEngine";
+import type { LiveChartPalette } from "../types";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 
 const TOOLTIP_RADIUS = 5;
 
@@ -31,7 +31,7 @@ export function CrosshairOverlay({
   tooltipLayout: SharedValue<TooltipLayout>;
   engine: ChartEngineLayout;
   padding: ChartPadding;
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
   font: SkFont;
   showTooltip?: boolean;
   tooltipBody?: ReactNode;

@@ -2,9 +2,9 @@ import * as entry from "./index";
 import * as hooks from "./hooks";
 
 describe("package entry", () => {
-  it("exports Liveline and LivelineMulti", () => {
-    expect(entry.Liveline).toBeDefined();
-    expect(entry.LivelineMulti).toBeDefined();
+  it("exports LiveChart and LiveChartSeries", () => {
+    expect(entry.LiveChart).toBeDefined();
+    expect(entry.LiveChartSeries).toBeDefined();
   });
 });
 

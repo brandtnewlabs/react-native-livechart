@@ -8,10 +8,10 @@ import {
   type ChartPadding,
 } from "../draw/line";
 import { measureFontTextWidth } from "../measureFontTextWidth";
-import type { ChartInsets, LivelinePalette } from "../types";
+import type { ChartInsets, LiveChartPalette } from "../types";
 
 export interface ChartLayoutConfig {
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
   lineWidthOverride?: number;
   insetsOverride?: ChartInsets;
   yAxis: boolean;

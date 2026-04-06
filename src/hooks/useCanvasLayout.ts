@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import type { ChartEngineLayout } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 import type { LayoutChangeEvent } from "react-native";
 
 export function useCanvasLayout(engine: ChartEngineLayout) {

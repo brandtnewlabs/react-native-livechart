@@ -3,7 +3,7 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { drawSpline } from "../math/spline";
-import type { MultiEngineState } from "../useLivelineEngine";
+import type { MultiEngineState } from "../useLiveChartEngine";
 
 /**
  * One derived shared value holding up to `MAX_MULTI_SERIES` Skia paths (unused slots are empty paths).

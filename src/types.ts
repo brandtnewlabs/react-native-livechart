@@ -1,7 +1,7 @@
 import type { ViewStyle } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
-export interface LivelinePoint {
+export interface LiveChartPoint {
   time: number;
   value: number;
 }
@@ -21,7 +21,6 @@ export type FontWeight =
   | "800"
   | "900";
 export type ThemeMode = "light" | "dark";
-export type WindowStyle = "default" | "rounded" | "text";
 export type BadgeVariant = "default" | "minimal";
 
 export interface ReferenceLine {
@@ -88,16 +87,6 @@ export interface ChartInsets {
   left?: number;
 }
 
-export interface WindowOption {
-  label: string;
-  secs: number;
-}
-
-export interface OrderbookData {
-  bids: [number, number][];
-  asks: [number, number][];
-}
-
 export interface TradeEvent {
   side: "buy" | "sell";
   price: number;
@@ -146,9 +135,9 @@ export interface DegenOptions {
   colors?: string | string[];
 }
 
-export interface LivelineSeries {
+export interface SeriesConfig {
   id: string;
-  data: LivelinePoint[];
+  data: LiveChartPoint[];
   value: number;
   color?: string;
   label?: string;
@@ -184,7 +173,7 @@ export interface CandlePoint {
   close: number;
 }
 
-export interface LivelineCoreProps {
+export interface LiveChartCoreProps {
   theme?: ThemeMode;
   accentColor?: string;
   font?: FontConfig;
@@ -205,15 +194,12 @@ export interface LivelineCoreProps {
   line?: LineConfig;
 }
 
-export interface LivelineSingleProps extends LivelineCoreProps {
+export interface LiveChartProps extends LiveChartCoreProps {
   gradient?: boolean | GradientConfig;
   badge?: boolean | BadgeConfig;
   momentum?: boolean | Momentum;
   pulse?: boolean | PulseConfig;
   valueLine?: boolean | ValueLineConfig;
-  windows?: WindowOption[];
-  windowStyle?: WindowStyle;
-  onWindowChange?: (secs: number) => void;
 
   // ── Candlestick mode ──────────────────────────────────────────────────
   /** Chart display mode (default `"line"`). `"candle"` renders OHLC bars. */
@@ -224,16 +210,6 @@ export interface LivelineSingleProps extends LivelineCoreProps {
   candleWidth?: number;
   /** In-progress candle updated each tick. Must be a SharedValue for UI-thread reads. */
   liveCandle?: SharedValue<CandlePoint | null>;
-  /** Morph candles into a line display (future — not wired in Phase 10). */
-  lineMode?: boolean;
-  /** Tick-level data for line-mode density during morph (future — not wired in Phase 10). */
-  lineData?: LivelinePoint[];
-  /** Current tick value for line-mode morph (future — not wired in Phase 10). */
-  lineValue?: number;
-  /** Callback when the built-in line/candle toggle fires (future — no built-in UI in Phase 10). */
-  onModeChange?: (mode: "line" | "candle") => void;
-
-  orderbook?: OrderbookData;
   /**
    * Live trade fills for optional on-chart markers. Read on the UI thread only —
    * pass a `SharedValue` and update from JS via `.value` (same pattern as `data` / `value`).
@@ -241,19 +217,19 @@ export interface LivelineSingleProps extends LivelineCoreProps {
   tradeStream?: SharedValue<TradeEvent[]>;
   /** Particle burst + chart shake on momentum swings (`true` = defaults, or pass `DegenOptions`). */
   degen?: boolean | DegenOptions;
-  data: SharedValue<LivelinePoint[]>;
+  data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   onScrub?: (point: ScrubPoint | null) => void;
 }
 
-export interface LivelineMultiProps extends LivelineCoreProps {
-  series: SharedValue<LivelineSeries[]>;
+export interface LiveChartSeriesProps extends LiveChartCoreProps {
+  series: SharedValue<SeriesConfig[]>;
   onSeriesToggle?: (id: string, visible: boolean) => void;
   seriesToggleCompact?: boolean;
   onScrub?: (point: ScrubPointMulti | null) => void;
 }
 
-export interface LivelinePalette {
+export interface LiveChartPalette {
   line: string;
   lineWidth: number;
 
@@ -299,17 +275,3 @@ export interface LivelinePalette {
   badgeFontSize: number;
 }
 
-export interface ChartLayout {
-  w: number;
-  h: number;
-  pad: Required<ChartInsets>;
-  chartW: number;
-  chartH: number;
-  leftEdge: number;
-  rightEdge: number;
-  minVal: number;
-  maxVal: number;
-  valRange: number;
-  toX: (t: number) => number;
-  toY: (v: number) => number;
-}

@@ -9,7 +9,7 @@ import { buildCandleGeometry } from "../draw/candle";
 import type { ChartPadding } from "../draw/line";
 import { lerp } from "../math/lerp";
 import type { CandlePoint } from "../types";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLiveChartEngine";
 
 const CANDLE_WIDTH_LERP_SPEED = 0.08;
 

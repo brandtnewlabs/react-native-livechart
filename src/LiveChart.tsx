@@ -42,7 +42,7 @@ import {
   resolveXAxis,
   resolveYAxis,
 } from "./resolveConfig";
-import type { LivelineSingleProps, TradeEvent } from "./types";
+import type { LiveChartProps, TradeEvent } from "./types";
 
 import { GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
@@ -58,9 +58,9 @@ import { ValueLineOverlay } from "./components/ValueLineOverlay";
 import { XAxisOverlay } from "./components/XAxisOverlay";
 import { YAxisOverlay } from "./components/YAxisOverlay";
 import { resolveTheme } from "./theme";
-import { useLivelineEngine } from "./useLivelineEngine";
+import { useLiveChartEngine } from "./useLiveChartEngine";
 
-export function Liveline({
+export function LiveChart({
   // ── Data ────────────────────────────────────────────────────────────────
   data,
   value,
@@ -104,7 +104,7 @@ export function Liveline({
 
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
-}: LivelineSingleProps) {
+}: LiveChartProps) {
   const emptyTradeStream = useSharedValue<TradeEvent[]>([]);
   const tradeStreamSV = tradeStream ?? emptyTradeStream;
   const isCandle = mode === "candle";
@@ -148,7 +148,7 @@ export function Liveline({
   });
 
   // ── Engine and reveal state ────────────────────────────────────────────
-  const engine = useLivelineEngine({
+  const engine = useLiveChartEngine({
     data,
     value,
     timeWindow,

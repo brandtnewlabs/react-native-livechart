@@ -1,12 +1,12 @@
 import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
 import {
-  applyLivelineEngineFrame,
+  applyLiveChartEngineFrame,
   type EngineFrameRefs,
-  useLivelineEngine,
-} from "./useLivelineEngine";
+  useLiveChartEngine,
+} from "./useLiveChartEngine";
 
-describe("applyLivelineEngineFrame", () => {
+describe("applyLiveChartEngineFrame", () => {
   it("runs tick and writes shared values", () => {
     const sv = {
       data: { value: [{ time: 1700000000, value: 10 }] },
@@ -25,7 +25,7 @@ describe("applyLivelineEngineFrame", () => {
       pausedSV: { value: false },
       modeSV: { value: "line" as const },
     };
-    applyLivelineEngineFrame(
+    applyLiveChartEngineFrame(
       { timeSincePreviousFrame: 16.67 },
       sv as unknown as EngineFrameRefs,
     );
@@ -33,12 +33,12 @@ describe("applyLivelineEngineFrame", () => {
   });
 });
 
-describe("useLivelineEngine", () => {
+describe("useLiveChartEngine", () => {
   it("returns shared engine state", () => {
     const { result } = renderHook(() => {
       const data = useSharedValue([{ time: 1700000000, value: 1 }]);
       const value = useSharedValue(1);
-      return useLivelineEngine({
+      return useLiveChartEngine({
         data,
         value,
         timeWindow: 30,
@@ -56,7 +56,7 @@ describe("useLivelineEngine", () => {
     const { result } = renderHook(() => {
       const data = useSharedValue([{ time: 1700000000, value: 1 }]);
       const value = useSharedValue(1);
-      return useLivelineEngine({
+      return useLiveChartEngine({
         data,
         value,
         timeWindow: 30,

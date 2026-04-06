@@ -1,7 +1,7 @@
 import type {
   CandlePoint,
-  LivelinePoint,
-  LivelineSeries,
+  LiveChartPoint,
+  SeriesConfig,
   TradeEvent,
 } from "../src/types";
 
@@ -25,16 +25,16 @@ export interface HistoryOptions {
 }
 
 /**
- * Generate a backfill of LivelinePoint[] using a Gaussian random walk.
+ * Generate a backfill of LiveChartPoint[] using a Gaussian random walk.
  */
-export function generateHistory(opts: HistoryOptions = {}): LivelinePoint[] {
+export function generateHistory(opts: HistoryOptions = {}): LiveChartPoint[] {
   const count = opts.count ?? 150;
   const interval = opts.interval ?? 0.2;
   const volatility = opts.volatility ?? 0.003;
   let value = opts.startValue ?? 100;
   const startTime = opts.startTime ?? Date.now() / 1000 - count * interval;
 
-  const points: LivelinePoint[] = [];
+  const points: LiveChartPoint[] = [];
   for (let i = 0; i < count; i++) {
     const time = startTime + i * interval;
     points.push({ time, value });
@@ -95,7 +95,7 @@ export interface CandleResult {
  * Returns completed candles + the in-progress live candle.
  */
 export function aggregateCandles(
-  ticks: LivelinePoint[],
+  ticks: LiveChartPoint[],
   candleWidth: number,
 ): CandleResult {
   if (ticks.length === 0) {
@@ -249,7 +249,7 @@ export interface MultiSeriesOptions {
  */
 export function generateMultiSeries(
   opts: MultiSeriesOptions,
-): LivelineSeries[] {
+): SeriesConfig[] {
   const {
     ids,
     colors,
@@ -266,7 +266,7 @@ export function generateMultiSeries(
     ? Array(n).fill(100 / n)
     : Array.from({ length: n }, () => 30 + Math.random() * 40);
 
-  const allData: LivelinePoint[][] = ids.map(() => []);
+  const allData: LiveChartPoint[][] = ids.map(() => []);
 
   for (let t = 0; t < count; t++) {
     const time = startTime + t * interval;
@@ -303,7 +303,7 @@ export function generateMultiSeries(
  * Advance all series by one step. Mutates the series data arrays in place.
  */
 export function stepMultiSeries(
-  series: LivelineSeries[],
+  series: SeriesConfig[],
   sumToHundred = false,
 ): void {
   const now = Date.now() / 1000;

@@ -1,11 +1,11 @@
-import type { LivelinePoint } from "../types";
+import type { LiveChartPoint } from "../types";
 
 /**
  * Binary search to find interpolated value at a given time.
  * Returns null if time is outside data range.
  */
 export function interpolateAtTime(
-  points: LivelinePoint[],
+  points: LiveChartPoint[],
   time: number,
 ): number | null {
   "worklet";

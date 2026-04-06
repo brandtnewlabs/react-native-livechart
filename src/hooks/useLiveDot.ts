@@ -1,5 +1,5 @@
 import type { ChartPadding } from "../draw/line";
-import type { SingleEngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLiveChartEngine";
 import { useDerivedValue } from "react-native-reanimated";
 
 export function useLiveDot(engine: SingleEngineState, padding: ChartPadding) {

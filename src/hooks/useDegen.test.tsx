@@ -1,13 +1,13 @@
 import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
 import { resolveDegen } from "../resolveConfig";
-import { useLivelineEngine } from "../useLivelineEngine";
+import { useLiveChartEngine } from "../useLiveChartEngine";
 import { useDegen } from "./useDegen";
 
 function useMakeEngine() {
   const data = useSharedValue([{ time: 1_700_000_000, value: 50 }]);
   const value = useSharedValue(50);
-  return useLivelineEngine({ data, value, timeWindow: 100, smoothing: 0.08 });
+  return useLiveChartEngine({ data, value, timeWindow: 100, smoothing: 0.08 });
 }
 
 describe("useDegen", () => {

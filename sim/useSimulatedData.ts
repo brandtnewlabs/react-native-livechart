@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import type {
   CandlePoint,
-  LivelinePoint,
-  LivelineSeries,
+  LiveChartPoint,
+  SeriesConfig,
   TradeEvent,
 } from "../src/types";
 import {
@@ -39,10 +39,10 @@ export interface SimulatedDataOptions {
 }
 
 export interface SimulatedData {
-  data: SharedValue<LivelinePoint[]>;
+  data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   tradeStream: SharedValue<TradeEvent[]>;
-  series: SharedValue<LivelineSeries[]>;
+  series: SharedValue<SeriesConfig[]>;
   candles: SharedValue<CandlePoint[]>;
   liveCandle: SharedValue<CandlePoint | null>;
 }
@@ -56,9 +56,9 @@ export interface SimulatedData {
  * Never read SharedValue.value on the JS thread in a hot path.
  */
 interface TickBuffers {
-  data: LivelinePoint[];
+  data: LiveChartPoint[];
   tradeStream: TradeEvent[];
-  series: LivelineSeries[];
+  series: SeriesConfig[];
 }
 
 export function useSimulatedData(
@@ -84,10 +84,10 @@ export function useSimulatedData(
   });
 
   // Shared values — one-way push to UI thread for rendering
-  const data = useSharedValue<LivelinePoint[]>([]);
+  const data = useSharedValue<LiveChartPoint[]>([]);
   const value = useSharedValue(startValue);
   const tradeStream = useSharedValue<TradeEvent[]>([]);
-  const series = useSharedValue<LivelineSeries[]>([]);
+  const series = useSharedValue<SeriesConfig[]>([]);
   const candles = useSharedValue<CandlePoint[]>([]);
   const liveCandle = useSharedValue<CandlePoint | null>(null);
 

@@ -4,11 +4,11 @@ import {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
-import { tickLivelineEngineFrame } from "./livelineEngineTick";
-import type { CandlePoint, LivelinePoint, LivelineSeries } from "./types";
+import { tickLiveChartEngineFrame } from "./liveChartEngineTick";
+import type { CandlePoint, LiveChartPoint, SeriesConfig } from "./types";
 
 export interface EngineConfig {
-  data: SharedValue<LivelinePoint[]>;
+  data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   timeWindow: number;
   smoothing: number;
@@ -31,16 +31,16 @@ export interface ChartEngineLayout {
 }
 
 export interface SingleEngineState extends ChartEngineLayout {
-  data: SharedValue<LivelinePoint[]>;
+  data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   displayValue: SharedValue<number>;
 }
 
 export interface MultiEngineState extends ChartEngineLayout {
-  data: SharedValue<LivelinePoint[]>;
+  data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   displayValue: SharedValue<number>;
-  series: SharedValue<LivelineSeries[]>;
+  series: SharedValue<SeriesConfig[]>;
   displaySeriesValues: SharedValue<number[]>;
   seriesOpacities: SharedValue<number[]>;
 }
@@ -53,7 +53,7 @@ export type ChartEngineWithLiveValue = ChartEngineLayout & {
 };
 
 export interface EngineFrameRefs {
-  data: SharedValue<LivelinePoint[]>;
+  data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   displayValue: SharedValue<number>;
   displayMin: SharedValue<number>;
@@ -74,9 +74,9 @@ export interface EngineFrameRefs {
 
 /**
  * Shared between the `useFrameCallback` worklet and unit tests.
- * Mutates shared values from a snapshot tick (`tickLivelineEngineFrame`).
+ * Mutates shared values from a snapshot tick (`tickLiveChartEngineFrame`).
  */
-export function applyLivelineEngineFrame(
+export function applyLiveChartEngineFrame(
   frameInfo: { timeSincePreviousFrame?: number | null },
   sv: EngineFrameRefs,
 ): void {
@@ -89,7 +89,7 @@ export function applyLivelineEngineFrame(
     displayWindow: sv.displayWindow.value,
     timestamp: sv.timestamp.value,
   };
-  tickLivelineEngineFrame(state, {
+  tickLiveChartEngineFrame(state, {
     dt,
     canvasWidth: sv.canvasWidth.value,
     canvasHeight: sv.canvasHeight.value,
@@ -112,7 +112,7 @@ export function applyLivelineEngineFrame(
   sv.timestamp.value = state.timestamp;
 }
 
-export function useLivelineEngine(config: EngineConfig): SingleEngineState {
+export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
   // Low-frequency config → UI thread via useDerivedValue
   const timeWindow = useDerivedValue(() => config.timeWindow);
   const smoothing = useDerivedValue(() => config.smoothing);
@@ -136,7 +136,7 @@ export function useLivelineEngine(config: EngineConfig): SingleEngineState {
 
   useFrameCallback((frameInfo) => {
     "worklet";
-    applyLivelineEngineFrame(frameInfo, {
+    applyLiveChartEngineFrame(frameInfo, {
       data,
       value,
       displayValue,

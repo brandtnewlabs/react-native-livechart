@@ -2,7 +2,7 @@ import { type SkFont } from "@shopify/react-native-skia";
 import { renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
 import { resolveTheme } from "../theme";
-import type { MultiEngineState } from "../useLivelineEngine";
+import type { MultiEngineState } from "../useLiveChartEngine";
 import {
     computeMultiSeriesScrubTooltipLayout,
     deriveScrubValueMulti,

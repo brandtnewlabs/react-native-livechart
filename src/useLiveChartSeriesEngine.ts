@@ -4,12 +4,12 @@ import {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
-import { tickLivelineEngineMultiFrame } from "./livelineEngineTickMulti";
-import type { LivelinePoint, LivelineSeries } from "./types";
-import type { MultiEngineState } from "./useLivelineEngine";
+import { tickLiveChartSeriesEngineFrame } from "./liveChartSeriesEngineTick";
+import type { LiveChartPoint, SeriesConfig } from "./types";
+import type { MultiEngineState } from "./useLiveChartEngine";
 
 export interface MultiSeriesEngineConfig {
-  series: SharedValue<LivelineSeries[]>;
+  series: SharedValue<SeriesConfig[]>;
   timeWindow: number;
   smoothing: number;
   exaggerate?: boolean;
@@ -18,7 +18,7 @@ export interface MultiSeriesEngineConfig {
 }
 
 export interface MultiEngineFrameRefs {
-  series: SharedValue<LivelineSeries[]>;
+  series: SharedValue<SeriesConfig[]>;
   displaySeriesValues: SharedValue<number[]>;
   seriesOpacities: SharedValue<number[]>;
   displayMin: SharedValue<number>;
@@ -34,7 +34,7 @@ export interface MultiEngineFrameRefs {
   pausedSV: SharedValue<boolean>;
 }
 
-export function applyLivelineEngineMultiFrame(
+export function applyLiveChartSeriesEngineFrame(
   frameInfo: { timeSincePreviousFrame?: number | null },
   sv: MultiEngineFrameRefs,
 ): void {
@@ -51,7 +51,7 @@ export function applyLivelineEngineMultiFrame(
     displayValues,
     opacities,
   };
-  tickLivelineEngineMultiFrame(state, {
+  tickLiveChartSeriesEngineFrame(state, {
     dt,
     canvasWidth: sv.canvasWidth.value,
     canvasHeight: sv.canvasHeight.value,
@@ -75,7 +75,7 @@ export function applyLivelineEngineMultiFrame(
  * UI-thread engine for multi-series charts. Dummies `data` / `value` / `displayValue`
  * mirror single-series fields for hooks that still read them.
  */
-export function useLivelineMultiSeriesEngine(
+export function useLiveChartSeriesEngine(
   config: MultiSeriesEngineConfig,
 ): MultiEngineState {
   const timeWindow = useDerivedValue(() => config.timeWindow);
@@ -94,7 +94,7 @@ export function useLivelineMultiSeriesEngine(
   const displaySeriesValues = useSharedValue<number[]>([]);
   const seriesOpacities = useSharedValue<number[]>([]);
 
-  const data = useSharedValue<LivelinePoint[]>([]);
+  const data = useSharedValue<LiveChartPoint[]>([]);
   const value = useSharedValue(0);
   const displayValue = useSharedValue(0);
 
@@ -102,7 +102,7 @@ export function useLivelineMultiSeriesEngine(
 
   useFrameCallback((frameInfo) => {
     "worklet";
-    applyLivelineEngineMultiFrame(frameInfo, {
+    applyLiveChartSeriesEngineFrame(frameInfo, {
       series,
       displaySeriesValues,
       seriesOpacities,

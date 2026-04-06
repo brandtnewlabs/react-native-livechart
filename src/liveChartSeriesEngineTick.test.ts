@@ -1,6 +1,6 @@
-import { tickLivelineEngineMultiFrame } from "./livelineEngineTickMulti";
+import { tickLiveChartSeriesEngineFrame } from "./liveChartSeriesEngineTick";
 
-describe("tickLivelineEngineMultiFrame", () => {
+describe("tickLiveChartSeriesEngineFrame", () => {
   function baseMulti(): {
     displayMin: number;
     displayMax: number;
@@ -21,7 +21,7 @@ describe("tickLivelineEngineMultiFrame", () => {
 
   it("lerps per-series tips and updates combined Y-range", () => {
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -58,7 +58,7 @@ describe("tickLivelineEngineMultiFrame", () => {
 
   it("excludes hidden series from Y-range", () => {
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -90,7 +90,7 @@ describe("tickLivelineEngineMultiFrame", () => {
   it("returns early when canvas size is zero", () => {
     const s = baseMulti();
     s.displayValues = [1, 2];
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 0,
       canvasHeight: 100,
@@ -111,7 +111,7 @@ describe("tickLivelineEngineMultiFrame", () => {
     const s = baseMulti();
     s.displayValues = [1, 2, 3];
     s.opacities = [1, 1, 1];
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -135,7 +135,7 @@ describe("tickLivelineEngineMultiFrame", () => {
 
   it("expands Y-range with referenceValue outside data span", () => {
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -161,7 +161,7 @@ describe("tickLivelineEngineMultiFrame", () => {
     const s = baseMulti();
     s.displayMin = 0;
     s.displayMax = 500;
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -187,7 +187,7 @@ describe("tickLivelineEngineMultiFrame", () => {
     const s = baseMulti();
     s.displayMin = 0;
     s.displayMax = 500;
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -213,7 +213,7 @@ describe("tickLivelineEngineMultiFrame", () => {
     const s = baseMulti();
     s.displayMin = 100;
     s.displayMax = 200;
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -237,7 +237,7 @@ describe("tickLivelineEngineMultiFrame", () => {
   it("does not advance timestamp when paused", () => {
     const s = baseMulti();
     s.timestamp = 500;
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -263,7 +263,7 @@ describe("tickLivelineEngineMultiFrame", () => {
     const s = baseMulti();
     s.displayMin = 50;
     s.displayMax = 50;
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -286,7 +286,7 @@ describe("tickLivelineEngineMultiFrame", () => {
 
   it("pulls reference line below data into tMin", () => {
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -309,7 +309,7 @@ describe("tickLivelineEngineMultiFrame", () => {
 
   it("pulls reference line above data into tMax", () => {
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -332,7 +332,7 @@ describe("tickLivelineEngineMultiFrame", () => {
 
   it("uses exaggerate margin factors when raw range is wide", () => {
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -359,7 +359,7 @@ describe("tickLivelineEngineMultiFrame", () => {
 
   it("expands narrow raw range to minRange (symmetric pad)", () => {
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -382,7 +382,7 @@ describe("tickLivelineEngineMultiFrame", () => {
 
   it("skips Y-range margin block when every series is hidden", () => {
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -408,7 +408,7 @@ describe("tickLivelineEngineMultiFrame", () => {
   it("uses Date.now when nowSeconds is omitted", () => {
     const nowSpy = jest.spyOn(Date, "now").mockReturnValue(3_000_000);
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -432,7 +432,7 @@ describe("tickLivelineEngineMultiFrame", () => {
 
   it("uses exaggerate minRange fallback when raw data range is zero", () => {
     const s = baseMulti();
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,
@@ -457,7 +457,7 @@ describe("tickLivelineEngineMultiFrame", () => {
     const s = baseMulti();
     s.displayMin = 0;
     s.displayMax = 10;
-    tickLivelineEngineMultiFrame(s, {
+    tickLiveChartSeriesEngineFrame(s, {
       dt: 16.67,
       canvasWidth: 200,
       canvasHeight: 100,

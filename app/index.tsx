@@ -14,7 +14,7 @@ import Animated, {
 import type { VolatilityMode } from "../sim/generators";
 import { useSimulatedData, type TradeSource } from "../sim/useSimulatedData";
 import type { ScrubPoint, ScrubPointMulti } from "../src";
-import { Liveline, LivelineMulti } from "../src";
+import { LiveChart, LiveChartSeries } from "../src";
 import { formatTime } from "../src/format";
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
@@ -117,7 +117,7 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>react-native-liveline</Text>
+        <Text style={styles.title}>react-native-livechart</Text>
         <AnimatedTextInput
           editable={false}
           underlineColorAndroid="transparent"
@@ -128,7 +128,7 @@ export default function Index() {
 
       <View style={styles.chartContainer}>
         {chartMode === "single" ? (
-          <Liveline
+          <LiveChart
             data={data}
             value={value}
             mode={displayMode}
@@ -155,7 +155,7 @@ export default function Index() {
             degen={degen ? true : undefined}
           />
         ) : (
-          <LivelineMulti
+          <LiveChartSeries
             series={series}
             accentColor="#3b82f6"
             theme="dark"

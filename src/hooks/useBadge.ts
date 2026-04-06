@@ -18,15 +18,15 @@ import {
 import { hexToRgb, lerpColor } from "../math/color";
 import { lerp } from "../math/lerp";
 import { measureFontTextWidth } from "../measureFontTextWidth";
-import type { BadgeVariant, LivelinePalette, Momentum } from "../types";
-import type { ChartEngineWithLiveValue } from "../useLivelineEngine";
+import type { BadgeVariant, LiveChartPalette, Momentum } from "../types";
+import type { ChartEngineWithLiveValue } from "../useLiveChartEngine";
 
 const TAIL_SPREAD = 2.5;
 
 export function useBadge(
   engine: ChartEngineWithLiveValue,
   padding: ChartPadding,
-  palette: LivelinePalette,
+  palette: LiveChartPalette,
   formatValue: (v: number) => string,
   font: SkFont,
   variant: BadgeVariant = "default",

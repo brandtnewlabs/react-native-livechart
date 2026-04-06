@@ -1,7 +1,7 @@
 import { type SkFont } from "@shopify/react-native-skia";
 import { type ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
-import type { LivelineSeries, ScrubSeriesValue } from "../types";
+import type { SeriesConfig, ScrubSeriesValue } from "../types";
 import {
   computeTooltipLayoutMulti,
   HIDDEN_TOOLTIP,
@@ -9,7 +9,7 @@ import {
 } from "./crosshairShared";
 
 export function interpolateMultiSeriesAtTime(
-  series: LivelineSeries[],
+  series: SeriesConfig[],
   time: number,
 ): { primary: number | null; seriesValues: ScrubSeriesValue[] } {
   "worklet";
@@ -33,7 +33,7 @@ export function interpolateMultiSeriesAtTime(
 export function deriveScrubValueMulti(
   scrubActive: boolean,
   scrubTime: number,
-  series: LivelineSeries[],
+  series: SeriesConfig[],
 ): number | null {
   "worklet";
   if (!scrubActive || scrubTime < 0) return null;
@@ -45,7 +45,7 @@ export function computeMultiSeriesScrubTooltipLayout(
   scrubActive: boolean,
   scrubX: number,
   scrubTime: number,
-  series: LivelineSeries[],
+  series: SeriesConfig[],
   padding: ChartPadding,
   canvasWidth: number,
   formatValue: (v: number) => string,

@@ -1,13 +1,13 @@
 import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
-import type { LivelineSeries } from "./types";
+import type { SeriesConfig } from "./types";
 import {
-  applyLivelineEngineMultiFrame,
+  applyLiveChartSeriesEngineFrame,
   type MultiEngineFrameRefs,
-  useLivelineMultiSeriesEngine,
-} from "./useLivelineMultiSeriesEngine";
+  useLiveChartSeriesEngine,
+} from "./useLiveChartSeriesEngine";
 
-describe("applyLivelineEngineMultiFrame", () => {
+describe("applyLiveChartSeriesEngineFrame", () => {
   it("runs multi tick and writes shared values", () => {
     const sv = {
       series: {
@@ -34,7 +34,7 @@ describe("applyLivelineEngineMultiFrame", () => {
       referenceValue: { value: undefined as number | undefined },
       pausedSV: { value: false },
     };
-    applyLivelineEngineMultiFrame(
+    applyLiveChartSeriesEngineFrame(
       { timeSincePreviousFrame: 16.67 },
       sv as unknown as MultiEngineFrameRefs,
     );
@@ -42,10 +42,10 @@ describe("applyLivelineEngineMultiFrame", () => {
   });
 });
 
-describe("useLivelineMultiSeriesEngine", () => {
+describe("useLiveChartSeriesEngine", () => {
   it("returns engine state with series arrays", () => {
     const { result } = renderHook(() => {
-      const series = useSharedValue<LivelineSeries[]>([
+      const series = useSharedValue<SeriesConfig[]>([
         {
           id: "a",
           data: [{ time: 1_700_000_000, value: 1 }],
@@ -53,7 +53,7 @@ describe("useLivelineMultiSeriesEngine", () => {
           color: "#3b82f6",
         },
       ]);
-      return useLivelineMultiSeriesEngine({
+      return useLiveChartSeriesEngine({
         series,
         timeWindow: 30,
         smoothing: 0.08,

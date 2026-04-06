@@ -5,7 +5,7 @@ import {
   BADGE_PILL_PAD_Y,
   BADGE_TAIL_LEN,
 } from "../constants";
-import type { ChartInsets, LivelinePoint } from "../types";
+import type { ChartInsets, LiveChartPoint } from "../types";
 export {
   BADGE_DOT_GAP,
   BADGE_MARGIN_RIGHT,
@@ -148,7 +148,7 @@ export function resolvePadding(
  * Flat layout avoids ~150 tuple object allocations per frame.
  */
 export function buildLinePoints(
-  data: LivelinePoint[],
+  data: LiveChartPoint[],
   displayValue: number,
   now: number,
   windowSecs: number,

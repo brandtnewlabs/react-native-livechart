@@ -1,8 +1,8 @@
 import { Circle, Group } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ResolvedPulseConfig } from "../resolveConfig";
-import type { LivelinePalette } from "../types";
-import type { ChartEngineLayout } from "../useLivelineEngine";
+import type { LiveChartPalette } from "../types";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 
 const MIN_PULSE_RADIUS = 9;
 
@@ -15,7 +15,7 @@ export function DotOverlay({
 }: {
   dotX: SharedValue<number>;
   dotY: SharedValue<number>;
-  palette: LivelinePalette;
+  palette: LiveChartPalette;
   engine: ChartEngineLayout;
   pulse: ResolvedPulseConfig | null;
 }) {
