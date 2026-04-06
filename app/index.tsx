@@ -58,6 +58,9 @@ export default function Index() {
   const [windowSecs, setWindowSecs] = useState(30);
   const [startValue, setStartValue] = useState(100);
   const [loading, setLoading] = useState(false);
+  const [showRefLine, setShowRefLine] = useState(false);
+  const [valueLine, setValueLine] = useState(false);
+  const [exaggerate, setExaggerate] = useState(false);
 
   const { data, value } = useSimulatedData({
     volatilityMode,
@@ -101,6 +104,11 @@ export default function Index() {
           theme="dark"
           window={windowSecs}
           paused={paused}
+          exaggerate={exaggerate}
+          valueLine={valueLine}
+          referenceLine={
+            showRefLine ? { value: startValue * 1.05, label: "+5%" } : undefined
+          }
           scrub
           scrubTooltip={false}
           loading={loading}
@@ -195,6 +203,40 @@ export default function Index() {
               </Text>
             </Pressable>
           ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>Chart Options</Text>
+        <View style={styles.buttonRow}>
+          <Pressable
+            style={[styles.chip, valueLine && styles.chipActive]}
+            onPress={() => setValueLine((v) => !v)}
+          >
+            <Text style={[styles.chipText, valueLine && styles.chipTextActive]}>
+              Value Line
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.chip, showRefLine && styles.chipActive]}
+            onPress={() => setShowRefLine((v) => !v)}
+          >
+            <Text
+              style={[styles.chipText, showRefLine && styles.chipTextActive]}
+            >
+              Ref Line
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.chip, exaggerate && styles.chipActive]}
+            onPress={() => setExaggerate((v) => !v)}
+          >
+            <Text
+              style={[styles.chipText, exaggerate && styles.chipTextActive]}
+            >
+              Exaggerate
+            </Text>
+          </Pressable>
         </View>
 
         <View style={styles.buttonRow}>

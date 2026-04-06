@@ -14,6 +14,7 @@ describe("hooks barrel", () => {
     expect(hooks.useChartPaths).toBeDefined();
     expect(hooks.useGrid).toBeDefined();
     expect(hooks.useLiveDot).toBeDefined();
+    expect(hooks.useReferenceLine).toBeDefined();
     expect(hooks.useTimeAxis).toBeDefined();
   });
 });

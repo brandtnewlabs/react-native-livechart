@@ -21,6 +21,7 @@ import {
   useGrid,
   useLiveDot,
   useMomentum,
+  useReferenceLine,
   useTimeAxis,
 } from "./hooks";
 
@@ -31,7 +32,9 @@ import { GestureDetector } from "react-native-gesture-handler";
 import { GridOverlay } from "./components/GridOverlay";
 import type { LivelineProps } from "./types";
 import { LoadingOverlay } from "./components/LoadingOverlay";
+import { ReferenceLineOverlay } from "./components/ReferenceLineOverlay";
 import { TimeAxisOverlay } from "./components/TimeAxisOverlay";
+import { ValueLineOverlay } from "./components/ValueLineOverlay";
 import { resolveTheme } from "./theme";
 import { useLivelineEngine } from "./useLivelineEngine";
 
@@ -55,6 +58,7 @@ export function Liveline({
   pulse = true,
   scrub = false,
   scrubTooltip = true,
+  valueLine = false,
   loading = false,
   emptyText = "No data",
   lineWidth: lineWidthProp,
@@ -104,6 +108,13 @@ export function Liveline({
   );
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
   const momentumSV = useMomentum(engine, momentum);
+  const referenceLineLayout = useReferenceLine(
+    engine,
+    effectivePadding,
+    referenceLine,
+    formatValue,
+    font,
+  );
   const { gridEntries } = useGrid(
     engine,
     effectivePadding,
@@ -174,6 +185,23 @@ export function Liveline({
                 />
               </Path>
             </Group>
+          )}
+
+          {valueLine && (
+            <ValueLineOverlay
+              dotY={dotY}
+              engine={engine}
+              padding={effectivePadding}
+              palette={palette}
+            />
+          )}
+
+          {referenceLine && (
+            <ReferenceLineOverlay
+              layout={referenceLineLayout}
+              palette={palette}
+              font={font}
+            />
           )}
 
           {/* Line path: always rendered; morph handles transition via blended pts */}

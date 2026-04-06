@@ -7,5 +7,6 @@ export { useCrosshair } from "./useCrosshair";
 export { useGrid } from "./useGrid";
 export { useLiveDot } from "./useLiveDot";
 export { useMomentum } from "./useMomentum";
+export { useReferenceLine } from "./useReferenceLine";
 export { useTimeAxis } from "./useTimeAxis";
 

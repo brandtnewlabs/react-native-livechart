@@ -7,9 +7,12 @@ import type { EngineState } from "../useLivelineEngine";
 import { GridOverlay } from "./GridOverlay";
 import { LoadingOverlay } from "./LoadingOverlay";
 import React from "react";
+import type { ReferenceLineLayout } from "../hooks/useReferenceLine";
+import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
 import { Skia } from "@shopify/react-native-skia";
 import { TimeAxisOverlay } from "./TimeAxisOverlay";
 import type { TooltipLayout } from "../hooks/useCrosshair";
+import { ValueLineOverlay } from "./ValueLineOverlay";
 import { render } from "@testing-library/react-native";
 import { resolveTheme } from "../theme";
 import { useSharedValue } from "react-native-reanimated";
@@ -396,6 +399,80 @@ describe("TimeAxisOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+});
+
+describe("ReferenceLineOverlay", () => {
+  const visibleLayout: ReferenceLineLayout = {
+    y: 142,
+    x1: 12,
+    x2: 320,
+    label: "50.00",
+    labelX: 324,
+    labelY: 139,
+    visible: true,
+  };
+
+  const invisibleLayout: ReferenceLineLayout = {
+    y: -1,
+    x1: 0,
+    x2: 0,
+    label: "",
+    labelX: 0,
+    labelY: -1,
+    visible: false,
+  };
+
+  it("renders dashed line and label when visible", () => {
+    function Fixture() {
+      const layout = useSharedValue(visibleLayout);
+      return (
+        <ReferenceLineOverlay layout={layout} palette={palette} font={font} />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders with zero opacity when not visible", () => {
+    function Fixture() {
+      const layout = useSharedValue(invisibleLayout);
+      return (
+        <ReferenceLineOverlay layout={layout} palette={palette} font={font} />
+      );
+    }
+    render(<Fixture />);
+  });
+});
+
+describe("ValueLineOverlay", () => {
+  it("draws line when dotY is in chart area", () => {
+    function Fixture() {
+      const dotY = useSharedValue(120);
+      return (
+        <ValueLineOverlay
+          dotY={dotY}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("returns empty path when dotY is negative (off-screen)", () => {
+    function Fixture() {
+      const dotY = useSharedValue(-1);
+      return (
+        <ValueLineOverlay
+          dotY={dotY}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
         />
       );
     }
