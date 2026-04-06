@@ -6,6 +6,8 @@ import type {
   FontWeight,
   GradientConfig,
   LeftEdgeFadeConfig,
+  LegendConfig,
+  MultiSeriesDotConfig,
   PulseConfig,
   ReferenceLine,
   ScrubConfig,
@@ -44,6 +46,10 @@ export interface ResolvedXAxisConfig {
 
 export interface ResolvedScrubConfig {
   tooltip: boolean;
+  /** undefined → palette.crosshairLine */
+  crosshairLineColor: string | undefined;
+  /** undefined → palette.crosshairDim */
+  crosshairDimColor: string | undefined;
 }
 
 export interface ResolvedGradientConfig {
@@ -181,6 +187,8 @@ export function resolveXAxis(
 
 const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltip: true,
+  crosshairLineColor: undefined,
+  crosshairDimColor: undefined,
 };
 
 /**
@@ -419,5 +427,62 @@ export function resolveTradeStream(
   return {
     maxCount: options.maxCount ?? TRADE_STREAM_DEFAULTS.maxCount,
     labelOffsetX: options.labelOffsetX ?? TRADE_STREAM_DEFAULTS.labelOffsetX,
+  };
+}
+
+// ─── Multi-series dot ─────────────────────────────────────────────────────────
+
+export interface ResolvedMultiSeriesDotConfig {
+  radius: number;
+  pulse: ResolvedPulseConfig | null;
+  valueLine: ResolvedValueLineConfig | null;
+  valueLabel: boolean;
+}
+
+const MULTI_DOT_DEFAULTS: ResolvedMultiSeriesDotConfig = {
+  radius: 3.5,
+  pulse: PULSE_DEFAULTS,
+  valueLine: null,
+  valueLabel: true,
+};
+
+export function resolveMultiSeriesDot(
+  prop: MultiSeriesDotConfig | undefined,
+): ResolvedMultiSeriesDotConfig {
+  if (!prop) return MULTI_DOT_DEFAULTS;
+  return {
+    radius: prop.radius ?? MULTI_DOT_DEFAULTS.radius,
+    pulse: resolvePulse(prop.pulse ?? true),
+    valueLine: resolveValueLine(prop.valueLine),
+    valueLabel: prop.valueLabel ?? MULTI_DOT_DEFAULTS.valueLabel,
+  };
+}
+
+// ─── Legend ───────────────────────────────────────────────────────────────────
+
+export interface ResolvedLegendConfig {
+  visible: boolean;
+  compact: boolean;
+  position: "top" | "bottom";
+}
+
+const LEGEND_DEFAULTS: ResolvedLegendConfig = {
+  visible: true,
+  compact: false,
+  position: "top",
+};
+
+export function resolveLegend(
+  prop: boolean | LegendConfig | undefined,
+  compactFallback?: boolean,
+): ResolvedLegendConfig {
+  if (prop === false) return { ...LEGEND_DEFAULTS, visible: false };
+  if (prop === undefined || prop === true) {
+    return { ...LEGEND_DEFAULTS, compact: compactFallback ?? false };
+  }
+  return {
+    visible: prop.visible ?? LEGEND_DEFAULTS.visible,
+    compact: prop.compact ?? compactFallback ?? LEGEND_DEFAULTS.compact,
+    position: prop.position ?? LEGEND_DEFAULTS.position,
   };
 }

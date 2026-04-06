@@ -1,9 +1,16 @@
 import { useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
+import Animated, {
+  useAnimatedProps,
+  useSharedValue,
+} from "react-native-reanimated";
 import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "../../src/demo/shared";
-import type { ScrubPointMulti, SeriesConfig } from "../../src/types";
+import type {
+  LegendConfig,
+  MultiSeriesDotConfig,
+  SeriesConfig,
+} from "../../src/types";
 
-import { useSharedValue } from "react-native-reanimated";
 import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChartSeries } from "../../src";
 import { DemoScreen } from "../../src/demo/DemoScreen";
@@ -12,12 +19,13 @@ import { formatTime } from "../../src/format";
 
 export const options = { title: "Multi-series" };
 
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
 export default function MultiSeriesScreen() {
   const seriesVisibilityRef = useRef<Record<string, boolean>>({});
   const emptySeries = useSharedValue<SeriesConfig[]>([]);
 
   const [empty, setEmpty] = useState(false);
-  const [compact, setCompact] = useState(false);
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [windowSecs, setWindowSecs] = useState(60);
@@ -28,7 +36,21 @@ export default function MultiSeriesScreen() {
   const [axisVis, setAxisVis] = useState<"both" | "noY" | "noX" | "none">(
     "both",
   );
-  const [readout, setReadout] = useState("—");
+
+  const readoutText = useSharedValue("—");
+  const readoutProps = useAnimatedProps(() => {
+    const text = readoutText.value;
+    return { text, defaultValue: text };
+  });
+
+  const [pulse, setPulse] = useState(true);
+  const [valueLines, setValueLines] = useState(false);
+  const [valueLabels, setValueLabels] = useState(true);
+  const [dotRadius, setDotRadius] = useState(3.5);
+
+  const [legendVisible, setLegendVisible] = useState(true);
+  const [legendCompact, setLegendCompact] = useState(false);
+  const [legendPosition, setLegendPosition] = useState<"top" | "bottom">("top");
 
   const sim = useSimulatedData({
     multiSeries: !empty,
@@ -43,56 +65,79 @@ export default function MultiSeriesScreen() {
 
   const seriesSource = empty ? emptySeries : sim.series;
 
+  const dotConfig: MultiSeriesDotConfig = {
+    radius: dotRadius,
+    pulse,
+    valueLine: valueLines,
+    valueLabel: valueLabels,
+  };
+
+  const legendConfig: LegendConfig = {
+    visible: legendVisible,
+    compact: legendCompact,
+    position: legendPosition,
+  };
+
   return (
     <DemoScreen
       description="series, onSeriesToggle, scrub, axis visibility. Chart stays empty until at least one series has ≥2 points (toggle No series for shell)."
       chart={
-        <LiveChartSeries
-          series={seriesSource}
-          accentColor={ACCENT}
-          theme={theme}
-          timeWindow={windowSecs}
-          paused={paused}
-          loading={loading}
-          smoothing={smoothing}
-          exaggerate={exaggerate}
-          referenceLine={showRef ? { value: 52, label: "mid" } : undefined}
-          yAxis={yOn}
-          xAxis={xOn}
-          emptyText="No series"
-          seriesToggleCompact={compact}
-          scrub={{ tooltip: true }}
-          onSeriesToggle={
-            empty
-              ? undefined
-              : (id, visible) => {
-                  seriesVisibilityRef.current[id] = visible;
-                  const cur = sim.series.value;
-                  sim.series.value = cur.map((s) =>
-                    s.id === id ? { ...s, visible } : s,
-                  );
-                }
-          }
-          onScrub={(p) => {
-            if (p === null) {
-              setReadout("—");
-              return;
+        <>
+          <AnimatedTextInput
+            editable={false}
+            multiline
+            numberOfLines={4}
+            scrollEnabled={false}
+            underlineColorAndroid="transparent"
+            style={demoStyles.scrubReadout}
+            animatedProps={readoutProps}
+          />
+          <LiveChartSeries
+            series={seriesSource}
+            accentColor={ACCENT}
+            theme={theme}
+            timeWindow={windowSecs}
+            paused={paused}
+            loading={loading}
+            smoothing={smoothing}
+            exaggerate={exaggerate}
+            referenceLine={showRef ? { value: 52, label: "mid" } : undefined}
+            yAxis={yOn}
+            xAxis={xOn}
+            emptyText="No series"
+            dot={dotConfig}
+            legend={legendConfig}
+            scrub
+            onSeriesToggle={
+              empty
+                ? undefined
+                : (id, visible) => {
+                    seriesVisibilityRef.current[id] = visible;
+                    const cur = sim.series.value;
+                    sim.series.value = cur.map((s) =>
+                      s.id === id ? { ...s, visible } : s,
+                    );
+                  }
             }
-            const m = p as ScrubPointMulti;
-            const parts = m.seriesValues.map(
-              (sv) => `${sv.label ?? sv.id}:${sv.value.toFixed(2)}`,
-            );
-            setReadout(
-              `${formatTime(m.time)} · ${parts.join(" · ") || m.value.toFixed(4)}`,
-            );
-          }}
-        />
+            onScrub={(p) => {
+              "worklet";
+              if (p === null) {
+                readoutText.value = "—";
+                return;
+              }
+              const parts: string[] = [];
+              for (let i = 0; i < p.seriesValues.length; i++) {
+                const sv = p.seriesValues[i];
+                const label = sv.label ?? sv.id;
+                parts.push(`${label}:${sv.value.toFixed(2)}`);
+              }
+              const text = `${formatTime(p.time)} · ${parts.join(" · ") || p.value.toFixed(4)}`;
+              readoutText.value = text;
+            }}
+          />
+        </>
       }
     >
-      <Text style={demoStyles.scrubReadout} numberOfLines={4}>
-        {readout}
-      </Text>
-
       <Text style={demoStyles.sectionLabel}>Data</Text>
       <View style={demoStyles.buttonRow}>
         <Pressable
@@ -117,16 +162,122 @@ export default function MultiSeriesScreen() {
         </Pressable>
       </View>
 
-      <Text style={demoStyles.sectionLabel}>Toggle chips</Text>
+      <Text style={demoStyles.sectionLabel}>Dot</Text>
       <View style={demoStyles.buttonRow}>
         <Pressable
-          style={[demoStyles.chip, compact && demoStyles.chipActive]}
-          onPress={() => setCompact((c) => !c)}
+          style={[demoStyles.chip, pulse && demoStyles.chipActive]}
+          onPress={() => setPulse((v) => !v)}
         >
           <Text
-            style={[demoStyles.chipText, compact && demoStyles.chipTextActive]}
+            style={[demoStyles.chipText, pulse && demoStyles.chipTextActive]}
           >
-            Compact dots
+            Pulse
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[demoStyles.chip, valueLabels && demoStyles.chipActive]}
+          onPress={() => setValueLabels((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              valueLabels && demoStyles.chipTextActive,
+            ]}
+          >
+            Labels
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[demoStyles.chip, valueLines && demoStyles.chipActive]}
+          onPress={() => setValueLines((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              valueLines && demoStyles.chipTextActive,
+            ]}
+          >
+            Value lines
+          </Text>
+        </Pressable>
+      </View>
+      <View style={demoStyles.buttonRow}>
+        {([2, 3.5, 5, 7] as const).map((r) => (
+          <Pressable
+            key={r}
+            style={[demoStyles.chip, dotRadius === r && demoStyles.chipActive]}
+            onPress={() => setDotRadius(r)}
+          >
+            <Text
+              style={[
+                demoStyles.chipText,
+                dotRadius === r && demoStyles.chipTextActive,
+              ]}
+            >
+              r={r}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={demoStyles.sectionLabel}>Legend</Text>
+      <View style={demoStyles.buttonRow}>
+        <Pressable
+          style={[demoStyles.chip, legendVisible && demoStyles.chipActive]}
+          onPress={() => setLegendVisible((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              legendVisible && demoStyles.chipTextActive,
+            ]}
+          >
+            Visible
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[demoStyles.chip, legendCompact && demoStyles.chipActive]}
+          onPress={() => setLegendCompact((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              legendCompact && demoStyles.chipTextActive,
+            ]}
+          >
+            Compact
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[
+            demoStyles.chip,
+            legendPosition === "top" && demoStyles.chipActive,
+          ]}
+          onPress={() => setLegendPosition("top")}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              legendPosition === "top" && demoStyles.chipTextActive,
+            ]}
+          >
+            Top
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[
+            demoStyles.chip,
+            legendPosition === "bottom" && demoStyles.chipActive,
+          ]}
+          onPress={() => setLegendPosition("bottom")}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              legendPosition === "bottom" && demoStyles.chipTextActive,
+            ]}
+          >
+            Bottom
           </Text>
         </Pressable>
       </View>

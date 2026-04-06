@@ -1,7 +1,6 @@
 import { type SkFont } from "@shopify/react-native-skia";
 import { renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
-import { resolveTheme } from "../theme";
 import type { MultiEngineState } from "../useLiveChartEngine";
 import {
   computeMultiSeriesScrubTooltipLayout,
@@ -20,8 +19,6 @@ jest.mock("react-native-gesture-handler", () => {
   };
   return { Gesture: { Pan: makeGesture } };
 });
-
-const palette = resolveTheme("#3b82f6", "dark");
 
 const font = {
   getSize: () => 12,
@@ -277,15 +274,7 @@ describe("useCrosshairMulti (hook)", () => {
       },
     });
     const { result } = renderHook(() =>
-      useCrosshairMulti(
-        engine,
-        padding,
-        palette,
-        formatValue,
-        formatTime,
-        font,
-        false,
-      ),
+      useCrosshairMulti(engine, padding, false),
     );
     expect(result.current.scrubActive.value).toBe(false);
     expect(result.current.scrubX.value).toBe(-1);
@@ -309,20 +298,12 @@ describe("useCrosshairMulti (hook)", () => {
       },
     });
     const { result } = renderHook(() =>
-      useCrosshairMulti(
-        engine,
-        padding,
-        palette,
-        formatValue,
-        formatTime,
-        font,
-        true,
-      ),
+      useCrosshairMulti(engine, padding, true),
     );
     expect(result.current.gesture).toBeDefined();
   });
 
-  it("accepts onScrub and still initialises (sync reaction path)", () => {
+  it("accepts onScrub and still initialises", () => {
     const onScrub = jest.fn();
     const engine = makeEngine({
       series: {
@@ -337,16 +318,7 @@ describe("useCrosshairMulti (hook)", () => {
       },
     });
     const { result } = renderHook(() =>
-      useCrosshairMulti(
-        engine,
-        padding,
-        palette,
-        formatValue,
-        formatTime,
-        font,
-        true,
-        onScrub,
-      ),
+      useCrosshairMulti(engine, padding, true, onScrub),
     );
     expect(result.current.gesture).toBeDefined();
     expect(result.current.scrubActive.value).toBe(false);
@@ -371,15 +343,7 @@ describe("useCrosshairMulti (hook)", () => {
       },
     });
     const { result } = renderHook(() =>
-      useCrosshairMulti(
-        engine,
-        padding,
-        palette,
-        formatValue,
-        formatTime,
-        font,
-        true,
-      ),
+      useCrosshairMulti(engine, padding, true),
     );
     expect(result.current.gesture).toBeDefined();
     Object.defineProperty(Platform, "OS", {

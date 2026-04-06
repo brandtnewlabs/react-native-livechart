@@ -118,19 +118,33 @@ export function useMultiSeriesReverseMorphInputs({
     (curr) => {
       "worklet";
       const live = curr.live;
-      const anyReady = live.some((x) => x.data.length >= 2);
+
+      let anyReady = false;
+      for (let i = 0; i < live.length; i++) {
+        if (live[i].data.length >= 2) {
+          anyReady = true;
+          break;
+        }
+      }
 
       if (curr.has && anyReady) {
         seriesStash.value = snapshotSeriesWorklet(live);
         effectiveSeries.value = live;
-      } else if (
-        !curr.has &&
-        curr.m > STASH_MORPH_EPS &&
-        seriesStash.value.some((x) => x.data.length >= 2)
-      ) {
-        effectiveSeries.value = seriesStash.value;
       } else {
-        effectiveSeries.value = live;
+        let stashReady = false;
+        const stash = seriesStash.value;
+        for (let i = 0; i < stash.length; i++) {
+          if (stash[i].data.length >= 2) {
+            stashReady = true;
+            break;
+          }
+        }
+
+        if (!curr.has && curr.m > STASH_MORPH_EPS && stashReady) {
+          effectiveSeries.value = seriesStash.value;
+        } else {
+          effectiveSeries.value = live;
+        }
       }
     },
     [series, hasData, morphT],

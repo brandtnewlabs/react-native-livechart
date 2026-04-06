@@ -3,11 +3,12 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { MONO_FONT_FAMILY } from "../monoFontFamily";
+import type { ResolvedLegendConfig } from "../resolveConfig";
 import type { SeriesConfig } from "../types";
 
 export interface SeriesToggleChipsProps {
   series: SharedValue<SeriesConfig[]>;
-  compact?: boolean;
+  legend: ResolvedLegendConfig;
   onSeriesToggle?: (id: string, visible: boolean) => void;
 }
 
@@ -27,7 +28,7 @@ export function seriesMetaSig(s: SeriesConfig[]): string {
  */
 export function SeriesToggleChips({
   series,
-  compact,
+  legend,
   onSeriesToggle,
 }: SeriesToggleChipsProps) {
   const [snapshot, setSnapshot] = useState<SeriesConfig[]>([]);
@@ -51,6 +52,8 @@ export function SeriesToggleChips({
     setSnapshot(series.value.slice());
   }, [series]);
 
+  if (!legend.visible) return null;
+
   const toggle = (id: string) => {
     const arr = series.value.slice();
     const idx = arr.findIndex((s) => s.id === id);
@@ -65,6 +68,8 @@ export function SeriesToggleChips({
     setSnapshot(next);
     onSeriesToggle?.(id, nextVisible);
   };
+
+  const compact = legend.compact;
 
   return (
     <View style={[styles.row, compact && styles.rowCompact]}>

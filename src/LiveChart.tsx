@@ -502,6 +502,8 @@ export function LiveChart({
                   palette={palette}
                   font={skiaFont}
                   showTooltip={scrubCfg.tooltip}
+                  crosshairLineColor={scrubCfg.crosshairLineColor}
+                  crosshairDimColor={scrubCfg.crosshairDimColor}
                   tooltipBody={
                     isCandle ? (
                       <MultiSeriesTooltipStack

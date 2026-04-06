@@ -112,6 +112,10 @@ export interface XAxisConfig {
 export interface ScrubConfig {
   /** Show the value/time tooltip pill while scrubbing. Default `true`. */
   tooltip?: boolean;
+  /** Vertical crosshair line stroke. Omit to use theme `crosshairLine`. */
+  crosshairLineColor?: string;
+  /** Dimmed region fill to the right of the crosshair. Omit to use theme `crosshairDim`. */
+  crosshairDimColor?: string;
 }
 
 /** Left-edge fade — soft erase so the chart blends into the left gutter (web liveline parity). */
@@ -224,6 +228,28 @@ export interface DegenOptions {
    * Default: chart accent / `palette.line`.
    */
   colors?: string | string[];
+}
+
+/** Live dot configuration for multi-series charts. */
+export interface MultiSeriesDotConfig {
+  /** Dot radius in pixels. Default `3.5`. */
+  radius?: number;
+  /** Pulsing ring animation on each series dot. `true` = defaults, or pass `PulseConfig`. Default `true`. */
+  pulse?: boolean | PulseConfig;
+  /** Horizontal dashed line at each series' live value. `true` = defaults, or pass `ValueLineConfig`. Default `false`. */
+  valueLine?: boolean | ValueLineConfig;
+  /** Show series label (e.g. "Yes", "No") to the right of each dot. Default `true`. */
+  valueLabel?: boolean;
+}
+
+/** Legend (toggle chips) configuration for multi-series charts. */
+export interface LegendConfig {
+  /** Show the legend. Default `true`. */
+  visible?: boolean;
+  /** Show only colored dots in toggle chips (no text labels). Default `false`. */
+  compact?: boolean;
+  /** Position of the legend relative to the chart. Default `"top"`. */
+  position?: "top" | "bottom";
 }
 
 /** Configuration for a single series in a multi-series chart. */
@@ -394,9 +420,30 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
   series: SharedValue<SeriesConfig[]>;
   /** Called when a series toggle chip is tapped. */
   onSeriesToggle?: (id: string, visible: boolean) => void;
-  /** Show only colored dots in toggle chips (no text labels). Default `false`. */
+  /**
+   * Show only colored dots in toggle chips (no text labels). Default `false`.
+   * @deprecated Use `legend={{ compact: true }}` instead.
+   */
   seriesToggleCompact?: boolean;
-  /** Called when the user scrubs the crosshair. `null` when scrub ends. */
+  /** Live dot configuration (radius, pulse, value line, inline labels). */
+  dot?: MultiSeriesDotConfig;
+  /** Legend (toggle chips) configuration. `true` = defaults, `false` = hidden, or pass `LegendConfig`. Default `true`. */
+  legend?: boolean | LegendConfig;
+  /**
+   * Worklet callback fired on the UI thread each frame while scrubbing.
+   * `null` when scrub ends. Update shared values directly — no bridge overhead.
+   *
+   * ```ts
+   * const scrubData = useSharedValue<ScrubPointMulti | null>(null);
+   * <LiveChartSeries
+   *   scrub
+   *   onScrub={(point) => {
+   *     "worklet";
+   *     scrubData.value = point;
+   *   }}
+   * />
+   * ```
+   */
   onScrub?: (point: ScrubPointMulti | null) => void;
 }
 
@@ -466,6 +513,8 @@ export interface LiveChartPalette {
 
   /** Crosshair vertical line color. */
   crosshairLine: string;
+  /** Dimmed overlay to the right of the crosshair while scrubbing. */
+  crosshairDim: string;
   /** Tooltip pill background color. */
   tooltipBg: string;
   /** Tooltip text color. */

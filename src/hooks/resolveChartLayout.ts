@@ -34,6 +34,12 @@ export interface ChartLayoutConfig {
   pulse?: { maxRadius: number; strokeWidth: number } | null;
   /** When false and badge uses the right gutter, omit BADGE_TAIL_LEN from the right padding. */
   badgeShowTail?: boolean;
+  /** Multi-series dot radius — used to add spacing between dots and Y-axis labels. */
+  multiSeriesDotRadius?: number;
+  /** When true, inline series labels sit right of dots and need extra right padding. */
+  multiSeriesValueLabel?: boolean;
+  /** Measured width of the widest series label (e.g. "Maybe"). Used when `multiSeriesValueLabel` is true. */
+  multiSeriesMaxLabelWidth?: number;
 }
 
 export interface ChartLayoutResult {
@@ -66,15 +72,24 @@ export function resolveChartLayout(
     measuredYAxisLabelWidth = Math.max(
       ...samples.map((s) => measureFontTextWidth(config.font!, s)),
     );
+    const dotR = config.multiSeriesDotRadius ?? 0;
+    const seriesLabelW = config.multiSeriesMaxLabelWidth ?? 0;
     rightPad = badgeUsesRightGutter
       ? minPaddingRightForBadgeYAxisAlign(
           config.font.getSize(),
           measuredYAxisLabelWidth,
           showTail,
         )
-      : config.yAxis
-        ? Math.max(measuredYAxisLabelWidth + 16, 44)
-        : resolveAutoRight(false, false);
+      : config.multiSeriesValueLabel && config.yAxis
+        ? Math.max(
+            dotR + 8 + seriesLabelW + 8 + measuredYAxisLabelWidth + 8,
+            44,
+          )
+        : config.multiSeriesValueLabel
+          ? Math.max(dotR + 8 + seriesLabelW + 8, 44)
+          : config.yAxis
+            ? Math.max(measuredYAxisLabelWidth + 16 + dotR * 2, 44)
+            : resolveAutoRight(false, false);
   } else {
     rightPad = resolveAutoRight(config.yAxis, badgeUsesRightGutter, showTail);
   }
