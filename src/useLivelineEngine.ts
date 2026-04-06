@@ -8,8 +8,8 @@ import { lerp } from "./math/lerp";
 import type { LivelinePoint } from "./types";
 
 export interface EngineConfig {
-  data: LivelinePoint[];
-  value: number;
+  data: SharedValue<LivelinePoint[]>;
+  value: SharedValue<number>;
   window: number;
   lerpSpeed: number;
   exaggerate?: boolean;
@@ -17,43 +17,48 @@ export interface EngineConfig {
 }
 
 export interface EngineState {
-  dataPoints: SharedValue<LivelinePoint[]>;
-  currentValue: SharedValue<number>;
+  data: SharedValue<LivelinePoint[]>;
+  value: SharedValue<number>;
   displayValue: SharedValue<number>;
   displayMin: SharedValue<number>;
   displayMax: SharedValue<number>;
   displayWindow: SharedValue<number>;
   canvasWidth: SharedValue<number>;
   canvasHeight: SharedValue<number>;
+  timestamp: SharedValue<number>;
 }
 
 const ADAPTIVE_SPEED_BOOST = 0.12;
 
 export function useLivelineEngine(config: EngineConfig): EngineState {
-  // Props → UI thread (readonly, synchronous during render)
-  const dataPoints = useDerivedValue(() => config.data);
-  const currentValue = useDerivedValue(() => config.value);
-  const lerpSpeed = useDerivedValue(() => config.lerpSpeed);
+  // Low-frequency config → UI thread via useDerivedValue
   const windowSize = useDerivedValue(() => config.window);
+  const lerpSpeed = useDerivedValue(() => config.lerpSpeed);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
 
-  // Animation state (read-write, mutated on UI thread each frame)
+  // Animation state (mutated on UI thread each frame)
   const displayValue = useSharedValue(0);
   const displayMin = useSharedValue(0);
   const displayMax = useSharedValue(1);
   const displayWindow = useSharedValue(config.window);
   const canvasWidth = useSharedValue(0);
   const canvasHeight = useSharedValue(0);
+  const timestamp = useSharedValue(Date.now() / 1000);
 
-  // Animation loop on UI thread
+  // High-frequency data reads directly from the caller's shared values —
+  // no useDerivedValue bridging, no closure serialization per tick.
+  const { data, value } = config;
+
   useFrameCallback((frameInfo) => {
     "worklet";
     const dt = frameInfo.timeSincePreviousFrame ?? 16.67;
+    timestamp.value = Date.now() / 1000;
+
     if (canvasWidth.value === 0 || canvasHeight.value === 0) return;
 
     const speed = lerpSpeed.value;
-    const target = currentValue.value;
+    const target = value.value;
 
     // Adaptive speed: small ticks animate faster, big jumps slower
     const range = displayMax.value - displayMin.value;
@@ -73,19 +78,25 @@ export function useLivelineEngine(config: EngineConfig): EngineState {
       dt,
     );
 
-    // Compute visible range from data
-    const data = dataPoints.value;
-    const now = Date.now() / 1000;
+    // Visible range — binary search on the shared data array
+    const points = data.value;
+    const now = timestamp.value;
     const winStart = now - displayWindow.value;
+
+    let lo = 0;
+    let hi = points.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (points[mid].time < winStart) lo = mid + 1;
+      else hi = mid;
+    }
 
     let tMin = Infinity;
     let tMax = -Infinity;
-    for (let i = 0; i < data.length; i++) {
-      if (data[i].time >= winStart) {
-        const v = data[i].value;
-        if (v < tMin) tMin = v;
-        if (v > tMax) tMax = v;
-      }
+    for (let i = lo; i < points.length; i++) {
+      const v = points[i].value;
+      if (v < tMin) tMin = v;
+      if (v > tMax) tMax = v;
     }
 
     // Include current display value
@@ -134,13 +145,14 @@ export function useLivelineEngine(config: EngineConfig): EngineState {
   });
 
   return {
-    dataPoints,
-    currentValue,
+    data,
+    value,
     displayValue,
     displayMin,
     displayMax,
     displayWindow,
     canvasWidth,
     canvasHeight,
+    timestamp,
   };
 }
