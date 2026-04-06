@@ -9,7 +9,7 @@ import { DemoScreen } from "./_lib/DemoScreen";
 import { ACCENT } from "./_lib/shared";
 import { demoStyles } from "./_lib/styles";
 
-export const options = { title: "Loading, empty, formatters" };
+export const options = { title: "Empty, loading, formatters" };
 
 /** Worklet-safe — same as toISOString().slice(11, 19) in UTC (Date/toISOString not reliable inside UI worklets). */
 function formatTimeIsoUtcFragment(t: number): string {
@@ -28,30 +28,38 @@ function formatValueUsd(v: number): string {
 
 export default function EdgeCasesScreen() {
   const [empty, setEmpty] = useState(false);
+  const [onePoint, setOnePoint] = useState(false);
   const [loading, setLoading] = useState(false);
   const [customFormat, setCustomFormat] = useState(false);
 
   const emptyData = useSharedValue<LiveChartPoint[]>([]);
   const emptyValue = useSharedValue(100);
+  const singlePointData = useSharedValue<LiveChartPoint[]>([
+    { time: Date.now() / 1000, value: 100 },
+  ]);
 
   const sim = useSimulatedData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,
-    paused: empty,
+    paused: empty || onePoint,
   });
+
+  const chartData = empty ? emptyData : onePoint ? singlePointData : sim.data;
+  const chartValue = empty || onePoint ? emptyValue : sim.value;
+  const showEmptyShell = empty || onePoint;
 
   return (
     <DemoScreen
-      description="loading, empty data, custom formatValue/formatTime (must be worklet-safe — same pattern as src/format.ts)"
+      description="The chart stays in loading/empty shell until there are at least two line points and loading is false. One point only still counts as empty. formatValue/formatTime must be worklet-safe (same pattern as src/format.ts)."
       chart={
         <LiveChart
-          data={empty ? emptyData : sim.data}
-          value={empty ? emptyValue : sim.value}
+          data={chartData}
+          value={chartValue}
           accentColor={ACCENT}
           theme="dark"
           loading={loading}
-          emptyText={empty ? "Nothing to see here" : "No data"}
+          emptyText={showEmptyShell ? "Nothing to see here" : "No data"}
           formatValue={customFormat ? formatValueUsd : undefined}
           formatTime={customFormat ? formatTimeIsoUtcFragment : undefined}
           scrub={false}
@@ -62,12 +70,28 @@ export default function EdgeCasesScreen() {
       <View style={demoStyles.buttonRow}>
         <Pressable
           style={[demoStyles.chip, empty && demoStyles.chipActive]}
-          onPress={() => setEmpty((e) => !e)}
+          onPress={() => {
+            setEmpty((e) => !e);
+            if (!empty) setOnePoint(false);
+          }}
         >
           <Text
             style={[demoStyles.chipText, empty && demoStyles.chipTextActive]}
           >
-            Empty data
+            No points
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[demoStyles.chip, onePoint && demoStyles.chipActive]}
+          onPress={() => {
+            setOnePoint((o) => !o);
+            if (!onePoint) setEmpty(false);
+          }}
+        >
+          <Text
+            style={[demoStyles.chipText, onePoint && demoStyles.chipTextActive]}
+          >
+            1 point only
           </Text>
         </Pressable>
         <Pressable

@@ -16,6 +16,11 @@ import { useSimulatedData, type TradeSource } from "../../sim/useSimulatedData";
 import type { ScrubPoint, ScrubPointMulti } from "../../src";
 import { LiveChart, LiveChartSeries } from "../../src";
 import { formatTime } from "../../src/format";
+import type {
+  CandlePoint,
+  LiveChartPoint,
+  SeriesConfig,
+} from "../../src/types";
 import {
   PRICE_RANGES,
   TIME_WINDOWS,
@@ -35,6 +40,7 @@ export default function PlaygroundScreen() {
   const [windowSecs, setWindowSecs] = useState(30);
   const [startValue, setStartValue] = useState(100);
   const [loading, setLoading] = useState(false);
+  const [forceEmpty, setForceEmpty] = useState(false);
   const [showRefLine, setShowRefLine] = useState(false);
   const [valueLine, setValueLine] = useState(false);
   const [exaggerate, setExaggerate] = useState(false);
@@ -68,6 +74,12 @@ export default function PlaygroundScreen() {
 
   const scrubPoint = useSharedValue<ScrubPoint | ScrubPointMulti | null>(null);
 
+  const emptyLineData = useSharedValue<LiveChartPoint[]>([]);
+  const emptyLineValue = useSharedValue(0);
+  const emptyMultiSeries = useSharedValue<SeriesConfig[]>([]);
+  const emptyCandles = useSharedValue<CandlePoint[]>([]);
+  const nullLiveCandle = useSharedValue<CandlePoint | null>(null);
+
   const subtitleProps = useAnimatedProps(() => {
     const sp = scrubPoint.value;
     if (sp !== null) {
@@ -93,6 +105,10 @@ export default function PlaygroundScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>react-native-livechart</Text>
+        <Text style={styles.hint}>
+          Chart reveals after ≥2 points (or ≥2 candles) and loading off — use
+          Empty + Reload to preview.
+        </Text>
         <AnimatedTextInput
           editable={false}
           underlineColorAndroid="transparent"
@@ -104,11 +120,17 @@ export default function PlaygroundScreen() {
       <View style={styles.chartContainer}>
         {chartMode === "single" ? (
           <LiveChart
-            data={data}
-            value={value}
+            data={forceEmpty ? emptyLineData : data}
+            value={forceEmpty ? emptyLineValue : value}
             mode={displayMode}
-            candles={candles}
-            liveCandle={liveCandle}
+            candles={
+              displayMode === "candle" && forceEmpty ? emptyCandles : candles
+            }
+            liveCandle={
+              displayMode === "candle" && forceEmpty
+                ? nullLiveCandle
+                : liveCandle
+            }
             candleWidth={candleWidthSecs}
             accentColor="#3b82f6"
             theme="dark"
@@ -131,7 +153,7 @@ export default function PlaygroundScreen() {
           />
         ) : (
           <LiveChartSeries
-            series={series}
+            series={forceEmpty ? emptyMultiSeries : series}
             accentColor="#3b82f6"
             theme="dark"
             timeWindow={windowSecs}
@@ -392,6 +414,17 @@ export default function PlaygroundScreen() {
               {loading ? "Loading…" : "Reload"}
             </Text>
           </Pressable>
+
+          <Pressable
+            style={[styles.chip, forceEmpty && styles.chipActive]}
+            onPress={() => setForceEmpty((v) => !v)}
+          >
+            <Text
+              style={[styles.chipText, forceEmpty && styles.chipTextActive]}
+            >
+              Empty data
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </View>
@@ -420,6 +453,13 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     marginTop: 4,
     padding: 0,
+  },
+  hint: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 11,
+    fontFamily: "monospace",
+    marginTop: 6,
+    lineHeight: 15,
   },
   chartContainer: {
     height: 300,

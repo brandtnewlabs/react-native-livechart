@@ -1,13 +1,21 @@
 import {
   Group,
+  LinearGradient,
   Path,
+  Rect,
   RoundedRect,
   Skia,
   Text as SkiaText,
+  vec,
   type SkFont,
 } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import { BADGE_DOT_GAP } from "../constants";
+import {
+  BADGE_DOT_GAP,
+  EMPTY_GAP_FADE_WIDTH,
+  EMPTY_STATE_LABEL_ALPHA,
+  EMPTY_TEXT_GAP_PAD,
+} from "../constants";
 import {
   badgeTailAndCap,
   gutterCenteredTextLeftX,
@@ -53,7 +61,8 @@ export function LoadingOverlay({
   font: SkFont;
   morphT: SharedValue<number>;
   isLoading: SharedValue<boolean>;
-  isEmpty: SharedValue<boolean>;
+  /** Derived or shared; only `.value` is read on the UI thread. */
+  isEmpty: SharedValue<boolean> | { value: boolean };
   emptyText: string;
   strokeWidth: number;
   /** Mirror the badge prop so labels align with GridOverlay's label positions. */
@@ -113,26 +122,81 @@ export function LoadingOverlay({
   const ly2 = useDerivedValue(() => labelLayout.value.ys[2]);
   const ly3 = useDerivedValue(() => labelLayout.value.ys[3]);
 
-  // Empty-state text: centered in the chart area
-  const emptyLayout = useDerivedValue(() => {
+  // Empty-state text + gradient gap
+  const emptyGapLayout = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
     const h = engine.canvasHeight.value;
-    if (w === 0 || h === 0) return { x: 0, y: 0 };
-    const fm = font.getMetrics();
-    const textW = font.measureText(emptyText).width;
+    if (w === 0 || h === 0) {
+      return {
+        gapLeft: 0,
+        gapRight: 0,
+        centerY: 0,
+        eraseH: 0,
+        fadeW: EMPTY_GAP_FADE_WIDTH,
+        textX: 0,
+        textY: 0,
+        textW: 0,
+        showGap: 0,
+      };
+    }
+    const chartH = h - padding.top - padding.bottom;
+    const centerY = padding.top + chartH / 2;
     const chartCentreX = (padding.left + w - padding.right) / 2;
-    const chartCentreY = (padding.top + h - padding.bottom) / 2;
+    const textW = font.measureText(emptyText).width;
+    const gapHalf = textW / 2 + EMPTY_TEXT_GAP_PAD;
+    const fadeW = EMPTY_GAP_FADE_WIDTH;
+    const gapLeft = chartCentreX - gapHalf - fadeW;
+    const gapRight = chartCentreX + gapHalf + fadeW;
+    const eraseH = Math.max(56, chartH * 0.28) + strokeWidth;
+    const fm = font.getMetrics();
+    const textX = chartCentreX - textW / 2;
+    const textY = centerY - (fm.ascent + fm.descent) / 2;
     return {
-      x: chartCentreX - textW / 2,
-      y: chartCentreY - (fm.ascent + fm.descent) / 2,
+      gapLeft,
+      gapRight,
+      centerY,
+      eraseH,
+      fadeW,
+      textX,
+      textY,
+      textW,
+      showGap: isEmpty.value ? 1 : 0,
     };
   });
 
-  const emptyTextX = useDerivedValue(() => emptyLayout.value.x);
-  const emptyTextY = useDerivedValue(() => emptyLayout.value.y);
-  const showText = useDerivedValue(() => (isEmpty.value ? 1 : 0));
+  const gapLeft = useDerivedValue(() => emptyGapLayout.value.gapLeft);
+  const gapTop = useDerivedValue(
+    () => emptyGapLayout.value.centerY - emptyGapLayout.value.eraseH / 2,
+  );
+  const gapWidth = useDerivedValue(
+    () => emptyGapLayout.value.gapRight - emptyGapLayout.value.gapLeft,
+  );
+  const gapHeight = useDerivedValue(() => emptyGapLayout.value.eraseH);
+  const emptyTextX = useDerivedValue(() => emptyGapLayout.value.textX);
+  const emptyTextY = useDerivedValue(() => emptyGapLayout.value.textY);
+  const showGapGroup = useDerivedValue(() => emptyGapLayout.value.showGap);
+
+  const gapGradientPositions = useDerivedValue(() => {
+    const L = emptyGapLayout.value.gapRight - emptyGapLayout.value.gapLeft;
+    const fw = emptyGapLayout.value.fadeW;
+    if (L <= 0) return [0, 0, 1, 1] as number[];
+    const t1 = Math.min(fw / L, 0.49);
+    const t2 = Math.max(1 - fw / L, 0.51);
+    return [0, t1, t2, 1];
+  });
+
+  const gapGradEnd = useDerivedValue(() =>
+    vec(
+      Math.max(1, emptyGapLayout.value.gapRight - emptyGapLayout.value.gapLeft),
+      0,
+    ),
+  );
+
   const emptyLabelText = useDerivedValue(() =>
     isEmpty.value ? emptyText : "",
+  );
+  const emptyLabelOpacity = useDerivedValue(() =>
+    isEmpty.value ? EMPTY_STATE_LABEL_ALPHA : 0,
   );
 
   return (
@@ -146,6 +210,23 @@ export function LoadingOverlay({
         strokeCap="round"
         strokeJoin="round"
       />
+
+      {/* Erase a soft horizontal band through the squiggle for the label (dstOut) */}
+      <Group opacity={showGapGroup} blendMode="dstOut">
+        <Rect x={gapLeft} y={gapTop} width={gapWidth} height={gapHeight}>
+          <LinearGradient
+            start={vec(0, 0)}
+            end={gapGradEnd}
+            colors={[
+              "rgba(0,0,0,0)",
+              "rgba(0,0,0,1)",
+              "rgba(0,0,0,1)",
+              "rgba(0,0,0,0)",
+            ]}
+            positions={gapGradientPositions}
+          />
+        </Rect>
+      </Group>
 
       {/* Skeleton Y-axis label placeholders */}
       <RoundedRect
@@ -188,7 +269,7 @@ export function LoadingOverlay({
         text={emptyLabelText}
         font={font}
         color={palette.gridLabel}
-        opacity={showText}
+        opacity={emptyLabelOpacity}
       />
     </Group>
   );

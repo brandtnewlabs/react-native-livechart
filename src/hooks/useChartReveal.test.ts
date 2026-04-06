@@ -1,6 +1,7 @@
 import { revealRamp, useChartReveal } from "./useChartReveal";
 
 import { renderHook } from "@testing-library/react-native";
+import { useSharedValue } from "react-native-reanimated";
 
 // ─── revealRamp ───────────────────────────────────────────────────────────────
 
@@ -63,74 +64,121 @@ describe("revealRamp", () => {
   });
 });
 
-// ─── useChartReveal (hook smoke tests) ───────────────────────────────────────
+// ─── useChartReveal (hook) ───────────────────────────────────────────────────
+
+function useChartRevealTestSetup(
+  loading: boolean,
+  has: boolean,
+  initialMorphT: number,
+): ReturnType<typeof useChartReveal> {
+  const hasData = useSharedValue(has);
+  return useChartReveal(loading, hasData, initialMorphT);
+}
 
 describe("useChartReveal (hook)", () => {
   it("morphT starts at 0 when loading=true", () => {
-    const { result } = renderHook(() => useChartReveal(true));
+    const { result } = renderHook(() => useChartRevealTestSetup(true, true, 0));
     expect(result.current.morphT.value).toBe(0);
   });
 
-  it("morphT starts at 1 when loading=false", () => {
-    const { result } = renderHook(() => useChartReveal(false));
+  it("morphT starts at 1 when loading=false and hasData", () => {
+    const { result } = renderHook(() =>
+      useChartRevealTestSetup(false, true, 1),
+    );
     expect(result.current.morphT.value).toBe(1);
   });
 
+  it("morphT starts at 0 when loading=false and no hasData", () => {
+    const { result } = renderHook(() =>
+      useChartRevealTestSetup(false, false, 0),
+    );
+    expect(result.current.morphT.value).toBe(0);
+  });
+
   it("isLoading is true when loading=true", () => {
-    const { result } = renderHook(() => useChartReveal(true));
+    const { result } = renderHook(() =>
+      useChartRevealTestSetup(true, false, 0),
+    );
     expect(result.current.isLoading.value).toBe(true);
   });
 
   it("isLoading is false when loading=false", () => {
-    const { result } = renderHook(() => useChartReveal(false));
+    const { result } = renderHook(() =>
+      useChartRevealTestSetup(false, true, 1),
+    );
     expect(result.current.isLoading.value).toBe(false);
   });
 
-  it("isEmpty starts false (controlled externally)", () => {
-    const { result } = renderHook(() => useChartReveal(false));
+  it("isEmpty when not loading and no hasData", () => {
+    const { result } = renderHook(() =>
+      useChartRevealTestSetup(false, false, 0),
+    );
+    expect(result.current.isEmpty.value).toBe(true);
+  });
+
+  it("isEmpty false when loading even if no hasData", () => {
+    const { result } = renderHook(() =>
+      useChartRevealTestSetup(true, false, 0),
+    );
     expect(result.current.isEmpty.value).toBe(false);
   });
 
-  it("all stagger opacities are 0 when morphT=0 (loading=true)", () => {
-    const { result } = renderHook(() => useChartReveal(true));
+  it("isEmpty false when hasData", () => {
+    const { result } = renderHook(() =>
+      useChartRevealTestSetup(false, true, 1),
+    );
+    expect(result.current.isEmpty.value).toBe(false);
+  });
+
+  it("all stagger opacities are 0 when morphT=0", () => {
+    const { result } = renderHook(() => useChartRevealTestSetup(true, true, 0));
     expect(result.current.yAxisOpacity.value).toBe(0);
     expect(result.current.fillOpacity.value).toBe(0);
     expect(result.current.dotOpacity.value).toBe(0);
     expect(result.current.badgeOpacity.value).toBe(0);
   });
 
-  it("all stagger opacities are 1 when morphT=1 (loading=false)", () => {
-    const { result } = renderHook(() => useChartReveal(false));
+  it("all stagger opacities are 1 when morphT=1", () => {
+    const { result } = renderHook(() =>
+      useChartRevealTestSetup(false, true, 1),
+    );
     expect(result.current.yAxisOpacity.value).toBeCloseTo(1);
     expect(result.current.fillOpacity.value).toBeCloseTo(1);
     expect(result.current.dotOpacity.value).toBeCloseTo(1);
     expect(result.current.badgeOpacity.value).toBeCloseTo(1);
   });
 
-  it("triggers reveal animation when loading transitions from true to false", () => {
-    const { result, rerender } = renderHook(
-      (props: { loading: boolean }) => useChartReveal(props.loading),
-      { initialProps: { loading: true } },
+  it("opacities stay 0 when loading=false but no hasData", () => {
+    const { result } = renderHook(() =>
+      useChartRevealTestSetup(false, false, 0),
     );
-    expect(result.current.morphT.value).toBe(0);
-    expect(result.current.isLoading.value).toBe(true);
-
-    rerender({ loading: false });
-
-    expect(result.current.isLoading.value).toBe(false);
-    // morphT has been handed to withTiming — value is either still animating
-    // or resolved to 1 depending on the test mock; either way it's >= 0.
-    expect(result.current.morphT.value).toBeGreaterThanOrEqual(0);
+    expect(result.current.yAxisOpacity.value).toBe(0);
+    expect(result.current.fillOpacity.value).toBe(0);
   });
 
-  it("resets to loading state when loading becomes true again", () => {
+  it("updates isLoading when loading prop changes", () => {
     const { result, rerender } = renderHook(
-      (props: { loading: boolean }) => useChartReveal(props.loading),
+      (props: { loading: boolean }) => {
+        const hasData = useSharedValue(true);
+        return useChartReveal(props.loading, hasData, 0);
+      },
+      { initialProps: { loading: true } },
+    );
+    expect(result.current.isLoading.value).toBe(true);
+    rerender({ loading: false });
+    expect(result.current.isLoading.value).toBe(false);
+  });
+
+  it("resets to loading shell when loading becomes true again", () => {
+    const { result, rerender } = renderHook(
+      (props: { loading: boolean }) => {
+        const hasData = useSharedValue(true);
+        return useChartReveal(props.loading, hasData, props.loading ? 0 : 1);
+      },
       { initialProps: { loading: false } },
     );
     expect(result.current.morphT.value).toBe(1);
     rerender({ loading: true });
-    expect(result.current.morphT.value).toBe(0);
     expect(result.current.isLoading.value).toBe(true);
     expect(result.current.isEmpty.value).toBe(false);
   });

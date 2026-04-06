@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import {
   Easing,
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withTiming,
@@ -8,7 +9,8 @@ import {
 } from "react-native-reanimated";
 import { smoothstep } from "../math/squiggly";
 
-const REVEAL_DURATION_MS = 600;
+/** Duration for chart reveal (loading/empty → live) and collapse (live → empty). */
+export const CHART_REVEAL_DURATION_MS = 600;
 
 /**
  * Per-overlay reveal delay (fraction of morphT at which the overlay starts
@@ -33,11 +35,11 @@ export function revealRamp(morphT: number, delay: number): number {
 }
 
 export interface ChartRevealState {
-  /** 0 = fully squiggly (loading), 1 = fully live chart */
+  /** 0 = loading/empty shell, 1 = fully live chart (matches web chartReveal). */
   morphT: SharedValue<number>;
   /** True while loading=true */
   isLoading: SharedValue<boolean>;
-  /** True when loading=false but no data (set externally via isEmpty.value) */
+  /** True when not loading and fewer than two samples. */
   isEmpty: SharedValue<boolean>;
   yAxisOpacity: SharedValue<number>;
   fillOpacity: SharedValue<number>;
@@ -47,40 +49,42 @@ export interface ChartRevealState {
 }
 
 /**
- * Drives the loading → reveal → live state machine.
+ * Drives loading / empty / live visibility.
  *
- * - When `loading` is true: morphT=0, overlays hidden, LoadingOverlay visible.
- * - When `loading` becomes false: animate morphT 0→1 over 600ms; each overlay
- *   fades in staggered via revealRamp.
- * - When `loading` was never true (default): morphT starts at 1, no animation.
- *
- * NOTE: The empty state (isEmpty) is NOT auto-detected from data length here,
- * because SharedValue changes do not trigger React re-renders. Instead, set
- * isEmpty.value directly from a useAnimatedReaction in the parent, or simply
- * pass loading=true until data is ready.
+ * Chart is fully revealed only when `!loading && hasData`. `morphT` animates
+ * between 0 and 1 when that condition changes. `isEmpty` is derived as
+ * `!loading && !hasData` for the empty overlay label.
  */
-export function useChartReveal(loading: boolean): ChartRevealState {
-  // Start fully revealed if loading was never requested
-  const morphT = useSharedValue(loading ? 0 : 1);
+export function useChartReveal(
+  loading: boolean,
+  hasData: SharedValue<boolean>,
+  initialMorphT: number,
+): ChartRevealState {
+  const morphT = useSharedValue(initialMorphT);
   const isLoading = useSharedValue(loading);
-  const isEmpty = useSharedValue(false);
 
-  useEffect(() => {
-    if (loading) {
-      morphT.value = 0;
-      isLoading.value = true;
-      isEmpty.value = false;
-    } else {
-      isLoading.value = false;
-      // Animate reveal only if we were in loading state (morphT < 1)
-      if (morphT.value < 1) {
-        morphT.value = withTiming(1, {
-          duration: REVEAL_DURATION_MS,
+  useLayoutEffect(() => {
+    isLoading.value = loading;
+  }, [loading, isLoading]);
+
+  useAnimatedReaction(
+    () => !isLoading.value && hasData.value,
+    (chartVisible, prev) => {
+      "worklet";
+      if (prev === undefined) {
+        return;
+      }
+      if (prev !== chartVisible) {
+        morphT.value = withTiming(chartVisible ? 1 : 0, {
+          duration: CHART_REVEAL_DURATION_MS,
           easing: Easing.out(Easing.cubic),
         });
       }
-    }
-  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+    },
+    [hasData],
+  );
+
+  const isEmpty = useDerivedValue(() => !isLoading.value && !hasData.value);
 
   const yAxisOpacity = useDerivedValue(() =>
     revealRamp(morphT.value, DELAY.yAxis),
@@ -99,7 +103,8 @@ export function useChartReveal(loading: boolean): ChartRevealState {
   return {
     morphT,
     isLoading,
-    isEmpty,
+    // useDerivedValue is SharedValue-compatible for `.value` reads in Skia.
+    isEmpty: isEmpty as unknown as SharedValue<boolean>,
     yAxisOpacity,
     fillOpacity,
     lineOpacity,

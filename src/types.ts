@@ -308,13 +308,19 @@ export interface LiveChartCoreProps {
   timeWindow?: number;
   /** Freeze chart scrolling. Resume catches up to real time. Default `false`. */
   paused?: boolean;
-  /** Show breathing line loading animation. Default `false`. */
+  /**
+   * Breathing-line loading shell. When this becomes `false`, the chart reveals
+   * only if there is data (≥2 line points or ≥2 committed candles).
+   */
   loading?: boolean;
   /** Spline smoothing factor (0 = sharp, 1 = maximum). Default `0.5`. */
   smoothing?: number;
   /** Tight Y-axis — small value moves fill the full chart height. Default `false`. */
   exaggerate?: boolean;
-  /** Text shown in the empty state when data is empty and not loading. Default `"No data to display"`. */
+  /**
+   * Label in the empty state when `loading` is false and there are fewer than
+   * two samples (line points or committed candles). Default `"No data"`.
+   */
   emptyText?: string;
   /** Custom formatter for value labels (axes, badge, tooltips). Default `v => v.toFixed(2)`. */
   formatValue?: (v: number) => string;

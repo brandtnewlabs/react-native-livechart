@@ -21,6 +21,13 @@ export const MAX_MULTI_SERIES = 12;
 /** Default width (px) of the left-edge fade band */
 export const FADE_EDGE_WIDTH = 40;
 
+/** Empty-state label opacity. */
+export const EMPTY_STATE_LABEL_ALPHA = 0.35;
+/** Half-padding (px) around empty text for the squiggle “gap” erase band. */
+export const EMPTY_TEXT_GAP_PAD = 20;
+/** Horizontal fade width (px) on each side of the empty-text gap. */
+export const EMPTY_GAP_FADE_WIDTH = 30;
+
 /**
  * Floats per degen particle slot: `x, y, vx, vy, t0, active, size`.
  * Layout is fixed; not on `DegenOptions` because changing it needs matching renderer changes.
