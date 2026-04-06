@@ -1,0 +1,186 @@
+import type { ViewStyle } from "react-native";
+
+export interface LivelinePoint {
+  time: number; // unix seconds
+  value: number;
+}
+
+export type Momentum = "up" | "down" | "flat";
+export type ThemeMode = "light" | "dark";
+export type WindowStyle = "default" | "rounded" | "text";
+export type BadgeVariant = "default" | "minimal";
+
+export interface ReferenceLine {
+  value: number;
+  label?: string;
+}
+
+export interface HoverPoint {
+  time: number;
+  value: number;
+  x: number;
+  y: number;
+}
+
+export interface Padding {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
+export interface WindowOption {
+  label: string;
+  secs: number;
+}
+
+export interface OrderbookData {
+  bids: [number, number][]; // [price, size][]
+  asks: [number, number][]; // [price, size][]
+}
+
+export interface TradeEvent {
+  side: "buy" | "sell";
+  price: number;
+  size: number;
+  time: number;
+}
+
+export interface DegenOptions {
+  /** Multiplier for particle count and size (default 1) */
+  scale?: number;
+  /** Show particles on down-momentum swings (default false) */
+  downMomentum?: boolean;
+}
+
+export interface LivelineSeries {
+  id: string;
+  data: LivelinePoint[];
+  value: number;
+  color: string;
+  label?: string;
+}
+
+export interface CandlePoint {
+  time: number; // unix seconds — candle open time
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+export interface LivelineProps {
+  data: LivelinePoint[];
+  value: number;
+
+  series?: LivelineSeries[];
+
+  theme?: ThemeMode;
+  color?: string;
+
+  window?: number;
+
+  grid?: boolean;
+  badge?: boolean;
+  momentum?: boolean | Momentum;
+  fill?: boolean;
+  loading?: boolean;
+  paused?: boolean;
+  emptyText?: string;
+  scrub?: boolean;
+  exaggerate?: boolean;
+  showValue?: boolean;
+  valueMomentumColor?: boolean;
+  degen?: boolean | DegenOptions;
+  badgeTail?: boolean;
+
+  windows?: WindowOption[];
+  onWindowChange?: (secs: number) => void;
+  windowStyle?: WindowStyle;
+
+  badgeVariant?: BadgeVariant;
+
+  tooltipY?: number;
+  tooltipOutline?: boolean;
+
+  orderbook?: OrderbookData;
+  tradeEvents?: TradeEvent[];
+
+  referenceLine?: ReferenceLine;
+  formatValue?: (v: number) => string;
+  formatTime?: (t: number) => string;
+  lerpSpeed?: number;
+  padding?: Padding;
+  onHover?: (point: HoverPoint | null) => void;
+  pulse?: boolean;
+  lineWidth?: number;
+
+  mode?: "line" | "candle";
+  candles?: CandlePoint[];
+  candleWidth?: number;
+  liveCandle?: CandlePoint;
+  lineMode?: boolean;
+  lineData?: LivelinePoint[];
+  lineValue?: number;
+  onModeChange?: (mode: "line" | "candle") => void;
+  onSeriesToggle?: (id: string, visible: boolean) => void;
+  seriesToggleCompact?: boolean;
+
+  style?: ViewStyle;
+}
+
+export interface LivelinePalette {
+  line: string;
+  lineWidth: number;
+
+  fillTop: string;
+  fillBottom: string;
+
+  gridLine: string;
+  gridLabel: string;
+
+  dotUp: string;
+  dotDown: string;
+  dotFlat: string;
+  glowUp: string;
+  glowDown: string;
+  glowFlat: string;
+
+  badgeOuterBg: string;
+  badgeOuterShadow: string;
+  badgeBg: string;
+  badgeText: string;
+
+  dashLine: string;
+
+  refLine: string;
+  refLabel: string;
+
+  timeLabel: string;
+
+  crosshairLine: string;
+  tooltipBg: string;
+  tooltipText: string;
+  tooltipBorder: string;
+
+  bgRgb: [number, number, number];
+
+  labelFontSize: number;
+  valueFontSize: number;
+  badgeFontSize: number;
+}
+
+export interface ChartLayout {
+  w: number;
+  h: number;
+  pad: Required<Padding>;
+  chartW: number;
+  chartH: number;
+  leftEdge: number;
+  rightEdge: number;
+  minVal: number;
+  maxVal: number;
+  valRange: number;
+  toX: (t: number) => number;
+  toY: (v: number) => number;
+}
