@@ -124,7 +124,8 @@ export function LiveChart({
   const degenCfg = resolveDegen(degen);
   const tradeStreamResolved = resolveTradeStream(tradeStream);
 
-  const badgeOnLeft = badgeCfg?.position === "left";
+  const badgeUsesRightGutter =
+    badgeCfg !== null && (badgeCfg.position ?? "right") === "right";
 
   // ── Theme, font and layout ─────────────────────────────────────────────
   const palette = resolveTheme(accentColor, theme);
@@ -155,7 +156,7 @@ export function LiveChart({
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
     badge: badgeCfg !== null,
-    badgeOnLeft,
+    badgeUsesRightGutter,
     xAxis: xAxisCfg !== null,
     font: skiaFont,
     formatValue,
@@ -302,7 +303,7 @@ export function LiveChart({
                   padding={effectivePadding}
                   palette={palette}
                   font={skiaFont}
-                  badge={badgeCfg !== null && !badgeOnLeft}
+                  badge={badgeUsesRightGutter}
                 />
               </Group>
             )}

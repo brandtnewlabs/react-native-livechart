@@ -104,7 +104,6 @@ export function LiveChartSeries({
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
     badge: false,
-    badgeOnLeft: false,
     xAxis: xAxisCfg !== null,
     font: skiaFont,
     formatValue,

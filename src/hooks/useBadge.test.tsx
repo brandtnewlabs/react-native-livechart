@@ -1,13 +1,13 @@
+import { BADGE_DOT_GAP, BADGE_PILL_PAD_X } from "../constants";
 import { DEFAULT_PADDING, badgeTailAndCap, pillTextLeftX } from "../draw/line";
 
-import { BADGE_DOT_GAP } from "../constants";
-import type { EngineState } from "../useLiveChartEngine";
 import type { SkFont } from "@shopify/react-native-skia";
-import { measureFontTextWidth } from "../measureFontTextWidth";
 import { renderHook } from "@testing-library/react-native";
-import { resolveTheme } from "../theme";
-import { useBadge } from "./useBadge";
 import { useSharedValue } from "react-native-reanimated";
+import { measureFontTextWidth } from "../measureFontTextWidth";
+import { resolveTheme } from "../theme";
+import type { EngineState } from "../useLiveChartEngine";
+import { useBadge } from "./useBadge";
 
 const font = {
   getSize: () => 12,
@@ -205,13 +205,14 @@ describe("useBadge", () => {
     expect(result.current.value.bgColor.startsWith("rgb")).toBe(true);
   });
 
-  it("renders a left-position badge (no tail, pill in left gutter)", () => {
-    const leftPadding = { top: 12, right: 12, bottom: 28, left: 80 };
-    const eng = makeEngine(400, 300);
+  it("left-position badge is a pill only (ignores showTail)", () => {
+    const w = 400;
+    const pad = { top: 12, right: 64, bottom: 28, left: 12 };
+    const eng = makeEngine(w, 300);
     const { result } = renderHook(() =>
       useBadge(
         eng,
-        leftPadding,
+        pad,
         palette,
         (v) => v.toFixed(2),
         font,
@@ -220,6 +221,17 @@ describe("useBadge", () => {
         undefined,
         "left",
       ),
+    );
+    const dotX = w - pad.right;
+    const text = "50.00";
+    const textW = measureFontTextWidth(font, text);
+    const pillW = 2 * BADGE_PILL_PAD_X + textW;
+    const bodyRight = dotX - BADGE_DOT_GAP;
+    const bodyLeft = bodyRight - pillW;
+    expect(result.current.value.text).toBe(text);
+    expect(result.current.value.textX).toBeCloseTo(
+      (bodyLeft + bodyRight - textW) / 2,
+      4,
     );
     expect(result.current.value.path).toBeDefined();
   });
