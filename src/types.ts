@@ -107,6 +107,7 @@ export interface LivelineProps {
   orderbook?: OrderbookData;
   tradeEvents?: TradeEvent[];
 
+  backgroundColor?: string;
   referenceLine?: ReferenceLine;
   formatValue?: (v: number) => string;
   formatTime?: (t: number) => string;

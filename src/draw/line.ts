@@ -1,4 +1,4 @@
-import type { LivelinePoint } from "../types";
+import type { LivelinePoint, Padding } from "../types";
 
 export interface ChartPadding {
   top: number;
@@ -13,6 +13,16 @@ export const DEFAULT_PADDING: ChartPadding = {
   bottom: 28,
   left: 12,
 };
+
+export function resolvePadding(override?: Padding): ChartPadding {
+  if (!override) return DEFAULT_PADDING;
+  return {
+    top: override.top ?? DEFAULT_PADDING.top,
+    right: override.right ?? DEFAULT_PADDING.right,
+    bottom: override.bottom ?? DEFAULT_PADDING.bottom,
+    left: override.left ?? DEFAULT_PADDING.left,
+  };
+}
 
 /**
  * Build screen-space points as a flat number array [x0, y0, x1, y1, ...].
