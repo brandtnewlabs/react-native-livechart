@@ -1,10 +1,11 @@
 import { Canvas, Group, matchFont } from "@shopify/react-native-skia";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import {
   runOnJS,
   useAnimatedReaction,
+  useDerivedValue,
   type SharedValue,
 } from "react-native-reanimated";
 import { CrosshairOverlay } from "./components/CrosshairOverlay";
@@ -28,6 +29,7 @@ import {
   useChartReveal,
   useCrosshairMulti,
   useMultiSeriesLinePaths,
+  useMultiSeriesReverseMorphInputs,
   useReferenceLine,
   useXAxis,
   useYAxis,
@@ -110,16 +112,34 @@ export function LiveChartSeries({
     currentValue: 0,
   });
 
-  const engine = useLiveChartSeriesEngine({
+  const hasData = useDerivedValue(() =>
+    series.value.some((s) => s.data.length >= 2),
+  );
+
+  const morphInitRef = useRef<number | null>(null);
+  if (morphInitRef.current === null) {
+    const anyReady = series.value.some((s) => s.data.length >= 2);
+    morphInitRef.current = loading ? 0 : anyReady ? 1 : 0;
+  }
+
+  const reveal = useChartReveal(loading, hasData, morphInitRef.current);
+
+  // Stash last multi-series snapshot while morphT collapses (reverse morph).
+  const effectiveSeries = useMultiSeriesReverseMorphInputs({
     series,
+    hasData,
+    morphT: reveal.morphT,
+  });
+
+  // Engine + strokes read effectiveSeries; chips/onSeriesToggle still use prop `series`.
+  const engine = useLiveChartSeriesEngine({
+    series: effectiveSeries,
     timeWindow,
     paused,
     smoothing,
     exaggerate,
     referenceValue: referenceLine?.value,
   });
-
-  const reveal = useChartReveal(loading);
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const linePaths = useMultiSeriesLinePaths(engine, effectivePadding);
 
@@ -220,7 +240,7 @@ export function LiveChartSeries({
                 index={i}
                 paths={linePaths}
                 opacities={engine.seriesOpacities}
-                series={series}
+                series={effectiveSeries}
                 strokeWidth={strokeWidth}
               />
             ))}

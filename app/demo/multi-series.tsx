@@ -45,7 +45,7 @@ export default function MultiSeriesScreen() {
 
   return (
     <DemoScreen
-      description="series, onSeriesToggle, scrub, shared core props, axis visibility"
+      description="series, onSeriesToggle, scrub, axis visibility. Chart stays empty until at least one series has ≥2 points (toggle No series for shell)."
       chart={
         <LiveChartSeries
           series={seriesSource}

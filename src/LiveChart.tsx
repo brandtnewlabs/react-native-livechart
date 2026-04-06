@@ -21,10 +21,12 @@ import {
   useChartReveal,
   useCrosshair,
   useDegen,
+  useLiveChartHasData,
   useLiveDot,
   useModeBlend,
   useMomentum,
   useReferenceLine,
+  useSingleChartReverseMorphInputs,
   useTradeStream,
   useXAxis,
   useYAxis,
@@ -164,9 +166,33 @@ export function LiveChart({
     pulse: pulseConfig,
   });
 
-  // ── Engine and reveal state ────────────────────────────────────────────
-  const engine = useLiveChartEngine({
+  // ── Reveal state ────────────────────────────────────────────
+  // ≥2 line points or ≥2 committed candles; morphT=1 only when !loading && hasData.
+  const { hasData, initialMorphT } = useLiveChartHasData({
+    isCandle,
     data,
+    candles,
+    loading,
+  });
+
+  const reveal = useChartReveal(loading, hasData, initialMorphT);
+
+  // After data clears, keep last snapshot until morphT finishes dropping (web parity).
+  const { lineEngineData, candlesEngine, liveEngine } =
+    useSingleChartReverseMorphInputs({
+      isCandle,
+      data,
+      candles,
+      liveCandle,
+      hasData,
+      morphT: reveal.morphT,
+    });
+
+  // ── Engine ─────────────────────────────────────────────────────────────
+  // Line mode: tick + paths use `lineEngineData` (stash when reversing). Candle mode:
+  // parent `data` stays tick/line-morph input; OHLC uses candlesEngine + liveEngine.
+  const engine = useLiveChartEngine({
+    data: isCandle ? data : lineEngineData,
     value,
     timeWindow,
     paused,
@@ -174,11 +200,9 @@ export function LiveChart({
     exaggerate,
     referenceValue: referenceLine?.value,
     mode,
-    candles,
-    liveCandle,
+    candles: isCandle ? candlesEngine : candles,
+    liveCandle: isCandle ? liveEngine : liveCandle,
   });
-
-  const reveal = useChartReveal(loading);
 
   // ── Mode crossfade (line ↔ candle) ──────────────────────────────────
   const { lineGroupOpacity, candleGroupOpacity } = useModeBlend(
@@ -198,8 +222,9 @@ export function LiveChart({
     useCandlePaths(
       engine,
       effectivePadding,
-      candles,
-      liveCandle,
+      // Match engine: stashed candles while reverse-morphing in candle mode.
+      isCandle ? candlesEngine : candles,
+      isCandle ? liveEngine : liveCandle,
       candleWidth,
       isCandle,
     );
@@ -257,8 +282,14 @@ export function LiveChart({
     badgeCfg?.background,
   );
 
+  // Scrub/crosshair must see the same stash-backed candles as the engine.
   const candleOpts = isCandle
-    ? { mode, candles, liveCandle, candleWidthSecs: candleWidth }
+    ? {
+        mode,
+        candles: candlesEngine,
+        liveCandle: liveEngine,
+        candleWidthSecs: candleWidth,
+      }
     : undefined;
 
   const crosshair = useCrosshair(

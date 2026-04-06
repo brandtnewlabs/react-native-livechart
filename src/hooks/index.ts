@@ -8,11 +8,16 @@ export { useChartReveal } from "./useChartReveal";
 export { useCrosshair } from "./useCrosshair";
 export { useCrosshairMulti } from "./useCrosshairMulti";
 export { useDegen } from "./useDegen";
+export { useLiveChartHasData } from "./useLiveChartHasData";
 export { useLiveDot } from "./useLiveDot";
 export { useModeBlend } from "./useModeBlend";
 export { useMomentum } from "./useMomentum";
 export { useMultiSeriesLinePaths } from "./useMultiSeriesLinePaths";
 export { useReferenceLine } from "./useReferenceLine";
+export {
+  useMultiSeriesReverseMorphInputs,
+  useSingleChartReverseMorphInputs
+} from "./useReverseMorphEngineInputs";
 export { useTradeStream } from "./useTradeStream";
 export { useXAxis } from "./useXAxis";
 export { useYAxis } from "./useYAxis";

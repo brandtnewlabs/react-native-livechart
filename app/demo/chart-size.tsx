@@ -1,8 +1,10 @@
 import { Pressable, Text, View } from "react-native";
 
 import { useState } from "react";
+import { useSharedValue } from "react-native-reanimated";
 import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChart } from "../../src";
+import type { LiveChartPoint } from "../../src/types";
 import { ACCENT } from "./_lib/shared";
 import { demoStyles } from "./_lib/styles";
 
@@ -14,6 +16,10 @@ export default function ChartSizeScreen() {
   const [h, setH] = useState<(typeof HEIGHTS)[number]>(300);
   const [narrow, setNarrow] = useState(false);
   const [flexFill, setFlexFill] = useState(false);
+  const [empty, setEmpty] = useState(false);
+
+  const emptyData = useSharedValue<LiveChartPoint[]>([]);
+  const emptyValue = useSharedValue(0);
 
   const { data, value } = useSimulatedData({
     multiSeries: false,
@@ -23,8 +29,8 @@ export default function ChartSizeScreen() {
 
   const chart = (
     <LiveChart
-      data={data}
-      value={value}
+      data={empty ? emptyData : data}
+      value={empty ? emptyValue : value}
       accentColor={ACCENT}
       theme="dark"
       scrub
@@ -36,6 +42,7 @@ export default function ChartSizeScreen() {
     <View style={demoStyles.demoRoot}>
       <Text style={demoStyles.demoDesc}>
         Fixed heights, narrow card width, or flex fill inside a fixed outer box.
+        Toggle empty to check loading/empty shell and label at small sizes.
       </Text>
 
       {flexFill ? (
@@ -120,6 +127,22 @@ export default function ChartSizeScreen() {
             style={[demoStyles.chipText, narrow && demoStyles.chipTextActive]}
           >
             Card (40+40 inset)
+          </Text>
+        </Pressable>
+      </View>
+
+      <Text style={[demoStyles.sectionLabel, { paddingHorizontal: 16 }]}>
+        Empty shell
+      </Text>
+      <View style={[demoStyles.buttonRow, { paddingHorizontal: 16 }]}>
+        <Pressable
+          style={[demoStyles.chip, empty && demoStyles.chipActive]}
+          onPress={() => setEmpty((v) => !v)}
+        >
+          <Text
+            style={[demoStyles.chipText, empty && demoStyles.chipTextActive]}
+          >
+            No data
           </Text>
         </Pressable>
       </View>
