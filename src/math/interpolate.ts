@@ -25,6 +25,7 @@ export function interpolateAtTime(
   const p1 = points[lo];
   const p2 = points[hi];
   const dt = p2.time - p1.time;
+  /* istanbul ignore next -- unreachable with sorted keys: duplicate times collapse to the last index with time <= t, so p1/p2 always have distinct times unless clamps fire first */
   if (dt === 0) return p1.value;
   const t = (time - p1.time) / dt;
   return p1.value + (p2.value - p1.value) * t;

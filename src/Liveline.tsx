@@ -3,13 +3,28 @@ import {
   Circle,
   LinearGradient,
   Path,
+  matchFont,
   vec,
 } from "@shopify/react-native-skia";
-import { useCanvasLayout, useChartPaths, useLiveDot } from "./hooks";
+import { Platform, View } from "react-native";
+import {
+  formatTime as defaultFormatTime,
+  formatValue as defaultFormatValue,
+} from "./format";
+import {
+  resolveChartLayout,
+  useBadge,
+  useCanvasLayout,
+  useChartPaths,
+  useGrid,
+  useLiveDot,
+  useTimeAxis,
+} from "./hooks";
 
+import { BadgeOverlay } from "./components/BadgeOverlay";
+import { GridOverlay } from "./components/GridOverlay";
 import type { LivelineProps } from "./types";
-import { View } from "react-native";
-import { resolvePadding } from "./draw/line";
+import { TimeAxisOverlay } from "./components/TimeAxisOverlay";
 import { resolveTheme } from "./theme";
 import { useLivelineEngine } from "./useLivelineEngine";
 
@@ -23,14 +38,36 @@ export function Liveline({
   exaggerate = false,
   referenceLine,
   fill = true,
+  grid = true,
+  gridMinGap = 36,
+  badge = true,
+  badgeVariant = "default",
+  badgeTail = true,
   lineWidth: lineWidthProp,
+  formatValue = defaultFormatValue,
+  formatTime = defaultFormatTime,
   backgroundColor,
   padding,
   style,
 }: LivelineProps) {
   const palette = resolveTheme(color, theme);
-  const strokeWidth = lineWidthProp ?? palette.lineWidth;
-  const effectivePadding = resolvePadding(padding);
+
+  const font = matchFont({
+    fontFamily: Platform.select({ ios: "Menlo", default: "monospace" }),
+    fontSize: palette.labelFontSize,
+    fontWeight: "500",
+  });
+
+  const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
+    palette,
+    lineWidthOverride: lineWidthProp,
+    paddingOverride: padding,
+    grid,
+    badge,
+    font,
+    formatValue,
+    currentValue: value.value,
+  });
 
   const engine = useLivelineEngine({
     data,
@@ -44,6 +81,28 @@ export function Liveline({
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const { linePath, fillPath } = useChartPaths(engine, effectivePadding);
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
+  const { gridEntries } = useGrid(
+    engine,
+    effectivePadding,
+    formatValue,
+    font,
+    gridMinGap,
+  );
+  const { timeEntries } = useTimeAxis(
+    engine,
+    effectivePadding,
+    formatTime,
+    font,
+  );
+  const badgeData = useBadge(
+    engine,
+    effectivePadding,
+    palette,
+    formatValue,
+    font,
+    badgeVariant,
+    badgeTail,
+  );
 
   const bgColor =
     backgroundColor ??
@@ -56,6 +115,16 @@ export function Liveline({
       onLayout={onLayout}
     >
       <Canvas style={{ flex: 1 }}>
+        {grid && (
+          <GridOverlay
+            entries={gridEntries}
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            font={font}
+          />
+        )}
+
         {fill && (
           <Path path={fillPath} style="fill">
             <LinearGradient
@@ -75,7 +144,17 @@ export function Liveline({
           strokeJoin="round"
         />
 
+        <TimeAxisOverlay
+          entries={timeEntries}
+          engine={engine}
+          padding={effectivePadding}
+          palette={palette}
+          font={font}
+        />
+
         <Circle cx={dotX} cy={dotY} r={4} color={palette.line} />
+
+        {badge && <BadgeOverlay badge={badgeData} font={font} />}
       </Canvas>
     </View>
   );

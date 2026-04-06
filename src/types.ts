@@ -82,6 +82,8 @@ export interface LivelineProps {
   window?: number;
 
   grid?: boolean;
+  /** Minimum pixel gap between Y-axis grid lines (default 36). Higher = fewer labels. */
+  gridMinGap?: number;
   badge?: boolean;
   momentum?: boolean | Momentum;
   fill?: boolean;
@@ -109,7 +111,9 @@ export interface LivelineProps {
 
   backgroundColor?: string;
   referenceLine?: ReferenceLine;
+  /** Must include 'worklet' directive — called on the UI thread */
   formatValue?: (v: number) => string;
+  /** Must include 'worklet' directive — called on the UI thread */
   formatTime?: (t: number) => string;
   lerpSpeed?: number;
   padding?: Padding;

@@ -92,11 +92,12 @@ export function useSimulatedData(
     createBondingCurve({ basePrice: startValue }),
   );
 
-  // Initialize + reset on volatility mode change
-  const prevModeRef = useRef<VolatilityMode | null>(null);
+  // Initialize + reset on volatility mode or start value change
+  const prevResetKey = useRef<string | null>(null);
   useEffect(() => {
-    if (prevModeRef.current === volatilityMode) return;
-    prevModeRef.current = volatilityMode;
+    const key = `${volatilityMode}:${startValue}`;
+    if (prevResetKey.current === key) return;
+    prevResetKey.current = key;
 
     const history = generateHistory({
       count: 150,
