@@ -65,8 +65,8 @@ describe("resolveChartLayout", () => {
       grid: false,
       badge: true,
     });
-    // minPaddingRightForBadgeYAxisAlign(12, 49) = 8 + 14 + 20 + 49 + 4 = 95
-    expect(padding.right).toBe(95);
+    // minPaddingRightForBadgeYAxisAlign(12, 49) = 12 + 14 + 20 + 49 + 4 = 99
+    expect(padding.right).toBe(99);
   });
 
   it("badge takes precedence over grid (static fallback)", () => {
@@ -75,7 +75,7 @@ describe("resolveChartLayout", () => {
       grid: true,
       badge: true,
     });
-    expect(padding.right).toBe(95);
+    expect(padding.right).toBe(99);
   });
 
   it("respects explicit padding override over everything", () => {
@@ -120,8 +120,8 @@ describe("resolveChartLayout", () => {
       currentValue: 42,
     });
     // samples: "42.00"(5ch), "4.20"(4ch), "0.42"(4ch), "420.00"(6ch) → max 6ch×7=42px
-    // badge: 8 + 14 + 20 + 42 + 4 = 88
-    expect(padding.right).toBe(88);
+    // badge: 12 + 14 + 20 + 42 + 4 = 92
+    expect(padding.right).toBe(92);
   });
 
   it("enforces minimum right padding for badge even with short labels", () => {
@@ -134,8 +134,8 @@ describe("resolveChartLayout", () => {
       formatValue: () => "1",
       currentValue: 1,
     });
-    // all samples format to "1" → 1ch×7=7px → 8 + 14 + 20 + 7 + 4 = 53
-    expect(padding.right).toBe(53);
+    // all samples format to "1" → 1ch×7=7px → 12 + 14 + 20 + 7 + 4 = 57
+    expect(padding.right).toBe(57);
   });
 
   it("grows right padding for wide labels (small decimals)", () => {
@@ -149,8 +149,8 @@ describe("resolveChartLayout", () => {
       currentValue: 0.001234,
     });
     // samples via toPrecision(4): v/100=0.00001234→"0.00001234"(10ch) is widest → 10×7=70px
-    // badge: 8 + 14 + 20 + 70 + 4 = 116
-    expect(padding.right).toBe(116);
+    // badge: 12 + 14 + 20 + 70 + 4 = 120
+    expect(padding.right).toBe(120);
   });
 
   it("falls back to static when font is missing", () => {
@@ -161,7 +161,7 @@ describe("resolveChartLayout", () => {
       formatValue: fmt,
       currentValue: 42,
     });
-    expect(padding.right).toBe(95);
+    expect(padding.right).toBe(99);
   });
 
   it("falls back to static when formatValue is missing", () => {
@@ -172,7 +172,7 @@ describe("resolveChartLayout", () => {
       font: mockFont(),
       currentValue: 42,
     });
-    expect(padding.right).toBe(95);
+    expect(padding.right).toBe(99);
   });
 
   it("falls back to static when currentValue is missing", () => {
@@ -183,6 +183,6 @@ describe("resolveChartLayout", () => {
       font: mockFont(),
       formatValue: fmt,
     });
-    expect(padding.right).toBe(95);
+    expect(padding.right).toBe(99);
   });
 });

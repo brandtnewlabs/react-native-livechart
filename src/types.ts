@@ -16,12 +16,20 @@ export interface ReferenceLine {
   label?: string;
 }
 
-export interface HoverPoint {
+export interface ScrubPoint {
   time: number;
+  /** Interpolated line value at the scrub position. */
   value: number;
+  /** Screen X coordinate of the crosshair. */
   x: number;
+  /** Screen Y coordinate of the value on the chart. */
   y: number;
+  /** OHLC candle at the scrub time, present when `mode="candle"` (Phase 10). */
+  candle?: CandlePoint;
 }
+
+/** @deprecated Use ScrubPoint */
+export type HoverPoint = ScrubPoint;
 
 export interface Padding {
   top?: number;
@@ -94,6 +102,8 @@ export interface LivelineProps {
   paused?: boolean;
   emptyText?: string;
   scrub?: boolean;
+  /** Show the value+time tooltip pill when scrubbing. Defaults to true. */
+  scrubTooltip?: boolean;
   exaggerate?: boolean;
   showValue?: boolean;
   valueMomentumColor?: boolean;
@@ -120,7 +130,7 @@ export interface LivelineProps {
   formatTime?: (t: number) => string;
   lerpSpeed?: number;
   padding?: Padding;
-  onHover?: (point: HoverPoint | null) => void;
+  onScrub?: (point: ScrubPoint | null) => void;
   pulse?: boolean;
   lineWidth?: number;
 

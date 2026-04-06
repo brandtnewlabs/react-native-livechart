@@ -15,15 +15,15 @@ describe("gutterCenteredTextLeftX", () => {
 
 describe("minPaddingRightForBadgeYAxisAlign", () => {
   it("returns DOT_GAP + tl + 2×PAD_X + textWidth + MARGIN_RIGHT (tl=14 for 12px font)", () => {
-    // 8 + 14 + 20 + 35 + 4 = 81
-    expect(minPaddingRightForBadgeYAxisAlign(12, 35)).toBe(81);
+    // 12 + 14 + 20 + 35 + 4 = 85
+    expect(minPaddingRightForBadgeYAxisAlign(12, 35)).toBe(85);
   });
 });
 
 describe("resolveAutoRight", () => {
   it("prefers badge width (fallback ~7 chars × 7px label)", () => {
-    // minPaddingRightForBadgeYAxisAlign(12, 49) = 8 + 14 + 20 + 49 + 4 = 95
-    expect(resolveAutoRight(true, true)).toBe(95);
+    // minPaddingRightForBadgeYAxisAlign(12, 49) = 12 + 14 + 20 + 49 + 4 = 99
+    expect(resolveAutoRight(true, true)).toBe(99);
   });
 
   it("uses grid width when no badge", () => {
@@ -42,7 +42,7 @@ describe("resolvePadding", () => {
       right: DEFAULT_PADDING.right,
     });
     expect(resolvePadding(undefined, true, false).right).toBe(44);
-    expect(resolvePadding(undefined, true, true).right).toBe(95);
+    expect(resolvePadding(undefined, true, true).right).toBe(99);
   });
 
   it("merges partial overrides", () => {
@@ -53,7 +53,7 @@ describe("resolvePadding", () => {
       left: DEFAULT_PADDING.left,
     });
     expect(resolvePadding({ top: 1 }, true, false).right).toBe(44);
-    expect(resolvePadding({ top: 1 }, true, true).right).toBe(95);
+    expect(resolvePadding({ top: 1 }, true, true).right).toBe(99);
     expect(resolvePadding({ right: 99 }, true, true).right).toBe(99);
   });
 
