@@ -108,6 +108,42 @@ export interface TradeEvent {
 export interface DegenOptions {
   scale?: number;
   downMomentum?: boolean;
+  /** When `false`, particle bursts still run but the chart does not shake. Default `true`. */
+  shake?: boolean;
+  /** Multiplier on default shake amplitude (`1` matches built-in behavior). */
+  shakeIntensity?: number;
+  /** How long the shake envelope runs, in seconds. Default `0.45`. */
+  shakeDurationSec?: number;
+  /** Ring-buffer slots (clamped 4–80). Default `60`. */
+  particleSlotCount?: number;
+  /** How long each particle stays visible, in seconds. Default `1.0`. */
+  particleBurstDurationSec?: number;
+  /** Particles spawned per momentum burst (clamped 1–`particleSlotCount`). Default `20`. */
+  burstParticleCount?: number;
+  /** Velocity drag per frame (0–1, higher = less drag). Default `0.95`. */
+  drag?: number;
+  /** Minimum particle radius in pixels. Default `1`. */
+  particleSizeMin?: number;
+  /** Maximum particle radius in pixels. Default `2.2`. */
+  particleSizeMax?: number;
+  /** Peak particle opacity (0–1). Default `0.55`. */
+  particleOpacity?: number;
+  /** Angular spread in radians for the burst semicircle. Default `π * 1.2`. */
+  spreadAngle?: number;
+  /** Horizontal position jitter in pixels (±half). Default `24`. */
+  positionJitterX?: number;
+  /** Vertical position jitter in pixels (±half). Default `8`. */
+  positionJitterY?: number;
+  /** Minimum initial speed in px/s. Default `60`. */
+  speedMin?: number;
+  /** Maximum initial speed in px/s. Default `160`. */
+  speedMax?: number;
+  /**
+   * Particle color(s). A single string or an array of colors.
+   * When an array is provided, each particle picks one at random.
+   * Default: chart accent / `palette.line`.
+   */
+  colors?: string | string[];
 }
 
 export interface LivelineSeries {
@@ -198,7 +234,12 @@ export interface LivelineSingleProps extends LivelineCoreProps {
   onModeChange?: (mode: "line" | "candle") => void;
 
   orderbook?: OrderbookData;
-  tradeEvents?: TradeEvent[];
+  /**
+   * Live trade fills for optional on-chart markers. Read on the UI thread only —
+   * pass a `SharedValue` and update from JS via `.value` (same pattern as `data` / `value`).
+   */
+  tradeStream?: SharedValue<TradeEvent[]>;
+  /** Particle burst + chart shake on momentum swings (`true` = defaults, or pass `DegenOptions`). */
   degen?: boolean | DegenOptions;
   data: SharedValue<LivelinePoint[]>;
   value: SharedValue<number>;

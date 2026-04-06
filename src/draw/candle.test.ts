@@ -144,6 +144,46 @@ describe("buildCandleGeometry", () => {
     expect(result.bodies[0].up).toBe(true);
   });
 
+  it("clamps candle body to chart left edge", () => {
+    const c = [makeCandle(-25, 100, 110, 90, 105)];
+    const result = buildCandleGeometry(
+      c,
+      null,
+      pad,
+      200,
+      100,
+      0,
+      60,
+      90,
+      110,
+      60,
+    );
+    if (result.bodies.length > 0) {
+      expect(result.bodies[0].x).toBeGreaterThanOrEqual(pad.left);
+    }
+  });
+
+  it("clamps candle body to chart right edge", () => {
+    const c = [makeCandle(55, 100, 110, 90, 105)];
+    const result = buildCandleGeometry(
+      c,
+      null,
+      pad,
+      200,
+      100,
+      0,
+      60,
+      90,
+      110,
+      60,
+    );
+    if (result.bodies.length > 0) {
+      expect(result.bodies[0].x + result.bodies[0].w).toBeLessThanOrEqual(
+        200 - pad.right,
+      );
+    }
+  });
+
   it("positions body X centered on candle midpoint", () => {
     const c = [makeCandle(0, 100, 110, 90, 105)];
     const result = buildCandleGeometry(

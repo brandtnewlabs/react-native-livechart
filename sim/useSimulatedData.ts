@@ -34,12 +34,14 @@ export interface SimulatedDataOptions {
   multiSeries?: boolean;
   /** Skip candle aggregation when not displayed (default true). */
   candleAggregation?: boolean;
+  /** Skip synthetic trade events when not displayed (default true). */
+  tradeStream?: boolean;
 }
 
 export interface SimulatedData {
   data: SharedValue<LivelinePoint[]>;
   value: SharedValue<number>;
-  tradeEvents: SharedValue<TradeEvent[]>;
+  tradeStream: SharedValue<TradeEvent[]>;
   series: SharedValue<LivelineSeries[]>;
   candles: SharedValue<CandlePoint[]>;
   liveCandle: SharedValue<CandlePoint | null>;
@@ -55,7 +57,7 @@ export interface SimulatedData {
  */
 interface TickBuffers {
   data: LivelinePoint[];
-  tradeEvents: TradeEvent[];
+  tradeStream: TradeEvent[];
   series: LivelineSeries[];
 }
 
@@ -71,19 +73,20 @@ export function useSimulatedData(
     maxPoints = 2000,
     multiSeries = true,
     candleAggregation = true,
+    tradeStream: tradeStreamEnabled = true,
   } = opts;
 
   // JS-side buffers — fast O(1) reads in the tick callback
   const buf = useRef<TickBuffers>({
     data: [],
-    tradeEvents: [],
+    tradeStream: [],
     series: [],
   });
 
   // Shared values — one-way push to UI thread for rendering
   const data = useSharedValue<LivelinePoint[]>([]);
   const value = useSharedValue(startValue);
-  const tradeEvents = useSharedValue<TradeEvent[]>([]);
+  const tradeStream = useSharedValue<TradeEvent[]>([]);
   const series = useSharedValue<LivelineSeries[]>([]);
   const candles = useSharedValue<CandlePoint[]>([]);
   const liveCandle = useSharedValue<CandlePoint | null>(null);
@@ -107,10 +110,9 @@ export function useSimulatedData(
       startValue,
       volatility: volatilityFor(volatilityMode),
     });
-    const initialTrades = generateTradeEvents(
-      history[history.length - 1].value,
-      20,
-    );
+    const initialTrades = tradeStreamEnabled
+      ? generateTradeEvents(history[history.length - 1].value, 20)
+      : [];
     const initialSeries = multiSeries
       ? generateMultiSeries({
           ids: ["yes", "no", "maybe"],
@@ -123,13 +125,13 @@ export function useSimulatedData(
 
     buf.current = {
       data: history,
-      tradeEvents: initialTrades,
+      tradeStream: initialTrades,
       series: initialSeries,
     };
 
     data.value = history;
     value.value = history[history.length - 1].value;
-    tradeEvents.value = initialTrades;
+    tradeStream.value = initialTrades;
     series.value = initialSeries;
     if (candleAggregation) {
       const c = aggregateCandles(history, candleWidth);
@@ -142,9 +144,10 @@ export function useSimulatedData(
     candleWidth,
     multiSeries,
     candleAggregation,
+    tradeStreamEnabled,
     data,
     value,
-    tradeEvents,
+    tradeStream,
     series,
     candles,
     liveCandle,
@@ -176,19 +179,24 @@ export function useSimulatedData(
         liveCandle.value = c.liveCandle;
       }
 
-      // Trade events
-      if (tradeSource === "bonding-curve") {
-        const result = bondingTrade(bondingCurveRef.current);
-        bondingCurveRef.current = result.state;
-        b.tradeEvents = [...b.tradeEvents, result.event];
+      // Trade stream (optional)
+      if (tradeStreamEnabled) {
+        if (tradeSource === "bonding-curve") {
+          const result = bondingTrade(bondingCurveRef.current);
+          bondingCurveRef.current = result.state;
+          b.tradeStream = [...b.tradeStream, result.event];
+        } else {
+          b.tradeStream = [
+            ...b.tradeStream,
+            ...generateTradeEvents(newValue, 2, vol),
+          ];
+        }
+        if (b.tradeStream.length > 50) b.tradeStream = b.tradeStream.slice(-50);
+        tradeStream.value = b.tradeStream;
       } else {
-        b.tradeEvents = [
-          ...b.tradeEvents,
-          ...generateTradeEvents(newValue, 2, vol),
-        ];
+        b.tradeStream = [];
+        tradeStream.value = [];
       }
-      if (b.tradeEvents.length > 50) b.tradeEvents = b.tradeEvents.slice(-50);
-      tradeEvents.value = b.tradeEvents;
 
       // Multi-series — skip when not displayed
       if (multiSeries) {
@@ -216,9 +224,10 @@ export function useSimulatedData(
     candleWidth,
     multiSeries,
     candleAggregation,
+    tradeStreamEnabled,
     data,
     value,
-    tradeEvents,
+    tradeStream,
     series,
     candles,
     liveCandle,
@@ -227,7 +236,7 @@ export function useSimulatedData(
   return {
     data,
     value,
-    tradeEvents,
+    tradeStream,
     series,
     candles,
     liveCandle,
