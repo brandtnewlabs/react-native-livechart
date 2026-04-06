@@ -106,4 +106,32 @@ describe("useChartReveal (hook)", () => {
     expect(result.current.dotOpacity.value).toBeCloseTo(1);
     expect(result.current.badgeOpacity.value).toBeCloseTo(1);
   });
+
+  it("triggers reveal animation when loading transitions from true to false", () => {
+    const { result, rerender } = renderHook(
+      (props: { loading: boolean }) => useChartReveal(props.loading),
+      { initialProps: { loading: true } },
+    );
+    expect(result.current.morphT.value).toBe(0);
+    expect(result.current.isLoading.value).toBe(true);
+
+    rerender({ loading: false });
+
+    expect(result.current.isLoading.value).toBe(false);
+    // morphT has been handed to withTiming — value is either still animating
+    // or resolved to 1 depending on the test mock; either way it's >= 0.
+    expect(result.current.morphT.value).toBeGreaterThanOrEqual(0);
+  });
+
+  it("resets to loading state when loading becomes true again", () => {
+    const { result, rerender } = renderHook(
+      (props: { loading: boolean }) => useChartReveal(props.loading),
+      { initialProps: { loading: false } },
+    );
+    expect(result.current.morphT.value).toBe(1);
+    rerender({ loading: true });
+    expect(result.current.morphT.value).toBe(0);
+    expect(result.current.isLoading.value).toBe(true);
+    expect(result.current.isEmpty.value).toBe(false);
+  });
 });

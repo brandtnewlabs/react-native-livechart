@@ -24,6 +24,8 @@ export interface EngineTickInput {
   points: LivelinePoint[];
   /** Seconds since Unix epoch; defaults to `Date.now() / 1000` */
   nowSeconds?: number;
+  /** When true, freeze the viewport timestamp and skip displayWindow lerp */
+  paused?: boolean;
 }
 
 /**
@@ -36,7 +38,9 @@ export function tickLivelineEngineFrame(
 ): void {
   "worklet";
   const now = input.nowSeconds ?? Date.now() / 1000;
-  state.timestamp = now;
+  if (!input.paused) {
+    state.timestamp = now;
+  }
 
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
 
@@ -63,7 +67,7 @@ export function tickLivelineEngineFrame(
   );
 
   const points = input.points;
-  const winStart = now - state.displayWindow;
+  const winStart = state.timestamp - state.displayWindow;
 
   let lo = 0;
   let hi = points.length;

@@ -14,6 +14,7 @@ export interface EngineConfig {
   lerpSpeed: number;
   exaggerate?: boolean;
   referenceValue?: number;
+  paused?: boolean;
 }
 
 export interface EngineState {
@@ -42,6 +43,7 @@ export interface EngineFrameRefs {
   lerpSpeed: SharedValue<number>;
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
+  pausedSV: SharedValue<boolean>;
 }
 
 /**
@@ -72,6 +74,7 @@ export function applyLivelineEngineFrame(
     targetValue: sv.value.value,
     points: sv.data.value,
     nowSeconds: Date.now() / 1000,
+    paused: sv.pausedSV.value,
   });
   sv.displayValue.value = state.displayValue;
   sv.displayMin.value = state.displayMin;
@@ -86,6 +89,7 @@ export function useLivelineEngine(config: EngineConfig): EngineState {
   const lerpSpeed = useDerivedValue(() => config.lerpSpeed);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
+  const pausedSV = useDerivedValue(() => config.paused ?? false);
 
   // Animation state (mutated on UI thread each frame)
   const displayValue = useSharedValue(0);
@@ -117,6 +121,7 @@ export function useLivelineEngine(config: EngineConfig): EngineState {
       lerpSpeed,
       exaggerateSV,
       referenceValue,
+      pausedSV,
     });
   });
   /* istanbul ignore end */

@@ -22,6 +22,7 @@ describe("applyLivelineEngineFrame", () => {
       lerpSpeed: { value: 0.5 },
       exaggerateSV: { value: false },
       referenceValue: { value: undefined as number | undefined },
+      pausedSV: { value: false },
     };
     applyLivelineEngineFrame(
       { timeSincePreviousFrame: 16.67 },

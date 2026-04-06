@@ -385,4 +385,41 @@ describe("tickLivelineEngineFrame", () => {
     });
     expect(s.displayMin).toBeLessThanOrEqual(-100);
   });
+
+  it("freezes timestamp when paused=true", () => {
+    const s = { ...baseState(), timestamp: 999 };
+    tickLivelineEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      windowSize: 30,
+      lerpSpeed: 0.08,
+      exaggerate: false,
+      referenceValue: undefined,
+      targetValue: 1,
+      points: [],
+      nowSeconds: 5000,
+      paused: true,
+    });
+    expect(s.timestamp).toBe(999);
+  });
+
+  it("still lerps displayWindow when paused=true", () => {
+    const s = { ...baseState(), displayWindow: 30 };
+    tickLivelineEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      windowSize: 60,
+      lerpSpeed: 0.5,
+      exaggerate: false,
+      referenceValue: undefined,
+      targetValue: 1,
+      points: [],
+      nowSeconds: 1001,
+      paused: true,
+    });
+    expect(s.displayWindow).toBeGreaterThan(30);
+    expect(s.displayWindow).toBeLessThan(60);
+  });
 });

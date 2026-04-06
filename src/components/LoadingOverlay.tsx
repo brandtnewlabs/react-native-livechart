@@ -182,7 +182,7 @@ export function LoadingOverlay({
       <SkiaText
         x={emptyTextX}
         y={emptyTextY}
-        text={showText.value ? emptyText : ("" as unknown as string)}
+        text={/* istanbul ignore next */ showText.value ? emptyText : ("" as unknown as string)}
         font={font}
         color={palette.gridLabel}
         opacity={showText as unknown as number}

@@ -19,6 +19,14 @@ import { formatTime } from "../src/format";
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
+const TIME_WINDOWS: { label: string; secs: number }[] = [
+  { label: "30s", secs: 30 },
+  { label: "1m", secs: 60 },
+  { label: "5m", secs: 300 },
+  { label: "1h", secs: 3_600 },
+  { label: "24h", secs: 86_400 },
+];
+
 const VOLATILITY_MODES: VolatilityMode[] = [
   "calm",
   "normal",
@@ -47,6 +55,7 @@ export default function Index() {
     useState<VolatilityMode>("normal");
   const [tradeSource, setTradeSource] = useState<TradeSource>("orderbook");
   const [paused, setPaused] = useState(false);
+  const [windowSecs, setWindowSecs] = useState(30);
   const [startValue, setStartValue] = useState(100);
   const [loading, setLoading] = useState(false);
 
@@ -90,6 +99,8 @@ export default function Index() {
           value={value}
           color="#3b82f6"
           theme="dark"
+          window={windowSecs}
+          paused={paused}
           scrub
           scrubTooltip={false}
           loading={loading}
@@ -103,6 +114,26 @@ export default function Index() {
         style={styles.controlsScroll}
         contentContainerStyle={styles.controls}
       >
+        <Text style={styles.sectionLabel}>Time Window</Text>
+        <View style={styles.buttonRow}>
+          {TIME_WINDOWS.map((w) => (
+            <Pressable
+              key={w.label}
+              style={[styles.chip, windowSecs === w.secs && styles.chipActive]}
+              onPress={() => setWindowSecs(w.secs)}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  windowSecs === w.secs && styles.chipTextActive,
+                ]}
+              >
+                {w.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         <Text style={styles.sectionLabel}>Price Range</Text>
         <View style={styles.buttonRow}>
           {PRICE_RANGES.map((r) => (
