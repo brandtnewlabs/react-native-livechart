@@ -8,6 +8,11 @@ const MIN_PULSE_RADIUS = 9;
 const DOT_OUTER_RADIUS = 6.5;
 const DOT_INNER_RADIUS = 3.5;
 
+/**
+ * Live dot + expanding pulse ring. Peak ring size uses `pulse.maxRadius` and
+ * `pulse.strokeWidth`; chart padding reserves the same outer extent via
+ * `pulseRadialOutset` in `draw/line.ts` (see `resolveChartLayout`).
+ */
 export function DotOverlay({
   dotX,
   dotY,

@@ -1,6 +1,7 @@
 import type { SkFont } from "@shopify/react-native-skia";
-import { resolveChartLayout } from "./resolveChartLayout";
+import { pulseRadialOutset } from "../draw/line";
 import { resolveTheme } from "../theme";
+import { resolveChartLayout } from "./resolveChartLayout";
 
 const palette = resolveTheme("#3b82f6", "dark");
 
@@ -107,6 +108,52 @@ describe("resolveChartLayout", () => {
     // samples: "42.00"(5ch), "4.20"(4ch), "0.42"(4ch), "420.00"(6ch) → max 6ch×7=42px
     // yAxis: max(42+16, 44) = 58
     expect(padding.right).toBe(58);
+  });
+
+  it("uses minimal right padding when y-axis and badge are off (font path)", () => {
+    const font = mockFont(7);
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      font,
+      formatValue: fmt,
+      currentValue: 42,
+    });
+    expect(padding.right).toBe(12);
+  });
+
+  it("expands top/right/bottom for live dot pulse when y-axis and badge are off", () => {
+    const font = mockFont(7);
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      font,
+      formatValue: fmt,
+      currentValue: 42,
+      pulse: { maxRadius: 21, strokeWidth: 1.5 },
+    });
+    const outlet = pulseRadialOutset(21, 1.5);
+    expect(padding.right).toBe(outlet);
+    expect(padding.top).toBe(outlet);
+    expect(padding.bottom).toBe(28);
+    expect(padding.left).toBe(12);
+  });
+
+  it("does not shrink insets below pulse outlet when right inset override is tight", () => {
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      insetsOverride: { right: 6, top: 6, bottom: 6, left: 6 },
+      pulse: { maxRadius: 20, strokeWidth: 2 },
+    });
+    const outlet = pulseRadialOutset(20, 2);
+    expect(padding.right).toBe(outlet);
+    expect(padding.top).toBe(outlet);
+    expect(padding.bottom).toBe(outlet);
+    expect(padding.left).toBe(6);
   });
 
   it("auto-sizes right padding from formatted value width (badge)", () => {
