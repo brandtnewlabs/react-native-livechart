@@ -1,13 +1,13 @@
 import { Pressable, Text, View } from "react-native";
-import { ACCENT, TIME_WINDOWS } from "./_lib/shared";
+import { ACCENT, TIME_WINDOWS } from "../../src/demo/shared";
 
 import { useState } from "react";
 import { useSharedValue } from "react-native-reanimated";
 import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChart } from "../../src";
+import { DemoScreen } from "../../src/demo/DemoScreen";
+import { demoStyles } from "../../src/demo/styles";
 import type { CandlePoint } from "../../src/types";
-import { DemoScreen } from "./_lib/DemoScreen";
-import { demoStyles } from "./_lib/styles";
 
 export const options = { title: "Candlestick" };
 

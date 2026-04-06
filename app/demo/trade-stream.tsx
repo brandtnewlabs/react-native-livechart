@@ -1,15 +1,15 @@
-import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { useSimulatedData, type TradeSource } from "../../sim/useSimulatedData";
+import { ACCENT, VOLATILITY_MODES } from "../../src/demo/shared";
+
+import { useState } from "react";
+import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChart } from "../../src";
-import { DemoScreen } from "./_lib/DemoScreen";
-import { ACCENT, TRADE_SOURCES, VOLATILITY_MODES } from "./_lib/shared";
-import { demoStyles } from "./_lib/styles";
+import { DemoScreen } from "../../src/demo/DemoScreen";
+import { demoStyles } from "../../src/demo/styles";
 
 export const options = { title: "Trade stream" };
 
 export default function TradeStreamScreen() {
-  const [source, setSource] = useState<TradeSource>("orderbook");
   const [streamOn, setStreamOn] = useState(true);
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("normal");
 
@@ -17,13 +17,12 @@ export default function TradeStreamScreen() {
     multiSeries: false,
     candleAggregation: false,
     tradeStream: streamOn,
-    tradeSource: source,
     volatilityMode: vol,
   });
 
   return (
     <DemoScreen
-      description="tradeStream SharedValue; bonding-curve vs orderbook"
+      description="tradeStream SharedValue overlay"
       chart={
         <LiveChart
           data={data}
@@ -60,26 +59,6 @@ export default function TradeStreamScreen() {
             Off
           </Text>
         </Pressable>
-      </View>
-
-      <Text style={demoStyles.sectionLabel}>Trade source</Text>
-      <View style={demoStyles.buttonRow}>
-        {TRADE_SOURCES.map((s) => (
-          <Pressable
-            key={s}
-            style={[demoStyles.chip, source === s && demoStyles.chipActive]}
-            onPress={() => setSource(s)}
-          >
-            <Text
-              style={[
-                demoStyles.chipText,
-                source === s && demoStyles.chipTextActive,
-              ]}
-            >
-              {s}
-            </Text>
-          </Pressable>
-        ))}
       </View>
 
       <Text style={demoStyles.sectionLabel}>Volatility</Text>

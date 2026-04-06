@@ -22,6 +22,7 @@ export function YAxisOverlay({
   palette,
   font,
   badge = false,
+  badgeTail = true,
 }: {
   entries: SharedValue<YAxisEntry[]>;
   engine: ChartEngineLayout;
@@ -30,6 +31,8 @@ export function YAxisOverlay({
   font: SkFont;
   /** When true, use the asymmetric pill centering formula so labels align with badge text. */
   badge?: boolean;
+  /** Whether the badge tail spike is shown; affects the left inset used for label alignment. */
+  badgeTail?: boolean;
 }) {
   const gridLinesPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
@@ -43,7 +46,7 @@ export function YAxisOverlay({
   });
 
   // Left inset = gap from dot to pill body (used by both badge and grid labels for alignment).
-  const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize());
+  const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize(), badgeTail);
 
   // Transform YAxisEntry[] into the { x, y, label, alpha } shape for AnimatedLabel.
   // When badge is shown, use pillTextLeftX so labels horizontally align with badge text.

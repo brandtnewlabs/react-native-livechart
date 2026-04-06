@@ -1,12 +1,13 @@
-import { Platform, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { useState } from "react";
 import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChart } from "../../src";
+import { DemoScreen } from "../../src/demo/DemoScreen";
+import { ACCENT_PRESETS } from "../../src/demo/shared";
+import { demoStyles } from "../../src/demo/styles";
+import { MONO_FONT_FAMILY } from "../../src/monoFontFamily";
 import type { FontWeight } from "../../src/types";
-import { DemoScreen } from "./_lib/DemoScreen";
-import { ACCENT_PRESETS } from "./_lib/shared";
-import { demoStyles } from "./_lib/styles";
 
 export const options = { title: "Appearance" };
 
@@ -30,11 +31,6 @@ export default function AppearanceScreen() {
     tradeStream: false,
   });
 
-  const fontFamily = Platform.select({
-    ios: "Menlo",
-    default: "monospace",
-  }) as string;
-
   return (
     <DemoScreen
       description="theme, accent, gradient, line, font, container style"
@@ -56,7 +52,7 @@ export default function AppearanceScreen() {
               : undefined
           }
           font={{
-            fontFamily,
+            fontFamily: MONO_FONT_FAMILY,
             fontSize,
             fontWeight,
           }}

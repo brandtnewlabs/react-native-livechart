@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useSharedValue } from "react-native-reanimated";
 import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChart } from "../../src";
+import { DemoScreen } from "../../src/demo/DemoScreen";
+import { ACCENT } from "../../src/demo/shared";
+import { demoStyles } from "../../src/demo/styles";
 import type { LiveChartPoint } from "../../src/types";
-import { DemoScreen } from "./_lib/DemoScreen";
-import { ACCENT } from "./_lib/shared";
-import { demoStyles } from "./_lib/styles";
 
 export const options = { title: "Empty, loading, formatters" };
 

@@ -6,7 +6,6 @@ import {
   matchFont,
   vec,
 } from "@shopify/react-native-skia";
-import { Platform, View } from "react-native";
 import {
   formatTime as defaultFormatTime,
   formatValue as defaultFormatValue,
@@ -48,6 +47,7 @@ import {
 import { leftEdgeFadeColorsFromBgRgb, resolveTheme } from "./theme";
 import type { LiveChartProps, TradeEvent } from "./types";
 
+import { View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
 import { BadgeOverlay } from "./components/BadgeOverlay";
@@ -62,6 +62,7 @@ import { TradeStreamOverlay } from "./components/TradeStreamOverlay";
 import { ValueLineOverlay } from "./components/ValueLineOverlay";
 import { XAxisOverlay } from "./components/XAxisOverlay";
 import { YAxisOverlay } from "./components/YAxisOverlay";
+import { MONO_FONT_FAMILY } from "./monoFontFamily";
 import { useLiveChartEngine } from "./useLiveChartEngine";
 
 export function LiveChart({
@@ -138,11 +139,7 @@ export function LiveChart({
   );
 
   const skiaFont = matchFont(
-    resolveFontConfig(
-      fontProp,
-      Platform.select({ ios: "Menlo", default: "monospace" }) as string,
-      palette.labelFontSize,
-    ),
+    resolveFontConfig(fontProp, MONO_FONT_FAMILY, palette.labelFontSize),
   );
 
   const pulseConfig = pulseCfg
@@ -159,6 +156,7 @@ export function LiveChart({
     yAxis: yAxisCfg !== null,
     badge: badgeCfg !== null,
     badgeUsesRightGutter,
+    badgeShowTail: badgeCfg?.tail ?? true,
     xAxis: xAxisCfg !== null,
     font: skiaFont,
     formatValue,
@@ -335,6 +333,7 @@ export function LiveChart({
                   palette={palette}
                   font={skiaFont}
                   badge={badgeUsesRightGutter}
+                  badgeTail={badgeCfg?.tail ?? true}
                 />
               </Group>
             )}
@@ -466,6 +465,7 @@ export function LiveChart({
               emptyText={emptyText}
               strokeWidth={strokeWidth}
               badge={badgeCfg !== null}
+              badgeTail={badgeCfg?.tail ?? true}
             />
           </Group>
 

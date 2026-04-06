@@ -1,5 +1,5 @@
-import type { VolatilityMode } from "../../../sim/generators";
-import type { TradeSource } from "../../../sim/useSimulatedData";
+import type { VolatilityMode } from "../../sim/generators";
+import type { TradeSource } from "../../sim/useSimulatedData";
 
 export const ACCENT = "#3b82f6";
 

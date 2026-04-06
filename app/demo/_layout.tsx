@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { MONO_FONT_FAMILY } from "../../src/monoFontFamily";
 
 const headerBg = "rgb(10, 10, 10)";
 
@@ -11,7 +12,7 @@ export default function DemoLayout() {
         headerTintColor: "#fff",
         headerTitleStyle: {
           color: "#fff",
-          fontFamily: "monospace",
+          fontFamily: MONO_FONT_FAMILY,
           fontSize: 15,
         },
         contentStyle: { backgroundColor: headerBg },

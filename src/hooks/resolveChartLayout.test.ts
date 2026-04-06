@@ -310,4 +310,60 @@ describe("resolveChartLayout", () => {
     });
     expect(padding.left).toBe(80);
   });
+
+  // ─── badgeShowTail ─────────────────────────────────────────────────
+
+  it("shrinks right padding when badgeShowTail is false (static fallback)", () => {
+    const withTail = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: true,
+    });
+    const noTail = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: true,
+      badgeShowTail: false,
+    });
+    expect(noTail.padding.right).toBeLessThan(withTail.padding.right);
+    expect(withTail.padding.right - noTail.padding.right).toBe(5);
+  });
+
+  it("shrinks right padding when badgeShowTail is false (font path)", () => {
+    const font = mockFont(7);
+    const withTail = resolveChartLayout({
+      palette,
+      yAxis: true,
+      badge: true,
+      font,
+      formatValue: fmt,
+      currentValue: 42,
+    });
+    const noTail = resolveChartLayout({
+      palette,
+      yAxis: true,
+      badge: true,
+      badgeShowTail: false,
+      font,
+      formatValue: fmt,
+      currentValue: 42,
+    });
+    expect(noTail.padding.right).toBeLessThan(withTail.padding.right);
+    expect(withTail.padding.right - noTail.padding.right).toBe(5);
+  });
+
+  it("badgeShowTail defaults to true when omitted", () => {
+    const explicit = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: true,
+      badgeShowTail: true,
+    });
+    const implicit = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: true,
+    });
+    expect(explicit.padding.right).toBe(implicit.padding.right);
+  });
 });

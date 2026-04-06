@@ -1,11 +1,12 @@
 import { Link, type Href } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { MONO_FONT_FAMILY } from "../src/monoFontFamily";
 
 const DEMOS: { href: Href; title: string; blurb: string }[] = [
   {
     href: "/demo/playground",
     title: "Playground",
-    blurb: "All-in-one: single/multi, candles, trades, degen, loading, etc.",
+    blurb: "All-in-one: line/candle, trades, degen, loading, etc.",
   },
   {
     href: "/demo/line-playback",
@@ -109,13 +110,13 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 22,
     fontWeight: "600",
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     paddingHorizontal: 20,
   },
   subtitle: {
     color: "rgba(255,255,255,0.45)",
     fontSize: 13,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     paddingHorizontal: 20,
     marginTop: 6,
     marginBottom: 16,
@@ -131,13 +132,13 @@ const styles = StyleSheet.create({
   rowTitle: {
     color: "#60a5fa",
     fontSize: 16,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     fontWeight: "600",
   },
   rowBlurb: {
     color: "rgba(255,255,255,0.4)",
     fontSize: 12,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     lineHeight: 17,
     marginTop: 6,
   },

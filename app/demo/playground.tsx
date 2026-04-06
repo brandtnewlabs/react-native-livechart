@@ -13,20 +13,17 @@ import Animated, {
 } from "react-native-reanimated";
 import type { VolatilityMode } from "../../sim/generators";
 import { useSimulatedData, type TradeSource } from "../../sim/useSimulatedData";
-import type { ScrubPoint, ScrubPointMulti } from "../../src";
-import { LiveChart, LiveChartSeries } from "../../src";
-import { formatTime } from "../../src/format";
-import type {
-  CandlePoint,
-  LiveChartPoint,
-  SeriesConfig,
-} from "../../src/types";
+import type { ScrubPoint } from "../../src";
+import { LiveChart } from "../../src";
 import {
   PRICE_RANGES,
   TIME_WINDOWS,
   TRADE_SOURCES,
   VOLATILITY_MODES,
-} from "./_lib/shared";
+} from "../../src/demo/shared";
+import { formatTime } from "../../src/format";
+import { MONO_FONT_FAMILY } from "../../src/monoFontFamily";
+import type { CandlePoint, LiveChartPoint } from "../../src/types";
 
 export const options = { title: "Playground" };
 
@@ -47,36 +44,29 @@ export default function PlaygroundScreen() {
   const [degen, setDegen] = useState(true);
   const [simTradeStream, setSimTradeStream] = useState(true);
 
-  const [chartMode, setChartMode] = useState<"single" | "multi">("single");
   const [displayMode, setDisplayMode] = useState<"line" | "candle">("line");
 
   const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
 
-  const { data, value, series, candles, liveCandle, tradeStream } =
-    useSimulatedData({
-      volatilityMode,
-      tradeSource,
-      paused,
-      startValue,
-      candleWidth: candleWidthSecs,
-      multiSeries: chartMode === "multi",
-      candleAggregation: chartMode === "single" && displayMode === "candle",
-      tradeStream: simTradeStream,
-    });
-  const chartModeSv = useSharedValue<"single" | "multi">("single");
+  const { data, value, candles, liveCandle, tradeStream } = useSimulatedData({
+    volatilityMode,
+    tradeSource,
+    paused,
+    startValue,
+    candleWidth: candleWidthSecs,
+    multiSeries: false,
+    candleAggregation: displayMode === "candle",
+    tradeStream: simTradeStream,
+  });
   const volatilitySv = useSharedValue(volatilityMode);
-  useEffect(() => {
-    chartModeSv.value = chartMode;
-  }, [chartMode, chartModeSv]);
   useEffect(() => {
     volatilitySv.value = volatilityMode;
   }, [volatilityMode, volatilitySv]);
 
-  const scrubPoint = useSharedValue<ScrubPoint | ScrubPointMulti | null>(null);
+  const scrubPoint = useSharedValue<ScrubPoint | null>(null);
 
   const emptyLineData = useSharedValue<LiveChartPoint[]>([]);
   const emptyLineValue = useSharedValue(0);
-  const emptyMultiSeries = useSharedValue<SeriesConfig[]>([]);
   const emptyCandles = useSharedValue<CandlePoint[]>([]);
   const nullLiveCandle = useSharedValue<CandlePoint | null>(null);
 
@@ -85,17 +75,6 @@ export default function PlaygroundScreen() {
     if (sp !== null) {
       const text = `${sp.value.toFixed(6)} · ${formatTime(sp.time)}`;
       return { text, defaultValue: text };
-    }
-    if (chartModeSv.value === "multi") {
-      const rows = series.value;
-      let txt = "";
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i].visible === false) continue;
-        if (txt) txt += " · ";
-        txt += `${rows[i].label ?? rows[i].id}: ${rows[i].value.toFixed(2)}`;
-      }
-      if (!txt) txt = "—";
-      return { text: txt, defaultValue: txt };
     }
     const text = `${value.value.toFixed(6)} · ${volatilitySv.value}`;
     return { text, defaultValue: text };
@@ -118,134 +97,69 @@ export default function PlaygroundScreen() {
       </View>
 
       <View style={styles.chartContainer}>
-        {chartMode === "single" ? (
-          <LiveChart
-            data={forceEmpty ? emptyLineData : data}
-            value={forceEmpty ? emptyLineValue : value}
-            mode={displayMode}
-            candles={
-              displayMode === "candle" && forceEmpty ? emptyCandles : candles
-            }
-            liveCandle={
-              displayMode === "candle" && forceEmpty
-                ? nullLiveCandle
-                : liveCandle
-            }
-            candleWidth={candleWidthSecs}
-            accentColor="#3b82f6"
-            theme="dark"
-            timeWindow={windowSecs}
-            paused={paused}
-            exaggerate={exaggerate}
-            valueLine={valueLine}
-            referenceLine={
-              showRefLine
-                ? { value: startValue * 1.05, label: "+5%" }
-                : undefined
-            }
-            scrub={{ tooltip: true }}
-            loading={loading}
-            onScrub={(point) => {
-              scrubPoint.value = point;
-            }}
-            tradeStream={tradeStream}
-            degen={degen ? true : undefined}
-          />
-        ) : (
-          <LiveChartSeries
-            series={forceEmpty ? emptyMultiSeries : series}
-            accentColor="#3b82f6"
-            theme="dark"
-            timeWindow={windowSecs}
-            paused={paused}
-            exaggerate={exaggerate}
-            referenceLine={
-              showRefLine
-                ? { value: startValue * 1.05, label: "+5%" }
-                : undefined
-            }
-            scrub={{ tooltip: true }}
-            loading={loading}
-            onScrub={(point) => {
-              scrubPoint.value = point;
-            }}
-          />
-        )}
+        <LiveChart
+          data={forceEmpty ? emptyLineData : data}
+          value={forceEmpty ? emptyLineValue : value}
+          mode={displayMode}
+          candles={
+            displayMode === "candle" && forceEmpty ? emptyCandles : candles
+          }
+          liveCandle={
+            displayMode === "candle" && forceEmpty ? nullLiveCandle : liveCandle
+          }
+          candleWidth={candleWidthSecs}
+          accentColor="#3b82f6"
+          theme="dark"
+          timeWindow={windowSecs}
+          paused={paused}
+          exaggerate={exaggerate}
+          valueLine={valueLine}
+          referenceLine={
+            showRefLine ? { value: startValue * 1.05, label: "+5%" } : undefined
+          }
+          scrub={{ tooltip: true }}
+          loading={loading}
+          onScrub={(point) => {
+            scrubPoint.value = point;
+          }}
+          tradeStream={tradeStream}
+          degen={degen ? true : undefined}
+        />
       </View>
 
       <ScrollView
         style={styles.controlsScroll}
         contentContainerStyle={styles.controls}
       >
-        <Text style={styles.sectionLabel}>Chart Mode</Text>
+        <Text style={styles.sectionLabel}>Display Mode</Text>
         <View style={styles.buttonRow}>
           <Pressable
-            style={[styles.chip, chartMode === "single" && styles.chipActive]}
-            onPress={() => setChartMode("single")}
+            style={[styles.chip, displayMode === "line" && styles.chipActive]}
+            onPress={() => setDisplayMode("line")}
           >
             <Text
               style={[
                 styles.chipText,
-                chartMode === "single" && styles.chipTextActive,
+                displayMode === "line" && styles.chipTextActive,
               ]}
             >
-              Single series
+              Line
             </Text>
           </Pressable>
           <Pressable
-            style={[styles.chip, chartMode === "multi" && styles.chipActive]}
-            onPress={() => setChartMode("multi")}
+            style={[styles.chip, displayMode === "candle" && styles.chipActive]}
+            onPress={() => setDisplayMode("candle")}
           >
             <Text
               style={[
                 styles.chipText,
-                chartMode === "multi" && styles.chipTextActive,
+                displayMode === "candle" && styles.chipTextActive,
               ]}
             >
-              Multi-series
+              Candle
             </Text>
           </Pressable>
         </View>
-
-        {chartMode === "single" && (
-          <>
-            <Text style={styles.sectionLabel}>Display Mode</Text>
-            <View style={styles.buttonRow}>
-              <Pressable
-                style={[
-                  styles.chip,
-                  displayMode === "line" && styles.chipActive,
-                ]}
-                onPress={() => setDisplayMode("line")}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    displayMode === "line" && styles.chipTextActive,
-                  ]}
-                >
-                  Line
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.chip,
-                  displayMode === "candle" && styles.chipActive,
-                ]}
-                onPress={() => setDisplayMode("candle")}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    displayMode === "candle" && styles.chipTextActive,
-                  ]}
-                >
-                  Candle
-                </Text>
-              </Pressable>
-            </View>
-          </>
-        )}
 
         <Text style={styles.sectionLabel}>Time Window</Text>
         <View style={styles.buttonRow}>
@@ -445,19 +359,19 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "600",
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
   },
   subtitle: {
     color: "rgba(255,255,255,0.5)",
     fontSize: 13,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     marginTop: 4,
     padding: 0,
   },
   hint: {
     color: "rgba(255,255,255,0.35)",
     fontSize: 11,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     marginTop: 6,
     lineHeight: 15,
   },
@@ -476,7 +390,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: "rgba(255,255,255,0.4)",
     fontSize: 11,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 8,
@@ -500,7 +414,7 @@ const styles = StyleSheet.create({
   chipText: {
     color: "rgba(255,255,255,0.6)",
     fontSize: 13,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
   },
   chipTextActive: {
     color: "#fff",
