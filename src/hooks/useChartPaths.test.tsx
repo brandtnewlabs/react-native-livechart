@@ -1,10 +1,12 @@
-import { renderHook } from "@testing-library/react-native";
-import { useSharedValue } from "react-native-reanimated";
 import { DEFAULT_PADDING } from "../draw/line";
-import type { EngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLivelineEngine";
+import { renderHook } from "@testing-library/react-native";
 import { useChartPaths } from "./useChartPaths";
+import { useSharedValue } from "react-native-reanimated";
 
-function makeEngine(overrides: Partial<EngineState> = {}): EngineState {
+function makeEngine(
+  overrides: Partial<SingleEngineState> = {},
+): SingleEngineState {
   const base = {
     data: { value: [{ time: 1000, value: 1 }] },
     value: { value: 1 },
@@ -16,7 +18,7 @@ function makeEngine(overrides: Partial<EngineState> = {}): EngineState {
     canvasHeight: { value: 120 },
     timestamp: { value: 1000 },
   };
-  return { ...base, ...overrides } as unknown as EngineState;
+  return { ...base, ...overrides } as unknown as SingleEngineState;
 }
 
 describe("useChartPaths", () => {
@@ -35,7 +37,7 @@ describe("useChartPaths", () => {
           data: { value: [{ time: 1000, value: 1 }] },
           displayMin: { value: 0 },
           displayMax: { value: 0 },
-        } as unknown as Partial<EngineState>),
+        } as unknown as Partial<SingleEngineState>),
         DEFAULT_PADDING,
       ),
     );
@@ -54,7 +56,7 @@ describe("useChartPaths", () => {
               { time: 1000, value: 2 },
             ],
           },
-        } as unknown as Partial<EngineState>),
+        } as unknown as Partial<SingleEngineState>),
         DEFAULT_PADDING,
         morphT,
       );

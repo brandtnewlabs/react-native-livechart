@@ -2,7 +2,7 @@ import { DashPathEffect, Path, Skia } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { ChartPadding } from "../draw/line";
-import type { EngineState } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLivelineEngine";
 
 /**
  * A dashed horizontal line that tracks the live display value — sitting at
@@ -17,7 +17,7 @@ export function ValueLineOverlay({
   color,
 }: {
   dotY: SharedValue<number>;
-  engine: EngineState;
+  engine: ChartEngineLayout;
   padding: ChartPadding;
   strokeWidth: number;
   intervals: [number, number];

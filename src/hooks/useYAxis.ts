@@ -1,12 +1,12 @@
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 
+import type { ChartEngineLayout } from "../useLivelineEngine";
 import type { ChartPadding } from "../draw/line";
-import type { EngineState } from "../useLivelineEngine";
 import type { SkFont } from "@shopify/react-native-skia";
 import { computeGridEntries } from "../draw/grid";
 
 export function useYAxis(
-  engine: EngineState,
+  engine: ChartEngineLayout,
   padding: ChartPadding,
   formatValue: (v: number) => string,
   font: SkFont,

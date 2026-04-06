@@ -95,7 +95,10 @@ export function resolveSeriesPalettes(
   const map = new Map<string, LivelinePalette>();
   for (let i = 0; i < series.length; i++) {
     const s = series[i];
-    const color = s.color || SERIES_COLORS[i % SERIES_COLORS.length];
+    const color =
+      s.color != null && s.color !== ""
+        ? s.color
+        : SERIES_COLORS[i % SERIES_COLORS.length];
     map.set(s.id, resolveTheme(color, mode));
   }
   return map;

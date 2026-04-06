@@ -1,8 +1,8 @@
 import type { ChartPadding } from "../draw/line";
-import type { EngineState } from "../useLivelineEngine";
+import type { SingleEngineState } from "../useLivelineEngine";
 import { useDerivedValue } from "react-native-reanimated";
 
-export function useLiveDot(engine: EngineState, padding: ChartPadding) {
+export function useLiveDot(engine: SingleEngineState, padding: ChartPadding) {
   const dotX = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
     if (w === 0) return -100;

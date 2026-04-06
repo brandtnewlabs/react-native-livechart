@@ -4,7 +4,7 @@ import type { ChartPadding } from "../draw/line";
 import type { XAxisEntry } from "../hooks/useXAxis";
 import { measureFontTextWidth } from "../measureFontTextWidth";
 import type { LivelinePalette } from "../types";
-import type { EngineState } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLivelineEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
 const MAX_X_LABELS = 10;
@@ -17,7 +17,7 @@ export function XAxisOverlay({
   font,
 }: {
   entries: SharedValue<XAxisEntry[]>;
-  engine: EngineState;
+  engine: ChartEngineLayout;
   padding: ChartPadding;
   palette: LivelinePalette;
   font: SkFont;

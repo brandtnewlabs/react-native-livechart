@@ -2,7 +2,7 @@ import { Circle, Group } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ResolvedPulseConfig } from "../resolveConfig";
 import type { LivelinePalette, Momentum } from "../types";
-import type { EngineState } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLivelineEngine";
 
 // Minimum ring radius — sits just outside the outer dot ring (r = 6.5).
 const MIN_PULSE_RADIUS = 9;
@@ -19,7 +19,7 @@ export function DotOverlay({
   dotY: SharedValue<number>;
   momentum: SharedValue<Momentum>;
   palette: LivelinePalette;
-  engine: EngineState;
+  engine: ChartEngineLayout;
   pulse: ResolvedPulseConfig | null;
 }) {
   const glowColor = useDerivedValue(() => {

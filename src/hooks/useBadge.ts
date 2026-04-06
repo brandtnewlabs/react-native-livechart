@@ -19,12 +19,12 @@ import { hexToRgb, lerpColor } from "../math/color";
 import { lerp } from "../math/lerp";
 import { measureFontTextWidth } from "../measureFontTextWidth";
 import type { BadgeVariant, LivelinePalette, Momentum } from "../types";
-import type { EngineState } from "../useLivelineEngine";
+import type { ChartEngineWithLiveValue } from "../useLivelineEngine";
 
 const TAIL_SPREAD = 2.5;
 
 export function useBadge(
-  engine: EngineState,
+  engine: ChartEngineWithLiveValue,
   padding: ChartPadding,
   palette: LivelinePalette,
   formatValue: (v: number) => string,

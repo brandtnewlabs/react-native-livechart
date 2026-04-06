@@ -10,7 +10,7 @@ import {
 } from "../draw/line";
 import { measureFontTextWidth } from "../measureFontTextWidth";
 import type { LivelinePalette } from "../types";
-import type { EngineState } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLivelineEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
 const MAX_Y_LABELS = 15;
@@ -24,7 +24,7 @@ export function YAxisOverlay({
   badge = false,
 }: {
   entries: SharedValue<YAxisEntry[]>;
-  engine: EngineState;
+  engine: ChartEngineLayout;
   padding: ChartPadding;
   palette: LivelinePalette;
   font: SkFont;

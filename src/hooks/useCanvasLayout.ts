@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 
-import type { EngineState } from "../useLivelineEngine";
+import type { ChartEngineLayout } from "../useLivelineEngine";
 import type { LayoutChangeEvent } from "react-native";
 
-export function useCanvasLayout(engine: EngineState) {
+export function useCanvasLayout(engine: ChartEngineLayout) {
   const [layoutHeight, setLayoutHeight] = useState(0);
 
   const onLayout = useCallback(
