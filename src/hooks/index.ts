@@ -4,5 +4,6 @@ export { resolveChartLayout } from "./useChartLayout";
 export { useChartPaths } from "./useChartPaths";
 export { useGrid } from "./useGrid";
 export { useLiveDot } from "./useLiveDot";
+export { useMomentum } from "./useMomentum";
 export { useTimeAxis } from "./useTimeAxis";
 

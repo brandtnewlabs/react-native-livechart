@@ -1,7 +1,14 @@
 import { Group, Path, Skia, type SkFont } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
+import { BADGE_DOT_GAP } from "../constants";
 import type { GridEntry } from "../draw/grid";
-import type { ChartPadding } from "../draw/line";
+import {
+  badgeTailAndCap,
+  gutterCenteredTextLeftX,
+  pillTextLeftX,
+  type ChartPadding,
+} from "../draw/line";
+import { measureFontTextWidth } from "../measureFontTextWidth";
 import type { LivelinePalette } from "../types";
 import type { EngineState } from "../useLivelineEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
@@ -14,12 +21,15 @@ export function GridOverlay({
   padding,
   palette,
   font,
+  badge = false,
 }: {
   entries: SharedValue<GridEntry[]>;
   engine: EngineState;
   padding: ChartPadding;
   palette: LivelinePalette;
   font: SkFont;
+  /** When true, use the asymmetric pill centering formula so labels align with badge text. */
+  badge?: boolean;
 }) {
   const gridLinesPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
@@ -32,19 +42,26 @@ export function GridOverlay({
     return path;
   });
 
-  // Transform GridEntry[] into the { x, y, label, alpha } shape for AnimatedLabel
+  // Left inset = gap from dot to pill body (used by both badge and grid labels for alignment).
+  const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize());
+
+  // Transform GridEntry[] into the { x, y, label, alpha } shape for AnimatedLabel.
+  // When badge is shown, use pillTextLeftX so labels horizontally align with badge text.
   const labelEntries = useDerivedValue(() => {
     const items = entries.value;
     const w = engine.canvasWidth.value;
-    const marginCenter = w - padding.right + padding.right / 2;
-    const fontHeight = font.getSize();
+    const fm = font.getMetrics();
+    const baselineOffset = (fm.ascent + fm.descent) / 2;
     const result: { x: number; y: number; label: string; alpha: number }[] = [];
     for (let i = 0; i < items.length; i++) {
       const e = items[i];
-      const textW = font.getTextWidth(e.label);
+      const textW = measureFontTextWidth(font, e.label);
+      const x = badge
+        ? pillTextLeftX(w, padding.right, leftInset, textW)
+        : gutterCenteredTextLeftX(w, padding.right, textW);
       result.push({
-        x: marginCenter - textW / 2,
-        y: e.y + fontHeight / 2 - 1,
+        x,
+        y: e.y - baselineOffset,
         label: e.label,
         alpha: e.alpha,
       });

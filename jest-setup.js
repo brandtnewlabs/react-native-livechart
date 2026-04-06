@@ -19,7 +19,13 @@ jest.mock("@shopify/react-native-skia", () => {
 
   const mockFont = {
     getSize: () => 12,
-    getTextWidth: (text) => String(text).length * 7,
+    measureText: (text) => ({
+      x: 0,
+      y: 0,
+      width: String(text).length * 7,
+      height: 12,
+    }),
+    getMetrics: () => ({ ascent: -9.6, descent: 2.4, leading: 0 }),
   };
 
   return {

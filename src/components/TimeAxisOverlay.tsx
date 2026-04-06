@@ -2,6 +2,7 @@ import { Group, Path, Skia, type SkFont } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ChartPadding } from "../draw/line";
 import type { TimeEntry } from "../hooks/useTimeAxis";
+import { measureFontTextWidth } from "../measureFontTextWidth";
 import type { LivelinePalette } from "../types";
 import type { EngineState } from "../useLivelineEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
@@ -46,7 +47,7 @@ export function TimeAxisOverlay({
     const h = engine.canvasHeight.value;
     const y = h - padding.bottom + 19;
     return items.map((e) => ({
-      x: e.x - font.getTextWidth(e.label) / 2,
+      x: e.x - measureFontTextWidth(font, e.label) / 2,
       y,
       label: e.label,
       alpha: e.alpha,

@@ -1,13 +1,26 @@
 import { Skia, type SkFont } from "@shopify/react-native-skia";
-import { useDerivedValue, useSharedValue } from "react-native-reanimated";
-import type { ChartPadding } from "../draw/line";
+import {
+  useDerivedValue,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
+import {
+  BADGE_DOT_GAP,
+  BADGE_MARGIN_RIGHT,
+  BADGE_PILL_PAD_Y,
+  BADGE_TAIL_LEN,
+} from "../constants";
+import {
+  badgeTailAndCap,
+  pillTextLeftX,
+  type ChartPadding,
+} from "../draw/line";
+import { hexToRgb, lerpColor } from "../math/color";
 import { lerp } from "../math/lerp";
-import type { BadgeVariant, LivelinePalette } from "../types";
+import { measureFontTextWidth } from "../measureFontTextWidth";
+import type { BadgeVariant, LivelinePalette, Momentum } from "../types";
 import type { EngineState } from "../useLivelineEngine";
 
-const PAD_X = 10;
-const PAD_Y = 3;
-const TAIL_LEN = 5;
 const TAIL_SPREAD = 2.5;
 
 export function useBadge(
@@ -18,8 +31,15 @@ export function useBadge(
   font: SkFont,
   variant: BadgeVariant = "default",
   showTail = true,
+  momentum?: SharedValue<Momentum>,
 ) {
-  const displayWidth = useSharedValue(60);
+  const colorR = useSharedValue(0);
+  const colorG = useSharedValue(0);
+  const colorB = useSharedValue(0);
+
+  const upRgb = hexToRgb(palette.dotUp);
+  const downRgb = hexToRgb(palette.dotDown);
+  const accentRgb = hexToRgb(palette.badgeBg);
 
   const badge = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
@@ -46,24 +66,29 @@ export function useBadge(
           ((dMax - engine.displayValue.value) / valRange) * chartH;
 
     const text = formatValue(engine.displayValue.value);
-    const textW = font.getTextWidth(text);
-    const targetWidth = textW + PAD_X * 2;
+    const textW = measureFontTextWidth(font, text);
 
-    displayWidth.value = lerp(displayWidth.value, targetWidth, 0.15, 16.67);
-    const pillW = displayWidth.value;
-    const pillH = font.getSize() + PAD_Y * 2;
-
-    const tailLen = showTail ? TAIL_LEN : 0;
-    const badgeX = w - padding.right + 4;
-    const badgeY = dotY - pillH / 2;
-
-    // Build pill + tail path
-    const path = Skia.Path.Make();
+    const pillH = font.getSize() + BADGE_PILL_PAD_Y * 2;
     const r = pillH / 2;
+    // Asymmetric layout: tail gap (tl) on left, BADGE_MARGIN_RIGHT on right.
+    // Pill body starts tl px from the gutter left edge (= dot x), creating a
+    // visible gap bridged by the tail. Pill right edge is BADGE_MARGIN_RIGHT
+    // from the canvas edge (pill fills almost the full gutter width).
+    const tl = badgeTailAndCap(font.getSize()); // = BADGE_TAIL_LEN + r
+
+    const bodyLeft = w - padding.right + BADGE_DOT_GAP + tl;
+    const bodyRight = w - BADGE_MARGIN_RIGHT;
+    const pillW = bodyRight - bodyLeft;
+    // Text centered in pill body — same formula used by GridOverlay (uses same leftInset).
+    const textX = pillTextLeftX(w, padding.right, BADGE_DOT_GAP + tl, textW);
+
+    const badgeY = dotY - pillH / 2;
+    const path = Skia.Path.Make();
 
     if (showTail) {
-      const tl = tailLen + r;
-      const cx = tailLen + pillW - r;
+      // Tail tip starts BADGE_DOT_GAP px to the right of the dot — clear visual gap.
+      const badgeX = w - padding.right + BADGE_DOT_GAP;
+      const cx = tl + pillW - r; // arc center offset: pill right cap center at bodyRight - r
 
       path.moveTo(badgeX + tl, badgeY);
       path.lineTo(badgeX + cx, badgeY);
@@ -75,7 +100,7 @@ export function useBadge(
       );
       path.lineTo(badgeX + tl, badgeY + pillH);
       path.cubicTo(
-        badgeX + tailLen + 2,
+        badgeX + BADGE_TAIL_LEN + 2,
         badgeY + pillH,
         badgeX + 3,
         badgeY + r + TAIL_SPREAD,
@@ -85,7 +110,7 @@ export function useBadge(
       path.cubicTo(
         badgeX + 3,
         badgeY + r - TAIL_SPREAD,
-        badgeX + tailLen + 2,
+        badgeX + BADGE_TAIL_LEN + 2,
         badgeY,
         badgeX + tl,
         badgeY,
@@ -93,22 +118,33 @@ export function useBadge(
       path.close();
     } else {
       path.addRRect({
-        rect: {
-          x: badgeX,
-          y: badgeY,
-          width: pillW,
-          height: pillH,
-        },
+        rect: { x: bodyLeft, y: badgeY, width: pillW, height: pillH },
         rx: r,
         ry: r,
       });
     }
 
-    const textX = badgeX + tailLen + (pillW - textW) / 2;
-    const textY = badgeY + pillH / 2 + font.getSize() / 2 - 1;
+    const fm = font.getMetrics();
+    const textY = dotY - (fm.ascent + fm.descent) / 2;
 
-    const bgColor =
-      variant === "minimal" ? "rgba(255,255,255,0.95)" : palette.badgeBg;
+    let bgColor: string;
+    if (variant === "minimal") {
+      bgColor = "rgba(255,255,255,0.95)";
+    } else if (momentum) {
+      const m = momentum.value;
+      const targetRgb = m === "up" ? upRgb : m === "down" ? downRgb : accentRgb;
+      colorR.value = lerp(colorR.value, targetRgb[0], 0.08, 16.67);
+      colorG.value = lerp(colorG.value, targetRgb[1], 0.08, 16.67);
+      colorB.value = lerp(colorB.value, targetRgb[2], 0.08, 16.67);
+      bgColor = lerpColor(
+        [colorR.value, colorG.value, colorB.value],
+        [colorR.value, colorG.value, colorB.value],
+        0,
+      );
+    } else {
+      bgColor = palette.badgeBg;
+    }
+
     const textColor =
       variant === "minimal" ? "rgba(100,100,100,1)" : palette.badgeText;
 

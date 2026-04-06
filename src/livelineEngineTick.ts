@@ -1,7 +1,8 @@
+import { ADAPTIVE_SPEED_BOOST } from "./constants";
 import type { LivelinePoint } from "./types";
 import { lerp } from "./math/lerp";
 
-export const ADAPTIVE_SPEED_BOOST = 0.12;
+export { ADAPTIVE_SPEED_BOOST } from "./constants";
 
 export interface EngineTickMutable {
   displayValue: number;
