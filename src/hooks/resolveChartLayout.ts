@@ -2,6 +2,7 @@ import type { SkFont } from "@shopify/react-native-skia";
 import {
   minPaddingLeftForBadge,
   minPaddingRightForBadgeYAxisAlign,
+  pulseRadialOutset,
   resolveAutoLeft,
   resolveAutoRight,
   resolvePadding,
@@ -26,6 +27,8 @@ export interface ChartLayoutConfig {
   formatValue?: (v: number) => string;
   /** Current value read from SharedValue on JS thread — used to produce a sample label for measurement */
   currentValue?: number;
+  /** Live dot pulse (LiveChart); expands top/right/bottom insets so the ring is not clipped. */
+  pulse?: { maxRadius: number; strokeWidth: number } | null;
 }
 
 export interface ChartLayoutResult {
@@ -57,7 +60,9 @@ export function resolveChartLayout(
     );
     rightPad = badgeOnRight
       ? minPaddingRightForBadgeYAxisAlign(config.font.getSize(), textWidth)
-      : Math.max(textWidth + 16, 44);
+      : config.yAxis
+        ? Math.max(textWidth + 16, 44)
+        : resolveAutoRight(false, false);
   } else {
     rightPad = resolveAutoRight(config.yAxis, badgeOnRight);
   }
@@ -90,8 +95,22 @@ export function resolveChartLayout(
     xAxis,
   );
 
+  let padding: ChartPadding = { ...base, right: rightPad, left: leftPad };
+  if (config.pulse) {
+    const outlet = pulseRadialOutset(
+      config.pulse.maxRadius,
+      config.pulse.strokeWidth,
+    );
+    padding = {
+      ...padding,
+      right: Math.max(padding.right, outlet),
+      top: Math.max(padding.top, outlet),
+      bottom: Math.max(padding.bottom, outlet),
+    };
+  }
+
   return {
     strokeWidth: config.lineWidthOverride ?? config.palette.lineWidth,
-    padding: { ...base, right: rightPad, left: leftPad },
+    padding,
   };
 }

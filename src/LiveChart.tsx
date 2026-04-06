@@ -134,6 +134,13 @@ export function LiveChart({
     ),
   );
 
+  const pulseConfig = pulseCfg
+    ? {
+        maxRadius: pulseCfg.maxRadius,
+        strokeWidth: pulseCfg.strokeWidth,
+      }
+    : null;
+
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,
@@ -145,6 +152,7 @@ export function LiveChart({
     font: skiaFont,
     formatValue,
     currentValue: value.value,
+    pulse: pulseConfig,
   });
 
   // ── Engine and reveal state ────────────────────────────────────────────

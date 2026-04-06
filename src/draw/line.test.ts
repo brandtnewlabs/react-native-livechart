@@ -3,6 +3,7 @@ import {
   buildLinePoints,
   gutterCenteredTextLeftX,
   minPaddingRightForBadgeYAxisAlign,
+  pulseRadialOutset,
   resolveAutoRight,
   resolvePadding,
 } from "./line";
@@ -17,6 +18,25 @@ describe("minPaddingRightForBadgeYAxisAlign", () => {
   it("returns DOT_GAP + tl + 2×PAD_X + textWidth + MARGIN_RIGHT (tl=14 for 12px font)", () => {
     // 12 + 14 + 20 + 35 + 4 = 85
     expect(minPaddingRightForBadgeYAxisAlign(12, 35)).toBe(85);
+  });
+});
+
+describe("pulseRadialOutset", () => {
+  it("ceil(maxRadius + strokeWidth/2) for default pulse-like values", () => {
+    expect(pulseRadialOutset(21, 1.5)).toBe(22);
+  });
+
+  it("handles integer sum without fractional waste", () => {
+    expect(pulseRadialOutset(20, 2)).toBe(21);
+  });
+
+  it("uses maxRadius alone when strokeWidth is zero", () => {
+    expect(pulseRadialOutset(15, 0)).toBe(15);
+  });
+
+  it("rounds up fractional totals", () => {
+    expect(pulseRadialOutset(10, 1)).toBe(11);
+    expect(pulseRadialOutset(9, 1)).toBe(10);
   });
 });
 

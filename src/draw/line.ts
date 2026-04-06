@@ -114,6 +114,22 @@ export function resolveAutoLeft(badgeOnLeft: boolean): number {
   return DEFAULT_PADDING.left;
 }
 
+/**
+ * Minimum inset from the canvas edge so the live-dot pulse ring is not clipped.
+ * Matches `DotOverlay`: circle radius up to `maxRadius` with a centered stroke.
+ *
+ * Used by `resolveChartLayout` when `pulse` is set; keep in sync with `DotOverlay` pulse rendering.
+ *
+ * @see `resolveChartLayout` in `hooks/resolveChartLayout.ts`
+ * @see `DotOverlay` in `components/DotOverlay.tsx`
+ */
+export function pulseRadialOutset(
+  maxRadius: number,
+  strokeWidth: number,
+): number {
+  return Math.ceil(maxRadius + strokeWidth / 2);
+}
+
 export function resolvePadding(
   override?: ChartInsets,
   yAxis = false,
