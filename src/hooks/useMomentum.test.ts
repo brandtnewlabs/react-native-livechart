@@ -1,8 +1,8 @@
 import { resolveMomentumProp, useMomentum } from "./useMomentum";
 
+import { renderHook } from "@testing-library/react-native";
 import type { LiveChartPoint } from "../types";
 import type { SingleEngineState } from "../useLiveChartEngine";
-import { renderHook } from "@testing-library/react-native";
 
 const makeData = (values: number[]) =>
   values.map((v, i) => ({ time: i * 0.2, value: v }));

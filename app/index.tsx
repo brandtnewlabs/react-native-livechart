@@ -1,493 +1,144 @@
-import { useEffect, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import Animated, {
-  useAnimatedProps,
-  useSharedValue,
-} from "react-native-reanimated";
-import type { VolatilityMode } from "../sim/generators";
-import { useSimulatedData, type TradeSource } from "../sim/useSimulatedData";
-import type { ScrubPoint, ScrubPointMulti } from "../src";
-import { LiveChart, LiveChartSeries } from "../src";
-import { formatTime } from "../src/format";
+import { Link, type Href } from "expo-router";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
-
-const TIME_WINDOWS: { label: string; secs: number }[] = [
-  { label: "30s", secs: 30 },
-  { label: "1m", secs: 60 },
-  { label: "5m", secs: 300 },
-  { label: "1h", secs: 3_600 },
-  { label: "24h", secs: 86_400 },
-];
-
-const VOLATILITY_MODES: VolatilityMode[] = [
-  "calm",
-  "normal",
-  "volatile",
-  "chaotic",
-];
-
-const TRADE_SOURCES: TradeSource[] = ["orderbook", "bonding-curve"];
-
-const PRICE_RANGES: { label: string; value: number }[] = [
-  { label: "0.001", value: 0.001 },
-  { label: "0.5", value: 0.5 },
-  { label: "50", value: 50 },
-  { label: "100", value: 100 },
-  { label: "1K", value: 1_000 },
-  { label: "10K", value: 10_000 },
-  { label: "67.5K", value: 67_500 },
-  { label: "100K", value: 100_000 },
-  { label: "1M", value: 1_000_000 },
-  { label: "10M", value: 10_000_000 },
-  { label: "100M", value: 100_000_000 },
+const DEMOS: { href: Href; title: string; blurb: string }[] = [
+  {
+    href: "/demo/playground",
+    title: "Playground",
+    blurb: "All-in-one: single/multi, candles, trades, degen, loading, etc.",
+  },
+  {
+    href: "/demo/line-playback",
+    title: "Line & playback",
+    blurb: "timeWindow, pause, smoothing, exaggerate.",
+  },
+  {
+    href: "/demo/candlestick",
+    title: "Candlestick",
+    blurb: "mode=candle, candles, liveCandle, candleWidth.",
+  },
+  {
+    href: "/demo/appearance",
+    title: "Appearance",
+    blurb: "Theme, accent, gradient, line, font, container style.",
+  },
+  {
+    href: "/demo/axes-insets",
+    title: "Axes & insets",
+    blurb: "Hide X/Y/both, minGap, insets; LiveChart vs LiveChartSeries.",
+  },
+  {
+    href: "/demo/chart-size",
+    title: "Chart size",
+    blurb: "Heights, narrow width, flex fill in fixed box.",
+  },
+  {
+    href: "/demo/badge-pulse",
+    title: "Badge & pulse",
+    blurb: "Badge variants and pulse / PulseConfig.",
+  },
+  {
+    href: "/demo/momentum",
+    title: "Momentum",
+    blurb:
+      "Badge tint vs auto/forced/config; volatility + exaggerate to see changes.",
+  },
+  {
+    href: "/demo/scrub",
+    title: "Scrub",
+    blurb: "Scrub modes, onScrub readout, candle OHLC payload.",
+  },
+  {
+    href: "/demo/horizontal-lines",
+    title: "Reference & value lines",
+    blurb: "referenceLine and valueLine styling.",
+  },
+  {
+    href: "/demo/trade-stream",
+    title: "Trade stream",
+    blurb: "Markers, orderbook vs bonding-curve.",
+  },
+  {
+    href: "/demo/degen",
+    title: "Degen",
+    blurb: "Particles, shake, DegenOptions presets.",
+  },
+  {
+    href: "/demo/edge-cases",
+    title: "Loading, empty, formatters",
+    blurb: "loading, empty data, formatValue / formatTime.",
+  },
+  {
+    href: "/demo/multi-series",
+    title: "Multi-series",
+    blurb: "LiveChartSeries, toggles, scrub, shared core props.",
+  },
 ];
 
 export default function Index() {
-  const [volatilityMode, setVolatilityMode] =
-    useState<VolatilityMode>("normal");
-  const [tradeSource, setTradeSource] = useState<TradeSource>("orderbook");
-  const [paused, setPaused] = useState(false);
-  const [windowSecs, setWindowSecs] = useState(30);
-  const [startValue, setStartValue] = useState(100);
-  const [loading, setLoading] = useState(false);
-  const [showRefLine, setShowRefLine] = useState(false);
-  const [valueLine, setValueLine] = useState(false);
-  const [exaggerate, setExaggerate] = useState(false);
-  const [degen, setDegen] = useState(true);
-  const [simTradeStream, setSimTradeStream] = useState(true);
-
-  const [chartMode, setChartMode] = useState<"single" | "multi">("single");
-  const [displayMode, setDisplayMode] = useState<"line" | "candle">("line");
-
-  // ~20 candles visible in the window; minimum 5s bars
-  const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
-
-  const { data, value, series, candles, liveCandle, tradeStream } =
-    useSimulatedData({
-      volatilityMode,
-      tradeSource,
-      paused,
-      startValue,
-      candleWidth: candleWidthSecs,
-      multiSeries: chartMode === "multi",
-      candleAggregation: chartMode === "single" && displayMode === "candle",
-      tradeStream: simTradeStream,
-    });
-  const chartModeSv = useSharedValue<"single" | "multi">("single");
-  const volatilitySv = useSharedValue(volatilityMode);
-  useEffect(() => {
-    chartModeSv.value = chartMode;
-  }, [chartMode, chartModeSv]);
-  useEffect(() => {
-    volatilitySv.value = volatilityMode;
-  }, [volatilityMode, volatilitySv]);
-
-  // Shared value updated by onScrub on the JS thread; null = live mode
-  const scrubPoint = useSharedValue<ScrubPoint | ScrubPointMulti | null>(null);
-
-  const subtitleProps = useAnimatedProps(() => {
-    const sp = scrubPoint.value;
-    if (sp !== null) {
-      const text = `${sp.value.toFixed(6)} · ${formatTime(sp.time)}`;
-      return { text, defaultValue: text };
-    }
-    if (chartModeSv.value === "multi") {
-      const rows = series.value;
-      let txt = "";
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i].visible === false) continue;
-        if (txt) txt += " · ";
-        txt += `${rows[i].label ?? rows[i].id}: ${rows[i].value.toFixed(2)}`;
-      }
-      if (!txt) txt = "—";
-      return { text: txt, defaultValue: txt };
-    }
-    const text = `${value.value.toFixed(6)} · ${volatilitySv.value}`;
-    return { text, defaultValue: text };
-  });
-
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>react-native-livechart</Text>
-        <AnimatedTextInput
-          editable={false}
-          underlineColorAndroid="transparent"
-          style={styles.subtitle}
-          animatedProps={subtitleProps}
-        />
-      </View>
-
-      <View style={styles.chartContainer}>
-        {chartMode === "single" ? (
-          <LiveChart
-            data={data}
-            value={value}
-            mode={displayMode}
-            candles={candles}
-            liveCandle={liveCandle}
-            candleWidth={candleWidthSecs}
-            accentColor="#3b82f6"
-            theme="dark"
-            timeWindow={windowSecs}
-            paused={paused}
-            exaggerate={exaggerate}
-            valueLine={valueLine}
-            referenceLine={
-              showRefLine
-                ? { value: startValue * 1.05, label: "+5%" }
-                : undefined
-            }
-            scrub={{ tooltip: true }}
-            loading={loading}
-            onScrub={(point) => {
-              scrubPoint.value = point;
-            }}
-            tradeStream={tradeStream}
-            degen={degen ? true : undefined}
-          />
-        ) : (
-          <LiveChartSeries
-            series={series}
-            accentColor="#3b82f6"
-            theme="dark"
-            timeWindow={windowSecs}
-            paused={paused}
-            exaggerate={exaggerate}
-            referenceLine={
-              showRefLine
-                ? { value: startValue * 1.05, label: "+5%" }
-                : undefined
-            }
-            scrub={{ tooltip: true }}
-            loading={loading}
-            onScrub={(point) => {
-              scrubPoint.value = point;
-            }}
-          />
-        )}
-      </View>
-
+    <View style={styles.root}>
+      <Text style={styles.title}>LiveChart demos</Text>
+      <Text style={styles.subtitle}>
+        Open a screen to manually test one feature area.
+      </Text>
       <ScrollView
-        style={styles.controlsScroll}
-        contentContainerStyle={styles.controls}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
       >
-        <Text style={styles.sectionLabel}>Chart Mode</Text>
-        <View style={styles.buttonRow}>
-          <Pressable
-            style={[styles.chip, chartMode === "single" && styles.chipActive]}
-            onPress={() => setChartMode("single")}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                chartMode === "single" && styles.chipTextActive,
-              ]}
-            >
-              Single series
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.chip, chartMode === "multi" && styles.chipActive]}
-            onPress={() => setChartMode("multi")}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                chartMode === "multi" && styles.chipTextActive,
-              ]}
-            >
-              Multi-series
-            </Text>
-          </Pressable>
-        </View>
-
-        {chartMode === "single" && (
-          <>
-            <Text style={styles.sectionLabel}>Display Mode</Text>
-            <View style={styles.buttonRow}>
-              <Pressable
-                style={[
-                  styles.chip,
-                  displayMode === "line" && styles.chipActive,
-                ]}
-                onPress={() => setDisplayMode("line")}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    displayMode === "line" && styles.chipTextActive,
-                  ]}
-                >
-                  Line
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.chip,
-                  displayMode === "candle" && styles.chipActive,
-                ]}
-                onPress={() => setDisplayMode("candle")}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    displayMode === "candle" && styles.chipTextActive,
-                  ]}
-                >
-                  Candle
-                </Text>
-              </Pressable>
-            </View>
-          </>
-        )}
-
-        <Text style={styles.sectionLabel}>Time Window</Text>
-        <View style={styles.buttonRow}>
-          {TIME_WINDOWS.map((w) => (
-            <Pressable
-              key={w.label}
-              style={[styles.chip, windowSecs === w.secs && styles.chipActive]}
-              onPress={() => setWindowSecs(w.secs)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  windowSecs === w.secs && styles.chipTextActive,
-                ]}
-              >
-                {w.label}
-              </Text>
+        {DEMOS.map((d) => (
+          <Link key={d.title} href={d.href} asChild>
+            <Pressable style={styles.row}>
+              <Text style={styles.rowTitle}>{d.title}</Text>
+              <Text style={styles.rowBlurb}>{d.blurb}</Text>
             </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>Price Range</Text>
-        <View style={styles.buttonRow}>
-          {PRICE_RANGES.map((r) => (
-            <Pressable
-              key={r.label}
-              style={[styles.chip, startValue === r.value && styles.chipActive]}
-              onPress={() => setStartValue(r.value)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  startValue === r.value && styles.chipTextActive,
-                ]}
-              >
-                {r.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>Volatility</Text>
-        <View style={styles.buttonRow}>
-          {VOLATILITY_MODES.map((mode) => (
-            <Pressable
-              key={mode}
-              style={[
-                styles.chip,
-                volatilityMode === mode && styles.chipActive,
-              ]}
-              onPress={() => setVolatilityMode(mode)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  volatilityMode === mode && styles.chipTextActive,
-                ]}
-              >
-                {mode}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>Trade Source</Text>
-        <View style={styles.buttonRow}>
-          {TRADE_SOURCES.map((source) => (
-            <Pressable
-              key={source}
-              style={[styles.chip, tradeSource === source && styles.chipActive]}
-              onPress={() => setTradeSource(source)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  tradeSource === source && styles.chipTextActive,
-                ]}
-              >
-                {source}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>Chart Options</Text>
-        <View style={styles.buttonRow}>
-          <Pressable
-            style={styles.chip}
-            onPress={() => {
-              setDegen(true);
-              setExaggerate(true);
-              setVolatilityMode("chaotic");
-            }}
-          >
-            <Text style={styles.chipText}>Degen demo</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.chip, simTradeStream && styles.chipActive]}
-            onPress={() => setSimTradeStream((v) => !v)}
-          >
-            <Text
-              style={[styles.chipText, simTradeStream && styles.chipTextActive]}
-            >
-              Trade stream
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.chip, degen && styles.chipActive]}
-            onPress={() => setDegen((v) => !v)}
-          >
-            <Text style={[styles.chipText, degen && styles.chipTextActive]}>
-              Degen
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.chip, valueLine && styles.chipActive]}
-            onPress={() => setValueLine((v) => !v)}
-          >
-            <Text style={[styles.chipText, valueLine && styles.chipTextActive]}>
-              Value Line
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.chip, showRefLine && styles.chipActive]}
-            onPress={() => setShowRefLine((v) => !v)}
-          >
-            <Text
-              style={[styles.chipText, showRefLine && styles.chipTextActive]}
-            >
-              Ref Line
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.chip, exaggerate && styles.chipActive]}
-            onPress={() => setExaggerate((v) => !v)}
-          >
-            <Text
-              style={[styles.chipText, exaggerate && styles.chipTextActive]}
-            >
-              Exaggerate
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.buttonRow}>
-          <Pressable
-            style={[styles.chip, paused && styles.chipActive]}
-            onPress={() => setPaused((p) => !p)}
-          >
-            <Text style={[styles.chipText, paused && styles.chipTextActive]}>
-              {paused ? "Resume" : "Pause"}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.chip, loading && styles.chipActive]}
-            onPress={() => {
-              setLoading(true);
-              setTimeout(() => setLoading(false), 2000);
-            }}
-            disabled={loading}
-          >
-            <Text style={[styles.chipText, loading && styles.chipTextActive]}>
-              {loading ? "Loading…" : "Reload"}
-            </Text>
-          </Pressable>
-        </View>
+          </Link>
+        ))}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: "rgb(10, 10, 10)",
-    paddingTop: 60,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingTop: 56,
   },
   title: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "600",
     fontFamily: "monospace",
+    paddingHorizontal: 20,
   },
   subtitle: {
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.45)",
     fontSize: 13,
     fontFamily: "monospace",
-    marginTop: 4,
-    padding: 0,
-  },
-  chartContainer: {
-    height: 300,
-    marginHorizontal: 12,
-  },
-  controlsScroll: {
-    flex: 1,
-  },
-  controls: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
+    marginTop: 6,
+    marginBottom: 16,
   },
-  sectionLabel: {
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  row: {
+    marginTop: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.12)",
+  },
+  rowTitle: {
+    color: "#60a5fa",
+    fontSize: 16,
+    fontFamily: "monospace",
+    fontWeight: "600",
+  },
+  rowBlurb: {
     color: "rgba(255,255,255,0.4)",
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "monospace",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-    marginBottom: 8,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-  chipActive: {
-    backgroundColor: "#3b82f6",
-  },
-  chipText: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 13,
-    fontFamily: "monospace",
-  },
-  chipTextActive: {
-    color: "#fff",
+    lineHeight: 17,
+    marginTop: 6,
   },
 });
