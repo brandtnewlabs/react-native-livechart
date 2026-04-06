@@ -1,5 +1,6 @@
 import {
   Canvas,
+  Group,
   LinearGradient,
   Path,
   matchFont,
@@ -15,6 +16,7 @@ import {
   useBadge,
   useCanvasLayout,
   useChartPaths,
+  useChartReveal,
   useCrosshair,
   useGrid,
   useLiveDot,
@@ -28,6 +30,7 @@ import { DotOverlay } from "./components/DotOverlay";
 import { GestureDetector } from "react-native-gesture-handler";
 import { GridOverlay } from "./components/GridOverlay";
 import type { LivelineProps } from "./types";
+import { LoadingOverlay } from "./components/LoadingOverlay";
 import { TimeAxisOverlay } from "./components/TimeAxisOverlay";
 import { resolveTheme } from "./theme";
 import { useLivelineEngine } from "./useLivelineEngine";
@@ -51,6 +54,8 @@ export function Liveline({
   pulse = true,
   scrub = false,
   scrubTooltip = true,
+  loading = false,
+  emptyText = "No data",
   lineWidth: lineWidthProp,
   formatValue = defaultFormatValue,
   formatTime = defaultFormatTime,
@@ -87,8 +92,14 @@ export function Liveline({
     referenceValue: referenceLine?.value,
   });
 
+  const reveal = useChartReveal(loading);
+
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
-  const { linePath, fillPath } = useChartPaths(engine, effectivePadding);
+  const { linePath, fillPath } = useChartPaths(
+    engine,
+    effectivePadding,
+    reveal.morphT,
+  );
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
   const momentumSV = useMomentum(engine, momentum);
   const { gridEntries } = useGrid(
@@ -139,34 +150,41 @@ export function Liveline({
       >
         <Canvas style={{ flex: 1 }}>
           {grid && (
-            <GridOverlay
-              entries={gridEntries}
-              engine={engine}
-              padding={effectivePadding}
-              palette={palette}
-              font={font}
-              badge={badge}
-            />
+            <Group opacity={reveal.gridOpacity}>
+              <GridOverlay
+                entries={gridEntries}
+                engine={engine}
+                padding={effectivePadding}
+                palette={palette}
+                font={font}
+                badge={badge}
+              />
+            </Group>
           )}
 
           {fill && (
-            <Path path={fillPath} style="fill">
-              <LinearGradient
-                start={vec(0, effectivePadding.top)}
-                end={vec(0, gradientEnd)}
-                colors={[palette.fillTop, palette.fillBottom]}
-              />
-            </Path>
+            <Group opacity={reveal.fillOpacity}>
+              <Path path={fillPath} style="fill">
+                <LinearGradient
+                  start={vec(0, effectivePadding.top)}
+                  end={vec(0, gradientEnd)}
+                  colors={[palette.fillTop, palette.fillBottom]}
+                />
+              </Path>
+            </Group>
           )}
 
-          <Path
-            path={linePath}
-            style="stroke"
-            strokeWidth={strokeWidth}
-            color={palette.line}
-            strokeCap="round"
-            strokeJoin="round"
-          />
+          {/* Line path: always rendered; morph handles transition via blended pts */}
+          <Group opacity={reveal.lineOpacity}>
+            <Path
+              path={linePath}
+              style="stroke"
+              strokeWidth={strokeWidth}
+              color={palette.line}
+              strokeCap="round"
+              strokeJoin="round"
+            />
+          </Group>
 
           <TimeAxisOverlay
             entries={timeEntries}
@@ -176,15 +194,34 @@ export function Liveline({
             font={font}
           />
 
-          {badge && <BadgeOverlay badge={badgeData} font={font} />}
+          {badge && (
+            <Group opacity={reveal.badgeOpacity}>
+              <BadgeOverlay badge={badgeData} font={font} />
+            </Group>
+          )}
 
-          <DotOverlay
-            dotX={dotX}
-            dotY={dotY}
-            momentum={momentumSV}
-            palette={palette}
+          <Group opacity={reveal.dotOpacity}>
+            <DotOverlay
+              dotX={dotX}
+              dotY={dotY}
+              momentum={momentumSV}
+              palette={palette}
+              engine={engine}
+              pulse={pulse}
+            />
+          </Group>
+
+          <LoadingOverlay
             engine={engine}
-            pulse={pulse}
+            padding={effectivePadding}
+            palette={palette}
+            font={font}
+            morphT={reveal.morphT}
+            isLoading={reveal.isLoading}
+            isEmpty={reveal.isEmpty}
+            emptyText={emptyText}
+            strokeWidth={strokeWidth}
+            badge={badge}
           />
 
           {scrub && (
