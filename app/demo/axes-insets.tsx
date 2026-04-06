@@ -25,7 +25,9 @@ export default function AxesInsetsScreen() {
   const [insets, setInsets] = useState<InsetPreset>("default");
   const [gap, setGap] = useState<GapPreset>("default");
   const [which, setWhich] = useState<"single" | "multi">("single");
-  const [badgeOn, setBadgeOn] = useState(true);
+  const [badgePos, setBadgePos] = useState<"off" | "default" | "left">(
+    "default",
+  );
   const [pulseOn, setPulseOn] = useState(true);
 
   const yOn = vis !== "noY" && vis !== "none";
@@ -44,7 +46,7 @@ export default function AxesInsetsScreen() {
 
   return (
     <DemoScreen
-      description="Hide Y, X, or both; minGap; insets; badge and live-dot pulse (LiveChart). Toggle single vs multi chart."
+      description="Hide Y, X, or both; minGap; insets; badge (default / left of dot / off) and pulse (LiveChart). Toggle single vs multi chart."
       chart={
         which === "single" ? (
           <LiveChart
@@ -55,7 +57,13 @@ export default function AxesInsetsScreen() {
             yAxis={yAxis}
             xAxis={xAxis}
             insets={insetCfg}
-            badge={badgeOn}
+            badge={
+              badgePos === "off"
+                ? false
+                : badgePos === "left"
+                  ? { position: "left" }
+                  : true
+            }
             pulse={pulseOn}
             scrub
           />
@@ -104,26 +112,28 @@ export default function AxesInsetsScreen() {
 
       <Text style={demoStyles.sectionLabel}>Badge (LiveChart)</Text>
       <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, badgeOn && demoStyles.chipActive]}
-          onPress={() => setBadgeOn(true)}
-        >
-          <Text
-            style={[demoStyles.chipText, badgeOn && demoStyles.chipTextActive]}
+        {(
+          [
+            ["default", "Default"],
+            ["off", "Off"],
+            ["left", "Left"],
+          ] as const
+        ).map(([k, label]) => (
+          <Pressable
+            key={k}
+            style={[demoStyles.chip, badgePos === k && demoStyles.chipActive]}
+            onPress={() => setBadgePos(k)}
           >
-            On
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, !badgeOn && demoStyles.chipActive]}
-          onPress={() => setBadgeOn(false)}
-        >
-          <Text
-            style={[demoStyles.chipText, !badgeOn && demoStyles.chipTextActive]}
-          >
-            Off
-          </Text>
-        </Pressable>
+            <Text
+              style={[
+                demoStyles.chipText,
+                badgePos === k && demoStyles.chipTextActive,
+              ]}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
       <Text style={demoStyles.sectionLabel}>Pulse (LiveChart)</Text>

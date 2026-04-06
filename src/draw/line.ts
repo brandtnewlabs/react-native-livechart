@@ -98,8 +98,8 @@ export function resolveAutoRight(yAxis: boolean, badge: boolean): number {
 }
 
 /**
- * Minimum `padding.left` for a left-positioned badge pill.
- * Layout: |canvas edge| BADGE_MARGIN_RIGHT | PAD_X | text | PAD_X | BADGE_DOT_GAP | chart area
+ * Minimum `padding.left` for a badge pill drawn in the left chart margin (label width + horizontal padding + dot gap).
+ * `resolveChartLayout` does not call this; it remains available for custom layouts or `resolvePadding(..., badgeOnLeft: true)`.
  */
 export function minPaddingLeftForBadge(textWidth: number): number {
   return Math.ceil(
@@ -107,9 +107,8 @@ export function minPaddingLeftForBadge(textWidth: number): number {
   );
 }
 
-/** Auto-left-padding: left badge needs space for the pill. */
+/** Default left inset, or a wider inset when `badgeOnLeft` is true (see `minPaddingLeftForBadge`). */
 export function resolveAutoLeft(badgeOnLeft: boolean): number {
-  // Fallback assumes ~7 chars × 7px = 49px at 12px font size.
   if (badgeOnLeft) return minPaddingLeftForBadge(49);
   return DEFAULT_PADDING.left;
 }
@@ -128,6 +127,22 @@ export function pulseRadialOutset(
   strokeWidth: number,
 ): number {
   return Math.ceil(maxRadius + strokeWidth / 2);
+}
+
+/** Extra space beyond label width so the pulse ring does not touch glyphs. */
+const PULSE_Y_AXIS_LABEL_GAP = 8;
+
+/**
+ * Minimum `padding.right` when the live dot (and pulse) sit on the inner edge of the
+ * right gutter and y-axis labels are centered in that gutter (`gutterCenteredTextLeftX`).
+ * Otherwise the pulse can overlap labels to the right of the dot.
+ */
+export function minPaddingRightForYAxisWithPulse(
+  pulseOutlet: number,
+  yAxisLabelTextWidth: number,
+  gap = PULSE_Y_AXIS_LABEL_GAP,
+): number {
+  return Math.ceil(2 * pulseOutlet + yAxisLabelTextWidth + gap);
 }
 
 export function resolvePadding(

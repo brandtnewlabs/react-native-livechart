@@ -3,6 +3,7 @@ import {
   buildLinePoints,
   gutterCenteredTextLeftX,
   minPaddingRightForBadgeYAxisAlign,
+  minPaddingRightForYAxisWithPulse,
   pulseRadialOutset,
   resolveAutoRight,
   resolvePadding,
@@ -37,6 +38,13 @@ describe("pulseRadialOutset", () => {
   it("rounds up fractional totals", () => {
     expect(pulseRadialOutset(10, 1)).toBe(11);
     expect(pulseRadialOutset(9, 1)).toBe(10);
+  });
+});
+
+describe("minPaddingRightForYAxisWithPulse", () => {
+  it("is 2×outlet + label width + gap (default gap 8)", () => {
+    // outlet 22, tw 42 → 44 + 42 + 8 = 94
+    expect(minPaddingRightForYAxisWithPulse(22, 42)).toBe(94);
   });
 });
 

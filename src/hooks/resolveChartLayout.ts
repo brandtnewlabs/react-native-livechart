@@ -1,7 +1,7 @@
 import type { SkFont } from "@shopify/react-native-skia";
 import {
-  minPaddingLeftForBadge,
   minPaddingRightForBadgeYAxisAlign,
+  minPaddingRightForYAxisWithPulse,
   pulseRadialOutset,
   resolveAutoLeft,
   resolveAutoRight,
@@ -17,8 +17,11 @@ export interface ChartLayoutConfig {
   insetsOverride?: ChartInsets;
   yAxis: boolean;
   badge: boolean;
-  /** When true, badge occupies the left gutter instead of the right. */
-  badgeOnLeft?: boolean;
+  /**
+   * When true (default if omitted and `badge` is true), reserve the wide right gutter for the badge.
+   * Set false when the badge is anchored left of the live dot (`position: "left"`).
+   */
+  badgeUsesRightGutter?: boolean;
   /** When false, bottom inset shrinks (no x-axis labels). Default true. */
   xAxis?: boolean;
   /** Skia font for measuring label width. When provided with formatValue + currentValue, padding auto-sizes. */
@@ -39,9 +42,11 @@ export interface ChartLayoutResult {
 export function resolveChartLayout(
   config: ChartLayoutConfig,
 ): ChartLayoutResult {
-  const badgeOnLeft = config.badgeOnLeft ?? false;
-  const badgeOnRight = config.badge && !badgeOnLeft;
+  const badgeUsesRightGutter =
+    config.badge && (config.badgeUsesRightGutter ?? true);
   const xAxis = config.xAxis ?? true;
+
+  let measuredYAxisLabelWidth: number | undefined;
 
   // ── Right inset ──────────────────────────────────────────────────────────
   let rightPad: number;
@@ -51,47 +56,50 @@ export function resolveChartLayout(
     config.font &&
     config.formatValue &&
     config.currentValue != null &&
-    !badgeOnLeft
+    (badgeUsesRightGutter || !config.badge || config.yAxis)
   ) {
     const v = config.currentValue;
     const samples = [v, v / 10, v / 100, v * 10].map(config.formatValue);
-    const textWidth = Math.max(
+    measuredYAxisLabelWidth = Math.max(
       ...samples.map((s) => measureFontTextWidth(config.font!, s)),
     );
-    rightPad = badgeOnRight
-      ? minPaddingRightForBadgeYAxisAlign(config.font.getSize(), textWidth)
+    rightPad = badgeUsesRightGutter
+      ? minPaddingRightForBadgeYAxisAlign(
+          config.font.getSize(),
+          measuredYAxisLabelWidth,
+        )
       : config.yAxis
-        ? Math.max(textWidth + 16, 44)
+        ? Math.max(measuredYAxisLabelWidth + 16, 44)
         : resolveAutoRight(false, false);
   } else {
-    rightPad = resolveAutoRight(config.yAxis, badgeOnRight);
+    rightPad = resolveAutoRight(config.yAxis, badgeUsesRightGutter);
+  }
+
+  if (config.pulse && config.yAxis && config.insetsOverride?.right == null) {
+    const outlet = pulseRadialOutset(
+      config.pulse.maxRadius,
+      config.pulse.strokeWidth,
+    );
+    const labelW = measuredYAxisLabelWidth ?? 49;
+    rightPad = Math.max(
+      rightPad,
+      minPaddingRightForYAxisWithPulse(outlet, labelW),
+    );
   }
 
   // ── Left inset ───────────────────────────────────────────────────────────
   let leftPad: number;
   if (config.insetsOverride?.left != null) {
     leftPad = config.insetsOverride.left;
-  } else if (
-    badgeOnLeft &&
-    config.font &&
-    config.formatValue &&
-    config.currentValue != null
-  ) {
-    const v = config.currentValue;
-    const samples = [v, v / 10, v / 100, v * 10].map(config.formatValue);
-    const textWidth = Math.max(
-      ...samples.map((s) => measureFontTextWidth(config.font!, s)),
-    );
-    leftPad = minPaddingLeftForBadge(textWidth);
   } else {
-    leftPad = resolveAutoLeft(badgeOnLeft);
+    leftPad = resolveAutoLeft(false);
   }
 
   const base = resolvePadding(
     config.insetsOverride,
     config.yAxis,
-    config.badge,
-    badgeOnLeft,
+    badgeUsesRightGutter,
+    false,
     xAxis,
   );
 

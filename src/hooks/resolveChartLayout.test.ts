@@ -1,5 +1,9 @@
+import {
+  minPaddingRightForYAxisWithPulse,
+  pulseRadialOutset,
+} from "../draw/line";
+
 import type { SkFont } from "@shopify/react-native-skia";
-import { pulseRadialOutset } from "../draw/line";
 import { resolveTheme } from "../theme";
 import { resolveChartLayout } from "./resolveChartLayout";
 
@@ -233,32 +237,76 @@ describe("resolveChartLayout", () => {
     expect(padding.right).toBe(99);
   });
 
-  // ─── left badge ──────────────────────────────────────────────────────────
+  // ─── badge left of dot (no right gutter, no extra left inset) ─────────────
 
-  it("auto-sizes left padding when badgeOnLeft and font are provided", () => {
+  it("does not inflate left padding when badge uses right gutter disabled", () => {
     const font = mockFont(7);
     const { padding } = resolveChartLayout({
       palette,
       yAxis: false,
       badge: true,
-      badgeOnLeft: true,
+      badgeUsesRightGutter: false,
       font,
       formatValue: fmt,
       currentValue: 42,
     });
-    // Right should shrink to default (badge not on right, no grid)
     expect(padding.right).toBe(12);
-    // Left should be auto-sized to fit the badge
-    expect(padding.left).toBeGreaterThan(12);
+    expect(padding.left).toBe(12);
   });
 
-  it("respects explicit insetsOverride.left", () => {
+  it("sizes right padding like grid-only when badge is on but not in right gutter", () => {
+    const font = mockFont(7);
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: true,
+      badge: true,
+      badgeUsesRightGutter: false,
+      font,
+      formatValue: fmt,
+      currentValue: 42,
+    });
+    expect(padding.right).toBe(58);
+    expect(padding.left).toBe(12);
+  });
+
+  it("widens right padding when y-axis and pulse so the ring clears centered labels", () => {
+    const font = mockFont(7);
+    const pulse = { maxRadius: 21, strokeWidth: 1.5 };
+    const outlet = pulseRadialOutset(pulse.maxRadius, pulse.strokeWidth);
+    // Same grid width as "grid-only" without pulse (58) but pulse needs more gutter.
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: true,
+      badge: true,
+      badgeUsesRightGutter: false,
+      font,
+      formatValue: fmt,
+      currentValue: 42,
+      pulse,
+    });
+    const tw = 6 * 7; // widest sample "420.00"
+    expect(padding.right).toBe(minPaddingRightForYAxisWithPulse(outlet, tw));
+  });
+
+  it("y-axis + pulse without font uses fallback label width for gutter math", () => {
+    const pulse = { maxRadius: 21, strokeWidth: 1.5 };
+    const outlet = pulseRadialOutset(pulse.maxRadius, pulse.strokeWidth);
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: true,
+      badge: false,
+      pulse,
+    });
+    expect(padding.right).toBe(minPaddingRightForYAxisWithPulse(outlet, 49));
+  });
+
+  it("respects explicit insetsOverride.left when badge omits right gutter", () => {
     const { padding } = resolveChartLayout({
       palette,
       insetsOverride: { left: 80 },
       yAxis: false,
       badge: true,
-      badgeOnLeft: true,
+      badgeUsesRightGutter: false,
     });
     expect(padding.left).toBe(80);
   });

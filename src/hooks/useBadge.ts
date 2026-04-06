@@ -7,6 +7,7 @@ import {
 import {
   BADGE_DOT_GAP,
   BADGE_MARGIN_RIGHT,
+  BADGE_PILL_PAD_X,
   BADGE_PILL_PAD_Y,
   BADGE_TAIL_LEN,
   MS_PER_FRAME_60FPS,
@@ -78,13 +79,15 @@ export function useBadge(
     let textX: number;
 
     if (position === "left") {
-      // Left-gutter badge: simple pill, no tail, anchored to left edge.
-      const bodyLeft = BADGE_MARGIN_RIGHT;
-      const bodyRight = padding.left - BADGE_DOT_GAP;
-      const pillW = bodyRight - bodyLeft;
+      // Pill to the left of the live dot; no tail (`showTail` applies to right gutter only).
+      const dotXPos = w - padding.right;
+      const pillW = 2 * BADGE_PILL_PAD_X + textW;
+      const bodyRight = dotXPos - BADGE_DOT_GAP;
+      const bodyLeft = Math.max(BADGE_MARGIN_RIGHT, bodyRight - pillW);
+      const pillBodyW = bodyRight - bodyLeft;
       textX = (bodyLeft + bodyRight - textW) / 2;
       path.addRRect({
-        rect: { x: bodyLeft, y: badgeY, width: pillW, height: pillH },
+        rect: { x: bodyLeft, y: badgeY, width: pillBodyW, height: pillH },
         rx: r,
         ry: r,
       });
