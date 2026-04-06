@@ -13,6 +13,7 @@ export { LiveChart, LiveChartSeries };
     FontConfig,
     FontWeight,
     GradientConfig,
+    LeftEdgeFadeConfig,
     LineConfig,
     LiveChartCoreProps,
     LiveChartPalette,

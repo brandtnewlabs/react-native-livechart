@@ -5,6 +5,7 @@ import type {
   FontConfig,
   FontWeight,
   GradientConfig,
+  LeftEdgeFadeConfig,
   PulseConfig,
   ReferenceLine,
   ScrubConfig,
@@ -15,6 +16,7 @@ import type {
 } from "./types";
 
 import type { SharedValue } from "react-native-reanimated";
+import { FADE_EDGE_WIDTH } from "./constants";
 
 // ─── Resolved types (all fields required, no optionals) ──────────────────────
 
@@ -98,6 +100,12 @@ export interface ResolvedTradeStreamConfig {
   maxCount: number;
   /** Horizontal offset from `padding.left` for the label text (default 8). */
   labelOffsetX: number;
+}
+
+export interface ResolvedLeftEdgeFadeConfig {
+  width: number;
+  startColor: string;
+  endColor: string;
 }
 
 // ─── Resolver functions ───────────────────────────────────────────────────────
@@ -202,6 +210,38 @@ export function resolveGradient(
   if (!prop) return null;
   if (prop === true) return GRADIENT_DEFAULTS;
   return { ...GRADIENT_DEFAULTS, ...prop };
+}
+
+/** Fallback when no theme background is passed (e.g. unit tests). */
+const LEFT_EDGE_FADE_COLOR_FALLBACK: Pick<
+  ResolvedLeftEdgeFadeConfig,
+  "startColor" | "endColor"
+> = {
+  startColor: "rgba(0, 0, 0, 1)",
+  endColor: "rgba(0, 0, 0, 0)",
+};
+
+/**
+ * Resolves `leftEdgeFade` prop to a fully-typed config or null (disabled).
+ * `true` → defaults, object → merged with defaults, falsy → null.
+ *
+ * Pass `colorDefaults` from `leftEdgeFadeColorsFromBgRgb(palette.bgRgb)` so default
+ * stops match the chart background; omit for black alpha-gradient fallback.
+ */
+export function resolveLeftEdgeFade(
+  prop: boolean | LeftEdgeFadeConfig | undefined,
+  colorDefaults: {
+    startColor: string;
+    endColor: string;
+  } = LEFT_EDGE_FADE_COLOR_FALLBACK,
+): ResolvedLeftEdgeFadeConfig | null {
+  if (!prop) return null;
+  const base: ResolvedLeftEdgeFadeConfig = {
+    width: FADE_EDGE_WIDTH,
+    ...colorDefaults,
+  };
+  if (prop === true) return base;
+  return { ...base, ...prop };
 }
 
 const PULSE_DEFAULTS: ResolvedPulseConfig = {

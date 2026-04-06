@@ -80,6 +80,21 @@ function rgba(r: number, g: number, b: number, a: number): string {
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
+/**
+ * Default left-edge fade gradient stops for `dstOut` blending: same RGB as the chart
+ * background (`palette.bgRgb`), opacity 1 → 0. Matches the container `backgroundColor`.
+ */
+export function leftEdgeFadeColorsFromBgRgb(bgRgb: [number, number, number]): {
+  startColor: string;
+  endColor: string;
+} {
+  const [r, g, b] = bgRgb;
+  return {
+    startColor: rgba(r, g, b, 1),
+    endColor: rgba(r, g, b, 0),
+  };
+}
+
 function twAlpha(hex: string, a: number): string {
   const [r, g, b] = parseColorRgb(hex);
   return rgba(r, g, b, a);

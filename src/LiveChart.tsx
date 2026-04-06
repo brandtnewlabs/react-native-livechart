@@ -34,6 +34,7 @@ import {
   resolveDegen,
   resolveFontConfig,
   resolveGradient,
+  resolveLeftEdgeFade,
   resolvePulse,
   resolveReferenceLineConfig,
   resolveScrub,
@@ -42,6 +43,7 @@ import {
   resolveXAxis,
   resolveYAxis,
 } from "./resolveConfig";
+import { leftEdgeFadeColorsFromBgRgb, resolveTheme } from "./theme";
 import type { LiveChartProps, TradeEvent } from "./types";
 
 import { GestureDetector } from "react-native-gesture-handler";
@@ -50,6 +52,7 @@ import { BadgeOverlay } from "./components/BadgeOverlay";
 import { CrosshairOverlay } from "./components/CrosshairOverlay";
 import { DegenParticlesOverlay } from "./components/DegenParticlesOverlay";
 import { DotOverlay } from "./components/DotOverlay";
+import { LeftEdgeFade } from "./components/LeftEdgeFade";
 import { LoadingOverlay } from "./components/LoadingOverlay";
 import { MultiSeriesTooltipStack } from "./components/MultiSeriesTooltipStack";
 import { ReferenceLineOverlay } from "./components/ReferenceLineOverlay";
@@ -57,7 +60,6 @@ import { TradeStreamOverlay } from "./components/TradeStreamOverlay";
 import { ValueLineOverlay } from "./components/ValueLineOverlay";
 import { XAxisOverlay } from "./components/XAxisOverlay";
 import { YAxisOverlay } from "./components/YAxisOverlay";
-import { resolveTheme } from "./theme";
 import { useLiveChartEngine } from "./useLiveChartEngine";
 
 export function LiveChart({
@@ -101,6 +103,7 @@ export function LiveChart({
   scrub = false,
   tradeStream,
   degen,
+  leftEdgeFade = true,
 
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
@@ -125,6 +128,11 @@ export function LiveChart({
 
   // ── Theme, font and layout ─────────────────────────────────────────────
   const palette = resolveTheme(accentColor, theme);
+
+  const leftEdgeFadeCfg = resolveLeftEdgeFade(
+    leftEdgeFade,
+    leftEdgeFadeColorsFromBgRgb(palette.bgRgb),
+  );
 
   const skiaFont = matchFont(
     resolveFontConfig(
@@ -283,6 +291,7 @@ export function LiveChart({
     <GestureDetector gesture={crosshair.gesture}>
       <View style={[{ flex: 1, backgroundColor }, style]} onLayout={onLayout}>
         <Canvas style={{ flex: 1 }}>
+          {/* Shaken chart stack — left-edge fade is a sibling below so dstOut runs in canvas space */}
           <Group transform={degenShakeTransform}>
             {/* Y-axis grid */}
             {yAxisCfg && (
@@ -413,19 +422,7 @@ export function LiveChart({
               </Group>
             )}
 
-            {/* Trade stream labels */}
-            {tradeStreamResolved && (
-              <TradeStreamOverlay
-                markers={tradeMarkers}
-                palette={palette}
-                padding={effectivePadding}
-                font={skiaFont}
-                opacity={reveal.dotOpacity}
-                labelOffsetX={tradeStreamResolved.labelOffsetX}
-              />
-            )}
-
-            {/* Loading / empty state — rendered last so it sits on top */}
+            {/* Loading / empty state — before left-edge fade so the squiggle/empty art fades like the chart */}
             <LoadingOverlay
               engine={engine}
               padding={effectivePadding}
@@ -438,30 +435,54 @@ export function LiveChart({
               strokeWidth={strokeWidth}
               badge={badgeCfg !== null}
             />
-
-            {/* Crosshair scrub */}
-            {scrubCfg && (
-              <CrosshairOverlay
-                scrubX={crosshair.scrubX}
-                crosshairOpacity={crosshair.crosshairOpacity}
-                tooltipLayout={crosshair.tooltipLayout}
-                engine={engine}
-                padding={effectivePadding}
-                palette={palette}
-                font={skiaFont}
-                showTooltip={scrubCfg.tooltip}
-                tooltipBody={
-                  isCandle ? (
-                    <MultiSeriesTooltipStack
-                      tooltipLayout={crosshair.tooltipLayout}
-                      font={skiaFont}
-                      palette={palette}
-                    />
-                  ) : undefined
-                }
-              />
-            )}
           </Group>
+
+          {leftEdgeFadeCfg && (
+            <LeftEdgeFade
+              paddingLeft={effectivePadding.left}
+              fadeWidth={leftEdgeFadeCfg.width}
+              startColor={leftEdgeFadeCfg.startColor}
+              endColor={leftEdgeFadeCfg.endColor}
+              engine={engine}
+            />
+          )}
+
+          {(tradeStreamResolved || scrubCfg) && (
+            <Group transform={degenShakeTransform}>
+              {tradeStreamResolved && (
+                <TradeStreamOverlay
+                  markers={tradeMarkers}
+                  palette={palette}
+                  padding={effectivePadding}
+                  font={skiaFont}
+                  opacity={reveal.dotOpacity}
+                  labelOffsetX={tradeStreamResolved.labelOffsetX}
+                />
+              )}
+
+              {scrubCfg && (
+                <CrosshairOverlay
+                  scrubX={crosshair.scrubX}
+                  crosshairOpacity={crosshair.crosshairOpacity}
+                  tooltipLayout={crosshair.tooltipLayout}
+                  engine={engine}
+                  padding={effectivePadding}
+                  palette={palette}
+                  font={skiaFont}
+                  showTooltip={scrubCfg.tooltip}
+                  tooltipBody={
+                    isCandle ? (
+                      <MultiSeriesTooltipStack
+                        tooltipLayout={crosshair.tooltipLayout}
+                        font={skiaFont}
+                        palette={palette}
+                      />
+                    ) : undefined
+                  }
+                />
+              )}
+            </Group>
+          )}
         </Canvas>
       </View>
     </GestureDetector>

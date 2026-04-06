@@ -18,6 +18,9 @@ export const BADGE_DOT_GAP = 12;
 /** Maximum simultaneous series rendered (paths/dots slots). */
 export const MAX_MULTI_SERIES = 12;
 
+/** Default width (px) of the left-edge fade band */
+export const FADE_EDGE_WIDTH = 40;
+
 /**
  * Floats per degen particle slot: `x, y, vx, vy, t0, active, size`.
  * Layout is fixed; not on `DegenOptions` because changing it needs matching renderer changes.
