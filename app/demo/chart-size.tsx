@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useSharedValue } from "react-native-reanimated";
 import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChart } from "../../src";
+import { ACCENT } from "../../src/demo/shared";
+import { demoStyles } from "../../src/demo/styles";
 import type { LiveChartPoint } from "../../src/types";
-import { ACCENT } from "./_lib/shared";
-import { demoStyles } from "./_lib/styles";
 
 export const options = { title: "Chart size" };
 

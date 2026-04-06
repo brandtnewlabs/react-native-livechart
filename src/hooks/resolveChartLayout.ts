@@ -32,6 +32,8 @@ export interface ChartLayoutConfig {
   currentValue?: number;
   /** Live dot pulse (LiveChart); expands top/right/bottom insets so the ring is not clipped. */
   pulse?: { maxRadius: number; strokeWidth: number } | null;
+  /** When false and badge uses the right gutter, omit BADGE_TAIL_LEN from the right padding. */
+  badgeShowTail?: boolean;
 }
 
 export interface ChartLayoutResult {
@@ -44,6 +46,7 @@ export function resolveChartLayout(
 ): ChartLayoutResult {
   const badgeUsesRightGutter =
     config.badge && (config.badgeUsesRightGutter ?? true);
+  const showTail = config.badgeShowTail ?? true;
   const xAxis = config.xAxis ?? true;
 
   let measuredYAxisLabelWidth: number | undefined;
@@ -67,12 +70,13 @@ export function resolveChartLayout(
       ? minPaddingRightForBadgeYAxisAlign(
           config.font.getSize(),
           measuredYAxisLabelWidth,
+          showTail,
         )
       : config.yAxis
         ? Math.max(measuredYAxisLabelWidth + 16, 44)
         : resolveAutoRight(false, false);
   } else {
-    rightPad = resolveAutoRight(config.yAxis, badgeUsesRightGutter);
+    rightPad = resolveAutoRight(config.yAxis, badgeUsesRightGutter, showTail);
   }
 
   if (config.pulse && config.yAxis && config.insetsOverride?.right == null) {
@@ -101,6 +105,7 @@ export function resolveChartLayout(
     badgeUsesRightGutter,
     false,
     xAxis,
+    showTail,
   );
 
   let padding: ChartPadding = { ...base, right: rightPad, left: leftPad };

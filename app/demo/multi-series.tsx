@@ -1,14 +1,14 @@
 import { useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "../../src/demo/shared";
 import type { ScrubPointMulti, SeriesConfig } from "../../src/types";
-import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "./_lib/shared";
 
 import { useSharedValue } from "react-native-reanimated";
 import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChartSeries } from "../../src";
+import { DemoScreen } from "../../src/demo/DemoScreen";
+import { demoStyles } from "../../src/demo/styles";
 import { formatTime } from "../../src/format";
-import { DemoScreen } from "./_lib/DemoScreen";
-import { demoStyles } from "./_lib/styles";
 
 export const options = { title: "Multi-series" };
 

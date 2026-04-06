@@ -236,6 +236,28 @@ describe("useBadge", () => {
     expect(result.current.value.path).toBeDefined();
   });
 
+  it("no-tail right-position badge uses reduced offset for text alignment", () => {
+    const w = 400;
+    const pad = { ...DEFAULT_PADDING, right: 76 };
+    const { result } = renderHook(() =>
+      useBadge(
+        makeEngine(w, 300),
+        pad,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        false,
+      ),
+    );
+    const textW = measureFontTextWidth(font, "50.00");
+    const tl = badgeTailAndCap(font.getSize(), false);
+    expect(result.current.value.textX).toBeCloseTo(
+      pillTextLeftX(w, pad.right, BADGE_DOT_GAP + tl, textW),
+      4,
+    );
+  });
+
   it("uses fixed background color when background override is provided", () => {
     const eng = makeEngine(400, 300);
     const { result } = renderHook(() =>

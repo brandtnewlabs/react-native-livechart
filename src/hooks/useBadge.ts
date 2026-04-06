@@ -93,7 +93,7 @@ export function useBadge(
       });
     } else {
       // Right-gutter badge (default): asymmetric layout with optional tail.
-      const tl = badgeTailAndCap(font.getSize()); // = BADGE_TAIL_LEN + r
+      const tl = badgeTailAndCap(font.getSize(), showTail);
       const bodyLeft = w - padding.right + BADGE_DOT_GAP + tl;
       const bodyRight = w - BADGE_MARGIN_RIGHT;
       const pillW = bodyRight - bodyLeft;

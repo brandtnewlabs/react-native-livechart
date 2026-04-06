@@ -32,11 +32,14 @@ export const DEFAULT_PADDING: ChartPadding = {
  * Combined tail + rounded-cap offset.
  * The pill body starts `tl` px to the right of the gutter left edge (= dot x),
  * so the tail spans the gap between the dot and the pill body.
+ *
+ * When `showTail` is false the tail spike is omitted and only the round cap
+ * radius is returned, letting callers shrink the right gutter.
  */
-export function badgeTailAndCap(fontSize: number): number {
+export function badgeTailAndCap(fontSize: number, showTail = true): number {
   "worklet";
   const pillH = fontSize + BADGE_PILL_PAD_Y * 2;
-  return BADGE_TAIL_LEN + pillH / 2;
+  return (showTail ? BADGE_TAIL_LEN : 0) + pillH / 2;
 }
 
 /**
@@ -81,18 +84,21 @@ export function gutterCenteredTextLeftX(
 export function minPaddingRightForBadgeYAxisAlign(
   fontSize: number,
   textWidth: number,
+  showTail = true,
 ): number {
-  const tl = badgeTailAndCap(fontSize);
+  const tl = badgeTailAndCap(fontSize, showTail);
   return Math.ceil(
     BADGE_DOT_GAP + tl + 2 * BADGE_PILL_PAD_X + textWidth + BADGE_MARGIN_RIGHT,
   );
 }
 
 /** Auto-right-padding: badge needs space for the pill, y-axis labels need less. */
-export function resolveAutoRight(yAxis: boolean, badge: boolean): number {
-  // Fallback when no font/value is available for measurement.
-  // Assumes a typical label ~7 chars × 7px = 49px at 12px font size.
-  if (badge) return minPaddingRightForBadgeYAxisAlign(12, 49);
+export function resolveAutoRight(
+  yAxis: boolean,
+  badge: boolean,
+  showTail = true,
+): number {
+  if (badge) return minPaddingRightForBadgeYAxisAlign(12, 49, showTail);
   if (yAxis) return 44;
   return DEFAULT_PADDING.right;
 }
@@ -151,8 +157,9 @@ export function resolvePadding(
   badge = false,
   badgeOnLeft = false,
   xAxis = true,
+  showTail = true,
 ): ChartPadding {
-  const autoRight = resolveAutoRight(yAxis, badge && !badgeOnLeft);
+  const autoRight = resolveAutoRight(yAxis, badge && !badgeOnLeft, showTail);
   const autoLeft = resolveAutoLeft(badgeOnLeft);
   const autoBottom = xAxis ? DEFAULT_PADDING.bottom : 8;
   if (!override) {

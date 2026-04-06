@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { MONO_FONT_FAMILY } from "../monoFontFamily";
 
 export const demoStyles = StyleSheet.create({
   demoRoot: {
@@ -8,7 +9,7 @@ export const demoStyles = StyleSheet.create({
   demoTitle: {
     color: "rgba(255,255,255,0.45)",
     fontSize: 12,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     paddingHorizontal: 16,
     paddingTop: 12,
     marginBottom: 4,
@@ -16,7 +17,7 @@ export const demoStyles = StyleSheet.create({
   demoDesc: {
     color: "rgba(255,255,255,0.35)",
     fontSize: 11,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     paddingHorizontal: 16,
     marginBottom: 8,
     lineHeight: 16,
@@ -41,7 +42,7 @@ export const demoStyles = StyleSheet.create({
   sectionLabel: {
     color: "rgba(255,255,255,0.4)",
     fontSize: 11,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 8,
@@ -65,7 +66,7 @@ export const demoStyles = StyleSheet.create({
   chipText: {
     color: "rgba(255,255,255,0.6)",
     fontSize: 13,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
   },
   chipTextActive: {
     color: "#fff",
@@ -73,7 +74,7 @@ export const demoStyles = StyleSheet.create({
   scrubReadout: {
     color: "rgba(255,255,255,0.55)",
     fontSize: 12,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
     paddingHorizontal: 16,
     marginBottom: 8,
   },

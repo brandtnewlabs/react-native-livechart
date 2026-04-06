@@ -1,13 +1,13 @@
 import { Canvas, Group, matchFont } from "@shopify/react-native-skia";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import {
-  runOnJS,
   useAnimatedReaction,
   useDerivedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { CrosshairOverlay } from "./components/CrosshairOverlay";
 import { LeftEdgeFade } from "./components/LeftEdgeFade";
 import { LoadingOverlay } from "./components/LoadingOverlay";
@@ -46,6 +46,7 @@ import {
   resolveXAxis,
   resolveYAxis,
 } from "./resolveConfig";
+import { MONO_FONT_FAMILY } from "./monoFontFamily";
 import { leftEdgeFadeColorsFromBgRgb, resolveTheme } from "./theme";
 import type { LiveChartSeriesProps, SeriesConfig } from "./types";
 import { useLiveChartSeriesEngine } from "./useLiveChartSeriesEngine";
@@ -95,7 +96,7 @@ export function LiveChartSeries({
   const skiaFont = matchFont(
     resolveFontConfig(
       fontProp,
-      Platform.select({ ios: "Menlo", default: "monospace" }) as string,
+      MONO_FONT_FAMILY,
       palette.labelFontSize,
     ),
   );
@@ -153,9 +154,9 @@ export function LiveChartSeries({
 
   useAnimatedReaction(
     () => lineColorsSig(series),
-    /* istanbul ignore next -- runOnJS from UI-thread reaction */
+    /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
     (sig, prev) => {
-      if (sig !== prev) runOnJS(syncColors)(series);
+      if (sig !== prev) scheduleOnRN(syncColors, series);
     },
     [series, syncColors],
   );

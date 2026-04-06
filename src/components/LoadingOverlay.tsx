@@ -54,6 +54,7 @@ export function LoadingOverlay({
   emptyText,
   strokeWidth,
   badge = false,
+  badgeTail = true,
 }: {
   engine: ChartEngineLayout;
   padding: ChartPadding;
@@ -67,9 +68,11 @@ export function LoadingOverlay({
   strokeWidth: number;
   /** Mirror the badge prop so labels align with GridOverlay's label positions. */
   badge?: boolean;
+  /** Whether the badge tail spike is shown; affects the left inset used for skeleton alignment. */
+  badgeTail?: boolean;
 }) {
   // Same left-inset formula as GridOverlay (only used when badge=true)
-  const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize());
+  const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize(), badgeTail);
   // Squiggly path — animated each frame via timestamp
   const squigglyPath = useDerivedValue(() => {
     if (!isLoading.value && !isEmpty.value && morphT.value >= 1) {

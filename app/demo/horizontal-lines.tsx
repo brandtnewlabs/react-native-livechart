@@ -3,9 +3,9 @@ import { Pressable, Text, View } from "react-native";
 import { useState } from "react";
 import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChart } from "../../src";
-import { DemoScreen } from "./_lib/DemoScreen";
-import { ACCENT } from "./_lib/shared";
-import { demoStyles } from "./_lib/styles";
+import { DemoScreen } from "../../src/demo/DemoScreen";
+import { ACCENT } from "../../src/demo/shared";
+import { demoStyles } from "../../src/demo/styles";
 
 export const options = { title: "Reference & value lines" };
 

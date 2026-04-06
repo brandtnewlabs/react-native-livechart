@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import {
-  runOnJS,
-  useAnimatedReaction,
-  type SharedValue,
-} from "react-native-reanimated";
+import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
+import { MONO_FONT_FAMILY } from "../monoFontFamily";
 import type { SeriesConfig } from "../types";
 
 export interface SeriesToggleChipsProps {
@@ -43,7 +41,7 @@ export function SeriesToggleChips({
     /* istanbul ignore next -- Reanimated reaction; snapshot pulled in useEffect */
     (sig, prev) => {
       if (sig !== prev) {
-        runOnJS(pullSnapshot)(series);
+        scheduleOnRN(pullSnapshot, series);
       }
     },
     [series, pullSnapshot],
@@ -144,7 +142,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: "rgba(255,255,255,0.5)",
     fontSize: 13,
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT_FAMILY,
   },
   chipTextCompact: {
     fontSize: 11,

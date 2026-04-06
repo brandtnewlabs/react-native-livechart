@@ -1,5 +1,7 @@
 import {
+  BADGE_TAIL_LEN,
   DEFAULT_PADDING,
+  badgeTailAndCap,
   buildLinePoints,
   gutterCenteredTextLeftX,
   minPaddingRightForBadgeYAxisAlign,
@@ -15,10 +17,33 @@ describe("gutterCenteredTextLeftX", () => {
   });
 });
 
+describe("badgeTailAndCap", () => {
+  it("includes BADGE_TAIL_LEN when showTail is true (default)", () => {
+    expect(badgeTailAndCap(12)).toBe(badgeTailAndCap(12, true));
+    expect(badgeTailAndCap(12, true)).toBe(BADGE_TAIL_LEN + 9); // 5 + (12+6)/2
+  });
+
+  it("omits BADGE_TAIL_LEN when showTail is false", () => {
+    expect(badgeTailAndCap(12, false)).toBe(9); // (12+6)/2
+    expect(badgeTailAndCap(12, true) - badgeTailAndCap(12, false)).toBe(
+      BADGE_TAIL_LEN,
+    );
+  });
+});
+
 describe("minPaddingRightForBadgeYAxisAlign", () => {
   it("returns DOT_GAP + tl + 2×PAD_X + textWidth + MARGIN_RIGHT (tl=14 for 12px font)", () => {
     // 12 + 14 + 20 + 35 + 4 = 85
     expect(minPaddingRightForBadgeYAxisAlign(12, 35)).toBe(85);
+  });
+
+  it("returns smaller padding when showTail is false", () => {
+    // 12 + 9 + 20 + 35 + 4 = 80
+    expect(minPaddingRightForBadgeYAxisAlign(12, 35, false)).toBe(80);
+    expect(
+      minPaddingRightForBadgeYAxisAlign(12, 35, true) -
+        minPaddingRightForBadgeYAxisAlign(12, 35, false),
+    ).toBe(BADGE_TAIL_LEN);
   });
 });
 
@@ -52,6 +77,11 @@ describe("resolveAutoRight", () => {
   it("prefers badge width (fallback ~7 chars × 7px label)", () => {
     // minPaddingRightForBadgeYAxisAlign(12, 49) = 12 + 14 + 20 + 49 + 4 = 99
     expect(resolveAutoRight(true, true)).toBe(99);
+  });
+
+  it("uses smaller badge width when showTail is false", () => {
+    // minPaddingRightForBadgeYAxisAlign(12, 49, false) = 12 + 9 + 20 + 49 + 4 = 94
+    expect(resolveAutoRight(true, true, false)).toBe(94);
   });
 
   it("uses grid width when no badge", () => {
