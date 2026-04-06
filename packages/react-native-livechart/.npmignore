@@ -1,0 +1,5 @@
+**/*.test.ts
+**/*.test.tsx
+tsconfig.json
+tsconfig.build.json
+babel.lib.config.cjs

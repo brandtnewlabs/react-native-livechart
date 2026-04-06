@@ -1,12 +1,12 @@
 import { Pressable, Text, View } from "react-native";
-import { ACCENT, VOLATILITY_MODES } from "../../src/demo/shared";
-import type { Momentum, MomentumConfig } from "../../src/types";
+import { ACCENT, VOLATILITY_MODES } from "./lib/shared";
+import type { Momentum, MomentumConfig } from "react-native-livechart";
 
 import { useState } from "react";
 import { useSimulatedData } from "../../sim/useSimulatedData";
-import { LiveChart } from "../../src";
-import { DemoScreen } from "../../src/demo/DemoScreen";
-import { demoStyles } from "../../src/demo/styles";
+import { LiveChart } from "react-native-livechart";
+import { DemoScreen } from "./lib/DemoScreen";
+import { demoStyles } from "./lib/styles";
 
 export const options = { title: "Momentum" };
 

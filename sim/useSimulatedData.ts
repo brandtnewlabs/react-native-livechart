@@ -5,7 +5,7 @@ import type {
   LiveChartPoint,
   SeriesConfig,
   TradeEvent,
-} from "../src/types";
+} from "react-native-livechart";
 import {
   aggregateCandles,
   bondingTrade,

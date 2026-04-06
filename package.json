@@ -1,15 +1,27 @@
 {
-  "name": "react-native-livechart",
+  "name": "react-native-livechart-expo-example",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
     "test": "jest",
+    "test:watch": "jest --watch",
+    "test:lib": "jest packages/react-native-livechart",
     "test:coverage": "jest --coverage",
+    "build:lib": "npm run build -w react-native-livechart",
+    "build:lib:watch": "npm run build:watch -w react-native-livechart",
+    "pack:lib": "npm pack -w react-native-livechart",
+    "verify": "npm run typecheck && npm run lint && npm test",
+    "verify:coverage": "npm run typecheck && npm run lint && npm run test:coverage",
     "prepare": "husky"
   },
   "dependencies": {
@@ -37,6 +49,7 @@
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
+    "react-native-livechart": "file:packages/react-native-livechart",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
@@ -51,6 +64,5 @@
     "husky": "^9.1.7",
     "react-test-renderer": "^19.1.0",
     "typescript": "~5.9.2"
-  },
-  "private": true
+  }
 }

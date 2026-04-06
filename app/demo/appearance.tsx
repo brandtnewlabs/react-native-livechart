@@ -2,12 +2,14 @@ import { Pressable, Text, View } from "react-native";
 
 import { useState } from "react";
 import { useSimulatedData } from "../../sim/useSimulatedData";
-import { LiveChart } from "../../src";
-import { DemoScreen } from "../../src/demo/DemoScreen";
-import { ACCENT_PRESETS } from "../../src/demo/shared";
-import { demoStyles } from "../../src/demo/styles";
-import { MONO_FONT_FAMILY } from "../../src/monoFontFamily";
-import type { FontWeight } from "../../src/types";
+import {
+  LiveChart,
+  MONO_FONT_FAMILY,
+  type FontWeight,
+} from "react-native-livechart";
+import { DemoScreen } from "./lib/DemoScreen";
+import { ACCENT_PRESETS } from "./lib/shared";
+import { demoStyles } from "./lib/styles";
 
 export const options = { title: "Appearance" };
 

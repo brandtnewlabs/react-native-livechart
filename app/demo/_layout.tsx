@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { MONO_FONT_FAMILY } from "../../src/monoFontFamily";
+import { MONO_FONT_FAMILY } from "react-native-livechart";
 
 const headerBg = "rgb(10, 10, 10)";
 

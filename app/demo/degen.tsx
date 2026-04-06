@@ -1,12 +1,12 @@
 import { Pressable, Text, View } from "react-native";
-import { ACCENT, VOLATILITY_MODES } from "../../src/demo/shared";
+import { ACCENT, VOLATILITY_MODES } from "./lib/shared";
 
 import { useState } from "react";
 import { useSimulatedData } from "../../sim/useSimulatedData";
-import { LiveChart } from "../../src";
-import { DemoScreen } from "../../src/demo/DemoScreen";
-import { demoStyles } from "../../src/demo/styles";
-import type { DegenOptions } from "../../src/types";
+import { LiveChart } from "react-native-livechart";
+import { DemoScreen } from "./lib/DemoScreen";
+import { demoStyles } from "./lib/styles";
+import type { DegenOptions } from "react-native-livechart";
 
 export const options = { title: "Degen" };
 
