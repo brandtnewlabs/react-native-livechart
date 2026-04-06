@@ -3,6 +3,7 @@ import {
   resolveDegen,
   resolveFontConfig,
   resolveGradient,
+  resolveLeftEdgeFade,
   resolvePulse,
   resolveReferenceLineConfig,
   resolveScrub,
@@ -11,6 +12,9 @@ import {
   resolveXAxis,
   resolveYAxis,
 } from "./resolveConfig";
+
+import { FADE_EDGE_WIDTH } from "./constants";
+import { leftEdgeFadeColorsFromBgRgb } from "./theme";
 
 // ─── resolveValueLine ─────────────────────────────────────────────────────────
 
@@ -240,6 +244,62 @@ describe("resolveGradient", () => {
     expect(resolveGradient({ topOpacity: 0.3, bottomOpacity: 0.05 })).toEqual({
       topOpacity: 0.3,
       bottomOpacity: 0.05,
+    });
+  });
+});
+
+// ─── resolveLeftEdgeFade ───────────────────────────────────────────────────────
+
+describe("resolveLeftEdgeFade", () => {
+  it("returns null for undefined", () => {
+    expect(resolveLeftEdgeFade(undefined)).toBeNull();
+  });
+
+  it("returns null for false", () => {
+    expect(resolveLeftEdgeFade(false)).toBeNull();
+  });
+
+  it("returns defaults for true", () => {
+    expect(resolveLeftEdgeFade(true)).toEqual({
+      width: FADE_EDGE_WIDTH,
+      startColor: "rgba(0, 0, 0, 1)",
+      endColor: "rgba(0, 0, 0, 0)",
+    });
+  });
+
+  it("merges custom width and colors", () => {
+    expect(
+      resolveLeftEdgeFade({
+        width: 24,
+        startColor: "rgba(255, 0, 0, 0.8)",
+        endColor: "#00000000",
+      }),
+    ).toEqual({
+      width: 24,
+      startColor: "rgba(255, 0, 0, 0.8)",
+      endColor: "#00000000",
+    });
+  });
+
+  it("merges single color override", () => {
+    expect(resolveLeftEdgeFade({ startColor: "rgba(0,0,0,0.5)" })).toEqual({
+      width: FADE_EDGE_WIDTH,
+      startColor: "rgba(0,0,0,0.5)",
+      endColor: "rgba(0, 0, 0, 0)",
+    });
+  });
+
+  it("uses theme background colors when provided", () => {
+    const bg = leftEdgeFadeColorsFromBgRgb([255, 128, 64]);
+    expect(resolveLeftEdgeFade(true, bg)).toEqual({
+      width: FADE_EDGE_WIDTH,
+      startColor: "rgba(255, 128, 64, 1)",
+      endColor: "rgba(255, 128, 64, 0)",
+    });
+    expect(resolveLeftEdgeFade({ width: 12 }, bg)).toEqual({
+      width: 12,
+      startColor: "rgba(255, 128, 64, 1)",
+      endColor: "rgba(255, 128, 64, 0)",
     });
   });
 });

@@ -114,6 +114,26 @@ export interface ScrubConfig {
   tooltip?: boolean;
 }
 
+/** Left-edge fade — soft erase so the chart blends into the left gutter (web liveline parity). */
+export interface LeftEdgeFadeConfig {
+  /**
+   * Horizontal fade band in pixels; gradient runs from the chart inner edge (`padding.left`)
+   * across this width. Default `40` (same as liveline).
+   */
+  width?: number;
+  /**
+   * Gradient color at the left (canvas edge side). With default `dstOut` blending, **alpha**
+   * controls how strongly content is erased (opaque = full fade). When omitted, defaults match
+   * the chart background RGB (`palette.bgRgb`) at alpha 1.
+   */
+  startColor?: string;
+  /**
+   * Gradient color at the right (chart side). When omitted, defaults to the same RGB as the
+   * chart background at alpha 0 (no erase).
+   */
+  endColor?: string;
+}
+
 /** Pulsing ring animation on the live dot. */
 export interface PulseConfig {
   /** Time between pulse starts in milliseconds. Default `2400`. */
@@ -308,6 +328,11 @@ export interface LiveChartCoreProps {
   referenceLine?: ReferenceLine;
   /** Crosshair scrubbing on hover/drag. `true` = defaults, `false` = disabled, or pass `ScrubConfig`. Default `true`. */
   scrub?: boolean | ScrubConfig;
+  /**
+   * Fade out chart content on the left (destination-out style). `true` = defaults, `false` = off,
+   * or pass `LeftEdgeFadeConfig`. Default `true`.
+   */
+  leftEdgeFade?: boolean | LeftEdgeFadeConfig;
   /** Main chart line styling. */
   line?: LineConfig;
 }

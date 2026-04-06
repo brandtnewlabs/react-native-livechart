@@ -8,6 +8,7 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { CrosshairOverlay } from "./components/CrosshairOverlay";
+import { LeftEdgeFade } from "./components/LeftEdgeFade";
 import { LoadingOverlay } from "./components/LoadingOverlay";
 import { MultiSeriesDots } from "./components/MultiSeriesDots";
 import { MultiSeriesStroke } from "./components/MultiSeriesStroke";
@@ -37,12 +38,13 @@ import {
 } from "./multiSeriesLayout";
 import {
   resolveFontConfig,
+  resolveLeftEdgeFade,
   resolveReferenceLineConfig,
   resolveScrub,
   resolveXAxis,
   resolveYAxis,
 } from "./resolveConfig";
-import { resolveTheme } from "./theme";
+import { leftEdgeFadeColorsFromBgRgb, resolveTheme } from "./theme";
 import type { LiveChartSeriesProps, SeriesConfig } from "./types";
 import { useLiveChartSeriesEngine } from "./useLiveChartSeriesEngine";
 
@@ -74,6 +76,7 @@ export function LiveChartSeries({
   onScrub,
   onSeriesToggle,
   seriesToggleCompact,
+  leftEdgeFade = true,
 }: LiveChartSeriesProps) {
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
@@ -81,6 +84,11 @@ export function LiveChartSeries({
   const refLineCfg = resolveReferenceLineConfig(referenceLine);
 
   const palette = resolveTheme(accentColor, theme);
+
+  const leftEdgeFadeCfg = resolveLeftEdgeFade(
+    leftEdgeFade,
+    leftEdgeFadeColorsFromBgRgb(palette.bgRgb),
+  );
 
   const skiaFont = matchFont(
     resolveFontConfig(
@@ -249,6 +257,16 @@ export function LiveChartSeries({
             strokeWidth={strokeWidth}
             badge={false}
           />
+
+          {leftEdgeFadeCfg && (
+            <LeftEdgeFade
+              paddingLeft={effectivePadding.left}
+              fadeWidth={leftEdgeFadeCfg.width}
+              startColor={leftEdgeFadeCfg.startColor}
+              endColor={leftEdgeFadeCfg.endColor}
+              engine={engine}
+            />
+          )}
 
           {scrubCfg && (
             <CrosshairOverlay

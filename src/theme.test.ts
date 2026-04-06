@@ -1,5 +1,6 @@
 import {
   SERIES_COLORS,
+  leftEdgeFadeColorsFromBgRgb,
   parseColorRgb,
   resolveSeriesPalettes,
   resolveTheme,
@@ -24,6 +25,15 @@ describe("parseColorRgb", () => {
 
   it("falls back for unknown strings", () => {
     expect(parseColorRgb("not-a-color")).toEqual([128, 128, 128]);
+  });
+});
+
+describe("leftEdgeFadeColorsFromBgRgb", () => {
+  it("matches background rgb with alpha ramp", () => {
+    expect(leftEdgeFadeColorsFromBgRgb([10, 20, 30])).toEqual({
+      startColor: "rgba(10, 20, 30, 1)",
+      endColor: "rgba(10, 20, 30, 0)",
+    });
   });
 });
 
