@@ -76,6 +76,21 @@ export function gutterCenteredTextLeftX(
   return canvasWidth - paddingRight / 2 - textWidth / 2;
 }
 
+const GUTTER_RIGHT_MARGIN = 4;
+
+/**
+ * Right-aligned text positioning — used for y-axis labels when inline series
+ * labels occupy the left portion of the right gutter.
+ */
+export function gutterRightAlignedTextLeftX(
+  canvasWidth: number,
+  textWidth: number,
+  rightMargin = GUTTER_RIGHT_MARGIN,
+): number {
+  "worklet";
+  return canvasWidth - textWidth - rightMargin;
+}
+
 /**
  * Minimum `padding.right` for the badge gutter.
  *

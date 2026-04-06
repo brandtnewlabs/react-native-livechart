@@ -1,20 +1,28 @@
 import { Circle, Group } from "@shopify/react-native-skia";
 
-import type { ChartPadding } from "../draw/line";
-import { MAX_MULTI_SERIES } from "../constants";
-import type { MultiEngineState } from "../useLiveChartEngine";
 import { useDerivedValue } from "react-native-reanimated";
+import { MAX_MULTI_SERIES } from "../constants";
+import type { ChartPadding } from "../draw/line";
+import type { ResolvedPulseConfig } from "../resolveConfig";
+import type { MultiEngineState } from "../useLiveChartEngine";
+
+const MIN_PULSE_RADIUS = 6;
+const PULSE_STAGGER_MS = 200;
 
 function SeriesDotAtIndex({
   index,
   engine,
   padding,
   color,
+  radius,
+  pulse,
 }: {
   index: number;
   engine: MultiEngineState;
   padding: ChartPadding;
   color: string;
+  radius: number;
+  pulse: ResolvedPulseConfig | null;
 }) {
   const dotX = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
@@ -44,9 +52,36 @@ function SeriesDotAtIndex({
     return op[index] ?? 0;
   });
 
+  const pulseRadius = useDerivedValue(() => {
+    if (!pulse) return 0;
+    const nowMs = engine.timestamp.value * 1000 + index * PULSE_STAGGER_MS;
+    const t = (nowMs % pulse.interval) / pulse.duration;
+    if (t >= 1) return 0;
+    return MIN_PULSE_RADIUS + t * (pulse.maxRadius - MIN_PULSE_RADIUS);
+  });
+
+  const pulseOpacity = useDerivedValue(() => {
+    if (!pulse) return 0;
+    const nowMs = engine.timestamp.value * 1000 + index * PULSE_STAGGER_MS;
+    const t = (nowMs % pulse.interval) / pulse.duration;
+    if (t >= 1) return 0;
+    return pulse.opacity * (1 - t);
+  });
+
   return (
     <Group opacity={opacity}>
-      <Circle cx={dotX} cy={dotY} r={5} color={color} />
+      {pulse && (
+        <Circle
+          cx={dotX}
+          cy={dotY}
+          r={pulseRadius}
+          color={color}
+          style="stroke"
+          strokeWidth={pulse.strokeWidth}
+          opacity={pulseOpacity}
+        />
+      )}
+      <Circle cx={dotX} cy={dotY} r={radius} color={color} />
     </Group>
   );
 }
@@ -55,10 +90,14 @@ export function MultiSeriesDots({
   engine,
   padding,
   colors,
+  radius,
+  pulse,
 }: {
   engine: MultiEngineState;
   padding: ChartPadding;
   colors: string[];
+  radius: number;
+  pulse: ResolvedPulseConfig | null;
 }) {
   return (
     <Group>
@@ -69,6 +108,8 @@ export function MultiSeriesDots({
           engine={engine}
           padding={padding}
           color={colors[i] ?? "#ffffff"}
+          radius={radius}
+          pulse={pulse}
         />
       ))}
     </Group>

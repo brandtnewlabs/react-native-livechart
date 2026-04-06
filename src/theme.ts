@@ -150,6 +150,7 @@ export function resolveTheme(color: string, mode: ThemeMode): LiveChartPalette {
     timeLabel: isDark ? twAlpha(TW.white, 0.35) : twAlpha(TW.black, 0.3),
 
     crosshairLine: isDark ? twAlpha(TW.white, 0.2) : twAlpha(TW.black, 0.12),
+    crosshairDim: twAlpha(TW.black, 0.12),
     tooltipBg: isDark ? twAlpha(TW.zinc[950], 0.95) : twAlpha(TW.white, 0.95),
     tooltipText: isDark ? TW.neutral[200] : TW.neutral[900],
     tooltipBorder: isDark ? twAlpha(TW.white, 0.1) : twAlpha(TW.black, 0.08),

@@ -1,4 +1,3 @@
-import { type SkFont } from "@shopify/react-native-skia";
 import { Platform } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import {
@@ -6,35 +5,27 @@ import {
   useDerivedValue,
   useSharedValue,
 } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
 import { type ChartPadding } from "../draw/line";
-import type {
-  LiveChartPalette,
-  ScrubPointMulti,
-  ScrubSeriesValue,
-} from "../types";
+import type { ScrubPointMulti } from "../types";
 import type { MultiEngineState } from "../useLiveChartEngine";
 import {
-  computeMultiSeriesScrubTooltipLayout,
   deriveScrubValueMulti,
   interpolateMultiSeriesAtTime,
 } from "./crosshairMulti";
 import {
   computeCrosshairOpacity,
   computeScrubTime,
+  HIDDEN_TOOLTIP,
   type CrosshairState,
 } from "./crosshairShared";
 
 /**
- * Multi-series crosshair + scrub. Requires `engine.series`.
+ * Multi-series crosshair + scrub. No tooltip — data is delivered via
+ * `onScrub` worklet callback on the UI thread.
  */
 export function useCrosshairMulti(
   engine: MultiEngineState,
   padding: ChartPadding,
-  _palette: LiveChartPalette,
-  formatValue: (v: number) => string,
-  formatTime: (t: number) => string,
-  font: SkFont,
   enabled: boolean,
   onScrub?: (point: ScrubPointMulti | null) => void,
 ): CrosshairState {
@@ -69,35 +60,7 @@ export function useCrosshairMulti(
     ),
   );
 
-  const tooltipLayout = useDerivedValue(() =>
-    computeMultiSeriesScrubTooltipLayout(
-      scrubActive.value,
-      scrubX.value,
-      scrubTime.value,
-      engine.series.value,
-      padding,
-      engine.canvasWidth.value,
-      formatValue,
-      formatTime,
-      font,
-    ),
-  );
-
-  /* istanbul ignore next */
-  function handleScrubMulti(
-    x: number,
-    y: number,
-    time: number,
-    value: number,
-    seriesValues: ScrubSeriesValue[],
-  ) {
-    onScrub?.({ time, value, x, y, seriesValues });
-  }
-
-  /* istanbul ignore next */
-  function handleScrubEnd() {
-    onScrub?.(null);
-  }
+  const tooltipLayout = useSharedValue(HIDDEN_TOOLTIP);
 
   const hasOnScrub = onScrub != null;
 
@@ -131,11 +94,11 @@ export function useCrosshairMulti(
     (curr, prev) => {
       "worklet";
       if (!hasOnScrub) return;
-      if (
-        curr === "__idle__" ||
-        curr === "__inactive__" ||
-        curr === "__pending__"
-      ) {
+      if (curr === "__inactive__") {
+        onScrub!(null);
+        return;
+      }
+      if (curr === "__idle__" || curr === "__pending__") {
         return;
       }
       if (curr === prev) return;
@@ -144,9 +107,15 @@ export function useCrosshairMulti(
         x: number;
         y: number;
         primary: number;
-        series: ScrubSeriesValue[];
+        series: ScrubPointMulti["seriesValues"];
       };
-      scheduleOnRN(handleScrubMulti, p.x, p.y, p.time, p.primary, p.series);
+      onScrub!({
+        time: p.time,
+        value: p.primary,
+        x: p.x,
+        y: p.y,
+        seriesValues: p.series,
+      });
     },
   );
 
@@ -174,7 +143,6 @@ export function useCrosshairMulti(
       /* istanbul ignore next */ () => {
         "worklet";
         scrubActive.value = false;
-        if (hasOnScrub) scheduleOnRN(handleScrubEnd);
       },
     );
 

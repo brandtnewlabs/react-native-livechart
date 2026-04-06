@@ -8,12 +8,13 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
-import { CrosshairOverlay } from "./components/CrosshairOverlay";
+import { CrosshairLine } from "./CrosshairLine";
 import { LeftEdgeFade } from "./components/LeftEdgeFade";
 import { LoadingOverlay } from "./components/LoadingOverlay";
 import { MultiSeriesDots } from "./components/MultiSeriesDots";
 import { MultiSeriesStroke } from "./components/MultiSeriesStroke";
-import { MultiSeriesTooltipStack } from "./components/MultiSeriesTooltipStack";
+import { MultiSeriesValueLabels } from "./components/MultiSeriesValueLabels";
+import { MultiSeriesValueLines } from "./components/MultiSeriesValueLines";
 import { ReferenceLineOverlay } from "./components/ReferenceLineOverlay";
 import { SeriesToggleChips } from "./components/SeriesToggleChips";
 import { XAxisOverlay } from "./components/XAxisOverlay";
@@ -34,6 +35,8 @@ import {
   useXAxis,
   useYAxis,
 } from "./hooks";
+import { measureFontTextWidth } from "./measureFontTextWidth";
+import { MONO_FONT_FAMILY } from "./monoFontFamily";
 import {
   lineColorsSignatureFromArray,
   resolveMultiSeriesLineColorsSnapshot,
@@ -41,12 +44,13 @@ import {
 import {
   resolveFontConfig,
   resolveLeftEdgeFade,
+  resolveLegend,
+  resolveMultiSeriesDot,
   resolveReferenceLineConfig,
   resolveScrub,
   resolveXAxis,
   resolveYAxis,
 } from "./resolveConfig";
-import { MONO_FONT_FAMILY } from "./monoFontFamily";
 import { leftEdgeFadeColorsFromBgRgb, resolveTheme } from "./theme";
 import type { LiveChartSeriesProps, SeriesConfig } from "./types";
 import { useLiveChartSeriesEngine } from "./useLiveChartSeriesEngine";
@@ -79,12 +83,17 @@ export function LiveChartSeries({
   onScrub,
   onSeriesToggle,
   seriesToggleCompact,
+  dot: dotProp,
+  legend: legendProp,
   leftEdgeFade = true,
 }: LiveChartSeriesProps) {
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
   const scrubCfg = resolveScrub(scrub);
+  const scrubEnabled = scrubCfg !== null;
   const refLineCfg = resolveReferenceLineConfig(referenceLine);
+  const dotCfg = resolveMultiSeriesDot(dotProp);
+  const legendCfg = resolveLegend(legendProp, seriesToggleCompact);
 
   const palette = resolveTheme(accentColor, theme);
 
@@ -94,12 +103,27 @@ export function LiveChartSeries({
   );
 
   const skiaFont = matchFont(
-    resolveFontConfig(
-      fontProp,
-      MONO_FONT_FAMILY,
-      palette.labelFontSize,
-    ),
+    resolveFontConfig(fontProp, MONO_FONT_FAMILY, palette.labelFontSize),
   );
+
+  const seriesSnapshot = series.value;
+  const maxSeriesLabelWidth = dotCfg.valueLabel
+    ? Math.max(
+        0,
+        ...seriesSnapshot.map((s) =>
+          measureFontTextWidth(skiaFont, s.label ?? s.id),
+        ),
+      )
+    : 0;
+
+  const seriesLabelInset = dotCfg.valueLabel
+    ? dotCfg.radius + 8 + maxSeriesLabelWidth + 8
+    : 0;
+
+  const representativeValue =
+    seriesSnapshot.length > 0
+      ? Math.max(...seriesSnapshot.map((s) => s.value))
+      : 0;
 
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
@@ -110,7 +134,11 @@ export function LiveChartSeries({
     xAxis: xAxisCfg !== null,
     font: skiaFont,
     formatValue,
-    currentValue: 0,
+    currentValue: representativeValue,
+    pulse: dotCfg.pulse,
+    multiSeriesDotRadius: dotCfg.radius,
+    multiSeriesValueLabel: dotCfg.valueLabel,
+    multiSeriesMaxLabelWidth: maxSeriesLabelWidth,
   });
 
   const hasData = useDerivedValue(() =>
@@ -125,14 +153,12 @@ export function LiveChartSeries({
 
   const reveal = useChartReveal(loading, hasData, morphInitRef.current);
 
-  // Stash last multi-series snapshot while morphT collapses (reverse morph).
   const effectiveSeries = useMultiSeriesReverseMorphInputs({
     series,
     hasData,
     morphT: reveal.morphT,
   });
 
-  // Engine + strokes read effectiveSeries; chips/onSeriesToggle still use prop `series`.
   const engine = useLiveChartSeriesEngine({
     series: effectiveSeries,
     timeWindow,
@@ -191,24 +217,34 @@ export function LiveChartSeries({
   const crosshair = useCrosshairMulti(
     engine,
     effectivePadding,
-    palette,
-    formatValue,
-    formatTime,
-    skiaFont,
-    scrubCfg !== null,
+    scrubEnabled,
     onScrub,
   );
 
   const backgroundColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
 
+  const legendTop =
+    legendCfg.position === "top" ? (
+      <SeriesToggleChips
+        series={series}
+        legend={legendCfg}
+        onSeriesToggle={onSeriesToggle}
+      />
+    ) : null;
+
+  const legendBottom =
+    legendCfg.position === "bottom" ? (
+      <SeriesToggleChips
+        series={series}
+        legend={legendCfg}
+        onSeriesToggle={onSeriesToggle}
+      />
+    ) : null;
+
   return (
     <GestureDetector gesture={crosshair.gesture}>
       <View style={[{ flex: 1, backgroundColor }, style]} onLayout={onLayout}>
-        <SeriesToggleChips
-          series={series}
-          compact={seriesToggleCompact}
-          onSeriesToggle={onSeriesToggle}
-        />
+        {legendTop}
         <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
           {yAxisCfg && (
             <Group opacity={reveal.yAxisOpacity}>
@@ -219,6 +255,7 @@ export function LiveChartSeries({
                 palette={palette}
                 font={skiaFont}
                 badge={false}
+                seriesLabelInset={seriesLabelInset}
               />
             </Group>
           )}
@@ -232,6 +269,17 @@ export function LiveChartSeries({
               labelColor={palette.refLabel}
               font={skiaFont}
             />
+          )}
+
+          {dotCfg.valueLine && (
+            <Group opacity={reveal.lineOpacity}>
+              <MultiSeriesValueLines
+                engine={engine}
+                padding={effectivePadding}
+                colors={lineColors}
+                config={dotCfg.valueLine}
+              />
+            </Group>
           )}
 
           <Group opacity={reveal.lineOpacity}>
@@ -262,8 +310,22 @@ export function LiveChartSeries({
               engine={engine}
               padding={effectivePadding}
               colors={lineColors}
+              radius={dotCfg.radius}
+              pulse={dotCfg.pulse}
             />
           </Group>
+
+          {dotCfg.valueLabel && (
+            <Group opacity={reveal.dotOpacity}>
+              <MultiSeriesValueLabels
+                engine={engine}
+                padding={effectivePadding}
+                colors={lineColors}
+                font={skiaFont}
+                dotRadius={dotCfg.radius}
+              />
+            </Group>
+          )}
 
           <LoadingOverlay
             engine={engine}
@@ -289,25 +351,18 @@ export function LiveChartSeries({
           )}
 
           {scrubCfg && (
-            <CrosshairOverlay
+            <CrosshairLine
               scrubX={crosshair.scrubX}
               crosshairOpacity={crosshair.crosshairOpacity}
-              tooltipLayout={crosshair.tooltipLayout}
               engine={engine}
               padding={effectivePadding}
               palette={palette}
-              font={skiaFont}
-              showTooltip={scrubCfg.tooltip}
-              tooltipBody={
-                <MultiSeriesTooltipStack
-                  tooltipLayout={crosshair.tooltipLayout}
-                  font={skiaFont}
-                  palette={palette}
-                />
-              }
+              crosshairLineColor={scrubCfg.crosshairLineColor}
+              crosshairDimColor={scrubCfg.crosshairDimColor}
             />
           )}
         </Canvas>
+        {legendBottom}
       </View>
     </GestureDetector>
   );

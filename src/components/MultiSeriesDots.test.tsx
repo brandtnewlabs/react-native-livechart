@@ -1,8 +1,8 @@
+import { render } from "@testing-library/react-native";
+import React from "react";
+import { useSharedValue } from "react-native-reanimated";
 import type { MultiEngineState } from "../useLiveChartEngine";
 import { MultiSeriesDots } from "./MultiSeriesDots";
-import React from "react";
-import { render } from "@testing-library/react-native";
-import { useSharedValue } from "react-native-reanimated";
 
 describe("MultiSeriesDots", () => {
   it("renders dot slots for the engine", () => {
@@ -40,6 +40,8 @@ describe("MultiSeriesDots", () => {
           engine={engine}
           padding={padding}
           colors={["#3b82f6"]}
+          radius={3.5}
+          pulse={null}
         />
       );
     }
@@ -78,6 +80,8 @@ describe("MultiSeriesDots", () => {
           engine={engine}
           padding={padding}
           colors={["#3b82f6"]}
+          radius={3.5}
+          pulse={null}
         />
       );
     }
@@ -116,6 +120,8 @@ describe("MultiSeriesDots", () => {
           engine={engine}
           padding={padding}
           colors={["#3b82f6"]}
+          radius={3.5}
+          pulse={null}
         />
       );
     }

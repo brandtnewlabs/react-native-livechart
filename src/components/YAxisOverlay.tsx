@@ -5,6 +5,7 @@ import type { YAxisEntry } from "../draw/grid";
 import {
   badgeTailAndCap,
   gutterCenteredTextLeftX,
+  gutterRightAlignedTextLeftX,
   pillTextLeftX,
   type ChartPadding,
 } from "../draw/line";
@@ -23,6 +24,7 @@ export function YAxisOverlay({
   font,
   badge = false,
   badgeTail = true,
+  seriesLabelInset = 0,
 }: {
   entries: SharedValue<YAxisEntry[]>;
   engine: ChartEngineLayout;
@@ -33,6 +35,8 @@ export function YAxisOverlay({
   badge?: boolean;
   /** Whether the badge tail spike is shown; affects the left inset used for label alignment. */
   badgeTail?: boolean;
+  /** When > 0, series labels occupy the left portion of the gutter; Y-axis labels right-align. */
+  seriesLabelInset?: number;
 }) {
   const gridLinesPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
@@ -45,11 +49,8 @@ export function YAxisOverlay({
     return path;
   });
 
-  // Left inset = gap from dot to pill body (used by both badge and grid labels for alignment).
   const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize(), badgeTail);
 
-  // Transform YAxisEntry[] into the { x, y, label, alpha } shape for AnimatedLabel.
-  // When badge is shown, use pillTextLeftX so labels horizontally align with badge text.
   const labelEntries = useDerivedValue(() => {
     const items = entries.value;
     const w = engine.canvasWidth.value;
@@ -61,7 +62,9 @@ export function YAxisOverlay({
       const textW = measureFontTextWidth(font, e.label);
       const x = badge
         ? pillTextLeftX(w, padding.right, leftInset, textW)
-        : gutterCenteredTextLeftX(w, padding.right, textW);
+        : seriesLabelInset > 0
+          ? gutterRightAlignedTextLeftX(w, textW)
+          : gutterCenteredTextLeftX(w, padding.right, textW);
       result.push({
         x,
         y: e.y - baselineOffset,

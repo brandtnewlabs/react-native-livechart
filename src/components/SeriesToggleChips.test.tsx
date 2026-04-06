@@ -1,9 +1,16 @@
-import { SeriesToggleChips, seriesMetaSig } from "./SeriesToggleChips";
 import { fireEvent, render } from "@testing-library/react-native";
+import { SeriesToggleChips, seriesMetaSig } from "./SeriesToggleChips";
 
-import type { SeriesConfig } from "../types";
 import React from "react";
 import { useSharedValue } from "react-native-reanimated";
+import type { ResolvedLegendConfig } from "../resolveConfig";
+import type { SeriesConfig } from "../types";
+
+const DEFAULT_LEGEND: ResolvedLegendConfig = {
+  visible: true,
+  compact: false,
+  position: "top",
+};
 
 function ChipsHarness({
   onToggle,
@@ -25,7 +32,7 @@ function ChipsHarness({
     <SeriesToggleChips
       series={series}
       onSeriesToggle={onToggle}
-      compact={compact}
+      legend={{ ...DEFAULT_LEGEND, compact: compact ?? false }}
     />
   );
 }
@@ -80,7 +87,7 @@ describe("SeriesToggleChips", () => {
       const series = useSharedValue<SeriesConfig[]>([
         { id: "idOnly", data: [], value: 1, color: "#333" },
       ]);
-      return <SeriesToggleChips series={series} />;
+      return <SeriesToggleChips series={series} legend={DEFAULT_LEGEND} />;
     }
     expect(render(<IdOnlyHarness />).getByText("idOnly")).toBeTruthy();
   });
@@ -109,7 +116,13 @@ describe("SeriesToggleChips", () => {
           color: "#ef4444",
         },
       ]);
-      return <SeriesToggleChips series={series} onSeriesToggle={onToggle} />;
+      return (
+        <SeriesToggleChips
+          series={series}
+          onSeriesToggle={onToggle}
+          legend={DEFAULT_LEGEND}
+        />
+      );
     }
     const screen = render(<TwoHarness />);
     fireEvent.press(screen.getByText("B"));
@@ -126,7 +139,7 @@ describe("SeriesToggleChips", () => {
           value: 1,
         },
       ]);
-      return <SeriesToggleChips series={series} />;
+      return <SeriesToggleChips series={series} legend={DEFAULT_LEGEND} />;
     }
     const screen = render(<NoColorHarness />);
     expect(screen.getByText("Plain")).toBeTruthy();

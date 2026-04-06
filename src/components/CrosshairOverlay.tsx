@@ -25,6 +25,8 @@ export function CrosshairOverlay({
   font,
   showTooltip = true,
   tooltipBody,
+  crosshairLineColor,
+  crosshairDimColor,
 }: {
   scrubX: SharedValue<number>;
   crosshairOpacity: SharedValue<number>;
@@ -35,6 +37,8 @@ export function CrosshairOverlay({
   font: SkFont;
   showTooltip?: boolean;
   tooltipBody?: ReactNode;
+  crosshairLineColor?: string;
+  crosshairDimColor?: string;
 }) {
   const p1 = useDerivedValue(() => ({
     x: scrubX.value,
@@ -72,10 +76,15 @@ export function CrosshairOverlay({
         y={padding.top}
         width={dimWidth}
         height={dimHeight}
-        color="rgba(0, 0, 0, 0.12)"
+        color={crosshairDimColor ?? palette.crosshairDim}
       />
 
-      <Line p1={p1} p2={p2} color={palette.crosshairLine} strokeWidth={1} />
+      <Line
+        p1={p1}
+        p2={p2}
+        color={crosshairLineColor ?? palette.crosshairLine}
+        strokeWidth={1}
+      />
 
       {showTooltip && (
         <>
