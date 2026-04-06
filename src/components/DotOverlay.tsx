@@ -1,10 +1,11 @@
 import { Circle, Group } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
+import type { ResolvedPulseConfig } from "../resolveConfig";
 import type { LivelinePalette, Momentum } from "../types";
 import type { EngineState } from "../useLivelineEngine";
 
-const PULSE_INTERVAL = 1500;
-const PULSE_DURATION = 900;
+// Minimum ring radius — sits just outside the outer dot ring (r = 6.5).
+const MIN_PULSE_RADIUS = 9;
 
 export function DotOverlay({
   dotX,
@@ -12,16 +13,15 @@ export function DotOverlay({
   momentum,
   palette,
   engine,
-  pulse = true,
+  pulse,
 }: {
   dotX: SharedValue<number>;
   dotY: SharedValue<number>;
   momentum: SharedValue<Momentum>;
   palette: LivelinePalette;
   engine: EngineState;
-  pulse?: boolean;
+  pulse: ResolvedPulseConfig | null;
 }) {
-  // Glow color based on momentum
   const glowColor = useDerivedValue(() => {
     const m = momentum.value;
     if (m === "up") return palette.glowUp;
@@ -29,21 +29,20 @@ export function DotOverlay({
     return palette.glowFlat;
   });
 
-  // Pulse ring: expanding radius + fading opacity
   const pulseRadius = useDerivedValue(() => {
     if (!pulse) return 0;
     const nowMs = engine.timestamp.value * 1000;
-    const t = (nowMs % PULSE_INTERVAL) / PULSE_DURATION;
+    const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
-    return 9 + t * 12;
+    return MIN_PULSE_RADIUS + t * (pulse.maxRadius - MIN_PULSE_RADIUS);
   });
 
   const pulseOpacity = useDerivedValue(() => {
     if (!pulse) return 0;
     const nowMs = engine.timestamp.value * 1000;
-    const t = (nowMs % PULSE_INTERVAL) / PULSE_DURATION;
+    const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
-    return 0.35 * (1 - t);
+    return pulse.opacity * (1 - t);
   });
 
   return (
@@ -64,7 +63,7 @@ export function DotOverlay({
           r={pulseRadius}
           color={palette.line}
           style="stroke"
-          strokeWidth={1.5}
+          strokeWidth={pulse.strokeWidth}
           opacity={pulseOpacity}
         />
       )}

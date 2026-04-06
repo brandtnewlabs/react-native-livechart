@@ -32,6 +32,8 @@ export function useBadge(
   variant: BadgeVariant = "default",
   showTail = true,
   momentum?: SharedValue<Momentum>,
+  position: "right" | "left" = "right",
+  background?: string,
 ) {
   const colorR = useSharedValue(0);
   const colorG = useSharedValue(0);
@@ -70,65 +72,76 @@ export function useBadge(
 
     const pillH = font.getSize() + BADGE_PILL_PAD_Y * 2;
     const r = pillH / 2;
-    // Asymmetric layout: tail gap (tl) on left, BADGE_MARGIN_RIGHT on right.
-    // Pill body starts tl px from the gutter left edge (= dot x), creating a
-    // visible gap bridged by the tail. Pill right edge is BADGE_MARGIN_RIGHT
-    // from the canvas edge (pill fills almost the full gutter width).
-    const tl = badgeTailAndCap(font.getSize()); // = BADGE_TAIL_LEN + r
-
-    const bodyLeft = w - padding.right + BADGE_DOT_GAP + tl;
-    const bodyRight = w - BADGE_MARGIN_RIGHT;
-    const pillW = bodyRight - bodyLeft;
-    // Text centered in pill body — same formula used by GridOverlay (uses same leftInset).
-    const textX = pillTextLeftX(w, padding.right, BADGE_DOT_GAP + tl, textW);
-
     const badgeY = dotY - pillH / 2;
     const path = Skia.Path.Make();
+    let textX: number;
 
-    if (showTail) {
-      // Tail tip starts BADGE_DOT_GAP px to the right of the dot — clear visual gap.
-      const badgeX = w - padding.right + BADGE_DOT_GAP;
-      const cx = tl + pillW - r; // arc center offset: pill right cap center at bodyRight - r
-
-      path.moveTo(badgeX + tl, badgeY);
-      path.lineTo(badgeX + cx, badgeY);
-      path.arcToOval(
-        { x: badgeX + cx - r, y: badgeY, width: r * 2, height: pillH },
-        -90,
-        180,
-        false,
-      );
-      path.lineTo(badgeX + tl, badgeY + pillH);
-      path.cubicTo(
-        badgeX + BADGE_TAIL_LEN + 2,
-        badgeY + pillH,
-        badgeX + 3,
-        badgeY + r + TAIL_SPREAD,
-        badgeX,
-        badgeY + r,
-      );
-      path.cubicTo(
-        badgeX + 3,
-        badgeY + r - TAIL_SPREAD,
-        badgeX + BADGE_TAIL_LEN + 2,
-        badgeY,
-        badgeX + tl,
-        badgeY,
-      );
-      path.close();
-    } else {
+    if (position === "left") {
+      // Left-gutter badge: simple pill, no tail, anchored to left edge.
+      const bodyLeft = BADGE_MARGIN_RIGHT;
+      const bodyRight = padding.left - BADGE_DOT_GAP;
+      const pillW = bodyRight - bodyLeft;
+      textX = (bodyLeft + bodyRight - textW) / 2;
       path.addRRect({
         rect: { x: bodyLeft, y: badgeY, width: pillW, height: pillH },
         rx: r,
         ry: r,
       });
+    } else {
+      // Right-gutter badge (default): asymmetric layout with optional tail.
+      const tl = badgeTailAndCap(font.getSize()); // = BADGE_TAIL_LEN + r
+      const bodyLeft = w - padding.right + BADGE_DOT_GAP + tl;
+      const bodyRight = w - BADGE_MARGIN_RIGHT;
+      const pillW = bodyRight - bodyLeft;
+      // Text centered in pill body — same formula used by GridOverlay.
+      textX = pillTextLeftX(w, padding.right, BADGE_DOT_GAP + tl, textW);
+
+      if (showTail) {
+        const badgeX = w - padding.right + BADGE_DOT_GAP;
+        const cx = tl + pillW - r;
+
+        path.moveTo(badgeX + tl, badgeY);
+        path.lineTo(badgeX + cx, badgeY);
+        path.arcToOval(
+          { x: badgeX + cx - r, y: badgeY, width: r * 2, height: pillH },
+          -90,
+          180,
+          false,
+        );
+        path.lineTo(badgeX + tl, badgeY + pillH);
+        path.cubicTo(
+          badgeX + BADGE_TAIL_LEN + 2,
+          badgeY + pillH,
+          badgeX + 3,
+          badgeY + r + TAIL_SPREAD,
+          badgeX,
+          badgeY + r,
+        );
+        path.cubicTo(
+          badgeX + 3,
+          badgeY + r - TAIL_SPREAD,
+          badgeX + BADGE_TAIL_LEN + 2,
+          badgeY,
+          badgeX + tl,
+          badgeY,
+        );
+        path.close();
+      } else {
+        path.addRRect({
+          rect: { x: bodyLeft, y: badgeY, width: pillW, height: pillH },
+          rx: r,
+          ry: r,
+        });
+      }
     }
 
     const fm = font.getMetrics();
     const textY = dotY - (fm.ascent + fm.descent) / 2;
 
     let bgColor: string;
-    if (variant === "minimal") {
+    if (background) {
+      bgColor = background;
+    } else if (variant === "minimal") {
       bgColor = "rgba(255,255,255,0.95)";
     } else if (momentum) {
       const m = momentum.value;

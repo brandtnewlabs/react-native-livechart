@@ -1,20 +1,26 @@
 import type { SkFont } from "@shopify/react-native-skia";
 import {
+  minPaddingLeftForBadge,
   minPaddingRightForBadgeYAxisAlign,
+  resolveAutoLeft,
   resolveAutoRight,
   resolvePadding,
   type ChartPadding,
 } from "../draw/line";
 import { measureFontTextWidth } from "../measureFontTextWidth";
-import type { LivelinePalette, Padding } from "../types";
+import type { ChartInsets, LivelinePalette } from "../types";
 
 export interface ChartLayoutConfig {
   palette: LivelinePalette;
   lineWidthOverride?: number;
-  paddingOverride?: Padding;
-  grid: boolean;
+  insetsOverride?: ChartInsets;
+  yAxis: boolean;
   badge: boolean;
-  /** Skia font for measuring label width. When provided with formatValue + currentValue, right padding auto-sizes. */
+  /** When true, badge occupies the left gutter instead of the right. */
+  badgeOnLeft?: boolean;
+  /** When false, bottom inset shrinks (no x-axis labels). Default true. */
+  xAxis?: boolean;
+  /** Skia font for measuring label width. When provided with formatValue + currentValue, padding auto-sizes. */
   font?: SkFont;
   /** Worklet formatter — called on JS thread here to measure label width */
   formatValue?: (v: number) => string;
@@ -30,32 +36,62 @@ export interface ChartLayoutResult {
 export function resolveChartLayout(
   config: ChartLayoutConfig,
 ): ChartLayoutResult {
+  const badgeOnLeft = config.badgeOnLeft ?? false;
+  const badgeOnRight = config.badge && !badgeOnLeft;
+  const xAxis = config.xAxis ?? true;
+
+  // ── Right inset ──────────────────────────────────────────────────────────
   let rightPad: number;
-  if (config.paddingOverride?.right != null) {
-    rightPad = config.paddingOverride.right;
-  } else if (config.font && config.formatValue && config.currentValue != null) {
-    // Sample across multiple magnitudes so the gutter fits the widest label
-    // the chart will plausibly show (handles all price ranges: 0.001 → 10M+).
+  if (config.insetsOverride?.right != null) {
+    rightPad = config.insetsOverride.right;
+  } else if (
+    config.font &&
+    config.formatValue &&
+    config.currentValue != null &&
+    !badgeOnLeft
+  ) {
     const v = config.currentValue;
     const samples = [v, v / 10, v / 100, v * 10].map(config.formatValue);
     const textWidth = Math.max(
       ...samples.map((s) => measureFontTextWidth(config.font!, s)),
     );
-    rightPad = config.badge
+    rightPad = badgeOnRight
       ? minPaddingRightForBadgeYAxisAlign(config.font.getSize(), textWidth)
       : Math.max(textWidth + 16, 44);
   } else {
-    rightPad = resolveAutoRight(config.grid, config.badge);
+    rightPad = resolveAutoRight(config.yAxis, badgeOnRight);
+  }
+
+  // ── Left inset ───────────────────────────────────────────────────────────
+  let leftPad: number;
+  if (config.insetsOverride?.left != null) {
+    leftPad = config.insetsOverride.left;
+  } else if (
+    badgeOnLeft &&
+    config.font &&
+    config.formatValue &&
+    config.currentValue != null
+  ) {
+    const v = config.currentValue;
+    const samples = [v, v / 10, v / 100, v * 10].map(config.formatValue);
+    const textWidth = Math.max(
+      ...samples.map((s) => measureFontTextWidth(config.font!, s)),
+    );
+    leftPad = minPaddingLeftForBadge(textWidth);
+  } else {
+    leftPad = resolveAutoLeft(badgeOnLeft);
   }
 
   const base = resolvePadding(
-    config.paddingOverride,
-    config.grid,
+    config.insetsOverride,
+    config.yAxis,
     config.badge,
+    badgeOnLeft,
+    xAxis,
   );
 
   return {
     strokeWidth: config.lineWidthOverride ?? config.palette.lineWidth,
-    padding: { ...base, right: rightPad },
+    padding: { ...base, right: rightPad, left: leftPad },
   };
 }

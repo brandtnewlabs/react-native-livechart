@@ -9,7 +9,6 @@ import {
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { ReferenceLineLayout } from "../hooks/useReferenceLine";
-import type { LivelinePalette } from "../types";
 
 /**
  * Renders a dashed horizontal reference line with an optional right-gutter label.
@@ -17,11 +16,17 @@ import type { LivelinePalette } from "../types";
  */
 export function ReferenceLineOverlay({
   layout,
-  palette,
+  strokeWidth,
+  intervals,
+  color,
+  labelColor,
   font,
 }: {
   layout: SharedValue<ReferenceLineLayout>;
-  palette: LivelinePalette;
+  strokeWidth: number;
+  intervals: [number, number];
+  color: string;
+  labelColor: string;
   font: SkFont;
 }) {
   const opacity = useDerivedValue(() => (layout.value.visible ? 1 : 0));
@@ -44,17 +49,17 @@ export function ReferenceLineOverlay({
       <Path
         path={linePath}
         style="stroke"
-        strokeWidth={1}
-        color={palette.refLine}
+        strokeWidth={strokeWidth}
+        color={color}
       >
-        <DashPathEffect intervals={[4, 4]} />
+        <DashPathEffect intervals={intervals} />
       </Path>
       <SkiaText
         x={labelX}
         y={labelY}
         text={labelText as unknown as string}
         font={font}
-        color={palette.refLabel}
+        color={labelColor}
       />
     </Group>
   );

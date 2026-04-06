@@ -16,7 +16,7 @@ const REVEAL_DURATION_MS = 600;
  */
 const DELAY = {
   fill: 0.05,
-  grid: 0.15,
+  yAxis: 0.15,
   line: 0.0,
   dot: 0.4,
   badge: 0.55,
@@ -39,7 +39,7 @@ export interface ChartRevealState {
   isLoading: SharedValue<boolean>;
   /** True when loading=false but no data (set externally via isEmpty.value) */
   isEmpty: SharedValue<boolean>;
-  gridOpacity: SharedValue<number>;
+  yAxisOpacity: SharedValue<number>;
   fillOpacity: SharedValue<number>;
   lineOpacity: SharedValue<number>;
   dotOpacity: SharedValue<number>;
@@ -82,8 +82,8 @@ export function useChartReveal(loading: boolean): ChartRevealState {
     }
   }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const gridOpacity = useDerivedValue(() =>
-    revealRamp(morphT.value, DELAY.grid),
+  const yAxisOpacity = useDerivedValue(() =>
+    revealRamp(morphT.value, DELAY.yAxis),
   );
   const fillOpacity = useDerivedValue(() =>
     revealRamp(morphT.value, DELAY.fill),
@@ -100,7 +100,7 @@ export function useChartReveal(loading: boolean): ChartRevealState {
     morphT,
     isLoading,
     isEmpty,
-    gridOpacity,
+    yAxisOpacity,
     fillOpacity,
     lineOpacity,
     dotOpacity,

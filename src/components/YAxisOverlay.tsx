@@ -1,7 +1,7 @@
 import { Group, Path, Skia, type SkFont } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { BADGE_DOT_GAP } from "../constants";
-import type { GridEntry } from "../draw/grid";
+import type { YAxisEntry } from "../draw/grid";
 import {
   badgeTailAndCap,
   gutterCenteredTextLeftX,
@@ -13,9 +13,9 @@ import type { LivelinePalette } from "../types";
 import type { EngineState } from "../useLivelineEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
-const MAX_GRID_LABELS = 15;
+const MAX_Y_LABELS = 15;
 
-export function GridOverlay({
+export function YAxisOverlay({
   entries,
   engine,
   padding,
@@ -23,7 +23,7 @@ export function GridOverlay({
   font,
   badge = false,
 }: {
-  entries: SharedValue<GridEntry[]>;
+  entries: SharedValue<YAxisEntry[]>;
   engine: EngineState;
   padding: ChartPadding;
   palette: LivelinePalette;
@@ -45,7 +45,7 @@ export function GridOverlay({
   // Left inset = gap from dot to pill body (used by both badge and grid labels for alignment).
   const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize());
 
-  // Transform GridEntry[] into the { x, y, label, alpha } shape for AnimatedLabel.
+  // Transform YAxisEntry[] into the { x, y, label, alpha } shape for AnimatedLabel.
   // When badge is shown, use pillTextLeftX so labels horizontally align with badge text.
   const labelEntries = useDerivedValue(() => {
     const items = entries.value;
@@ -77,7 +77,7 @@ export function GridOverlay({
         strokeWidth={1}
         color={palette.gridLine}
       />
-      {Array.from({ length: MAX_GRID_LABELS }, (_, i) => (
+      {Array.from({ length: MAX_Y_LABELS }, (_, i) => (
         <AnimatedLabel
           key={i}
           entries={labelEntries}

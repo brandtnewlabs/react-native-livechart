@@ -5,7 +5,7 @@ import type { EngineState } from "../useLivelineEngine";
 import type { SkFont } from "@shopify/react-native-skia";
 import { computeGridEntries } from "../draw/grid";
 
-export function useGrid(
+export function useYAxis(
   engine: EngineState,
   padding: ChartPadding,
   formatValue: (v: number) => string,
@@ -15,7 +15,7 @@ export function useGrid(
   const prevInterval = useSharedValue(0);
   const labelAlphas = useSharedValue<Record<number, number>>({});
 
-  const gridEntries = useDerivedValue(() => {
+  const yAxisEntries = useDerivedValue(() => {
     const dt = 16.67;
 
     const alphas = labelAlphas.value;
@@ -38,5 +38,5 @@ export function useGrid(
     return result.entries;
   });
 
-  return { gridEntries, font };
+  return { yAxisEntries, font };
 }

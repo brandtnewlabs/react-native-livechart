@@ -4,18 +4,21 @@ import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DEFAULT_PADDING } from "../draw/line";
 import { DotOverlay } from "./DotOverlay";
 import type { EngineState } from "../useLivelineEngine";
-import { GridOverlay } from "./GridOverlay";
 import { LoadingOverlay } from "./LoadingOverlay";
 import React from "react";
 import type { ReferenceLineLayout } from "../hooks/useReferenceLine";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
 import { Skia } from "@shopify/react-native-skia";
-import { TimeAxisOverlay } from "./TimeAxisOverlay";
 import type { TooltipLayout } from "../hooks/useCrosshair";
 import { ValueLineOverlay } from "./ValueLineOverlay";
+import { XAxisOverlay } from "./XAxisOverlay";
+import { YAxisOverlay } from "./YAxisOverlay";
 import { render } from "@testing-library/react-native";
+import { resolvePulse } from "../resolveConfig";
 import { resolveTheme } from "../theme";
 import { useSharedValue } from "react-native-reanimated";
+
+const PULSE_ON = resolvePulse(true)!;
 
 const font = {
   getSize: () => 12,
@@ -73,12 +76,12 @@ describe("BadgeOverlay", () => {
   });
 });
 
-describe("GridOverlay", () => {
+describe("YAxisOverlay", () => {
   it("renders grid lines and labels", () => {
     function Fixture() {
       const entries = useSharedValue([{ y: 40, label: "10", alpha: 1 }]);
       return (
-        <GridOverlay
+        <YAxisOverlay
           entries={entries}
           engine={engine()}
           padding={DEFAULT_PADDING}
@@ -108,14 +111,14 @@ describe("DotOverlay", () => {
           momentum={momentum}
           palette={palette}
           engine={eng}
-          pulse
+          pulse={PULSE_ON}
         />
       );
     }
     render(<Fixture />);
   });
 
-  it("defaults pulse to on when the prop is omitted", () => {
+  it("renders with pulse disabled", () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
@@ -131,13 +134,14 @@ describe("DotOverlay", () => {
           momentum={momentum}
           palette={palette}
           engine={eng}
+          pulse={null}
         />
       );
     }
     render(<Fixture />);
   });
 
-  it("skips pulse ring math when pulse is off", () => {
+  it("skips pulse ring math when pulse is null", () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
@@ -150,7 +154,7 @@ describe("DotOverlay", () => {
           momentum={momentum}
           palette={palette}
           engine={eng}
-          pulse={false}
+          pulse={null}
         />
       );
     }
@@ -169,7 +173,7 @@ describe("DotOverlay", () => {
           momentum={momentum}
           palette={palette}
           engine={engine()}
-          pulse={false}
+          pulse={null}
         />
       );
     }
@@ -193,7 +197,7 @@ describe("DotOverlay", () => {
           momentum={momentum}
           palette={palette}
           engine={eng}
-          pulse
+          pulse={PULSE_ON}
         />
       );
     }
@@ -388,12 +392,12 @@ describe("CrosshairOverlay", () => {
   });
 });
 
-describe("TimeAxisOverlay", () => {
+describe("XAxisOverlay", () => {
   it("renders axis and labels", () => {
     function Fixture() {
       const entries = useSharedValue([{ x: 50, label: "12:00", alpha: 1 }]);
       return (
-        <TimeAxisOverlay
+        <XAxisOverlay
           entries={entries}
           engine={engine()}
           padding={DEFAULT_PADDING}
@@ -431,7 +435,14 @@ describe("ReferenceLineOverlay", () => {
     function Fixture() {
       const layout = useSharedValue(visibleLayout);
       return (
-        <ReferenceLineOverlay layout={layout} palette={palette} font={font} />
+        <ReferenceLineOverlay
+          layout={layout}
+          strokeWidth={1}
+          intervals={[4, 4]}
+          color={palette.refLine}
+          labelColor={palette.refLabel}
+          font={font}
+        />
       );
     }
     render(<Fixture />);
@@ -441,7 +452,14 @@ describe("ReferenceLineOverlay", () => {
     function Fixture() {
       const layout = useSharedValue(invisibleLayout);
       return (
-        <ReferenceLineOverlay layout={layout} palette={palette} font={font} />
+        <ReferenceLineOverlay
+          layout={layout}
+          strokeWidth={1}
+          intervals={[4, 4]}
+          color={palette.refLine}
+          labelColor={palette.refLabel}
+          font={font}
+        />
       );
     }
     render(<Fixture />);
@@ -457,7 +475,9 @@ describe("ValueLineOverlay", () => {
           dotY={dotY}
           engine={engine()}
           padding={DEFAULT_PADDING}
-          palette={palette}
+          strokeWidth={1}
+          intervals={[4, 4]}
+          color={palette.dashLine}
         />
       );
     }
@@ -472,7 +492,9 @@ describe("ValueLineOverlay", () => {
           dotY={dotY}
           engine={engine()}
           padding={DEFAULT_PADDING}
-          palette={palette}
+          strokeWidth={1}
+          intervals={[4, 4]}
+          color={palette.dashLine}
         />
       );
     }

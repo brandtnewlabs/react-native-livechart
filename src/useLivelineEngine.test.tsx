@@ -18,8 +18,8 @@ describe("applyLivelineEngineFrame", () => {
       timestamp: { value: 1700000000 },
       canvasWidth: { value: 200 },
       canvasHeight: { value: 100 },
-      windowSize: { value: 30 },
-      lerpSpeed: { value: 0.5 },
+      timeWindow: { value: 30 },
+      smoothing: { value: 0.5 },
       exaggerateSV: { value: false },
       referenceValue: { value: undefined as number | undefined },
       pausedSV: { value: false },
@@ -40,8 +40,8 @@ describe("useLivelineEngine", () => {
       return useLivelineEngine({
         data,
         value,
-        window: 30,
-        lerpSpeed: 0.08,
+        timeWindow: 30,
+        smoothing: 0.08,
         exaggerate: true,
         referenceValue: 0.5,
       });
@@ -58,8 +58,8 @@ describe("useLivelineEngine", () => {
       return useLivelineEngine({
         data,
         value,
-        window: 30,
-        lerpSpeed: 0.08,
+        timeWindow: 30,
+        smoothing: 0.08,
       });
     });
     expect(result.current.displayMin.value).toBeDefined();
