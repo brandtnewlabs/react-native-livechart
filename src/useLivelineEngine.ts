@@ -5,7 +5,7 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { tickLivelineEngineFrame } from "./livelineEngineTick";
-import type { LivelinePoint, LivelineSeries } from "./types";
+import type { CandlePoint, LivelinePoint, LivelineSeries } from "./types";
 
 export interface EngineConfig {
   data: SharedValue<LivelinePoint[]>;
@@ -15,6 +15,9 @@ export interface EngineConfig {
   exaggerate?: boolean;
   referenceValue?: number;
   paused?: boolean;
+  mode?: "line" | "candle";
+  candles?: SharedValue<CandlePoint[]>;
+  liveCandle?: SharedValue<CandlePoint | null>;
 }
 
 /** Canvas, time window, and Y-range — shared by single- and multi-series engines. */
@@ -64,6 +67,9 @@ export interface EngineFrameRefs {
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
   pausedSV: SharedValue<boolean>;
+  modeSV: SharedValue<"line" | "candle">;
+  candles?: SharedValue<CandlePoint[]>;
+  liveCandle?: SharedValue<CandlePoint | null>;
 }
 
 /**
@@ -95,6 +101,9 @@ export function applyLivelineEngineFrame(
     points: sv.data.value,
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
+    mode: sv.modeSV.value,
+    candles: sv.candles?.value,
+    liveCandle: sv.liveCandle?.value,
   });
   sv.displayValue.value = state.displayValue;
   sv.displayMin.value = state.displayMin;
@@ -110,6 +119,7 @@ export function useLivelineEngine(config: EngineConfig): SingleEngineState {
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
   const pausedSV = useDerivedValue(() => config.paused ?? false);
+  const modeSV = useDerivedValue(() => config.mode ?? "line");
 
   // Animation state (mutated on UI thread each frame)
   const displayValue = useSharedValue(0);
@@ -122,7 +132,7 @@ export function useLivelineEngine(config: EngineConfig): SingleEngineState {
 
   // High-frequency data reads directly from the caller's shared values —
   // no useDerivedValue bridging, no closure serialization per tick.
-  const { data, value } = config;
+  const { data, value, candles, liveCandle } = config;
 
   useFrameCallback((frameInfo) => {
     "worklet";
@@ -141,6 +151,9 @@ export function useLivelineEngine(config: EngineConfig): SingleEngineState {
       exaggerateSV,
       referenceValue,
       pausedSV,
+      modeSV,
+      candles,
+      liveCandle,
     });
   });
 

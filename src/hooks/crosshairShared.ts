@@ -221,6 +221,39 @@ export function computeTooltipLayoutMulti(
   };
 }
 
+/**
+ * Candle-mode tooltip — 5 stacked rows: O, H, L, C (bright) + time (dim).
+ */
+export function computeCandleTooltipLayout(
+  scrubActive: boolean,
+  scrubX: number,
+  candle: { open: number; high: number; low: number; close: number } | null,
+  scrubTime: number,
+  padding: ChartPadding,
+  canvasWidth: number,
+  formatValue: (v: number) => string,
+  formatTime: (t: number) => string,
+  font: SkFont,
+): TooltipLayout {
+  "worklet";
+  if (!scrubActive || !candle) return HIDDEN_TOOLTIP;
+  const lines: { text: string; dim: boolean }[] = [
+    { text: `O ${formatValue(candle.open)}`, dim: false },
+    { text: `H ${formatValue(candle.high)}`, dim: false },
+    { text: `L ${formatValue(candle.low)}`, dim: false },
+    { text: `C ${formatValue(candle.close)}`, dim: false },
+    { text: formatTime(scrubTime), dim: true },
+  ];
+  return computeTooltipLayoutMulti(
+    scrubActive,
+    scrubX,
+    lines,
+    padding,
+    canvasWidth,
+    font,
+  );
+}
+
 /** Single-series scrub value at window time — extracted for tests. */
 export function deriveScrubValueSingle(
   scrubActive: boolean,

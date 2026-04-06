@@ -12,6 +12,22 @@ import {
   formatValue as defaultFormatValue,
 } from "./format";
 import {
+  resolveChartLayout,
+  useBadge,
+  useCandlePaths,
+  useCanvasLayout,
+  useChartColors,
+  useChartPaths,
+  useChartReveal,
+  useCrosshair,
+  useLiveDot,
+  useModeBlend,
+  useMomentum,
+  useReferenceLine,
+  useXAxis,
+  useYAxis,
+} from "./hooks";
+import {
   resolveBadge,
   resolveFontConfig,
   resolveGradient,
@@ -22,32 +38,19 @@ import {
   resolveXAxis,
   resolveYAxis,
 } from "./resolveConfig";
-import {
-  resolveChartLayout,
-  useBadge,
-  useCanvasLayout,
-  useChartColors,
-  useChartPaths,
-  useChartReveal,
-  useCrosshair,
-  useLiveDot,
-  useMomentum,
-  useReferenceLine,
-  useXAxis,
-  useYAxis,
-} from "./hooks";
 
+import { GestureDetector } from "react-native-gesture-handler";
 import { BadgeOverlay } from "./components/BadgeOverlay";
 import { CrosshairOverlay } from "./components/CrosshairOverlay";
 import { DotOverlay } from "./components/DotOverlay";
-import { GestureDetector } from "react-native-gesture-handler";
-import type { LivelineSingleProps } from "./types";
 import { LoadingOverlay } from "./components/LoadingOverlay";
+import { MultiSeriesTooltipStack } from "./components/MultiSeriesTooltipStack";
 import { ReferenceLineOverlay } from "./components/ReferenceLineOverlay";
 import { ValueLineOverlay } from "./components/ValueLineOverlay";
 import { XAxisOverlay } from "./components/XAxisOverlay";
 import { YAxisOverlay } from "./components/YAxisOverlay";
 import { resolveTheme } from "./theme";
+import type { LivelineSingleProps } from "./types";
 import { useLivelineEngine } from "./useLivelineEngine";
 
 export function Liveline({
@@ -63,6 +66,12 @@ export function Liveline({
   font: fontProp,
   insets,
   style,
+
+  // ── Candlestick ─────────────────────────────────────────────────────────
+  mode = "line",
+  candles,
+  candleWidth = 60,
+  liveCandle,
 
   // ── Behaviour ───────────────────────────────────────────────────────────
   timeWindow = 30,
@@ -87,12 +96,14 @@ export function Liveline({
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
 }: LivelineSingleProps) {
+  const isCandle = mode === "candle";
+
   // ── Resolve feature configs ────────────────────────────────────────────
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
   const badgeCfg = resolveBadge(badge);
   const scrubCfg = resolveScrub(scrub);
-  const gradientCfg = resolveGradient(gradient);
+  const gradientCfg = isCandle ? null : resolveGradient(gradient);
   const valueLineCfg = resolveValueLine(valueLine);
   const pulseCfg = resolvePulse(pulse);
   const refLineCfg = resolveReferenceLineConfig(referenceLine);
@@ -132,9 +143,18 @@ export function Liveline({
     smoothing,
     exaggerate,
     referenceValue: referenceLine?.value,
+    mode,
+    candles,
+    liveCandle,
   });
 
   const reveal = useChartReveal(loading);
+
+  // ── Mode crossfade (line ↔ candle) ──────────────────────────────────
+  const { lineGroupOpacity, candleGroupOpacity } = useModeBlend(
+    isCandle,
+    reveal.lineOpacity,
+  );
 
   // ── Per-frame derived values ───────────────────────────────────────────
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
@@ -144,6 +164,15 @@ export function Liveline({
     effectivePadding,
     reveal.morphT,
   );
+  const { upBodiesPath, downBodiesPath, upWicksPath, downWicksPath } =
+    useCandlePaths(
+      engine,
+      effectivePadding,
+      candles,
+      liveCandle,
+      candleWidth,
+      isCandle,
+    );
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
 
   const momentumSV = useMomentum(engine, momentum);
@@ -185,6 +214,10 @@ export function Liveline({
     badgeCfg?.background,
   );
 
+  const candleOpts = isCandle
+    ? { mode, candles, liveCandle, candleWidthSecs: candleWidth }
+    : undefined;
+
   const crosshair = useCrosshair(
     engine,
     effectivePadding,
@@ -194,6 +227,7 @@ export function Liveline({
     skiaFont,
     scrubCfg !== null,
     onScrub,
+    candleOpts,
   );
 
   // ── Derived render values ──────────────────────────────────────────────
@@ -265,8 +299,8 @@ export function Liveline({
             />
           )}
 
-          {/* Chart line — always rendered; morph blends loading → data */}
-          <Group opacity={reveal.lineOpacity}>
+          {/* Chart line (fades out in candle mode) */}
+          <Group opacity={lineGroupOpacity}>
             <Path
               path={linePath}
               style="stroke"
@@ -274,6 +308,28 @@ export function Liveline({
               color={lineProp?.color ?? palette.line}
               strokeCap="round"
               strokeJoin="round"
+            />
+          </Group>
+
+          {/* Candle bodies/wicks (fades in in candle mode) */}
+          <Group opacity={candleGroupOpacity}>
+            <Path
+              path={upWicksPath}
+              style="stroke"
+              strokeWidth={1}
+              color={palette.wickUp}
+            />
+            <Path
+              path={downWicksPath}
+              style="stroke"
+              strokeWidth={1}
+              color={palette.wickDown}
+            />
+            <Path path={upBodiesPath} style="fill" color={palette.candleUp} />
+            <Path
+              path={downBodiesPath}
+              style="fill"
+              color={palette.candleDown}
             />
           </Group>
 
@@ -331,6 +387,15 @@ export function Liveline({
               palette={palette}
               font={skiaFont}
               showTooltip={scrubCfg.tooltip}
+              tooltipBody={
+                isCandle ? (
+                  <MultiSeriesTooltipStack
+                    tooltipLayout={crosshair.tooltipLayout}
+                    font={skiaFont}
+                    palette={palette}
+                  />
+                ) : undefined
+              }
             />
           )}
         </Canvas>

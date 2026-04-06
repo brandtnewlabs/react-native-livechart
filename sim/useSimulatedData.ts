@@ -30,6 +30,10 @@ export interface SimulatedDataOptions {
   candleWidth?: number;
   paused?: boolean;
   maxPoints?: number;
+  /** Skip multi-series generation when not displayed (default true). */
+  multiSeries?: boolean;
+  /** Skip candle aggregation when not displayed (default true). */
+  candleAggregation?: boolean;
 }
 
 export interface SimulatedData {
@@ -38,7 +42,7 @@ export interface SimulatedData {
   tradeEvents: SharedValue<TradeEvent[]>;
   series: SharedValue<LivelineSeries[]>;
   candles: SharedValue<CandlePoint[]>;
-  liveCandle: SharedValue<CandlePoint>;
+  liveCandle: SharedValue<CandlePoint | null>;
 }
 
 /**
@@ -65,6 +69,8 @@ export function useSimulatedData(
     candleWidth = 60,
     paused = false,
     maxPoints = 2000,
+    multiSeries = true,
+    candleAggregation = true,
   } = opts;
 
   // JS-side buffers — fast O(1) reads in the tick callback
@@ -80,13 +86,7 @@ export function useSimulatedData(
   const tradeEvents = useSharedValue<TradeEvent[]>([]);
   const series = useSharedValue<LivelineSeries[]>([]);
   const candles = useSharedValue<CandlePoint[]>([]);
-  const liveCandle = useSharedValue<CandlePoint>({
-    time: 0,
-    open: 0,
-    high: 0,
-    low: 0,
-    close: 0,
-  });
+  const liveCandle = useSharedValue<CandlePoint | null>(null);
 
   const bondingCurveRef = useRef<BondingCurveState>(
     createBondingCurve({ basePrice: startValue }),
@@ -111,13 +111,15 @@ export function useSimulatedData(
       history[history.length - 1].value,
       20,
     );
-    const initialSeries = generateMultiSeries({
-      ids: ["yes", "no", "maybe"],
-      colors: ["#3b82f6", "#ef4444", "#f59e0b"],
-      labels: ["Yes", "No", "Maybe"],
-      count: 150,
-      sumToHundred: true,
-    });
+    const initialSeries = multiSeries
+      ? generateMultiSeries({
+          ids: ["yes", "no", "maybe"],
+          colors: ["#3b82f6", "#ef4444", "#f59e0b"],
+          labels: ["Yes", "No", "Maybe"],
+          count: 150,
+          sumToHundred: true,
+        })
+      : [];
 
     buf.current = {
       data: history,
@@ -129,13 +131,17 @@ export function useSimulatedData(
     value.value = history[history.length - 1].value;
     tradeEvents.value = initialTrades;
     series.value = initialSeries;
-    const c = aggregateCandles(history, candleWidth);
-    candles.value = c.candles;
-    liveCandle.value = c.liveCandle;
+    if (candleAggregation) {
+      const c = aggregateCandles(history, candleWidth);
+      candles.value = c.candles;
+      liveCandle.value = c.liveCandle;
+    }
   }, [
     volatilityMode,
     startValue,
     candleWidth,
+    multiSeries,
+    candleAggregation,
     data,
     value,
     tradeEvents,
@@ -164,9 +170,11 @@ export function useSimulatedData(
       value.value = newValue;
 
       // Candles
-      const c = aggregateCandles(b.data, candleWidth);
-      candles.value = c.candles;
-      liveCandle.value = c.liveCandle;
+      if (candleAggregation) {
+        const c = aggregateCandles(b.data, candleWidth);
+        candles.value = c.candles;
+        liveCandle.value = c.liveCandle;
+      }
 
       // Trade events
       if (tradeSource === "bonding-curve") {
@@ -182,18 +190,20 @@ export function useSimulatedData(
       if (b.tradeEvents.length > 50) b.tradeEvents = b.tradeEvents.slice(-50);
       tradeEvents.value = b.tradeEvents;
 
-      // Multi-series — clone before mutating since previous array is frozen
-      b.series = b.series.map((s) => ({ ...s, data: [...s.data] }));
-      stepMultiSeries(b.series, true);
-      for (let i = 0; i < b.series.length; i++) {
-        if (b.series[i].data.length > maxPoints) {
-          b.series[i] = {
-            ...b.series[i],
-            data: b.series[i].data.slice(-maxPoints),
-          };
+      // Multi-series — skip when not displayed
+      if (multiSeries) {
+        b.series = b.series.map((s) => ({ ...s, data: [...s.data] }));
+        stepMultiSeries(b.series, true);
+        for (let i = 0; i < b.series.length; i++) {
+          if (b.series[i].data.length > maxPoints) {
+            b.series[i] = {
+              ...b.series[i],
+              data: b.series[i].data.slice(-maxPoints),
+            };
+          }
         }
+        series.value = b.series;
       }
-      series.value = b.series;
     }, ms);
 
     return () => clearInterval(id);
@@ -204,6 +214,8 @@ export function useSimulatedData(
     startValue,
     maxPoints,
     candleWidth,
+    multiSeries,
+    candleAggregation,
     data,
     value,
     tradeEvents,

@@ -62,14 +62,21 @@ export default function Index() {
   const [valueLine, setValueLine] = useState(false);
   const [exaggerate, setExaggerate] = useState(false);
 
-  const { data, value, series } = useSimulatedData({
+  const [chartMode, setChartMode] = useState<"single" | "multi">("single");
+  const [displayMode, setDisplayMode] = useState<"line" | "candle">("line");
+
+  // ~20 candles visible in the window; minimum 5s bars
+  const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
+
+  const { data, value, series, candles, liveCandle } = useSimulatedData({
     volatilityMode,
     tradeSource,
     paused,
     startValue,
+    candleWidth: candleWidthSecs,
+    multiSeries: chartMode === "multi",
+    candleAggregation: chartMode === "single" && displayMode === "candle",
   });
-
-  const [chartMode, setChartMode] = useState<"single" | "multi">("single");
   const chartModeSv = useSharedValue<"single" | "multi">("single");
   const volatilitySv = useSharedValue(volatilityMode);
   useEffect(() => {
@@ -120,6 +127,10 @@ export default function Index() {
           <Liveline
             data={data}
             value={value}
+            mode={displayMode}
+            candles={candles}
+            liveCandle={liveCandle}
+            candleWidth={candleWidthSecs}
             accentColor="#3b82f6"
             theme="dark"
             timeWindow={windowSecs}
@@ -192,6 +203,46 @@ export default function Index() {
             </Text>
           </Pressable>
         </View>
+
+        {chartMode === "single" && (
+          <>
+            <Text style={styles.sectionLabel}>Display Mode</Text>
+            <View style={styles.buttonRow}>
+              <Pressable
+                style={[
+                  styles.chip,
+                  displayMode === "line" && styles.chipActive,
+                ]}
+                onPress={() => setDisplayMode("line")}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    displayMode === "line" && styles.chipTextActive,
+                  ]}
+                >
+                  Line
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.chip,
+                  displayMode === "candle" && styles.chipActive,
+                ]}
+                onPress={() => setDisplayMode("candle")}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    displayMode === "candle" && styles.chipTextActive,
+                  ]}
+                >
+                  Candle
+                </Text>
+              </Pressable>
+            </View>
+          </>
+        )}
 
         <Text style={styles.sectionLabel}>Time Window</Text>
         <View style={styles.buttonRow}>

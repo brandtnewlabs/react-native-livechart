@@ -5,6 +5,7 @@ import { interpolateAtTime } from "../math/interpolate";
 import { resolveTheme } from "../theme";
 import type { SingleEngineState } from "../useLivelineEngine";
 import {
+  computeCandleTooltipLayout,
   computeCrosshairOpacity,
   computeScrubTime,
   computeTooltipLayout,
@@ -429,5 +430,127 @@ describe("useCrosshair (hook)", () => {
       configurable: true,
       value: prev,
     });
+  });
+});
+
+// ─── computeCandleTooltipLayout ──────────────────────────────────────────────
+
+describe("computeCandleTooltipLayout", () => {
+  const candle = { open: 100, high: 120, low: 90, close: 110 };
+
+  it("returns hidden when inactive", () => {
+    const layout = computeCandleTooltipLayout(
+      false,
+      100,
+      candle,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+    );
+    expect(layout.x).toBe(-400);
+  });
+
+  it("returns hidden when candle is null", () => {
+    const layout = computeCandleTooltipLayout(
+      true,
+      100,
+      null,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+    );
+    expect(layout.x).toBe(-400);
+  });
+
+  it("builds 5 stacked lines: O, H, L, C + time", () => {
+    const layout = computeCandleTooltipLayout(
+      true,
+      100,
+      candle,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+    );
+    expect(layout.stackedLines).toBeDefined();
+    expect(layout.stackedLines).toHaveLength(5);
+  });
+
+  it("shows OHLC values in order", () => {
+    const layout = computeCandleTooltipLayout(
+      true,
+      100,
+      candle,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+    );
+    const texts = layout.stackedLines!.map((l) => l.text);
+    expect(texts[0]).toContain("O");
+    expect(texts[0]).toContain("100.00");
+    expect(texts[1]).toContain("H");
+    expect(texts[1]).toContain("120.00");
+    expect(texts[2]).toContain("L");
+    expect(texts[2]).toContain("90.00");
+    expect(texts[3]).toContain("C");
+    expect(texts[3]).toContain("110.00");
+  });
+
+  it("dims only the time row", () => {
+    const layout = computeCandleTooltipLayout(
+      true,
+      100,
+      candle,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+    );
+    const dims = layout.stackedLines!.map((l) => l.dim);
+    expect(dims).toEqual([false, false, false, false, true]);
+  });
+
+  it("uses formatTime for the last row", () => {
+    const layout = computeCandleTooltipLayout(
+      true,
+      100,
+      candle,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+    );
+    expect(layout.stackedLines![4].text).toBe(formatTime(1000));
+  });
+
+  it("pill dimensions are positive", () => {
+    const layout = computeCandleTooltipLayout(
+      true,
+      100,
+      candle,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+    );
+    expect(layout.w).toBeGreaterThan(0);
+    expect(layout.h).toBeGreaterThan(0);
   });
 });

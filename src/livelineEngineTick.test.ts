@@ -422,4 +422,111 @@ describe("tickLivelineEngineFrame", () => {
     expect(s.displayWindow).toBeGreaterThan(30);
     expect(s.displayWindow).toBeLessThan(60);
   });
+
+  // ── Candle mode ────────────────────────────────────────────────────────
+  describe("candle mode Y range", () => {
+    it("computes displayMin/Max from candle low/high", () => {
+      const s = baseState();
+      tickLivelineEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 105,
+        points: [],
+        nowSeconds: 1000,
+        mode: "candle",
+        candles: [{ time: 980, open: 100, high: 120, low: 80, close: 110 }],
+        liveCandle: null,
+      });
+      expect(s.displayMin).toBeLessThan(80);
+      expect(s.displayMax).toBeGreaterThan(120);
+    });
+
+    it("includes liveCandle in Y range", () => {
+      const s = baseState();
+      tickLivelineEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 105,
+        points: [],
+        nowSeconds: 1000,
+        mode: "candle",
+        candles: [{ time: 980, open: 100, high: 110, low: 90, close: 105 }],
+        liveCandle: { time: 1000, open: 105, high: 130, low: 85, close: 120 },
+      });
+      expect(s.displayMin).toBeLessThan(85);
+      expect(s.displayMax).toBeGreaterThan(130);
+    });
+
+    it("targets liveCandle.close for displayValue", () => {
+      const s = baseState();
+      tickLivelineEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 50,
+        points: [],
+        nowSeconds: 1000,
+        mode: "candle",
+        candles: [],
+        liveCandle: { time: 990, open: 100, high: 120, low: 80, close: 115 },
+      });
+      expect(s.displayValue).toBeGreaterThan(0);
+    });
+
+    it("uses line mode Y range when mode is 'line'", () => {
+      const s = baseState();
+      tickLivelineEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 50,
+        points: [{ time: 1000, value: 50 }],
+        nowSeconds: 1000,
+        mode: "line",
+        candles: [{ time: 980, open: 100, high: 200, low: 10, close: 105 }],
+      });
+      expect(s.displayMax).toBeLessThan(200);
+    });
+
+    it("excludes candles before the visible window", () => {
+      const s = baseState();
+      tickLivelineEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 105,
+        points: [],
+        nowSeconds: 1000,
+        mode: "candle",
+        candles: [
+          { time: 900, open: 1, high: 500, low: 0, close: 2 },
+          { time: 990, open: 100, high: 110, low: 90, close: 105 },
+        ],
+        liveCandle: null,
+      });
+      expect(s.displayMax).toBeLessThan(500);
+    });
+  });
 });
