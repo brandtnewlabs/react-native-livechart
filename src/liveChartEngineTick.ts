@@ -3,8 +3,6 @@ import type { CandlePoint, LiveChartPoint } from "./types";
 import { ADAPTIVE_SPEED_BOOST } from "./constants";
 import { lerp } from "./math/lerp";
 
-export { ADAPTIVE_SPEED_BOOST } from "./constants";
-
 export interface EngineTickMutable {
   displayValue: number;
   displayMin: number;

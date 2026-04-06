@@ -1,5 +1,5 @@
 import type { SkFont } from "@shopify/react-native-skia";
-import { resolveChartLayout } from "./useChartLayout";
+import { resolveChartLayout } from "./resolveChartLayout";
 import { resolveTheme } from "../theme";
 
 const palette = resolveTheme("#3b82f6", "dark");

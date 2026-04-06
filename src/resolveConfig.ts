@@ -166,7 +166,6 @@ const X_AXIS_DEFAULTS: ResolvedXAxisConfig = {
 export function resolveXAxis(
   prop: boolean | XAxisConfig | undefined,
 ): ResolvedXAxisConfig | null {
-  // xAxis defaults to ON — undefined treated as true
   if (prop === false) return null;
   if (prop === undefined || prop === true) return X_AXIS_DEFAULTS;
   return { ...X_AXIS_DEFAULTS, ...prop };
@@ -368,17 +367,17 @@ const TRADE_STREAM_DEFAULTS: ResolvedTradeStreamConfig = {
 
 /**
  * Whether trade stream markers should run, and cap for mapped trades per frame.
- * Extend `input` when display options are added to props.
+ * Extend `options` when display options are added to props.
  */
 export function resolveTradeStream(
   stream: SharedValue<TradeEvent[]> | undefined,
-  input?: boolean | { maxCount?: number; labelOffsetX?: number },
+  options?: boolean | { maxCount?: number; labelOffsetX?: number },
 ): ResolvedTradeStreamConfig | null {
   if (stream === undefined) return null;
-  if (input === false) return null;
-  if (input === undefined || input === true) return TRADE_STREAM_DEFAULTS;
+  if (options === false) return null;
+  if (options === undefined || options === true) return TRADE_STREAM_DEFAULTS;
   return {
-    maxCount: input.maxCount ?? TRADE_STREAM_DEFAULTS.maxCount,
-    labelOffsetX: input.labelOffsetX ?? TRADE_STREAM_DEFAULTS.labelOffsetX,
+    maxCount: options.maxCount ?? TRADE_STREAM_DEFAULTS.maxCount,
+    labelOffsetX: options.labelOffsetX ?? TRADE_STREAM_DEFAULTS.labelOffsetX,
   };
 }

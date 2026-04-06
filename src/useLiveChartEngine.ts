@@ -4,6 +4,7 @@ import {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import { MS_PER_FRAME_60FPS } from "./constants";
 import { tickLiveChartEngineFrame } from "./liveChartEngineTick";
 import type { CandlePoint, LiveChartPoint, SeriesConfig } from "./types";
 
@@ -81,7 +82,7 @@ export function applyLiveChartEngineFrame(
   sv: EngineFrameRefs,
 ): void {
   "worklet";
-  const dt = frameInfo.timeSincePreviousFrame ?? 16.67;
+  const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
   const state = {
     displayValue: sv.displayValue.value,
     displayMin: sv.displayMin.value,

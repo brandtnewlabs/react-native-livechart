@@ -104,14 +104,14 @@ export function CrosshairOverlay({
               <SkiaText
                 x={valueTextX}
                 y={line1Y}
-                text={valueStr as unknown as string}
+                text={valueStr}
                 font={font}
                 color={palette.tooltipText}
               />
               <SkiaText
                 x={timeTextX}
                 y={line2Y}
-                text={timeStr as unknown as string}
+                text={timeStr}
                 font={font}
                 color={palette.gridLabel}
               />

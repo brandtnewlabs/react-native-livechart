@@ -29,7 +29,9 @@ export function computeRange(
   }
 
   const rawRange = targetMax - targetMin;
+  // marginFactor: breathing room above/below the data (tight for exaggerate mode)
   const marginFactor = exaggerate ? 0.01 : 0.12;
+  // minRange: prevents the chart from collapsing to a flat line on tiny movements
   const minRange =
     rawRange * (exaggerate ? 0.02 : 0.1) || (exaggerate ? 0.04 : 0.4);
 

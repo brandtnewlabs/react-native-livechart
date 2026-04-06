@@ -1,6 +1,7 @@
 /** Parse hex color (#rgb or #rrggbb) to [r, g, b]. Worklet-safe (no regex). */
 export function hexToRgb(hex: string): [number, number, number] {
   "worklet";
+  // Fallback to neutral grey if hex is unparseable
   let r = 128;
   let g = 128;
   let b = 128;

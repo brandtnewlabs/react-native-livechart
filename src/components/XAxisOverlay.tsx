@@ -8,6 +8,8 @@ import type { ChartEngineLayout } from "../useLiveChartEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
 const MAX_X_LABELS = 10;
+const TICK_HEIGHT = 5;
+const LABEL_OFFSET_Y = 19;
 
 export function XAxisOverlay({
   entries,
@@ -36,7 +38,7 @@ export function XAxisOverlay({
     const items = entries.value;
     for (let i = 0; i < items.length; i++) {
       path.moveTo(items[i].x, lineY);
-      path.lineTo(items[i].x, lineY + 5);
+      path.lineTo(items[i].x, lineY + TICK_HEIGHT);
     }
     return path;
   });
@@ -45,7 +47,7 @@ export function XAxisOverlay({
   const labelEntries = useDerivedValue(() => {
     const items = entries.value;
     const h = engine.canvasHeight.value;
-    const y = h - padding.bottom + 19;
+    const y = h - padding.bottom + LABEL_OFFSET_Y;
     return items.map((e) => ({
       x: e.x - measureFontTextWidth(font, e.label) / 2,
       y,

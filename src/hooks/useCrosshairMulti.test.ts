@@ -4,9 +4,9 @@ import { Platform } from "react-native";
 import { resolveTheme } from "../theme";
 import type { MultiEngineState } from "../useLiveChartEngine";
 import {
-    computeMultiSeriesScrubTooltipLayout,
-    deriveScrubValueMulti,
-    interpolateMultiSeriesAtTime,
+  computeMultiSeriesScrubTooltipLayout,
+  deriveScrubValueMulti,
+  interpolateMultiSeriesAtTime,
 } from "./crosshairMulti";
 import { useCrosshairMulti } from "./useCrosshairMulti";
 

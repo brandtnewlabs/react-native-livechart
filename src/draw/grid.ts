@@ -60,6 +60,7 @@ export function fineLineTargetAlpha(finePx: number, minGap = 36): number {
 function divisible(val: number, interval: number): boolean {
   "worklet";
   const ratio = val / interval;
+  // 1% tolerance for floating-point rounding in interval alignment
   return Math.abs(ratio - Math.round(ratio)) < 0.01;
 }
 

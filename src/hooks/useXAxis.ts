@@ -1,11 +1,12 @@
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 
-import type { ChartEngineLayout } from "../useLiveChartEngine";
-import type { ChartPadding } from "../draw/line";
 import type { SkFont } from "@shopify/react-native-skia";
+import { MS_PER_FRAME_60FPS } from "../constants";
+import type { ChartPadding } from "../draw/line";
+import { niceTimeInterval } from "../math/intervals";
 import { lerp } from "../math/lerp";
 import { measureFontTextWidth } from "../measureFontTextWidth";
-import { niceTimeInterval } from "../math/intervals";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 
 export interface XAxisEntry {
   x: number;
@@ -112,7 +113,7 @@ export function useXAxis(
         fromEdge >= fadeZone ? 1 : fromEdge <= 0 ? 0 : fromEdge / fadeZone;
 
       const target = isTarget(key) ? edgeAlpha : 0;
-      let next = lerp(label.alpha, target, FADE, 16.67);
+      let next = lerp(label.alpha, target, FADE, MS_PER_FRAME_60FPS);
       if (Math.abs(next - target) < 0.02) next = target;
 
       if (next < 0.01 && target === 0) {

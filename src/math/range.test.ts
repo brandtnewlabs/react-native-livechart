@@ -24,7 +24,10 @@ describe("computeRange", () => {
 
   it("pulls min down when reference is below data range", () => {
     const r = computeRange(
-      [{ time: 0, value: 10 }, { time: 1, value: 20 }],
+      [
+        { time: 0, value: 10 },
+        { time: 1, value: 20 },
+      ],
       15,
       5,
       false,

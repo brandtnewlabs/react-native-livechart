@@ -1,7 +1,12 @@
+import { useDerivedValue } from "react-native-reanimated";
 import type { ChartPadding } from "../draw/line";
 import type { SingleEngineState } from "../useLiveChartEngine";
-import { useDerivedValue } from "react-native-reanimated";
 
+/**
+ * Derive the live dot position (right edge of the chart, mapped to current value).
+ * Returns `{ dotX, dotY }` as shared values. Coordinates are set to `-100`
+ * (off-screen sentinel) when canvas dimensions are unavailable.
+ */
 export function useLiveDot(engine: SingleEngineState, padding: ChartPadding) {
   const dotX = useDerivedValue(() => {
     const w = engine.canvasWidth.value;

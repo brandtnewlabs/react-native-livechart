@@ -6,6 +6,12 @@ import type { SingleEngineState } from "../useLiveChartEngine";
 
 type DegenPack = SharedValue<Float64Array<ArrayBuffer>>;
 
+/**
+ * Renders one particle slot from the packed ring buffer.
+ * Buffer layout per slot (stride = DEGEN_STRIDE = 7):
+ *   [0] x, [1] y, [2] vx, [3] vy, [4] t0, [5] active, [6] size
+ * See `degen/tick.ts` for the authoritative layout documentation.
+ */
 function DegenSlot({
   index,
   pack,

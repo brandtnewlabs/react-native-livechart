@@ -5,9 +5,13 @@ import type { LiveChartPoint, Momentum } from "../types";
  * Uses the full lookback window for threshold calculation
  * but only the last 5 points for active velocity.
  */
+const DEFAULT_THRESHOLD = 0.12;
+const DEFAULT_LOOKBACK = 20;
+
 export function detectMomentum(
   points: LiveChartPoint[],
-  lookback = 20,
+  lookback = DEFAULT_LOOKBACK,
+  threshold = DEFAULT_THRESHOLD,
 ): Momentum {
   "worklet";
   if (points.length < 5) return "flat";
@@ -29,9 +33,9 @@ export function detectMomentum(
   const last = points[points.length - 1].value;
   const delta = last - first;
 
-  const threshold = range * 0.12;
+  const absThreshold = range * threshold;
 
-  if (delta > threshold) return "up";
-  if (delta < -threshold) return "down";
+  if (delta > absThreshold) return "up";
+  if (delta < -absThreshold) return "down";
   return "flat";
 }

@@ -36,7 +36,7 @@ export function createTradeStreamState(): TradeStreamState {
   };
 }
 
-// ── Constants (matching reference) ─────────────────────────────────────────────
+// ── Trade stream label layout constants ────────────────────────────────────────
 
 export const MAX_LABELS = 50;
 export const LABEL_LIFETIME = 6;

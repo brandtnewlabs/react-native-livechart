@@ -1,8 +1,13 @@
 import { useCallback, useState } from "react";
 
-import type { ChartEngineLayout } from "../useLiveChartEngine";
 import type { LayoutChangeEvent } from "react-native";
+import type { ChartEngineLayout } from "../useLiveChartEngine";
 
+/**
+ * Track canvas dimensions via `onLayout` and sync them into engine shared values.
+ * Returns `{ layoutHeight, onLayout }` — pass `onLayout` to the container View
+ * and use `layoutHeight` for conditional rendering (e.g. minimum height guards).
+ */
 export function useCanvasLayout(engine: ChartEngineLayout) {
   const [layoutHeight, setLayoutHeight] = useState(0);
 
