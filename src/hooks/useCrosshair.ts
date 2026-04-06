@@ -2,6 +2,7 @@ import { type SkFont } from "@shopify/react-native-skia";
 import { Platform } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import {
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   type SharedValue,
@@ -157,6 +158,53 @@ export function useCrosshair(
 
   const hasOnScrub = onScrub != null;
 
+  useAnimatedReaction(
+    () => {
+      "worklet";
+      if (!hasOnScrub) return "__idle__";
+      if (!scrubActive.value) return "__inactive__";
+      const time = scrubTime.value;
+      const val = scrubValue.value;
+      const x = scrubX.value;
+      if (val === null || time < 0) return "__pending__";
+      const chartW = engine.canvasWidth.value - padding.left - padding.right;
+      if (chartW <= 0) return "__pending__";
+      const h = engine.canvasHeight.value;
+      const chartH = h - padding.top - padding.bottom;
+      const valRange = engine.displayMax.value - engine.displayMin.value;
+      const dotY =
+        valRange === 0
+          ? padding.top + chartH / 2
+          : padding.top + ((engine.displayMax.value - val) / valRange) * chartH;
+      let candleJson: string | null = null;
+      if (isCandleMode) {
+        const c = scrubCandle.value;
+        if (c) candleJson = JSON.stringify(c);
+      }
+      return JSON.stringify([time, val, x, dotY, candleJson]);
+    },
+    (curr, prev) => {
+      "worklet";
+      if (!hasOnScrub) return;
+      if (
+        curr === "__idle__" ||
+        curr === "__inactive__" ||
+        curr === "__pending__"
+      ) {
+        return;
+      }
+      if (curr === prev) return;
+      const row = JSON.parse(curr) as [
+        number,
+        number,
+        number,
+        number,
+        string | null,
+      ];
+      scheduleOnRN(handleScrub, row[2], row[3], row[0], row[1], row[4]);
+    },
+  );
+
   let gesture = Gesture.Pan()
     .minDistance(Platform.OS === "android" ? 10 : 0)
     .activateAfterLongPress(0)
@@ -175,48 +223,6 @@ export function useCrosshair(
         "worklet";
         if (!enabled) return;
         scrubX.value = e.x;
-
-        if (hasOnScrub) {
-          const now = engine.timestamp.value;
-          const windowSecs = engine.displayWindow.value;
-          const chartW =
-            engine.canvasWidth.value - padding.left - padding.right;
-          if (chartW > 0) {
-            const winStart = now - windowSecs;
-            const fraction = (e.x - padding.left) / chartW;
-            const time = winStart + fraction * windowSecs;
-            const h = engine.canvasHeight.value;
-            const chartH = h - padding.top - padding.bottom;
-            const valRange = engine.displayMax.value - engine.displayMin.value;
-
-            let value: number | null = null;
-            let candleJson: string | null = null;
-
-            if (isCandleMode && candlesSV) {
-              const picked = pickCandleAtTime(
-                candlesSV.value,
-                liveCandleSV?.value ?? null,
-                time,
-                candleWidthSecs,
-              );
-              if (picked) {
-                value = picked.close;
-                candleJson = JSON.stringify(picked);
-              }
-            } else {
-              value = interpolateAtTime(engine.data.value, time);
-            }
-
-            if (value !== null) {
-              const dotY =
-                valRange === 0
-                  ? padding.top + chartH / 2
-                  : padding.top +
-                    ((engine.displayMax.value - value) / valRange) * chartH;
-              scheduleOnRN(handleScrub, e.x, dotY, time, value, candleJson);
-            }
-          }
-        }
       },
     )
     .onFinalize(

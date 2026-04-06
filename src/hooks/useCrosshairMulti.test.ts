@@ -4,9 +4,9 @@ import { Platform } from "react-native";
 import { resolveTheme } from "../theme";
 import type { MultiEngineState } from "../useLivelineEngine";
 import {
-  computeMultiSeriesScrubTooltipLayout,
-  deriveScrubValueMulti,
-  interpolateMultiSeriesAtTime,
+    computeMultiSeriesScrubTooltipLayout,
+    deriveScrubValueMulti,
+    interpolateMultiSeriesAtTime,
 } from "./crosshairMulti";
 import { useCrosshairMulti } from "./useCrosshairMulti";
 
@@ -36,9 +36,7 @@ const formatTime = (t: number) =>
   new Date(t * 1000).toISOString().slice(11, 19);
 
 function makeEngine(
-  overrides: Partial<
-    Record<keyof MultiEngineState, { value: unknown }>
-  > = {},
+  overrides: Partial<Record<keyof MultiEngineState, { value: unknown }>> = {},
 ): MultiEngineState {
   return {
     data: { value: [] },
@@ -322,6 +320,36 @@ describe("useCrosshairMulti (hook)", () => {
       ),
     );
     expect(result.current.gesture).toBeDefined();
+  });
+
+  it("accepts onScrub and still initialises (sync reaction path)", () => {
+    const onScrub = jest.fn();
+    const engine = makeEngine({
+      series: {
+        value: [
+          {
+            id: "a",
+            data: [{ time: 1_700_000_000, value: 5 }],
+            value: 5,
+            color: "#00f",
+          },
+        ],
+      },
+    });
+    const { result } = renderHook(() =>
+      useCrosshairMulti(
+        engine,
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+        onScrub,
+      ),
+    );
+    expect(result.current.gesture).toBeDefined();
+    expect(result.current.scrubActive.value).toBe(false);
   });
 
   it("uses Android pan minDistance when Platform.OS is android", () => {
