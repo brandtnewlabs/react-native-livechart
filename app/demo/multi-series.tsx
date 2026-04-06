@@ -4,18 +4,18 @@ import Animated, {
   useAnimatedProps,
   useSharedValue,
 } from "react-native-reanimated";
-import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "../../src/demo/shared";
-import type {
-  LegendConfig,
-  MultiSeriesDotConfig,
-  SeriesConfig,
-} from "../../src/types";
+import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "./lib/shared";
+import {
+  formatTime,
+  LiveChartSeries,
+  type LegendConfig,
+  type MultiSeriesDotConfig,
+  type SeriesConfig,
+} from "react-native-livechart";
 
 import { useSimulatedData } from "../../sim/useSimulatedData";
-import { LiveChartSeries } from "../../src";
-import { DemoScreen } from "../../src/demo/DemoScreen";
-import { demoStyles } from "../../src/demo/styles";
-import { formatTime } from "../../src/format";
+import { DemoScreen } from "./lib/DemoScreen";
+import { demoStyles } from "./lib/styles";
 
 export const options = { title: "Multi-series" };
 

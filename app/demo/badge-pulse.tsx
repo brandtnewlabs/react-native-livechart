@@ -1,12 +1,12 @@
 import { Pressable, Text, View } from "react-native";
-import type { BadgeConfig, PulseConfig } from "../../src/types";
+import type { BadgeConfig, PulseConfig } from "react-native-livechart";
 
 import { useState } from "react";
 import { useSimulatedData } from "../../sim/useSimulatedData";
-import { LiveChart } from "../../src";
-import { DemoScreen } from "../../src/demo/DemoScreen";
-import { ACCENT } from "../../src/demo/shared";
-import { demoStyles } from "../../src/demo/styles";
+import { LiveChart } from "react-native-livechart";
+import { DemoScreen } from "./lib/DemoScreen";
+import { ACCENT } from "./lib/shared";
+import { demoStyles } from "./lib/styles";
 
 export const options = { title: "Badge & pulse" };
 

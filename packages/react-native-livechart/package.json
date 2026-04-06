@@ -1,0 +1,73 @@
+{
+  "author": "brandtnew labs",
+  "bugs": {
+    "url": "https://github.com/brandtnewlabs/react-native-livechart/issues"
+  },
+  "description": "High-performance live line and candlestick charts for React Native, built on Skia and Reanimated.",
+  "devDependencies": {
+    "@babel/cli": "^7.26.0",
+    "@babel/core": "^7.26.0",
+    "@babel/plugin-transform-modules-commonjs": "^7.26.0",
+    "@babel/preset-react": "^7.26.0",
+    "@babel/preset-typescript": "^7.26.0",
+    "@types/react": "~19.1.0",
+    "react-native-worklets": "^0.5.0",
+    "rimraf": "^6.0.0",
+    "typescript": "~5.9.2"
+  },
+  "exports": {
+    ".": {
+      "default": "./dist/index.js",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE"
+  ],
+  "homepage": "https://github.com/brandtnewlabs/react-native-livechart#readme",
+  "keywords": [
+    "react-native",
+    "chart",
+    "skia",
+    "reanimated",
+    "live",
+    "trading",
+    "candlestick"
+  ],
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "name": "react-native-livechart",
+  "peerDependencies": {
+    "@shopify/react-native-skia": ">=2.0.0",
+    "react": ">=18.0.0",
+    "react-native": ">=0.76.0",
+    "react-native-gesture-handler": ">=2.0.0",
+    "react-native-reanimated": ">=4.0.0",
+    "react-native-worklets": ">=0.5.0"
+  },
+  "private": true,
+  "react-native": "./dist/index.js",
+  "repository": {
+    "directory": "packages/react-native-livechart",
+    "type": "git",
+    "url": "git+https://github.com/brandtnewlabs/react-native-livechart.git"
+  },
+  "scripts": {
+    "build": "rimraf dist && babel src --out-dir dist --extensions .ts,.tsx --config-file ./babel.lib.config.cjs --copy-files && tsc -p tsconfig.build.json",
+    "build:watch": "babel src --out-dir dist --extensions .ts,.tsx --config-file ./babel.lib.config.cjs --copy-files --watch",
+    "prepack": "npm run build",
+    "prepare": "node -e \"if (!require('fs').existsSync('dist/index.js')) process.exit(1)\" || npm run build",
+    "test": "npm --prefix ../.. run test:lib",
+    "test:coverage": "npm --prefix ../.. run test:coverage -- packages/react-native-livechart",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "verify": "npm --prefix ../.. run verify"
+  },
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "version": "0.1.0"
+}

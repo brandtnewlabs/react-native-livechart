@@ -2,12 +2,10 @@ import { Pressable, Text, View } from "react-native";
 
 import { useState } from "react";
 import { useSimulatedData } from "../../sim/useSimulatedData";
-import { LiveChart } from "../../src";
-import { DemoScreen } from "../../src/demo/DemoScreen";
-import { ACCENT } from "../../src/demo/shared";
-import { demoStyles } from "../../src/demo/styles";
-import { formatTime } from "../../src/format";
-import type { ScrubPoint } from "../../src/types";
+import { formatTime, LiveChart, type ScrubPoint } from "react-native-livechart";
+import { DemoScreen } from "./lib/DemoScreen";
+import { ACCENT } from "./lib/shared";
+import { demoStyles } from "./lib/styles";
 
 export const options = { title: "Scrub" };
 

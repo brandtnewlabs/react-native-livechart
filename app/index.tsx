@@ -1,6 +1,6 @@
 import { Link, type Href } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { MONO_FONT_FAMILY } from "../src/monoFontFamily";
+import { MONO_FONT_FAMILY } from "react-native-livechart";
 
 const DEMOS: { href: Href; title: string; blurb: string }[] = [
   {

@@ -13,17 +13,20 @@ import Animated, {
 } from "react-native-reanimated";
 import type { VolatilityMode } from "../../sim/generators";
 import { useSimulatedData, type TradeSource } from "../../sim/useSimulatedData";
-import type { ScrubPoint } from "../../src";
-import { LiveChart } from "../../src";
+import {
+  formatTime,
+  LiveChart,
+  MONO_FONT_FAMILY,
+  type CandlePoint,
+  type LiveChartPoint,
+  type ScrubPoint,
+} from "react-native-livechart";
 import {
   PRICE_RANGES,
   TIME_WINDOWS,
   TRADE_SOURCES,
   VOLATILITY_MODES,
-} from "../../src/demo/shared";
-import { formatTime } from "../../src/format";
-import { MONO_FONT_FAMILY } from "../../src/monoFontFamily";
-import type { CandlePoint, LiveChartPoint } from "../../src/types";
+} from "./lib/shared";
 
 export const options = { title: "Playground" };
 

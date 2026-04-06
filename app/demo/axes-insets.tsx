@@ -1,12 +1,12 @@
 import { Pressable, Text, View } from "react-native";
-import { LiveChart, LiveChartSeries } from "../../src";
+import { LiveChart, LiveChartSeries } from "react-native-livechart";
 
 import { useState } from "react";
 import { useSimulatedData } from "../../sim/useSimulatedData";
-import { DemoScreen } from "../../src/demo/DemoScreen";
-import { ACCENT } from "../../src/demo/shared";
-import { demoStyles } from "../../src/demo/styles";
-import type { ChartInsets } from "../../src/types";
+import { DemoScreen } from "./lib/DemoScreen";
+import { ACCENT } from "./lib/shared";
+import { demoStyles } from "./lib/styles";
+import type { ChartInsets } from "react-native-livechart";
 
 export const options = { title: "Axes & insets" };
 
