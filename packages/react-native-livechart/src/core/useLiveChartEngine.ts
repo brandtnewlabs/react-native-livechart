@@ -1,3 +1,10 @@
+/**
+ * UI-thread chart engine: time window, Y-range smoothing, and tick cadence pursue
+ * the same “live chart” feel as liveline’s `requestAnimationFrame` loop; mechanism
+ * here is Reanimated frame callbacks and SharedValues, not DOM canvas.
+ *
+ * @see https://github.com/benjitaylor/liveline
+ */
 import {
   useDerivedValue,
   useFrameCallback,

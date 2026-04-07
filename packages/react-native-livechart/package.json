@@ -3,7 +3,7 @@
   "bugs": {
     "url": "https://github.com/brandtnewlabs/react-native-livechart/issues"
   },
-  "description": "High-performance live line and candlestick charts for React Native, built on Skia and Reanimated.",
+  "description": "High-performance live line and candlestick charts for React Native, built on Skia and Reanimated. Inspired by liveline (Benji Taylor).",
   "devDependencies": {
     "@babel/cli": "^7.26.0",
     "@babel/core": "^7.26.0",

@@ -3,9 +3,12 @@ import type { SkPath } from "@shopify/react-native-skia";
 /**
  * Fritsch-Carlson monotone cubic interpolation.
  * Guarantees no overshoots — the curve never exceeds local min/max.
+ * Same approach documented in liveline for smooth live line charts (adapted code; MIT).
  *
  * pts is a flat number array with stride 2: [x0, y0, x1, y1, ...].
  * Caller must moveTo the first point before calling.
+ *
+ * @see https://github.com/benjitaylor/liveline
  */
 export function drawSpline(path: SkPath, pts: number[]) {
   "worklet";

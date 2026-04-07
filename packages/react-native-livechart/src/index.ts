@@ -1,5 +1,9 @@
 /**
  * Public API — stable exports for `react-native-livechart` consumers.
+ *
+ * @remarks Conceptually inspired by [liveline](https://github.com/benjitaylor/liveline)
+ * (Benji Taylor) — live charts for React. This package is a separate React Native
+ * implementation on Skia and Reanimated, not a fork of the web library.
  */
 
 // ── Components ───────────────────────────────────────────────────────────────

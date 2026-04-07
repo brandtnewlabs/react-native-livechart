@@ -1,3 +1,9 @@
+/**
+ * Multi-series live chart. Same conceptual role as liveline’s multi-series mode;
+ * React Native + Skia implementation (see liveline for the web reference).
+ *
+ * @see https://github.com/benjitaylor/liveline
+ */
 import { Canvas, Group, matchFont } from "@shopify/react-native-skia";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";

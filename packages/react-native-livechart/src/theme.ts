@@ -1,6 +1,13 @@
 import type { LiveChartPalette, SeriesConfig, ThemeMode } from "./types";
 
 /**
+ * Derives a full light/dark palette from one accent color — same idea as liveline’s
+ * theme system, implemented with static Tailwind-like hex literals (no CSS).
+ *
+ * @see https://github.com/benjitaylor/liveline
+ */
+
+/**
  * Tailwind CSS v3 default palette — literal hex only (no tailwindcss dependency).
  * Values match https://tailwindcss.com/docs/customizing-colors
  */

@@ -27,5 +27,7 @@ Third-party software
 This project includes math utilities adapted from liveline (MIT), Copyright (c)
 Benji Taylor. See: <https://github.com/benjitaylor/liveline>
 
-The chart rendering, engine, and React Native + Skia component architecture in
-this repository are independent implementations.
+The React Native chart implementation in this repository (Skia rendering,
+Reanimated engine, Gesture Handler interactions, and component/hook structure)
+is original work, inspired by the design and behavior of liveline; it is not a
+derivative copy of liveline’s source code beyond the attributed math utilities.
