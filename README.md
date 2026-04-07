@@ -2,6 +2,8 @@
 
 High-performance **live** line and candlestick charts for React Native, built with **@shopify/react-native-skia**, **react-native-reanimated**, and **react-native-gesture-handler**. Data and live values are driven through Reanimated `SharedValue`s so the UI thread can animate without per-frame JS bridge traffic.
 
+The design, feature set, and API shape are **conceptually inspired by [liveline](https://github.com/benjitaylor/liveline)** — Benji Taylor’s real-time canvas chart for React — reimagined for React Native (this is not a fork; see [Acknowledgments](#acknowledgments)).
+
 This repository contains the **library** (`packages/react-native-livechart`) and an **Expo example app** at the repo root.
 
 ## Requirements
@@ -128,9 +130,18 @@ Screens demonstrate candlestick mode, multi-series, scrub, momentum tuning, dege
 
 ## Acknowledgments
 
-Math utilities in this project are adapted from **liveline** by **Benji Taylor** (MIT): <https://github.com/benjitaylor/liveline>
+**[liveline](https://github.com/benjitaylor/liveline)** by **Benji Taylor** (MIT) is the **primary inspiration** for this project: live updating charts, line and candlestick modes (including line/candle morph ideas), multi-series behavior, momentum and degen effects, scrubbing, loading and paused states, theme plus accent-driven palettes, and the overall prop vocabulary — even though names differ here (for example `accentColor` vs `color`, `timeWindow` vs `window`, and `SharedValue` streams instead of React state).
 
-Chart rendering, engine design, and React Native + Skia components are separate implementations.
+This package is a **React Native reimplementation** using **Skia**, **Reanimated**, and **Gesture Handler**. It is **not** the web canvas component ported line-for-line. The codebase **diverged** over time toward more hooks, layout options, and customizability for mobile.
+
+**Third-party / adapted code:** math utilities used for chart geometry and smoothing (including Fritsch–Carlson monotone spline tangents, momentum detection, range/lerp helpers, and related pieces) are **adapted from liveline** under the MIT license. See the [LICENSE](LICENSE) file for the formal notice.
+
+### Compared to liveline
+
+- **Rendering:** liveline uses a DOM `<canvas>` and `requestAnimationFrame`; this library uses **Skia** on the UI thread.
+- **Data flow:** liveline takes plain `data` / `value` props; here history and live values are **`SharedValue`s** so worklets avoid per-frame JS bridge work.
+- **Input:** scrubbing uses **pan gestures** instead of canvas hover.
+- **Scope:** liveline includes features this repo does not (for example **orderbook** visualization and built-in time-window controls); this repo adds **React Native–specific** pieces (for example trade markers via `tradeStream`) and a more decomposed hook API.
 
 ## License
 

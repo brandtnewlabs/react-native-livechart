@@ -1,3 +1,9 @@
+/**
+ * Single-series live chart. UX and prop vocabulary parallel Benji Taylor’s
+ * `liveline` for React; implemented here with Skia, Reanimated, and Gesture Handler.
+ *
+ * @see https://github.com/benjitaylor/liveline
+ */
 import {
   Canvas,
   Group,
@@ -7,9 +13,19 @@ import {
   vec,
 } from "@shopify/react-native-skia";
 import {
-  formatTime as defaultFormatTime,
-  formatValue as defaultFormatValue,
-} from "../lib/format";
+  resolveBadge,
+  resolveDegen,
+  resolveFontConfig,
+  resolveGradient,
+  resolveLeftEdgeFade,
+  resolvePulse,
+  resolveReferenceLineConfig,
+  resolveScrub,
+  resolveTradeStream,
+  resolveValueLine,
+  resolveXAxis,
+  resolveYAxis,
+} from "../core/resolveConfig";
 import {
   resolveChartLayout,
   useBadge,
@@ -31,25 +47,17 @@ import {
   useYAxis,
 } from "../hooks";
 import {
-  resolveBadge,
-  resolveDegen,
-  resolveFontConfig,
-  resolveGradient,
-  resolveLeftEdgeFade,
-  resolvePulse,
-  resolveReferenceLineConfig,
-  resolveScrub,
-  resolveTradeStream,
-  resolveValueLine,
-  resolveXAxis,
-  resolveYAxis,
-} from "../core/resolveConfig";
+  formatTime as defaultFormatTime,
+  formatValue as defaultFormatValue,
+} from "../lib/format";
 import { leftEdgeFadeColorsFromBgRgb, resolveTheme } from "../theme";
 import type { LiveChartProps, TradeEvent } from "../types";
 
 import { View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
+import { useLiveChartEngine } from "../core/useLiveChartEngine";
+import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
@@ -62,8 +70,6 @@ import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
-import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
-import { useLiveChartEngine } from "../core/useLiveChartEngine";
 
 export function LiveChart({
   // ── Data ────────────────────────────────────────────────────────────────
