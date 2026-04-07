@@ -7,12 +7,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import Animated, {
-  useAnimatedProps,
-  useSharedValue,
-} from "react-native-reanimated";
-import type { VolatilityMode } from "../../sim/generators";
-import { useSimulatedData, type TradeSource } from "../../sim/useSimulatedData";
 import {
   formatTime,
   LiveChart,
@@ -21,6 +15,16 @@ import {
   type LiveChartPoint,
   type ScrubPoint,
 } from "react-native-livechart";
+import Animated, {
+  useAnimatedProps,
+  useSharedValue,
+} from "react-native-reanimated";
+import type { VolatilityMode } from "../../sim/generators";
+import { useSimulatedData, type TradeSource } from "../../sim/useSimulatedData";
+import {
+  AnimatedTrendTextInput,
+  type NumberFormatConfig,
+} from "./lib/AnimatedTrendTextInput";
 import {
   PRICE_RANGES,
   TIME_WINDOWS,
@@ -31,6 +35,15 @@ import {
 export const options = { title: "Playground" };
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+const PLAYGROUND_HEADER_NUMBER_FORMAT: NumberFormatConfig = {
+  locales: "en-US",
+  options: {
+    useGrouping: true,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  },
+};
 
 export default function PlaygroundScreen() {
   const [volatilityMode, setVolatilityMode] =
@@ -48,6 +61,7 @@ export default function PlaygroundScreen() {
   const [simTradeStream, setSimTradeStream] = useState(true);
 
   const [displayMode, setDisplayMode] = useState<"line" | "candle">("line");
+  const [headerReadoutIntl, setHeaderReadoutIntl] = useState(true);
 
   const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
 
@@ -73,13 +87,13 @@ export default function PlaygroundScreen() {
   const emptyCandles = useSharedValue<CandlePoint[]>([]);
   const nullLiveCandle = useSharedValue<CandlePoint | null>(null);
 
-  const subtitleProps = useAnimatedProps(() => {
+  const metaProps = useAnimatedProps(() => {
     const sp = scrubPoint.value;
     if (sp !== null) {
-      const text = `${sp.value.toFixed(6)} · ${formatTime(sp.time)}`;
+      const text = `${formatTime(sp.time)} · scrub`;
       return { text, defaultValue: text };
     }
-    const text = `${value.value.toFixed(6)} · ${volatilitySv.value}`;
+    const text = String(volatilitySv.value);
     return { text, defaultValue: text };
   });
 
@@ -91,11 +105,19 @@ export default function PlaygroundScreen() {
           Chart reveals after ≥2 points (or ≥2 candles) and loading off — use
           Empty + Reload to preview.
         </Text>
+        <AnimatedTrendTextInput
+          sharedValue={value}
+          maximumFractionDigits={headerReadoutIntl ? 2 : 6}
+          {...(headerReadoutIntl
+            ? { numberFormat: PLAYGROUND_HEADER_NUMBER_FORMAT }
+            : {})}
+          style={styles.subtitle}
+        />
         <AnimatedTextInput
           editable={false}
           underlineColorAndroid="transparent"
-          style={styles.subtitle}
-          animatedProps={subtitleProps}
+          style={styles.subtitleMeta}
+          animatedProps={metaProps}
         />
       </View>
 
@@ -134,6 +156,41 @@ export default function PlaygroundScreen() {
         style={styles.controlsScroll}
         contentContainerStyle={styles.controls}
       >
+        <Text style={styles.sectionLabel}>
+          Header readout (AnimatedTrendTextInput)
+        </Text>
+        <View style={styles.buttonRow}>
+          <Pressable
+            style={[styles.chip, !headerReadoutIntl && styles.chipActive]}
+            onPress={() => setHeaderReadoutIntl(false)}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                !headerReadoutIntl && styles.chipTextActive,
+              ]}
+            >
+              Plain toFixed
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.chip, headerReadoutIntl && styles.chipActive]}
+            onPress={() => setHeaderReadoutIntl(true)}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                headerReadoutIntl && styles.chipTextActive,
+              ]}
+            >
+              Intl en-US (grouping)
+            </Text>
+          </Pressable>
+        </View>
+        <Text style={[styles.controlsHint]}>
+          Use Price Range ≥ 1K to see thousand separators with Intl on.
+        </Text>
+
         <Text style={styles.sectionLabel}>Display Mode</Text>
         <View style={styles.buttonRow}>
           <Pressable
@@ -371,11 +428,26 @@ const styles = StyleSheet.create({
     marginTop: 4,
     padding: 0,
   },
+  subtitleMeta: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 12,
+    fontFamily: MONO_FONT_FAMILY,
+    marginTop: 2,
+    padding: 0,
+  },
   hint: {
     color: "rgba(255,255,255,0.35)",
     fontSize: 11,
     fontFamily: MONO_FONT_FAMILY,
     marginTop: 6,
+    lineHeight: 15,
+  },
+  controlsHint: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 11,
+    fontFamily: MONO_FONT_FAMILY,
+    marginTop: 4,
+    marginBottom: 12,
     lineHeight: 15,
   },
   chartContainer: {
