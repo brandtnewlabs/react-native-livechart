@@ -1,7 +1,10 @@
 /** @type {import("jest").Config} */
+const preset = require("jest-expo/jest-preset");
+
 module.exports = {
-  preset: "jest-expo",
+  ...preset,
   watchman: false,
+  resolver: "<rootDir>/jest-resolver.js",
   setupFilesAfterEnv: ["<rootDir>/jest-setup.js"],
   testMatch: ["**/*.test.{ts,tsx}"],
   collectCoverageFrom: [

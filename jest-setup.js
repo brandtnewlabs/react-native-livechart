@@ -1,4 +1,54 @@
-const { jest } = require("@jest/globals");
+const reactNative = require("react-native");
+
+if (reactNative.TurboModuleRegistry == null) {
+  Object.defineProperty(reactNative, "TurboModuleRegistry", {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: {
+      get: () => ({
+        installTurboModule: () => {},
+      }),
+    },
+  });
+}
+
+const serializableStub = () => ({});
+global.__workletsModuleProxy = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      const key = String(prop);
+      return (...args) => {
+        if (key === "getStaticFeatureFlag") {
+          return false;
+        }
+        if (
+          key === "setDynamicFeatureFlag" ||
+          key === "registerCustomSerializable"
+        ) {
+          return undefined;
+        }
+        if (key.startsWith("synchronizable")) {
+          return args[1];
+        }
+        if (
+          key.startsWith("create") ||
+          key === "scheduleOnUI" ||
+          key === "executeOnUIRuntimeSync" ||
+          key === "scheduleOnRuntime"
+        ) {
+          return serializableStub();
+        }
+        if (key === "reportFatalErrorOnJS") {
+          return undefined;
+        }
+        return undefined;
+      };
+    },
+  },
+);
+
 const reanimated = require("react-native-reanimated");
 if (typeof reanimated.setUpTests === "function") {
   reanimated.setUpTests();
