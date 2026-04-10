@@ -1,3 +1,7 @@
+import { View } from "react-native";
+import { GestureDetector } from "react-native-gesture-handler";
+import { useSharedValue } from "react-native-reanimated";
+
 /**
  * Single-series live chart. UX and prop vocabulary parallel Benji Taylor’s
  * `liveline` for React; implemented here with Skia, Reanimated, and Gesture Handler.
@@ -9,13 +13,12 @@ import {
   Group,
   LinearGradient,
   Path,
-  matchFont,
   vec,
 } from "@shopify/react-native-skia";
+
 import {
   resolveBadge,
   resolveDegen,
-  resolveFontConfig,
   resolveGradient,
   resolveLeftEdgeFade,
   resolvePulse,
@@ -26,6 +29,7 @@ import {
   resolveXAxis,
   resolveYAxis,
 } from "../core/resolveConfig";
+import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import {
   resolveChartLayout,
   useBadge,
@@ -34,6 +38,7 @@ import {
   useChartColors,
   useChartPaths,
   useChartReveal,
+  useChartSkiaFont,
   useCrosshair,
   useDegen,
   useLiveChartHasData,
@@ -50,14 +55,9 @@ import {
   formatTime as defaultFormatTime,
   formatValue as defaultFormatValue,
 } from "../lib/format";
+import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
 import { leftEdgeFadeColorsFromBgRgb, resolveTheme } from "../theme";
 import type { LiveChartProps, TradeEvent } from "../types";
-
-import { View } from "react-native";
-import { GestureDetector } from "react-native-gesture-handler";
-import { useSharedValue } from "react-native-reanimated";
-import { useLiveChartEngine } from "../core/useLiveChartEngine";
-import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
@@ -144,8 +144,10 @@ export function LiveChart({
     leftEdgeFadeColorsFromBgRgb(palette.bgRgb),
   );
 
-  const skiaFont = matchFont(
-    resolveFontConfig(fontProp, MONO_FONT_FAMILY, palette.labelFontSize),
+  const skiaFont = useChartSkiaFont(
+    fontProp,
+    MONO_FONT_FAMILY,
+    palette.labelFontSize,
   );
 
   const pulseConfig = pulseCfg

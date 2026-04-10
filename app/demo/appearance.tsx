@@ -1,22 +1,39 @@
 import { Pressable, Text, View } from "react-native";
 
+import {
+  JetBrainsMono_400Regular,
+  useFonts as useJetBrainsFonts,
+} from "@expo-google-fonts/jetbrains-mono";
+import { useFonts } from "expo-font";
 import { useState } from "react";
-import { useSimulatedData } from "../../sim/useSimulatedData";
 import {
   LiveChart,
   MONO_FONT_FAMILY,
   type FontWeight,
 } from "react-native-livechart";
+import { useSimulatedData } from "../../sim/useSimulatedData";
 import { DemoScreen } from "./lib/DemoScreen";
 import { ACCENT_PRESETS } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
+
+const googleSansCodeRegular = require("../../assets/fonts/GoogleSansCode-Regular.ttf");
 
 export const options = { title: "Appearance" };
 
 const FONT_SIZES = [10, 11, 13, 15] as const;
 const WEIGHTS: FontWeight[] = ["normal", "600", "bold"];
 
+/** Platform `matchFont` mono vs bundled fonts via Skia `typeface` (+ expo-font for RN labels). */
+type SkiaFontFamilyDemo = "platformMono" | "jetbrainsMono" | "googleSansCode";
+
 export default function AppearanceScreen() {
+  const [jetbrainsLoaded] = useJetBrainsFonts({
+    JetBrainsMono_400Regular,
+  });
+  const [googleSansLoaded] = useFonts({
+    GoogleSansCodeRegular: googleSansCodeRegular,
+  });
+
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [accent, setAccent] = useState(ACCENT_PRESETS[0]);
   const [gradientOn, setGradientOn] = useState(true);
@@ -25,6 +42,8 @@ export default function AppearanceScreen() {
   const [lineColor, setLineColor] = useState(false);
   const [fontSize, setFontSize] = useState(11);
   const [fontWeight, setFontWeight] = useState<FontWeight>("normal");
+  const [skiaFontFamily, setSkiaFontFamily] =
+    useState<SkiaFontFamilyDemo>("platformMono");
   const [roundedStyle, setRoundedStyle] = useState(false);
 
   const { data, value } = useSimulatedData({
@@ -35,7 +54,7 @@ export default function AppearanceScreen() {
 
   return (
     <DemoScreen
-      description="theme, accent, gradient, line, font, container style"
+      description="theme, accent, gradient, line, font (Skia: system / JetBrains / Google Sans Code), container style"
       chart={
         <LiveChart
           data={data}
@@ -57,6 +76,11 @@ export default function AppearanceScreen() {
             fontFamily: MONO_FONT_FAMILY,
             fontSize,
             fontWeight,
+            ...(skiaFontFamily === "jetbrainsMono"
+              ? { typeface: JetBrainsMono_400Regular }
+              : skiaFontFamily === "googleSansCode"
+                ? { typeface: googleSansCodeRegular }
+                : {}),
           }}
           style={
             roundedStyle
@@ -193,7 +217,75 @@ export default function AppearanceScreen() {
         </Pressable>
       </View>
 
-      <Text style={demoStyles.sectionLabel}>Font</Text>
+      <Text style={demoStyles.sectionLabel}>Font (Skia)</Text>
+      <View style={demoStyles.buttonRow}>
+        <Pressable
+          style={[
+            demoStyles.chip,
+            skiaFontFamily === "platformMono" && demoStyles.chipActive,
+          ]}
+          onPress={() => setSkiaFontFamily("platformMono")}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              skiaFontFamily === "platformMono" && demoStyles.chipTextActive,
+            ]}
+          >
+            Platform mono
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[
+            demoStyles.chip,
+            skiaFontFamily === "jetbrainsMono" && demoStyles.chipActive,
+          ]}
+          onPress={() => setSkiaFontFamily("jetbrainsMono")}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              skiaFontFamily === "jetbrainsMono" && demoStyles.chipTextActive,
+              jetbrainsLoaded && { fontFamily: "JetBrainsMono_400Regular" },
+            ]}
+          >
+            JetBrains Mono
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[
+            demoStyles.chip,
+            skiaFontFamily === "googleSansCode" && demoStyles.chipActive,
+          ]}
+          onPress={() => setSkiaFontFamily("googleSansCode")}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              skiaFontFamily === "googleSansCode" && demoStyles.chipTextActive,
+              googleSansLoaded && { fontFamily: "GoogleSansCodeRegular" },
+            ]}
+          >
+            Google Sans Code
+          </Text>
+        </Pressable>
+      </View>
+      <Text style={[demoStyles.chipText, { opacity: 0.65, marginBottom: 8 }]}>
+        Bundled fonts use Skia{" "}
+        <Text style={{ fontFamily: "monospace" }}>font.typeface</Text> with{" "}
+        <Text style={{ fontFamily: "monospace" }}>require()</Text>. JetBrains
+        comes from{" "}
+        <Text style={{ fontFamily: "monospace" }}>
+          @expo-google-fonts/jetbrains-mono
+        </Text>
+        ; Google Sans Code is{" "}
+        <Text style={{ fontFamily: "monospace" }}>
+          assets/fonts/GoogleSansCode-Regular.ttf
+        </Text>{" "}
+        (also registered via{" "}
+        <Text style={{ fontFamily: "monospace" }}>expo-font</Text> for chip
+        labels).
+      </Text>
       <View style={demoStyles.buttonRow}>
         {FONT_SIZES.map((s) => (
           <Pressable

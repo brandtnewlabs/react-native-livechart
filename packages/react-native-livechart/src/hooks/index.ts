@@ -5,6 +5,7 @@ export { useCanvasLayout } from "./useCanvasLayout";
 export { useChartColors } from "./useChartColors";
 export { useChartPaths } from "./useChartPaths";
 export { useChartReveal } from "./useChartReveal";
+export { useChartSkiaFont } from "./useChartSkiaFont";
 export { useCrosshair } from "./useCrosshair";
 export { useCrosshairSeries } from "./useCrosshairSeries";
 export { useDegen } from "./useDegen";
@@ -16,9 +17,8 @@ export { useMultiSeriesLinePaths } from "./useMultiSeriesLinePaths";
 export { useReferenceLine } from "./useReferenceLine";
 export {
   useMultiSeriesReverseMorphInputs,
-  useSingleChartReverseMorphInputs
+  useSingleChartReverseMorphInputs,
 } from "./useReverseMorphEngineInputs";
 export { useTradeStream } from "./useTradeStream";
 export { useXAxis } from "./useXAxis";
 export { useYAxis } from "./useYAxis";
-

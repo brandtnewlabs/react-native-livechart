@@ -4,7 +4,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { Canvas, Group, matchFont } from "@shopify/react-native-skia";
+import { Canvas, Group } from "@shopify/react-native-skia";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
@@ -20,7 +20,6 @@ import {
   resolveMultiSeriesLineColorsSnapshot,
 } from "../core/multiSeriesLayout";
 import {
-  resolveFontConfig,
   resolveLeftEdgeFade,
   resolveLegend,
   resolveMultiSeriesDot,
@@ -34,6 +33,7 @@ import {
   resolveChartLayout,
   useCanvasLayout,
   useChartReveal,
+  useChartSkiaFont,
   useCrosshairSeries,
   useMultiSeriesLinePaths,
   useMultiSeriesReverseMorphInputs,
@@ -108,8 +108,10 @@ export function LiveChartSeries({
     leftEdgeFadeColorsFromBgRgb(palette.bgRgb),
   );
 
-  const skiaFont = matchFont(
-    resolveFontConfig(fontProp, MONO_FONT_FAMILY, palette.labelFontSize),
+  const skiaFont = useChartSkiaFont(
+    fontProp,
+    MONO_FONT_FAMILY,
+    palette.labelFontSize,
   );
 
   const seriesSnapshot = series.value;
