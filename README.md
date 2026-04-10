@@ -48,6 +48,12 @@ npm install /path/to/react-native-livechart-0.1.0.tgz
 
 The package `prepare` script runs the full `build` (per-file Babel compile of `src/` into `dist/`, including the Worklets plugin, plus `tsc --emitDeclarationOnly` for types) so published `dist/` matches what Metro would transform and is safe for any normal resolver.
 
+**`react-native-worklets` and publishing:** The compiled `dist/` embeds the Worklets Babel plugin version (`__pluginVersion` in output). Whenever you bump `react-native-worklets` in an app or in this repo, run `npm run build` in `packages/react-native-livechart` and publish a new library version so `dist/` stays in sync with the Worklets version consumers install. Maintainers can run `npm run verify:worklets-dist` in that package (or rely on CI) to assert `dist/` matches the resolved `react-native-worklets` version.
+
+**Jest:** The repo root uses a small Jest resolver plus a minimal Worklets native proxy in [`jest-setup.js`](jest-setup.js) so `react-native-reanimated` / `react-native-worklets` 0.7+ can load without JSI. A few unit tests that depend on full shared-value round-trips from layout effects or chained toggles are skipped; exercise those flows in the Expo app or E2E.
+
+**TODO (longer term):** Consider pointing the published package’s `react-native` field at **`src/`** and letting **Metro compile** the library in consuming apps (with documented Babel / resolver requirements), instead of shipping precompiled `dist/` with embedded Worklets `__pluginVersion`. That removes the “rebuild and republish whenever Worklets bumps” coupling but is a larger packaging and consumer-setup change than the current `dist/` + `verify:worklets-dist` approach.
+
 **B. `file:` dependency**
 
 After cloning the monorepo:
