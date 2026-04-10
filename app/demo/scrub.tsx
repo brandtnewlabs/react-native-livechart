@@ -1,8 +1,8 @@
 import { Pressable, Text, View } from "react-native";
 
 import { useState } from "react";
-import { useSimulatedData } from "../../sim/useSimulatedData";
 import { formatTime, LiveChart, type ScrubPoint } from "react-native-livechart";
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
 import { ACCENT } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
@@ -17,7 +17,7 @@ export default function ScrubScreen() {
   const windowSecs = 300;
   const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
 
-  const { data, value, candles, liveCandle } = useSimulatedData({
+  const { data, value, candles, liveCandle } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: displayMode === "candle",
     tradeStream: false,

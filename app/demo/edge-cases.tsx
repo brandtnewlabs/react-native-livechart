@@ -1,13 +1,13 @@
-import { Pressable, Text, View } from "react-native";
-
 import { useState } from "react";
-import { useSharedValue } from "react-native-reanimated";
-import { useSimulatedData } from "../../sim/useSimulatedData";
+import { Pressable, Text, View } from "react-native";
+import type { LiveChartPoint } from "react-native-livechart";
 import { LiveChart } from "react-native-livechart";
+import { useSharedValue } from "react-native-reanimated";
+
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
 import { ACCENT } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
-import type { LiveChartPoint } from "react-native-livechart";
 
 export const options = { title: "Empty, loading, formatters" };
 
@@ -38,7 +38,7 @@ export default function EdgeCasesScreen() {
     { time: Date.now() / 1000, value: 100 },
   ]);
 
-  const sim = useSimulatedData({
+  const sim = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,

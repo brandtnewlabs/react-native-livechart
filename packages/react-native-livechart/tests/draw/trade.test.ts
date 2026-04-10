@@ -1,4 +1,3 @@
-import type { TradeEvent } from "../../src/types";
 import {
   createTradeStreamState,
   LABEL_LIFETIME,
@@ -7,6 +6,7 @@ import {
   tickTradeStream,
   type TradeStreamState,
 } from "../../src/draw/trade";
+import type { TradeEvent } from "../../src/types";
 
 function makeTrades(count: number, baseTime = 100): TradeEvent[] {
   const trades: TradeEvent[] = [];
@@ -38,6 +38,21 @@ describe("tickTradeStream", () => {
     expect(state.labels.length).toBeGreaterThan(0);
     expect(state.labels[0].y).toBeGreaterThan(chartBottom - 20);
     expect(state.labels[0].text).toMatch(/[+-] \$/);
+  });
+
+  it("prefixes label with symbol when present", () => {
+    const state = createTradeStreamState();
+    const trades: TradeEvent[] = [
+      {
+        time: 100,
+        price: 10,
+        size: 2,
+        side: "buy",
+        symbol: "ABC",
+      },
+    ];
+    tickTradeStream(state, trades, 50, chartTop, chartBottom);
+    expect(state.labels.some((l) => l.text.startsWith("ABC "))).toBe(true);
   });
 
   it("does not spawn when no new trades", () => {

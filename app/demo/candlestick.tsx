@@ -1,17 +1,26 @@
 import { Pressable, Text, View } from "react-native";
-import { ACCENT, TIME_WINDOWS } from "./lib/shared";
+import {
+  ACCENT,
+  HISTORY_RANGE_PRESETS,
+  TIME_WINDOWS,
+  viewportSecsForHistoryPreset,
+} from "./lib/shared";
 
 import { useState } from "react";
-import { useSharedValue } from "react-native-reanimated";
-import { useSimulatedData } from "../../sim/useSimulatedData";
+import type { CandlePoint } from "react-native-livechart";
 import { LiveChart } from "react-native-livechart";
+import { useSharedValue } from "react-native-reanimated";
+import {
+  useSimulatedChartData,
+  type HistoryRange,
+} from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
 import { demoStyles } from "./lib/styles";
-import type { CandlePoint } from "react-native-livechart";
 
 export const options = { title: "Candlestick" };
 
 export default function CandlestickScreen() {
+  const [historyRange, setHistoryRange] = useState<HistoryRange>("1d");
   const [windowSecs, setWindowSecs] = useState(300);
   const [stripCandles, setStripCandles] = useState(false);
   const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
@@ -19,11 +28,13 @@ export default function CandlestickScreen() {
   const emptyCandles = useSharedValue<CandlePoint[]>([]);
   const nullLive = useSharedValue<CandlePoint | null>(null);
 
-  const { data, value, candles, liveCandle } = useSimulatedData({
+  const { data, value, candles, liveCandle } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: true,
     tradeStream: false,
     candleWidth: candleWidthSecs,
+    historyRange,
+    tradesPerSecond: 5,
   });
 
   return (
@@ -44,6 +55,32 @@ export default function CandlestickScreen() {
         />
       }
     >
+      <Text style={demoStyles.sectionLabel}>History span</Text>
+      <View style={demoStyles.buttonRow}>
+        {HISTORY_RANGE_PRESETS.map((r) => (
+          <Pressable
+            key={r.preset}
+            style={[
+              demoStyles.chip,
+              historyRange === r.preset && demoStyles.chipActive,
+            ]}
+            onPress={() => {
+              setHistoryRange(r.preset);
+              setWindowSecs(viewportSecsForHistoryPreset(r.preset));
+            }}
+          >
+            <Text
+              style={[
+                demoStyles.chipText,
+                historyRange === r.preset && demoStyles.chipTextActive,
+              ]}
+            >
+              {r.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <Text style={demoStyles.sectionLabel}>Data</Text>
       <View style={demoStyles.buttonRow}>
         <Pressable
