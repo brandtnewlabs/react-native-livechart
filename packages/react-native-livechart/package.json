@@ -17,9 +17,10 @@
   },
   "exports": {
     ".": {
-      "default": "./dist/index.js",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
+      "default": "./src/index.ts",
+      "import": "./src/index.ts",
+      "react-native": "./src/index.ts",
+      "require": "./src/index.ts",
       "types": "./dist/index.d.ts"
     }
   },
@@ -39,8 +40,8 @@
     "candlestick"
   ],
   "license": "MIT",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
   "name": "react-native-livechart",
   "peerDependencies": {
     "@shopify/react-native-skia": ">=2.0.0",
@@ -51,24 +52,23 @@
     "react-native-worklets": ">=0.7.0"
   },
   "private": true,
-  "react-native": "./dist/index.js",
+  "react-native": "./src/index.ts",
   "repository": {
     "directory": "packages/react-native-livechart",
     "type": "git",
     "url": "git+https://github.com/brandtnewlabs/react-native-livechart.git"
   },
   "scripts": {
-    "build": "rimraf dist && babel src --out-dir dist --extensions .ts,.tsx --config-file ./babel.lib.config.cjs --copy-files && tsc -p tsconfig.build.json",
-    "build:watch": "babel src --out-dir dist --extensions .ts,.tsx --config-file ./babel.lib.config.cjs --copy-files --watch",
+    "build": "rimraf dist && tsc -p tsconfig.build.json",
+    "build:types:watch": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "prepack": "npm run build",
-    "prepare": "node -e \"if (!require('fs').existsSync('dist/index.js')) process.exit(1)\" || npm run build",
+    "prepare": "node -e \"if (!require('fs').existsSync('dist/index.d.ts')) process.exit(1)\" || npm run build",
     "test": "npm --prefix ../.. run test:lib",
     "test:coverage": "npm --prefix ../.. run test:coverage -- packages/react-native-livechart",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "verify": "npm --prefix ../.. run verify",
-    "verify:worklets-dist": "node ./scripts/verify-worklets-dist.mjs"
+    "verify": "npm --prefix ../.. run verify"
   },
   "sideEffects": false,
   "types": "./dist/index.d.ts",
-  "version": "0.1.0"
+  "version": "1.0.0"
 }
