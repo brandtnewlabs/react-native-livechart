@@ -248,6 +248,11 @@ export interface DegenOptions {
   colors?: string | string[];
 }
 
+/** Payload for {@link LiveChartProps.onDegenShake}. */
+export interface DegenShakePayload {
+  direction: "up" | "down";
+}
+
 /** Live dot configuration for multi-series charts. */
 export interface MultiSeriesDotConfig {
   /** Dot radius in pixels. Default `3.5`. */
@@ -430,6 +435,11 @@ export interface LiveChartProps extends LiveChartCoreProps {
   value: SharedValue<number>;
   /** Called when the user scrubs the crosshair. `null` when scrub ends. */
   onScrub?: (point: ScrubPoint | null) => void;
+  /**
+   * Called on the JS thread when degen chart shake starts (momentum swing with shake enabled).
+   * Not called when `degen` is off or `DegenOptions.shake` is `false`.
+   */
+  onDegenShake?: (payload: DegenShakePayload) => void;
 }
 
 /** Props for the multi-series `LiveChartSeries` component. */

@@ -107,15 +107,16 @@ export function LiveChart({
   badge = true,
   momentum = true,
   pulse = true,
-  valueLine = false,
+  valueLine = true,
   referenceLine,
-  scrub = false,
+  scrub = true,
   tradeStream,
   degen,
   leftEdgeFade = true,
 
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
+  onDegenShake,
 }: LiveChartProps) {
   const emptyTradeStream = useSharedValue<TradeEvent[]>([]);
   const tradeStreamSV = tradeStream ?? emptyTradeStream;
@@ -249,7 +250,7 @@ export function LiveChart({
     pack: degenPack,
     packRevision: degenPackRevision,
     shakeTransform: degenShakeTransform,
-  } = useDegen(engine, dotX, dotY, momentumSV, degenCfg);
+  } = useDegen(engine, dotX, dotY, momentumSV, degenCfg, onDegenShake);
 
   // ── Overlay hooks ─────────────────────────────────────────────────────
   const referenceLineLayout = useReferenceLine(

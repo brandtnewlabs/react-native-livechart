@@ -173,4 +173,13 @@ describe("LiveChart", () => {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
+
+  it("accepts onDegenShake with degen enabled", () => {
+    const onDegenShake = jest.fn();
+    const screen = render(<Harness degen onDegenShake={onDegenShake} />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
 });
