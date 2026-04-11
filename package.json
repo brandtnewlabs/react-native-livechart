@@ -18,7 +18,7 @@
     "test:lib": "jest packages/react-native-livechart",
     "test:coverage": "jest --coverage",
     "build:lib": "npm run build -w react-native-livechart",
-    "build:lib:watch": "npm run build:watch -w react-native-livechart",
+    "build:lib:types:watch": "npm run build:types:watch -w react-native-livechart",
     "pack:lib": "npm pack -w react-native-livechart",
     "verify": "npm run typecheck && npm run lint && npm test",
     "verify:coverage": "npm run typecheck && npm run lint && npm run test:coverage",

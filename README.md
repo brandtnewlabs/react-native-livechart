@@ -21,7 +21,28 @@ Install the library’s **peer dependencies** in your app (versions should match
 
 Follow Skia, Reanimated, and Gesture Handler install docs for your toolchain (Babel plugin, `GestureHandlerRootView`, etc.).
 
+### Babel (required)
+
+The package ships **TypeScript source**; your app’s bundler must compile it with the same stack as a typical **Expo / Reanimated 4** project. In practice that means:
+
+- **`babel-preset-expo`** (or an equivalent that includes Reanimated’s Babel plugin), and
+- **`react-native-worklets/plugin`** — keep it **last** in the `plugins` array, matching this repo’s root [`babel.config.js`](babel.config.js).
+
+If you omit Worklets or reorder plugins, worklets in the chart may fail at build or runtime.
+
+### Metro / `package.json` exports
+
+From **Expo SDK 53+**, Metro resolves `import` using `package.json` **`exports`**, including the **`react-native`** condition (see [Expo Metro: ES Module resolution](https://docs.expo.dev/versions/latest/config/metro/#es-module-resolution)). This library’s runtime entry is **`src/index.ts`** under that condition. If you disabled package exports (`unstable_enablePackageExports: false`), align your resolver or re-enable exports so resolution matches the published map.
+
 ## Install
+
+### Migrating from 0.1.x
+
+**1.0.0** is a **breaking** packaging change: runtime code is no longer precompiled in **`dist/*.js`**. Metro (or your bundler) compiles **`src/`** with **your** Babel + Worklets version, so there is no baked-in `__pluginVersion` in a published JS artifact.
+
+- Remove any dependency on **deep imports** of `react-native-livechart/dist/...` or other internal paths; import only from **`react-native-livechart`**.
+- Ensure your app meets **Babel** requirements above.
+- After `npm install`, the package’s **`prepare`** script emits **declaration files** only under `dist/` (for TypeScript); you do not consume those `.js` files at runtime.
 
 ### From npm (when published)
 
@@ -43,16 +64,16 @@ cd react-native-livechart/packages/react-native-livechart
 npm install
 npm pack
 # In your app:
-npm install /path/to/react-native-livechart-0.1.0.tgz
+npm install /path/to/react-native-livechart-1.0.0.tgz
 ```
 
-The package `prepare` script runs the full `build` (per-file Babel compile of `src/` into `dist/`, including the Worklets plugin, plus `tsc --emitDeclarationOnly` for types) so published `dist/` matches what Metro would transform and is safe for any normal resolver.
-
-**`react-native-worklets` and publishing:** The compiled `dist/` embeds the Worklets Babel plugin version (`__pluginVersion` in output). Whenever you bump `react-native-worklets` in an app or in this repo, run `npm run build` in `packages/react-native-livechart` and publish a new library version so `dist/` stays in sync with the Worklets version consumers install. Maintainers can run `npm run verify:worklets-dist` in that package (or rely on CI) to assert `dist/` matches the resolved `react-native-worklets` version.
+On install, **`prepare`** runs **`npm run build`** in the package, which is **`tsc --emitDeclarationOnly`** into **`dist/`** (types only). Runtime code is **`src/**/\*.ts(x)`**, compiled by **your** Metro + Babel pipeline — there is no precompiled `dist/index.js` anymore.
 
 **Jest:** The repo root uses a small Jest resolver plus a minimal Worklets native proxy in [`jest-setup.js`](jest-setup.js) so `react-native-reanimated` / `react-native-worklets` 0.7+ can load without JSI. A few unit tests that depend on full shared-value round-trips from layout effects or chained toggles are skipped; exercise those flows in the Expo app or E2E.
 
-**TODO (longer term):** Consider pointing the published package’s `react-native` field at **`src/`** and letting **Metro compile** the library in consuming apps (with documented Babel / resolver requirements), instead of shipping precompiled `dist/` with embedded Worklets `__pluginVersion`. That removes the “rebuild and republish whenever Worklets bumps” coupling but is a larger packaging and consumer-setup change than the current `dist/` + `verify:worklets-dist` approach.
+### Packaging (maintainers)
+
+[`packages/react-native-livechart/package.json`](packages/react-native-livechart/package.json) points **`react-native`**, **`main`**, **`module`**, and **`exports`** (except **`types`**) at **`./src/index.ts`**. **`dist/`** contains only **`.d.ts`** (+ maps) from [`tsconfig.build.json`](packages/react-native-livechart/tsconfig.build.json). [`babel.lib.config.cjs`](packages/react-native-livechart/babel.lib.config.cjs) remains available if you ever need a local Babel build for debugging; it is not part of the default publish path.
 
 **B. `file:` dependency**
 
@@ -125,6 +146,8 @@ Run the example from the repository root:
 npm install
 npm start
 ```
+
+The example app bundles the library from **`src/`**; Metro’s [`watchFolders`](metro.config.js) include the package so Fast Refresh sees edits without a separate library bundler. Optionally run **`npm run build:lib:types:watch`** if you want **`dist/*.d.ts`** regenerated continuously for editor/tsconfig consumers.
 
 Screens demonstrate candlestick mode, multi-series, scrub, momentum tuning, degen mode, loading / paused states, and more.
 

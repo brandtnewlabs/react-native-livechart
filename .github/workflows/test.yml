@@ -22,8 +22,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify dist matches react-native-worklets
-        run: npm run verify:worklets-dist -w react-native-livechart
-
       - name: Run tests
         run: npm test -- --no-coverage --ci --forceExit
