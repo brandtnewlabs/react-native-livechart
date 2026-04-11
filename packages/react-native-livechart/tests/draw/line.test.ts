@@ -1,12 +1,18 @@
 import {
+  BADGE_DOT_GAP,
+  BADGE_MARGIN_RIGHT,
+  BADGE_PILL_PAD_X,
   BADGE_TAIL_LEN,
   DEFAULT_PADDING,
   badgeTailAndCap,
   buildLinePoints,
   gutterCenteredTextLeftX,
+  gutterRightAlignedTextLeftX,
+  minPaddingLeftForBadge,
   minPaddingRightForBadgeYAxisAlign,
   minPaddingRightForYAxisWithPulse,
   pulseRadialOutset,
+  resolveAutoLeft,
   resolveAutoRight,
   resolvePadding,
 } from "../../src/draw/line";
@@ -14,6 +20,28 @@ import {
 describe("gutterCenteredTextLeftX", () => {
   it("matches grid label placement", () => {
     expect(gutterCenteredTextLeftX(400, 130, 35)).toBe(317.5);
+  });
+});
+
+describe("gutterRightAlignedTextLeftX", () => {
+  it("places text flush to the right with margin", () => {
+    expect(gutterRightAlignedTextLeftX(400, 100, 8)).toBe(292);
+    expect(gutterRightAlignedTextLeftX(400, 100)).toBe(296);
+  });
+});
+
+describe("minPaddingLeftForBadge", () => {
+  it("includes margin, pill padding, text width, and dot gap", () => {
+    expect(minPaddingLeftForBadge(40)).toBe(
+      Math.ceil(BADGE_MARGIN_RIGHT + 2 * BADGE_PILL_PAD_X + 40 + BADGE_DOT_GAP),
+    );
+  });
+});
+
+describe("resolveAutoLeft", () => {
+  it("widens left inset for left badge", () => {
+    expect(resolveAutoLeft(true)).toBe(minPaddingLeftForBadge(49));
+    expect(resolveAutoLeft(false)).toBe(DEFAULT_PADDING.left);
   });
 });
 
@@ -126,6 +154,11 @@ describe("resolvePadding", () => {
     const r = resolvePadding({ left: 40 });
     expect(r.left).toBe(40);
     expect(r.right).toBe(DEFAULT_PADDING.right);
+  });
+
+  it("widens left padding when badgeOnLeft is true", () => {
+    const r = resolvePadding(undefined, false, false, true);
+    expect(r.left).toBe(resolveAutoLeft(true));
   });
 });
 

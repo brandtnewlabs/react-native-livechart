@@ -1,10 +1,11 @@
+import React from "react";
+import { View } from "react-native";
+import { useSharedValue } from "react-native-reanimated";
+
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import { LiveChartSeries } from "../src/components/LiveChartSeries";
 import type { SeriesConfig } from "../src/types";
-import React from "react";
-import { View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
 
 describe("LiveChartSeries", () => {
   it("renders with default scrub when scrub prop is omitted", async () => {
@@ -52,6 +53,31 @@ describe("LiveChartSeries", () => {
           onSeriesToggle={jest.fn()}
         />
       );
+    }
+    const screen = render(<H />);
+    await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
+
+  it("renders with per-series value lines", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return <LiveChartSeries series={series} dot={{ valueLine: true }} />;
     }
     const screen = render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
