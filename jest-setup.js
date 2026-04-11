@@ -1,3 +1,4 @@
+/* global jest */
 const reactNative = require("react-native");
 
 if (reactNative.TurboModuleRegistry == null) {
@@ -7,7 +8,7 @@ if (reactNative.TurboModuleRegistry == null) {
     writable: true,
     value: {
       get: () => ({
-        installTurboModule: () => {},
+        installTurboModule: () => { },
       }),
     },
   });
@@ -93,9 +94,14 @@ jest.mock("@shopify/react-native-skia", () => {
     LinearGradient: View,
     vec: (x, y) => ({ x, y }),
     matchFont: jest.fn(() => mockFont),
+    useFont: jest.fn(() => mockFont),
+    useFonts: jest.fn(() => null),
     Skia: {
       Path: {
         Make: jest.fn(() => createPath()),
+      },
+      FontMgr: {
+        System: jest.fn(() => ({})),
       },
     },
   };

@@ -1,6 +1,8 @@
 import type { ViewStyle } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
+import type { DataSourceParam, SkFontMgr } from "@shopify/react-native-skia";
+
 /** A single data point on the chart timeline. */
 export interface LiveChartPoint {
   /** Unix timestamp in seconds. */
@@ -160,6 +162,20 @@ export interface FontConfig {
   fontSize?: number;
   /** Font weight. Default `"normal"`. */
   fontWeight?: FontWeight;
+  /**
+   * Load this typeface from a Metro asset or URI (`require("./Font.ttf")`, path string, or
+   * `Uint8Array`). When set, Skia uses `useFont` for that file; `fontWeight` does not alter the
+   * outlines (use a bold file or `fontManager` for multiple weights). While the asset loads,
+   * the chart falls back to `matchFont` with `fontFamily` / defaults. Prefer either this or
+   * `fontManager`, not both, unless you intentionally want a registered family as fallback.
+   */
+  typeface?: DataSourceParam;
+  /**
+   * Custom Skia font manager from `useFonts` (e.g. bundled `.ttf` files registered under family
+   * names). Passed as the second argument to `matchFont`. When `null` or omitted, the system
+   * font manager is used.
+   */
+  fontManager?: SkFontMgr | null;
 }
 
 /** Padding insets for the chart drawing area. */
