@@ -200,6 +200,8 @@ export interface TradeEvent {
   size: number;
   /** Unix timestamp in seconds. */
   time: number;
+  /** Optional ticker symbol for simulated / custom feeds. */
+  symbol?: string;
 }
 
 /** Particle burst + screen shake on momentum swings ("degen mode"). */

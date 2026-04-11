@@ -11,7 +11,7 @@ import {
   MONO_FONT_FAMILY,
   type FontWeight,
 } from "react-native-livechart";
-import { useSimulatedData } from "../../sim/useSimulatedData";
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
 import { ACCENT_PRESETS } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
@@ -46,7 +46,7 @@ export default function AppearanceScreen() {
     useState<SkiaFontFamilyDemo>("platformMono");
   const [roundedStyle, setRoundedStyle] = useState(false);
 
-  const { data, value } = useSimulatedData({
+  const { data, value } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,

@@ -1,3 +1,7 @@
+/**
+ * Pure synthetic data helpers for the demo app and `useSimulatedChartData`.
+ * No React or Reanimated — safe from tests and `chartSimCore`.
+ */
 import type {
   CandlePoint,
   LiveChartPoint,
@@ -8,12 +12,16 @@ import type {
 // ─── Random walk ───────────────────────────────────────────────────────────────
 
 /** Box-Muller transform — returns a standard normal variate. */
-function gaussianRandom(): number {
+function gaussianFromRandom01(random01: () => number): number {
   let u = 0;
   let v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
+  while (u === 0) u = random01();
+  while (v === 0) v = random01();
   return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+function gaussianRandom(): number {
+  return gaussianFromRandom01(Math.random);
 }
 
 export interface HistoryOptions {
@@ -22,6 +30,8 @@ export interface HistoryOptions {
   startValue?: number;
   volatility?: number; // step size as fraction of value
   startTime?: number; // unix seconds, defaults to now - count*interval
+  /** Uniform [0,1) RNG for tests / deterministic seeding. Default `Math.random`. */
+  random01?: () => number;
 }
 
 /**
@@ -33,12 +43,13 @@ export function generateHistory(opts: HistoryOptions = {}): LiveChartPoint[] {
   const volatility = opts.volatility ?? 0.003;
   let value = opts.startValue ?? 100;
   const startTime = opts.startTime ?? Date.now() / 1000 - count * interval;
+  const random01 = opts.random01 ?? Math.random;
 
   const points: LiveChartPoint[] = [];
   for (let i = 0; i < count; i++) {
     const time = startTime + i * interval;
     points.push({ time, value });
-    value += value * volatility * gaussianRandom();
+    value += value * volatility * gaussianFromRandom01(random01);
     if (value < 0.01) value = 0.01;
   }
   return points;
@@ -70,6 +81,7 @@ export function volatilityFor(mode: VolatilityMode): number {
   }
 }
 
+/** Chart tick interval in ms (legacy demos). Live sim cadence uses `tradesPerSecond`, not this. */
 export function intervalFor(mode: VolatilityMode): number {
   switch (mode) {
     case "calm":
@@ -208,12 +220,15 @@ export function bondingPrice(state: BondingCurveState): number {
  * Simulate a buy or sell on the bonding curve.
  * Returns the updated state and a TradeEvent.
  */
-export function bondingTrade(state: BondingCurveState): {
+export function bondingTrade(
+  state: BondingCurveState,
+  random01: () => number = Math.random,
+): {
   state: BondingCurveState;
   event: TradeEvent;
 } {
-  const isBuy = Math.random() > 0.45; // slight buy bias for upward trend
-  const amount = Math.pow(Math.random(), 2) * 20 + 1;
+  const isBuy = random01() > 0.45; // slight buy bias for upward trend
+  const amount = Math.pow(random01(), 2) * 20 + 1;
   const newSupply = isBuy
     ? state.supply + amount
     : Math.max(1, state.supply - amount);
@@ -247,9 +262,7 @@ export interface MultiSeriesOptions {
 /**
  * Generate correlated random walks for multiple series.
  */
-export function generateMultiSeries(
-  opts: MultiSeriesOptions,
-): SeriesConfig[] {
+export function generateMultiSeries(opts: MultiSeriesOptions): SeriesConfig[] {
   const {
     ids,
     colors,

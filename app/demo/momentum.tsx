@@ -1,11 +1,11 @@
-import { Pressable, Text, View } from "react-native";
-import { ACCENT, VOLATILITY_MODES } from "./lib/shared";
-import type { Momentum, MomentumConfig } from "react-native-livechart";
-
 import { useState } from "react";
-import { useSimulatedData } from "../../sim/useSimulatedData";
+import { Pressable, Text, View } from "react-native";
+import type { Momentum, MomentumConfig } from "react-native-livechart";
 import { LiveChart } from "react-native-livechart";
+
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
+import { ACCENT, VOLATILITY_MODES } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
 
 export const options = { title: "Momentum" };
@@ -39,7 +39,7 @@ export default function MomentumScreen() {
     useState<(typeof VOLATILITY_MODES)[number]>("volatile");
   const [exaggerate, setExaggerate] = useState(true);
 
-  const { data, value } = useSimulatedData({
+  const { data, value } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,

@@ -1,9 +1,9 @@
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { BadgeConfig, PulseConfig } from "react-native-livechart";
-
-import { useState } from "react";
-import { useSimulatedData } from "../../sim/useSimulatedData";
 import { LiveChart } from "react-native-livechart";
+
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
 import { ACCENT } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
@@ -43,7 +43,7 @@ export default function BadgePulseScreen() {
   const [badgeMode, setBadgeMode] = useState<BadgeMode>("on");
   const [pulseMode, setPulseMode] = useState<PulseMode>("on");
 
-  const { data, value } = useSimulatedData({
+  const { data, value } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,

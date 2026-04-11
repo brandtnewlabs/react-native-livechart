@@ -139,9 +139,13 @@ export function tickTradeStream(
     const sizeRatio =
       maxSize > 0 ? picked.size / maxSize : /* istanbul ignore next */ 0.5;
 
+    const sym =
+      "symbol" in picked && typeof picked.symbol === "string" && picked.symbol
+        ? `${picked.symbol} `
+        : "";
     state.labels.push({
       y: chartBottom,
-      text: `${picked.side === "buy" ? "+" : "-"} ${formatSize(picked.size)}`,
+      text: `${sym}${picked.side === "buy" ? "+" : "-"} ${formatSize(picked.size)}`,
       green: picked.side === "buy",
       life: LABEL_LIFETIME,
       maxLife: LABEL_LIFETIME,

@@ -1,10 +1,10 @@
-import { Pressable, Text, View } from "react-native";
-import { ACCENT, VOLATILITY_MODES } from "./lib/shared";
-
 import { useState } from "react";
-import { useSimulatedData } from "../../sim/useSimulatedData";
+import { Pressable, Text, View } from "react-native";
 import { LiveChart } from "react-native-livechart";
+
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
+import { ACCENT, VOLATILITY_MODES } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
 
 export const options = { title: "Trade stream" };
@@ -13,11 +13,13 @@ export default function TradeStreamScreen() {
   const [streamOn, setStreamOn] = useState(true);
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("normal");
 
-  const { data, value, tradeStream } = useSimulatedData({
+  const { data, value, tradeStream } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: streamOn,
     volatilityMode: vol,
+    tradesPerSecond: 5,
+    tokenSymbol: "SIM",
   });
 
   return (

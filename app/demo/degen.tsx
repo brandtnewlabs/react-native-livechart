@@ -1,12 +1,12 @@
-import { Pressable, Text, View } from "react-native";
-import { ACCENT, VOLATILITY_MODES } from "./lib/shared";
-
 import { useState } from "react";
-import { useSimulatedData } from "../../sim/useSimulatedData";
-import { LiveChart } from "react-native-livechart";
-import { DemoScreen } from "./lib/DemoScreen";
-import { demoStyles } from "./lib/styles";
+import { Pressable, Text, View } from "react-native";
 import type { DegenOptions } from "react-native-livechart";
+import { LiveChart } from "react-native-livechart";
+
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
+import { DemoScreen } from "./lib/DemoScreen";
+import { ACCENT, VOLATILITY_MODES } from "./lib/shared";
+import { demoStyles } from "./lib/styles";
 
 export const options = { title: "Degen" };
 
@@ -65,7 +65,7 @@ export default function DegenScreen() {
   const [preset, setPreset] = useState<Preset>("on");
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("volatile");
 
-  const { data, value } = useSimulatedData({
+  const { data, value } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,

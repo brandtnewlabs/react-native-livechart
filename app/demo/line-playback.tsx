@@ -1,10 +1,10 @@
-import { Pressable, Text, View } from "react-native";
-import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "./lib/shared";
-
 import { useState } from "react";
-import { useSimulatedData } from "../../sim/useSimulatedData";
+import { Pressable, Text, View } from "react-native";
 import { LiveChart } from "react-native-livechart";
+
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
+import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
 
 export const options = { title: "Line & playback" };
@@ -15,7 +15,7 @@ export default function LinePlaybackScreen() {
   const [smoothing, setSmoothing] = useState(0.08);
   const [exaggerate, setExaggerate] = useState(false);
 
-  const { data, value } = useSimulatedData({
+  const { data, value } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,

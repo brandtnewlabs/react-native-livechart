@@ -1,12 +1,12 @@
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import type { ChartInsets } from "react-native-livechart";
 import { LiveChart, LiveChartSeries } from "react-native-livechart";
 
-import { useState } from "react";
-import { useSimulatedData } from "../../sim/useSimulatedData";
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
 import { ACCENT } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
-import type { ChartInsets } from "react-native-livechart";
 
 export const options = { title: "Axes & insets" };
 
@@ -36,7 +36,7 @@ export default function AxesInsetsScreen() {
   const yAxis = !yOn ? false : gap === "wide" ? { minGap: 72 } : true;
   const xAxis = !xOn ? false : gap === "wide" ? { minGap: 100 } : true;
 
-  const { data, value, series } = useSimulatedData({
+  const { data, value, series } = useSimulatedChartData({
     multiSeries: which === "multi",
     candleAggregation: false,
     tradeStream: false,

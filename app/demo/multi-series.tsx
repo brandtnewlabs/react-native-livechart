@@ -1,10 +1,5 @@
 import { useRef, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import Animated, {
-  useAnimatedProps,
-  useSharedValue,
-} from "react-native-reanimated";
-import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "./lib/shared";
 import {
   formatTime,
   LiveChartSeries,
@@ -12,8 +7,13 @@ import {
   type MultiSeriesDotConfig,
   type SeriesConfig,
 } from "react-native-livechart";
+import Animated, {
+  useAnimatedProps,
+  useSharedValue,
+} from "react-native-reanimated";
+import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "./lib/shared";
 
-import { useSimulatedData } from "../../sim/useSimulatedData";
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
 import { demoStyles } from "./lib/styles";
 
@@ -52,7 +52,7 @@ export default function MultiSeriesScreen() {
   const [legendCompact, setLegendCompact] = useState(false);
   const [legendPosition, setLegendPosition] = useState<"top" | "bottom">("top");
 
-  const sim = useSimulatedData({
+  const sim = useSimulatedChartData({
     multiSeries: !empty,
     candleAggregation: false,
     tradeStream: false,

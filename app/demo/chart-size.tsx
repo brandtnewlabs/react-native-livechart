@@ -1,12 +1,12 @@
-import { Pressable, Text, View } from "react-native";
-
 import { useState } from "react";
-import { useSharedValue } from "react-native-reanimated";
-import { useSimulatedData } from "../../sim/useSimulatedData";
+import { Pressable, Text, View } from "react-native";
+import type { LiveChartPoint } from "react-native-livechart";
 import { LiveChart } from "react-native-livechart";
+import { useSharedValue } from "react-native-reanimated";
+
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { ACCENT } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
-import type { LiveChartPoint } from "react-native-livechart";
 
 export const options = { title: "Chart size" };
 
@@ -21,7 +21,7 @@ export default function ChartSizeScreen() {
   const emptyData = useSharedValue<LiveChartPoint[]>([]);
   const emptyValue = useSharedValue(0);
 
-  const { data, value } = useSimulatedData({
+  const { data, value } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,

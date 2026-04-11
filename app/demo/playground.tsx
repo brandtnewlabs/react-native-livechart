@@ -20,15 +20,21 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import type { VolatilityMode } from "../../sim/generators";
-import { useSimulatedData, type TradeSource } from "../../sim/useSimulatedData";
+import {
+  useSimulatedChartData,
+  type HistoryRange,
+  type TradeSource,
+} from "../../sim/useSimulatedChartData";
 import {
   AnimatedTrendTextInput,
   type NumberFormatConfig,
 } from "./lib/AnimatedTrendTextInput";
 import {
+  HISTORY_RANGE_PRESETS,
   PRICE_RANGES,
   TIME_WINDOWS,
   TRADE_SOURCES,
+  viewportSecsForHistoryPreset,
   VOLATILITY_MODES,
 } from "./lib/shared";
 
@@ -51,6 +57,10 @@ export default function PlaygroundScreen() {
   const [tradeSource, setTradeSource] = useState<TradeSource>("orderbook");
   const [paused, setPaused] = useState(false);
   const [windowSecs, setWindowSecs] = useState(30);
+  const [historyRange, setHistoryRange] = useState<HistoryRange>("1d");
+  const [tradesPerSecond, setTradesPerSecond] = useState(5);
+  const [tradeArrivalJitter, setTradeArrivalJitter] = useState(0);
+  const [tokenSymbol, setTokenSymbol] = useState("");
   const [startValue, setStartValue] = useState(100);
   const [loading, setLoading] = useState(false);
   const [forceEmpty, setForceEmpty] = useState(false);
@@ -65,16 +75,21 @@ export default function PlaygroundScreen() {
 
   const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
 
-  const { data, value, candles, liveCandle, tradeStream } = useSimulatedData({
-    volatilityMode,
-    tradeSource,
-    paused,
-    startValue,
-    candleWidth: candleWidthSecs,
-    multiSeries: false,
-    candleAggregation: displayMode === "candle",
-    tradeStream: simTradeStream,
-  });
+  const { data, value, candles, liveCandle, tradeStream } =
+    useSimulatedChartData({
+      volatilityMode,
+      tradeSource,
+      paused,
+      startValue,
+      candleWidth: candleWidthSecs,
+      multiSeries: false,
+      candleAggregation: displayMode === "candle",
+      tradeStream: simTradeStream,
+      historyRange,
+      tradesPerSecond,
+      tradeArrivalJitter,
+      tokenSymbol: tokenSymbol.trim() || undefined,
+    });
   const volatilitySv = useSharedValue(volatilityMode);
   useEffect(() => {
     volatilitySv.value = volatilityMode;
@@ -147,7 +162,7 @@ export default function PlaygroundScreen() {
           onScrub={(point) => {
             scrubPoint.value = point;
           }}
-          tradeStream={tradeStream}
+          tradeStream={simTradeStream ? tradeStream : undefined}
           degen={degen ? true : undefined}
         />
       </View>
@@ -240,6 +255,88 @@ export default function PlaygroundScreen() {
             </Pressable>
           ))}
         </View>
+
+        <Text style={styles.sectionLabel}>History span (seed)</Text>
+        <View style={styles.buttonRow}>
+          {HISTORY_RANGE_PRESETS.map((r) => (
+            <Pressable
+              key={r.preset}
+              style={[
+                styles.chip,
+                historyRange === r.preset && styles.chipActive,
+              ]}
+              onPress={() => {
+                setHistoryRange(r.preset);
+                setWindowSecs(viewportSecsForHistoryPreset(r.preset));
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  historyRange === r.preset && styles.chipTextActive,
+                ]}
+              >
+                {r.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>Trades / sec (live)</Text>
+        <View style={styles.buttonRow}>
+          {[1, 5, 10, 20].map((n) => (
+            <Pressable
+              key={n}
+              style={[styles.chip, tradesPerSecond === n && styles.chipActive]}
+              onPress={() => setTradesPerSecond(n)}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  tradesPerSecond === n && styles.chipTextActive,
+                ]}
+              >
+                {n}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>Trade arrival jitter</Text>
+        <View style={styles.buttonRow}>
+          {[
+            { label: "0", v: 0 },
+            { label: "0.25", v: 0.25 },
+            { label: "0.5", v: 0.5 },
+          ].map(({ label, v }) => (
+            <Pressable
+              key={label}
+              style={[
+                styles.chip,
+                tradeArrivalJitter === v && styles.chipActive,
+              ]}
+              onPress={() => setTradeArrivalJitter(v)}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  tradeArrivalJitter === v && styles.chipTextActive,
+                ]}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>Token symbol (tape)</Text>
+        <TextInput
+          style={styles.textInput}
+          placeholder="e.g. PEPE"
+          placeholderTextColor="#64748b"
+          value={tokenSymbol}
+          onChangeText={setTokenSymbol}
+        />
 
         <Text style={styles.sectionLabel}>Price Range</Text>
         <View style={styles.buttonRow}>
@@ -493,5 +590,16 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: "#fff",
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: "#fff",
+    fontFamily: MONO_FONT_FAMILY,
+    fontSize: 14,
+    marginBottom: 8,
   },
 });
