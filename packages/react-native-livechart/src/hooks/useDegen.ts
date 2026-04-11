@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
+  runOnJS,
   useDerivedValue,
   useFrameCallback,
   useSharedValue,
@@ -9,7 +10,7 @@ import {
 import type { ResolvedDegenConfig } from "../core/resolveConfig";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { computeShake, spawnBurst, tickParticles } from "../math/degenTick";
-import type { Momentum } from "../types";
+import type { DegenShakePayload, Momentum } from "../types";
 
 export function useDegen(
   engine: SingleEngineState,
@@ -17,6 +18,7 @@ export function useDegen(
   dotY: SharedValue<number>,
   momentumSV: SharedValue<Momentum>,
   cfg: ResolvedDegenConfig | null,
+  onShake?: (payload: DegenShakePayload) => void,
 ): {
   pack: SharedValue<Float64Array<ArrayBuffer>>;
   packRevision: SharedValue<number>;
@@ -50,6 +52,14 @@ export function useDegen(
   const shakeY = useSharedValue(0);
   const shakeStart = useSharedValue(0);
   const prevTimestamp = useSharedValue(0);
+  const hasOnShakeListenerSV = useSharedValue(0);
+
+  const onShakeRef = useRef(onShake);
+  onShakeRef.current = onShake;
+
+  const emitShake = useCallback((direction: "up" | "down") => {
+    onShakeRef.current?.({ direction });
+  }, []);
 
   const degenOff = cfg === null;
   const resolvedScale = cfg?.scale ?? 1;
@@ -73,11 +83,13 @@ export function useDegen(
     if (degenOff) {
       enabledSV.value = 0;
       shakeEnabledSV.value = 0;
+      hasOnShakeListenerSV.value = 0;
       shakeStart.value = 0;
       shakeX.value = 0;
       shakeY.value = 0;
       return;
     }
+    hasOnShakeListenerSV.value = onShake != null ? 1 : 0;
     enabledSV.value = 1;
     scaleSV.value = resolvedScale;
     downSV.value = resolvedDown ? 1 : 0;
@@ -103,6 +115,7 @@ export function useDegen(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- shared value refs are stable; react only to cfg primitives
   }, [
     degenOff,
+    onShake,
     resolvedScale,
     resolvedDown,
     resolvedShake,
@@ -168,7 +181,12 @@ export function useDegen(
               baseRot: writeRot.value,
               slots,
             });
-            if (shakeEnabledSV.value > 0.5) shakeStart.value = now;
+            if (shakeEnabledSV.value > 0.5) {
+              shakeStart.value = now;
+              if (hasOnShakeListenerSV.value > 0.5) {
+                runOnJS(emitShake)(isUp ? "up" : "down");
+              }
+            }
           }
         }
       }

@@ -1,5 +1,7 @@
-import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
+
+import { renderHook } from "@testing-library/react-native";
+
 import { resolveDegen } from "../../src/core/resolveConfig";
 import { useLiveChartEngine } from "../../src/core/useLiveChartEngine";
 import { useDegen } from "../../src/hooks/useDegen";
@@ -71,5 +73,25 @@ describe("useDegen", () => {
     });
 
     expect(result.current.pack).toBeDefined();
+  });
+
+  it("accepts optional onShake callback", () => {
+    const onShake = jest.fn();
+    const { result } = renderHook(() => {
+      const engine = useMakeEngine();
+      const dotX = useSharedValue(100);
+      const dotY = useSharedValue(80);
+      const momentum = useSharedValue<"flat" | "up" | "down">("flat");
+      return useDegen(
+        engine,
+        dotX,
+        dotY,
+        momentum,
+        resolveDegen(true),
+        onShake,
+      );
+    });
+
+    expect(result.current.shakeTransform).toBeDefined();
   });
 });

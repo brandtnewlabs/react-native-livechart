@@ -15,8 +15,8 @@ export { LiveChart, LiveChartSeries };
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 
-  export { formatTime, formatValue } from "./lib/format";
-  export { MONO_FONT_FAMILY } from "./lib/monoFontFamily";
+export { formatTime, formatValue } from "./lib/format";
+export { MONO_FONT_FAMILY } from "./lib/monoFontFamily";
 
 // ── Optional hooks (degen / trade markers — see README) ───────────────────────
 
@@ -31,6 +31,7 @@ export type {
   CandlePoint,
   ChartInsets,
   DegenOptions,
+  DegenShakePayload,
   FontConfig,
   FontWeight,
   GradientConfig,
@@ -57,6 +58,5 @@ export type {
   TradeEvent,
   ValueLineConfig,
   XAxisConfig,
-  YAxisConfig
+  YAxisConfig,
 } from "./types";
-
