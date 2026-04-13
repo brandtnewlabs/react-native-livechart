@@ -1,15 +1,39 @@
 import { Skia } from "@shopify/react-native-skia";
+import { useMemo } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { drawSpline } from "../math/spline";
 import { blendPtsY, squigglifyPts } from "../math/squiggly";
 
+/**
+ * Persistent `linePath` / `fillPath` `SkPath`s that are **mutated in place** each frame.
+ *
+ * Why not `useDerivedValue(() => Skia.Path.Make())`? Each call would allocate a brand-new
+ * JSI-backed `SkPath`, and on iOS the native GC lags the JS GC under a steady firehose —
+ * resident memory climbs steadily for as long as the chart is mounted. Here we allocate
+ * two paths per curve once and ping-pong the reference each frame so Reanimated's
+ * value-equality early-return still fires its subscribers (i.e. the Skia reanimated
+ * container re-records and repaints).
+ */
 export function useChartPaths(
   engine: SingleEngineState,
   padding: ChartPadding,
   morphT?: SharedValue<number>,
 ) {
+  // Two persistent paths per curve; ping-pong so the returned reference changes
+  // every frame, which keeps Reanimated's setter from short-circuiting the notify.
+  const cache = useMemo(
+    () => ({
+      lineA: Skia.Path.Make(),
+      lineB: Skia.Path.Make(),
+      fillA: Skia.Path.Make(),
+      fillB: Skia.Path.Make(),
+      tick: false,
+    }),
+    [],
+  );
+
   const flatPts = useDerivedValue(() => {
     const realPts = buildLinePoints(
       engine.data.value,
@@ -44,7 +68,9 @@ export function useChartPaths(
 
   const linePath = useDerivedValue(() => {
     const pts = flatPts.value;
-    const path = Skia.Path.Make();
+    cache.tick = !cache.tick;
+    const path = cache.tick ? cache.lineA : cache.lineB;
+    path.reset();
     const n = pts.length >> 1;
     if (n < 2) return path;
     path.moveTo(pts[0], pts[1]);
@@ -54,7 +80,10 @@ export function useChartPaths(
 
   const fillPath = useDerivedValue(() => {
     const pts = flatPts.value;
-    const path = Skia.Path.Make();
+    // Use the same tick flag flipped by linePath — flipping again here would
+    // keep both paths in sync, so just read the current parity.
+    const path = cache.tick ? cache.fillA : cache.fillB;
+    path.reset();
     const n = pts.length >> 1;
     if (n < 2) return path;
     path.moveTo(pts[0], pts[1]);

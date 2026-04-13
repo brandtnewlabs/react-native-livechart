@@ -9,6 +9,7 @@ import {
   vec,
   type SkFont,
 } from "@shopify/react-native-skia";
+import { useMemo } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import {
   BADGE_DOT_GAP,
@@ -33,9 +34,9 @@ const RECT_H = 4;
 const RECT_R = 4;
 const RECT_SPACING = 32;
 
-function buildSplinePath(pts: number[]) {
+function buildSplineInto(path: ReturnType<typeof Skia.Path.Make>, pts: number[]) {
   "worklet";
-  const path = Skia.Path.Make();
+  path.reset();
   const n = pts.length >> 1;
   if (n < 2) return path;
   path.moveTo(pts[0], pts[1]);
@@ -73,10 +74,25 @@ export function LoadingOverlay({
 }) {
   // Same left-inset formula as GridOverlay (only used when badge=true)
   const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize(), badgeTail);
+
+  // Ping-pong persistent paths — avoid allocating a JSI-backed SkPath per frame
+  // while the squiggly loading/empty-state animation is running.
+  const squigglyCache = useMemo(
+    () => ({
+      a: Skia.Path.Make(),
+      b: Skia.Path.Make(),
+      tick: false,
+    }),
+    [],
+  );
+
   // Squiggly path — animated each frame via timestamp
   const squigglyPath = useDerivedValue(() => {
+    squigglyCache.tick = !squigglyCache.tick;
+    const path = squigglyCache.tick ? squigglyCache.a : squigglyCache.b;
     if (!isLoading.value && !isEmpty.value && morphT.value >= 1) {
-      return Skia.Path.Make();
+      path.reset();
+      return path;
     }
     const pts = buildSquigglyPts(
       engine.canvasWidth.value,
@@ -84,7 +100,7 @@ export function LoadingOverlay({
       padding,
       engine.timestamp.value,
     );
-    return buildSplinePath(pts);
+    return buildSplineInto(path, pts);
   });
 
   // Fades out quickly as the reveal animation begins (first 33% of morphT)

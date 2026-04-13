@@ -1,4 +1,5 @@
 import { DashPathEffect, Path, Skia } from "@shopify/react-native-skia";
+import { useMemo } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { ChartPadding } from "../draw/line";
@@ -23,8 +24,20 @@ export function ValueLineOverlay({
   intervals: [number, number];
   color: string;
 }) {
+  // Ping-pong persistent paths — avoid allocating a JSI-backed SkPath per frame.
+  const cache = useMemo(
+    () => ({
+      a: Skia.Path.Make(),
+      b: Skia.Path.Make(),
+      tick: false,
+    }),
+    [],
+  );
+
   const path = useDerivedValue(() => {
-    const p = Skia.Path.Make();
+    cache.tick = !cache.tick;
+    const p = cache.tick ? cache.a : cache.b;
+    p.reset();
     const y = dotY.value;
     if (y < 0) return p;
     p.moveTo(padding.left, y);

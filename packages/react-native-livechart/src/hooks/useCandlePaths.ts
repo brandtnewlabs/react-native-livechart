@@ -1,4 +1,5 @@
 import { Skia } from "@shopify/react-native-skia";
+import { useMemo } from "react";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -14,6 +15,13 @@ import type { CandlePoint } from "../types";
 
 const CANDLE_WIDTH_LERP_SPEED = 0.08;
 
+/**
+ * Persistent candle `SkPath`s — two per geometry slot (up/down bodies + up/down wicks).
+ * Each derived value ping-pongs between its pair and mutates the picked path in place
+ * so we don't allocate a new JSI-backed `SkPath` per frame. See {@link useChartPaths}
+ * for the rationale (this was the primary driver of the iOS memory climb under live
+ * ticking).
+ */
 export function useCandlePaths(
   engine: SingleEngineState,
   padding: ChartPadding,
@@ -24,6 +32,24 @@ export function useCandlePaths(
 ) {
   const targetCandleWidth = useDerivedValue(() => candleWidthSecs);
   const displayCandleWidth = useSharedValue(candleWidthSecs);
+
+  const cache = useMemo(
+    () => ({
+      upBodiesA: Skia.Path.Make(),
+      upBodiesB: Skia.Path.Make(),
+      downBodiesA: Skia.Path.Make(),
+      downBodiesB: Skia.Path.Make(),
+      upWicksA: Skia.Path.Make(),
+      upWicksB: Skia.Path.Make(),
+      downWicksA: Skia.Path.Make(),
+      downWicksB: Skia.Path.Make(),
+      ubTick: false,
+      dbTick: false,
+      uwTick: false,
+      dwTick: false,
+    }),
+    [],
+  );
 
   useFrameCallback((frameInfo) => {
     "worklet";
@@ -56,7 +82,9 @@ export function useCandlePaths(
 
   /* istanbul ignore next -- worklet */
   const upBodiesPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    cache.ubTick = !cache.ubTick;
+    const path = cache.ubTick ? cache.upBodiesA : cache.upBodiesB;
+    path.reset();
     const { bodies } = geometry.value;
     for (let i = 0; i < bodies.length; i++) {
       if (bodies[i].up) {
@@ -70,7 +98,9 @@ export function useCandlePaths(
 
   /* istanbul ignore next -- worklet */
   const downBodiesPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    cache.dbTick = !cache.dbTick;
+    const path = cache.dbTick ? cache.downBodiesA : cache.downBodiesB;
+    path.reset();
     const { bodies } = geometry.value;
     for (let i = 0; i < bodies.length; i++) {
       if (!bodies[i].up) {
@@ -84,7 +114,9 @@ export function useCandlePaths(
 
   /* istanbul ignore next -- worklet */
   const upWicksPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    cache.uwTick = !cache.uwTick;
+    const path = cache.uwTick ? cache.upWicksA : cache.upWicksB;
+    path.reset();
     const { wicks } = geometry.value;
     for (let i = 0; i < wicks.length; i++) {
       if (wicks[i].up) {
@@ -97,7 +129,9 @@ export function useCandlePaths(
 
   /* istanbul ignore next -- worklet */
   const downWicksPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    cache.dwTick = !cache.dwTick;
+    const path = cache.dwTick ? cache.downWicksA : cache.downWicksB;
+    path.reset();
     const { wicks } = geometry.value;
     for (let i = 0; i < wicks.length; i++) {
       if (!wicks[i].up) {

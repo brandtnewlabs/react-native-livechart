@@ -1,5 +1,6 @@
 import { DashPathEffect, Group, Path, Skia } from "@shopify/react-native-skia";
 
+import { useMemo } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";
 import type { ChartPadding } from "../draw/line";
@@ -19,8 +20,19 @@ function SeriesValueLineAtIndex({
   color: string;
   config: ResolvedValueLineConfig;
 }) {
+  const cache = useMemo(
+    () => ({
+      a: Skia.Path.Make(),
+      b: Skia.Path.Make(),
+      tick: false,
+    }),
+    [],
+  );
+
   const path = useDerivedValue(() => {
-    const p = Skia.Path.Make();
+    cache.tick = !cache.tick;
+    const p = cache.tick ? cache.a : cache.b;
+    p.reset();
     const h = engine.canvasHeight.value;
     if (h === 0) return p;
     const s = engine.series.value;
