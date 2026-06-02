@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import {
   formatTime,
@@ -51,6 +51,10 @@ export default function MultiSeriesScreen() {
   const [legendVisible, setLegendVisible] = useState(true);
   const [legendCompact, setLegendCompact] = useState(false);
   const [legendPosition, setLegendPosition] = useState<"top" | "bottom">("top");
+  const [styled, setStyled] = useState(false);
+  const [legendStyled, setLegendStyled] = useState(false);
+  const [degenOn, setDegenOn] = useState(false);
+  const [degenColors, setDegenColors] = useState(false);
 
   const sim = useSimulatedChartData({
     multiSeries: !empty,
@@ -65,6 +69,27 @@ export default function MultiSeriesScreen() {
 
   const seriesSource = empty ? emptySeries : sim.series;
 
+  // Inject per-series stroke style onto the sim's series objects (mutated in
+  // place, so style survives the sim's per-tick data appends).
+  useEffect(() => {
+    if (empty) return;
+    sim.series.modify((arr) => {
+      "worklet";
+      for (let i = 0; i < arr.length; i++) {
+        if (styled) {
+          arr[i].style = i % 2 === 1 ? "dashed" : "solid";
+          arr[i].glow = i === 0;
+          arr[i].strokeWidth = i === 0 ? 3 : 2;
+        } else {
+          arr[i].style = undefined;
+          arr[i].glow = undefined;
+          arr[i].strokeWidth = undefined;
+        }
+      }
+      return arr;
+    });
+  }, [styled, empty, sim.series]);
+
   const dotConfig: MultiSeriesDotConfig = {
     radius: dotRadius,
     pulse,
@@ -76,6 +101,16 @@ export default function MultiSeriesScreen() {
     visible: legendVisible,
     compact: legendCompact,
     position: legendPosition,
+    style: legendStyled
+      ? {
+          borderRadius: 20,
+          fontSize: 14,
+          dotSize: 10,
+          activeBackground: "rgba(96,165,250,0.18)",
+          activeColor: "#ffffff",
+          hiddenColor: "rgba(255,255,255,0.35)",
+        }
+      : undefined,
   };
 
   return (
@@ -107,6 +142,13 @@ export default function MultiSeriesScreen() {
             emptyText="No series"
             dot={dotConfig}
             legend={legendConfig}
+            degen={
+              degenOn
+                ? degenColors
+                  ? { colors: ["#f472b6", "#22d3ee", "#fde047"] }
+                  : true
+                : false
+            }
             scrub
             onSeriesToggle={
               empty
@@ -278,6 +320,56 @@ export default function MultiSeriesScreen() {
             ]}
           >
             Bottom
+          </Text>
+        </Pressable>
+      </View>
+
+      <Text style={demoStyles.sectionLabel}>Per-series style & degen</Text>
+      <View style={demoStyles.buttonRow}>
+        <Pressable
+          style={[demoStyles.chip, styled && demoStyles.chipActive]}
+          onPress={() => setStyled((v) => !v)}
+        >
+          <Text
+            style={[demoStyles.chipText, styled && demoStyles.chipTextActive]}
+          >
+            Styled lines
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[demoStyles.chip, legendStyled && demoStyles.chipActive]}
+          onPress={() => setLegendStyled((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              legendStyled && demoStyles.chipTextActive,
+            ]}
+          >
+            Legend style
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[demoStyles.chip, degenOn && demoStyles.chipActive]}
+          onPress={() => setDegenOn((v) => !v)}
+        >
+          <Text
+            style={[demoStyles.chipText, degenOn && demoStyles.chipTextActive]}
+          >
+            Degen
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[demoStyles.chip, degenColors && demoStyles.chipActive]}
+          onPress={() => setDegenColors((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              degenColors && demoStyles.chipTextActive,
+            ]}
+          >
+            Degen colors
           </Text>
         </Pressable>
       </View>

@@ -71,12 +71,16 @@ export function SeriesToggleChips({
   };
 
   const compact = legend.compact;
+  const st = legend.style;
 
   return (
     <View style={[styles.row, compact && styles.rowCompact]}>
       {snapshot.map((s) => {
         const on = s.visible !== false;
         const label = s.label ?? s.id;
+        const swatchSize = st?.dotSize;
+        const chipBg = on ? st?.activeBackground : st?.hiddenBackground;
+        const textColor = on ? st?.activeColor : st?.hiddenColor;
         return (
           <Pressable
             key={s.id}
@@ -85,20 +89,36 @@ export function SeriesToggleChips({
               styles.chip,
               compact && styles.chipCompact,
               on && styles.chipOn,
+              st?.borderRadius !== undefined && { borderRadius: st.borderRadius },
+              chipBg !== undefined && { backgroundColor: chipBg },
             ]}
           >
             <View
-              style={[styles.swatch, { backgroundColor: s.color ?? "#888" }]}
+              style={[
+                styles.swatch,
+                { backgroundColor: s.color ?? "#888" },
+                swatchSize !== undefined && {
+                  width: swatchSize,
+                  height: swatchSize,
+                  borderRadius: swatchSize / 2,
+                },
+              ]}
             />
             <Text
               style={[
                 styles.chipText,
                 compact && styles.chipTextCompact,
                 on && styles.chipTextOn,
+                s.kind === "derived" && styles.chipTextDerived,
+                st?.fontSize !== undefined && { fontSize: st.fontSize },
+                textColor !== undefined && { color: textColor },
               ]}
               numberOfLines={1}
             >
               {label}
+              {s.valueLabel ? (
+                <Text style={styles.chipValue}> {s.valueLabel}</Text>
+              ) : null}
             </Text>
           </Pressable>
         );
@@ -155,5 +175,12 @@ const styles = StyleSheet.create({
   },
   chipTextOn: {
     color: "rgba(255,255,255,0.9)",
+  },
+  chipTextDerived: {
+    fontStyle: "italic",
+    opacity: 0.85,
+  },
+  chipValue: {
+    fontWeight: "700",
   },
 });

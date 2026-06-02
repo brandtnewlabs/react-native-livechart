@@ -17,9 +17,13 @@ import { scheduleOnRN } from "react-native-worklets";
 import { MAX_MULTI_SERIES } from "../constants";
 import {
   lineColorsSignatureFromArray,
+  lineStyleSignatureFromArray,
   resolveMultiSeriesLineColorsSnapshot,
+  resolveMultiSeriesLineStylesSnapshot,
+  type SeriesLineStyle,
 } from "../core/multiSeriesLayout";
 import {
+  resolveDegen,
   resolveGridStyle,
   resolveLeftEdgeFade,
   resolveLegend,
@@ -35,6 +39,7 @@ import {
   useChartReveal,
   useChartSkiaFont,
   useCrosshairSeries,
+  useMultiSeriesDegen,
   useMultiSeriesLinePaths,
   useMultiSeriesReverseMorphInputs,
   useXAxis,
@@ -54,6 +59,7 @@ import {
 } from "../theme";
 import type { LiveChartSeriesProps, SeriesConfig } from "../types";
 import { CrosshairLine } from "./CrosshairLine";
+import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { MultiSeriesDots } from "./MultiSeriesDots";
@@ -100,6 +106,8 @@ export function LiveChartSeries({
   seriesToggleCompact,
   dot: dotProp,
   legend: legendProp,
+  degen,
+  onDegenShake,
   leftEdgeFade = true,
 }: LiveChartSeriesProps) {
   const yAxisCfg = resolveYAxis(yAxis);
@@ -109,6 +117,7 @@ export function LiveChartSeries({
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
   const legendCfg = resolveLegend(legendProp, seriesToggleCompact);
+  const degenCfg = resolveDegen(degen);
 
   const allRefLines = useMemo(
     () => [
@@ -230,6 +239,35 @@ export function LiveChartSeries({
     syncColors(series);
   }, [series, syncColors]);
 
+  // Per-series stroke style (dash / width / glow) — synced to React state when
+  // the style signature changes (not on every data tick), like the colors above.
+  const [lineStyles, setLineStyles] = useState<SeriesLineStyle[]>(() =>
+    resolveMultiSeriesLineStylesSnapshot([]),
+  );
+
+  const syncStyles = useCallback((sv: SharedValue<SeriesConfig[]>) => {
+    setLineStyles(resolveMultiSeriesLineStylesSnapshot(sv.value));
+  }, []);
+
+  useAnimatedReaction(
+    () => lineStyleSignatureFromArray(series.value),
+    /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
+    (sig, prev) => {
+      if (sig !== prev) scheduleOnRN(syncStyles, series);
+    },
+    [series, syncStyles],
+  );
+
+  useEffect(() => {
+    syncStyles(series);
+  }, [series, syncStyles]);
+
+  const {
+    pack: degenPack,
+    packRevision: degenPackRevision,
+    shakeTransform: degenShakeTransform,
+  } = useMultiSeriesDegen(engine, effectivePadding, degenCfg, onDegenShake);
+
   const { yAxisEntries } = useYAxis(
     engine,
     effectivePadding,
@@ -277,6 +315,7 @@ export function LiveChartSeries({
       <View style={[{ flex: 1, backgroundColor }, style]} onLayout={onLayout}>
         {legendTop}
         <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
+          <Group transform={degenShakeTransform}>
           {yAxisCfg && (
             <Group opacity={reveal.yAxisOpacity}>
               <YAxisOverlay
@@ -325,6 +364,7 @@ export function LiveChartSeries({
                 opacities={engine.seriesOpacities}
                 series={effectiveSeries}
                 strokeWidth={strokeWidth}
+                lineStyle={lineStyles[i]}
               />
             ))}
           </Group>
@@ -361,6 +401,21 @@ export function LiveChartSeries({
             </Group>
           )}
 
+          {degenCfg && (
+            <Group opacity={reveal.dotOpacity}>
+              <DegenParticlesOverlay
+                pack={degenPack}
+                packRevision={degenPackRevision}
+                engine={engine}
+                palette={palette}
+                particleSlotCount={degenCfg.particleSlotCount}
+                particleBurstDurationSec={degenCfg.particleBurstDurationSec}
+                particleOpacity={degenCfg.particleOpacity}
+                colors={degenCfg.colors ?? lineColors}
+              />
+            </Group>
+          )}
+
           <LoadingOverlay
             engine={engine}
             padding={effectivePadding}
@@ -373,6 +428,7 @@ export function LiveChartSeries({
             strokeWidth={strokeWidth}
             badge={false}
           />
+          </Group>
 
           {leftEdgeFadeCfg && (
             <LeftEdgeFade

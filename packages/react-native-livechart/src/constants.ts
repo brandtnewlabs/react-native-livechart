@@ -29,7 +29,9 @@ export const EMPTY_TEXT_GAP_PAD = 20;
 export const EMPTY_GAP_FADE_WIDTH = 30;
 
 /**
- * Floats per degen particle slot: `x, y, vx, vy, t0, active, size`.
+ * Floats per degen particle slot: `x, y, vx, vy, t0, active, size, colorIndex`.
+ * `colorIndex` selects which entry of the renderer's color list a particle uses
+ * (multi-series sets it per series; single-series cycles it per particle).
  * Layout is fixed; not on `DegenOptions` because changing it needs matching renderer changes.
  */
-export const DEGEN_STRIDE = 7;
+export const DEGEN_STRIDE = 8;

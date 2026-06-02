@@ -7,6 +7,7 @@ import {
   type DerivedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import { DEGEN_STRIDE } from "../constants";
 import type { ResolvedDegenConfig } from "../core/resolveConfig";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { computeShake, spawnBurst, tickParticles } from "../math/degenTick";
@@ -27,7 +28,7 @@ export function useDegen(
   >;
 } {
   const MAX_SLOTS = 80;
-  const pack = useSharedValue(new Float64Array(MAX_SLOTS * 7));
+  const pack = useSharedValue(new Float64Array(MAX_SLOTS * DEGEN_STRIDE));
   const packRevision = useSharedValue(0);
   const prevM = useSharedValue<Momentum>("flat");
   const writeRot = useSharedValue(0);
@@ -146,7 +147,7 @@ export function useDegen(
       prevTimestamp.value = now;
 
       if (enabledSV.value < 0.5) {
-        for (let i = 0; i < slots; i++) buf[i * 7 + 5] = 0;
+        for (let i = 0; i < slots; i++) buf[i * DEGEN_STRIDE + 5] = 0;
         prevM.value = momentumSV.value;
         prevActiveCount.value = 0;
         shakeStart.value = 0;
@@ -182,6 +183,7 @@ export function useDegen(
               now,
               baseRot: writeRot.value,
               slots,
+              colorIndex: -1, // cycle the color list per particle
             });
             if (shakeEnabledSV.value > 0.5) {
               shakeStart.value = now;
