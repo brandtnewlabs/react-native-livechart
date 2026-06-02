@@ -327,6 +327,24 @@ export interface MultiSeriesDotConfig {
   valueLabel?: boolean;
 }
 
+/** Visual style overrides for the legend (toggle chips). All fields optional. */
+export interface LegendStyle {
+  /** Font size for chip labels (px). Default `13` (`11` when compact). */
+  fontSize?: number;
+  /** Chip corner radius (px). Default `8`. */
+  borderRadius?: number;
+  /** Colored swatch diameter (px). Default `8`. */
+  dotSize?: number;
+  /** Chip background when the series is visible. */
+  activeBackground?: string;
+  /** Chip background when the series is hidden. */
+  hiddenBackground?: string;
+  /** Label color when the series is visible. */
+  activeColor?: string;
+  /** Label color when the series is hidden. */
+  hiddenColor?: string;
+}
+
 /** Legend (toggle chips) configuration for multi-series charts. */
 export interface LegendConfig {
   /** Show the legend. Default `true`. */
@@ -335,6 +353,8 @@ export interface LegendConfig {
   compact?: boolean;
   /** Position of the legend relative to the chart. Default `"top"`. */
   position?: "top" | "bottom";
+  /** Visual style overrides for the chip row. */
+  style?: LegendStyle;
 }
 
 /** Configuration for a single series in a multi-series chart. */
@@ -351,6 +371,21 @@ export interface SeriesConfig {
   label?: string;
   /** Whether this series is visible. Default `true`. */
   visible?: boolean;
+  /** Stroke style. `"dashed"` applies `intervals`. Default `"solid"`. */
+  style?: "solid" | "dashed";
+  /** Dash pattern as `[dashLength, gapLength]` when `style` is `"dashed"`. Default `[6, 4]`. */
+  intervals?: [number, number];
+  /** Per-series stroke width override (px). Falls back to the chart line width. */
+  strokeWidth?: number;
+  /** Render a soft glow behind this series' line. Default `false`. */
+  glow?: boolean;
+  /**
+   * Semantic role. `"derived"` series (e.g. a conviction trajectory) render a
+   * subdued / dashed legend chip. Default `"outcome"`.
+   */
+  kind?: "outcome" | "derived";
+  /** Value text shown next to the label inside the legend chip. */
+  valueLabel?: string;
 }
 
 /** Per-series value at a scrub position, used in the multi-series `onScrub` callback. */
@@ -547,6 +582,13 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
   dot?: MultiSeriesDotConfig;
   /** Legend (toggle chips) configuration. `true` = defaults, `false` = hidden, or pass `LegendConfig`. Default `true`. */
   legend?: boolean | LegendConfig;
+  /**
+   * Degen mode — chart shake + a spark burst off the leading series' dot on an
+   * upward momentum swing. `true` = defaults, or pass `DegenOptions`. Default off.
+   */
+  degen?: boolean | DegenOptions;
+  /** Called on the JS thread when a degen chart shake starts. */
+  onDegenShake?: (payload: DegenShakePayload) => void;
   /**
    * Worklet callback fired on the UI thread each frame while scrubbing.
    * `null` when scrub ends. Update shared values directly — no bridge overhead.

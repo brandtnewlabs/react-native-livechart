@@ -72,7 +72,7 @@ const DEMOS: { href: Href; title: string; blurb: string }[] = [
   {
     href: "/demo/multi-series",
     title: "Multi-series",
-    blurb: "LiveChartSeries, toggles, scrub, shared core props.",
+    blurb: "Per-series style, degen, legend styling, toggles, scrub.",
   },
 ];
 

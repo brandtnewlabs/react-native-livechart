@@ -2,15 +2,18 @@ import { Circle, Group } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { DEGEN_STRIDE } from "../constants";
 import type { LiveChartPalette } from "../types";
-import type { SingleEngineState } from "../core/useLiveChartEngine";
+import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 type DegenPack = SharedValue<Float64Array<ArrayBuffer>>;
 
 /**
  * Renders one particle slot from the packed ring buffer.
- * Buffer layout per slot (stride = DEGEN_STRIDE = 7):
- *   [0] x, [1] y, [2] vx, [3] vy, [4] t0, [5] active, [6] size
+ * Buffer layout per slot (stride = DEGEN_STRIDE = 8):
+ *   [0] x, [1] y, [2] vx, [3] vy, [4] t0, [5] active, [6] size, [7] colorIndex
  * See `math/degenTick.ts` for the authoritative layout documentation.
+ *
+ * Each particle stores a `colorIndex` (set at spawn) that selects its color
+ * from `colorList`, so multi-series bursts render in their own series' color.
  */
 function DegenSlot({
   index,
@@ -19,15 +22,15 @@ function DegenSlot({
   engine,
   particleBurstDurationSec,
   particleOpacity,
-  color,
+  colorList,
 }: {
   index: number;
   pack: DegenPack;
   packRevision: SharedValue<number>;
-  engine: SingleEngineState;
+  engine: ChartEngineLayout;
   particleBurstDurationSec: number;
   particleOpacity: number;
-  color: string;
+  colorList: string[];
 }) {
   const base = index * DEGEN_STRIDE;
 
@@ -76,6 +79,18 @@ function DegenSlot({
     return life * particleOpacity;
   });
 
+  /* istanbul ignore next -- worklet */
+  const color = useDerivedValue(() => {
+    // Read packRevision so this re-runs each frame — the pack buffer is mutated
+    // in place (stable reference), so without this the color would freeze at the
+    // mount-time colorIndex (0) for every particle.
+    const rev = packRevision.value;
+    const buf = pack.value;
+    if (!(rev >= 0)) return colorList[0];
+    const idx = Math.max(0, Math.floor(buf[base + 7]));
+    return colorList[idx % colorList.length];
+  });
+
   return <Circle cx={cx} cy={cy} r={r} color={color} opacity={opacity} />;
 }
 
@@ -91,7 +106,7 @@ export function DegenParticlesOverlay({
 }: {
   pack: DegenPack;
   packRevision: SharedValue<number>;
-  engine: SingleEngineState;
+  engine: ChartEngineLayout;
   palette: LiveChartPalette;
   particleSlotCount: number;
   particleBurstDurationSec: number;
@@ -111,7 +126,7 @@ export function DegenParticlesOverlay({
         engine={engine}
         particleBurstDurationSec={particleBurstDurationSec}
         particleOpacity={particleOpacity}
-        color={colorList[i % colorList.length]}
+        colorList={colorList}
       />,
     );
   }

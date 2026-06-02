@@ -62,6 +62,22 @@ describe("spawnBurst", () => {
     }
   });
 
+  it("cycles colorIndex per particle when colorIndex is -1 (default)", () => {
+    const buf = new Float64Array(20 * DEGEN_STRIDE);
+    spawnBurst(buf, makeParams({ burst: 5 }));
+    for (let k = 0; k < 5; k++) {
+      expect(buf[k * DEGEN_STRIDE + 7]).toBe(k);
+    }
+  });
+
+  it("writes a fixed colorIndex to every particle when set", () => {
+    const buf = new Float64Array(20 * DEGEN_STRIDE);
+    spawnBurst(buf, makeParams({ burst: 5, colorIndex: 3 }));
+    for (let k = 0; k < 5; k++) {
+      expect(buf[k * DEGEN_STRIDE + 7]).toBe(3);
+    }
+  });
+
   it("returns updated rotation", () => {
     const buf = new Float64Array(20 * DEGEN_STRIDE);
     const rot = spawnBurst(

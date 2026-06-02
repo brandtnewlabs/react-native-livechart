@@ -1,6 +1,8 @@
 import {
   lineColorsSignatureFromArray,
+  lineStyleSignatureFromArray,
   resolveMultiSeriesLineColorsSnapshot,
+  resolveMultiSeriesLineStylesSnapshot,
 } from "../src/core/multiSeriesLayout";
 
 import { MAX_MULTI_SERIES } from "../src/constants";
@@ -46,5 +48,70 @@ describe("resolveMultiSeriesLineColorsSnapshot", () => {
     const snap = resolveMultiSeriesLineColorsSnapshot(many);
     expect(snap[0]).toBe(SERIES_COLORS[0 % SERIES_COLORS.length]);
     expect(snap[1]).toBe(SERIES_COLORS[1 % SERIES_COLORS.length]);
+  });
+});
+
+describe("lineStyleSignatureFromArray", () => {
+  it("encodes style / strokeWidth / glow / intervals per series", () => {
+    const a: SeriesConfig[] = [
+      {
+        id: "a",
+        data: [],
+        value: 1,
+        style: "dashed",
+        strokeWidth: 3,
+        glow: true,
+        intervals: [6, 4],
+      },
+      { id: "b", data: [], value: 2 },
+    ];
+    expect(lineStyleSignatureFromArray(a)).toBe(
+      "a\x1fdashed\x1f3\x1f1\x1f6,4\x1eb\x1f\x1f\x1f0\x1f",
+    );
+  });
+
+  it("changes when a style field changes", () => {
+    const solid: SeriesConfig[] = [{ id: "a", data: [], value: 1 }];
+    const dashed: SeriesConfig[] = [
+      { id: "a", data: [], value: 1, style: "dashed" },
+    ];
+    expect(lineStyleSignatureFromArray(solid)).not.toBe(
+      lineStyleSignatureFromArray(dashed),
+    );
+  });
+});
+
+describe("resolveMultiSeriesLineStylesSnapshot", () => {
+  it("resolves dashed / width / glow and pads empty slots with defaults", () => {
+    const a: SeriesConfig[] = [
+      {
+        id: "a",
+        data: [],
+        value: 1,
+        style: "dashed",
+        strokeWidth: 4,
+        glow: true,
+        intervals: [2, 2],
+      },
+    ];
+    const snap = resolveMultiSeriesLineStylesSnapshot(a, 2);
+    expect(snap[0]).toEqual({
+      strokeWidth: 4,
+      dashed: true,
+      intervals: [2, 2],
+      glow: true,
+    });
+    expect(snap[1]).toEqual({
+      strokeWidth: undefined,
+      dashed: false,
+      intervals: [6, 4],
+      glow: false,
+    });
+  });
+
+  it("defaults to MAX_MULTI_SERIES length", () => {
+    expect(resolveMultiSeriesLineStylesSnapshot([]).length).toBe(
+      MAX_MULTI_SERIES,
+    );
   });
 });

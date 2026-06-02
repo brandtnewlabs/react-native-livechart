@@ -8,6 +8,7 @@ import type {
   GridStyleConfig,
   LeftEdgeFadeConfig,
   LegendConfig,
+  LegendStyle,
   MultiSeriesDotConfig,
   PulseConfig,
   ReferenceLine,
@@ -498,12 +499,15 @@ export interface ResolvedLegendConfig {
   visible: boolean;
   compact: boolean;
   position: "top" | "bottom";
+  /** Raw style overrides; the chip row applies its own fallbacks. */
+  style: LegendStyle | undefined;
 }
 
 const LEGEND_DEFAULTS: ResolvedLegendConfig = {
   visible: true,
   compact: false,
   position: "top",
+  style: undefined,
 };
 
 export function resolveLegend(
@@ -518,5 +522,6 @@ export function resolveLegend(
     visible: prop.visible ?? LEGEND_DEFAULTS.visible,
     compact: prop.compact ?? compactFallback ?? LEGEND_DEFAULTS.compact,
     position: prop.position ?? LEGEND_DEFAULTS.position,
+    style: prop.style,
   };
 }

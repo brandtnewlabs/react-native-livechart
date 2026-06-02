@@ -13,6 +13,7 @@ export { useLiveChartHasData } from "./useLiveChartHasData";
 export { useLiveDot } from "./useLiveDot";
 export { useModeBlend } from "./useModeBlend";
 export { useMomentum } from "./useMomentum";
+export { useMultiSeriesDegen } from "./useMultiSeriesDegen";
 export { useMultiSeriesLinePaths } from "./useMultiSeriesLinePaths";
 export { useReferenceLine } from "./useReferenceLine";
 export {

@@ -21,6 +21,7 @@ const DEFAULT_LEGEND: ResolvedLegendConfig = {
   visible: true,
   compact: false,
   position: "top",
+  style: undefined,
 };
 
 function ChipsHarness({
@@ -173,5 +174,42 @@ describe("SeriesToggleChips", () => {
     const screen = render(<NoColorHarness />);
     await flushScheduleOnRN();
     expect(screen.getByText("Plain")).toBeTruthy();
+  });
+
+  it("applies style overrides and renders valueLabel + derived kind", async () => {
+    function StyledHarness() {
+      const series = useSharedValue<SeriesConfig[]>([
+        {
+          id: "yes",
+          label: "Yes",
+          data: [],
+          value: 1,
+          color: "#22c55e",
+          valueLabel: "62%",
+          kind: "derived",
+        },
+      ]);
+      return (
+        <SeriesToggleChips
+          series={series}
+          legend={{
+            ...DEFAULT_LEGEND,
+            style: {
+              fontSize: 16,
+              borderRadius: 20,
+              dotSize: 12,
+              activeBackground: "#101010",
+              activeColor: "#ffffff",
+            },
+          }}
+        />
+      );
+    }
+    const screen = render(<StyledHarness />);
+    await flushScheduleOnRN();
+    // valueLabel renders as a nested <Text>, so the chip's text node reads
+    // "Yes 62%" — match with regexes rather than exact strings.
+    expect(screen.getByText(/Yes/)).toBeTruthy();
+    expect(screen.getByText(/62%/)).toBeTruthy();
   });
 });

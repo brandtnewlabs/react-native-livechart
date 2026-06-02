@@ -4,15 +4,16 @@
  * Particles live in a packed `Float64Array` ring buffer.  Each slot occupies
  * `DEGEN_STRIDE` (7) contiguous floats:
  *
- * | offset | field    | description                          |
- * | ------ | -------- | ------------------------------------ |
- * |   0    | x        | current x position (px)              |
- * |   1    | y        | current y position (px)              |
- * |   2    | vx       | velocity x (px/s)                    |
- * |   3    | vy       | velocity y (px/s)                    |
- * |   4    | t0       | spawn timestamp (seconds)            |
- * |   5    | active   | 1 = alive, 0 = expired               |
- * |   6    | size     | particle radius (px, pre-scaled)      |
+ * | offset | field      | description                          |
+ * | ------ | ---------- | ------------------------------------ |
+ * |   0    | x          | current x position (px)              |
+ * |   1    | y          | current y position (px)              |
+ * |   2    | vx         | velocity x (px/s)                    |
+ * |   3    | vy         | velocity y (px/s)                    |
+ * |   4    | t0         | spawn timestamp (seconds)            |
+ * |   5    | active     | 1 = alive, 0 = expired               |
+ * |   6    | size       | particle radius (px, pre-scaled)     |
+ * |   7    | colorIndex | index into the renderer's color list |
  *
  * All functions are worklet-safe for UI-thread execution.
  */
@@ -56,6 +57,13 @@ export interface SpawnParams {
   baseRot: number;
   /** Total number of slots in the ring buffer. */
   slots: number;
+  /**
+   * Color list index written to every particle in this burst. Use a fixed value
+   * (e.g. a series index) to color the whole burst uniformly, or `-1` to cycle
+   * the renderer's color list per particle (the particle's loop index is stored).
+   * Defaults to `-1`.
+   */
+  colorIndex?: number;
 }
 
 /** Write `p.burst` particles into the ring buffer starting at `p.baseRot`. Returns the next rotation index. */
@@ -63,6 +71,7 @@ export function spawnBurst(buf: Float64Array, p: SpawnParams): number {
   "worklet";
   const stride = DEGEN_STRIDE;
   const rot = p.baseRot;
+  const colorIndex = p.colorIndex ?? -1;
   for (let k = 0; k < p.burst; k++) {
     const slot = (rot + k) % p.slots;
     const b = slot * stride;
@@ -77,6 +86,8 @@ export function spawnBurst(buf: Float64Array, p: SpawnParams): number {
     buf[b + 5] = 1;
     buf[b + 6] =
       (p.szMin + hash(k + 400, p.now * 1000) * (p.szMax - p.szMin)) * p.sc;
+    // Fixed index colors the whole burst; -1 cycles per particle via k.
+    buf[b + 7] = colorIndex < 0 ? k : colorIndex;
   }
   return (rot + p.burst) % p.slots;
 }
