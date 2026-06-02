@@ -173,6 +173,19 @@ export function resolveTheme(color: string, mode: ThemeMode): LiveChartPalette {
 }
 
 /**
+ * Merge caller palette overrides on top of a derived palette. Only the keys
+ * present on `override` are replaced; everything else keeps the derived value.
+ * Returns the original palette unchanged when no override is supplied.
+ */
+export function applyPaletteOverride(
+  palette: LiveChartPalette,
+  override: Partial<LiveChartPalette> | undefined,
+): LiveChartPalette {
+  if (!override) return palette;
+  return { ...palette, ...override };
+}
+
+/**
  * Default multi-series line colors — Tailwind 500 scale, order: blue, red, green,
  * amber, violet, pink, cyan, orange.
  */

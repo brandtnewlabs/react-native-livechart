@@ -51,8 +51,8 @@ const DEMOS: { href: Href; title: string; blurb: string }[] = [
   },
   {
     href: "/demo/horizontal-lines",
-    title: "Reference & value lines",
-    blurb: "referenceLine and valueLine styling.",
+    title: "Reference lines & bands",
+    blurb: "referenceLines array: lines, value/time bands, off-axis badge.",
   },
   {
     href: "/demo/trade-stream",

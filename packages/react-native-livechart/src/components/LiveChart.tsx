@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
@@ -20,9 +21,9 @@ import {
   resolveBadge,
   resolveDegen,
   resolveGradient,
+  resolveGridStyle,
   resolveLeftEdgeFade,
   resolvePulse,
-  resolveReferenceLineConfig,
   resolveScrub,
   resolveTradeStream,
   resolveValueLine,
@@ -45,7 +46,6 @@ import {
   useLiveDot,
   useModeBlend,
   useMomentum,
-  useReferenceLine,
   useSingleChartReverseMorphInputs,
   useTradeStream,
   useXAxis,
@@ -56,7 +56,12 @@ import {
   formatValue as defaultFormatValue,
 } from "../lib/format";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
-import { leftEdgeFadeColorsFromBgRgb, resolveTheme } from "../theme";
+import { collectReferenceValues } from "../math/referenceLines";
+import {
+  applyPaletteOverride,
+  leftEdgeFadeColorsFromBgRgb,
+  resolveTheme,
+} from "../theme";
 import type { LiveChartProps, TradeEvent } from "../types";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
@@ -97,6 +102,8 @@ export function LiveChart({
   loading = false,
   smoothing = 0.08,
   exaggerate = false,
+  nonNegative = false,
+  maxValue,
   emptyText = "No data",
   formatValue = defaultFormatValue,
   formatTime = defaultFormatTime,
@@ -109,6 +116,9 @@ export function LiveChart({
   pulse = true,
   valueLine = true,
   referenceLine,
+  referenceLines,
+  gridStyle,
+  palette: paletteOverride,
   scrub = true,
   tradeStream,
   degen,
@@ -130,15 +140,31 @@ export function LiveChart({
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
   const valueLineCfg = resolveValueLine(valueLine);
   const pulseCfg = resolvePulse(pulse);
-  const refLineCfg = resolveReferenceLineConfig(referenceLine);
+  const gridStyleCfg = resolveGridStyle(gridStyle);
   const degenCfg = resolveDegen(degen);
   const tradeStreamResolved = resolveTradeStream(tradeStream);
+
+  // Merge the legacy singular `referenceLine` into the `referenceLines` array.
+  const allRefLines = useMemo(
+    () => [
+      ...(referenceLine ? [referenceLine] : []),
+      ...(referenceLines ?? []),
+    ],
+    [referenceLine, referenceLines],
+  );
+  const refValues = useMemo(
+    () => collectReferenceValues(allRefLines),
+    [allRefLines],
+  );
 
   const badgeUsesRightGutter =
     badgeCfg !== null && (badgeCfg.position ?? "right") === "right";
 
   // ── Theme, font and layout ─────────────────────────────────────────────
-  const palette = resolveTheme(accentColor, theme);
+  const palette = applyPaletteOverride(
+    resolveTheme(accentColor, theme),
+    paletteOverride,
+  );
 
   const leftEdgeFadeCfg = resolveLeftEdgeFade(
     leftEdgeFade,
@@ -205,7 +231,9 @@ export function LiveChart({
     paused,
     smoothing,
     exaggerate,
-    referenceValue: referenceLine?.value,
+    referenceValues: refValues,
+    nonNegative,
+    maxValue,
     mode,
     candles: isCandle ? candlesEngine : candles,
     liveCandle: isCandle ? liveEngine : liveCandle,
@@ -253,14 +281,6 @@ export function LiveChart({
   } = useDegen(engine, dotX, dotY, momentumSV, degenCfg, onDegenShake);
 
   // ── Overlay hooks ─────────────────────────────────────────────────────
-  const referenceLineLayout = useReferenceLine(
-    engine,
-    effectivePadding,
-    referenceLine,
-    formatValue,
-    skiaFont,
-  );
-
   const { yAxisEntries } = useYAxis(
     engine,
     effectivePadding,
@@ -343,6 +363,7 @@ export function LiveChart({
                   font={skiaFont}
                   badge={badgeUsesRightGutter}
                   badgeTail={badgeCfg?.tail ?? true}
+                  gridStyle={gridStyleCfg}
                 />
               </Group>
             )}
@@ -374,16 +395,18 @@ export function LiveChart({
               </Group>
             )}
 
-            {refLineCfg && (
+            {allRefLines.map((rl, i) => (
               <ReferenceLineOverlay
-                layout={referenceLineLayout}
-                strokeWidth={refLineCfg.strokeWidth}
-                intervals={refLineCfg.intervals}
-                color={refLineCfg.color ?? palette.refLine}
-                labelColor={palette.refLabel}
+                // eslint-disable-next-line react/no-array-index-key
+                key={i}
+                engine={engine}
+                padding={effectivePadding}
+                line={rl}
+                palette={palette}
+                formatValue={formatValue}
                 font={skiaFont}
               />
-            )}
+            ))}
 
             {/* Chart line (fades out in candle mode) */}
             <Group opacity={lineGroupOpacity}>

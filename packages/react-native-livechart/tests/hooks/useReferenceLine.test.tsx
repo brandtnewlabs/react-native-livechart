@@ -148,4 +148,159 @@ describe("useReferenceLine", () => {
     expect(result.current.value.visible).toBe(true);
     expect(result.current.value.x1).toBe(DEFAULT_PADDING.left);
   });
+
+  // ── Form B — value band ─────────────────────────────────────────────────────
+
+  it("renders a value band with top above bottom", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { valueFrom: 20, valueTo: 60 }, fmt, font),
+    );
+    const l = result.current.value;
+    expect(l.visible).toBe(true);
+    expect(l.yBottom).toBeGreaterThan(l.y);
+  });
+
+  it("returns invisible for a value band fully outside the range", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine({ displayMin: 0, displayMax: 10 }),
+        PADDING,
+        { valueFrom: 50, valueTo: 80 },
+        fmt,
+        font,
+      ),
+    );
+    expect(result.current.value.visible).toBe(false);
+  });
+
+  it("normalizes a reversed value band (valueFrom > valueTo)", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { valueFrom: 60, valueTo: 20 }, fmt, font),
+    );
+    const l = result.current.value;
+    expect(l.visible).toBe(true);
+    expect(l.yBottom).toBeGreaterThan(l.y);
+  });
+
+  it("clamps a value band that overflows both edges to the plot area", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { valueFrom: -50, valueTo: 150 },
+        fmt,
+        font,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.visible).toBe(true);
+    expect(l.y).toBe(PADDING.top);
+    expect(l.yBottom).toBe(300 - PADDING.bottom);
+  });
+
+  it("returns invisible for a value band when the range is degenerate", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine({ displayMin: 50, displayMax: 50 }),
+        PADDING,
+        { valueFrom: 20, valueTo: 60 },
+        fmt,
+        font,
+      ),
+    );
+    expect(result.current.value.visible).toBe(false);
+  });
+
+  // ── Form C — time band ──────────────────────────────────────────────────────
+
+  it("renders a time band spanning part of the window", () => {
+    // timestamp=0, window=30 → winStart=-30
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { from: -20, to: -5 }, fmt, font),
+    );
+    const l = result.current.value;
+    expect(l.visible).toBe(true);
+    expect(l.x2).toBeGreaterThan(l.x1);
+  });
+
+  it("returns invisible for a time band entirely before the window", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { from: -100, to: -60 }, fmt, font),
+    );
+    expect(result.current.value.visible).toBe(false);
+  });
+
+  it("normalizes a reversed time band and clamps to the chart edges", () => {
+    // from later than to → swapped; spans beyond both window edges → clamped.
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { from: 50, to: -50 }, fmt, font),
+    );
+    const l = result.current.value;
+    expect(l.visible).toBe(true);
+    expect(l.x1).toBe(PADDING.left);
+    expect(l.x2).toBe(400 - PADDING.right);
+  });
+
+  // ── Off-axis badge ──────────────────────────────────────────────────────────
+
+  it("shows an off-axis badge with an up chevron when above the range", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 150, offAxisBadge: true, offAxisBadgeLabel: "Target" },
+        fmt,
+        font,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.visible).toBe(true);
+    expect(l.offAxis).toBe(true);
+    expect(l.chevronUp).toBe(true);
+    expect(l.label).toContain("Target");
+  });
+
+  it("shows an off-axis badge with a down chevron when below the range", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: -50, offAxisBadge: true },
+        fmt,
+        font,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.offAxis).toBe(true);
+    expect(l.chevronUp).toBe(false);
+  });
+
+  // ── Label placement + showValue ─────────────────────────────────────────────
+
+  it("appends the value when showValue and a label are set", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50, label: "Tgt", showValue: true },
+        fmt,
+        font,
+      ),
+    );
+    expect(result.current.value.label).toBe("Tgt 50.00");
+  });
+
+  it("center-aligns the label when labelPosition is 'center'", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50, labelPosition: "center" },
+        fmt,
+        font,
+      ),
+    );
+    // center is left of the right-gutter default (x2 + 4 = 324)
+    expect(result.current.value.labelX).toBeLessThan(324);
+  });
 });

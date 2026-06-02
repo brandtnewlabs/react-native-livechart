@@ -1,7 +1,14 @@
-import { Group, Path, Skia, type SkFont } from "@shopify/react-native-skia";
+import {
+  DashPathEffect,
+  Group,
+  Path,
+  Skia,
+  type SkFont,
+} from "@shopify/react-native-skia";
 import { useMemo } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { BADGE_DOT_GAP } from "../constants";
+import type { ResolvedGridStyleConfig } from "../core/resolveConfig";
 import type { YAxisEntry } from "../draw/grid";
 import {
   badgeTailAndCap,
@@ -26,6 +33,7 @@ export function YAxisOverlay({
   badge = false,
   badgeTail = true,
   seriesLabelInset = 0,
+  gridStyle,
 }: {
   entries: SharedValue<YAxisEntry[]>;
   engine: ChartEngineLayout;
@@ -38,7 +46,13 @@ export function YAxisOverlay({
   badgeTail?: boolean;
   /** When > 0, series labels occupy the left portion of the gutter; Y-axis labels right-align. */
   seriesLabelInset?: number;
+  /** Grid-line styling overrides. Omit for the legacy solid 1px line. */
+  gridStyle?: ResolvedGridStyleConfig;
 }) {
+  const gridColor = gridStyle?.color ?? palette.gridLine;
+  const gridWidth = gridStyle?.strokeWidth ?? 1;
+  const gridIntervals = gridStyle?.intervals ?? [];
+  const gridOpacity = gridStyle?.opacity ?? 1;
   const gridCache = useMemo(
     () => ({
       a: Skia.Path.Make(),
@@ -89,12 +103,18 @@ export function YAxisOverlay({
 
   return (
     <Group>
-      <Path
-        path={gridLinesPath}
-        style="stroke"
-        strokeWidth={1}
-        color={palette.gridLine}
-      />
+      <Group opacity={gridOpacity}>
+        <Path
+          path={gridLinesPath}
+          style="stroke"
+          strokeWidth={gridWidth}
+          color={gridColor}
+        >
+          {gridIntervals.length > 0 && (
+            <DashPathEffect intervals={gridIntervals} />
+          )}
+        </Path>
+      </Group>
       {Array.from({ length: MAX_Y_LABELS }, (_, i) => (
         <AnimatedLabel
           key={i}

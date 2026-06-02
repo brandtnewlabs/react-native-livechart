@@ -3,6 +3,7 @@ import {
   resolveDegen,
   resolveFontConfig,
   resolveGradient,
+  resolveGridStyle,
   resolveLeftEdgeFade,
   resolvePulse,
   resolveReferenceLineConfig,
@@ -545,6 +546,37 @@ describe("resolveTradeStream", () => {
     expect(resolveTradeStream(mockStream, { labelOffsetX: 16 })).toEqual({
       maxCount: 50,
       labelOffsetX: 16,
+    });
+  });
+});
+
+describe("resolveGridStyle", () => {
+  it("returns the solid 1px default when omitted", () => {
+    expect(resolveGridStyle(undefined)).toEqual({
+      color: undefined,
+      strokeWidth: 1,
+      intervals: [],
+      opacity: 1,
+    });
+  });
+
+  it("merges provided fields over the defaults", () => {
+    expect(
+      resolveGridStyle({ color: "#fff", intervals: [1, 3], opacity: 0.5 }),
+    ).toEqual({
+      color: "#fff",
+      strokeWidth: 1,
+      intervals: [1, 3],
+      opacity: 0.5,
+    });
+  });
+
+  it("keeps default strokeWidth/opacity when only some fields are set", () => {
+    expect(resolveGridStyle({ strokeWidth: 2 })).toEqual({
+      color: undefined,
+      strokeWidth: 2,
+      intervals: [],
+      opacity: 1,
     });
   });
 });

@@ -22,6 +22,9 @@ export interface EngineConfig {
   smoothing: number;
   exaggerate?: boolean;
   referenceValue?: number;
+  referenceValues?: number[];
+  nonNegative?: boolean;
+  maxValue?: number;
   paused?: boolean;
   mode?: "line" | "candle";
   candles?: SharedValue<CandlePoint[]>;
@@ -74,6 +77,9 @@ export interface EngineFrameRefs {
   smoothing: SharedValue<number>;
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
+  referenceValues?: SharedValue<number[] | undefined>;
+  nonNegativeSV?: SharedValue<boolean>;
+  maxValueSV?: SharedValue<number | undefined>;
   pausedSV: SharedValue<boolean>;
   modeSV: SharedValue<"line" | "candle">;
   candles?: SharedValue<CandlePoint[]>;
@@ -105,6 +111,9 @@ export function applyLiveChartEngineFrame(
     smoothing: sv.smoothing.value,
     exaggerate: sv.exaggerateSV.value,
     referenceValue: sv.referenceValue.value,
+    referenceValues: sv.referenceValues?.value,
+    nonNegative: sv.nonNegativeSV?.value ?? false,
+    maxValue: sv.maxValueSV?.value,
     targetValue: sv.value.value,
     points: sv.data.value,
     nowSeconds: Date.now() / 1000,
@@ -126,6 +135,9 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
   const smoothing = useDerivedValue(() => config.smoothing);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
+  const referenceValues = useDerivedValue(() => config.referenceValues);
+  const nonNegativeSV = useDerivedValue(() => config.nonNegative ?? false);
+  const maxValueSV = useDerivedValue(() => config.maxValue);
   const pausedSV = useDerivedValue(() => config.paused ?? false);
   const modeSV = useDerivedValue(() => config.mode ?? "line");
 
@@ -158,6 +170,9 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
       smoothing,
       exaggerateSV,
       referenceValue,
+      referenceValues,
+      nonNegativeSV,
+      maxValueSV,
       pausedSV,
       modeSV,
       candles,

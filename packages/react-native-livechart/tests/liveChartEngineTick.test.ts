@@ -386,6 +386,64 @@ describe("tickLiveChartEngineFrame", () => {
     expect(s.displayMin).toBeLessThanOrEqual(-100);
   });
 
+  it("includes referenceValues array in range", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.2,
+      exaggerate: false,
+      referenceValue: undefined,
+      referenceValues: [500, -100],
+      targetValue: 10,
+      points: [{ time: 1000, value: 10 }],
+      nowSeconds: 1000,
+    });
+    expect(s.displayMax).toBeGreaterThan(100);
+    expect(s.displayMin).toBeLessThan(0);
+  });
+
+  it("clamps the lower bound to 0 when nonNegative", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.5,
+      exaggerate: false,
+      referenceValue: undefined,
+      nonNegative: true,
+      targetValue: 0,
+      points: [
+        { time: 1000, value: 0 },
+        { time: 1001, value: 0 },
+      ],
+      nowSeconds: 1000,
+    });
+    expect(s.displayMin).toBe(0);
+  });
+
+  it("caps the upper bound at maxValue", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.5,
+      exaggerate: false,
+      referenceValue: undefined,
+      maxValue: 100,
+      targetValue: 50,
+      points: [{ time: 1000, value: 200 }],
+      nowSeconds: 1000,
+    });
+    expect(s.displayMax).toBeLessThanOrEqual(100);
+  });
+
   it("freezes timestamp when paused=true", () => {
     const s = { ...baseState(), timestamp: 999 };
     tickLiveChartEngineFrame(s, {

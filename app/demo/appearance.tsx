@@ -45,6 +45,8 @@ export default function AppearanceScreen() {
   const [skiaFontFamily, setSkiaFontFamily] =
     useState<SkiaFontFamilyDemo>("platformMono");
   const [roundedStyle, setRoundedStyle] = useState(false);
+  const [gridDashed, setGridDashed] = useState(false);
+  const [paletteOverride, setPaletteOverride] = useState(false);
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -82,6 +84,14 @@ export default function AppearanceScreen() {
                 ? { typeface: googleSansCodeRegular }
                 : {}),
           }}
+          gridStyle={
+            gridDashed ? { intervals: [1, 3], opacity: 0.8 } : undefined
+          }
+          palette={
+            paletteOverride
+              ? { gridLine: "rgba(96,165,250,0.35)", gridLabel: "#60a5fa" }
+              : undefined
+          }
           style={
             roundedStyle
               ? {
@@ -321,6 +331,36 @@ export default function AppearanceScreen() {
             </Text>
           </Pressable>
         ))}
+      </View>
+
+      <Text style={demoStyles.sectionLabel}>Grid & palette</Text>
+      <View style={demoStyles.buttonRow}>
+        <Pressable
+          style={[demoStyles.chip, gridDashed && demoStyles.chipActive]}
+          onPress={() => setGridDashed((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              gridDashed && demoStyles.chipTextActive,
+            ]}
+          >
+            Dotted grid
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[demoStyles.chip, paletteOverride && demoStyles.chipActive]}
+          onPress={() => setPaletteOverride((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              paletteOverride && demoStyles.chipTextActive,
+            ]}
+          >
+            Palette override
+          </Text>
+        </Pressable>
       </View>
 
       <Text style={demoStyles.sectionLabel}>Container style</Text>

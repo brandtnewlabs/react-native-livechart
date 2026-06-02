@@ -5,6 +5,7 @@ import type {
   FontConfig,
   FontWeight,
   GradientConfig,
+  GridStyleConfig,
   LeftEdgeFadeConfig,
   LegendConfig,
   MultiSeriesDotConfig,
@@ -72,6 +73,15 @@ export interface ResolvedReferenceLineConfig {
   intervals: [number, number];
   /** undefined → use palette.refLine at render time */
   color: string | undefined;
+}
+
+export interface ResolvedGridStyleConfig {
+  /** undefined → use palette.gridLine at render time */
+  color: string | undefined;
+  strokeWidth: number;
+  /** Empty array → solid stroke (no dash effect). */
+  intervals: number[];
+  opacity: number;
 }
 
 export interface ResolvedFontConfig {
@@ -306,6 +316,30 @@ export function resolveReferenceLineConfig(
     strokeWidth: rl.strokeWidth ?? REFERENCE_LINE_VISUAL_DEFAULTS.strokeWidth,
     intervals: rl.intervals ?? REFERENCE_LINE_VISUAL_DEFAULTS.intervals,
     color: rl.color,
+  };
+}
+
+const GRID_STYLE_DEFAULTS: ResolvedGridStyleConfig = {
+  color: undefined,
+  strokeWidth: 1,
+  intervals: [],
+  opacity: 1,
+};
+
+/**
+ * Resolves the `gridStyle` prop into a fully-typed config. Always returns a
+ * config (the grid always needs concrete defaults); omitted fields fall back to
+ * the legacy solid 1px grid line.
+ */
+export function resolveGridStyle(
+  prop: GridStyleConfig | undefined,
+): ResolvedGridStyleConfig {
+  if (!prop) return GRID_STYLE_DEFAULTS;
+  return {
+    color: prop.color,
+    strokeWidth: prop.strokeWidth ?? GRID_STYLE_DEFAULTS.strokeWidth,
+    intervals: prop.intervals ?? GRID_STYLE_DEFAULTS.intervals,
+    opacity: prop.opacity ?? GRID_STYLE_DEFAULTS.opacity,
   };
 }
 
