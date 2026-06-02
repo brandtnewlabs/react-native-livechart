@@ -7,10 +7,11 @@
 import { Canvas, Group } from "@shopify/react-native-skia";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
-import { GestureDetector } from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
   useDerivedValue,
+  useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -39,6 +40,7 @@ import {
   useChartReveal,
   useChartSkiaFont,
   useCrosshairSeries,
+  useMarkers,
   useMultiSeriesDegen,
   useMultiSeriesLinePaths,
   useMultiSeriesReverseMorphInputs,
@@ -57,10 +59,11 @@ import {
   leftEdgeFadeColorsFromBgRgb,
   resolveTheme,
 } from "../theme";
-import type { LiveChartSeriesProps, SeriesConfig } from "../types";
+import type { LiveChartSeriesProps, Marker, SeriesConfig } from "../types";
 import { CrosshairLine } from "./CrosshairLine";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
+import { MarkerOverlay } from "./MarkerOverlay";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { MultiSeriesDots } from "./MultiSeriesDots";
 import { MultiSeriesStroke } from "./MultiSeriesStroke";
@@ -108,8 +111,14 @@ export function LiveChartSeries({
   legend: legendProp,
   degen,
   onDegenShake,
+  markers,
+  onMarkerHover,
+  markerHitRadius = 16,
   leftEdgeFade = true,
 }: LiveChartSeriesProps) {
+  const emptyMarkers = useSharedValue<Marker[]>([]);
+  const markersSV = markers ?? emptyMarkers;
+  const markersActive = markers != null;
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
   const scrubCfg = resolveScrub(scrub);
@@ -290,6 +299,22 @@ export function LiveChartSeries({
     onScrub,
   );
 
+  // `projected` is used internally by the hit-test gesture; the overlay
+  // self-projects, so we only need the gesture here.
+  const { tapGesture: markerTapGesture } = useMarkers(
+    engine,
+    effectivePadding,
+    markersSV,
+    markersActive,
+    markerHitRadius,
+    onMarkerHover,
+    series,
+  );
+
+  const rootGesture = markersActive
+    ? Gesture.Race(crosshair.gesture, markerTapGesture)
+    : crosshair.gesture;
+
   const backgroundColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
 
   const legendTop =
@@ -311,7 +336,7 @@ export function LiveChartSeries({
     ) : null;
 
   return (
-    <GestureDetector gesture={crosshair.gesture}>
+    <GestureDetector gesture={rootGesture}>
       <View style={[{ flex: 1, backgroundColor }, style]} onLayout={onLayout}>
         {legendTop}
         <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
@@ -412,6 +437,19 @@ export function LiveChartSeries({
                 particleBurstDurationSec={degenCfg.particleBurstDurationSec}
                 particleOpacity={degenCfg.particleOpacity}
                 colors={degenCfg.colors ?? lineColors}
+              />
+            </Group>
+          )}
+
+          {markersActive && (
+            <Group opacity={reveal.dotOpacity}>
+              <MarkerOverlay
+                markers={markersSV}
+                engine={engine}
+                padding={effectivePadding}
+                palette={palette}
+                font={skiaFont}
+                series={series}
               />
             </Group>
           )}

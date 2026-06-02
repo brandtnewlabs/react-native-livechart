@@ -95,6 +95,7 @@ jest.mock("@shopify/react-native-skia", () => {
       React.createElement(View, props, children),
     DashPathEffect: View,
     Blur: View,
+    Image: View,
     LinearGradient: View,
     vec: (x, y) => ({ x, y }),
     matchFont: jest.fn(() => mockFont),

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import { GestureDetector } from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
 
 /**
@@ -44,6 +44,7 @@ import {
   useDegen,
   useLiveChartHasData,
   useLiveDot,
+  useMarkers,
   useModeBlend,
   useMomentum,
   useSingleChartReverseMorphInputs,
@@ -62,13 +63,14 @@ import {
   leftEdgeFadeColorsFromBgRgb,
   resolveTheme,
 } from "../theme";
-import type { LiveChartProps, TradeEvent } from "../types";
+import type { LiveChartProps, Marker, TradeEvent } from "../types";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
 import { DotOverlay } from "./DotOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
 import { LoadingOverlay } from "./LoadingOverlay";
+import { MarkerOverlay } from "./MarkerOverlay";
 import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
 import { TradeStreamOverlay } from "./TradeStreamOverlay";
@@ -122,6 +124,9 @@ export function LiveChart({
   scrub = true,
   tradeStream,
   degen,
+  markers,
+  onMarkerHover,
+  markerHitRadius = 16,
   leftEdgeFade = true,
 
   // ── Callbacks ───────────────────────────────────────────────────────────
@@ -130,6 +135,8 @@ export function LiveChart({
 }: LiveChartProps) {
   const emptyTradeStream = useSharedValue<TradeEvent[]>([]);
   const tradeStreamSV = tradeStream ?? emptyTradeStream;
+  const emptyMarkers = useSharedValue<Marker[]>([]);
+  const markersSV = markers ?? emptyMarkers;
   const isCandle = mode === "candle";
 
   // ── Resolve feature configs ────────────────────────────────────────────
@@ -331,6 +338,22 @@ export function LiveChart({
     candleOpts,
   );
 
+  const markersActive = markers != null;
+  // `projected` is used internally by the hit-test gesture; the overlay
+  // self-projects, so we only need the gesture here.
+  const { tapGesture: markerTapGesture } = useMarkers(
+    engine,
+    effectivePadding,
+    markersSV,
+    markersActive,
+    markerHitRadius,
+    onMarkerHover,
+  );
+
+  const rootGesture = markersActive
+    ? Gesture.Race(crosshair.gesture, markerTapGesture)
+    : crosshair.gesture;
+
   // ── Derived render values ──────────────────────────────────────────────
   const {
     backgroundColor,
@@ -347,7 +370,7 @@ export function LiveChart({
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <GestureDetector gesture={crosshair.gesture}>
+    <GestureDetector gesture={rootGesture}>
       <View style={[{ flex: 1, backgroundColor }, style]} onLayout={onLayout}>
         <Canvas style={{ flex: 1 }}>
           {/* Shaken chart stack — left-edge fade is a sibling below so dstOut runs in canvas space */}
@@ -481,6 +504,18 @@ export function LiveChart({
                   particleBurstDurationSec={degenCfg.particleBurstDurationSec}
                   particleOpacity={degenCfg.particleOpacity}
                   colors={degenCfg.colors}
+                />
+              </Group>
+            )}
+
+            {markersActive && (
+              <Group opacity={reveal.dotOpacity}>
+                <MarkerOverlay
+                  markers={markersSV}
+                  engine={engine}
+                  padding={effectivePadding}
+                  palette={palette}
+                  font={skiaFont}
                 />
               </Group>
             )}

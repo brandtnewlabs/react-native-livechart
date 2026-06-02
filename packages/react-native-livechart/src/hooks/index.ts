@@ -11,6 +11,7 @@ export { useCrosshairSeries } from "./useCrosshairSeries";
 export { useDegen } from "./useDegen";
 export { useLiveChartHasData } from "./useLiveChartHasData";
 export { useLiveDot } from "./useLiveDot";
+export { useMarkers } from "./useMarkers";
 export { useModeBlend } from "./useModeBlend";
 export { useMomentum } from "./useMomentum";
 export { useMultiSeriesDegen } from "./useMultiSeriesDegen";

@@ -1,7 +1,11 @@
 import type { ViewStyle } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
-import type { DataSourceParam, SkFontMgr } from "@shopify/react-native-skia";
+import type {
+  DataSourceParam,
+  SkFontMgr,
+  SkImage,
+} from "@shopify/react-native-skia";
 
 /** A single data point on the chart timeline. */
 export interface LiveChartPoint {
@@ -266,6 +270,50 @@ export interface TradeEvent {
   symbol?: string;
 }
 
+/** Built-in marker glyph kinds drawn into the chart canvas. */
+export type MarkerKind = "trade" | "boost" | "graduation" | "winner" | "clawback";
+
+/**
+ * A marker rendered into the chart at `(time, y)`. Exactly one of `seriesId`
+ * (anchor y to a series line at the marker's time, multi-series only) or
+ * `value` (absolute y in data space) should be provided.
+ */
+export interface Marker {
+  /** Stable identifier. */
+  id: string;
+  /** Unix timestamp in seconds. */
+  time: number;
+  /** Glyph kind. */
+  kind: MarkerKind;
+  /** Anchor y to this series' line at `time` (multi-series). */
+  seriesId?: string;
+  /** Absolute y value in data space (takes precedence over `seriesId`). */
+  value?: number;
+  /** Glyph color override. Defaults to a kind-specific palette accent. */
+  color?: string;
+  /**
+   * Text / emoji glyph drawn centered at the marker, overriding the built-in
+   * `kind` shape. Rendered with the chart font, so pass an emoji-capable font
+   * (via `font`) if you use emoji.
+   */
+  icon?: string;
+  /**
+   * Image icon drawn centered at the marker (e.g. from Skia `useImage`). Takes
+   * precedence over `icon` and the built-in `kind` shape.
+   */
+  image?: SkImage;
+  /** Icon / image box size in px (icon font size or image width+height). Default `16`. */
+  size?: number;
+  /** Pass-through payload surfaced on `onMarkerHover`. */
+  data?: unknown;
+}
+
+/** Payload for `onMarkerHover` — the marker and its screen position. */
+export interface MarkerHoverEvent {
+  marker: Marker;
+  point: { x: number; y: number };
+}
+
 /** Particle burst + screen shake on momentum swings ("degen mode"). */
 export interface DegenOptions {
   /** Scale multiplier for particle size and speed. Default `1`. */
@@ -501,6 +549,15 @@ export interface LiveChartCoreProps {
   referenceLines?: ReferenceLine[];
   /** Per-instance grid-line styling. Pass an object to override color / width / dash / opacity. */
   gridStyle?: GridStyleConfig;
+  /**
+   * Markers drawn into the chart canvas. Read on the UI thread — pass a
+   * `SharedValue` and update via `.value` (same pattern as `data`).
+   */
+  markers?: SharedValue<Marker[]>;
+  /** Fires when a marker is tapped; `null` when a tap misses every marker. */
+  onMarkerHover?: (event: MarkerHoverEvent | null) => void;
+  /** Tap hit-test radius in px. Default `16` (≈ 44px touch target with the glyph). */
+  markerHitRadius?: number;
   /**
    * Override individual resolved-palette keys on top of the palette derived from
    * `accentColor` + `theme`. Only the keys you set are replaced.
