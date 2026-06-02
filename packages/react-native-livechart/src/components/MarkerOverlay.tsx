@@ -157,16 +157,25 @@ function MarkerGlyph({
     layout.value.visible ? layout.value.y - size / 2 : OFF,
   );
 
-  // Text / emoji icon centered on the marker.
-  const iconX = useDerivedValue(() => {
-    if (!layout.value.visible) return OFF;
-    return layout.value.x - measureFontTextWidth(font, icon ?? "") / 2;
-  });
-  const iconY = useDerivedValue(() => {
-    if (!layout.value.visible) return OFF;
+  // Text / emoji icon centering — width + baseline shift depend only on the
+  // (stable) font and icon, so measure once instead of every frame. Skia
+  // `measureText`/`getMetrics` both allocate, so hoisting them out of the
+  // per-frame worklet removes one measure + one metrics call per glyph/frame.
+  const halfIconW = useMemo(
+    () => measureFontTextWidth(font, icon ?? "") / 2,
+    [font, icon],
+  );
+  const iconBaselineShift = useMemo(() => {
     const fm = font.getMetrics();
-    return layout.value.y - (fm.ascent + fm.descent) / 2;
-  });
+    return (fm.ascent + fm.descent) / 2;
+  }, [font]);
+
+  const iconX = useDerivedValue(() =>
+    layout.value.visible ? layout.value.x - halfIconW : OFF,
+  );
+  const iconY = useDerivedValue(() =>
+    layout.value.visible ? layout.value.y - iconBaselineShift : OFF,
+  );
 
   if (image) {
     return (

@@ -188,20 +188,26 @@ export function ReferenceLineOverlay({
   const labelY = useDerivedValue(() => layout.value.labelY);
   const labelText = useDerivedValue(() => layout.value.label);
 
+  // Font metrics depend only on the (stable) font, so read them once instead of
+  // on every frame inside the pill worklets (`getMetrics` allocates + crosses
+  // JSI). The off-axis pill's ascent offset and height are then plain constants.
+  const { ascent: fontAscent, height: pillH } = useMemo(() => {
+    const fm = font.getMetrics();
+    return {
+      ascent: fm.ascent,
+      height: fm.descent - fm.ascent + OFF_AXIS_PILL_PAD_Y * 2,
+    };
+  }, [font]);
+
   // Off-axis badge pill — a rounded background behind the chevron + label.
   const pillX = useDerivedValue(() => layout.value.x1 + 2);
-  const pillY = useDerivedValue(() => {
-    const fm = font.getMetrics();
-    return layout.value.labelY + fm.ascent - OFF_AXIS_PILL_PAD_Y;
-  });
+  const pillY = useDerivedValue(
+    () => layout.value.labelY + fontAscent - OFF_AXIS_PILL_PAD_Y,
+  );
   const pillW = useDerivedValue(() => {
     const l = layout.value;
     const textW = measureFontTextWidth(font, l.label);
     return l.labelX + textW + OFF_AXIS_PILL_PAD_X - (l.x1 + 2);
-  });
-  const pillH = useDerivedValue(() => {
-    const fm = font.getMetrics();
-    return fm.descent - fm.ascent + OFF_AXIS_PILL_PAD_Y * 2;
   });
 
   return (
