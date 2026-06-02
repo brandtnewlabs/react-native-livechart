@@ -85,12 +85,6 @@ const config: ReactDoctorConfig = {
         ],
       },
       {
-        // Demo: the time band is pinned once (to the current clock) when enabled,
-        // so it scrolls with the chart instead of re-pinning every tick.
-        files: ["**/demo/horizontal-lines.tsx"],
-        rules: ["react-hooks-js/set-state-in-effect"],
-      },
-      {
         // react-doctor is a CLI dev tool, never imported — it flags itself.
         files: ["package.json", "**/package.json"],
         rules: ["deslop/unused-dev-dependency"],
