@@ -5,7 +5,7 @@
  * @see https://github.com/benjitaylor/liveline
  */
 import { Canvas, Group } from "@shopify/react-native-skia";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
@@ -77,7 +77,12 @@ function lineColorsSig(s: SharedValue<SeriesConfig[]>) {
   return lineColorsSignatureFromArray(s.value);
 }
 
-export function LiveChartSeries({
+/**
+ * Resolves props → configs → theme/layout → engine → per-frame derived values,
+ * overlay hooks and the color/style reaction state, returning a single render
+ * model so `SeriesChartStack` and `LiveChartSeries` stay small and presentational.
+ */
+function useLiveChartSeriesController({
   series,
   theme = "dark",
   accentColor = "#3b82f6",
@@ -307,17 +312,241 @@ export function LiveChartSeries({
 
   const backgroundColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
 
-  const legendTop =
-    legendCfg.position === "top" ? (
-      <SeriesToggleChips
-        series={series}
-        legend={legendCfg}
-        onSeriesToggle={onSeriesToggle}
-      />
-    ) : null;
+  return {
+    // passthrough props the render needs
+    series,
+    style,
+    accessibilityLabel,
+    accessibilityRole,
+    emptyText,
+    formatValue,
+    onSeriesToggle,
+    // configs
+    yAxisCfg,
+    xAxisCfg,
+    scrubCfg,
+    gridStyleCfg,
+    dotCfg,
+    legendCfg,
+    degenCfg,
+    allRefLines,
+    leftEdgeFadeCfg,
+    // theme / layout / fonts
+    palette,
+    skiaFont,
+    seriesLabelInset,
+    strokeWidth,
+    effectivePadding,
+    backgroundColor,
+    // engine + reveal
+    engine,
+    reveal,
+    effectiveSeries,
+    layoutHeight,
+    onLayout,
+    linePaths,
+    lineColors,
+    lineStyles,
+    degenPack,
+    degenPackRevision,
+    degenShakeTransform,
+    yAxisEntries,
+    xAxisEntries,
+    crosshair,
+    rootGesture,
+    markersActive,
+    markersSV,
+  };
+}
 
-  const legendBottom =
-    legendCfg.position === "bottom" ? (
+type LiveChartSeriesModel = ReturnType<typeof useLiveChartSeriesController>;
+
+/** The shaken multi-series stack: grid, reference/value lines, per-series strokes,
+ *  axis, dots, value labels, degen, markers, and the loading/empty art. */
+function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
+  const {
+    degenShakeTransform,
+    yAxisCfg,
+    reveal,
+    yAxisEntries,
+    engine,
+    effectivePadding,
+    palette,
+    skiaFont,
+    seriesLabelInset,
+    gridStyleCfg,
+    allRefLines,
+    formatValue,
+    dotCfg,
+    lineColors,
+    linePaths,
+    effectiveSeries,
+    strokeWidth,
+    lineStyles,
+    xAxisCfg,
+    xAxisEntries,
+    degenCfg,
+    degenPack,
+    degenPackRevision,
+    markersActive,
+    markersSV,
+    series,
+    emptyText,
+  } = model;
+
+  return (
+    <Group transform={degenShakeTransform}>
+      {yAxisCfg && (
+        <Group opacity={reveal.yAxisOpacity}>
+          <YAxisOverlay
+            entries={yAxisEntries}
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            font={skiaFont}
+            badge={false}
+            seriesLabelInset={seriesLabelInset}
+            gridStyle={gridStyleCfg}
+          />
+        </Group>
+      )}
+
+      {allRefLines.map((rl) => (
+        <ReferenceLineOverlay
+          key={`${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
+          engine={engine}
+          padding={effectivePadding}
+          line={rl}
+          palette={palette}
+          formatValue={formatValue}
+          font={skiaFont}
+        />
+      ))}
+
+      {dotCfg.valueLine && (
+        <Group opacity={reveal.lineOpacity}>
+          <MultiSeriesValueLines
+            engine={engine}
+            padding={effectivePadding}
+            colors={lineColors}
+            config={dotCfg.valueLine}
+          />
+        </Group>
+      )}
+
+      <Group opacity={reveal.lineOpacity}>
+        {Array.from({ length: MAX_MULTI_SERIES }, (_, i) => (
+          <MultiSeriesStroke
+            key={i}
+            index={i}
+            paths={linePaths}
+            opacities={engine.seriesOpacities}
+            series={effectiveSeries}
+            strokeWidth={strokeWidth}
+            lineStyle={lineStyles[i]}
+          />
+        ))}
+      </Group>
+
+      {xAxisCfg && (
+        <XAxisOverlay
+          entries={xAxisEntries}
+          engine={engine}
+          padding={effectivePadding}
+          palette={palette}
+          font={skiaFont}
+        />
+      )}
+
+      <Group opacity={reveal.dotOpacity}>
+        <MultiSeriesDots
+          engine={engine}
+          padding={effectivePadding}
+          colors={lineColors}
+          radius={dotCfg.radius}
+          pulse={dotCfg.pulse}
+        />
+      </Group>
+
+      {dotCfg.valueLabel && (
+        <Group opacity={reveal.dotOpacity}>
+          <MultiSeriesValueLabels
+            engine={engine}
+            padding={effectivePadding}
+            colors={lineColors}
+            font={skiaFont}
+            dotRadius={dotCfg.radius}
+          />
+        </Group>
+      )}
+
+      {degenCfg && (
+        <Group opacity={reveal.dotOpacity}>
+          <DegenParticlesOverlay
+            pack={degenPack}
+            packRevision={degenPackRevision}
+            engine={engine}
+            palette={palette}
+            particleSlotCount={degenCfg.particleSlotCount}
+            particleBurstDurationSec={degenCfg.particleBurstDurationSec}
+            particleOpacity={degenCfg.particleOpacity}
+            colors={degenCfg.colors ?? lineColors}
+          />
+        </Group>
+      )}
+
+      {markersActive && (
+        <Group opacity={reveal.dotOpacity}>
+          <MarkerOverlay
+            markers={markersSV}
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            font={skiaFont}
+            series={series}
+          />
+        </Group>
+      )}
+
+      <LoadingOverlay
+        engine={engine}
+        padding={effectivePadding}
+        palette={palette}
+        font={skiaFont}
+        morphT={reveal.morphT}
+        isLoading={reveal.isLoading}
+        isEmpty={reveal.isEmpty}
+        emptyText={emptyText}
+        strokeWidth={strokeWidth}
+        badge={false}
+      />
+    </Group>
+  );
+}
+
+export function LiveChartSeries(props: LiveChartSeriesProps) {
+  const model = useLiveChartSeriesController(props);
+  const {
+    rootGesture,
+    backgroundColor,
+    style,
+    onLayout,
+    accessibilityLabel,
+    accessibilityRole,
+    layoutHeight,
+    legendCfg,
+    series,
+    onSeriesToggle,
+    leftEdgeFadeCfg,
+    effectivePadding,
+    engine,
+    scrubCfg,
+    crosshair,
+    palette,
+  } = model;
+
+  const legend =
+    legendCfg.position === "top" || legendCfg.position === "bottom" ? (
       <SeriesToggleChips
         series={series}
         legend={legendCfg}
@@ -334,134 +563,9 @@ export function LiveChartSeries({
         accessibilityLabel={accessibilityLabel}
         accessibilityRole={accessibilityRole}
       >
-        {legendTop}
+        {legendCfg.position === "top" ? legend : null}
         <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
-          <Group transform={degenShakeTransform}>
-          {yAxisCfg && (
-            <Group opacity={reveal.yAxisOpacity}>
-              <YAxisOverlay
-                entries={yAxisEntries}
-                engine={engine}
-                padding={effectivePadding}
-                palette={palette}
-                font={skiaFont}
-                badge={false}
-                seriesLabelInset={seriesLabelInset}
-                gridStyle={gridStyleCfg}
-              />
-            </Group>
-          )}
-
-          {allRefLines.map((rl) => (
-            <ReferenceLineOverlay
-              key={`${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
-              engine={engine}
-              padding={effectivePadding}
-              line={rl}
-              palette={palette}
-              formatValue={formatValue}
-              font={skiaFont}
-            />
-          ))}
-
-          {dotCfg.valueLine && (
-            <Group opacity={reveal.lineOpacity}>
-              <MultiSeriesValueLines
-                engine={engine}
-                padding={effectivePadding}
-                colors={lineColors}
-                config={dotCfg.valueLine}
-              />
-            </Group>
-          )}
-
-          <Group opacity={reveal.lineOpacity}>
-            {Array.from({ length: MAX_MULTI_SERIES }, (_, i) => (
-              <MultiSeriesStroke
-                key={i}
-                index={i}
-                paths={linePaths}
-                opacities={engine.seriesOpacities}
-                series={effectiveSeries}
-                strokeWidth={strokeWidth}
-                lineStyle={lineStyles[i]}
-              />
-            ))}
-          </Group>
-
-          {xAxisCfg && (
-            <XAxisOverlay
-              entries={xAxisEntries}
-              engine={engine}
-              padding={effectivePadding}
-              palette={palette}
-              font={skiaFont}
-            />
-          )}
-
-          <Group opacity={reveal.dotOpacity}>
-            <MultiSeriesDots
-              engine={engine}
-              padding={effectivePadding}
-              colors={lineColors}
-              radius={dotCfg.radius}
-              pulse={dotCfg.pulse}
-            />
-          </Group>
-
-          {dotCfg.valueLabel && (
-            <Group opacity={reveal.dotOpacity}>
-              <MultiSeriesValueLabels
-                engine={engine}
-                padding={effectivePadding}
-                colors={lineColors}
-                font={skiaFont}
-                dotRadius={dotCfg.radius}
-              />
-            </Group>
-          )}
-
-          {degenCfg && (
-            <Group opacity={reveal.dotOpacity}>
-              <DegenParticlesOverlay
-                pack={degenPack}
-                packRevision={degenPackRevision}
-                engine={engine}
-                palette={palette}
-                particleSlotCount={degenCfg.particleSlotCount}
-                particleBurstDurationSec={degenCfg.particleBurstDurationSec}
-                particleOpacity={degenCfg.particleOpacity}
-                colors={degenCfg.colors ?? lineColors}
-              />
-            </Group>
-          )}
-
-          {markersActive && (
-            <Group opacity={reveal.dotOpacity}>
-              <MarkerOverlay
-                markers={markersSV}
-                engine={engine}
-                padding={effectivePadding}
-                palette={palette}
-                font={skiaFont}
-                series={series}
-              />
-            </Group>
-          )}
-
-          <LoadingOverlay
-            engine={engine}
-            padding={effectivePadding}
-            palette={palette}
-            font={skiaFont}
-            morphT={reveal.morphT}
-            isLoading={reveal.isLoading}
-            isEmpty={reveal.isEmpty}
-            emptyText={emptyText}
-            strokeWidth={strokeWidth}
-            badge={false}
-          />
-          </Group>
+          <SeriesChartStack model={model} />
 
           {leftEdgeFadeCfg && (
             <LeftEdgeFade
@@ -485,7 +589,7 @@ export function LiveChartSeries({
             />
           )}
         </Canvas>
-        {legendBottom}
+        {legendCfg.position === "bottom" ? legend : null}
       </View>
     </GestureDetector>
   );
