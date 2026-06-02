@@ -11,11 +11,11 @@ import Animated, {
   useAnimatedProps,
   useSharedValue,
 } from "react-native-reanimated";
-import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "./lib/shared";
+import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "../../demo-lib/shared";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
-import { DemoScreen } from "./lib/DemoScreen";
-import { demoStyles } from "./lib/styles";
+import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { demoStyles } from "../../demo-lib/styles";
 
 export const options = { title: "Multi-series" };
 

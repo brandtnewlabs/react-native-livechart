@@ -12,9 +12,9 @@ import {
   type FontWeight,
 } from "react-native-livechart";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
-import { DemoScreen } from "./lib/DemoScreen";
-import { ACCENT_PRESETS } from "./lib/shared";
-import { demoStyles } from "./lib/styles";
+import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { ACCENT_PRESETS } from "../../demo-lib/shared";
+import { demoStyles } from "../../demo-lib/styles";
 
 const googleSansCodeRegular = require("../../assets/fonts/GoogleSansCode-Regular.ttf");
 

@@ -5,8 +5,8 @@ import { LiveChart } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
-import { ACCENT } from "./lib/shared";
-import { demoStyles } from "./lib/styles";
+import { ACCENT } from "../../demo-lib/shared";
+import { demoStyles } from "../../demo-lib/styles";
 
 export const options = { title: "Chart size" };
 
