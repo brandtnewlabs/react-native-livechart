@@ -47,12 +47,6 @@ const config: ReactDoctorConfig = {
         rules: ["react-doctor/no-effect-event-handler"],
       },
       {
-        // The gesture is built with Gesture.Tap() and its worklet runs on the UI
-        // thread; the latest-value ref it reaches is touched on tap, not in render.
-        files: ["**/hooks/useMarkers.ts"],
-        rules: ["react-hooks-js/refs"],
-      },
-      {
         // `emitShake` notifies the consumer when a momentum shake is detected on
         // the UI thread (in the frame worklet, via runOnJS) — there's no React
         // event to move the side effect into, so no-event-handler doesn't apply.

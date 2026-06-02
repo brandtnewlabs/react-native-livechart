@@ -73,6 +73,7 @@ export function useMarkers(
   );
 
   const tapGesture = Gesture.Tap().onEnd(
+    // react-doctor-disable-next-line react-hooks-js/refs -- onHoverRef.current is read only inside emitHover, invoked via runOnJS on tap (an event), never during render. The ref keeps this gesture stable even when the consumer passes an inline onMarkerHover.
     /* istanbul ignore next -- gesture worklet runs on UI thread, not in Jest */ (
       e,
     ) => {
