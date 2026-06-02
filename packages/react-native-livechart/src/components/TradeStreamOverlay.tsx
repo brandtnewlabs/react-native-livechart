@@ -11,6 +11,15 @@ import type { LiveChartPalette } from "../types";
 
 const MAX_TRADE_LABELS = 20;
 
+// Stable per-slot keys for the fixed-size, positional label pool: slot `i` always
+// renders ring-buffer index `i` and the tape never reorders, so each label keeps a
+// permanent identity. Keying by these ids (instead of the bare array index) makes
+// that explicit and avoids remounting labels as the tape scrolls.
+const TAPE_SLOT_KEYS = Array.from(
+  { length: MAX_TRADE_LABELS },
+  (_, i) => `trade-label-${i}`,
+);
+
 const GREEN: [number, number, number] = [34, 197, 94];
 const RED: [number, number, number] = [239, 68, 68];
 
@@ -91,22 +100,18 @@ export function TradeStreamOverlay({
   const labelX = padding.left + labelOffsetX;
   // Fixed-size persistent slot pool (MAX_TRADE_LABELS). Each <TapeLabel> renders
   // whatever trade currently occupies slot `i` (read from `markers` by index);
-  // the list never reorders or filters, so the slot index is the stable identity
-  // and `key={i}` is correct — a content-derived key would remount labels as the
-  // tape scrolls. (react-doctor's no-array-index-key is scoped for this file.)
-  const slots = [];
-  for (let i = 0; i < MAX_TRADE_LABELS; i++) {
-    slots.push(
-      <TapeLabel
-        key={i}
-        index={i}
-        markers={markers}
-        bgRgb={palette.bgRgb}
-        labelX={labelX}
-        font={font}
-        groupOpacity={opacity}
-      />,
-    );
-  }
+  // the list never reorders or filters, so each slot keys by its stable per-slot
+  // id (see TAPE_SLOT_KEYS) rather than the bare array index.
+  const slots = TAPE_SLOT_KEYS.map((slotKey, i) => (
+    <TapeLabel
+      key={slotKey}
+      index={i}
+      markers={markers}
+      bgRgb={palette.bgRgb}
+      labelX={labelX}
+      font={font}
+      groupOpacity={opacity}
+    />
+  ));
   return <Group>{slots}</Group>;
 }
