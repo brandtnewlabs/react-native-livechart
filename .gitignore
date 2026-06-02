@@ -46,3 +46,6 @@ app-example
 /android
 
 *.tgz
+
+# Generated at pack time from the repo-root README (single source of truth)
+/packages/react-native-livechart/README.md
