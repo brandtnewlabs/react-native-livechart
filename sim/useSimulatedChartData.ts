@@ -331,24 +331,22 @@ export function useSimulatedChartData(
       }
 
       if (multiSeries) {
-        b.series = b.series.map((s) => {
-          const vis = seriesVisibilityRef?.current[s.id];
-          return {
-            ...s,
-            data: [...s.data],
-            ...(vis !== undefined ? { visible: vis } : {}),
-          };
-        });
-        stepMultiSeries(b.series, true);
-        for (let i = 0; i < b.series.length; i++) {
-          if (b.series[i].data.length > maxPoints) {
-            b.series[i] = {
-              ...b.series[i],
-              data: b.series[i].data.slice(-maxPoints),
-            };
+        // Apply visibility overrides in place — no per-tick copy of each series'
+        // (growing) data array. stepMultiSeries appends in place and we trim in
+        // place; publishing a fresh top-level array reference is enough for the
+        // SharedValue to notify subscribers.
+        if (seriesVisibilityRef) {
+          for (let i = 0; i < b.series.length; i++) {
+            const vis = seriesVisibilityRef.current[b.series[i].id];
+            if (vis !== undefined) b.series[i].visible = vis;
           }
         }
-        series.value = b.series;
+        stepMultiSeries(b.series, true);
+        for (let i = 0; i < b.series.length; i++) {
+          const d = b.series[i].data;
+          if (d.length > maxPoints) d.splice(0, d.length - maxPoints);
+        }
+        series.value = b.series.slice();
       }
     };
 

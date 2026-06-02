@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -36,20 +37,52 @@ export interface MultiEngineFrameRefs {
 }
 
 /**
+ * Reusable per-frame scratch for {@link applyLiveChartSeriesEngineFrame}. The two
+ * output arrays ping-pong so the assigned reference still changes each frame
+ * (Reanimated propagates on reference change) without allocating a fresh array
+ * per frame. Create one per engine via `useMemo`.
+ */
+export interface MultiSeriesEngineScratch {
+  dvA: number[];
+  dvB: number[];
+  opA: number[];
+  opB: number[];
+  tick: boolean;
+}
+
+/**
  * One frame of the multi-series chart engine.
  * Mirrors `applyLiveChartEngineFrame` but iterates over each series
  * to lerp per-series display values and opacities. Extracted as a
  * pure function so it can be called from both `useFrameCallback` and tests.
+ *
+ * Pass `scratch` to reuse the output arrays across frames instead of allocating
+ * two via `.slice()` each frame; omit it (tests) to fall back to allocation.
  */
 export function applyLiveChartSeriesEngineFrame(
   frameInfo: { timeSincePreviousFrame?: number | null },
   sv: MultiEngineFrameRefs,
+  scratch?: MultiSeriesEngineScratch,
 ): void {
   "worklet";
   const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
   const seriesSnap = sv.series.value;
-  const displayValues = sv.displaySeriesValues.value.slice();
-  const opacities = sv.seriesOpacities.value.slice();
+  const curDv = sv.displaySeriesValues.value;
+  const curOp = sv.seriesOpacities.value;
+  let displayValues: number[];
+  let opacities: number[];
+  if (scratch) {
+    scratch.tick = !scratch.tick;
+    displayValues = scratch.tick ? scratch.dvA : scratch.dvB;
+    opacities = scratch.tick ? scratch.opA : scratch.opB;
+    displayValues.length = curDv.length;
+    for (let i = 0; i < curDv.length; i++) displayValues[i] = curDv[i];
+    opacities.length = curOp.length;
+    for (let i = 0; i < curOp.length; i++) opacities[i] = curOp[i];
+  } else {
+    displayValues = curDv.slice();
+    opacities = curOp.slice();
+  }
   const state = {
     displayMin: sv.displayMin.value,
     displayMax: sv.displayMax.value,
@@ -107,24 +140,34 @@ export function useLiveChartSeriesEngine(
 
   const { series } = config;
 
+  // Reused per-frame output buffers (ping-ponged) — see applyLiveChartSeriesEngineFrame.
+  const scratch = useMemo<MultiSeriesEngineScratch>(
+    () => ({ dvA: [], dvB: [], opA: [], opB: [], tick: false }),
+    [],
+  );
+
   useFrameCallback((frameInfo) => {
     "worklet";
-    applyLiveChartSeriesEngineFrame(frameInfo, {
-      series,
-      displaySeriesValues,
-      seriesOpacities,
-      displayMin,
-      displayMax,
-      displayWindow,
-      timestamp,
-      canvasWidth,
-      canvasHeight,
-      timeWindow,
-      smoothing,
-      exaggerateSV,
-      referenceValue,
-      pausedSV,
-    });
+    applyLiveChartSeriesEngineFrame(
+      frameInfo,
+      {
+        series,
+        displaySeriesValues,
+        seriesOpacities,
+        displayMin,
+        displayMax,
+        displayWindow,
+        timestamp,
+        canvasWidth,
+        canvasHeight,
+        timeWindow,
+        smoothing,
+        exaggerateSV,
+        referenceValue,
+        pausedSV,
+      },
+      scratch,
+    );
   });
 
   return {
