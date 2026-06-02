@@ -234,15 +234,19 @@ function useLiveChartSeriesController({
     resolveMultiSeriesLineColorsSnapshot(series.value),
   );
 
-  const syncColors = (sv: SharedValue<SeriesConfig[]>) => {
-    setLineColors(resolveMultiSeriesLineColorsSnapshot(sv.value));
+  // Read the `series` prop from closure, not a SharedValue passed through
+  // `scheduleOnRN`: the handle serialized across the worklet→JS boundary keeps
+  // the native `.value` accessor but loses the `.get()` method (`.get()` on it
+  // throws). Reading the prop directly is robust to either accessor.
+  const syncColors = () => {
+    setLineColors(resolveMultiSeriesLineColorsSnapshot(series.value));
   };
 
   useAnimatedReaction(
     () => lineColorsSig(series),
     /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
     (sig, prev) => {
-      if (sig !== prev) scheduleOnRN(syncColors, series);
+      if (sig !== prev) scheduleOnRN(syncColors);
     },
     [series, syncColors],
   );
@@ -253,15 +257,15 @@ function useLiveChartSeriesController({
     resolveMultiSeriesLineStylesSnapshot(series.value),
   );
 
-  const syncStyles = (sv: SharedValue<SeriesConfig[]>) => {
-    setLineStyles(resolveMultiSeriesLineStylesSnapshot(sv.value));
+  const syncStyles = () => {
+    setLineStyles(resolveMultiSeriesLineStylesSnapshot(series.value));
   };
 
   useAnimatedReaction(
     () => lineStyleSignatureFromArray(series.value),
     /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
     (sig, prev) => {
-      if (sig !== prev) scheduleOnRN(syncStyles, series);
+      if (sig !== prev) scheduleOnRN(syncStyles);
     },
     [series, syncStyles],
   );
