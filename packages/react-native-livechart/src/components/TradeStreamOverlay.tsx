@@ -89,6 +89,11 @@ export function TradeStreamOverlay({
   labelOffsetX?: number;
 }) {
   const labelX = padding.left + labelOffsetX;
+  // Fixed-size persistent slot pool (MAX_TRADE_LABELS). Each <TapeLabel> renders
+  // whatever trade currently occupies slot `i` (read from `markers` by index);
+  // the list never reorders or filters, so the slot index is the stable identity
+  // and `key={i}` is correct — a content-derived key would remount labels as the
+  // tape scrolls. (react-doctor's no-array-index-key is scoped for this file.)
   const slots = [];
   for (let i = 0; i < MAX_TRADE_LABELS; i++) {
     slots.push(
