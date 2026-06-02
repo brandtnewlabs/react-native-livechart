@@ -24,7 +24,7 @@ export function CrosshairOverlay({
   palette,
   font,
   showTooltip = true,
-  tooltipBody,
+  children,
   crosshairLineColor,
   crosshairDimColor,
   tooltipBackground,
@@ -39,7 +39,10 @@ export function CrosshairOverlay({
   palette: LiveChartPalette;
   font: SkFont;
   showTooltip?: boolean;
-  tooltipBody?: ReactNode;
+  /** Optional custom tooltip body rendered in place of the default value/time
+   *  text (e.g. the multi-line candle stack). Passed as children so it composes
+   *  instead of being threaded through as a JSX-valued prop. */
+  children?: ReactNode;
   crosshairLineColor?: string;
   crosshairDimColor?: string;
   tooltipBackground?: string;
@@ -114,7 +117,7 @@ export function CrosshairOverlay({
             strokeWidth={1}
           />
 
-          {tooltipBody ?? (
+          {children ?? (
             <Group>
               <SkiaText
                 x={valueTextX}
