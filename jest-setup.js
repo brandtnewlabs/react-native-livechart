@@ -66,6 +66,9 @@ jest.mock("@shopify/react-native-skia", () => {
     close: jest.fn(),
     arcToOval: jest.fn(),
     addRRect: jest.fn(),
+    addRect: jest.fn(),
+    reset: jest.fn(),
+    rewind: jest.fn(),
   });
 
   const mockFont = {

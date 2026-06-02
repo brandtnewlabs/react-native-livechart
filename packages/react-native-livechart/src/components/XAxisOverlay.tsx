@@ -1,4 +1,5 @@
 import { Group, Path, Skia, type SkFont } from "@shopify/react-native-skia";
+import { useMemo } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
@@ -24,9 +25,20 @@ export function XAxisOverlay({
   palette: LiveChartPalette;
   font: SkFont;
 }) {
+  const axisCache = useMemo(
+    () => ({
+      a: Skia.Path.Make(),
+      b: Skia.Path.Make(),
+      tick: false,
+    }),
+    [],
+  );
+
   const axisPath = useDerivedValue(() => {
     "worklet";
-    const path = Skia.Path.Make();
+    axisCache.tick = !axisCache.tick;
+    const path = axisCache.tick ? axisCache.a : axisCache.b;
+    path.reset();
     const w = engine.canvasWidth.value;
     const h = engine.canvasHeight.value;
     const lineY = h - padding.bottom;

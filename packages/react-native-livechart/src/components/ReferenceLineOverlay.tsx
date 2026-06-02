@@ -6,6 +6,7 @@ import {
     Text as SkiaText,
     type SkFont,
 } from "@shopify/react-native-skia";
+import { useMemo } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { ReferenceLineLayout } from "../hooks/useReferenceLine";
@@ -31,9 +32,20 @@ export function ReferenceLineOverlay({
 }) {
   const opacity = useDerivedValue(() => (layout.value.visible ? 1 : 0));
 
+  const cache = useMemo(
+    () => ({
+      a: Skia.Path.Make(),
+      b: Skia.Path.Make(),
+      tick: false,
+    }),
+    [],
+  );
+
   const linePath = useDerivedValue(() => {
+    cache.tick = !cache.tick;
+    const path = cache.tick ? cache.a : cache.b;
+    path.reset();
     const l = layout.value;
-    const path = Skia.Path.Make();
     if (!l.visible) return path;
     path.moveTo(l.x1, l.y);
     path.lineTo(l.x2, l.y);

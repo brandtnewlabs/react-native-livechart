@@ -1,4 +1,5 @@
 import { Skia, type SkFont } from "@shopify/react-native-skia";
+import { useMemo } from "react";
 import {
   useDerivedValue,
   useSharedValue,
@@ -45,12 +46,27 @@ export function useBadge(
   const downRgb = hexToRgb(palette.dotDown);
   const accentRgb = hexToRgb(palette.badgeBg);
 
+  // Ping-pong between two persistent badge paths so the derived value always
+  // returns a freshly-mutated SkPath without allocating a new one every frame.
+  // See useChartPaths for the full rationale on per-frame Skia.Path.Make().
+  const cache = useMemo(
+    () => ({
+      a: Skia.Path.Make(),
+      b: Skia.Path.Make(),
+      tick: false,
+    }),
+    [],
+  );
+
   const badge = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
     const h = engine.canvasHeight.value;
+    cache.tick = !cache.tick;
+    const path = cache.tick ? cache.a : cache.b;
+    path.reset();
     if (w === 0 || h === 0) {
       return {
-        path: Skia.Path.Make(),
+        path,
         textX: 0,
         textY: 0,
         text: "",
@@ -75,7 +91,6 @@ export function useBadge(
     const pillH = font.getSize() + BADGE_PILL_PAD_Y * 2;
     const r = pillH / 2;
     const badgeY = dotY - pillH / 2;
-    const path = Skia.Path.Make();
     let textX: number;
 
     if (position === "left") {

@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true,
+    "react-native-best-practices@callstack-agent-skills": true
+  }
+}

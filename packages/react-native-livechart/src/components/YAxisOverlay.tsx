@@ -1,4 +1,5 @@
 import { Group, Path, Skia, type SkFont } from "@shopify/react-native-skia";
+import { useMemo } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { BADGE_DOT_GAP } from "../constants";
 import type { YAxisEntry } from "../draw/grid";
@@ -38,8 +39,19 @@ export function YAxisOverlay({
   /** When > 0, series labels occupy the left portion of the gutter; Y-axis labels right-align. */
   seriesLabelInset?: number;
 }) {
+  const gridCache = useMemo(
+    () => ({
+      a: Skia.Path.Make(),
+      b: Skia.Path.Make(),
+      tick: false,
+    }),
+    [],
+  );
+
   const gridLinesPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    gridCache.tick = !gridCache.tick;
+    const path = gridCache.tick ? gridCache.a : gridCache.b;
+    path.reset();
     const items = entries.value;
     const w = engine.canvasWidth.value;
     for (let i = 0; i < items.length; i++) {
