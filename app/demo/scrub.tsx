@@ -12,6 +12,7 @@ export const options = { title: "Scrub" };
 export default function ScrubScreen() {
   const [scrubMode, setScrubMode] = useState<"off" | "on" | "noTooltip">("on");
   const [displayMode, setDisplayMode] = useState<"line" | "candle">("line");
+  const [styledTooltip, setStyledTooltip] = useState(false);
   const [readout, setReadout] = useState("—");
 
   const windowSecs = 300;
@@ -27,9 +28,17 @@ export default function ScrubScreen() {
   const scrub =
     scrubMode === "off"
       ? false
-      : scrubMode === "on"
-        ? true
-        : { tooltip: false };
+      : scrubMode === "noTooltip"
+        ? { tooltip: false }
+        : styledTooltip
+          ? {
+              tooltip: true,
+              tooltipBackground: "#1e293b",
+              tooltipColor: "#fbbf24",
+              tooltipBorderColor: "#fbbf24",
+              crosshairLineColor: "#fbbf24",
+            }
+          : true;
 
   return (
     <DemoScreen
@@ -91,6 +100,19 @@ export default function ScrubScreen() {
             </Text>
           </Pressable>
         ))}
+        <Pressable
+          style={[demoStyles.chip, styledTooltip && demoStyles.chipActive]}
+          onPress={() => setStyledTooltip((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              styledTooltip && demoStyles.chipTextActive,
+            ]}
+          >
+            Styled tooltip
+          </Text>
+        </Pressable>
       </View>
 
       <Text style={demoStyles.sectionLabel}>Display</Text>

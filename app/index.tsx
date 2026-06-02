@@ -36,7 +36,7 @@ const DEMOS: { href: Href; title: string; blurb: string }[] = [
   {
     href: "/demo/badge-pulse",
     title: "Badge & pulse",
-    blurb: "Badge variants and pulse / PulseConfig.",
+    blurb: "Badge variants, pulse, showValue overlay + momentum color.",
   },
   {
     href: "/demo/momentum",
@@ -47,7 +47,7 @@ const DEMOS: { href: Href; title: string; blurb: string }[] = [
   {
     href: "/demo/scrub",
     title: "Scrub",
-    blurb: "Scrub modes, onScrub readout, candle OHLC payload.",
+    blurb: "Scrub modes, styled tooltip, onScrub readout, candle OHLC.",
   },
   {
     href: "/demo/horizontal-lines",

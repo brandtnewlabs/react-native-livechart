@@ -52,6 +52,12 @@ export interface ResolvedScrubConfig {
   crosshairLineColor: string | undefined;
   /** undefined → palette.crosshairDim */
   crosshairDimColor: string | undefined;
+  /** undefined → palette.tooltipBg */
+  tooltipBackground: string | undefined;
+  /** undefined → palette.tooltipText */
+  tooltipColor: string | undefined;
+  /** undefined → palette.tooltipBorder */
+  tooltipBorderColor: string | undefined;
 }
 
 export interface ResolvedGradientConfig {
@@ -200,6 +206,9 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltip: true,
   crosshairLineColor: undefined,
   crosshairDimColor: undefined,
+  tooltipBackground: undefined,
+  tooltipColor: undefined,
+  tooltipBorderColor: undefined,
 };
 
 /**

@@ -27,6 +27,9 @@ export function CrosshairOverlay({
   tooltipBody,
   crosshairLineColor,
   crosshairDimColor,
+  tooltipBackground,
+  tooltipColor,
+  tooltipBorderColor,
 }: {
   scrubX: SharedValue<number>;
   crosshairOpacity: SharedValue<number>;
@@ -39,6 +42,9 @@ export function CrosshairOverlay({
   tooltipBody?: ReactNode;
   crosshairLineColor?: string;
   crosshairDimColor?: string;
+  tooltipBackground?: string;
+  tooltipColor?: string;
+  tooltipBorderColor?: string;
 }) {
   const p1 = useDerivedValue(() => ({
     x: scrubX.value,
@@ -94,7 +100,7 @@ export function CrosshairOverlay({
             width={tipW}
             height={tipH}
             r={TOOLTIP_RADIUS}
-            color={palette.tooltipBg}
+            color={tooltipBackground ?? palette.tooltipBg}
           />
 
           <RoundedRect
@@ -103,7 +109,7 @@ export function CrosshairOverlay({
             width={tipW}
             height={tipH}
             r={TOOLTIP_RADIUS}
-            color={palette.tooltipBorder}
+            color={tooltipBorderColor ?? palette.tooltipBorder}
             style="stroke"
             strokeWidth={1}
           />
@@ -115,7 +121,7 @@ export function CrosshairOverlay({
                 y={line1Y}
                 text={valueStr}
                 font={font}
-                color={palette.tooltipText}
+                color={tooltipColor ?? palette.tooltipText}
               />
               <SkiaText
                 x={timeTextX}

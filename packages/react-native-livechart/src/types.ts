@@ -184,6 +184,12 @@ export interface ScrubConfig {
   crosshairLineColor?: string;
   /** Dimmed region fill to the right of the crosshair. Omit to use theme `crosshairDim`. */
   crosshairDimColor?: string;
+  /** Tooltip pill background. Omit to use theme `tooltipBg`. */
+  tooltipBackground?: string;
+  /** Tooltip text color. Omit to use theme `tooltipText`. */
+  tooltipColor?: string;
+  /** Tooltip pill border color. Omit to use theme `tooltipBorder`. */
+  tooltipBorderColor?: string;
 }
 
 /** Left-edge fade — soft erase so the chart blends into the left gutter (web liveline parity). */
@@ -592,6 +598,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
   pulse?: boolean | PulseConfig;
   /** Horizontal dashed line at the current live value. `true` = defaults, or pass `ValueLineConfig`. */
   valueLine?: boolean | ValueLineConfig;
+  /** Render the live value as a large text overlay in the top-left. Default `false`. */
+  showValue?: boolean;
+  /** Tint the `showValue` text by momentum (green up / red down). Default `false`. */
+  valueMomentumColor?: boolean;
 
   // ── Candlestick mode ──────────────────────────────────────────────────
   /** Chart display mode (default `"line"`). `"candle"` renders OHLC bars. */
