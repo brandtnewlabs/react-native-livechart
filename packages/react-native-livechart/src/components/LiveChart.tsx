@@ -107,6 +107,10 @@ export function LiveChart({
   exaggerate = false,
   nonNegative = false,
   maxValue,
+  windowBuffer = 0,
+  nowOverride,
+  accessibilityLabel,
+  accessibilityRole = "image",
   emptyText = "No data",
   formatValue = defaultFormatValue,
   formatTime = defaultFormatTime,
@@ -251,6 +255,8 @@ export function LiveChart({
     referenceValues: refValues,
     nonNegative,
     maxValue,
+    windowBuffer,
+    nowOverride,
     mode,
     candles: isCandle ? candlesEngine : candles,
     liveCandle: isCandle ? liveEngine : liveCandle,
@@ -381,7 +387,13 @@ export function LiveChart({
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <GestureDetector gesture={rootGesture}>
-      <View style={[{ flex: 1, backgroundColor }, style]} onLayout={onLayout}>
+      <View
+        style={[{ flex: 1, backgroundColor }, style]}
+        onLayout={onLayout}
+        accessible={accessibilityLabel != null}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole={accessibilityRole}
+      >
         <Canvas style={{ flex: 1 }}>
           {/* Shaken chart stack — left-edge fade is a sibling below so dstOut runs in canvas space */}
           <Group transform={degenShakeTransform}>

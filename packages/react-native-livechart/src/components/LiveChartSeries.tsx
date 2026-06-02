@@ -94,6 +94,10 @@ export function LiveChartSeries({
   exaggerate = false,
   nonNegative = false,
   maxValue,
+  windowBuffer = 0,
+  nowOverride,
+  accessibilityLabel,
+  accessibilityRole = "image",
   emptyText = "No data",
   formatValue = defaultFormatValue,
   formatTime = defaultFormatTime,
@@ -223,6 +227,8 @@ export function LiveChartSeries({
     referenceValues: refValues,
     nonNegative,
     maxValue,
+    windowBuffer,
+    nowOverride,
   });
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const linePaths = useMultiSeriesLinePaths(engine, effectivePadding);
@@ -337,7 +343,13 @@ export function LiveChartSeries({
 
   return (
     <GestureDetector gesture={rootGesture}>
-      <View style={[{ flex: 1, backgroundColor }, style]} onLayout={onLayout}>
+      <View
+        style={[{ flex: 1, backgroundColor }, style]}
+        onLayout={onLayout}
+        accessible={accessibilityLabel != null}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole={accessibilityRole}
+      >
         {legendTop}
         <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
           <Group transform={degenShakeTransform}>

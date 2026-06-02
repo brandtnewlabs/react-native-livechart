@@ -29,6 +29,10 @@ export interface EngineTickInput {
   points: LiveChartPoint[];
   /** Seconds since Unix epoch; defaults to `Date.now() / 1000` */
   nowSeconds?: number;
+  /** Override the engine's "now" (unix seconds) — e.g. fill historical data edge-to-edge. */
+  nowOverride?: number;
+  /** Right-edge buffer as a fraction of the time window (pushes the live edge past "now"). */
+  windowBuffer?: number;
   /** When true, freeze the viewport timestamp and skip displayWindow lerp */
   paused?: boolean;
   /** Chart mode — `"candle"` uses OHLC bars for Y range instead of line points. */
@@ -48,9 +52,9 @@ export function tickLiveChartEngineFrame(
   input: EngineTickInput,
 ): void {
   "worklet";
-  const now = input.nowSeconds ?? Date.now() / 1000;
+  const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
   if (!input.paused) {
-    state.timestamp = now;
+    state.timestamp = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
   }
 
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;

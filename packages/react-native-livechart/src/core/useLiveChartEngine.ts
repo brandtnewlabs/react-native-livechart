@@ -25,6 +25,8 @@ export interface EngineConfig {
   referenceValues?: number[];
   nonNegative?: boolean;
   maxValue?: number;
+  nowOverride?: number;
+  windowBuffer?: number;
   paused?: boolean;
   mode?: "line" | "candle";
   candles?: SharedValue<CandlePoint[]>;
@@ -80,6 +82,8 @@ export interface EngineFrameRefs {
   referenceValues?: SharedValue<number[] | undefined>;
   nonNegativeSV?: SharedValue<boolean>;
   maxValueSV?: SharedValue<number | undefined>;
+  nowOverrideSV?: SharedValue<number | undefined>;
+  windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
   modeSV: SharedValue<"line" | "candle">;
   candles?: SharedValue<CandlePoint[]>;
@@ -114,6 +118,8 @@ export function applyLiveChartEngineFrame(
     referenceValues: sv.referenceValues?.value,
     nonNegative: sv.nonNegativeSV?.value ?? false,
     maxValue: sv.maxValueSV?.value,
+    nowOverride: sv.nowOverrideSV?.value,
+    windowBuffer: sv.windowBufferSV?.value ?? 0,
     targetValue: sv.value.value,
     points: sv.data.value,
     nowSeconds: Date.now() / 1000,
@@ -138,6 +144,8 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
   const referenceValues = useDerivedValue(() => config.referenceValues);
   const nonNegativeSV = useDerivedValue(() => config.nonNegative ?? false);
   const maxValueSV = useDerivedValue(() => config.maxValue);
+  const nowOverrideSV = useDerivedValue(() => config.nowOverride);
+  const windowBufferSV = useDerivedValue(() => config.windowBuffer ?? 0);
   const pausedSV = useDerivedValue(() => config.paused ?? false);
   const modeSV = useDerivedValue(() => config.mode ?? "line");
 
@@ -173,6 +181,8 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
       referenceValues,
       nonNegativeSV,
       maxValueSV,
+      nowOverrideSV,
+      windowBufferSV,
       pausedSV,
       modeSV,
       candles,

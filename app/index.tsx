@@ -79,6 +79,16 @@ const DEMOS: { href: Href; title: string; blurb: string }[] = [
     title: "Multi-series",
     blurb: "Per-series style, degen, legend styling, toggles, scrub.",
   },
+  {
+    href: "/demo/historical-data",
+    title: "Historical data fill",
+    blurb: "nowOverride + windowBuffer: fill a fixed span edge-to-edge.",
+  },
+  {
+    href: "/demo/transitions",
+    title: "Transitions",
+    blurb: "LiveChartTransition cross-fade between line and candle.",
+  },
 ];
 
 export default function Index() {

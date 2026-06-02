@@ -83,6 +83,25 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     expect(s.displayMax).toBeLessThanOrEqual(120);
   });
 
+  it("applies nowOverride and windowBuffer to the timestamp", () => {
+    const s = baseMulti();
+    tickLiveChartSeriesEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 60,
+      smoothing: 0.5,
+      exaggerate: false,
+      referenceValue: undefined,
+      nowOverride: 2000,
+      windowBuffer: 0.05,
+      series: [{ id: "a", data: [{ time: 2000, value: 1 }], value: 1 }],
+      nowSeconds: 1000,
+    });
+    // 2000 + 0.05 * 60 = 2003
+    expect(s.timestamp).toBe(2003);
+  });
+
   it("excludes hidden series from Y-range", () => {
     const s = baseMulti();
     tickLiveChartSeriesEngineFrame(s, {
