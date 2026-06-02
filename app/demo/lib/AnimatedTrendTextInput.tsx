@@ -1,19 +1,16 @@
-import { useCallback, useMemo } from "react";
-import { StyleSheet, TextInput, type TextStyle } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StyleSheet, type TextStyle } from "react-native";
 import Animated, {
   Easing,
   interpolateColor,
+  runOnJS,
   type SharedValue,
-  useAnimatedProps,
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
-
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 const FLASH_IN_MS = 100;
 const FLASH_OUT_MS = 280;
@@ -32,10 +29,8 @@ export type AnimatedTrendTextInputProps = {
   sharedValue: SharedValue<number>;
   maximumFractionDigits?: number;
   /**
-   * When set, the label is formatted with `Intl.NumberFormat` on the RN thread
-   * (`scheduleOnRN` from react-native-worklets) so you get grouping, locale
-   * decimals, currency, etc.
-   * Omit to keep `toFixed` entirely on the UI thread (cheaper per tick).
+   * When set, the label is formatted with `Intl.NumberFormat` (grouping, locale
+   * decimals, currency, etc.). Omit for a plain `toFixed`.
    */
   numberFormat?: NumberFormatConfig;
   baseColor?: string;
@@ -44,71 +39,19 @@ export type AnimatedTrendTextInputProps = {
   style?: TextStyle;
 };
 
-function useTrendFlashReaction(
-  sharedValue: SharedValue<number>,
-  flash: SharedValue<number>,
-) {
-  useAnimatedReaction(
-    () => sharedValue.value,
-    (current, previous) => {
-      if (
-        previous == null ||
-        !Number.isFinite(current) ||
-        !Number.isFinite(previous) ||
-        current === previous
-      ) {
-        return;
-      }
-      const dir = current > previous ? 1 : -1;
-      flash.value = withSequence(
-        withTiming(dir, { duration: FLASH_IN_MS }),
-        withTiming(0, {
-          duration: FLASH_OUT_MS,
-          easing: Easing.out(Easing.cubic),
-        }),
-      );
-    },
-    [sharedValue, flash],
-  );
-}
-
-function AnimatedTrendTextInputPlain({
-  sharedValue,
-  maximumFractionDigits = 6,
-  baseColor = TW_ZINC_400,
-  upColor = TW_EMERALD_400,
-  downColor = TW_RED_400,
-  style,
-}: AnimatedTrendTextInputProps) {
-  const flash = useSharedValue(0);
-  useTrendFlashReaction(sharedValue, flash);
-
-  const animatedProps = useAnimatedProps(() => {
-    const v = sharedValue.value;
-    const text = Number.isFinite(v) ? v.toFixed(maximumFractionDigits) : "—";
-    return { text, defaultValue: text };
-  });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(
-      flash.value,
-      [-1, 0, 1],
-      [downColor, baseColor, upColor],
-    ),
-  }));
-
-  return (
-    <AnimatedTextInput
-      editable={false}
-      pointerEvents="none"
-      underlineColorAndroid="transparent"
-      style={[styles.input, style, animatedStyle]}
-      animatedProps={animatedProps}
-    />
-  );
-}
-
-function AnimatedTrendTextInputWithIntl({
+/**
+ * Live numeric readout that flashes green/red on change and fades back to
+ * neutral.
+ *
+ * The text content is pushed into React state from a UI-thread
+ * `useAnimatedReaction` (throttled to one render per value change). It used to
+ * drive an `Animated.createAnimatedComponent(TextInput)` and set `text` via
+ * `useAnimatedProps` every tick — that pattern leaks native memory on iOS
+ * (resident memory climbs for as long as the value keeps updating). The color
+ * flash stays on the UI thread via `useAnimatedStyle` (animating a `color`
+ * style does not leak); only the string content crosses to JS.
+ */
+export function AnimatedTrendTextInput({
   sharedValue,
   maximumFractionDigits = 6,
   numberFormat,
@@ -116,43 +59,68 @@ function AnimatedTrendTextInputWithIntl({
   upColor = TW_EMERALD_400,
   downColor = TW_RED_400,
   style,
-}: AnimatedTrendTextInputProps & { numberFormat: NumberFormatConfig }) {
+}: AnimatedTrendTextInputProps) {
   const flash = useSharedValue(0);
-  const formattedSv = useSharedValue("");
-  useTrendFlashReaction(sharedValue, flash);
 
   const formatter = useMemo(
     () =>
-      new Intl.NumberFormat(numberFormat.locales, {
-        maximumFractionDigits,
-        ...numberFormat.options,
-      }),
-    [numberFormat.locales, numberFormat.options, maximumFractionDigits],
+      numberFormat
+        ? new Intl.NumberFormat(numberFormat.locales, {
+            maximumFractionDigits,
+            ...numberFormat.options,
+          })
+        : null,
+    [numberFormat?.locales, numberFormat?.options, maximumFractionDigits],
   );
 
-  const pushFormatted = useCallback(
+  const format = useCallback(
     (n: number) => {
-      if (!Number.isFinite(n)) {
-        formattedSv.value = "—";
-        return;
-      }
-      formattedSv.value = formatter.format(n);
+      if (!Number.isFinite(n)) return "—";
+      return formatter ? formatter.format(n) : n.toFixed(maximumFractionDigits);
     },
-    [formatter, formattedSv],
+    [formatter, maximumFractionDigits],
   );
 
+  const latest = useRef(sharedValue.value);
+  const [display, setDisplay] = useState(() => format(sharedValue.value));
+
+  const onValue = useCallback(
+    (n: number) => {
+      latest.current = n;
+      setDisplay(format(n));
+    },
+    [format],
+  );
+
+  // Re-format the current value when the formatter changes (e.g. toggling Intl).
+  useEffect(() => {
+    setDisplay(format(latest.current));
+  }, [format]);
+
+  // One reaction drives both the color flash (UI thread) and the text update
+  // (marshalled to JS once per change — not a per-frame native text push).
   useAnimatedReaction(
     () => sharedValue.value,
-    (current) => {
-      scheduleOnRN(pushFormatted, current);
+    (current, previous) => {
+      if (current === previous) return;
+      if (
+        previous != null &&
+        Number.isFinite(current) &&
+        Number.isFinite(previous)
+      ) {
+        const dir = current > previous ? 1 : -1;
+        flash.value = withSequence(
+          withTiming(dir, { duration: FLASH_IN_MS }),
+          withTiming(0, {
+            duration: FLASH_OUT_MS,
+            easing: Easing.out(Easing.cubic),
+          }),
+        );
+      }
+      runOnJS(onValue)(current);
     },
-    [sharedValue, pushFormatted],
+    [onValue],
   );
-
-  const animatedProps = useAnimatedProps(() => ({
-    text: formattedSv.value,
-    defaultValue: formattedSv.value,
-  }));
 
   const animatedStyle = useAnimatedStyle(() => ({
     color: interpolateColor(
@@ -163,28 +131,10 @@ function AnimatedTrendTextInputWithIntl({
   }));
 
   return (
-    <AnimatedTextInput
-      editable={false}
-      pointerEvents="none"
-      underlineColorAndroid="transparent"
-      style={[styles.input, style, animatedStyle]}
-      animatedProps={animatedProps}
-    />
+    <Animated.Text style={[styles.input, style, animatedStyle]}>
+      {display}
+    </Animated.Text>
   );
-}
-
-// TextInput (not Text) so useAnimatedProps can push `text` on the UI thread like a label.
-// editable={false} + pointerEvents="none" keeps it from behaving like an input.
-export function AnimatedTrendTextInput(props: AnimatedTrendTextInputProps) {
-  if (props.numberFormat != null) {
-    return (
-      <AnimatedTrendTextInputWithIntl
-        {...props}
-        numberFormat={props.numberFormat}
-      />
-    );
-  }
-  return <AnimatedTrendTextInputPlain {...props} />;
 }
 
 const styles = StyleSheet.create({
