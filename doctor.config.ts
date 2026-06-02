@@ -25,15 +25,6 @@ const config: ReactDoctorConfig = {
         rules: ["react-doctor/no-giant-component"],
       },
       {
-        // Timed cross-fade driven by the `active` prop (parent toggles line↔candle):
-        // mount the new child, then unmount the outgoing one after a duration timer.
-        // That's a prop change, not a user event, so there's no handler to move it
-        // into and no-effect-event-handler doesn't apply. (The two state updates
-        // were combined into a useReducer, clearing no-cascading-set-state.)
-        files: ["**/components/LiveChartTransition.tsx"],
-        rules: ["react-doctor/no-effect-event-handler"],
-      },
-      {
         // `emitShake` notifies the consumer when a momentum shake is detected on
         // the UI thread (in the frame worklet, via runOnJS) — there's no React
         // event to move the side effect into, so no-event-handler doesn't apply.
