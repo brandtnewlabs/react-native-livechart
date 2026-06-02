@@ -24,11 +24,6 @@ const config: ReactDoctorConfig = {
         ],
         rules: ["react-doctor/no-giant-component"],
       },
-      {
-        // react-doctor is a CLI dev tool, never imported — it flags itself.
-        files: ["package.json", "**/package.json"],
-        rules: ["deslop/unused-dev-dependency"],
-      },
     ],
   },
 };
