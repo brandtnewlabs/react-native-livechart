@@ -116,7 +116,6 @@ export function useDegen(
       shakeX.set(0);
       shakeY.set(0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- shared value refs are stable; react only to cfg primitives
   }, [
     degenOff,
     onShake,
@@ -136,6 +135,29 @@ export function useDegen(
     resolvedJitterY,
     resolvedSpeedMin,
     resolvedSpeedMax,
+    // SharedValue refs are stable (useSharedValue), so listing them satisfies
+    // exhaustive-deps without ever re-running the effect.
+    enabledSV,
+    shakeEnabledSV,
+    hasOnShakeListenerSV,
+    shakeStart,
+    shakeX,
+    shakeY,
+    scaleSV,
+    downSV,
+    shakeIntensitySV,
+    shakeDurationSecSV,
+    slotCountSV,
+    burstParticleCountSV,
+    particleBurstDurationSecSV,
+    dragSV,
+    sizeMinSV,
+    sizeMaxSV,
+    spreadAngleSV,
+    jitterXSV,
+    jitterYSV,
+    speedMinSV,
+    speedMaxSV,
   ]);
 
   useFrameCallback(

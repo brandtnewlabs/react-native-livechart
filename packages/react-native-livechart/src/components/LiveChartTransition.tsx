@@ -3,8 +3,8 @@ import {
   type ReactElement,
   type ReactNode,
   useEffect,
+  useReducer,
   useRef,
-  useState,
 } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 import Animated, {
@@ -56,6 +56,28 @@ function FadeLayer({
   );
 }
 
+type MountedAction =
+  | { type: "mount"; key: string }
+  | { type: "unmount"; key: string };
+
+/** Tracks which child keys are currently mounted during a cross-fade. */
+function mountedReducer(
+  mounted: Set<string>,
+  action: MountedAction,
+): Set<string> {
+  switch (action.type) {
+    case "mount":
+      if (mounted.has(action.key)) return mounted;
+      return new Set(mounted).add(action.key);
+    case "unmount": {
+      if (!mounted.has(action.key)) return mounted;
+      const next = new Set(mounted);
+      next.delete(action.key);
+      return next;
+    }
+  }
+}
+
 /**
  * Cross-fades between chart instances by `key` (e.g. line ↔ candle). Mounts the
  * active child plus any outgoing child still fading out; unmounts the outgoing
@@ -74,7 +96,11 @@ export function LiveChartTransition({
     Array.isArray(children) ? children : [children]
   ).filter(isValidElement) as ReactElement[];
 
-  const [mounted, setMounted] = useState<Set<string>>(() => new Set([active]));
+  const [mounted, dispatch] = useReducer(
+    mountedReducer,
+    active,
+    (initial) => new Set([initial]),
+  );
   const prevRef = useRef(active);
 
   useEffect(() => {
@@ -82,13 +108,9 @@ export function LiveChartTransition({
     if (active === prevRef.current) return;
     const outgoing = prevRef.current;
     prevRef.current = active;
-    setMounted((prev) => new Set([...prev, active]));
+    dispatch({ type: "mount", key: active });
     const timer = setTimeout(() => {
-      setMounted((prev) => {
-        const next = new Set(prev);
-        next.delete(outgoing);
-        return next;
-      });
+      dispatch({ type: "unmount", key: outgoing });
     }, duration + 50);
     return () => clearTimeout(timer);
   }, [active, duration, keepMounted]);

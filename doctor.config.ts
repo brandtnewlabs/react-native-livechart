@@ -38,13 +38,13 @@ const config: ReactDoctorConfig = {
         ],
       },
       {
-        // Timed cross-fade: mounting/unmounting children on an `active` prop
-        // change via a duration timer is exactly what an effect is for.
+        // Timed cross-fade driven by the `active` prop (parent toggles line↔candle):
+        // mount the new child, then unmount the outgoing one after a duration timer.
+        // That's a prop change, not a user event, so there's no handler to move it
+        // into and no-effect-event-handler doesn't apply. (The two state updates
+        // were combined into a useReducer, clearing no-cascading-set-state.)
         files: ["**/components/LiveChartTransition.tsx"],
-        rules: [
-          "react-doctor/no-cascading-set-state",
-          "react-doctor/no-effect-event-handler",
-        ],
+        rules: ["react-doctor/no-effect-event-handler"],
       },
       {
         // The gesture is built with Gesture.Tap() and its worklet runs on the UI
@@ -53,13 +53,11 @@ const config: ReactDoctorConfig = {
         rules: ["react-hooks-js/refs"],
       },
       {
-        // Degen effects are driven by the frame loop / SharedValue signatures, not
-        // user events; deps are deliberately narrowed to avoid re-arming the loop.
+        // `emitShake` notifies the consumer when a momentum shake is detected on
+        // the UI thread (in the frame worklet, via runOnJS) — there's no React
+        // event to move the side effect into, so no-event-handler doesn't apply.
         files: ["**/hooks/useDegen.ts", "**/hooks/useMultiSeriesDegen.ts"],
-        rules: [
-          "react-doctor/exhaustive-deps",
-          "react-doctor/no-event-handler",
-        ],
+        rules: ["react-doctor/no-event-handler"],
       },
       {
         // Demo trend input: the displayed text mirrors a Reanimated SharedValue
