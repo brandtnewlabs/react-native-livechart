@@ -4,7 +4,7 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
-import { drawSpline } from "../math/spline";
+import { drawSpline, makeSplineScratch } from "../math/spline";
 
 /**
  * One derived shared value holding up to `MAX_MULTI_SERIES` Skia paths (unused slots are empty paths).
@@ -26,7 +26,9 @@ export function useMultiSeriesLinePaths(
       a.push(Skia.Path.Make());
       b.push(Skia.Path.Make());
     }
-    return { a, b, tick: false };
+    // One point buffer + spline scratch, reused across slots (built sequentially)
+    // and across frames — no per-frame, per-series array allocation.
+    return { a, b, tick: false, ptsBuf: [] as number[], scratch: makeSplineScratch() };
   }, []);
 
   return useDerivedValue(() => {
@@ -52,11 +54,12 @@ export function useMultiSeriesLinePaths(
         engine.canvasWidth.value,
         engine.canvasHeight.value,
         padding,
+        pool.ptsBuf,
       );
       const n = pts.length >> 1;
       if (n >= 2) {
         path.moveTo(pts[0], pts[1]);
-        drawSpline(path, pts);
+        drawSpline(path, pts, pool.scratch);
       }
       out.push(path);
     }

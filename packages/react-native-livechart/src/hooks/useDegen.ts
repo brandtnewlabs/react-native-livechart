@@ -52,6 +52,7 @@ export function useDegen(
   const shakeY = useSharedValue(0);
   const shakeStart = useSharedValue(0);
   const prevTimestamp = useSharedValue(0);
+  const prevActiveCount = useSharedValue(0);
   const hasOnShakeListenerSV = useSharedValue(0);
 
   const onShakeRef = useRef(onShake);
@@ -147,6 +148,7 @@ export function useDegen(
       if (enabledSV.value < 0.5) {
         for (let i = 0; i < slots; i++) buf[i * 7 + 5] = 0;
         prevM.value = momentumSV.value;
+        prevActiveCount.value = 0;
         shakeStart.value = 0;
         shakeX.value = 0;
         shakeY.value = 0;
@@ -208,7 +210,7 @@ export function useDegen(
         shakeY.value = 0;
       }
 
-      tickParticles(
+      const activeCount = tickParticles(
         buf,
         slots,
         now,
@@ -217,7 +219,14 @@ export function useDegen(
         dtSec,
       );
 
-      packRevision.value = packRevision.value + 1;
+      // Repaint only while particles are alive (or on the frame they all expire,
+      // so the overlay clears). When the field is empty the 4 derived values per
+      // slot stay subscribed to `packRevision` alone and freeze — no per-frame
+      // worklet churn for an idle particle system.
+      if (activeCount > 0 || prevActiveCount.value > 0) {
+        packRevision.value = packRevision.value + 1;
+      }
+      prevActiveCount.value = activeCount;
     },
   );
 

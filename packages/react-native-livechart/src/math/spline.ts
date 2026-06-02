@@ -1,6 +1,24 @@
 import type { SkPath } from "@shopify/react-native-skia";
 
 /**
+ * Reusable scratch buffers for {@link drawSpline}. Pass a persistent instance
+ * (created once per chart via `useMemo`) to avoid allocating three arrays sized
+ * to the point count on every frame — the per-frame garbage scales with the
+ * number of points (large `timeWindow`s push 1000+ points), so pooling these
+ * meaningfully cuts UI-thread GC pressure on live charts.
+ */
+export interface SplineScratch {
+  delta: number[];
+  h: number[];
+  m: number[];
+}
+
+/** Allocate an empty {@link SplineScratch} (arrays grow on demand). */
+export function makeSplineScratch(): SplineScratch {
+  return { delta: [], h: [], m: [] };
+}
+
+/**
  * Fritsch-Carlson monotone cubic interpolation.
  * Guarantees no overshoots — the curve never exceeds local min/max.
  * Same approach documented in liveline for smooth live line charts (adapted code; MIT).
@@ -8,9 +26,13 @@ import type { SkPath } from "@shopify/react-native-skia";
  * pts is a flat number array with stride 2: [x0, y0, x1, y1, ...].
  * Caller must moveTo the first point before calling.
  *
+ * Pass `scratch` (see {@link makeSplineScratch}) to reuse the tangent/interval
+ * buffers across frames instead of allocating them each call. Only indices
+ * `0..n-1` are read after being written, so stale tail entries are harmless.
+ *
  * @see https://github.com/benjitaylor/liveline
  */
-export function drawSpline(path: SkPath, pts: number[]) {
+export function drawSpline(path: SkPath, pts: number[], scratch?: SplineScratch) {
   "worklet";
   const n = pts.length >> 1;
   if (n < 2) return;
@@ -20,8 +42,8 @@ export function drawSpline(path: SkPath, pts: number[]) {
   }
 
   // 1. Secant slopes and x-intervals
-  const delta: number[] = new Array(n - 1);
-  const h: number[] = new Array(n - 1);
+  const delta: number[] = scratch ? scratch.delta : new Array(n - 1);
+  const h: number[] = scratch ? scratch.h : new Array(n - 1);
   for (let i = 0; i < n - 1; i++) {
     const i2 = i * 2;
     const j2 = i2 + 2;
@@ -30,7 +52,7 @@ export function drawSpline(path: SkPath, pts: number[]) {
   }
 
   // 2. Initial tangent estimates
-  const m: number[] = new Array(n);
+  const m: number[] = scratch ? scratch.m : new Array(n);
   m[0] = delta[0];
   m[n - 1] = delta[n - 2];
   for (let i = 1; i < n - 1; i++) {
