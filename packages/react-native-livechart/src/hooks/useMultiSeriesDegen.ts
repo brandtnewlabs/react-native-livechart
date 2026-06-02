@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import {
-  runOnJS,
   useDerivedValue,
   useFrameCallback,
   useSharedValue,
   type DerivedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import { runOnJS } from "react-native-worklets";
 import { DEGEN_STRIDE } from "../constants";
 import type { ResolvedDegenConfig } from "../core/resolveConfig";
 import type { MultiEngineState } from "../core/useLiveChartEngine";

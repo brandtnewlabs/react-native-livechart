@@ -608,6 +608,7 @@ export function LiveChart({
                   tooltipBackground={scrubCfg.tooltipBackground}
                   tooltipColor={scrubCfg.tooltipColor}
                   tooltipBorderColor={scrubCfg.tooltipBorderColor}
+                  // react-doctor-disable-next-line react-doctor/jsx-no-jsx-as-prop -- tooltipBody is an intentional slot-style API: the candle path injects a custom tooltip body (and consumers can swap in their own). It's already hoisted to a stable local const and memoized by React Compiler, so it isn't rebuilt each render; the only way to satisfy the rule is reshaping the public prop into a render-prop/children, which would break the slot API.
                   tooltipBody={tooltipBody}
                 />
               )}

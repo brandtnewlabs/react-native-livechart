@@ -25,10 +25,7 @@ import {
   type HistoryRange,
   type TradeSource,
 } from "../../sim/useSimulatedChartData";
-import {
-  AnimatedTrendTextInput,
-  type NumberFormatConfig,
-} from "./lib/AnimatedTrendTextInput";
+import { AnimatedTrendTextInput } from "./lib/AnimatedTrendTextInput";
 import {
   HISTORY_RANGE_PRESETS,
   PRICE_RANGES,
@@ -42,14 +39,12 @@ export const options = { title: "Playground" };
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
-const PLAYGROUND_HEADER_NUMBER_FORMAT: NumberFormatConfig = {
-  locales: "en-US",
-  options: {
-    useGrouping: true,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  },
-};
+// Built once at module scope so it isn't reconstructed per render (js-hoist-intl).
+const PLAYGROUND_HEADER_FORMATTER = new Intl.NumberFormat("en-US", {
+  useGrouping: true,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 export default function PlaygroundScreen() {
   const [volatilityMode, setVolatilityMode] =
@@ -122,9 +117,8 @@ export default function PlaygroundScreen() {
         </Text>
         <AnimatedTrendTextInput
           sharedValue={value}
-          maximumFractionDigits={headerReadoutIntl ? 2 : 6}
           {...(headerReadoutIntl
-            ? { numberFormat: PLAYGROUND_HEADER_NUMBER_FORMAT }
+            ? { formatter: PLAYGROUND_HEADER_FORMATTER }
             : {})}
           style={styles.subtitle}
         />

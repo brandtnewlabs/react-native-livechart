@@ -25,17 +25,13 @@ const config: ReactDoctorConfig = {
       },
       {
         // LiveChart / LiveChartSeries are the top-level composition roots; their
-        // size is inherent to a fully-featured chart component. The optional
-        // `tooltipBody` slot intentionally accepts JSX content as a prop (a
-        // standard slot-style API); React Compiler handles its memoization.
+        // size is inherent to a fully-featured chart component. (The `tooltipBody`
+        // JSX-as-prop slot is suppressed inline at its call site in LiveChart.tsx.)
         files: [
           "**/components/LiveChart.tsx",
           "**/components/LiveChartSeries.tsx",
         ],
-        rules: [
-          "react-doctor/no-giant-component",
-          "react-doctor/jsx-no-jsx-as-prop",
-        ],
+        rules: ["react-doctor/no-giant-component"],
       },
       {
         // Timed cross-fade driven by the `active` prop (parent toggles line↔candle):
@@ -52,20 +48,6 @@ const config: ReactDoctorConfig = {
         // event to move the side effect into, so no-event-handler doesn't apply.
         files: ["**/hooks/useDegen.ts", "**/hooks/useMultiSeriesDegen.ts"],
         rules: ["react-doctor/no-event-handler"],
-      },
-      {
-        // Demo trend input: the displayed text mirrors a Reanimated SharedValue
-        // via a reaction; the formatter-change re-format can't be derived during
-        // render (the value updates off the render path). The Intl formatter and
-        // its callbacks are deliberately memoized (js-hoist-intl + stable effect /
-        // reaction deps), which conflicts with the redundant-memoization rule.
-        files: ["**/AnimatedTrendTextInput.tsx"],
-        rules: [
-          "react-doctor/exhaustive-deps",
-          "react-doctor/no-derived-state",
-          "react-doctor/no-pass-data-to-parent",
-          "react-doctor/react-compiler-no-manual-memoization",
-        ],
       },
       {
         // Demo simulation hook: history is fed through a callback by design and
