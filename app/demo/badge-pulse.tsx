@@ -42,6 +42,8 @@ function resolvePulse(mode: PulseMode): boolean | PulseConfig {
 export default function BadgePulseScreen() {
   const [badgeMode, setBadgeMode] = useState<BadgeMode>("on");
   const [pulseMode, setPulseMode] = useState<PulseMode>("on");
+  const [showValue, setShowValue] = useState(false);
+  const [valueMomentumColor, setValueMomentumColor] = useState(false);
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -60,6 +62,8 @@ export default function BadgePulseScreen() {
           theme="dark"
           badge={resolveBadge(badgeMode)}
           pulse={resolvePulse(pulseMode)}
+          showValue={showValue}
+          valueMomentumColor={valueMomentumColor}
           scrub={false}
         />
       }
@@ -117,6 +121,36 @@ export default function BadgePulseScreen() {
             </Text>
           </Pressable>
         ))}
+      </View>
+
+      <Text style={demoStyles.sectionLabel}>Live value overlay</Text>
+      <View style={demoStyles.buttonRow}>
+        <Pressable
+          style={[demoStyles.chip, showValue && demoStyles.chipActive]}
+          onPress={() => setShowValue((v) => !v)}
+        >
+          <Text
+            style={[demoStyles.chipText, showValue && demoStyles.chipTextActive]}
+          >
+            showValue
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[
+            demoStyles.chip,
+            valueMomentumColor && demoStyles.chipActive,
+          ]}
+          onPress={() => setValueMomentumColor((v) => !v)}
+        >
+          <Text
+            style={[
+              demoStyles.chipText,
+              valueMomentumColor && demoStyles.chipTextActive,
+            ]}
+          >
+            Momentum color
+          </Text>
+        </Pressable>
       </View>
     </DemoScreen>
   );

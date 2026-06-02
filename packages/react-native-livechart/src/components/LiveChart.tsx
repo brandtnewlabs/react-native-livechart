@@ -72,6 +72,7 @@ import { LeftEdgeFade } from "./LeftEdgeFade";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { MarkerOverlay } from "./MarkerOverlay";
 import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
+import { ValueTextOverlay } from "./ValueTextOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
 import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
@@ -117,6 +118,8 @@ export function LiveChart({
   momentum = true,
   pulse = true,
   valueLine = true,
+  showValue = false,
+  valueMomentumColor = false,
   referenceLine,
   referenceLines,
   gridStyle,
@@ -182,6 +185,13 @@ export function LiveChart({
     fontProp,
     MONO_FONT_FAMILY,
     palette.labelFontSize,
+  );
+
+  // Larger font for the optional live-value text overlay (showValue).
+  const valueFont = useChartSkiaFont(
+    fontProp,
+    MONO_FONT_FAMILY,
+    palette.valueFontSize * 2,
   );
 
   const pulseConfig = pulseCfg
@@ -508,6 +518,20 @@ export function LiveChart({
               </Group>
             )}
 
+            {showValue && (
+              <Group opacity={reveal.lineOpacity}>
+                <ValueTextOverlay
+                  engine={engine}
+                  padding={effectivePadding}
+                  palette={palette}
+                  font={valueFont}
+                  formatValue={formatValue}
+                  momentum={momentumSV}
+                  momentumColor={valueMomentumColor}
+                />
+              </Group>
+            )}
+
             {markersActive && (
               <Group opacity={reveal.dotOpacity}>
                 <MarkerOverlay
@@ -571,6 +595,9 @@ export function LiveChart({
                   showTooltip={scrubCfg.tooltip}
                   crosshairLineColor={scrubCfg.crosshairLineColor}
                   crosshairDimColor={scrubCfg.crosshairDimColor}
+                  tooltipBackground={scrubCfg.tooltipBackground}
+                  tooltipColor={scrubCfg.tooltipColor}
+                  tooltipBorderColor={scrubCfg.tooltipBorderColor}
                   tooltipBody={
                     isCandle ? (
                       <MultiSeriesTooltipStack
