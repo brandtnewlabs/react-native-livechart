@@ -39,7 +39,7 @@ export default function MultiSeriesScreen() {
 
   const readoutText = useSharedValue("—");
   const readoutProps = useAnimatedProps(() => {
-    const text = readoutText.value;
+    const text = readoutText.get();
     return { text, defaultValue: text };
   });
 
@@ -155,16 +155,16 @@ export default function MultiSeriesScreen() {
                 ? undefined
                 : (id, visible) => {
                     seriesVisibilityRef.current[id] = visible;
-                    const cur = sim.series.value;
-                    sim.series.value = cur.map((s) =>
-                      s.id === id ? { ...s, visible } : s,
+                    const cur = sim.series.get();
+                    sim.series.set(
+                      cur.map((s) => (s.id === id ? { ...s, visible } : s)),
                     );
                   }
             }
             onScrub={(p) => {
               "worklet";
               if (p === null) {
-                readoutText.value = "—";
+                readoutText.set("—");
                 return;
               }
               const parts: string[] = [];
@@ -174,7 +174,7 @@ export default function MultiSeriesScreen() {
                 parts.push(`${label}:${sv.value.toFixed(2)}`);
               }
               const text = `${formatTime(p.time)} · ${parts.join(" · ") || p.value.toFixed(4)}`;
-              readoutText.value = text;
+              readoutText.set(text);
             }}
           />
         </>

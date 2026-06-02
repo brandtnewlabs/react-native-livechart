@@ -34,28 +34,28 @@ export function useCrosshairSeries(
 
   const scrubTime = useDerivedValue(() =>
     computeScrubTime(
-      scrubActive.value,
-      scrubX.value,
+      scrubActive.get(),
+      scrubX.get(),
       padding,
-      engine.canvasWidth.value,
-      engine.timestamp.value,
-      engine.displayWindow.value,
+      engine.canvasWidth.get(),
+      engine.timestamp.get(),
+      engine.displayWindow.get(),
     ),
   );
 
   const scrubValue = useDerivedValue(() =>
     deriveScrubValueSeries(
-      scrubActive.value,
-      scrubTime.value,
-      engine.series.value,
+      scrubActive.get(),
+      scrubTime.get(),
+      engine.series.get(),
     ),
   );
 
   const crosshairOpacity = useDerivedValue(() =>
     computeCrosshairOpacity(
-      scrubActive.value,
-      scrubX.value,
-      engine.canvasWidth.value,
+      scrubActive.get(),
+      scrubX.get(),
+      engine.canvasWidth.get(),
       padding.right,
     ),
   );
@@ -68,21 +68,21 @@ export function useCrosshairSeries(
     () => {
       "worklet";
       if (!hasOnScrub) return "__idle__";
-      if (!scrubActive.value) return "__inactive__";
-      const time = scrubTime.value;
-      const x = scrubX.value;
-      const chartW = engine.canvasWidth.value - padding.left - padding.right;
+      if (!scrubActive.get()) return "__inactive__";
+      const time = scrubTime.get();
+      const x = scrubX.get();
+      const chartW = engine.canvasWidth.get() - padding.left - padding.right;
       if (chartW <= 0) return "__pending__";
-      const r = interpolateSeriesAtTime(engine.series.value, time);
+      const r = interpolateSeriesAtTime(engine.series.get(), time);
       if (r.primary === null) return "__pending__";
-      const h = engine.canvasHeight.value;
+      const h = engine.canvasHeight.get();
       const chartH = h - padding.top - padding.bottom;
-      const valRange = engine.displayMax.value - engine.displayMin.value;
+      const valRange = engine.displayMax.get() - engine.displayMin.get();
       const dotY =
         valRange === 0
           ? padding.top + chartH / 2
           : padding.top +
-            ((engine.displayMax.value - r.primary) / valRange) * chartH;
+            ((engine.displayMax.get() - r.primary) / valRange) * chartH;
       return JSON.stringify({
         time,
         x,
@@ -128,21 +128,21 @@ export function useCrosshairSeries(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;
-        scrubX.value = e.x;
-        scrubActive.value = true;
+        scrubX.set(e.x);
+        scrubActive.set(true);
       },
     )
     .onUpdate(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;
-        scrubX.value = e.x;
+        scrubX.set(e.x);
       },
     )
     .onFinalize(
       /* istanbul ignore next */ () => {
         "worklet";
-        scrubActive.value = false;
+        scrubActive.set(false);
       },
     );
 

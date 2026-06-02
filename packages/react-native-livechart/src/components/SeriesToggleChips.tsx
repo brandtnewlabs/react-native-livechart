@@ -34,15 +34,15 @@ export function SeriesToggleChips({
 }: SeriesToggleChipsProps) {
   // Seed from the current series at mount; the reaction below keeps it in sync.
   const [snapshot, setSnapshot] = useState<SeriesConfig[]>(() =>
-    series.value.slice(),
+    series.get().slice(),
   );
 
   const pullSnapshot = useCallback((sv: SharedValue<SeriesConfig[]>) => {
-    setSnapshot(sv.value.slice());
+    setSnapshot(sv.get().slice());
   }, []);
 
   useAnimatedReaction(
-    () => seriesMetaSig(series.value),
+    () => seriesMetaSig(series.get()),
     /* istanbul ignore next -- Reanimated reaction; snapshot seeded at mount, pulled here on change */
     (sig, prev) => {
       if (sig !== prev) {
@@ -55,7 +55,7 @@ export function SeriesToggleChips({
   if (!legend.visible) return null;
 
   const toggle = (id: string) => {
-    const arr = series.value.slice();
+    const arr = series.get().slice();
     const idx = arr.findIndex((s) => s.id === id);
     /* istanbul ignore next -- defensive; chips only call with known ids */
     if (idx < 0) return;
@@ -64,7 +64,7 @@ export function SeriesToggleChips({
     const next = arr.map((s, i) =>
       i === idx ? { ...s, visible: nextVisible } : s,
     );
-    series.value = next;
+    series.set(next);
     setSnapshot(next);
     onSeriesToggle?.(id, nextVisible);
   };

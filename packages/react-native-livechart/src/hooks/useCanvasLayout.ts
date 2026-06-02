@@ -14,8 +14,8 @@ export function useCanvasLayout(engine: ChartEngineLayout) {
   const onLayout = useCallback(
     (e: LayoutChangeEvent) => {
       const { width, height } = e.nativeEvent.layout;
-      engine.canvasWidth.value = width;
-      engine.canvasHeight.value = height;
+      engine.canvasWidth.set(width);
+      engine.canvasHeight.set(height);
       setLayoutHeight(height);
     },
     [engine.canvasWidth, engine.canvasHeight],

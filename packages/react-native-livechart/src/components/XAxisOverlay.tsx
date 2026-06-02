@@ -1,5 +1,11 @@
-import { Group, Path, Skia, type SkFont } from "@shopify/react-native-skia";
-import { useMemo } from "react";
+import {
+  Group,
+  Path,
+  Skia,
+  type SkFont,
+  type SkPath,
+} from "@shopify/react-native-skia";
+import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
@@ -25,22 +31,27 @@ export function XAxisOverlay({
   palette: LiveChartPalette;
   font: SkFont;
 }) {
-  const axisCache = useMemo(
-    () => ({
+  const axisCacheRef = useRef<{
+    a: SkPath;
+    b: SkPath;
+    tick: boolean;
+  } | null>(null);
+  if (axisCacheRef.current === null) {
+    axisCacheRef.current = {
       a: Skia.Path.Make(),
       b: Skia.Path.Make(),
       tick: false,
-    }),
-    [],
-  );
+    };
+  }
 
   const axisPath = useDerivedValue(() => {
     "worklet";
+    const axisCache = axisCacheRef.current!;
     axisCache.tick = !axisCache.tick;
     const path = axisCache.tick ? axisCache.a : axisCache.b;
     path.reset();
-    const w = engine.canvasWidth.value;
-    const h = engine.canvasHeight.value;
+    const w = engine.canvasWidth.get();
+    const h = engine.canvasHeight.get();
     const lineY = h - padding.bottom;
 
     // Bottom axis line
@@ -48,7 +59,7 @@ export function XAxisOverlay({
     path.lineTo(w - padding.right, lineY);
 
     // Tick marks
-    const items = entries.value;
+    const items = entries.get();
     for (let i = 0; i < items.length; i++) {
       path.moveTo(items[i].x, lineY);
       path.lineTo(items[i].x, lineY + TICK_HEIGHT);
@@ -59,8 +70,8 @@ export function XAxisOverlay({
   // Transform XAxisEntry[] into { x, y, label, alpha } for AnimatedLabel
   const labelEntries = useDerivedValue(() => {
     "worklet";
-    const items = entries.value;
-    const h = engine.canvasHeight.value;
+    const items = entries.get();
+    const h = engine.canvasHeight.get();
     const y = h - padding.bottom + LABEL_OFFSET_Y;
     const n = items.length;
     const out: { x: number; y: number; label: string; alpha: number }[] = [];

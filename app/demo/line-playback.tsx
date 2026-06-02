@@ -32,8 +32,8 @@ export default function LinePlaybackScreen() {
       const t = now - i * 0.25;
       seed.push({ time: t, value: wave(t) });
     }
-    data.value = seed;
-    value.value = wave(now);
+    data.set(seed);
+    value.set(wave(now));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -49,7 +49,7 @@ export default function LinePlaybackScreen() {
         if (arr.length > 600) arr.shift();
         return arr;
       });
-      value.value = v;
+      value.set(v);
     }, 1000 / 30);
     return () => clearInterval(id);
   }, [paused, data, value]);

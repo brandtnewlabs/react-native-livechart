@@ -92,7 +92,7 @@ export default function PlaygroundScreen() {
     });
   const volatilitySv = useSharedValue(volatilityMode);
   useEffect(() => {
-    volatilitySv.value = volatilityMode;
+    volatilitySv.set(volatilityMode);
   }, [volatilityMode, volatilitySv]);
 
   const scrubPoint = useSharedValue<ScrubPoint | null>(null);
@@ -103,12 +103,12 @@ export default function PlaygroundScreen() {
   const nullLiveCandle = useSharedValue<CandlePoint | null>(null);
 
   const metaProps = useAnimatedProps(() => {
-    const sp = scrubPoint.value;
+    const sp = scrubPoint.get();
     if (sp !== null) {
       const text = `${formatTime(sp.time)} · scrub`;
       return { text, defaultValue: text };
     }
-    const text = String(volatilitySv.value);
+    const text = String(volatilitySv.get());
     return { text, defaultValue: text };
   });
 
@@ -160,7 +160,7 @@ export default function PlaygroundScreen() {
           scrub={{ tooltip: true }}
           loading={loading}
           onScrub={(point) => {
-            scrubPoint.value = point;
+            scrubPoint.set(point);
           }}
           tradeStream={simTradeStream ? tradeStream : undefined}
           degen={degen ? true : undefined}

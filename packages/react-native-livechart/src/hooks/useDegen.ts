@@ -85,36 +85,36 @@ export function useDegen(
 
   useEffect(() => {
     if (degenOff) {
-      enabledSV.value = 0;
-      shakeEnabledSV.value = 0;
-      hasOnShakeListenerSV.value = 0;
-      shakeStart.value = 0;
-      shakeX.value = 0;
-      shakeY.value = 0;
+      enabledSV.set(0);
+      shakeEnabledSV.set(0);
+      hasOnShakeListenerSV.set(0);
+      shakeStart.set(0);
+      shakeX.set(0);
+      shakeY.set(0);
       return;
     }
-    hasOnShakeListenerSV.value = onShake != null ? 1 : 0;
-    enabledSV.value = 1;
-    scaleSV.value = resolvedScale;
-    downSV.value = resolvedDown ? 1 : 0;
-    shakeEnabledSV.value = resolvedShake ? 1 : 0;
-    shakeIntensitySV.value = resolvedShakeIntensity;
-    shakeDurationSecSV.value = resolvedShakeDurationSec;
-    slotCountSV.value = resolvedSlotCount;
-    burstParticleCountSV.value = resolvedBurstParticleCount;
-    particleBurstDurationSecSV.value = resolvedParticleBurstDurationSec;
-    dragSV.value = resolvedDrag;
-    sizeMinSV.value = resolvedSizeMin;
-    sizeMaxSV.value = resolvedSizeMax;
-    spreadAngleSV.value = resolvedSpreadAngle;
-    jitterXSV.value = resolvedJitterX;
-    jitterYSV.value = resolvedJitterY;
-    speedMinSV.value = resolvedSpeedMin;
-    speedMaxSV.value = resolvedSpeedMax;
+    hasOnShakeListenerSV.set(onShake != null ? 1 : 0);
+    enabledSV.set(1);
+    scaleSV.set(resolvedScale);
+    downSV.set(resolvedDown ? 1 : 0);
+    shakeEnabledSV.set(resolvedShake ? 1 : 0);
+    shakeIntensitySV.set(resolvedShakeIntensity);
+    shakeDurationSecSV.set(resolvedShakeDurationSec);
+    slotCountSV.set(resolvedSlotCount);
+    burstParticleCountSV.set(resolvedBurstParticleCount);
+    particleBurstDurationSecSV.set(resolvedParticleBurstDurationSec);
+    dragSV.set(resolvedDrag);
+    sizeMinSV.set(resolvedSizeMin);
+    sizeMaxSV.set(resolvedSizeMax);
+    spreadAngleSV.set(resolvedSpreadAngle);
+    jitterXSV.set(resolvedJitterX);
+    jitterYSV.set(resolvedJitterY);
+    speedMinSV.set(resolvedSpeedMin);
+    speedMaxSV.set(resolvedSpeedMax);
     if (!resolvedShake) {
-      shakeStart.value = 0;
-      shakeX.value = 0;
-      shakeY.value = 0;
+      shakeStart.set(0);
+      shakeX.set(0);
+      shakeY.set(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- shared value refs are stable; react only to cfg primitives
   }, [
@@ -141,85 +141,87 @@ export function useDegen(
   useFrameCallback(
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
       "worklet";
-      const now = engine.timestamp.value;
-      const buf = pack.value;
-      const slots = slotCountSV.value;
+      const now = engine.timestamp.get();
+      const buf = pack.get();
+      const slots = slotCountSV.get();
 
-      const dtSec = prevTimestamp.value > 0 ? now - prevTimestamp.value : 0.016;
-      prevTimestamp.value = now;
+      const dtSec = prevTimestamp.get() > 0 ? now - prevTimestamp.get() : 0.016;
+      prevTimestamp.set(now);
 
-      if (enabledSV.value < 0.5) {
+      if (enabledSV.get() < 0.5) {
         for (let i = 0; i < slots; i++) buf[i * DEGEN_STRIDE + 5] = 0;
-        prevM.value = momentumSV.value;
-        prevActiveCount.value = 0;
-        shakeStart.value = 0;
-        shakeX.value = 0;
-        shakeY.value = 0;
+        prevM.set(momentumSV.get());
+        prevActiveCount.set(0);
+        shakeStart.set(0);
+        shakeX.set(0);
+        shakeY.set(0);
         return;
       }
 
-      const m = momentumSV.value;
-      const prev = prevM.value;
+      const m = momentumSV.get();
+      const prev = prevM.get();
 
       if (m !== prev && m !== "flat") {
-        const allowDown = downSV.value > 0.5;
+        const allowDown = downSV.get() > 0.5;
         const ok = m === "up" || (m === "down" && allowDown);
         if (ok) {
-          const cw = engine.canvasWidth.value;
-          const ch = engine.canvasHeight.value;
+          const cw = engine.canvasWidth.get();
+          const ch = engine.canvasHeight.get();
           if (cw >= 1 && ch >= 1) {
             const isUp = m === "up";
-            writeRot.value = spawnBurst(buf, {
-              ox: dotX.value,
-              oy: dotY.value,
-              sc: scaleSV.value,
-              burst: burstParticleCountSV.value,
-              baseAngle: isUp ? -Math.PI / 2 : Math.PI / 2,
-              spread: spreadAngleSV.value,
-              jx: jitterXSV.value,
-              jy: jitterYSV.value,
-              sMin: speedMinSV.value,
-              sMax: speedMaxSV.value,
-              szMin: sizeMinSV.value,
-              szMax: sizeMaxSV.value,
-              now,
-              baseRot: writeRot.value,
-              slots,
-              colorIndex: -1, // cycle the color list per particle
-            });
-            if (shakeEnabledSV.value > 0.5) {
-              shakeStart.value = now;
-              if (hasOnShakeListenerSV.value > 0.5) {
+            writeRot.set(
+              spawnBurst(buf, {
+                ox: dotX.get(),
+                oy: dotY.get(),
+                sc: scaleSV.get(),
+                burst: burstParticleCountSV.get(),
+                baseAngle: isUp ? -Math.PI / 2 : Math.PI / 2,
+                spread: spreadAngleSV.get(),
+                jx: jitterXSV.get(),
+                jy: jitterYSV.get(),
+                sMin: speedMinSV.get(),
+                sMax: speedMaxSV.get(),
+                szMin: sizeMinSV.get(),
+                szMax: sizeMaxSV.get(),
+                now,
+                baseRot: writeRot.get(),
+                slots,
+                colorIndex: -1, // cycle the color list per particle
+              }),
+            );
+            if (shakeEnabledSV.get() > 0.5) {
+              shakeStart.set(now);
+              if (hasOnShakeListenerSV.get() > 0.5) {
                 runOnJS(emitShake)(isUp ? "up" : "down");
               }
             }
           }
         }
       }
-      prevM.value = m;
+      prevM.set(m);
 
-      if (shakeStart.value > 0 && shakeEnabledSV.value > 0.5) {
+      if (shakeStart.get() > 0 && shakeEnabledSV.get() > 0.5) {
         const r = computeShake(
-          now - shakeStart.value,
-          shakeDurationSecSV.value,
-          scaleSV.value,
-          shakeIntensitySV.value,
+          now - shakeStart.get(),
+          shakeDurationSecSV.get(),
+          scaleSV.get(),
+          shakeIntensitySV.get(),
         );
-        shakeX.value = r.x;
-        shakeY.value = r.y;
-        if (!r.active) shakeStart.value = 0;
-      } else if (shakeEnabledSV.value < 0.5) {
-        shakeStart.value = 0;
-        shakeX.value = 0;
-        shakeY.value = 0;
+        shakeX.set(r.x);
+        shakeY.set(r.y);
+        if (!r.active) shakeStart.set(0);
+      } else if (shakeEnabledSV.get() < 0.5) {
+        shakeStart.set(0);
+        shakeX.set(0);
+        shakeY.set(0);
       }
 
       const activeCount = tickParticles(
         buf,
         slots,
         now,
-        particleBurstDurationSecSV.value,
-        dragSV.value,
+        particleBurstDurationSecSV.get(),
+        dragSV.get(),
         dtSec,
       );
 
@@ -227,16 +229,16 @@ export function useDegen(
       // so the overlay clears). When the field is empty the 4 derived values per
       // slot stay subscribed to `packRevision` alone and freeze — no per-frame
       // worklet churn for an idle particle system.
-      if (activeCount > 0 || prevActiveCount.value > 0) {
-        packRevision.value = packRevision.value + 1;
+      if (activeCount > 0 || prevActiveCount.get() > 0) {
+        packRevision.set(packRevision.get() + 1);
       }
-      prevActiveCount.value = activeCount;
+      prevActiveCount.set(activeCount);
     },
   );
 
   const shakeTransform = useDerivedValue(() => {
     "worklet";
-    return [{ translateX: shakeX.value }, { translateY: shakeY.value }] as [
+    return [{ translateX: shakeX.get() }, { translateY: shakeY.get() }] as [
       { translateX: number },
       { translateY: number },
     ];

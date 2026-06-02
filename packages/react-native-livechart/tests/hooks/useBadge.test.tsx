@@ -8,6 +8,7 @@ import { measureFontTextWidth } from "../../src/lib/measureFontTextWidth";
 import { resolveTheme } from "../../src/theme";
 import type { EngineState } from "../../src/core/useLiveChartEngine";
 import { useBadge } from "../../src/hooks/useBadge";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 const font = {
   getSize: () => 12,
@@ -21,7 +22,7 @@ const font = {
 } as unknown as SkFont;
 
 function makeEngine(w: number, h: number): EngineState {
-  return {
+  return withSharedValueAccessors({
     data: { value: [] },
     value: { value: 1 },
     displayValue: { value: 50 },
@@ -31,7 +32,7 @@ function makeEngine(w: number, h: number): EngineState {
     canvasWidth: { value: w },
     canvasHeight: { value: h },
     timestamp: { value: 1000 },
-  } as unknown as EngineState;
+  }) as unknown as EngineState;
 }
 
 describe("useBadge", () => {
@@ -139,12 +140,12 @@ describe("useBadge", () => {
   });
 
   it("centers badge vertically when value range is zero", () => {
-    const eng = {
+    const eng = withSharedValueAccessors({
       ...makeEngine(400, 300),
       displayMin: { value: 5 },
       displayMax: { value: 5 },
       displayValue: { value: 5 },
-    } as unknown as EngineState;
+    }) as unknown as EngineState;
     const { result } = renderHook(() =>
       useBadge(eng, DEFAULT_PADDING, palette, (v) => v.toFixed(2), font),
     );

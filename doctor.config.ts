@@ -20,13 +20,6 @@ const config: ReactDoctorConfig = {
     // detects their in-place mutation — so the manual memo is load-bearing.
     "react-doctor/react-compiler-no-manual-memoization": "off",
 
-    // SharedValues are mutated by design (`sv.value = next` is how you update
-    // one), and the Skia path / per-frame caches are reused in place rather than
-    // reallocated (an iOS memory optimization). react-hooks-js flags every such
-    // write as an illegal mutation of a hook argument / captured value. The whole
-    // engine is built on this, so the rule is pure noise for this project.
-    "react-hooks-js/immutability": "off",
-
     // The library deliberately uses internal barrels (`../hooks`, `../components`)
     // for organization; public consumers import from the package root barrel.
     "react-doctor/no-barrel-import": "off",
@@ -85,12 +78,16 @@ const config: ReactDoctorConfig = {
         ],
       },
       {
-        // Demo trend input: the formatter is rebuilt only when its options change,
-        // and the display is re-derived from the latest-value ref in that effect.
+        // Demo trend input: the displayed text mirrors a Reanimated SharedValue
+        // via a reaction; when the formatter changes we re-format the latest
+        // value in an effect. It can't be derived during render (the value
+        // updates asynchronously off the render path), so the derived-state /
+        // pass-data effect rules don't apply here.
         files: ["**/AnimatedTrendTextInput.tsx"],
         rules: [
           "react-doctor/exhaustive-deps",
           "react-doctor/no-derived-state",
+          "react-doctor/no-pass-data-to-parent",
         ],
       },
       {

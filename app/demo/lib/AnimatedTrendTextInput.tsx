@@ -81,8 +81,9 @@ export function AnimatedTrendTextInput({
     [formatter, maximumFractionDigits],
   );
 
-  const latest = useRef(sharedValue.value);
-  const [display, setDisplay] = useState(() => format(sharedValue.value));
+  const latest = useRef<number | null>(null);
+  if (latest.current === null) latest.current = sharedValue.get();
+  const [display, setDisplay] = useState(() => format(sharedValue.get()));
 
   const onValue = useCallback(
     (n: number) => {
@@ -94,13 +95,13 @@ export function AnimatedTrendTextInput({
 
   // Re-format the current value when the formatter changes (e.g. toggling Intl).
   useEffect(() => {
-    setDisplay(format(latest.current));
+    setDisplay(format(latest.current!));
   }, [format]);
 
   // One reaction drives both the color flash (UI thread) and the text update
   // (marshalled to JS once per change — not a per-frame native text push).
   useAnimatedReaction(
-    () => sharedValue.value,
+    () => sharedValue.get(),
     (current, previous) => {
       if (current === previous) return;
       if (
@@ -109,12 +110,14 @@ export function AnimatedTrendTextInput({
         Number.isFinite(previous)
       ) {
         const dir = current > previous ? 1 : -1;
-        flash.value = withSequence(
-          withTiming(dir, { duration: FLASH_IN_MS }),
-          withTiming(0, {
-            duration: FLASH_OUT_MS,
-            easing: Easing.out(Easing.cubic),
-          }),
+        flash.set(
+          withSequence(
+            withTiming(dir, { duration: FLASH_IN_MS }),
+            withTiming(0, {
+              duration: FLASH_OUT_MS,
+              easing: Easing.out(Easing.cubic),
+            }),
+          ),
         );
       }
       runOnJS(onValue)(current);
@@ -124,7 +127,7 @@ export function AnimatedTrendTextInput({
 
   const animatedStyle = useAnimatedStyle(() => ({
     color: interpolateColor(
-      flash.value,
+      flash.get(),
       [-1, 0, 1],
       [downColor, baseColor, upColor],
     ),

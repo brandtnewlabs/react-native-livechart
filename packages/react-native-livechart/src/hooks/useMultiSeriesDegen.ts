@@ -80,36 +80,36 @@ export function useMultiSeriesDegen(
 
   useEffect(() => {
     if (degenOff) {
-      enabledSV.value = 0;
-      shakeEnabledSV.value = 0;
-      hasOnShakeListenerSV.value = 0;
-      shakeStart.value = 0;
-      shakeX.value = 0;
-      shakeY.value = 0;
+      enabledSV.set(0);
+      shakeEnabledSV.set(0);
+      hasOnShakeListenerSV.set(0);
+      shakeStart.set(0);
+      shakeX.set(0);
+      shakeY.set(0);
       return;
     }
-    hasOnShakeListenerSV.value = onShake != null ? 1 : 0;
-    enabledSV.value = 1;
-    scaleSV.value = cfg.scale;
-    downSV.value = cfg.downMomentum ? 1 : 0;
-    shakeEnabledSV.value = cfg.shake ? 1 : 0;
-    shakeIntensitySV.value = cfg.shakeIntensity;
-    shakeDurationSecSV.value = cfg.shakeDurationSec;
-    slotCountSV.value = cfg.particleSlotCount;
-    burstParticleCountSV.value = cfg.burstParticleCount;
-    particleBurstDurationSecSV.value = cfg.particleBurstDurationSec;
-    dragSV.value = cfg.drag;
-    sizeMinSV.value = cfg.particleSizeMin;
-    sizeMaxSV.value = cfg.particleSizeMax;
-    spreadAngleSV.value = cfg.spreadAngle;
-    jitterXSV.value = cfg.positionJitterX;
-    jitterYSV.value = cfg.positionJitterY;
-    speedMinSV.value = cfg.speedMin;
-    speedMaxSV.value = cfg.speedMax;
+    hasOnShakeListenerSV.set(onShake != null ? 1 : 0);
+    enabledSV.set(1);
+    scaleSV.set(cfg.scale);
+    downSV.set(cfg.downMomentum ? 1 : 0);
+    shakeEnabledSV.set(cfg.shake ? 1 : 0);
+    shakeIntensitySV.set(cfg.shakeIntensity);
+    shakeDurationSecSV.set(cfg.shakeDurationSec);
+    slotCountSV.set(cfg.particleSlotCount);
+    burstParticleCountSV.set(cfg.burstParticleCount);
+    particleBurstDurationSecSV.set(cfg.particleBurstDurationSec);
+    dragSV.set(cfg.drag);
+    sizeMinSV.set(cfg.particleSizeMin);
+    sizeMaxSV.set(cfg.particleSizeMax);
+    spreadAngleSV.set(cfg.spreadAngle);
+    jitterXSV.set(cfg.positionJitterX);
+    jitterYSV.set(cfg.positionJitterY);
+    speedMinSV.set(cfg.speedMin);
+    speedMaxSV.set(cfg.speedMax);
     if (!cfg.shake) {
-      shakeStart.value = 0;
-      shakeX.value = 0;
-      shakeY.value = 0;
+      shakeStart.set(0);
+      shakeX.set(0);
+      shakeY.set(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- shared value refs are stable; react to cfg only
   }, [degenOff, onShake, cfg]);
@@ -117,41 +117,41 @@ export function useMultiSeriesDegen(
   useFrameCallback(
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
       "worklet";
-      const now = engine.timestamp.value;
-      const buf = pack.value;
-      const slots = slotCountSV.value;
+      const now = engine.timestamp.get();
+      const buf = pack.get();
+      const slots = slotCountSV.get();
 
-      const dtSec = prevTimestamp.value > 0 ? now - prevTimestamp.value : 0.016;
-      prevTimestamp.value = now;
+      const dtSec = prevTimestamp.get() > 0 ? now - prevTimestamp.get() : 0.016;
+      prevTimestamp.set(now);
 
-      const moms = prevMoms.value;
+      const moms = prevMoms.get();
 
-      if (enabledSV.value < 0.5) {
+      if (enabledSV.get() < 0.5) {
         for (let i = 0; i < slots; i++) buf[i * DEGEN_STRIDE + 5] = 0;
         moms.length = 0;
-        prevActiveCount.value = 0;
-        shakeStart.value = 0;
-        shakeX.value = 0;
-        shakeY.value = 0;
+        prevActiveCount.set(0);
+        shakeStart.set(0);
+        shakeX.set(0);
+        shakeY.set(0);
         return;
       }
 
-      const s = engine.series.value;
-      const displays = engine.displaySeriesValues.value;
-      const ops = engine.seriesOpacities.value;
+      const s = engine.series.get();
+      const displays = engine.displaySeriesValues.get();
+      const ops = engine.seriesOpacities.get();
       const n = s.length;
       while (moms.length < n) moms.push(0);
       if (moms.length > n) moms.length = n;
 
-      const cw = engine.canvasWidth.value;
-      const ch = engine.canvasHeight.value;
+      const cw = engine.canvasWidth.get();
+      const ch = engine.canvasHeight.get();
       const canSpawn = cw >= 1 && ch >= 1;
-      const dMin = engine.displayMin.value;
-      const dMax = engine.displayMax.value;
+      const dMin = engine.displayMin.get();
+      const dMax = engine.displayMax.get();
       const valRange = dMax - dMin;
       const chartH = ch - padding.top - padding.bottom;
       const ox = cw - padding.right;
-      const allowDown = downSV.value > 0.5;
+      const allowDown = downSV.get() > 0.5;
 
       // Each visible series fires a burst off its own dot on a fresh swing.
       let firedDir = 0; // 0 none, 1 up, 2 down
@@ -169,70 +169,72 @@ export function useMultiSeriesDegen(
           valRange === 0
             ? padding.top + chartH / 2
             : padding.top + ((dMax - v) / valRange) * chartH;
-        writeRot.value = spawnBurst(buf, {
-          ox,
-          oy,
-          sc: scaleSV.value,
-          burst: burstParticleCountSV.value,
-          baseAngle: isUp ? -Math.PI / 2 : Math.PI / 2,
-          spread: spreadAngleSV.value,
-          jx: jitterXSV.value,
-          jy: jitterYSV.value,
-          sMin: speedMinSV.value,
-          sMax: speedMaxSV.value,
-          szMin: sizeMinSV.value,
-          szMax: sizeMaxSV.value,
-          now,
-          baseRot: writeRot.value,
-          slots,
-          colorIndex: i, // color this burst with series i's color
-        });
+        writeRot.set(
+          spawnBurst(buf, {
+            ox,
+            oy,
+            sc: scaleSV.get(),
+            burst: burstParticleCountSV.get(),
+            baseAngle: isUp ? -Math.PI / 2 : Math.PI / 2,
+            spread: spreadAngleSV.get(),
+            jx: jitterXSV.get(),
+            jy: jitterYSV.get(),
+            sMin: speedMinSV.get(),
+            sMax: speedMaxSV.get(),
+            szMin: sizeMinSV.get(),
+            szMax: sizeMaxSV.get(),
+            now,
+            baseRot: writeRot.get(),
+            slots,
+            colorIndex: i, // color this burst with series i's color
+          }),
+        );
         // Up swings win the shared shake; otherwise a down swing arms it.
         if (firedDir !== 1) firedDir = isUp ? 1 : 2;
       }
 
-      if (firedDir !== 0 && shakeEnabledSV.value > 0.5) {
-        shakeStart.value = now;
-        if (hasOnShakeListenerSV.value > 0.5) {
+      if (firedDir !== 0 && shakeEnabledSV.get() > 0.5) {
+        shakeStart.set(now);
+        if (hasOnShakeListenerSV.get() > 0.5) {
           runOnJS(emitShake)(firedDir === 1 ? "up" : "down");
         }
       }
 
-      if (shakeStart.value > 0 && shakeEnabledSV.value > 0.5) {
+      if (shakeStart.get() > 0 && shakeEnabledSV.get() > 0.5) {
         const r = computeShake(
-          now - shakeStart.value,
-          shakeDurationSecSV.value,
-          scaleSV.value,
-          shakeIntensitySV.value,
+          now - shakeStart.get(),
+          shakeDurationSecSV.get(),
+          scaleSV.get(),
+          shakeIntensitySV.get(),
         );
-        shakeX.value = r.x;
-        shakeY.value = r.y;
-        if (!r.active) shakeStart.value = 0;
-      } else if (shakeEnabledSV.value < 0.5) {
-        shakeStart.value = 0;
-        shakeX.value = 0;
-        shakeY.value = 0;
+        shakeX.set(r.x);
+        shakeY.set(r.y);
+        if (!r.active) shakeStart.set(0);
+      } else if (shakeEnabledSV.get() < 0.5) {
+        shakeStart.set(0);
+        shakeX.set(0);
+        shakeY.set(0);
       }
 
       const activeCount = tickParticles(
         buf,
         slots,
         now,
-        particleBurstDurationSecSV.value,
-        dragSV.value,
+        particleBurstDurationSecSV.get(),
+        dragSV.get(),
         dtSec,
       );
 
-      if (activeCount > 0 || prevActiveCount.value > 0) {
-        packRevision.value = packRevision.value + 1;
+      if (activeCount > 0 || prevActiveCount.get() > 0) {
+        packRevision.set(packRevision.get() + 1);
       }
-      prevActiveCount.value = activeCount;
+      prevActiveCount.set(activeCount);
     },
   );
 
   const shakeTransform = useDerivedValue(() => {
     "worklet";
-    return [{ translateX: shakeX.value }, { translateY: shakeY.value }] as [
+    return [{ translateX: shakeX.get() }, { translateY: shakeY.get() }] as [
       { translateX: number },
       { translateY: number },
     ];

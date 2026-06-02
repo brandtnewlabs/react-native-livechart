@@ -18,6 +18,7 @@ import { render } from "@testing-library/react-native";
 import { resolvePulse } from "../../src/core/resolveConfig";
 import { resolveTheme } from "../../src/theme";
 import { useSharedValue } from "react-native-reanimated";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 const PULSE_ON = resolvePulse(true)!;
 
@@ -35,7 +36,7 @@ const font = {
 const palette = resolveTheme("#3b82f6", "dark");
 
 function engine(): EngineState {
-  return {
+  return withSharedValueAccessors({
     data: { value: [] },
     value: { value: 1 },
     displayValue: { value: 1 },
@@ -45,7 +46,7 @@ function engine(): EngineState {
     canvasWidth: { value: 400 },
     canvasHeight: { value: 300 },
     timestamp: { value: 1700000000 },
-  } as unknown as EngineState;
+  }) as unknown as EngineState;
 }
 
 describe("AnimatedLabel", () => {
@@ -100,10 +101,10 @@ describe("DotOverlay", () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
-      const eng = {
+      const eng = withSharedValueAccessors({
         ...engine(),
         timestamp: { value: 0 },
-      } as unknown as EngineState;
+      }) as unknown as EngineState;
       return (
         <DotOverlay
           dotX={dotX}
@@ -121,10 +122,10 @@ describe("DotOverlay", () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
-      const eng = {
+      const eng = withSharedValueAccessors({
         ...engine(),
         timestamp: { value: 0 },
-      } as unknown as EngineState;
+      }) as unknown as EngineState;
       return (
         <DotOverlay
           dotX={dotX}
@@ -177,10 +178,10 @@ describe("DotOverlay", () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
-      const eng = {
+      const eng = withSharedValueAccessors({
         ...engine(),
         timestamp: { value: 1 },
-      } as unknown as EngineState;
+      }) as unknown as EngineState;
       return (
         <DotOverlay
           dotX={dotX}
@@ -197,11 +198,11 @@ describe("DotOverlay", () => {
 
 describe("LoadingOverlay", () => {
   function makeLoadingEngine(w = 400, h = 300): EngineState {
-    return {
+    return withSharedValueAccessors({
       ...engine(),
       canvasWidth: { value: w },
       canvasHeight: { value: h },
-    } as unknown as EngineState;
+    }) as unknown as EngineState;
   }
 
   it("renders in loading state with badge alignment (badge=true)", () => {

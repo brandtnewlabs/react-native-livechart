@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
 import type { MultiEngineState } from "../../src/core/useLiveChartEngine";
 import { useMultiSeriesLinePaths } from "../../src/hooks/useMultiSeriesLinePaths";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 describe("useMultiSeriesLinePaths", () => {
   it("returns path array derived value", () => {
@@ -19,7 +20,7 @@ describe("useMultiSeriesLinePaths", () => {
       ]);
       const displaySeriesValues = useSharedValue([12]);
       const seriesOpacities = useSharedValue([1]);
-      const engine = {
+      const engine = withSharedValueAccessors({
         data: { value: [] },
         value: { value: 0 },
         displayValue: { value: 0 },
@@ -32,7 +33,7 @@ describe("useMultiSeriesLinePaths", () => {
         displayMax: { value: 20 },
         canvasWidth: { value: 400 },
         canvasHeight: { value: 300 },
-      } as unknown as MultiEngineState;
+      }) as unknown as MultiEngineState;
       const padding = { top: 12, right: 44, bottom: 28, left: 12 };
       return useMultiSeriesLinePaths(engine, padding);
     });

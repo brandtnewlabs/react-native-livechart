@@ -64,40 +64,42 @@ export function useChartReveal(
   const isLoading = useSharedValue(loading);
 
   useLayoutEffect(() => {
-    isLoading.value = loading;
+    isLoading.set(loading);
   }, [loading, isLoading]);
 
   useAnimatedReaction(
-    () => !isLoading.value && hasData.value,
+    () => !isLoading.get() && hasData.get(),
     (chartVisible, prev) => {
       "worklet";
       if (prev === undefined) {
         return;
       }
       if (prev !== chartVisible) {
-        morphT.value = withTiming(chartVisible ? 1 : 0, {
-          duration: CHART_REVEAL_DURATION_MS,
-          easing: Easing.out(Easing.cubic),
-        });
+        morphT.set(
+          withTiming(chartVisible ? 1 : 0, {
+            duration: CHART_REVEAL_DURATION_MS,
+            easing: Easing.out(Easing.cubic),
+          }),
+        );
       }
     },
     [hasData],
   );
 
-  const isEmpty = useDerivedValue(() => !isLoading.value && !hasData.value);
+  const isEmpty = useDerivedValue(() => !isLoading.get() && !hasData.get());
 
   const yAxisOpacity = useDerivedValue(() =>
-    revealRamp(morphT.value, DELAY.yAxis),
+    revealRamp(morphT.get(), DELAY.yAxis),
   );
   const fillOpacity = useDerivedValue(() =>
-    revealRamp(morphT.value, DELAY.fill),
+    revealRamp(morphT.get(), DELAY.fill),
   );
   const lineOpacity = useDerivedValue(() =>
-    revealRamp(morphT.value, DELAY.line),
+    revealRamp(morphT.get(), DELAY.line),
   );
-  const dotOpacity = useDerivedValue(() => revealRamp(morphT.value, DELAY.dot));
+  const dotOpacity = useDerivedValue(() => revealRamp(morphT.get(), DELAY.dot));
   const badgeOpacity = useDerivedValue(() =>
-    revealRamp(morphT.value, DELAY.badge),
+    revealRamp(morphT.get(), DELAY.badge),
   );
 
   return {

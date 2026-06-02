@@ -51,12 +51,12 @@ export function useXAxis(
   >({});
 
   const xAxisEntries = useDerivedValue(() => {
-    const w = engine.canvasWidth.value;
-    const h = engine.canvasHeight.value;
+    const w = engine.canvasWidth.get();
+    const h = engine.canvasHeight.get();
     if (w === 0 || h === 0) return [] as XAxisEntry[];
 
-    const now = engine.timestamp.value;
-    const windowSecs = engine.displayWindow.value;
+    const now = engine.timestamp.get();
+    const windowSecs = engine.displayWindow.get();
     const winStart = now - windowSecs;
 
     const chartLeft = padding.left;
@@ -85,7 +85,7 @@ export function useXAxis(
       targetKeys.push(Math.round(t * 100));
     }
 
-    const alphas = labelAlphas.value;
+    const alphas = labelAlphas.get();
 
     // Create labels for new keys only. A key encodes its time, so the formatted
     // text never changes — re-formatting (and re-allocating the entry) every
@@ -122,7 +122,7 @@ export function useXAxis(
       }
     }
 
-    labelAlphas.value = alphas;
+    labelAlphas.set(alphas);
 
     // Collect visible labels
     const raw: XAxisEntry[] = [];

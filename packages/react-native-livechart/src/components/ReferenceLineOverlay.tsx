@@ -6,8 +6,9 @@ import {
   Skia,
   Text as SkiaText,
   type SkFont,
+  type SkPath,
 } from "@shopify/react-native-skia";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
@@ -64,8 +65,25 @@ export function ReferenceLineOverlay({
   const badgeBorderColor = line.badgeBorderColor ?? color;
   const badgeRadius = line.badgeRadius ?? OFF_AXIS_PILL_RADIUS;
 
-  const cache = useMemo(
-    () => ({
+  const cacheRef = useRef<{
+    lineA: SkPath;
+    lineB: SkPath;
+    lineT: boolean;
+    bandA: SkPath;
+    bandB: SkPath;
+    bandT: boolean;
+    borderA: SkPath;
+    borderB: SkPath;
+    borderT: boolean;
+    offA: SkPath;
+    offB: SkPath;
+    offT: boolean;
+    chevA: SkPath;
+    chevB: SkPath;
+    chevT: boolean;
+  } | null>(null);
+  if (cacheRef.current === null) {
+    cacheRef.current = {
       lineA: Skia.Path.Make(),
       lineB: Skia.Path.Make(),
       lineT: false,
@@ -81,15 +99,15 @@ export function ReferenceLineOverlay({
       chevA: Skia.Path.Make(),
       chevB: Skia.Path.Make(),
       chevT: false,
-    }),
-    [],
-  );
+    };
+  }
 
   const linePath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.lineT = !cache.lineT;
     const p = cache.lineT ? cache.lineA : cache.lineB;
     p.reset();
-    const l = layout.value;
+    const l = layout.get();
     if (!l.visible || l.offAxis || isBand) return p;
     p.moveTo(l.x1, l.y);
     p.lineTo(l.x2, l.y);
@@ -97,10 +115,11 @@ export function ReferenceLineOverlay({
   });
 
   const bandPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.bandT = !cache.bandT;
     const p = cache.bandT ? cache.bandA : cache.bandB;
     p.reset();
-    const l = layout.value;
+    const l = layout.get();
     if (!l.visible || !isBand) return p;
     p.moveTo(l.x1, l.y);
     p.lineTo(l.x2, l.y);
@@ -111,10 +130,11 @@ export function ReferenceLineOverlay({
   });
 
   const bandBorderPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.borderT = !cache.borderT;
     const p = cache.borderT ? cache.borderA : cache.borderB;
     p.reset();
-    const l = layout.value;
+    const l = layout.get();
     if (!l.visible || !hasBandBorder) return p;
     if (form === "time-band") {
       // Vertical edges at the band's left / right.
@@ -133,10 +153,11 @@ export function ReferenceLineOverlay({
   });
 
   const offLinePath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.offT = !cache.offT;
     const p = cache.offT ? cache.offA : cache.offB;
     p.reset();
-    const l = layout.value;
+    const l = layout.get();
     if (!l.visible || !l.offAxis) return p;
     // Start the connector just past the badge pill's right edge so the dashed
     // line runs out to the chart edge rather than behind the badge.
@@ -150,10 +171,11 @@ export function ReferenceLineOverlay({
   });
 
   const chevronPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.chevT = !cache.chevT;
     const p = cache.chevT ? cache.chevA : cache.chevB;
     p.reset();
-    const l = layout.value;
+    const l = layout.get();
     if (!l.visible || !l.offAxis) return p;
     const cx = l.x1 + 6;
     const cy = l.y;
@@ -171,22 +193,22 @@ export function ReferenceLineOverlay({
   });
 
   const lineOpacity = useDerivedValue(() =>
-    layout.value.visible && !layout.value.offAxis && !isBand ? 1 : 0,
+    layout.get().visible && !layout.get().offAxis && !isBand ? 1 : 0,
   );
   const bandOpacity = useDerivedValue(() =>
-    layout.value.visible && isBand ? bandFillOpacity : 0,
+    layout.get().visible && isBand ? bandFillOpacity : 0,
   );
   const bandBorderOpacity = useDerivedValue(() =>
-    layout.value.visible && hasBandBorder ? 1 : 0,
+    layout.get().visible && hasBandBorder ? 1 : 0,
   );
   const offOpacity = useDerivedValue(() =>
-    layout.value.visible && layout.value.offAxis ? 1 : 0,
+    layout.get().visible && layout.get().offAxis ? 1 : 0,
   );
-  const labelOpacity = useDerivedValue(() => (layout.value.visible ? 1 : 0));
+  const labelOpacity = useDerivedValue(() => (layout.get().visible ? 1 : 0));
 
-  const labelX = useDerivedValue(() => layout.value.labelX);
-  const labelY = useDerivedValue(() => layout.value.labelY);
-  const labelText = useDerivedValue(() => layout.value.label);
+  const labelX = useDerivedValue(() => layout.get().labelX);
+  const labelY = useDerivedValue(() => layout.get().labelY);
+  const labelText = useDerivedValue(() => layout.get().label);
 
   // Font metrics depend only on the (stable) font, so read them once instead of
   // on every frame inside the pill worklets (`getMetrics` allocates + crosses
@@ -200,12 +222,12 @@ export function ReferenceLineOverlay({
   }, [font]);
 
   // Off-axis badge pill — a rounded background behind the chevron + label.
-  const pillX = useDerivedValue(() => layout.value.x1 + 2);
+  const pillX = useDerivedValue(() => layout.get().x1 + 2);
   const pillY = useDerivedValue(
-    () => layout.value.labelY + fontAscent - OFF_AXIS_PILL_PAD_Y,
+    () => layout.get().labelY + fontAscent - OFF_AXIS_PILL_PAD_Y,
   );
   const pillW = useDerivedValue(() => {
-    const l = layout.value;
+    const l = layout.get();
     const textW = measureFontTextWidth(font, l.label);
     return l.labelX + textW + OFF_AXIS_PILL_PAD_X - (l.x1 + 2);
   });

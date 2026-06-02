@@ -32,18 +32,20 @@ export function useModeBlend(
   const modeBlend = useSharedValue(isCandle ? 1 : 0);
 
   useEffect(() => {
-    modeBlend.value = withTiming(isCandle ? 1 : 0, {
-      duration: MODE_BLEND_DURATION_MS,
-      easing: Easing.inOut(Easing.ease),
-    });
+    modeBlend.set(
+      withTiming(isCandle ? 1 : 0, {
+        duration: MODE_BLEND_DURATION_MS,
+        easing: Easing.inOut(Easing.ease),
+      }),
+    );
   }, [isCandle, modeBlend]);
 
   const lineGroupOpacity = useDerivedValue(
-    () => lineOpacity.value * (1 - modeBlend.value),
+    () => lineOpacity.get() * (1 - modeBlend.get()),
   );
 
   const candleGroupOpacity = useDerivedValue(
-    () => lineOpacity.value * modeBlend.value,
+    () => lineOpacity.get() * modeBlend.get(),
   );
 
   return { modeBlend, lineGroupOpacity, candleGroupOpacity };

@@ -8,7 +8,7 @@ import {
   type SkFont,
   type SkPath,
 } from "@shopify/react-native-skia";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   useAnimatedReaction,
   useDerivedValue,
@@ -74,38 +74,39 @@ function MarkerGlyph({
   // the marker array can't make a glyph flash another marker's position.
   const layout = useDerivedValue(() =>
     projectPoint(time, value, seriesId, {
-      canvasWidth: engine.canvasWidth.value,
-      canvasHeight: engine.canvasHeight.value,
+      canvasWidth: engine.canvasWidth.get(),
+      canvasHeight: engine.canvasHeight.get(),
       padTop: padding.top,
       padBottom: padding.bottom,
       padLeft: padding.left,
       padRight: padding.right,
-      timestamp: engine.timestamp.value,
-      displayWindow: engine.displayWindow.value,
-      displayMin: engine.displayMin.value,
-      displayMax: engine.displayMax.value,
-      series: seriesSV?.value,
+      timestamp: engine.timestamp.get(),
+      displayWindow: engine.displayWindow.get(),
+      displayMin: engine.displayMin.get(),
+      displayMax: engine.displayMax.get(),
+      series: seriesSV?.get(),
     }),
   );
 
   const cx = useDerivedValue(() =>
-    layout.value.visible ? layout.value.x : OFF,
+    layout.get().visible ? layout.get().x : OFF,
   );
   const cy = useDerivedValue(() =>
-    layout.value.visible ? layout.value.y : OFF,
+    layout.get().visible ? layout.get().y : OFF,
   );
-  const opacity = useDerivedValue(() => (layout.value.visible ? 1 : 0));
+  const opacity = useDerivedValue(() => (layout.get().visible ? 1 : 0));
 
-  const cache = useMemo(
-    () => ({ a: Skia.Path.Make(), b: Skia.Path.Make(), tick: false }),
-    [],
-  );
+  const cacheRef = useRef<{ a: SkPath; b: SkPath; tick: boolean } | null>(null);
+  if (cacheRef.current === null) {
+    cacheRef.current = { a: Skia.Path.Make(), b: Skia.Path.Make(), tick: false };
+  }
 
   const glyphPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.tick = !cache.tick;
     const p: SkPath = cache.tick ? cache.a : cache.b;
     p.reset();
-    const l = layout.value;
+    const l = layout.get();
     if (!l.visible) return p;
     const x = l.x;
     const y = l.y;
@@ -131,7 +132,7 @@ function MarkerGlyph({
         p.lineTo(x + dx, y + dy);
       }
     } else if (kind === "graduation") {
-      p.moveTo(x, axisY.value);
+      p.moveTo(x, axisY.get());
       p.lineTo(x, y);
       p.moveTo(x, y - 7);
       p.lineTo(x + 8, y - 4);
@@ -139,7 +140,7 @@ function MarkerGlyph({
       p.close();
     } else if (kind === "clawback") {
       const s = 5;
-      const ay = axisY.value - s;
+      const ay = axisY.get() - s;
       p.moveTo(x - s, ay);
       p.lineTo(x + s, ay);
       p.lineTo(x + s, ay + s * 2);
@@ -151,10 +152,10 @@ function MarkerGlyph({
 
   // Image icon centered on the marker.
   const imgX = useDerivedValue(() =>
-    layout.value.visible ? layout.value.x - size / 2 : OFF,
+    layout.get().visible ? layout.get().x - size / 2 : OFF,
   );
   const imgY = useDerivedValue(() =>
-    layout.value.visible ? layout.value.y - size / 2 : OFF,
+    layout.get().visible ? layout.get().y - size / 2 : OFF,
   );
 
   // Text / emoji icon centering — width + baseline shift depend only on the
@@ -171,10 +172,10 @@ function MarkerGlyph({
   }, [font]);
 
   const iconX = useDerivedValue(() =>
-    layout.value.visible ? layout.value.x - halfIconW : OFF,
+    layout.get().visible ? layout.get().x - halfIconW : OFF,
   );
   const iconY = useDerivedValue(() =>
-    layout.value.visible ? layout.value.y - iconBaselineShift : OFF,
+    layout.get().visible ? layout.get().y - iconBaselineShift : OFF,
   );
 
   if (image) {
@@ -249,14 +250,14 @@ export function MarkerOverlay({
   series?: SharedValue<SeriesConfig[]>;
 }) {
   // Seed from the current markers at mount; the reaction below keeps it in sync.
-  const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.value.slice());
+  const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
 
   const pull = useCallback((sv: SharedValue<Marker[]>) => {
-    setSnapshot(sv.value.slice());
+    setSnapshot(sv.get().slice());
   }, []);
 
   useAnimatedReaction(
-    () => markersSignature(markers.value),
+    () => markersSignature(markers.get()),
     /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
     (sig, prev) => {
       if (sig !== prev) scheduleOnRN(pull, markers);
@@ -265,7 +266,7 @@ export function MarkerOverlay({
   );
 
   const axisY = useDerivedValue(
-    () => engine.canvasHeight.value - padding.bottom,
+    () => engine.canvasHeight.get() - padding.bottom,
   );
 
   return (

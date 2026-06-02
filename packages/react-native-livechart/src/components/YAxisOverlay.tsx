@@ -4,8 +4,9 @@ import {
   Path,
   Skia,
   type SkFont,
+  type SkPath,
 } from "@shopify/react-native-skia";
-import { useMemo } from "react";
+import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { BADGE_DOT_GAP } from "../constants";
 import type { ResolvedGridStyleConfig } from "../core/resolveConfig";
@@ -53,21 +54,26 @@ export function YAxisOverlay({
   const gridWidth = gridStyle?.strokeWidth ?? 1;
   const gridIntervals = gridStyle?.intervals ?? [];
   const gridOpacity = gridStyle?.opacity ?? 1;
-  const gridCache = useMemo(
-    () => ({
+  const gridCacheRef = useRef<{
+    a: SkPath;
+    b: SkPath;
+    tick: boolean;
+  } | null>(null);
+  if (gridCacheRef.current === null) {
+    gridCacheRef.current = {
       a: Skia.Path.Make(),
       b: Skia.Path.Make(),
       tick: false,
-    }),
-    [],
-  );
+    };
+  }
 
   const gridLinesPath = useDerivedValue(() => {
+    const gridCache = gridCacheRef.current!;
     gridCache.tick = !gridCache.tick;
     const path = gridCache.tick ? gridCache.a : gridCache.b;
     path.reset();
-    const items = entries.value;
-    const w = engine.canvasWidth.value;
+    const items = entries.get();
+    const w = engine.canvasWidth.get();
     for (let i = 0; i < items.length; i++) {
       path.moveTo(padding.left, items[i].y);
       path.lineTo(w - padding.right, items[i].y);
@@ -78,8 +84,8 @@ export function YAxisOverlay({
   const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize(), badgeTail);
 
   const labelEntries = useDerivedValue(() => {
-    const items = entries.value;
-    const w = engine.canvasWidth.value;
+    const items = entries.get();
+    const w = engine.canvasWidth.get();
     const fm = font.getMetrics();
     const baselineOffset = (fm.ascent + fm.descent) / 2;
     const result: { x: number; y: number; label: string; alpha: number }[] = [];

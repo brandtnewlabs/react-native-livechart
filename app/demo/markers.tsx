@@ -77,16 +77,18 @@ export default function MarkersScreen() {
         id: `m${counter.current}`,
         time: now - 1,
         kind,
-        value: value.value,
+        value: value.get(),
         data: { kind },
         ...decorate(kind),
       };
       // Keep markers until they scroll just past the left edge of the window
       // (not a fixed count — a low cap would evict still-visible markers
       // mid-chart). The generous slice is only an unbounded-growth safety net.
-      markers.value = [...markers.value, m]
-        .filter((x) => x.time > now - (WINDOW + 4))
-        .slice(-60);
+      markers.set(
+        [...markers.get(), m]
+          .filter((x) => x.time > now - (WINDOW + 4))
+          .slice(-60),
+      );
     }, 1500);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- glyph read via ref
@@ -94,26 +96,30 @@ export default function MarkersScreen() {
 
   const spawnAll = () => {
     const now = Date.now() / 1000;
-    const v = value.value;
-    markers.value = KINDS.map((kind, i) => ({
-      id: `all-${kind}`,
-      time: now - 2 - i * 1.5,
-      kind,
-      value: v * (1 + (i - 2) * 0.01),
-      data: { kind },
-      ...decorate(kind),
-    }));
+    const v = value.get();
+    markers.set(
+      KINDS.map((kind, i) => ({
+        id: `all-${kind}`,
+        time: now - 2 - i * 1.5,
+        kind,
+        value: v * (1 + (i - 2) * 0.01),
+        data: { kind },
+        ...decorate(kind),
+      })),
+    );
   };
 
   // Re-decorate existing markers when the glyph mode changes.
   useEffect(() => {
-    markers.value = markers.value.map((m) => ({
-      ...m,
-      icon: undefined,
-      image: undefined,
-      size: undefined,
-      ...decorate(m.kind),
-    }));
+    markers.set(
+      markers.get().map((m) => ({
+        ...m,
+        icon: undefined,
+        image: undefined,
+        size: undefined,
+        ...decorate(m.kind),
+      })),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- decorate reads glyphRef + logo
   }, [glyph, logo, markers]);
 
@@ -159,7 +165,7 @@ export default function MarkersScreen() {
         <Pressable
           style={demoStyles.chip}
           onPress={() => {
-            markers.value = [];
+            markers.set([]);
           }}
         >
           <Text style={demoStyles.chipText}>Clear</Text>

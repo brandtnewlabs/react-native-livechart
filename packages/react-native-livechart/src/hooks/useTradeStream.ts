@@ -35,28 +35,28 @@ export function useTradeStream(
     ) => {
       "worklet";
       if (!active) {
-        if (markers.value.length > 0) markers.value = [];
+        if (markers.get().length > 0) markers.set([]);
         return;
       }
 
       const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
-      const h = engine.canvasHeight.value;
+      const h = engine.canvasHeight.get();
       const chartTop = padding.top;
       const LABEL_CLEARANCE = 6;
       const chartBottom = h - padding.bottom - LABEL_CLEARANCE;
 
       if (chartBottom <= chartTop) return;
 
-      const s = state.value;
-      tickTradeStream(s, tradeStream.value, dt, chartTop, chartBottom);
+      const s = state.get();
+      tickTradeStream(s, tradeStream.get(), dt, chartTop, chartBottom);
 
       // Idle tape: nothing to draw and nothing already drawn. Skip the projection
       // and SharedValue write so the TapeLabel derived values don't re-run and we
       // don't allocate a fresh marker array every frame.
-      if (s.labels.length === 0 && markers.value.length === 0) return;
+      if (s.labels.length === 0 && markers.get().length === 0) return;
 
       const chartH = chartBottom - chartTop;
-      markers.value = projectLabels(s, chartTop, chartH);
+      markers.set(projectLabels(s, chartTop, chartH));
     },
   );
 

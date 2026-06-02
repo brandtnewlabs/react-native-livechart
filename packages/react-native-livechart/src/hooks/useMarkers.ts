@@ -26,10 +26,14 @@ export function useMarkers(
   seriesSV?: SharedValue<SeriesConfig[]>,
 ): { projected: SharedValue<ProjectedMarker[]>; tapGesture: ReturnType<typeof Gesture.Tap> } {
   const projected = useSharedValue<ProjectedMarker[]>([]);
-  const cache = useMemo(
-    () => ({ a: [] as ProjectedMarker[], b: [] as ProjectedMarker[], tick: false }),
-    [],
-  );
+  const cacheRef = useRef<{
+    a: ProjectedMarker[];
+    b: ProjectedMarker[];
+    tick: boolean;
+  } | null>(null);
+  if (cacheRef.current === null) {
+    cacheRef.current = { a: [] as ProjectedMarker[], b: [] as ProjectedMarker[], tick: false };
+  }
 
   const onHoverRef = useRef(onMarkerHover);
   useEffect(() => {
@@ -46,26 +50,27 @@ export function useMarkers(
   useFrameCallback(
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
       "worklet";
+      const cache = cacheRef.current!;
       if (!active) {
-        if (projected.value.length > 0) projected.value = [];
+        if (projected.get().length > 0) projected.set([]);
         return;
       }
       cache.tick = !cache.tick;
       const buf = cache.tick ? cache.a : cache.b;
-      projectMarkers(markers.value, buf, {
-        canvasWidth: engine.canvasWidth.value,
-        canvasHeight: engine.canvasHeight.value,
+      projectMarkers(markers.get(), buf, {
+        canvasWidth: engine.canvasWidth.get(),
+        canvasHeight: engine.canvasHeight.get(),
         padTop: padding.top,
         padBottom: padding.bottom,
         padLeft: padding.left,
         padRight: padding.right,
-        timestamp: engine.timestamp.value,
-        displayWindow: engine.displayWindow.value,
-        displayMin: engine.displayMin.value,
-        displayMax: engine.displayMax.value,
-        series: seriesSV?.value,
+        timestamp: engine.timestamp.get(),
+        displayWindow: engine.displayWindow.get(),
+        displayMin: engine.displayMin.get(),
+        displayMax: engine.displayMax.get(),
+        series: seriesSV?.get(),
       });
-      projected.value = buf;
+      projected.set(buf);
     },
   );
 
@@ -76,13 +81,13 @@ export function useMarkers(
           e,
         ) => {
           "worklet";
-          const idx = nearestMarkerIndex(projected.value, e.x, e.y, hitRadius);
+          const idx = nearestMarkerIndex(projected.get(), e.x, e.y, hitRadius);
           if (idx < 0) {
             runOnJS(emitHover)(null);
             return;
           }
-          const m = markers.value[idx];
-          const p = projected.value[idx];
+          const m = markers.get()[idx];
+          const p = projected.get()[idx];
           runOnJS(emitHover)({ marker: m, point: { x: p.x, y: p.y } });
         },
       ),

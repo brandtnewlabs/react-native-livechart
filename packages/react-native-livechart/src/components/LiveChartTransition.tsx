@@ -43,9 +43,9 @@ function FadeLayer({
 }) {
   const opacity = useSharedValue(visible ? 1 : 0);
   useEffect(() => {
-    opacity.value = withTiming(visible ? 1 : 0, { duration });
+    opacity.set(withTiming(visible ? 1 : 0, { duration }));
   }, [visible, duration, opacity]);
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.get() }));
   return (
     <Animated.View
       pointerEvents={visible ? "auto" : "none"}

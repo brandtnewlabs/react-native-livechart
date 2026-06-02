@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 import { interpolateAtTime } from "../../src/math/interpolate";
 import { resolveTheme } from "../../src/theme";
 import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 import {
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
@@ -43,7 +44,7 @@ const formatTime = (t: number) =>
 function makeEngine(
   overrides: Partial<Record<keyof SingleEngineState, { value: unknown }>> = {},
 ): SingleEngineState {
-  return {
+  return withSharedValueAccessors({
     data: { value: [] },
     value: { value: 1 },
     displayValue: { value: 50 },
@@ -54,7 +55,7 @@ function makeEngine(
     canvasHeight: { value: 300 },
     timestamp: { value: 1_700_000_030 },
     ...overrides,
-  } as unknown as SingleEngineState;
+  }) as unknown as SingleEngineState;
 }
 
 // ─── computeScrubTime ────────────────────────────────────────────────────────
