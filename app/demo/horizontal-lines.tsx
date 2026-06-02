@@ -1,118 +1,152 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { LiveChart } from "react-native-livechart";
+import { LiveChart, type ReferenceLine } from "react-native-livechart";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "./lib/DemoScreen";
 import { ACCENT } from "./lib/shared";
 import { demoStyles } from "./lib/styles";
 
-export const options = { title: "Reference & value lines" };
+export const options = { title: "Reference lines & bands" };
+
+const START = 100;
 
 export default function HorizontalLinesScreen() {
-  const [refOn, setRefOn] = useState(true);
-  const [refStyled, setRefStyled] = useState(false);
-  const [valOn, setValOn] = useState(true);
-  const [valStyled, setValStyled] = useState(false);
+  const [lines, setLines] = useState(true);
+  const [valueBand, setValueBand] = useState(false);
+  const [timeBand, setTimeBand] = useState(false);
+  const [offAxis, setOffAxis] = useState(false);
+  const [valueLine, setValueLine] = useState(true);
 
-  const startValue = 100;
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,
-    startValue,
+    startValue: START,
   });
+
+  // Pin the time band ONCE when it's enabled (the band lives in absolute
+  // unix-seconds space, so it then scrolls smoothly leftward with the chart).
+  // Re-pinning on an interval would make it jump back to the right each tick.
+  const [timeWindow, setTimeWindow] = useState<{
+    from: number;
+    to: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!timeBand) return;
+    const now = Date.now() / 1000;
+    setTimeWindow({ from: now - 20, to: now - 8 });
+  }, [timeBand]);
+
+  const referenceLines: ReferenceLine[] = [];
+  if (lines) {
+    referenceLines.push({ value: START * 1.05, label: "+5%", color: "#34d399" });
+    referenceLines.push({
+      value: START * 0.95,
+      label: "-5%",
+      color: "#f87171",
+      strokeWidth: 2,
+      intervals: [6, 4],
+    });
+  }
+  if (valueBand) {
+    referenceLines.push({
+      valueFrom: START * 0.98,
+      valueTo: START * 1.02,
+      color: "#fbbf24",
+      label: "±2% band",
+      // strokeWidth adds a dashed border; fillOpacity tunes the fill alpha.
+      strokeWidth: 1,
+      intervals: [4, 3],
+      fillOpacity: 0.18,
+    });
+  }
+  if (timeBand && timeWindow) {
+    referenceLines.push({
+      from: timeWindow.from,
+      to: timeWindow.to,
+      color: "#60a5fa",
+      label: "event",
+      strokeWidth: 1,
+      intervals: [4, 3],
+    });
+  }
+  if (offAxis) {
+    referenceLines.push({
+      value: START * 1.5,
+      offAxisBadge: true,
+      offAxisBadgeLabel: "Target",
+      excludeFromRange: true,
+      color: "#a855f7",
+      // Target panel styling: background / border / radius.
+      badgeBackground: "rgba(168,85,247,0.18)",
+      badgeBorderColor: "#a855f7",
+      badgeRadius: 8,
+    });
+  }
 
   return (
     <DemoScreen
-      description="referenceLine and valueLine (+ config objects)"
+      description="referenceLines array — lines, value bands, time bands, off-axis badge"
       chart={
         <LiveChart
           data={data}
           value={value}
           accentColor={ACCENT}
           theme="dark"
-          referenceLine={
-            refOn
-              ? refStyled
-                ? {
-                    value: startValue * 1.05,
-                    label: "+5%",
-                    strokeWidth: 2,
-                    intervals: [6, 4],
-                    color: "#fbbf24",
-                  }
-                : { value: startValue * 1.05, label: "+5%" }
-              : undefined
-          }
-          valueLine={
-            valOn
-              ? valStyled
-                ? {
-                    strokeWidth: 2,
-                    intervals: [4, 6],
-                    color: "#34d399",
-                  }
-                : true
-              : false
-          }
+          referenceLines={referenceLines}
+          valueLine={valueLine}
           scrub={false}
         />
       }
     >
-      <Text style={demoStyles.sectionLabel}>Reference line</Text>
+      <Text style={demoStyles.sectionLabel}>Reference forms</Text>
       <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, refOn && demoStyles.chipActive]}
-          onPress={() => setRefOn((v) => !v)}
-        >
-          <Text
-            style={[demoStyles.chipText, refOn && demoStyles.chipTextActive]}
-          >
-            {refOn ? "On" : "Off"}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, refStyled && demoStyles.chipActive]}
-          onPress={() => setRefStyled((v) => !v)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              refStyled && demoStyles.chipTextActive,
-            ]}
-          >
-            Dashed + color
-          </Text>
-        </Pressable>
+        <Toggle label="Lines (±5%)" on={lines} onPress={() => setLines((v) => !v)} />
+        <Toggle
+          label="Value band"
+          on={valueBand}
+          onPress={() => setValueBand((v) => !v)}
+        />
+        <Toggle
+          label="Time band"
+          on={timeBand}
+          onPress={() => setTimeBand((v) => !v)}
+        />
       </View>
-
-      <Text style={demoStyles.sectionLabel}>Value line</Text>
       <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, valOn && demoStyles.chipActive]}
-          onPress={() => setValOn((v) => !v)}
-        >
-          <Text
-            style={[demoStyles.chipText, valOn && demoStyles.chipTextActive]}
-          >
-            {valOn ? "On" : "Off"}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, valStyled && demoStyles.chipActive]}
-          onPress={() => setValStyled((v) => !v)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              valStyled && demoStyles.chipTextActive,
-            ]}
-          >
-            Styled dash
-          </Text>
-        </Pressable>
+        <Toggle
+          label="Off-axis target"
+          on={offAxis}
+          onPress={() => setOffAxis((v) => !v)}
+        />
+        <Toggle
+          label="Value line"
+          on={valueLine}
+          onPress={() => setValueLine((v) => !v)}
+        />
       </View>
     </DemoScreen>
+  );
+}
+
+function Toggle({
+  label,
+  on,
+  onPress,
+}: {
+  label: string;
+  on: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={[demoStyles.chip, on && demoStyles.chipActive]}
+      onPress={onPress}
+    >
+      <Text style={[demoStyles.chipText, on && demoStyles.chipTextActive]}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }

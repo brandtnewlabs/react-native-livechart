@@ -46,18 +46,80 @@ export type ThemeMode = "light" | "dark";
  */
 export type BadgeVariant = "default" | "minimal";
 
-/** A horizontal reference line drawn at a fixed value (e.g. an entry price or target). */
+/**
+ * A reference line or band drawn into the chart. Three mutually-exclusive forms,
+ * with precedence A > B > C when fields from more than one are present:
+ * - **Form A** — horizontal line at `value`.
+ * - **Form B** — horizontal band between `valueFrom` and `valueTo`.
+ * - **Form C** — vertical time band between `from` and `to` (unix seconds).
+ */
 export interface ReferenceLine {
-  /** The Y-axis value where the line is drawn. */
-  value: number;
+  /** Form A — the Y-axis value where the horizontal line is drawn. */
+  value?: number;
+  /** Form B — horizontal band lower Y bound (paired with `valueTo`). */
+  valueFrom?: number;
+  /** Form B — horizontal band upper Y bound (paired with `valueFrom`). */
+  valueTo?: number;
+  /** Form C — vertical time-band start, unix seconds (paired with `to`). */
+  from?: number;
+  /** Form C — vertical time-band end, unix seconds (paired with `from`). */
+  to?: number;
   /** Optional right-gutter label (e.g. `"Entry"`). */
   label?: string;
-  /** Line thickness in pixels. Default `1`. */
+  /**
+   * Stroke thickness in pixels. For a line it's the line width (default `1`).
+   * For a band, setting this also renders a dashed border along the band edges
+   * (top/bottom for value bands, left/right for time bands); omit for no border.
+   */
   strokeWidth?: number;
-  /** Dash pattern as `[dashLength, gapLength]` in pixels. */
+  /** Dash pattern as `[dashLength, gapLength]` in pixels (line stroke + band border). */
   intervals?: [number, number];
-  /** Line color override. Defaults to palette `refLine`. */
+  /** Line / band color override. Defaults to palette `refLine`. */
   color?: string;
+  /** Fill opacity for a value / time band (0–1). Default `0.16`. */
+  fillOpacity?: number;
+  /** Label text color. Defaults to `color`, then palette `refLabel`. */
+  labelColor?: string;
+  /**
+   * Horizontal label placement. For a Form-A line: `"left" | "center" | "right"`
+   * (default `"right"`, the legacy gutter position). For a band: `"left" | "right"`
+   * (default `"left"`).
+   */
+  labelPosition?: "left" | "center" | "right";
+  /** Append the formatted `value` to the label (Form A only). Default `false`. */
+  showValue?: boolean;
+  /**
+   * Exclude this line's value(s) from the Y-axis range computation, so it may sit
+   * off-axis instead of forcing the axis to expand. Per-line; other lines are
+   * unaffected. Default `false`.
+   */
+  excludeFromRange?: boolean;
+  /**
+   * When a Form-A `value` falls outside the visible plot, render a pinned edge
+   * badge with a directional chevron instead of culling the off-screen line.
+   * Typically paired with `excludeFromRange`. Default `false`.
+   */
+  offAxisBadge?: boolean;
+  /** Localized word shown in the off-axis badge (e.g. "Target"). Falls back to `label`. */
+  offAxisBadgeLabel?: string;
+  /** Off-axis badge pill background. Default: theme `tooltipBg`. */
+  badgeBackground?: string;
+  /** Off-axis badge pill border color. Default: the line `color`. */
+  badgeBorderColor?: string;
+  /** Off-axis badge pill corner radius in pixels. Default `5`. */
+  badgeRadius?: number;
+}
+
+/** Per-instance grid-line styling for the horizontal value-axis grid. */
+export interface GridStyleConfig {
+  /** Stroke color. Defaults to palette `gridLine`. */
+  color?: string;
+  /** Stroke width in pixels. Default `1`. */
+  strokeWidth?: number;
+  /** Dash pattern as `[dash, gap, …]`. Default `[1, 3]` (dotted). Pass `[]` for solid. */
+  intervals?: number[];
+  /** Global alpha multiplier (0–1). Default `1`. */
+  opacity?: number;
 }
 
 /** Configuration for the horizontal dashed line at the current live value. */
@@ -362,10 +424,25 @@ export interface LiveChartCoreProps {
    * only if there is data (≥2 line points or ≥2 committed candles).
    */
   loading?: boolean;
-  /** Spline smoothing factor (0 = sharp, 1 = maximum). Default `0.5`. */
+  /**
+   * Value-lerp speed — how quickly the drawn value, time window, and Y-range chase
+   * their targets each frame (0 = frozen, 1 = instant). Equivalent to liveline's
+   * `lerpSpeed`. Default `0.08`.
+   */
   smoothing?: number;
   /** Tight Y-axis — small value moves fill the full chart height. Default `false`. */
   exaggerate?: boolean;
+  /**
+   * Clamp the Y-axis lower bound at 0 (prices, market caps, volumes) so the axis
+   * never shows negative ticks when data collapses toward zero. Default `false`.
+   */
+  nonNegative?: boolean;
+  /**
+   * Hard upper bound for the Y-axis range. Use for axes with a ceiling (e.g. market
+   * share ≤ `1`); the margin added above the data is capped here. Omit for unbounded
+   * axes (prices, market caps).
+   */
+  maxValue?: number;
   /**
    * Label in the empty state when `loading` is false and there are fewer than
    * two samples (line points or committed candles). Default `"No data"`.
@@ -379,8 +456,21 @@ export interface LiveChartCoreProps {
   yAxis?: boolean | YAxisConfig;
   /** X-axis time labels. `true` = defaults, `false` = hidden, or pass `XAxisConfig`. Default `true`. */
   xAxis?: boolean | XAxisConfig;
-  /** Horizontal reference line at a fixed value. */
+  /**
+   * Single horizontal reference line at a fixed value.
+   * @deprecated Use `referenceLines` (supports multiple lines and bands). When both
+   * are set, this line is merged into the `referenceLines` array.
+   */
   referenceLine?: ReferenceLine;
+  /** Reference lines / bands drawn into the chart. Supports all three `ReferenceLine` forms. */
+  referenceLines?: ReferenceLine[];
+  /** Per-instance grid-line styling. Pass an object to override color / width / dash / opacity. */
+  gridStyle?: GridStyleConfig;
+  /**
+   * Override individual resolved-palette keys on top of the palette derived from
+   * `accentColor` + `theme`. Only the keys you set are replaced.
+   */
+  palette?: Partial<LiveChartPalette>;
   /** Crosshair scrubbing on hover/drag. `true` = defaults, `false` = disabled, or pass `ScrubConfig`. Default `true`. */
   scrub?: boolean | ScrubConfig;
   /**

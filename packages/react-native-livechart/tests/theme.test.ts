@@ -1,10 +1,29 @@
 import {
   SERIES_COLORS,
+  applyPaletteOverride,
   leftEdgeFadeColorsFromBgRgb,
   parseColorRgb,
   resolveSeriesPalettes,
   resolveTheme,
 } from "../src/theme";
+
+describe("applyPaletteOverride", () => {
+  it("returns the original palette when no override is given", () => {
+    const base = resolveTheme("#3b82f6", "dark");
+    expect(applyPaletteOverride(base, undefined)).toBe(base);
+  });
+
+  it("replaces only the overridden keys", () => {
+    const base = resolveTheme("#3b82f6", "dark");
+    const merged = applyPaletteOverride(base, {
+      gridLine: "#123456",
+      refLine: "#abcdef",
+    });
+    expect(merged.gridLine).toBe("#123456");
+    expect(merged.refLine).toBe("#abcdef");
+    expect(merged.line).toBe(base.line);
+  });
+});
 
 describe("parseColorRgb", () => {
   it("parses 6-digit hex", () => {

@@ -100,4 +100,40 @@ describe("computeRange", () => {
     );
     expect(r.max - r.min).toBeGreaterThan(100);
   });
+
+  it("clamps the lower bound at 0 when nonNegative", () => {
+    const r = computeRange([{ time: 0, value: 0 }], 0, undefined, false, true);
+    expect(r.min).toBe(0);
+  });
+
+  it("leaves the lower bound alone when nonNegative but min is already ≥ 0", () => {
+    const r = computeRange(
+      [
+        { time: 0, value: 40 },
+        { time: 1, value: 100 },
+      ],
+      70,
+      undefined,
+      false,
+      true,
+    );
+    expect(r.min).toBeGreaterThanOrEqual(0);
+  });
+
+  it("caps the upper bound at maxValue", () => {
+    const r = computeRange(
+      [{ time: 0, value: 100 }],
+      100,
+      undefined,
+      false,
+      false,
+      100,
+    );
+    expect(r.max).toBe(100);
+  });
+
+  it("leaves the upper bound alone when below maxValue", () => {
+    const r = computeRange([{ time: 0, value: 10 }], 10, undefined, false, false, 1000);
+    expect(r.max).toBeLessThan(1000);
+  });
 });

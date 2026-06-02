@@ -9,6 +9,8 @@ export function computeRange(
   currentValue: number,
   referenceValue?: number,
   exaggerate?: boolean,
+  nonNegative?: boolean,
+  maxValue?: number,
 ): { min: number; max: number } {
   "worklet";
   let targetMin = Infinity;
@@ -44,6 +46,9 @@ export function computeRange(
     targetMin -= margin;
     targetMax += margin;
   }
+
+  if (nonNegative && targetMin < 0) targetMin = 0;
+  if (maxValue !== undefined && targetMax > maxValue) targetMax = maxValue;
 
   return { min: targetMin, max: targetMax };
 }

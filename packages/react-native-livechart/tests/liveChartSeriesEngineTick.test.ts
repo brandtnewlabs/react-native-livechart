@@ -56,6 +56,33 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     expect(s.displayMax).toBeGreaterThanOrEqual(55);
   });
 
+  it("includes referenceValues array, clamps with nonNegative + maxValue", () => {
+    const s = baseMulti();
+    tickLiveChartSeriesEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.5,
+      exaggerate: false,
+      referenceValue: undefined,
+      referenceValues: [-50, 500],
+      nonNegative: true,
+      maxValue: 120,
+      series: [
+        {
+          id: "a",
+          data: [{ time: 1000, value: 10 }],
+          value: 10,
+          color: "#00f",
+        },
+      ],
+      nowSeconds: 1000,
+    });
+    expect(s.displayMin).toBe(0);
+    expect(s.displayMax).toBeLessThanOrEqual(120);
+  });
+
   it("excludes hidden series from Y-range", () => {
     const s = baseMulti();
     tickLiveChartSeriesEngineFrame(s, {

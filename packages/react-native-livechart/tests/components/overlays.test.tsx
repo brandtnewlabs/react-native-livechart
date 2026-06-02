@@ -7,7 +7,7 @@ import type { EngineState } from "../../src/core/useLiveChartEngine";
 import { LoadingOverlay } from "../../src/components/LoadingOverlay";
 import { MultiSeriesTooltipStack } from "../../src/components/MultiSeriesTooltipStack";
 import React from "react";
-import type { ReferenceLineLayout } from "../../src/hooks/useReferenceLine";
+import type { ReferenceLine } from "../../src/types";
 import { ReferenceLineOverlay } from "../../src/components/ReferenceLineOverlay";
 import { Skia } from "@shopify/react-native-skia";
 import type { TooltipLayout } from "../../src/hooks/crosshairShared";
@@ -468,58 +468,77 @@ describe("XAxisOverlay", () => {
 });
 
 describe("ReferenceLineOverlay", () => {
-  const visibleLayout: ReferenceLineLayout = {
-    y: 142,
-    x1: 12,
-    x2: 320,
-    label: "50.00",
-    labelX: 324,
-    labelY: 139,
-    visible: true,
-  };
+  const fmt = (v: number) => v.toFixed(2);
 
-  const invisibleLayout: ReferenceLineLayout = {
-    y: -1,
-    x1: 0,
-    x2: 0,
-    label: "",
-    labelX: 0,
-    labelY: -1,
-    visible: false,
-  };
-
-  it("renders dashed line and label when visible", () => {
+  function renderLine(line: ReferenceLine) {
     function Fixture() {
-      const layout = useSharedValue(visibleLayout);
       return (
         <ReferenceLineOverlay
-          layout={layout}
-          strokeWidth={1}
-          intervals={[4, 4]}
-          color={palette.refLine}
-          labelColor={palette.refLabel}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          line={line}
+          palette={palette}
+          formatValue={fmt}
           font={font}
         />
       );
     }
     render(<Fixture />);
+  }
+
+  it("renders a horizontal line (Form A) in range", () => {
+    renderLine({ value: 5, label: "mid" });
   });
 
-  it("renders with zero opacity when not visible", () => {
-    function Fixture() {
-      const layout = useSharedValue(invisibleLayout);
-      return (
-        <ReferenceLineOverlay
-          layout={layout}
-          strokeWidth={1}
-          intervals={[4, 4]}
-          color={palette.refLine}
-          labelColor={palette.refLabel}
-          font={font}
-        />
-      );
-    }
-    render(<Fixture />);
+  it("renders a horizontal value band (Form B)", () => {
+    renderLine({ valueFrom: 2, valueTo: 8, color: "#fbbf24", label: "band" });
+  });
+
+  it("renders a vertical time band (Form C)", () => {
+    renderLine({
+      from: 1700000000 - 20,
+      to: 1700000000 - 5,
+      label: "window",
+      labelPosition: "right",
+    });
+  });
+
+  it("renders an off-axis badge when the value is above range", () => {
+    renderLine({ value: 99, offAxisBadge: true, offAxisBadgeLabel: "Target" });
+  });
+
+  it("renders a styled off-axis badge (background / border / radius)", () => {
+    renderLine({
+      value: 99,
+      offAxisBadge: true,
+      offAxisBadgeLabel: "Target",
+      badgeBackground: "#111827",
+      badgeBorderColor: "#ffffff",
+      badgeRadius: 12,
+    });
+  });
+
+  it("renders a value band with a dashed border + custom fill opacity", () => {
+    renderLine({
+      valueFrom: 2,
+      valueTo: 8,
+      color: "#fbbf24",
+      strokeWidth: 1.5,
+      intervals: [4, 2],
+      fillOpacity: 0.3,
+    });
+  });
+
+  it("renders a time band with a dashed border", () => {
+    renderLine({
+      from: 1700000000 - 20,
+      to: 1700000000 - 5,
+      strokeWidth: 2,
+    });
+  });
+
+  it("culls an off-screen line without offAxisBadge", () => {
+    renderLine({ value: 99 });
   });
 });
 

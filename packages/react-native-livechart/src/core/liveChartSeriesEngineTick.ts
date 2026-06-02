@@ -19,6 +19,12 @@ export interface MultiEngineTickInput {
   smoothing: number;
   exaggerate: boolean;
   referenceValue: number | undefined;
+  /** Additional reference values (lines + bands) folded into the Y range. */
+  referenceValues?: number[];
+  /** Clamp the computed lower bound at 0. */
+  nonNegative?: boolean;
+  /** Hard cap for the computed upper bound. */
+  maxValue?: number;
   series: SeriesConfig[];
   nowSeconds?: number;
   paused?: boolean;
@@ -108,6 +114,15 @@ export function tickLiveChartSeriesEngineFrame(
     if (ref > tMax) tMax = ref;
   }
 
+  const refs = input.referenceValues;
+  if (refs !== undefined) {
+    for (let i = 0; i < refs.length; i++) {
+      const rv = refs[i];
+      if (rv < tMin) tMin = rv;
+      if (rv > tMax) tMax = rv;
+    }
+  }
+
   const isExaggerate = input.exaggerate;
   if (tMin !== Infinity && tMax !== -Infinity) {
     const rawRange = tMax - tMin;
@@ -124,6 +139,10 @@ export function tickLiveChartSeriesEngineFrame(
       tMin -= margin;
       tMax += margin;
     }
+
+    if (input.nonNegative && tMin < 0) tMin = 0;
+    const maxV = input.maxValue;
+    if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
     if (tMin < state.displayMin) {
       state.displayMin = tMin;

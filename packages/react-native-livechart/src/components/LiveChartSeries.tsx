@@ -5,7 +5,7 @@
  * @see https://github.com/benjitaylor/liveline
  */
 import { Canvas, Group } from "@shopify/react-native-skia";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import {
@@ -20,10 +20,10 @@ import {
   resolveMultiSeriesLineColorsSnapshot,
 } from "../core/multiSeriesLayout";
 import {
+  resolveGridStyle,
   resolveLeftEdgeFade,
   resolveLegend,
   resolveMultiSeriesDot,
-  resolveReferenceLineConfig,
   resolveScrub,
   resolveXAxis,
   resolveYAxis,
@@ -37,7 +37,6 @@ import {
   useCrosshairSeries,
   useMultiSeriesLinePaths,
   useMultiSeriesReverseMorphInputs,
-  useReferenceLine,
   useXAxis,
   useYAxis,
 } from "../hooks";
@@ -47,7 +46,12 @@ import {
 } from "../lib/format";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
-import { leftEdgeFadeColorsFromBgRgb, resolveTheme } from "../theme";
+import { collectReferenceValues } from "../math/referenceLines";
+import {
+  applyPaletteOverride,
+  leftEdgeFadeColorsFromBgRgb,
+  resolveTheme,
+} from "../theme";
 import type { LiveChartSeriesProps, SeriesConfig } from "../types";
 import { CrosshairLine } from "./CrosshairLine";
 import { LeftEdgeFade } from "./LeftEdgeFade";
@@ -79,12 +83,17 @@ export function LiveChartSeries({
   loading = false,
   smoothing = 0.08,
   exaggerate = false,
+  nonNegative = false,
+  maxValue,
   emptyText = "No data",
   formatValue = defaultFormatValue,
   formatTime = defaultFormatTime,
   yAxis = true,
   xAxis = true,
   referenceLine,
+  referenceLines,
+  gridStyle,
+  palette: paletteOverride,
   scrub = false,
   onScrub,
   onSeriesToggle,
@@ -97,11 +106,26 @@ export function LiveChartSeries({
   const xAxisCfg = resolveXAxis(xAxis);
   const scrubCfg = resolveScrub(scrub);
   const scrubEnabled = scrubCfg !== null;
-  const refLineCfg = resolveReferenceLineConfig(referenceLine);
+  const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
   const legendCfg = resolveLegend(legendProp, seriesToggleCompact);
 
-  const palette = resolveTheme(accentColor, theme);
+  const allRefLines = useMemo(
+    () => [
+      ...(referenceLine ? [referenceLine] : []),
+      ...(referenceLines ?? []),
+    ],
+    [referenceLine, referenceLines],
+  );
+  const refValues = useMemo(
+    () => collectReferenceValues(allRefLines),
+    [allRefLines],
+  );
+
+  const palette = applyPaletteOverride(
+    resolveTheme(accentColor, theme),
+    paletteOverride,
+  );
 
   const leftEdgeFadeCfg = resolveLeftEdgeFade(
     leftEdgeFade,
@@ -178,7 +202,9 @@ export function LiveChartSeries({
     paused,
     smoothing,
     exaggerate,
-    referenceValue: referenceLine?.value,
+    referenceValues: refValues,
+    nonNegative,
+    maxValue,
   });
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const linePaths = useMultiSeriesLinePaths(engine, effectivePadding);
@@ -203,14 +229,6 @@ export function LiveChartSeries({
   useEffect(() => {
     syncColors(series);
   }, [series, syncColors]);
-
-  const referenceLineLayout = useReferenceLine(
-    engine,
-    effectivePadding,
-    referenceLine,
-    formatValue,
-    skiaFont,
-  );
 
   const { yAxisEntries } = useYAxis(
     engine,
@@ -269,20 +287,23 @@ export function LiveChartSeries({
                 font={skiaFont}
                 badge={false}
                 seriesLabelInset={seriesLabelInset}
+                gridStyle={gridStyleCfg}
               />
             </Group>
           )}
 
-          {refLineCfg && (
+          {allRefLines.map((rl, i) => (
             <ReferenceLineOverlay
-              layout={referenceLineLayout}
-              strokeWidth={refLineCfg.strokeWidth}
-              intervals={refLineCfg.intervals}
-              color={refLineCfg.color ?? palette.refLine}
-              labelColor={palette.refLabel}
+              // eslint-disable-next-line react/no-array-index-key
+              key={i}
+              engine={engine}
+              padding={effectivePadding}
+              line={rl}
+              palette={palette}
+              formatValue={formatValue}
               font={skiaFont}
             />
-          )}
+          ))}
 
           {dotCfg.valueLine && (
             <Group opacity={reveal.lineOpacity}>

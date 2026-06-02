@@ -16,6 +16,9 @@ export interface MultiSeriesEngineConfig {
   smoothing: number;
   exaggerate?: boolean;
   referenceValue?: number;
+  referenceValues?: number[];
+  nonNegative?: boolean;
+  maxValue?: number;
   paused?: boolean;
 }
 
@@ -33,6 +36,9 @@ export interface MultiEngineFrameRefs {
   smoothing: SharedValue<number>;
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
+  referenceValues?: SharedValue<number[] | undefined>;
+  nonNegativeSV?: SharedValue<boolean>;
+  maxValueSV?: SharedValue<number | undefined>;
   pausedSV: SharedValue<boolean>;
 }
 
@@ -99,6 +105,9 @@ export function applyLiveChartSeriesEngineFrame(
     smoothing: sv.smoothing.value,
     exaggerate: sv.exaggerateSV.value,
     referenceValue: sv.referenceValue.value,
+    referenceValues: sv.referenceValues?.value,
+    nonNegative: sv.nonNegativeSV?.value ?? false,
+    maxValue: sv.maxValueSV?.value,
     series: seriesSnap,
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
@@ -122,6 +131,9 @@ export function useLiveChartSeriesEngine(
   const smoothing = useDerivedValue(() => config.smoothing);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
+  const referenceValues = useDerivedValue(() => config.referenceValues);
+  const nonNegativeSV = useDerivedValue(() => config.nonNegative ?? false);
+  const maxValueSV = useDerivedValue(() => config.maxValue);
   const pausedSV = useDerivedValue(() => config.paused ?? false);
 
   const displayMin = useSharedValue(0);
@@ -164,6 +176,9 @@ export function useLiveChartSeriesEngine(
         smoothing,
         exaggerateSV,
         referenceValue,
+        referenceValues,
+        nonNegativeSV,
+        maxValueSV,
         pausedSV,
       },
       scratch,
