@@ -13,13 +13,6 @@ import type { ReactDoctorConfig } from "react-doctor/api";
  */
 const config: ReactDoctorConfig = {
   rules: {
-    // Manual memoization is intentional throughout: `useMemo` gives stable
-    // identity to the mutable Skia path / double-buffer caches (the SkPath-reuse
-    // optimization — see CLAUDE.md) and to the worklet/gesture callbacks consumed
-    // off the React render path. React Compiler cannot auto-memoize these — it
-    // detects their in-place mutation — so the manual memo is load-bearing.
-    "react-doctor/react-compiler-no-manual-memoization": "off",
-
     // The library deliberately uses internal barrels (`../hooks`, `../components`)
     // for organization; public consumers import from the package root barrel.
     "react-doctor/no-barrel-import": "off",
@@ -82,12 +75,16 @@ const config: ReactDoctorConfig = {
         // via a reaction; when the formatter changes we re-format the latest
         // value in an effect. It can't be derived during render (the value
         // updates asynchronously off the render path), so the derived-state /
-        // pass-data effect rules don't apply here.
+        // pass-data effect rules don't apply here. The Intl formatter and the
+        // `format`/`onValue` callbacks are deliberately memoized (js-hoist-intl
+        // + stable effect/reaction deps), so the redundant-manual-memoization
+        // rule — which conflicts with those — is also waived for this file.
         files: ["**/AnimatedTrendTextInput.tsx"],
         rules: [
           "react-doctor/exhaustive-deps",
           "react-doctor/no-derived-state",
           "react-doctor/no-pass-data-to-parent",
+          "react-doctor/react-compiler-no-manual-memoization",
         ],
       },
       {

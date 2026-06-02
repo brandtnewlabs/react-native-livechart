@@ -62,6 +62,9 @@ export function AnimatedTrendTextInput({
 }: AnimatedTrendTextInputProps) {
   const flash = useSharedValue(0);
 
+  // Explicitly memoized: constructing Intl.NumberFormat per render is wasteful
+  // (js-hoist-intl), and a stable `format` keeps the effect/reaction deps below
+  // from re-firing every render (no-effect-with-fresh-deps).
   const formatter = useMemo(
     () =>
       numberFormat
@@ -70,7 +73,7 @@ export function AnimatedTrendTextInput({
             ...numberFormat.options,
           })
         : null,
-    [numberFormat?.locales, numberFormat?.options, maximumFractionDigits],
+    [numberFormat, maximumFractionDigits],
   );
 
   const format = useCallback(

@@ -8,7 +8,7 @@ import {
   type SkFont,
   type SkPath,
 } from "@shopify/react-native-skia";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
@@ -213,13 +213,13 @@ export function ReferenceLineOverlay({
   // Font metrics depend only on the (stable) font, so read them once instead of
   // on every frame inside the pill worklets (`getMetrics` allocates + crosses
   // JSI). The off-axis pill's ascent offset and height are then plain constants.
-  const { ascent: fontAscent, height: pillH } = useMemo(() => {
+  const { ascent: fontAscent, height: pillH } = (() => {
     const fm = font.getMetrics();
     return {
       ascent: fm.ascent,
       height: fm.descent - fm.ascent + OFF_AXIS_PILL_PAD_Y * 2,
     };
-  }, [font]);
+  })();
 
   // Off-axis badge pill — a rounded background behind the chevron + label.
   const pillX = useDerivedValue(() => layout.get().x1 + 2);

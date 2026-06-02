@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import type { LayoutChangeEvent } from "react-native";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
@@ -11,15 +11,12 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 export function useCanvasLayout(engine: ChartEngineLayout) {
   const [layoutHeight, setLayoutHeight] = useState(0);
 
-  const onLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      const { width, height } = e.nativeEvent.layout;
-      engine.canvasWidth.set(width);
-      engine.canvasHeight.set(height);
-      setLayoutHeight(height);
-    },
-    [engine.canvasWidth, engine.canvasHeight],
-  );
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    engine.canvasWidth.set(width);
+    engine.canvasHeight.set(height);
+    setLayoutHeight(height);
+  };
 
   return { layoutHeight, onLayout } as const;
 }

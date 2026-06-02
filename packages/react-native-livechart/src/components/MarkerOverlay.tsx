@@ -8,7 +8,7 @@ import {
   type SkFont,
   type SkPath,
 } from "@shopify/react-native-skia";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   useAnimatedReaction,
   useDerivedValue,
@@ -162,14 +162,11 @@ function MarkerGlyph({
   // (stable) font and icon, so measure once instead of every frame. Skia
   // `measureText`/`getMetrics` both allocate, so hoisting them out of the
   // per-frame worklet removes one measure + one metrics call per glyph/frame.
-  const halfIconW = useMemo(
-    () => measureFontTextWidth(font, icon ?? "") / 2,
-    [font, icon],
-  );
-  const iconBaselineShift = useMemo(() => {
+  const halfIconW = measureFontTextWidth(font, icon ?? "") / 2;
+  const iconBaselineShift = (() => {
     const fm = font.getMetrics();
     return (fm.ascent + fm.descent) / 2;
-  }, [font]);
+  })();
 
   const iconX = useDerivedValue(() =>
     layout.get().visible ? layout.get().x - halfIconW : OFF,
@@ -252,9 +249,9 @@ export function MarkerOverlay({
   // Seed from the current markers at mount; the reaction below keeps it in sync.
   const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
 
-  const pull = useCallback((sv: SharedValue<Marker[]>) => {
+  const pull = (sv: SharedValue<Marker[]>) => {
     setSnapshot(sv.get().slice());
-  }, []);
+  };
 
   useAnimatedReaction(
     () => markersSignature(markers.get()),

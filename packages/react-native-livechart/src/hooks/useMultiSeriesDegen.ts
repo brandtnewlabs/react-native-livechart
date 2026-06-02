@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   runOnJS,
   useDerivedValue,
@@ -68,13 +68,11 @@ export function useMultiSeriesDegen(
   useEffect(() => {
     onShakeRef.current = onShake;
   });
-  const emitShake = useCallback(
+  const emitShake =
     /* istanbul ignore next -- invoked only from the UI-thread frame worklet */
     (direction: "up" | "down") => {
       onShakeRef.current?.({ direction });
-    },
-    [],
-  );
+    };
 
   const degenOff = cfg === null;
 
