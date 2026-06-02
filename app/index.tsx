@@ -60,6 +60,11 @@ const DEMOS: { href: Href; title: string; blurb: string }[] = [
     blurb: "Markers, orderbook vs bonding-curve.",
   },
   {
+    href: "/demo/markers",
+    title: "Markers",
+    blurb: "markers[]: trade/boost/graduation/winner/clawback + tap hover.",
+  },
+  {
     href: "/demo/degen",
     title: "Degen",
     blurb: "Particles, shake, DegenOptions presets.",
