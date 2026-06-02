@@ -211,9 +211,10 @@ export function useSimulatedChartData(
   const candles = useSharedValue<CandlePoint[]>([]);
   const liveCandle = useSharedValue<CandlePoint | null>(null);
 
-  const bondingCurveRef = useRef<BondingCurveState>(
-    createBondingCurve({ basePrice: startValue }),
-  );
+  const bondingCurveRef = useRef<BondingCurveState | null>(null);
+  if (bondingCurveRef.current === null) {
+    bondingCurveRef.current = createBondingCurve({ basePrice: startValue });
+  }
 
   // Full reseed: history, optional tape bootstrap, multi-series baseline, bonding state.
   useEffect(() => {
@@ -329,7 +330,7 @@ export function useSimulatedChartData(
       let trade: TradeEvent;
 
       if (tradeSource === "bonding-curve") {
-        const result = bondingTrade(bondingCurveRef.current, rng);
+        const result = bondingTrade(bondingCurveRef.current!, rng);
         bondingCurveRef.current = result.state;
         trade = {
           ...result.event,
