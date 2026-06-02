@@ -5,8 +5,18 @@
  * `tradesPerSecond` (mean). Each tick emits one fill whose **execution price** becomes the next
  * `LiveChartPoint` (and OHLC buckets if enabled). Tape and chart stay in lockstep.
  *
- * Performance — Hot path mutates `buf` refs, then assigns `SharedValue.value` once per tick (avoid reading
- * large SharedValues on the JS thread during pulses).
+ * Performance — The full point arrays live inside the `data`/`series` SharedValues (UI side). Each tick
+ * computes only the tiny per-tick delta (the new point(s)) on the JS thread and appends it **in place**
+ * via `SharedValue.modify(...)`, so Reanimated never deep-clones the whole (growing) array across the
+ * thread boundary every tick. Reassigning the full array each tick was the source of an iOS memory climb
+ * that scaled with series count (~0.25 MB/s for 3 series). The chart still re-renders every frame because
+ * the engine bumps a `timestamp` SharedValue in `useFrameCallback` and the path-building `useDerivedValue`s
+ * read both `timestamp` and `data.value`/`series.value`, so in-place mutations are picked up without a
+ * fresh top-level reference.
+ *
+ * Small JS-thread state (`lastMid`, per-series `values`, bonding-curve state, trade tape) is kept in `buf`
+ * to generate the next delta; the candle path additionally keeps a JS-side `data` mirror because OHLC
+ * re-aggregation needs the full tick array (single-series candle charts are memory-flat — one array).
  */
 import { useEffect, useRef, type RefObject } from "react";
 import type {
@@ -28,7 +38,7 @@ import {
   bondingTrade,
   createBondingCurve,
   generateMultiSeries,
-  stepMultiSeries,
+  stepMultiSeriesValues,
   volatilityFor,
   type BondingCurveState,
   type VolatilityMode,
@@ -106,11 +116,25 @@ export interface SimulatedData {
   liveCandle: SharedValue<CandlePoint | null>;
 }
 
-/** JS-thread buffers read/written in timers; SharedValues mirror these for the UI thread. */
+/**
+ * Small JS-thread state read/written in timers to generate the next per-tick delta.
+ *
+ * The full point arrays live in the `data`/`series` SharedValues (UI side) and are mutated in place via
+ * `.modify`; we deliberately do NOT mirror them here for the multi-series path (that mirror is what leaked).
+ *
+ * - `lastMid`: last single-series price, to seed the next live-mid trade.
+ * - `seriesValues`: last value per series (scalars), to compute the next per-series values.
+ * - `seriesIds`: series ids (parallel to `seriesValues`), to map visibility overrides without reading
+ *   the (large) `series` SharedValue on the JS thread.
+ * - `candleData`: full single-series tick array, kept ONLY for OHLC re-aggregation (memory-flat: one array).
+ * - `tradeStream`: FIFO tape buffer (small, capped by `maxTradeStreamLength`).
+ */
 interface TickBuffers {
-  data: LiveChartPoint[];
+  lastMid: number;
+  seriesValues: number[];
+  seriesIds: string[];
+  candleData: LiveChartPoint[];
   tradeStream: TradeEvent[];
-  series: SeriesConfig[];
 }
 
 const INITIAL_TAPE_EVENTS = 20;
@@ -171,9 +195,11 @@ export function useSimulatedChartData(
   random01Ref.current = random01Opt ?? Math.random;
 
   const buf = useRef<TickBuffers>({
-    data: [],
+    lastMid: startValue,
+    seriesValues: [],
+    seriesIds: [],
+    candleData: [],
     tradeStream: [],
-    series: [],
   });
 
   const data = useSharedValue<LiveChartPoint[]>([]);
@@ -226,11 +252,16 @@ export function useSimulatedChartData(
       : [];
 
     buf.current = {
-      data: history,
+      lastMid,
+      seriesValues: initialSeries.map((s) => s.value),
+      seriesIds: initialSeries.map((s) => s.id),
+      // Mirror history JS-side only when OHLC re-aggregation needs it.
+      candleData: candleAggregation ? history.slice() : [],
       tradeStream: initialTrades,
-      series: initialSeries,
     };
 
+    // Seed assigns the full arrays once (a single clone at seed time is fine);
+    // the live loop then appends in place via `.modify`.
     data.value = history;
     value.value = lastMid;
     tradeStream.value = initialTrades;
@@ -271,8 +302,8 @@ export function useSimulatedChartData(
       liveCandle.value = null;
       return;
     }
-    if (buf.current.data.length === 0) return;
-    const c = aggregateCandles(buf.current.data, candleWidth);
+    if (buf.current.candleData.length === 0) return;
+    const c = aggregateCandles(buf.current.candleData, candleWidth);
     candles.value = c.candles;
     liveCandle.value = c.liveCandle;
   }, [candleWidth, candleAggregation, candles, liveCandle]);
@@ -291,8 +322,7 @@ export function useSimulatedChartData(
       const b = buf.current;
       const spread = volatilityFor(volatilityMode);
       const now = Date.now() / 1000;
-      const lastMid =
-        b.data.length > 0 ? b.data[b.data.length - 1].value : startValue;
+      const lastMid = b.lastMid;
 
       let trade: TradeEvent;
 
@@ -309,14 +339,27 @@ export function useSimulatedChartData(
       }
 
       const newValue = trade.price;
+      const newPoint: LiveChartPoint = { time: now, value: newValue };
 
-      b.data = [...b.data, { time: now, value: newValue }];
-      if (b.data.length > maxPoints) b.data = b.data.slice(-maxPoints);
-      data.value = b.data;
+      // Append the single new point IN PLACE on the UI thread. Only `newPoint`
+      // and `maxPoints` cross the thread boundary (tiny payload) — the full
+      // (growing) array is never re-cloned JS→UI.
+      data.modify((arr) => {
+        "worklet";
+        arr.push(newPoint);
+        if (arr.length > maxPoints) arr.shift();
+        return arr;
+      });
+      // Scalar — fine to assign directly (no array clone).
       value.value = newValue;
+      b.lastMid = newValue;
 
       if (candleAggregation) {
-        const c = aggregateCandles(b.data, candleWidth);
+        // OHLC re-aggregation needs the full tick array; keep the JS-side mirror
+        // (memory-flat: one array) and re-bucket from it.
+        b.candleData.push(newPoint);
+        if (b.candleData.length > maxPoints) b.candleData.shift();
+        const c = aggregateCandles(b.candleData, candleWidth);
         candles.value = c.candles;
         liveCandle.value = c.liveCandle;
       }
@@ -331,22 +374,32 @@ export function useSimulatedChartData(
       }
 
       if (multiSeries) {
-        // Apply visibility overrides in place — no per-tick copy of each series'
-        // (growing) data array. stepMultiSeries appends in place and we trim in
-        // place; publishing a fresh top-level array reference is enough for the
-        // SharedValue to notify subscribers.
-        if (seriesVisibilityRef) {
-          for (let i = 0; i < b.series.length; i++) {
-            const vis = seriesVisibilityRef.current[b.series[i].id];
-            if (vis !== undefined) b.series[i].visible = vis;
+        // Compute next per-series values from scalars on the JS thread (cheap),
+        // then append the new point(s) IN PLACE inside the `.modify` worklet so
+        // the full series array is never re-cloned to the UI thread each tick.
+        const nextValues = stepMultiSeriesValues(b.seriesValues, true);
+        b.seriesValues = nextValues;
+
+        // Snapshot visibility overrides as a plain array (indexed by series) on
+        // the JS thread — avoids reading the JS-thread ref inside the worklet and
+        // avoids reading the (large) `series` SharedValue on the hot path.
+        const visibility: (boolean | undefined)[] | undefined =
+          seriesVisibilityRef
+            ? b.seriesIds.map((id) => seriesVisibilityRef.current[id])
+            : undefined;
+
+        series.modify((s) => {
+          "worklet";
+          for (let i = 0; i < s.length; i++) {
+            s[i].data.push({ time: now, value: nextValues[i] });
+            if (s[i].data.length > maxPoints) s[i].data.shift();
+            s[i].value = nextValues[i];
+            if (visibility !== undefined && visibility[i] !== undefined) {
+              s[i].visible = visibility[i];
+            }
           }
-        }
-        stepMultiSeries(b.series, true);
-        for (let i = 0; i < b.series.length; i++) {
-          const d = b.series[i].data;
-          if (d.length > maxPoints) d.splice(0, d.length - maxPoints);
-        }
-        series.value = b.series.slice();
+          return s;
+        });
       }
     };
 

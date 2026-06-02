@@ -313,30 +313,48 @@ export function generateMultiSeries(opts: MultiSeriesOptions): SeriesConfig[] {
 }
 
 /**
- * Advance all series by one step. Mutates the series data arrays in place.
+ * Compute the next value for each series from the current per-series `value`
+ * scalars — without touching the (potentially large) `data` arrays.
+ *
+ * This is the JS-thread half of the live step: it reads only `s.value` (a
+ * scalar) so the feed can generate the per-tick delta cheaply, then append the
+ * point inside a Reanimated `.modify` worklet on the UI thread (avoiding a full
+ * series-array clone per tick). See `stepMultiSeries` for the in-place variant.
+ */
+export function stepMultiSeriesValues(
+  values: number[],
+  sumToHundred = false,
+): number[] {
+  const rawValues = values.map((v) => v + v * 0.004 * gaussianRandom());
+
+  if (sumToHundred) {
+    const sum = rawValues.reduce((a, b) => a + Math.max(0.5, b), 0);
+    return rawValues.map((v) => (Math.max(0.5, v) / sum) * 100);
+  }
+  return rawValues.map((v) => Math.max(0.01, v));
+}
+
+/**
+ * Advance all series by one step. Mutates the series `value` and `data` arrays
+ * in place.
+ *
+ * @deprecated The live feed now computes next values via `stepMultiSeriesValues`
+ * and appends the point inside a Reanimated `.modify` worklet, so the full
+ * series array no longer has to be reassigned (and cloned to the UI thread)
+ * every tick. Kept for any non-Reanimated callers.
  */
 export function stepMultiSeries(
   series: SeriesConfig[],
   sumToHundred = false,
 ): void {
   const now = Date.now() / 1000;
-  const rawValues = series.map(
-    (s) => s.value + s.value * 0.004 * gaussianRandom(),
+  const values = stepMultiSeriesValues(
+    series.map((s) => s.value),
+    sumToHundred,
   );
-
-  let values: number[];
-  if (sumToHundred) {
-    const sum = rawValues.reduce((a, b) => a + Math.max(0.5, b), 0);
-    values = rawValues.map((v) => (Math.max(0.5, v) / sum) * 100);
-  } else {
-    values = rawValues.map((v) => Math.max(0.01, v));
-  }
 
   for (let i = 0; i < series.length; i++) {
     series[i].value = values[i];
-    // Append in place. The caller publishes a fresh top-level series array each
-    // tick so the SharedValue still notifies; copying each series' full (growing)
-    // history per tick was a needless allocation firehose under live ticking.
     series[i].data.push({ time: now, value: values[i] });
   }
 }
