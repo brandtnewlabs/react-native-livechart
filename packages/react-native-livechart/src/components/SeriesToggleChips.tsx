@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -32,7 +32,10 @@ export function SeriesToggleChips({
   legend,
   onSeriesToggle,
 }: SeriesToggleChipsProps) {
-  const [snapshot, setSnapshot] = useState<SeriesConfig[]>([]);
+  // Seed from the current series at mount; the reaction below keeps it in sync.
+  const [snapshot, setSnapshot] = useState<SeriesConfig[]>(() =>
+    series.value.slice(),
+  );
 
   const pullSnapshot = useCallback((sv: SharedValue<SeriesConfig[]>) => {
     setSnapshot(sv.value.slice());
@@ -40,7 +43,7 @@ export function SeriesToggleChips({
 
   useAnimatedReaction(
     () => seriesMetaSig(series.value),
-    /* istanbul ignore next -- Reanimated reaction; snapshot pulled in useEffect */
+    /* istanbul ignore next -- Reanimated reaction; snapshot seeded at mount, pulled here on change */
     (sig, prev) => {
       if (sig !== prev) {
         scheduleOnRN(pullSnapshot, series);
@@ -48,10 +51,6 @@ export function SeriesToggleChips({
     },
     [series, pullSnapshot],
   );
-
-  useEffect(() => {
-    setSnapshot(series.value.slice());
-  }, [series]);
 
   if (!legend.visible) return null;
 

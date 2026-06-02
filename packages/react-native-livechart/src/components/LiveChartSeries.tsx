@@ -5,7 +5,7 @@
  * @see https://github.com/benjitaylor/liveline
  */
 import { Canvas, Group } from "@shopify/react-native-skia";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
@@ -232,8 +232,9 @@ export function LiveChartSeries({
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const linePaths = useMultiSeriesLinePaths(engine, effectivePadding);
 
+  // Seed from the current series at mount; the reaction below keeps it in sync.
   const [lineColors, setLineColors] = useState<string[]>(() =>
-    Array.from({ length: MAX_MULTI_SERIES }, () => "#ffffff"),
+    resolveMultiSeriesLineColorsSnapshot(series.value),
   );
 
   const syncColors = useCallback((sv: SharedValue<SeriesConfig[]>) => {
@@ -249,14 +250,10 @@ export function LiveChartSeries({
     [series, syncColors],
   );
 
-  useEffect(() => {
-    syncColors(series);
-  }, [series, syncColors]);
-
   // Per-series stroke style (dash / width / glow) — synced to React state when
   // the style signature changes (not on every data tick), like the colors above.
   const [lineStyles, setLineStyles] = useState<SeriesLineStyle[]>(() =>
-    resolveMultiSeriesLineStylesSnapshot([]),
+    resolveMultiSeriesLineStylesSnapshot(series.value),
   );
 
   const syncStyles = useCallback((sv: SharedValue<SeriesConfig[]>) => {
@@ -271,10 +268,6 @@ export function LiveChartSeries({
     },
     [series, syncStyles],
   );
-
-  useEffect(() => {
-    syncStyles(series);
-  }, [series, syncStyles]);
 
   const {
     pack: degenPack,
