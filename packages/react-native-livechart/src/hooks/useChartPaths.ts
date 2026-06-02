@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
-import { drawSpline } from "../math/spline";
+import { drawSpline, makeSplineScratch } from "../math/spline";
 import { blendPtsY, squigglifyPts } from "../math/squiggly";
 
 /**
@@ -30,11 +30,19 @@ export function useChartPaths(
       fillA: Skia.Path.Make(),
       fillB: Skia.Path.Make(),
       tick: false,
+      // Ping-pong point buffers: reused across frames but the returned reference
+      // still alternates, so Reanimated keeps notifying linePath/fillPath.
+      ptsA: [] as number[],
+      ptsB: [] as number[],
+      ptsTick: false,
+      scratch: makeSplineScratch(),
     }),
     [],
   );
 
   const flatPts = useDerivedValue(() => {
+    cache.ptsTick = !cache.ptsTick;
+    const buf = cache.ptsTick ? cache.ptsA : cache.ptsB;
     const realPts = buildLinePoints(
       engine.data.value,
       engine.displayValue.value,
@@ -45,6 +53,7 @@ export function useChartPaths(
       engine.canvasWidth.value,
       engine.canvasHeight.value,
       padding,
+      buf,
     );
 
     // Skip blending when fully revealed or no morphT provided
@@ -74,7 +83,7 @@ export function useChartPaths(
     const n = pts.length >> 1;
     if (n < 2) return path;
     path.moveTo(pts[0], pts[1]);
-    drawSpline(path, pts);
+    drawSpline(path, pts, cache.scratch);
     return path;
   });
 
@@ -87,7 +96,7 @@ export function useChartPaths(
     const n = pts.length >> 1;
     if (n < 2) return path;
     path.moveTo(pts[0], pts[1]);
-    drawSpline(path, pts);
+    drawSpline(path, pts, cache.scratch);
     const bottom = engine.canvasHeight.value - padding.bottom;
     path.lineTo(pts[(n - 1) * 2], bottom);
     path.lineTo(pts[0], bottom);

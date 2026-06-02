@@ -50,6 +50,11 @@ export function useTradeStream(
       const s = state.value;
       tickTradeStream(s, tradeStream.value, dt, chartTop, chartBottom);
 
+      // Idle tape: nothing to draw and nothing already drawn. Skip the projection
+      // and SharedValue write so the TapeLabel derived values don't re-run and we
+      // don't allocate a fresh marker array every frame.
+      if (s.labels.length === 0 && markers.value.length === 0) return;
+
       const chartH = chartBottom - chartTop;
       markers.value = projectLabels(s, chartTop, chartH);
     },

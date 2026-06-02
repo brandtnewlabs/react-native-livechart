@@ -197,6 +197,13 @@ export function resolvePadding(
  * and appends a live tip at (now, displayValue).
  *
  * Flat layout avoids ~150 tuple object allocations per frame.
+ *
+ * Pass `out` to reuse a persistent array instead of allocating a fresh one each
+ * frame (it is cleared and refilled). The per-frame allocation otherwise scales
+ * with the visible point count, so pooling it cuts UI-thread GC pressure on
+ * busy / wide-window charts. Callers that pool `out` must ping-pong two buffers
+ * so the returned reference still changes each frame (Reanimated's value-equality
+ * check skips notifying subscribers when the reference is unchanged).
  */
 export function buildLinePoints(
   data: LiveChartPoint[],
@@ -208,14 +215,17 @@ export function buildLinePoints(
   canvasWidth: number,
   canvasHeight: number,
   padding: ChartPadding,
+  out?: number[],
 ): number[] {
   "worklet";
+  const pts: number[] = out ?? [];
+  if (out) out.length = 0;
   const chartW = canvasWidth - padding.left - padding.right;
   const chartH = canvasHeight - padding.top - padding.bottom;
   const valRange = displayMax - displayMin;
 
   if (valRange === 0 || chartW <= 0 || chartH <= 0 || data.length === 0)
-    return [];
+    return pts;
 
   const winStart = now - windowSecs;
 
@@ -229,7 +239,6 @@ export function buildLinePoints(
   }
   const startIdx = Math.max(0, lo - 1);
 
-  const pts: number[] = [];
   for (let i = startIdx; i < data.length; i++) {
     if (data[i].time > now) break;
     pts.push(

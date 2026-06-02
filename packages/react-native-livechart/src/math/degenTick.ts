@@ -106,7 +106,11 @@ export function computeShake(
   };
 }
 
-/** Advance all particles by `dtSec`: apply velocity, drag, and expire particles older than `burstDur`. */
+/**
+ * Advance all particles by `dtSec`: apply velocity, drag, and expire particles older than `burstDur`.
+ * Returns the number of particles still alive after the tick, so callers can skip per-frame
+ * repaint work (bumping `packRevision`) when the field is empty.
+ */
 export function tickParticles(
   buf: Float64Array,
   slots: number,
@@ -114,9 +118,10 @@ export function tickParticles(
   burstDur: number,
   drag: number,
   dtSec: number,
-): void {
+): number {
   "worklet";
   const stride = DEGEN_STRIDE;
+  let active = 0;
   for (let i = 0; i < slots; i++) {
     const b = i * stride;
     if (buf[b + 5] < 0.5) continue;
@@ -129,5 +134,7 @@ export function tickParticles(
     buf[b + 1] += buf[b + 3] * dtSec;
     buf[b + 2] *= drag;
     buf[b + 3] *= drag;
+    active++;
   }
+  return active;
 }

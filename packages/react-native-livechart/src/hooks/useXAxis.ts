@@ -87,14 +87,13 @@ export function useXAxis(
 
     const alphas = labelAlphas.value;
 
-    // Create/update labels
+    // Create labels for new keys only. A key encodes its time, so the formatted
+    // text never changes — re-formatting (and re-allocating the entry) every
+    // frame just churns strings/objects for the GC.
     for (let i = 0; i < targetKeys.length; i++) {
       const key = targetKeys[i];
-      const text = formatTime(key / 100);
       if (!alphas[key]) {
-        alphas[key] = { alpha: 0, text };
-      } else {
-        alphas[key] = { alpha: alphas[key].alpha, text };
+        alphas[key] = { alpha: 0, text: formatTime(key / 100) };
       }
     }
 
@@ -118,7 +117,8 @@ export function useXAxis(
       if (next < 0.01 && target === 0) {
         delete alphas[key];
       } else {
-        alphas[key] = { alpha: next, text: label.text };
+        // Mutate in place — text is stable, so no need to reallocate the entry.
+        label.alpha = next;
       }
     }
 
