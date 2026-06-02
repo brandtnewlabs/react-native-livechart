@@ -334,6 +334,9 @@ export function stepMultiSeries(
 
   for (let i = 0; i < series.length; i++) {
     series[i].value = values[i];
-    series[i].data = [...series[i].data, { time: now, value: values[i] }];
+    // Append in place. The caller publishes a fresh top-level series array each
+    // tick so the SharedValue still notifies; copying each series' full (growing)
+    // history per tick was a needless allocation firehose under live ticking.
+    series[i].data.push({ time: now, value: values[i] });
   }
 }
