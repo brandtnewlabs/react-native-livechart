@@ -25,15 +25,6 @@ const config: ReactDoctorConfig = {
         rules: ["react-doctor/no-giant-component"],
       },
       {
-        // Demo simulation hook: history is fed through a callback by design and
-        // its side effects are reaction/timer-driven, not user-event-driven.
-        files: ["**/useSimulatedChartData.ts"],
-        rules: [
-          "react-doctor/no-event-handler",
-          "react-doctor/no-pass-data-to-parent",
-        ],
-      },
-      {
         // react-doctor is a CLI dev tool, never imported — it flags itself.
         files: ["package.json", "**/package.json"],
         rules: ["deslop/unused-dev-dependency"],
