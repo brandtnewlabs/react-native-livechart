@@ -77,38 +77,30 @@ export function useMultiSeriesDegen(
   const degenOff = cfg === null;
 
   useEffect(() => {
-    if (degenOff) {
-      enabledSV.set(0);
-      shakeEnabledSV.set(0);
-      hasOnShakeListenerSV.set(0);
-      shakeStart.set(0);
-      shakeX.set(0);
-      shakeY.set(0);
-      return;
-    }
-    hasOnShakeListenerSV.set(onShake != null ? 1 : 0);
-    enabledSV.set(1);
-    scaleSV.set(cfg.scale);
-    downSV.set(cfg.downMomentum ? 1 : 0);
-    shakeEnabledSV.set(cfg.shake ? 1 : 0);
-    shakeIntensitySV.set(cfg.shakeIntensity);
-    shakeDurationSecSV.set(cfg.shakeDurationSec);
-    slotCountSV.set(cfg.particleSlotCount);
-    burstParticleCountSV.set(cfg.burstParticleCount);
-    particleBurstDurationSecSV.set(cfg.particleBurstDurationSec);
-    dragSV.set(cfg.drag);
-    sizeMinSV.set(cfg.particleSizeMin);
-    sizeMaxSV.set(cfg.particleSizeMax);
-    spreadAngleSV.set(cfg.spreadAngle);
-    jitterXSV.set(cfg.positionJitterX);
-    jitterYSV.set(cfg.positionJitterY);
-    speedMinSV.set(cfg.speedMin);
-    speedMaxSV.set(cfg.speedMax);
-    if (!cfg.shake) {
-      shakeStart.set(0);
-      shakeX.set(0);
-      shakeY.set(0);
-    }
+    // Mirror the resolved config into SharedValues for the UI-thread worklet.
+    // Everything is set unconditionally — no prop-derived `if` branch — so this
+    // is a plain external-store sync, not a disguised event handler. When degen
+    // is off, enabledSV is 0 and the frame worklet early-returns (zeroing the
+    // particle buffer and shake itself), so the remaining values are inert; the
+    // `?? default` fallbacks stand in for the null-config case.
+    enabledSV.set(degenOff ? 0 : 1);
+    shakeEnabledSV.set(cfg?.shake ? 1 : 0);
+    hasOnShakeListenerSV.set(!degenOff && onShake != null ? 1 : 0);
+    scaleSV.set(cfg?.scale ?? 1);
+    downSV.set(cfg?.downMomentum ? 1 : 0);
+    shakeIntensitySV.set(cfg?.shakeIntensity ?? 1);
+    shakeDurationSecSV.set(cfg?.shakeDurationSec ?? 0.45);
+    slotCountSV.set(cfg?.particleSlotCount ?? 60);
+    burstParticleCountSV.set(cfg?.burstParticleCount ?? 20);
+    particleBurstDurationSecSV.set(cfg?.particleBurstDurationSec ?? 1.0);
+    dragSV.set(cfg?.drag ?? 0.95);
+    sizeMinSV.set(cfg?.particleSizeMin ?? 1);
+    sizeMaxSV.set(cfg?.particleSizeMax ?? 2.2);
+    spreadAngleSV.set(cfg?.spreadAngle ?? Math.PI * 1.2);
+    jitterXSV.set(cfg?.positionJitterX ?? 24);
+    jitterYSV.set(cfg?.positionJitterY ?? 8);
+    speedMinSV.set(cfg?.speedMin ?? 60);
+    speedMaxSV.set(cfg?.speedMax ?? 160);
   }, [
     degenOff,
     onShake,

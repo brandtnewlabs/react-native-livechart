@@ -25,13 +25,6 @@ const config: ReactDoctorConfig = {
         rules: ["react-doctor/no-giant-component"],
       },
       {
-        // `emitShake` notifies the consumer when a momentum shake is detected on
-        // the UI thread (in the frame worklet, via runOnJS) — there's no React
-        // event to move the side effect into, so no-event-handler doesn't apply.
-        files: ["**/hooks/useDegen.ts", "**/hooks/useMultiSeriesDegen.ts"],
-        rules: ["react-doctor/no-event-handler"],
-      },
-      {
         // Demo simulation hook: history is fed through a callback by design and
         // its side effects are reaction/timer-driven, not user-event-driven.
         files: ["**/useSimulatedChartData.ts"],
