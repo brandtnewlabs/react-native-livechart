@@ -65,7 +65,9 @@ export function useMultiSeriesDegen(
   const hasOnShakeListenerSV = useSharedValue(0);
 
   const onShakeRef = useRef(onShake);
-  onShakeRef.current = onShake;
+  useEffect(() => {
+    onShakeRef.current = onShake;
+  });
   const emitShake = useCallback(
     /* istanbul ignore next -- invoked only from the UI-thread frame worklet */
     (direction: "up" | "down") => {

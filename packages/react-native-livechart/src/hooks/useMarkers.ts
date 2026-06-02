@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   runOnJS,
@@ -32,7 +32,9 @@ export function useMarkers(
   );
 
   const onHoverRef = useRef(onMarkerHover);
-  onHoverRef.current = onMarkerHover;
+  useEffect(() => {
+    onHoverRef.current = onMarkerHover;
+  });
   const emitHover = useCallback(
     /* istanbul ignore next -- invoked only from the UI-thread tap worklet */
     (event: MarkerHoverEvent | null) => {

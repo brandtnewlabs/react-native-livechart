@@ -21,7 +21,8 @@ export default function LinePlaybackScreen() {
   const [maxValue, setMaxValue] = useState<number | undefined>(undefined);
 
   const data = useSharedValue<LiveChartPoint[]>([]);
-  const value = useSharedValue(wave(Date.now() / 1000));
+  const [initialValue] = useState(() => wave(Date.now() / 1000));
+  const value = useSharedValue(initialValue);
 
   // Seed a little history once so the chart reveals immediately.
   useEffect(() => {

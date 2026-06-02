@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { LiveChart, type LiveChartPoint } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
@@ -26,10 +26,10 @@ export default function HistoricalDataScreen() {
   const [buffer, setBuffer] = useState(0);
 
   // A fixed historical dataset seeded once; maxT is the latest sample.
-  const seed = useMemo(() => {
+  const [seed] = useState(() => {
     const maxT = Date.now() / 1000;
     return { points: seedHistory(maxT), maxT };
-  }, []);
+  });
 
   const data = useSharedValue<LiveChartPoint[]>(seed.points);
   const value = useSharedValue(seed.points[seed.points.length - 1].value);

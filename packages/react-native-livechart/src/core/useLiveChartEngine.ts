@@ -5,6 +5,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
+import { useState } from "react";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -156,7 +157,9 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
   const displayWindow = useSharedValue(config.timeWindow);
   const canvasWidth = useSharedValue(0);
   const canvasHeight = useSharedValue(0);
-  const timestamp = useSharedValue(Date.now() / 1000);
+  // Seed once; overwritten by the frame callback on the first tick.
+  const [initialTimestamp] = useState(() => Date.now() / 1000);
+  const timestamp = useSharedValue(initialTimestamp);
 
   // High-frequency data reads directly from the caller's shared values —
   // no useDerivedValue bridging, no closure serialization per tick.

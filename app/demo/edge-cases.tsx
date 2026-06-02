@@ -34,9 +34,10 @@ export default function EdgeCasesScreen() {
 
   const emptyData = useSharedValue<LiveChartPoint[]>([]);
   const emptyValue = useSharedValue(100);
-  const singlePointData = useSharedValue<LiveChartPoint[]>([
+  const [singlePointInit] = useState<LiveChartPoint[]>(() => [
     { time: Date.now() / 1000, value: 100 },
   ]);
+  const singlePointData = useSharedValue<LiveChartPoint[]>(singlePointInit);
 
   const sim = useSimulatedChartData({
     multiSeries: false,
