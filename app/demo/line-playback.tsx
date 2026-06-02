@@ -34,8 +34,9 @@ export default function LinePlaybackScreen() {
     }
     data.set(seed);
     value.set(wave(now));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // data/value are stable useSharedValue refs and `wave` is module-level, so
+    // this seeds exactly once despite the complete dependency list.
+  }, [data, value]);
 
   // Live oscillator (paused freezes it, matching the chart's paused prop).
   useEffect(() => {
