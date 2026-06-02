@@ -33,9 +33,13 @@ export function useMarkers(
 
   const onHoverRef = useRef(onMarkerHover);
   onHoverRef.current = onMarkerHover;
-  const emitHover = useCallback((event: MarkerHoverEvent | null) => {
-    onHoverRef.current?.(event);
-  }, []);
+  const emitHover = useCallback(
+    /* istanbul ignore next -- invoked only from the UI-thread tap worklet */
+    (event: MarkerHoverEvent | null) => {
+      onHoverRef.current?.(event);
+    },
+    [],
+  );
 
   useFrameCallback(
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {

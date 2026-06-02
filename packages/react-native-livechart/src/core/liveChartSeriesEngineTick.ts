@@ -27,6 +27,10 @@ export interface MultiEngineTickInput {
   maxValue?: number;
   series: SeriesConfig[];
   nowSeconds?: number;
+  /** Override the engine's "now" (unix seconds). */
+  nowOverride?: number;
+  /** Right-edge buffer as a fraction of the time window. */
+  windowBuffer?: number;
   paused?: boolean;
 }
 
@@ -40,9 +44,9 @@ export function tickLiveChartSeriesEngineFrame(
   input: MultiEngineTickInput,
 ): void {
   "worklet";
-  const now = input.nowSeconds ?? Date.now() / 1000;
+  const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
   if (!input.paused) {
-    state.timestamp = now;
+    state.timestamp = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
   }
 
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;

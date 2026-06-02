@@ -19,6 +19,8 @@ export interface MultiSeriesEngineConfig {
   referenceValues?: number[];
   nonNegative?: boolean;
   maxValue?: number;
+  nowOverride?: number;
+  windowBuffer?: number;
   paused?: boolean;
 }
 
@@ -39,6 +41,8 @@ export interface MultiEngineFrameRefs {
   referenceValues?: SharedValue<number[] | undefined>;
   nonNegativeSV?: SharedValue<boolean>;
   maxValueSV?: SharedValue<number | undefined>;
+  nowOverrideSV?: SharedValue<number | undefined>;
+  windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
 }
 
@@ -108,6 +112,8 @@ export function applyLiveChartSeriesEngineFrame(
     referenceValues: sv.referenceValues?.value,
     nonNegative: sv.nonNegativeSV?.value ?? false,
     maxValue: sv.maxValueSV?.value,
+    nowOverride: sv.nowOverrideSV?.value,
+    windowBuffer: sv.windowBufferSV?.value ?? 0,
     series: seriesSnap,
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
@@ -134,6 +140,8 @@ export function useLiveChartSeriesEngine(
   const referenceValues = useDerivedValue(() => config.referenceValues);
   const nonNegativeSV = useDerivedValue(() => config.nonNegative ?? false);
   const maxValueSV = useDerivedValue(() => config.maxValue);
+  const nowOverrideSV = useDerivedValue(() => config.nowOverride);
+  const windowBufferSV = useDerivedValue(() => config.windowBuffer ?? 0);
   const pausedSV = useDerivedValue(() => config.paused ?? false);
 
   const displayMin = useSharedValue(0);
@@ -179,6 +187,8 @@ export function useLiveChartSeriesEngine(
         referenceValues,
         nonNegativeSV,
         maxValueSV,
+        nowOverrideSV,
+        windowBufferSV,
         pausedSV,
       },
       scratch,

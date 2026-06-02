@@ -569,6 +569,22 @@ export interface LiveChartCoreProps {
    * `accentColor` + `theme`. Only the keys you set are replaced.
    */
   palette?: Partial<LiveChartPalette>;
+  /**
+   * Right-edge buffer as a fraction of `timeWindow`. Pushes the live edge past the
+   * current time so the latest point has breathing room; pass `0` to land the latest
+   * point exactly at the right edge. Default `0`.
+   */
+  windowBuffer?: number;
+  /**
+   * Override the engine's "now" (unix seconds). Pass the latest data timestamp to
+   * treat the most recent point as the current time — combine with `windowBuffer={0}`
+   * and `timeWindow = maxT - minT` to fill the canvas edge-to-edge with historical data.
+   */
+  nowOverride?: number;
+  /** Accessibility label for the chart container. */
+  accessibilityLabel?: string;
+  /** Accessibility role for the chart container. Default `"image"`. */
+  accessibilityRole?: "image" | "none" | "adjustable" | "summary";
   /** Crosshair scrubbing on hover/drag. `true` = defaults, `false` = disabled, or pass `ScrubConfig`. Default `true`. */
   scrub?: boolean | ScrubConfig;
   /**

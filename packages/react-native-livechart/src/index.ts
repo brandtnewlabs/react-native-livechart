@@ -10,8 +10,10 @@
 
 import { LiveChart } from "./components/LiveChart";
 import { LiveChartSeries } from "./components/LiveChartSeries";
+import { LiveChartTransition } from "./components/LiveChartTransition";
 
-export { LiveChart, LiveChartSeries };
+export { LiveChart, LiveChartSeries, LiveChartTransition };
+export type { LiveChartTransitionProps } from "./components/LiveChartTransition";
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 
