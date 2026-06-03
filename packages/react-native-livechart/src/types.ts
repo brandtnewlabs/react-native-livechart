@@ -496,7 +496,7 @@ export interface CandlePoint {
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
   theme?: ThemeMode;
-  /** Primary accent color — the full palette is derived from this. Default `"#3b82f6"`. */
+  /** Primary accent color — the full palette is derived from this. Default `"#3323E6"`. */
   accentColor?: string;
   /** Font configuration for all chart text (axes, badges, tooltips). */
   font?: FontConfig;

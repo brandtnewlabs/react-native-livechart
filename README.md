@@ -3,8 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/react-native-livechart.svg)](https://www.npmjs.com/package/react-native-livechart)
 [![CI](https://github.com/brandtnewlabs/react-native-livechart/actions/workflows/test.yml/badge.svg)](https://github.com/brandtnewlabs/react-native-livechart/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/npm/l/react-native-livechart.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-online-3323E6.svg)](https://react-native-livechart.brandtnewlabs.com)
 
 High-performance **live** line and candlestick charts for React Native, built on **[@shopify/react-native-skia](https://shopify.github.io/react-native-skia/)**, **[react-native-reanimated](https://docs.swmansion.com/react-native-reanimated/)**, and **[react-native-gesture-handler](https://docs.swmansion.com/react-native-gesture-handler/)**. Data and live values flow through Reanimated `SharedValue`s, so the UI thread animates without per-frame JS bridge traffic.
+
+📖 **[Documentation →](https://react-native-livechart.brandtnewlabs.com)**
 
 <!-- TODO(hero): replace this comment with a demo GIF/screenshot, e.g.:
      <p align="center"><img src="assets/images/demo.gif" alt="react-native-livechart demo" width="320" /></p>
@@ -86,7 +89,7 @@ function LivePrice() {
 
   return (
     <View style={{ height: 240 }}>
-      <LiveChart data={data} value={value} accentColor="#3b82f6" />
+      <LiveChart data={data} value={value} accentColor="#3323E6" />
     </View>
   );
 }

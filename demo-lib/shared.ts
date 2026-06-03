@@ -5,7 +5,7 @@ import {
   type TradeSource,
 } from "../sim/useSimulatedChartData";
 
-export const ACCENT = "#3b82f6";
+export const ACCENT = "#3323E6";
 
 /** Sim seed span presets (see `useSimulatedChartData` `historyRange`). */
 export const HISTORY_RANGE_PRESETS: {
@@ -68,7 +68,7 @@ export const SMOOTHING_PRESETS: { label: string; value: number }[] = [
 ];
 
 export const ACCENT_PRESETS = [
-  "#3b82f6",
+  "#3323E6",
   "#22c55e",
   "#eab308",
   "#ef4444",
