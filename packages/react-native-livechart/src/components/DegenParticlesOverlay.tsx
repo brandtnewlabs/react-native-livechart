@@ -117,24 +117,25 @@ export function DegenParticlesOverlay({
   const colorList = colors && colors.length > 0 ? colors : [palette.line];
   // Fixed-size persistent slot pool. Each <DegenSlot> renders whatever particle
   // currently occupies slot `i` (read from `pack` by index), and particles cycle
-  // through the slots over time. The slot's identity IS its index and the list
-  // only grows/shrinks at the tail (never reorders), so `key={i}` is the correct
-  // stable key — a content-derived key would remount every slot as the pool
-  // rotates. (react-doctor's no-array-index-key is scoped for this file.)
-  const slots = [];
-  for (let i = 0; i < particleSlotCount; i++) {
-    slots.push(
-      <DegenSlot
-        key={i}
-        index={i}
-        pack={pack}
-        packRevision={packRevision}
-        engine={engine}
-        particleBurstDurationSec={particleBurstDurationSec}
-        particleOpacity={particleOpacity}
-        colorList={colorList}
-      />,
-    );
-  }
+  // through the slots over time. The pool is positional — slot `i` always renders
+  // ring-buffer index `i`, and the list only grows/shrinks at the tail, never
+  // reorders — so each slot has a permanent identity. Key by that stable per-slot
+  // id (`particle-slot-<i>`) rather than the bare array index.
+  const slotKeys = Array.from(
+    { length: particleSlotCount },
+    (_, i) => `particle-slot-${i}`,
+  );
+  const slots = slotKeys.map((slotKey, i) => (
+    <DegenSlot
+      key={slotKey}
+      index={i}
+      pack={pack}
+      packRevision={packRevision}
+      engine={engine}
+      particleBurstDurationSec={particleBurstDurationSec}
+      particleOpacity={particleOpacity}
+      colorList={colorList}
+    />
+  ));
   return <Group>{slots}</Group>;
 }

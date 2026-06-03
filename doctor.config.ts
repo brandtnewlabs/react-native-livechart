@@ -15,15 +15,6 @@ const config: ReactDoctorConfig = {
   ignore: {
     overrides: [
       {
-        // Fixed-size render-slot pools (particle slots, trade-tape labels): the
-        // array index IS the stable slot identity, not reorderable user data.
-        files: [
-          "**/components/DegenParticlesOverlay.tsx",
-          "**/components/TradeStreamOverlay.tsx",
-        ],
-        rules: ["react-doctor/no-array-index-as-key"],
-      },
-      {
         // LiveChart / LiveChartSeries are the top-level composition roots; their
         // size is inherent to a fully-featured chart component. (The `tooltipBody`
         // JSX-as-prop slot is suppressed inline at its call site in LiveChart.tsx.)
