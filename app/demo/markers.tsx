@@ -9,9 +9,9 @@ import {
 import { useSharedValue } from "react-native-reanimated";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
-import { DemoScreen } from "./lib/DemoScreen";
-import { ACCENT } from "./lib/shared";
-import { demoStyles } from "./lib/styles";
+import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { ACCENT } from "../../demo-lib/shared";
+import { demoStyles } from "../../demo-lib/styles";
 
 export const options = { title: "Markers" };
 

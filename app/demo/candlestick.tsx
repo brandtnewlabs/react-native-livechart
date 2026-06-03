@@ -4,7 +4,7 @@ import {
   HISTORY_RANGE_PRESETS,
   TIME_WINDOWS,
   viewportSecsForHistoryPreset,
-} from "./lib/shared";
+} from "../../demo-lib/shared";
 
 import { useState } from "react";
 import type { CandlePoint } from "react-native-livechart";
@@ -14,8 +14,8 @@ import {
   useSimulatedChartData,
   type HistoryRange,
 } from "../../sim/useSimulatedChartData";
-import { DemoScreen } from "./lib/DemoScreen";
-import { demoStyles } from "./lib/styles";
+import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { demoStyles } from "../../demo-lib/styles";
 
 export const options = { title: "Candlestick" };
 

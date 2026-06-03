@@ -25,7 +25,7 @@ import {
   type HistoryRange,
   type TradeSource,
 } from "../../sim/useSimulatedChartData";
-import { AnimatedTrendTextInput } from "./lib/AnimatedTrendTextInput";
+import { AnimatedTrendTextInput } from "../../demo-lib/AnimatedTrendTextInput";
 import {
   HISTORY_RANGE_PRESETS,
   PRICE_RANGES,
@@ -33,7 +33,7 @@ import {
   TRADE_SOURCES,
   viewportSecsForHistoryPreset,
   VOLATILITY_MODES,
-} from "./lib/shared";
+} from "../../demo-lib/shared";
 
 export const options = { title: "Playground" };
 

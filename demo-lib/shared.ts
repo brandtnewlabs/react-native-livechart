@@ -1,9 +1,9 @@
-import type { VolatilityMode } from "../../../sim/generators";
+import type { VolatilityMode } from "../sim/generators";
 import {
   HISTORY_RANGE_SPAN_SECONDS,
   type HistoryRange,
   type TradeSource,
-} from "../../../sim/useSimulatedChartData";
+} from "../sim/useSimulatedChartData";
 
 export const ACCENT = "#3b82f6";
 

@@ -3,9 +3,9 @@ import { Pressable, Text, View } from "react-native";
 import { LiveChart } from "react-native-livechart";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
-import { DemoScreen } from "./lib/DemoScreen";
-import { ACCENT, VOLATILITY_MODES } from "./lib/shared";
-import { demoStyles } from "./lib/styles";
+import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { ACCENT, VOLATILITY_MODES } from "../../demo-lib/shared";
+import { demoStyles } from "../../demo-lib/styles";
 
 export const options = { title: "Trade stream" };
 
