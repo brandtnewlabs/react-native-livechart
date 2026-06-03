@@ -1,0 +1,80 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "react-native-livechart",
+  "description": "High-performance live line and candlestick charts for React Native, built on Skia and Reanimated.",
+  "colors": {
+    "primary": "#3b82f6",
+    "light": "#60a5fa",
+    "dark": "#2563eb"
+  },
+  "favicon": "/favicon.png",
+  "icons": {
+    "library": "fontawesome"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": ["index", "installation", "quickstart"]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/line-and-area",
+              "guides/candlestick",
+              "guides/multi-series",
+              "guides/scrubbing",
+              "guides/momentum-and-degen",
+              "guides/markers-and-references",
+              "guides/theming"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Components",
+            "pages": [
+              "api-reference/livechart",
+              "api-reference/livechart-series"
+            ]
+          },
+          {
+            "group": "Hooks, utilities & types",
+            "pages": [
+              "api-reference/hooks-and-utilities",
+              "api-reference/types"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "npm",
+        "href": "https://www.npmjs.com/package/react-native-livechart"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "GitHub",
+      "href": "https://github.com/brandtnewlabs/react-native-livechart"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/brandtnewlabs/react-native-livechart"
+    }
+  },
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude"]
+  }
+}

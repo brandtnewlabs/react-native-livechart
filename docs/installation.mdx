@@ -1,0 +1,84 @@
+---
+title: Installation
+icon: "download"
+description: "Install react-native-livechart and configure its peer dependencies, Babel, and Metro."
+---
+
+## Install
+
+```bash
+npm install react-native-livechart
+```
+
+## Peer dependencies
+
+Install the library's peer dependencies in your app. Versions should match your React Native /
+Expo SDK.
+
+| Peer                           | Role                                |
+| ------------------------------ | ----------------------------------- |
+| `react`                        | UI                                  |
+| `react-native`                 | Host                                |
+| `@shopify/react-native-skia`   | Canvas rendering                    |
+| `react-native-reanimated`      | Shared values, animations, worklets |
+| `react-native-worklets`        | Required by Reanimated 4+           |
+| `react-native-gesture-handler` | Pan / scrub gestures                |
+
+Follow the install docs for [Skia](https://shopify.github.io/react-native-skia/docs/getting-started/installation),
+[Reanimated](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started),
+and [Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler/docs/fundamentals/installation)
+for your toolchain.
+
+## Babel
+
+The package ships **TypeScript source**, so your app's bundler compiles it with the same stack
+as a typical Expo / Reanimated 4 project. You need:
+
+- **`babel-preset-expo`** (or an equivalent preset that includes Reanimated's Babel plugin), and
+- **`react-native-worklets/plugin`** as the **last** entry in your `plugins` array.
+
+```js babel.config.js
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ["babel-preset-expo"],
+    plugins: [
+      // ...your other plugins
+      "react-native-worklets/plugin", // must be last
+    ],
+  };
+};
+```
+
+<Warning>
+  If you omit the Worklets plugin or it isn't last, worklets in the chart can fail at build or
+  runtime.
+</Warning>
+
+## Metro / package exports
+
+From **Expo SDK 53+**, Metro resolves `import` using `package.json` `exports`, including the
+`react-native` condition. This library's runtime entry is `src/index.ts` under that condition —
+your Metro + Babel pipeline compiles it.
+
+If you disabled package exports (`unstable_enablePackageExports: false`), re-enable them or align
+your resolver so resolution matches the published map.
+
+## Gesture handler root
+
+Scrubbing uses Gesture Handler, so wrap your app (or the screen hosting the chart) in a
+`GestureHandlerRootView`:
+
+```tsx
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* ...your app */}
+    </GestureHandlerRootView>
+  );
+}
+```
+
+Next: render your first chart in the [Quickstart](/quickstart).

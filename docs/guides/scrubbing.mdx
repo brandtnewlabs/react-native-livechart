@@ -1,0 +1,64 @@
+---
+title: Scrubbing
+icon: "crosshairs"
+description: "Pan a crosshair across history and read the value under it."
+---
+
+Scrubbing is on by default. Drag across the chart to reveal a vertical crosshair, a dimmed
+region ahead of it, and a tooltip pill with the value and time under your finger.
+
+```tsx
+<LiveChart data={data} value={value} scrub />
+```
+
+Disable it with `scrub={false}`, or configure the crosshair and tooltip:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  scrub={{ tooltip: true, crosshairLineColor: "#94a3b8" }}
+/>
+```
+
+## Reading the scrub position (single series)
+
+`onScrub` fires with a `ScrubPoint` while scrubbing, and `null` when it ends. It runs on the **JS
+thread**, so you can call React `setState` directly:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  onScrub={(point) => {
+    if (!point) return; // scrub ended
+    console.log(point.time, point.value, point.x, point.y);
+    // In candle mode, point.candle holds the OHLC under the crosshair.
+  }}
+/>
+```
+
+## Multi-series scrub (worklet)
+
+For `LiveChartSeries`, `onScrub` is a **worklet** that runs on the UI thread each frame with a
+`ScrubPointMulti` (including a per-series value array). Write straight to a shared value with no
+bridge overhead:
+
+```tsx
+import { useSharedValue } from "react-native-reanimated";
+import type { ScrubPointMulti } from "react-native-livechart";
+
+const scrubData = useSharedValue<ScrubPointMulti | null>(null);
+
+<LiveChartSeries
+  series={series}
+  scrub
+  onScrub={(point) => {
+    "worklet";
+    scrubData.set(point); // null when scrub ends
+  }}
+/>;
+```
+
+`point.seriesValues` is an array of `{ id, label, value }` for each visible series at the scrub
+time. See the [types reference](/api-reference/types) for the full payload shape.

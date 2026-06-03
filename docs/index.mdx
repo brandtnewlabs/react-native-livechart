@@ -1,0 +1,53 @@
+---
+title: react-native-livechart
+icon: "house"
+description: "High-performance live line and candlestick charts for React Native, built on Skia and Reanimated."
+---
+
+**react-native-livechart** renders real-time line and candlestick charts on the UI thread.
+Data and live values flow through Reanimated `SharedValue`s, so the chart animates at native
+frame rates without per-frame JS bridge traffic.
+
+It's built on [`@shopify/react-native-skia`](https://shopify.github.io/react-native-skia/),
+[`react-native-reanimated`](https://docs.swmansion.com/react-native-reanimated/), and
+[`react-native-gesture-handler`](https://docs.swmansion.com/react-native-gesture-handler/).
+
+<CardGroup cols={2}>
+  <Card title="Line & candlestick" icon="chart-line">
+    Single-series line/area or OHLC candlestick mode in one component, with a smooth
+    line/candle morph.
+  </Card>
+  <Card title="Multi-series" icon="layer-group">
+    Several live series with a toggleable legend, per-series dots, and a shared crosshair.
+  </Card>
+  <Card title="Scrubbing" icon="crosshairs">
+    Pan a crosshair across history with a worklet-friendly `onScrub` payload.
+  </Card>
+  <Card title="Momentum & degen" icon="bolt">
+    Auto-detected momentum coloring plus optional particle bursts and screen shake on swings.
+  </Card>
+  <Card title="Markers & references" icon="location-dot">
+    Trade-fill markers, custom glyphs, and reference lines / bands.
+  </Card>
+  <Card title="Theming" icon="palette">
+    Light/dark themes with an accent-driven palette and full per-key overrides.
+  </Card>
+</CardGroup>
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the package and its peer dependencies, and configure Babel + Metro.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Render your first live chart in a few lines.
+  </Card>
+</CardGroup>
+
+<Note>
+  The design and API are conceptually inspired by
+  [liveline](https://github.com/benjitaylor/liveline) by Benji Taylor — reimagined for React
+  Native on Skia and Reanimated. This is not a fork; see the project
+  [acknowledgments](https://github.com/brandtnewlabs/react-native-livechart#acknowledgments).
+</Note>

@@ -1,0 +1,57 @@
+---
+title: LiveChartSeries
+icon: "layer-group"
+description: "Props for the multi-series line component."
+---
+
+```tsx
+import { LiveChartSeries } from "react-native-livechart";
+```
+
+`LiveChartSeries` draws several line series sharing an axis, time window, and crosshair. It
+accepts all the shared theming, axis, range, layout, and text props from
+[`LiveChart`](/api-reference/livechart) (`theme`, `accentColor`, `palette`, `font`, `timeWindow`,
+`yAxis`, `referenceLines`, `formatValue`, …), plus the multi-series props below.
+
+## Series data
+
+<ParamField body="series" type="SharedValue<SeriesConfig[]>" required>
+  Array of series definitions. Read on the UI thread. See [`SeriesConfig`](/api-reference/types).
+</ParamField>
+
+## Legend
+
+<ParamField body="legend" type="boolean | LegendConfig" default="true">
+  Toggle chips. Configure `position`, `compact`, and `style`.
+</ParamField>
+
+<ParamField body="onSeriesToggle" type="(id: string, visible: boolean) => void">
+  Fires when a legend chip is tapped.
+</ParamField>
+
+## Dots
+
+<ParamField body="dot" type="MultiSeriesDotConfig">
+  Per-series live dots: `radius`, `pulse`, `valueLine`, `valueLabel`.
+</ParamField>
+
+## Scrub
+
+<ParamField body="scrub" type="boolean | ScrubConfig" default="true">
+  Crosshair scrubbing on drag.
+</ParamField>
+
+<ParamField body="onScrub" type="(point: ScrubPointMulti | null) => void">
+  **Worklet** callback fired on the UI thread each frame while scrubbing; `null` when it ends.
+  Includes a per-series value array. See [Scrubbing](/guides/scrubbing).
+</ParamField>
+
+## Degen
+
+<ParamField body="degen" type="boolean | DegenOptions">
+  Chart shake + spark burst off the leading series' dot on an upward swing.
+</ParamField>
+
+<ParamField body="onDegenShake" type="(payload: DegenShakePayload) => void">
+  JS-thread callback when a degen shake starts.
+</ParamField>

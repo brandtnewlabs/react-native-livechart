@@ -1,0 +1,223 @@
+---
+title: LiveChart
+icon: "chart-line"
+description: "Props for the single-series line / candlestick component."
+---
+
+```tsx
+import { LiveChart } from "react-native-livechart";
+```
+
+`LiveChart` renders one series in line or candlestick mode. Props marked **required** must be
+provided; everything else has a default.
+
+## Data
+
+<ParamField body="data" type="SharedValue<LiveChartPoint[]>" required>
+  Growing array of `{ time, value }` points. Read on the UI thread.
+</ParamField>
+
+<ParamField body="value" type="SharedValue<number>" required>
+  Latest live value, interpolated between data updates.
+</ParamField>
+
+## Display mode
+
+<ParamField body="mode" type='"line" | "candle"' default='"line"'>
+  Line/area or OHLC candlestick rendering.
+</ParamField>
+
+<ParamField body="candles" type="SharedValue<CandlePoint[]>">
+  Committed OHLC bars, sorted by `time` (candle mode).
+</ParamField>
+
+<ParamField body="candleWidth" type="number">
+  Seconds per candle bucket (e.g. `60` for 1-minute bars).
+</ParamField>
+
+<ParamField body="liveCandle" type="SharedValue<CandlePoint | null>">
+  In-progress candle, updated each tick; `null` between buckets.
+</ParamField>
+
+## Line, fill & tip
+
+<ParamField body="line" type="LineConfig">
+  Main line styling: `width`, `color`.
+</ParamField>
+
+<ParamField body="gradient" type="boolean | GradientConfig" default="true">
+  Area fill under the line.
+</ParamField>
+
+<ParamField body="badge" type="boolean | BadgeConfig" default="true">
+  Value badge pill at the tip.
+</ParamField>
+
+<ParamField body="pulse" type="boolean | PulseConfig" default="true">
+  Pulsing ring on the live dot.
+</ParamField>
+
+<ParamField body="valueLine" type="boolean | ValueLineConfig">
+  Horizontal dashed line at the current value.
+</ParamField>
+
+<ParamField body="showValue" type="boolean" default="false">
+  Render the live value as large top-left text.
+</ParamField>
+
+<ParamField body="valueMomentumColor" type="boolean" default="false">
+  Tint the `showValue` text by momentum (green up / red down).
+</ParamField>
+
+## Momentum & degen
+
+<ParamField body="momentum" type='boolean | "up" | "down" | "flat" | MomentumConfig' default="true">
+  Momentum-based dot/badge coloring. See [Momentum & degen](/guides/momentum-and-degen).
+</ParamField>
+
+<ParamField body="degen" type="boolean | DegenOptions">
+  Particle burst + screen shake on momentum swings.
+</ParamField>
+
+<ParamField body="onDegenShake" type="(payload: DegenShakePayload) => void">
+  JS-thread callback when a degen shake starts.
+</ParamField>
+
+## Trades, markers & references
+
+<ParamField body="tradeStream" type="SharedValue<TradeEvent[]>">
+  Live trade fills for on-chart markers.
+</ParamField>
+
+<ParamField body="markers" type="SharedValue<Marker[]>">
+  Glyph markers drawn into the canvas (UI-thread read).
+</ParamField>
+
+<ParamField body="onMarkerHover" type="(event: MarkerHoverEvent | null) => void">
+  Fires when a marker is tapped; `null` on a miss.
+</ParamField>
+
+<ParamField body="markerHitRadius" type="number" default="16">
+  Tap hit-test radius in px.
+</ParamField>
+
+<ParamField body="referenceLines" type="ReferenceLine[]">
+  Reference lines / bands (horizontal line, value band, or time band).
+</ParamField>
+
+## Scrubbing
+
+<ParamField body="scrub" type="boolean | ScrubConfig" default="true">
+  Crosshair scrubbing on drag.
+</ParamField>
+
+<ParamField body="onScrub" type="(point: ScrubPoint | null) => void">
+  Fires while scrubbing; `null` when it ends.
+</ParamField>
+
+## Axes, grid & range
+
+<ParamField body="xAxis" type="boolean | XAxisConfig" default="true">
+  Time-axis labels.
+</ParamField>
+
+<ParamField body="yAxis" type="boolean | YAxisConfig" default="true">
+  Value-axis grid + labels.
+</ParamField>
+
+<ParamField body="gridStyle" type="GridStyleConfig">
+  Grid-line color / width / dash / opacity.
+</ParamField>
+
+<ParamField body="timeWindow" type="number" default="30">
+  Visible window in seconds.
+</ParamField>
+
+<ParamField body="paused" type="boolean" default="false">
+  Freeze scrolling; resume catches up to real time.
+</ParamField>
+
+<ParamField body="loading" type="boolean">
+  Breathing-line loading shell until data is ready.
+</ParamField>
+
+<ParamField body="smoothing" type="number" default="0.08">
+  Value-lerp speed (0 = frozen, 1 = instant).
+</ParamField>
+
+<ParamField body="exaggerate" type="boolean" default="false">
+  Tight Y-axis so small moves fill the height.
+</ParamField>
+
+<ParamField body="nonNegative" type="boolean" default="false">
+  Clamp the Y-axis lower bound at 0.
+</ParamField>
+
+<ParamField body="maxValue" type="number">
+  Hard upper bound for the Y-axis range.
+</ParamField>
+
+<ParamField body="windowBuffer" type="number" default="0">
+  Right-edge buffer as a fraction of `timeWindow`.
+</ParamField>
+
+<ParamField body="nowOverride" type="number">
+  Override the engine's "now" (unix seconds) — useful for historical playback.
+</ParamField>
+
+## Theming & layout
+
+<ParamField body="theme" type='"light" | "dark"' default='"dark"'>
+  Color scheme.
+</ParamField>
+
+<ParamField body="accentColor" type="string" default='"#3b82f6"'>
+  Primary accent; the palette is derived from it.
+</ParamField>
+
+<ParamField body="palette" type="Partial<LiveChartPalette>">
+  Override individual resolved-palette keys.
+</ParamField>
+
+<ParamField body="font" type="FontConfig">
+  Font family / size / weight / custom typeface for all chart text.
+</ParamField>
+
+<ParamField body="leftEdgeFade" type="boolean | LeftEdgeFadeConfig" default="true">
+  Soft fade on the left edge.
+</ParamField>
+
+<ParamField body="insets" type="ChartInsets">
+  Padding for the drawing area (`top`, `right`, `bottom`, `left`).
+</ParamField>
+
+<ParamField body="style" type="ViewStyle">
+  Container `View` style.
+</ParamField>
+
+## Text & accessibility
+
+<ParamField body="formatValue" type="(v: number) => string">
+  Formatter for value labels (axes, badge, tooltips).
+</ParamField>
+
+<ParamField body="formatTime" type="(t: number) => string">
+  Formatter for time labels.
+</ParamField>
+
+<ParamField body="emptyText" type="string" default='"No data"'>
+  Label shown when there are fewer than two samples and `loading` is false.
+</ParamField>
+
+<ParamField body="accessibilityLabel" type="string">
+  Accessibility label for the chart container.
+</ParamField>
+
+<ParamField body="accessibilityRole" type='"image" | "none" | "adjustable" | "summary"' default='"image"'>
+  Accessibility role for the container.
+</ParamField>
+
+<Note>
+  Config-object types (`LineConfig`, `BadgeConfig`, `DegenOptions`, `ReferenceLine`, etc.) are
+  documented in the [Types reference](/api-reference/types).
+</Note>

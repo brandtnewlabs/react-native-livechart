@@ -1,0 +1,80 @@
+---
+title: Markers & references
+icon: "location-dot"
+description: "Annotate the chart with markers, trade-fill streams, and reference lines or bands."
+---
+
+## Markers
+
+Draw glyphs into the canvas at a `(time, value)` position. Markers are read on the UI thread, so
+pass a `SharedValue<Marker[]>` and update it with `.set(...)` / `.modify(...)`.
+
+```tsx
+import { useSharedValue } from "react-native-reanimated";
+import { LiveChart, type Marker } from "react-native-livechart";
+
+const markers = useSharedValue<Marker[]>([
+  { id: "1", time: Date.now() / 1000, kind: "winner", value: 142.5 },
+]);
+
+<LiveChart
+  data={data}
+  value={value}
+  markers={markers}
+  markerHitRadius={16}
+  onMarkerHover={(event) => {
+    if (!event) return; // tap missed every marker
+    console.log(event.marker.id, event.point);
+  }}
+/>;
+```
+
+Built-in `kind` glyphs are `"trade" | "boost" | "graduation" | "winner" | "clawback"`. Override
+the glyph with `icon` (text/emoji) or `image` (a Skia `SkImage`). In multi-series, anchor a
+marker to a line by setting `seriesId` instead of `value`.
+
+## Trade stream
+
+For trade-fill markers specifically, feed a `SharedValue<TradeEvent[]>`:
+
+```tsx
+import type { TradeEvent } from "react-native-livechart";
+
+const tradeStream = useSharedValue<TradeEvent[]>([]);
+// tradeStream.modify((arr) => { "worklet"; arr.push({ side: "buy", price, size, time }); return arr; });
+
+<LiveChart data={data} value={value} tradeStream={tradeStream} />;
+```
+
+```ts
+interface TradeEvent {
+  side: "buy" | "sell";
+  price: number;
+  size: number;
+  time: number;   // unix seconds
+  symbol?: string;
+}
+```
+
+## Reference lines & bands
+
+`referenceLines` accepts an array of `ReferenceLine`s in three mutually-exclusive forms:
+
+- **Horizontal line** at a `value`
+- **Horizontal band** between `valueFrom` and `valueTo`
+- **Vertical time band** between `from` and `to` (unix seconds)
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  referenceLines={[
+    { value: 100, label: "Entry", showValue: true },
+    { valueFrom: 95, valueTo: 105, fillOpacity: 0.12, label: "Range" },
+  ]}
+/>
+```
+
+Lines support labels, dashes (`intervals`), off-axis badges (`offAxisBadge`), and excluding
+their value from the axis range (`excludeFromRange`). See the [types reference](/api-reference/types)
+for every field.
