@@ -60,16 +60,16 @@ describe("resolveTheme", () => {
   it("builds dark palette", () => {
     const p = resolveTheme("#ff0000", "dark");
     expect(p.line).toBe("#ff0000");
-    expect(p.bgRgb).toEqual([10, 10, 10]);
+    expect(p.bgRgb).toEqual([9, 9, 11]);
     expect(p.gridLine).toMatch(/^rgba\(/);
-    expect(p.tooltipText).toBe("#e5e5e5");
+    expect(p.tooltipText).toBe("#e4e4e7");
   });
 
   it("builds light palette", () => {
     const p = resolveTheme("#00ff00", "light");
-    expect(p.bgRgb).toEqual([255, 255, 255]);
+    expect(p.bgRgb).toEqual([250, 250, 250]);
     expect(p.gridLine).toMatch(/^rgba\(/);
-    expect(p.tooltipText).toBe("#171717");
+    expect(p.tooltipText).toBe("#18181b");
   });
 });
 
