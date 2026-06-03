@@ -76,7 +76,13 @@ import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
 
-export function LiveChart({
+/**
+ * Resolves props → configs → theme/layout → engine → per-frame derived values and
+ * overlay hooks, returning a single render model. All the chart's wiring lives
+ * here so the rendered pieces (`ChartStack`, `ChartScrubLayer`, `LiveChart`) stay
+ * small and presentational.
+ */
+function useLiveChartController({
   // ── Data ────────────────────────────────────────────────────────────────
   data,
   value,
@@ -375,7 +381,378 @@ export function LiveChart({
     effectivePadding,
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  return {
+    // passthrough props the render needs
+    style,
+    accessibilityLabel,
+    accessibilityRole,
+    emptyText,
+    showValue,
+    valueMomentumColor,
+    lineProp,
+    formatValue,
+    isCandle,
+    // configs
+    yAxisCfg,
+    xAxisCfg,
+    badgeCfg,
+    scrubCfg,
+    gradientCfg,
+    valueLineCfg,
+    pulseCfg,
+    gridStyleCfg,
+    degenCfg,
+    tradeStreamResolved,
+    leftEdgeFadeCfg,
+    allRefLines,
+    badgeUsesRightGutter,
+    // theme / layout / fonts
+    palette,
+    skiaFont,
+    valueFont,
+    strokeWidth,
+    effectivePadding,
+    // engine + reveal
+    engine,
+    reveal,
+    // derived render values
+    backgroundColor,
+    gradientEnd,
+    gradientTopColor,
+    gradientBottomColor,
+    lineGroupOpacity,
+    candleGroupOpacity,
+    onLayout,
+    linePath,
+    fillPath,
+    upBodiesPath,
+    downBodiesPath,
+    upWicksPath,
+    downWicksPath,
+    dotX,
+    dotY,
+    momentumSV,
+    tradeMarkers,
+    degenPack,
+    degenPackRevision,
+    degenShakeTransform,
+    yAxisEntries,
+    xAxisEntries,
+    badgeData,
+    crosshair,
+    rootGesture,
+    markersActive,
+    markersSV,
+  };
+}
+
+type LiveChartModel = ReturnType<typeof useLiveChartController>;
+
+/** Main shaken chart stack: grid, fill, line/candles, axes, badge, dot, degen,
+ *  value text, markers, and the loading/empty art. */
+function ChartStack({ model }: { model: LiveChartModel }) {
+  const {
+    degenShakeTransform,
+    yAxisCfg,
+    reveal,
+    yAxisEntries,
+    engine,
+    effectivePadding,
+    palette,
+    skiaFont,
+    badgeUsesRightGutter,
+    badgeCfg,
+    gridStyleCfg,
+    gradientCfg,
+    fillPath,
+    gradientEnd,
+    gradientTopColor,
+    gradientBottomColor,
+    valueLineCfg,
+    dotY,
+    allRefLines,
+    formatValue,
+    lineGroupOpacity,
+    linePath,
+    strokeWidth,
+    lineProp,
+    candleGroupOpacity,
+    upWicksPath,
+    downWicksPath,
+    upBodiesPath,
+    downBodiesPath,
+    xAxisCfg,
+    xAxisEntries,
+    badgeData,
+    dotX,
+    pulseCfg,
+    degenCfg,
+    degenPack,
+    degenPackRevision,
+    showValue,
+    valueFont,
+    momentumSV,
+    valueMomentumColor,
+    markersActive,
+    markersSV,
+    emptyText,
+  } = model;
+
+  return (
+    <Group transform={degenShakeTransform}>
+      {/* Y-axis grid */}
+      {yAxisCfg && (
+        <Group opacity={reveal.yAxisOpacity}>
+          <YAxisOverlay
+            entries={yAxisEntries}
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            font={skiaFont}
+            badge={badgeUsesRightGutter}
+            badgeTail={badgeCfg?.tail ?? true}
+            gridStyle={gridStyleCfg}
+          />
+        </Group>
+      )}
+
+      {/* Area gradient fill */}
+      {gradientCfg && (
+        <Group opacity={reveal.fillOpacity}>
+          <Path path={fillPath} style="fill">
+            <LinearGradient
+              start={vec(0, effectivePadding.top)}
+              end={vec(0, gradientEnd)}
+              colors={[gradientTopColor, gradientBottomColor]}
+            />
+          </Path>
+        </Group>
+      )}
+
+      {/* Value line + reference line (behind chart line) */}
+      {valueLineCfg && (
+        <Group opacity={reveal.lineOpacity}>
+          <ValueLineOverlay
+            dotY={dotY}
+            engine={engine}
+            padding={effectivePadding}
+            strokeWidth={valueLineCfg.strokeWidth}
+            intervals={valueLineCfg.intervals}
+            color={valueLineCfg.color ?? palette.dashLine}
+          />
+        </Group>
+      )}
+
+      {allRefLines.map((rl) => (
+        <ReferenceLineOverlay
+          key={`${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
+          engine={engine}
+          padding={effectivePadding}
+          line={rl}
+          palette={palette}
+          formatValue={formatValue}
+          font={skiaFont}
+        />
+      ))}
+
+      {/* Chart line (fades out in candle mode) */}
+      <Group opacity={lineGroupOpacity}>
+        <Path
+          path={linePath}
+          style="stroke"
+          strokeWidth={strokeWidth}
+          color={lineProp?.color ?? palette.line}
+          strokeCap="round"
+          strokeJoin="round"
+        />
+      </Group>
+
+      {/* Candle bodies/wicks (fades in in candle mode) */}
+      <Group opacity={candleGroupOpacity}>
+        <Path
+          path={upWicksPath}
+          style="stroke"
+          strokeWidth={1}
+          color={palette.wickUp}
+        />
+        <Path
+          path={downWicksPath}
+          style="stroke"
+          strokeWidth={1}
+          color={palette.wickDown}
+        />
+        <Path path={upBodiesPath} style="fill" color={palette.candleUp} />
+        <Path
+          path={downBodiesPath}
+          style="fill"
+          color={palette.candleDown}
+        />
+      </Group>
+
+      {/* X-axis time labels */}
+      {xAxisCfg && (
+        <XAxisOverlay
+          entries={xAxisEntries}
+          engine={engine}
+          padding={effectivePadding}
+          palette={palette}
+          font={skiaFont}
+        />
+      )}
+
+      {/* Badge and live dot */}
+      {badgeCfg && (
+        <Group opacity={reveal.badgeOpacity}>
+          <BadgeOverlay badge={badgeData} font={skiaFont} />
+        </Group>
+      )}
+
+      <Group opacity={reveal.dotOpacity}>
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          palette={palette}
+          engine={engine}
+          pulse={pulseCfg}
+        />
+      </Group>
+
+      {degenCfg && (
+        <Group opacity={reveal.dotOpacity}>
+          <DegenParticlesOverlay
+            pack={degenPack}
+            packRevision={degenPackRevision}
+            engine={engine}
+            palette={palette}
+            particleSlotCount={degenCfg.particleSlotCount}
+            particleBurstDurationSec={degenCfg.particleBurstDurationSec}
+            particleOpacity={degenCfg.particleOpacity}
+            colors={degenCfg.colors}
+          />
+        </Group>
+      )}
+
+      {showValue && (
+        <Group opacity={reveal.lineOpacity}>
+          <ValueTextOverlay
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            font={valueFont}
+            formatValue={formatValue}
+            momentum={momentumSV}
+            momentumColor={valueMomentumColor}
+          />
+        </Group>
+      )}
+
+      {markersActive && (
+        <Group opacity={reveal.dotOpacity}>
+          <MarkerOverlay
+            markers={markersSV}
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            font={skiaFont}
+          />
+        </Group>
+      )}
+
+      {/* Loading / empty state — before left-edge fade so the squiggle/empty art fades like the chart */}
+      <LoadingOverlay
+        engine={engine}
+        padding={effectivePadding}
+        palette={palette}
+        font={skiaFont}
+        morphT={reveal.morphT}
+        isLoading={reveal.isLoading}
+        isEmpty={reveal.isEmpty}
+        emptyText={emptyText}
+        strokeWidth={strokeWidth}
+        badge={badgeCfg !== null}
+        badgeTail={badgeCfg?.tail ?? true}
+      />
+    </Group>
+  );
+}
+
+/** Trade-tape labels and the scrub crosshair/tooltip (drawn in canvas space, on
+ *  top of the shaken stack). */
+function ChartScrubLayer({ model }: { model: LiveChartModel }) {
+  const {
+    tradeStreamResolved,
+    scrubCfg,
+    degenShakeTransform,
+    tradeMarkers,
+    palette,
+    effectivePadding,
+    skiaFont,
+    reveal,
+    crosshair,
+    isCandle,
+  } = model;
+
+  if (!tradeStreamResolved && !scrubCfg) return null;
+
+  return (
+    <Group transform={degenShakeTransform}>
+      {tradeStreamResolved && (
+        <TradeStreamOverlay
+          markers={tradeMarkers}
+          palette={palette}
+          padding={effectivePadding}
+          font={skiaFont}
+          opacity={reveal.dotOpacity}
+          labelOffsetX={tradeStreamResolved.labelOffsetX}
+        />
+      )}
+
+      {scrubCfg && (
+        <CrosshairOverlay
+          scrubX={crosshair.scrubX}
+          crosshairOpacity={crosshair.crosshairOpacity}
+          tooltipLayout={crosshair.tooltipLayout}
+          engine={model.engine}
+          padding={effectivePadding}
+          palette={palette}
+          font={skiaFont}
+          showTooltip={scrubCfg.tooltip}
+          crosshairLineColor={scrubCfg.crosshairLineColor}
+          crosshairDimColor={scrubCfg.crosshairDimColor}
+          tooltipBackground={scrubCfg.tooltipBackground}
+          tooltipColor={scrubCfg.tooltipColor}
+          tooltipBorderColor={scrubCfg.tooltipBorderColor}
+        >
+          {/* Candle charts render a multi-line OHLC tooltip; the line
+              chart falls back to CrosshairOverlay's default value/time
+              body. Composed as children rather than a JSX-valued prop. */}
+          {isCandle ? (
+            <MultiSeriesTooltipStack
+              tooltipLayout={crosshair.tooltipLayout}
+              font={skiaFont}
+              palette={palette}
+            />
+          ) : null}
+        </CrosshairOverlay>
+      )}
+    </Group>
+  );
+}
+
+export function LiveChart(props: LiveChartProps) {
+  const model = useLiveChartController(props);
+  const {
+    rootGesture,
+    backgroundColor,
+    style,
+    onLayout,
+    accessibilityLabel,
+    accessibilityRole,
+    leftEdgeFadeCfg,
+    effectivePadding,
+    engine,
+  } = model;
+
   return (
     <GestureDetector gesture={rootGesture}>
       <View
@@ -387,180 +764,7 @@ export function LiveChart({
       >
         <Canvas style={{ flex: 1 }}>
           {/* Shaken chart stack — left-edge fade is a sibling below so dstOut runs in canvas space */}
-          <Group transform={degenShakeTransform}>
-            {/* Y-axis grid */}
-            {yAxisCfg && (
-              <Group opacity={reveal.yAxisOpacity}>
-                <YAxisOverlay
-                  entries={yAxisEntries}
-                  engine={engine}
-                  padding={effectivePadding}
-                  palette={palette}
-                  font={skiaFont}
-                  badge={badgeUsesRightGutter}
-                  badgeTail={badgeCfg?.tail ?? true}
-                  gridStyle={gridStyleCfg}
-                />
-              </Group>
-            )}
-
-            {/* Area gradient fill */}
-            {gradientCfg && (
-              <Group opacity={reveal.fillOpacity}>
-                <Path path={fillPath} style="fill">
-                  <LinearGradient
-                    start={vec(0, effectivePadding.top)}
-                    end={vec(0, gradientEnd)}
-                    colors={[gradientTopColor, gradientBottomColor]}
-                  />
-                </Path>
-              </Group>
-            )}
-
-            {/* Value line + reference line (behind chart line) */}
-            {valueLineCfg && (
-              <Group opacity={reveal.lineOpacity}>
-                <ValueLineOverlay
-                  dotY={dotY}
-                  engine={engine}
-                  padding={effectivePadding}
-                  strokeWidth={valueLineCfg.strokeWidth}
-                  intervals={valueLineCfg.intervals}
-                  color={valueLineCfg.color ?? palette.dashLine}
-                />
-              </Group>
-            )}
-
-            {allRefLines.map((rl) => (
-              <ReferenceLineOverlay
-                key={`${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
-                engine={engine}
-                padding={effectivePadding}
-                line={rl}
-                palette={palette}
-                formatValue={formatValue}
-                font={skiaFont}
-              />
-            ))}
-
-            {/* Chart line (fades out in candle mode) */}
-            <Group opacity={lineGroupOpacity}>
-              <Path
-                path={linePath}
-                style="stroke"
-                strokeWidth={strokeWidth}
-                color={lineProp?.color ?? palette.line}
-                strokeCap="round"
-                strokeJoin="round"
-              />
-            </Group>
-
-            {/* Candle bodies/wicks (fades in in candle mode) */}
-            <Group opacity={candleGroupOpacity}>
-              <Path
-                path={upWicksPath}
-                style="stroke"
-                strokeWidth={1}
-                color={palette.wickUp}
-              />
-              <Path
-                path={downWicksPath}
-                style="stroke"
-                strokeWidth={1}
-                color={palette.wickDown}
-              />
-              <Path path={upBodiesPath} style="fill" color={palette.candleUp} />
-              <Path
-                path={downBodiesPath}
-                style="fill"
-                color={palette.candleDown}
-              />
-            </Group>
-
-            {/* X-axis time labels */}
-            {xAxisCfg && (
-              <XAxisOverlay
-                entries={xAxisEntries}
-                engine={engine}
-                padding={effectivePadding}
-                palette={palette}
-                font={skiaFont}
-              />
-            )}
-
-            {/* Badge and live dot */}
-            {badgeCfg && (
-              <Group opacity={reveal.badgeOpacity}>
-                <BadgeOverlay badge={badgeData} font={skiaFont} />
-              </Group>
-            )}
-
-            <Group opacity={reveal.dotOpacity}>
-              <DotOverlay
-                dotX={dotX}
-                dotY={dotY}
-                palette={palette}
-                engine={engine}
-                pulse={pulseCfg}
-              />
-            </Group>
-
-            {degenCfg && (
-              <Group opacity={reveal.dotOpacity}>
-                <DegenParticlesOverlay
-                  pack={degenPack}
-                  packRevision={degenPackRevision}
-                  engine={engine}
-                  palette={palette}
-                  particleSlotCount={degenCfg.particleSlotCount}
-                  particleBurstDurationSec={degenCfg.particleBurstDurationSec}
-                  particleOpacity={degenCfg.particleOpacity}
-                  colors={degenCfg.colors}
-                />
-              </Group>
-            )}
-
-            {showValue && (
-              <Group opacity={reveal.lineOpacity}>
-                <ValueTextOverlay
-                  engine={engine}
-                  padding={effectivePadding}
-                  palette={palette}
-                  font={valueFont}
-                  formatValue={formatValue}
-                  momentum={momentumSV}
-                  momentumColor={valueMomentumColor}
-                />
-              </Group>
-            )}
-
-            {markersActive && (
-              <Group opacity={reveal.dotOpacity}>
-                <MarkerOverlay
-                  markers={markersSV}
-                  engine={engine}
-                  padding={effectivePadding}
-                  palette={palette}
-                  font={skiaFont}
-                />
-              </Group>
-            )}
-
-            {/* Loading / empty state — before left-edge fade so the squiggle/empty art fades like the chart */}
-            <LoadingOverlay
-              engine={engine}
-              padding={effectivePadding}
-              palette={palette}
-              font={skiaFont}
-              morphT={reveal.morphT}
-              isLoading={reveal.isLoading}
-              isEmpty={reveal.isEmpty}
-              emptyText={emptyText}
-              strokeWidth={strokeWidth}
-              badge={badgeCfg !== null}
-              badgeTail={badgeCfg?.tail ?? true}
-            />
-          </Group>
+          <ChartStack model={model} />
 
           {leftEdgeFadeCfg && (
             <LeftEdgeFade
@@ -572,49 +776,7 @@ export function LiveChart({
             />
           )}
 
-          {(tradeStreamResolved || scrubCfg) && (
-            <Group transform={degenShakeTransform}>
-              {tradeStreamResolved && (
-                <TradeStreamOverlay
-                  markers={tradeMarkers}
-                  palette={palette}
-                  padding={effectivePadding}
-                  font={skiaFont}
-                  opacity={reveal.dotOpacity}
-                  labelOffsetX={tradeStreamResolved.labelOffsetX}
-                />
-              )}
-
-              {scrubCfg && (
-                <CrosshairOverlay
-                  scrubX={crosshair.scrubX}
-                  crosshairOpacity={crosshair.crosshairOpacity}
-                  tooltipLayout={crosshair.tooltipLayout}
-                  engine={engine}
-                  padding={effectivePadding}
-                  palette={palette}
-                  font={skiaFont}
-                  showTooltip={scrubCfg.tooltip}
-                  crosshairLineColor={scrubCfg.crosshairLineColor}
-                  crosshairDimColor={scrubCfg.crosshairDimColor}
-                  tooltipBackground={scrubCfg.tooltipBackground}
-                  tooltipColor={scrubCfg.tooltipColor}
-                  tooltipBorderColor={scrubCfg.tooltipBorderColor}
-                >
-                  {/* Candle charts render a multi-line OHLC tooltip; the line
-                      chart falls back to CrosshairOverlay's default value/time
-                      body. Composed as children rather than a JSX-valued prop. */}
-                  {isCandle ? (
-                    <MultiSeriesTooltipStack
-                      tooltipLayout={crosshair.tooltipLayout}
-                      font={skiaFont}
-                      palette={palette}
-                    />
-                  ) : null}
-                </CrosshairOverlay>
-              )}
-            </Group>
-          )}
+          <ChartScrubLayer model={model} />
         </Canvas>
       </View>
     </GestureDetector>
