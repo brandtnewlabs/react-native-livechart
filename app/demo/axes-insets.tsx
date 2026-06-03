@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { ChartInsets } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { LiveChart, LiveChartSeries } from "react-native-livechart";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
@@ -53,7 +54,7 @@ export default function AxesInsetsScreen() {
             data={data}
             value={value}
             accentColor={ACCENT}
-            theme="dark"
+            theme={APP_THEME}
             yAxis={yAxis}
             xAxis={xAxis}
             insets={insetCfg}
@@ -71,7 +72,7 @@ export default function AxesInsetsScreen() {
           <LiveChartSeries
             series={series}
             accentColor={ACCENT}
-            theme="dark"
+            theme={APP_THEME}
             yAxis={yAxis}
             xAxis={xAxis}
             insets={insetCfg}

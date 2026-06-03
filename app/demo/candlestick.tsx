@@ -8,6 +8,7 @@ import {
 
 import { useState } from "react";
 import type { CandlePoint } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { LiveChart } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 import {
@@ -49,7 +50,7 @@ export default function CandlestickScreen() {
           liveCandle={stripCandles ? nullLive : liveCandle}
           candleWidth={candleWidthSecs}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           timeWindow={windowSecs}
           scrub={{ tooltip: true }}
         />

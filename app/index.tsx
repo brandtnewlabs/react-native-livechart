@@ -1,6 +1,7 @@
 import { Link, type Href } from "expo-router";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { MONO_FONT_FAMILY } from "react-native-livechart";
+import { APP_FONT_FAMILY, APP_FONT_FAMILY_SEMIBOLD } from "../demo-lib/fonts";
+import { colors } from "../demo-lib/theme";
 
 const DEMOS: { href: Href; title: string; blurb: string }[] = [
   {
@@ -121,20 +122,19 @@ export default function Index() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "rgb(10, 10, 10)",
+    backgroundColor: colors.background,
     paddingTop: 56,
   },
   title: {
-    color: "#fff",
+    color: colors.text,
     fontSize: 22,
-    fontWeight: "600",
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY_SEMIBOLD,
     paddingHorizontal: 20,
   },
   subtitle: {
-    color: "rgba(255,255,255,0.45)",
+    color: colors.textMuted,
     fontSize: 13,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     paddingHorizontal: 20,
     marginTop: 6,
     marginBottom: 16,
@@ -145,18 +145,17 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(255,255,255,0.12)",
+    borderBottomColor: colors.border,
   },
   rowTitle: {
-    color: "#60a5fa",
+    color: colors.link,
     fontSize: 16,
-    fontFamily: MONO_FONT_FAMILY,
-    fontWeight: "600",
+    fontFamily: APP_FONT_FAMILY_SEMIBOLD,
   },
   rowBlurb: {
-    color: "rgba(255,255,255,0.4)",
+    color: colors.textFaint,
     fontSize: 12,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     lineHeight: 17,
     marginTop: 6,
   },

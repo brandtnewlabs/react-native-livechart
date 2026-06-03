@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { DegenOptions } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { LiveChart } from "react-native-livechart";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
@@ -80,7 +81,7 @@ export default function DegenScreen() {
           data={data}
           value={value}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           exaggerate
           degen={degenFor(preset)}
           scrub={false}

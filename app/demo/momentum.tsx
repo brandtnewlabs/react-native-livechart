@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { Momentum, MomentumConfig } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { LiveChart } from "react-native-livechart";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
@@ -58,7 +59,7 @@ export default function MomentumScreen() {
           data={data}
           value={value}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           momentum={resolveMomentum(mode)}
           exaggerate={exaggerate}
           scrub={false}

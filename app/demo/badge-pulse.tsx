@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { BadgeConfig, PulseConfig } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { LiveChart } from "react-native-livechart";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
@@ -59,7 +60,7 @@ export default function BadgePulseScreen() {
           data={data}
           value={value}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           badge={resolveBadge(badgeMode)}
           pulse={resolvePulse(pulseMode)}
           showValue={showValue}

@@ -1,7 +1,8 @@
 import { Stack } from "expo-router";
-import { MONO_FONT_FAMILY } from "react-native-livechart";
+import { APP_FONT_FAMILY_SEMIBOLD } from "../../demo-lib/fonts";
+import { colors } from "../../demo-lib/theme";
 
-const headerBg = "rgb(10, 10, 10)";
+const headerBg = colors.background;
 
 export default function DemoLayout() {
   return (
@@ -9,10 +10,10 @@ export default function DemoLayout() {
       screenOptions={{
         headerShown: true,
         headerStyle: { backgroundColor: headerBg },
-        headerTintColor: "#fff",
+        headerTintColor: colors.text,
         headerTitleStyle: {
-          color: "#fff",
-          fontFamily: MONO_FONT_FAMILY,
+          color: colors.text,
+          fontFamily: APP_FONT_FAMILY_SEMIBOLD,
           fontSize: 15,
         },
         contentStyle: { backgroundColor: headerBg },

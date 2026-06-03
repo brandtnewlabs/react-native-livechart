@@ -16,6 +16,7 @@ import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "../../demo-lib/shared";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { demoStyles } from "../../demo-lib/styles";
+import { APP_THEME } from "../../demo-lib/theme";
 
 export const options = { title: "Multi-series" };
 
@@ -31,7 +32,7 @@ export default function MultiSeriesScreen() {
   const [windowSecs, setWindowSecs] = useState(60);
   const [smoothing, setSmoothing] = useState(0.08);
   const [exaggerate, setExaggerate] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">(APP_THEME);
   const [showRef, setShowRef] = useState(false);
   const [axisVis, setAxisVis] = useState<"both" | "noY" | "noX" | "none">(
     "both",
@@ -107,8 +108,8 @@ export default function MultiSeriesScreen() {
           fontSize: 14,
           dotSize: 10,
           activeBackground: "rgba(96,165,250,0.18)",
-          activeColor: "#ffffff",
-          hiddenColor: "rgba(255,255,255,0.35)",
+          activeColor: "#0f172a",
+          hiddenColor: "rgba(0,0,0,0.35)",
         }
       : undefined,
   };

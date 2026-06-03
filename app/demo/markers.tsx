@@ -6,6 +6,7 @@ import {
   type Marker,
   type MarkerKind,
 } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { useSharedValue } from "react-native-reanimated";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
@@ -127,7 +128,7 @@ export default function MarkersScreen() {
           data={data}
           value={value}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           timeWindow={WINDOW}
           markers={markers}
           markerHitRadius={22}

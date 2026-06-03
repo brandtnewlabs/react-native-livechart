@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { LiveChartPoint } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { LiveChart } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
@@ -32,7 +33,7 @@ export default function ChartSizeScreen() {
       data={empty ? emptyData : data}
       value={empty ? emptyValue : value}
       accentColor={ACCENT}
-      theme="dark"
+      theme={APP_THEME}
       scrub
       style={flexFill ? { flex: 1 } : undefined}
     />

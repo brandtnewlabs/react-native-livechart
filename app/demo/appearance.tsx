@@ -15,6 +15,7 @@ import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ACCENT_PRESETS } from "../../demo-lib/shared";
 import { demoStyles } from "../../demo-lib/styles";
+import { APP_THEME } from "../../demo-lib/theme";
 
 const googleSansCodeRegular = require("../../assets/fonts/GoogleSansCode-Regular.ttf");
 
@@ -34,7 +35,7 @@ export default function AppearanceScreen() {
     GoogleSansCodeRegular: googleSansCodeRegular,
   });
 
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">(APP_THEME);
   const [accent, setAccent] = useState(ACCENT_PRESETS[0]);
   const [gradientOn, setGradientOn] = useState(true);
   const [gradientCfg, setGradientCfg] = useState(false);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { LiveChart, type LiveChartPoint } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { useSharedValue } from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -63,7 +64,7 @@ export default function LinePlaybackScreen() {
           data={data}
           value={value}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           timeWindow={windowSecs}
           paused={paused}
           smoothing={smoothing}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { LiveChartPoint } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { LiveChart } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
@@ -58,7 +59,7 @@ export default function EdgeCasesScreen() {
           data={chartData}
           value={chartValue}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           loading={loading}
           emptyText={showEmptyShell ? "Nothing to see here" : "No data"}
           formatValue={customFormat ? formatValueUsd : undefined}

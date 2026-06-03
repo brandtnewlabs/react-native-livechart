@@ -2,6 +2,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { useState } from "react";
 import { formatTime, LiveChart, type ScrubPoint } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ACCENT } from "../../demo-lib/shared";
@@ -52,7 +53,7 @@ export default function ScrubScreen() {
           liveCandle={displayMode === "candle" ? liveCandle : undefined}
           candleWidth={candleWidthSecs}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           timeWindow={windowSecs}
           scrub={scrub}
           onScrub={(point) => {

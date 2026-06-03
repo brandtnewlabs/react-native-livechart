@@ -10,7 +10,6 @@ import {
 import {
   formatTime,
   LiveChart,
-  MONO_FONT_FAMILY,
   type CandlePoint,
   type LiveChartPoint,
   type ScrubPoint,
@@ -26,7 +25,10 @@ import {
   type TradeSource,
 } from "../../sim/useSimulatedChartData";
 import { AnimatedTrendTextInput } from "../../demo-lib/AnimatedTrendTextInput";
+import { APP_FONT_FAMILY, APP_FONT_FAMILY_SEMIBOLD } from "../../demo-lib/fonts";
+import { APP_THEME, colors } from "../../demo-lib/theme";
 import {
+  ACCENT,
   HISTORY_RANGE_PRESETS,
   PRICE_RANGES,
   TIME_WINDOWS,
@@ -142,8 +144,8 @@ export default function PlaygroundScreen() {
             displayMode === "candle" && forceEmpty ? nullLiveCandle : liveCandle
           }
           candleWidth={candleWidthSecs}
-          accentColor="#3b82f6"
-          theme="dark"
+          accentColor={ACCENT}
+          theme={APP_THEME}
           timeWindow={windowSecs}
           paused={paused}
           exaggerate={exaggerate}
@@ -327,7 +329,7 @@ export default function PlaygroundScreen() {
         <TextInput
           style={styles.textInput}
           placeholder="e.g. PEPE"
-          placeholderTextColor="#64748b"
+          placeholderTextColor={colors.placeholder}
           value={tokenSymbol}
           onChangeText={setTokenSymbol}
         />
@@ -499,7 +501,7 @@ export default function PlaygroundScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "rgb(10, 10, 10)",
+    backgroundColor: colors.background,
   },
   header: {
     paddingHorizontal: 20,
@@ -507,36 +509,35 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   title: {
-    color: "#fff",
+    color: colors.text,
     fontSize: 18,
-    fontWeight: "600",
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY_SEMIBOLD,
   },
   subtitle: {
-    color: "rgba(255,255,255,0.5)",
+    color: colors.textMuted,
     fontSize: 13,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     marginTop: 4,
     padding: 0,
   },
   subtitleMeta: {
-    color: "rgba(255,255,255,0.35)",
+    color: colors.textFaint,
     fontSize: 12,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     marginTop: 2,
     padding: 0,
   },
   hint: {
-    color: "rgba(255,255,255,0.35)",
+    color: colors.textFaint,
     fontSize: 11,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     marginTop: 6,
     lineHeight: 15,
   },
   controlsHint: {
-    color: "rgba(255,255,255,0.35)",
+    color: colors.textFaint,
     fontSize: 11,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     marginTop: 4,
     marginBottom: 12,
     lineHeight: 15,
@@ -554,9 +555,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   sectionLabel: {
-    color: "rgba(255,255,255,0.4)",
+    color: colors.textFaint,
     fontSize: 11,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 8,
@@ -572,27 +573,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: colors.chipBackground,
   },
   chipActive: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#3323E6",
   },
   chipText: {
-    color: "rgba(255,255,255,0.6)",
+    color: colors.chipText,
     fontSize: 13,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
   },
   chipTextActive: {
-    color: "#fff",
+    color: colors.chipTextActive,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: colors.inputBorder,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: "#fff",
-    fontFamily: MONO_FONT_FAMILY,
+    color: colors.text,
+    fontFamily: APP_FONT_FAMILY,
     fontSize: 14,
     marginBottom: 8,
   },

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { LiveChart, LiveChartTransition } from "react-native-livechart";
+import { APP_THEME } from "../../demo-lib/theme";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -41,7 +42,7 @@ export default function TransitionsScreen() {
             liveCandle={liveCandle}
             candleWidth={CANDLE_WIDTH}
             accentColor={ACCENT}
-            theme="dark"
+            theme={APP_THEME}
             timeWindow={WINDOW}
             accessibilityLabel={`Price ${mode} chart`}
             scrub={false}
@@ -56,7 +57,7 @@ export default function TransitionsScreen() {
               data={data}
               value={value}
               accentColor="#3b82f6"
-              theme="dark"
+              theme={APP_THEME}
               timeWindow={WINDOW}
               scrub={false}
             />
@@ -65,7 +66,7 @@ export default function TransitionsScreen() {
               data={data}
               value={value}
               accentColor="#a855f7"
-              theme="dark"
+              theme={APP_THEME}
               timeWindow={WINDOW}
               scrub={false}
             />
