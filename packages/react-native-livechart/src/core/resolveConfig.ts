@@ -521,15 +521,14 @@ const LEGEND_DEFAULTS: ResolvedLegendConfig = {
 
 export function resolveLegend(
   prop: boolean | LegendConfig | undefined,
-  compactFallback?: boolean,
 ): ResolvedLegendConfig {
   if (prop === false) return { ...LEGEND_DEFAULTS, visible: false };
   if (prop === undefined || prop === true) {
-    return { ...LEGEND_DEFAULTS, compact: compactFallback ?? false };
+    return { ...LEGEND_DEFAULTS, compact: false };
   }
   return {
     visible: prop.visible ?? LEGEND_DEFAULTS.visible,
-    compact: prop.compact ?? compactFallback ?? LEGEND_DEFAULTS.compact,
+    compact: prop.compact ?? LEGEND_DEFAULTS.compact,
     position: prop.position ?? LEGEND_DEFAULTS.position,
     style: prop.style,
   };

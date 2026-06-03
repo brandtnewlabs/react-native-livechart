@@ -127,7 +127,6 @@ function useLiveChartController({
   valueLine = true,
   showValue = false,
   valueMomentumColor = false,
-  referenceLine,
   referenceLines,
   gridStyle,
   palette: paletteOverride,
@@ -161,11 +160,7 @@ function useLiveChartController({
   const degenCfg = resolveDegen(degen);
   const tradeStreamResolved = resolveTradeStream(tradeStream);
 
-  // Merge the legacy singular `referenceLine` into the `referenceLines` array.
-  const allRefLines = [
-    ...(referenceLine ? [referenceLine] : []),
-    ...(referenceLines ?? []),
-  ];
+  const allRefLines = referenceLines ?? [];
   const refValues = collectReferenceValues(allRefLines);
 
   const badgeUsesRightGutter =

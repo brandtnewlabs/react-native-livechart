@@ -48,8 +48,8 @@ describe("LiveChartSeries", () => {
         <LiveChartSeries
           series={series}
           scrub={{ tooltip: true }}
-          referenceLine={{ value: 11 }}
-          seriesToggleCompact
+          referenceLines={[{ value: 11 }]}
+          legend={{ compact: true }}
           onSeriesToggle={jest.fn()}
         />
       );

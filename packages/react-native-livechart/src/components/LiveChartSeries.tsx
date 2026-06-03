@@ -106,14 +106,12 @@ function useLiveChartSeriesController({
   formatTime = defaultFormatTime,
   yAxis = true,
   xAxis = true,
-  referenceLine,
   referenceLines,
   gridStyle,
   palette: paletteOverride,
   scrub = false,
   onScrub,
   onSeriesToggle,
-  seriesToggleCompact,
   dot: dotProp,
   legend: legendProp,
   degen,
@@ -132,13 +130,10 @@ function useLiveChartSeriesController({
   const scrubEnabled = scrubCfg !== null;
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
-  const legendCfg = resolveLegend(legendProp, seriesToggleCompact);
+  const legendCfg = resolveLegend(legendProp);
   const degenCfg = resolveDegen(degen);
 
-  const allRefLines = [
-    ...(referenceLine ? [referenceLine] : []),
-    ...(referenceLines ?? []),
-  ];
+  const allRefLines = referenceLines ?? [];
   const refValues = collectReferenceValues(allRefLines);
 
   const palette = applyPaletteOverride(

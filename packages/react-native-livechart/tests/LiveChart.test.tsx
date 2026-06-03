@@ -59,12 +59,12 @@ describe("LiveChart", () => {
     render(<Harness gradient={false} yAxis={false} badge={false} />);
   });
 
-  it("uses custom insets and referenceLine", () => {
+  it("uses custom insets and referenceLines", () => {
     render(
       <Harness
         style={{ backgroundColor: "#111111" }}
         insets={{ top: 4, bottom: 4 }}
-        referenceLine={{ value: 40 }}
+        referenceLines={[{ value: 40 }]}
       />,
     );
   });
@@ -114,10 +114,10 @@ describe("LiveChart", () => {
     render(<Harness xAxis={false} />);
   });
 
-  it("accepts visual config on referenceLine", () => {
+  it("accepts visual config on referenceLines", () => {
     render(
       <Harness
-        referenceLine={{ value: 40, strokeWidth: 2, color: "#ff0000" }}
+        referenceLines={[{ value: 40, strokeWidth: 2, color: "#ff0000" }]}
       />,
     );
   });

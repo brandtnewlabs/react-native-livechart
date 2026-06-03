@@ -136,7 +136,7 @@ export default function MultiSeriesScreen() {
             loading={loading}
             smoothing={smoothing}
             exaggerate={exaggerate}
-            referenceLine={showRef ? { value: 52, label: "mid" } : undefined}
+            referenceLines={showRef ? [{ value: 52, label: "mid" }] : undefined}
             yAxis={yOn}
             xAxis={xOn}
             emptyText="No series"
