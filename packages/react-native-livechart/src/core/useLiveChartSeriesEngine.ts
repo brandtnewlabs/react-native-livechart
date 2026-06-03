@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -149,7 +149,9 @@ export function useLiveChartSeriesEngine(
   const displayWindow = useSharedValue(config.timeWindow);
   const canvasWidth = useSharedValue(0);
   const canvasHeight = useSharedValue(0);
-  const timestamp = useSharedValue(Date.now() / 1000);
+  // Seed once; overwritten by the frame callback on the first tick.
+  const [initialTimestamp] = useState(() => Date.now() / 1000);
+  const timestamp = useSharedValue(initialTimestamp);
 
   const displaySeriesValues = useSharedValue<number[]>([]);
   const seriesOpacities = useSharedValue<number[]>([]);

@@ -204,13 +204,12 @@ export function LiveChartSeries({
     return false;
   });
 
-  const morphInitRef = useRef<number | null>(null);
-  if (morphInitRef.current === null) {
+  const [initialMorphT] = useState<number>(() => {
     const anyReady = series.value.some((s) => s.data.length >= 2);
-    morphInitRef.current = loading ? 0 : anyReady ? 1 : 0;
-  }
+    return loading ? 0 : anyReady ? 1 : 0;
+  });
 
-  const reveal = useChartReveal(loading, hasData, morphInitRef.current);
+  const reveal = useChartReveal(loading, hasData, initialMorphT);
 
   const effectiveSeries = useMultiSeriesReverseMorphInputs({
     series,

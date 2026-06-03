@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useState } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { CandlePoint, LiveChartPoint } from "../types";
 
@@ -31,13 +31,12 @@ export function useLiveChartHasData({
     return data.value.length >= 2;
   });
 
-  const morphInitRef = useRef<number | null>(null);
-  if (morphInitRef.current === null) {
+  const [initialMorphT] = useState<number>(() => {
     const initialHas = isCandle
       ? (candles?.value.length ?? 0) >= 2
       : data.value.length >= 2;
-    morphInitRef.current = loading ? 0 : initialHas ? 1 : 0;
-  }
+    return loading ? 0 : initialHas ? 1 : 0;
+  });
 
-  return { hasData, initialMorphT: morphInitRef.current };
+  return { hasData, initialMorphT };
 }

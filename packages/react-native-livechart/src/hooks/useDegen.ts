@@ -57,7 +57,9 @@ export function useDegen(
   const hasOnShakeListenerSV = useSharedValue(0);
 
   const onShakeRef = useRef(onShake);
-  onShakeRef.current = onShake;
+  useEffect(() => {
+    onShakeRef.current = onShake;
+  });
 
   const emitShake = useCallback((direction: "up" | "down") => {
     onShakeRef.current?.({ direction });

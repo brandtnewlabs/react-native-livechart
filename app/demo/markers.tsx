@@ -55,7 +55,9 @@ export default function MarkersScreen() {
 
   // Latest glyph mode for the interval closure without re-arming it each toggle.
   const glyphRef = useRef(glyph);
-  glyphRef.current = glyph;
+  useEffect(() => {
+    glyphRef.current = glyph;
+  });
 
   const decorate = (kind: MarkerKind): Partial<Marker> => {
     const mode = glyphRef.current;

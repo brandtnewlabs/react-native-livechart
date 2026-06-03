@@ -192,7 +192,9 @@ export function useSimulatedChartData(
   const tradesPerSecond =
     tradesPerSecondOpt ?? defaultTradesPerSecond(volatilityMode);
   const random01Ref = useRef(random01Opt ?? Math.random);
-  random01Ref.current = random01Opt ?? Math.random;
+  useEffect(() => {
+    random01Ref.current = random01Opt ?? Math.random;
+  });
 
   const buf = useRef<TickBuffers>({
     lastMid: startValue,
