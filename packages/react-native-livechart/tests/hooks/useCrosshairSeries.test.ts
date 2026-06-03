@@ -8,6 +8,7 @@ import {
   interpolateSeriesAtTime,
 } from "../../src/hooks/crosshairSeries";
 import { useCrosshairSeries } from "../../src/hooks/useCrosshairSeries";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 jest.mock("react-native-gesture-handler", () => {
   const makeGesture = () => {
@@ -35,7 +36,7 @@ const formatTime = (t: number) =>
 function makeEngine(
   overrides: Partial<Record<keyof MultiEngineState, { value: unknown }>> = {},
 ): MultiEngineState {
-  return {
+  return withSharedValueAccessors({
     data: { value: [] },
     value: { value: 1 },
     displayValue: { value: 50 },
@@ -49,7 +50,7 @@ function makeEngine(
     displaySeriesValues: { value: [] },
     seriesOpacities: { value: [] },
     ...overrides,
-  } as unknown as MultiEngineState;
+  }) as unknown as MultiEngineState;
 }
 
 describe("deriveScrubValueSeries", () => {

@@ -1,9 +1,10 @@
 import { act, renderHook } from "@testing-library/react-native";
 import type { EngineState } from "../../src/core/useLiveChartEngine";
 import { useCanvasLayout } from "../../src/hooks/useCanvasLayout";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 function makeEngine(): EngineState {
-  return {
+  return withSharedValueAccessors({
     data: { value: [] },
     value: { value: 0 },
     displayValue: { value: 0 },
@@ -13,7 +14,7 @@ function makeEngine(): EngineState {
     canvasWidth: { value: 0 },
     canvasHeight: { value: 0 },
     timestamp: { value: 0 },
-  } as unknown as EngineState;
+  }) as unknown as EngineState;
 }
 
 describe("useCanvasLayout", () => {

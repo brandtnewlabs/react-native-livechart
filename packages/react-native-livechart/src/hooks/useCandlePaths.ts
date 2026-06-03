@@ -1,5 +1,5 @@
-import { Skia } from "@shopify/react-native-skia";
-import { useMemo } from "react";
+import { Skia, type SkPath } from "@shopify/react-native-skia";
+import { useRef } from "react";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -33,8 +33,22 @@ export function useCandlePaths(
   const targetCandleWidth = useDerivedValue(() => candleWidthSecs);
   const displayCandleWidth = useSharedValue(candleWidthSecs);
 
-  const cache = useMemo(
-    () => ({
+  const cacheRef = useRef<{
+    upBodiesA: SkPath;
+    upBodiesB: SkPath;
+    downBodiesA: SkPath;
+    downBodiesB: SkPath;
+    upWicksA: SkPath;
+    upWicksB: SkPath;
+    downWicksA: SkPath;
+    downWicksB: SkPath;
+    ubTick: boolean;
+    dbTick: boolean;
+    uwTick: boolean;
+    dwTick: boolean;
+  } | null>(null);
+  if (cacheRef.current === null) {
+    cacheRef.current = {
       upBodiesA: Skia.Path.Make(),
       upBodiesB: Skia.Path.Make(),
       downBodiesA: Skia.Path.Make(),
@@ -47,19 +61,20 @@ export function useCandlePaths(
       dbTick: false,
       uwTick: false,
       dwTick: false,
-    }),
-    [],
-  );
+    };
+  }
 
   useFrameCallback((frameInfo) => {
     "worklet";
     if (!active) return;
     const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
-    displayCandleWidth.value = lerp(
-      displayCandleWidth.value,
-      targetCandleWidth.value,
-      CANDLE_WIDTH_LERP_SPEED,
-      dt,
+    displayCandleWidth.set(
+      lerp(
+        displayCandleWidth.get(),
+        targetCandleWidth.get(),
+        CANDLE_WIDTH_LERP_SPEED,
+        dt,
+      ),
     );
   });
 
@@ -76,12 +91,13 @@ export function useCandlePaths(
       engine.displayWindow.value,
       engine.displayMin.value,
       engine.displayMax.value,
-      displayCandleWidth.value,
+      displayCandleWidth.get(),
     );
   });
 
   /* istanbul ignore next -- worklet */
   const upBodiesPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.ubTick = !cache.ubTick;
     const path = cache.ubTick ? cache.upBodiesA : cache.upBodiesB;
     path.reset();
@@ -98,6 +114,7 @@ export function useCandlePaths(
 
   /* istanbul ignore next -- worklet */
   const downBodiesPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.dbTick = !cache.dbTick;
     const path = cache.dbTick ? cache.downBodiesA : cache.downBodiesB;
     path.reset();
@@ -114,6 +131,7 @@ export function useCandlePaths(
 
   /* istanbul ignore next -- worklet */
   const upWicksPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.uwTick = !cache.uwTick;
     const path = cache.uwTick ? cache.upWicksA : cache.upWicksB;
     path.reset();
@@ -129,6 +147,7 @@ export function useCandlePaths(
 
   /* istanbul ignore next -- worklet */
   const downWicksPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
     cache.dwTick = !cache.dwTick;
     const path = cache.dwTick ? cache.downWicksA : cache.downWicksB;
     path.reset();

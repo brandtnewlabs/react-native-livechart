@@ -39,46 +39,46 @@ export function useSingleChartReverseMorphInputs({
   useAnimatedReaction(
     () => ({
       candle: isCandle,
-      has: hasData.value,
-      m: morphT.value,
-      d: data.value,
-      cLen: candles?.value.length ?? 0,
-      c: candles?.value,
-      lc: liveCandle?.value ?? null,
+      has: hasData.get(),
+      m: morphT.get(),
+      d: data.get(),
+      cLen: candles?.get().length ?? 0,
+      c: candles?.get(),
+      lc: liveCandle?.get() ?? null,
     }),
     (curr) => {
       "worklet";
       if (!curr.candle) {
         if (curr.has && curr.d.length >= 2) {
-          lineStash.value = curr.d.slice();
-          lineEngineData.value = curr.d;
+          lineStash.set(curr.d.slice());
+          lineEngineData.set(curr.d);
         } else if (
           !curr.has &&
           curr.m > STASH_MORPH_EPS &&
-          lineStash.value.length >= 2
+          lineStash.get().length >= 2
         ) {
-          lineEngineData.value = lineStash.value;
+          lineEngineData.set(lineStash.get());
         } else {
-          lineEngineData.value = curr.d;
+          lineEngineData.set(curr.d);
         }
         return;
       }
 
       const cArr = curr.c;
       if (curr.has && curr.cLen >= 2 && cArr) {
-        candleStash.value = cArr.slice();
-        candlesEngine.value = cArr;
-        liveEngine.value = curr.lc;
+        candleStash.set(cArr.slice());
+        candlesEngine.set(cArr);
+        liveEngine.set(curr.lc);
       } else if (
         !curr.has &&
         curr.m > STASH_MORPH_EPS &&
-        candleStash.value.length >= 2
+        candleStash.get().length >= 2
       ) {
-        candlesEngine.value = candleStash.value;
-        liveEngine.value = null;
+        candlesEngine.set(candleStash.get());
+        liveEngine.set(null);
       } else {
-        candlesEngine.value = cArr ?? [];
-        liveEngine.value = curr.lc;
+        candlesEngine.set(cArr ?? []);
+        liveEngine.set(curr.lc);
       }
     },
     [isCandle, data, candles, liveCandle, hasData, morphT],
@@ -111,9 +111,9 @@ export function useMultiSeriesReverseMorphInputs({
 
   useAnimatedReaction(
     () => ({
-      has: hasData.value,
-      m: morphT.value,
-      live: series.value,
+      has: hasData.get(),
+      m: morphT.get(),
+      live: series.get(),
     }),
     (curr) => {
       "worklet";
@@ -128,11 +128,11 @@ export function useMultiSeriesReverseMorphInputs({
       }
 
       if (curr.has && anyReady) {
-        seriesStash.value = snapshotSeriesWorklet(live);
-        effectiveSeries.value = live;
+        seriesStash.set(snapshotSeriesWorklet(live));
+        effectiveSeries.set(live);
       } else {
         let stashReady = false;
-        const stash = seriesStash.value;
+        const stash = seriesStash.get();
         for (let i = 0; i < stash.length; i++) {
           if (stash[i].data.length >= 2) {
             stashReady = true;
@@ -141,9 +141,9 @@ export function useMultiSeriesReverseMorphInputs({
         }
 
         if (!curr.has && curr.m > STASH_MORPH_EPS && stashReady) {
-          effectiveSeries.value = seriesStash.value;
+          effectiveSeries.set(seriesStash.get());
         } else {
-          effectiveSeries.value = live;
+          effectiveSeries.set(live);
         }
       }
     },

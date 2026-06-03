@@ -1,5 +1,5 @@
-import { Skia } from "@shopify/react-native-skia";
-import { useMemo } from "react";
+import { Skia, type SkPath } from "@shopify/react-native-skia";
+import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
@@ -19,23 +19,31 @@ export function useMultiSeriesLinePaths(
   engine: MultiEngineState,
   padding: ChartPadding,
 ): SharedValue<ReturnType<typeof Skia.Path.Make>[]> {
-  const pool = useMemo(() => {
-    const a: ReturnType<typeof Skia.Path.Make>[] = [];
-    const b: ReturnType<typeof Skia.Path.Make>[] = [];
+  const poolRef = useRef<{
+    a: SkPath[];
+    b: SkPath[];
+    tick: boolean;
+    ptsBuf: number[];
+    scratch: ReturnType<typeof makeSplineScratch>;
+  } | null>(null);
+  if (poolRef.current === null) {
+    const a: SkPath[] = [];
+    const b: SkPath[] = [];
     for (let i = 0; i < MAX_MULTI_SERIES; i++) {
       a.push(Skia.Path.Make());
       b.push(Skia.Path.Make());
     }
     // One point buffer + spline scratch, reused across slots (built sequentially)
     // and across frames — no per-frame, per-series array allocation.
-    return { a, b, tick: false, ptsBuf: [] as number[], scratch: makeSplineScratch() };
-  }, []);
+    poolRef.current = { a, b, tick: false, ptsBuf: [] as number[], scratch: makeSplineScratch() };
+  }
 
   return useDerivedValue(() => {
+    const pool = poolRef.current!;
     pool.tick = !pool.tick;
     const slots = pool.tick ? pool.a : pool.b;
-    const s = engine.series.value;
-    const displays = engine.displaySeriesValues.value;
+    const s = engine.series.get();
+    const displays = engine.displaySeriesValues.get();
     const out: ReturnType<typeof Skia.Path.Make>[] = [];
     for (let i = 0; i < MAX_MULTI_SERIES; i++) {
       const path = slots[i];
@@ -47,12 +55,12 @@ export function useMultiSeriesLinePaths(
       const pts = buildLinePoints(
         s[i].data,
         displays[i] ?? s[i].value,
-        engine.timestamp.value,
-        engine.displayWindow.value,
-        engine.displayMin.value,
-        engine.displayMax.value,
-        engine.canvasWidth.value,
-        engine.canvasHeight.value,
+        engine.timestamp.get(),
+        engine.displayWindow.get(),
+        engine.displayMin.get(),
+        engine.displayMax.get(),
+        engine.canvasWidth.get(),
+        engine.canvasHeight.get(),
         padding,
         pool.ptsBuf,
       );

@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react-native";
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { EngineState } from "../../src/core/useLiveChartEngine";
 import { useXAxis } from "../../src/hooks/useXAxis";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 const font = {
   getSize: () => 12,
@@ -15,7 +16,7 @@ const font = {
 } as never;
 
 function makeEngine(w: number, h: number, windowSecs: number): EngineState {
-  return {
+  return withSharedValueAccessors({
     data: { value: [] },
     value: { value: 1 },
     displayValue: { value: 1 },
@@ -25,7 +26,7 @@ function makeEngine(w: number, h: number, windowSecs: number): EngineState {
     canvasWidth: { value: w },
     canvasHeight: { value: h },
     timestamp: { value: 1700000000 },
-  } as unknown as EngineState;
+  }) as unknown as EngineState;
 }
 
 describe("useXAxis", () => {

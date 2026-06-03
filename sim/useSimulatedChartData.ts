@@ -264,17 +264,17 @@ export function useSimulatedChartData(
 
     // Seed assigns the full arrays once (a single clone at seed time is fine);
     // the live loop then appends in place via `.modify`.
-    data.value = history;
-    value.value = lastMid;
-    tradeStream.value = initialTrades;
-    series.value = initialSeries;
+    data.set(history);
+    value.set(lastMid);
+    tradeStream.set(initialTrades);
+    series.set(initialSeries);
     if (candleAggregation) {
       const c = aggregateCandles(history, candleWidth);
-      candles.value = c.candles;
-      liveCandle.value = c.liveCandle;
+      candles.set(c.candles);
+      liveCandle.set(c.liveCandle);
     } else {
-      candles.value = [];
-      liveCandle.value = null;
+      candles.set([]);
+      liveCandle.set(null);
     }
   }, [
     volatilityMode,
@@ -300,14 +300,14 @@ export function useSimulatedChartData(
   // Re-bucket OHLC when `candleWidth` / aggregation toggles without throwing away tick history.
   useEffect(() => {
     if (!candleAggregation) {
-      candles.value = [];
-      liveCandle.value = null;
+      candles.set([]);
+      liveCandle.set(null);
       return;
     }
     if (buf.current.candleData.length === 0) return;
     const c = aggregateCandles(buf.current.candleData, candleWidth);
-    candles.value = c.candles;
-    liveCandle.value = c.liveCandle;
+    candles.set(c.candles);
+    liveCandle.set(c.liveCandle);
   }, [candleWidth, candleAggregation, candles, liveCandle]);
 
   // Live: setInterval (jitter 0) or chained setTimeout (jitter > 0). Cleanup clears all timers.
@@ -353,7 +353,7 @@ export function useSimulatedChartData(
         return arr;
       });
       // Scalar — fine to assign directly (no array clone).
-      value.value = newValue;
+      value.set(newValue);
       b.lastMid = newValue;
 
       if (candleAggregation) {
@@ -362,17 +362,17 @@ export function useSimulatedChartData(
         b.candleData.push(newPoint);
         if (b.candleData.length > maxPoints) b.candleData.shift();
         const c = aggregateCandles(b.candleData, candleWidth);
-        candles.value = c.candles;
-        liveCandle.value = c.liveCandle;
+        candles.set(c.candles);
+        liveCandle.set(c.liveCandle);
       }
 
       if (tradeStreamEnabled) {
         b.tradeStream = pushFifo(b.tradeStream, trade, maxTradeStreamLength);
-        tradeStream.value = b.tradeStream;
+        tradeStream.set(b.tradeStream);
       } else {
         // Tape off: still advance price series; keep SharedValue empty for LiveChart overlay.
         b.tradeStream = [];
-        tradeStream.value = [];
+        tradeStream.set([]);
       }
 
       if (multiSeries) {

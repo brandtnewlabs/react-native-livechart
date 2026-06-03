@@ -24,22 +24,22 @@ export function useYAxis(
   const yAxisEntries = useDerivedValue(() => {
     const dt = MS_PER_FRAME_60FPS;
 
-    const alphas = labelAlphas.value;
+    const alphas = labelAlphas.get();
     const result = computeGridEntries(
-      engine.displayMin.value,
-      engine.displayMax.value,
-      engine.canvasHeight.value,
+      engine.displayMin.get(),
+      engine.displayMax.get(),
+      engine.canvasHeight.get(),
       padding.top,
       padding.bottom,
-      prevInterval.value,
+      prevInterval.get(),
       alphas,
       formatValue,
       dt,
       minGap,
     );
 
-    prevInterval.value = result.interval;
-    labelAlphas.value = alphas;
+    prevInterval.set(result.interval);
+    labelAlphas.set(alphas);
 
     return result.entries;
   });

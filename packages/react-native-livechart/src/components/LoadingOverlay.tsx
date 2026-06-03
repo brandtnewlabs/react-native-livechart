@@ -8,8 +8,9 @@ import {
   Text as SkiaText,
   vec,
   type SkFont,
+  type SkPath,
 } from "@shopify/react-native-skia";
-import { useMemo } from "react";
+import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import {
   BADGE_DOT_GAP,
@@ -77,44 +78,49 @@ export function LoadingOverlay({
 
   // Ping-pong persistent paths — avoid allocating a JSI-backed SkPath per frame
   // while the squiggly loading/empty-state animation is running.
-  const squigglyCache = useMemo(
-    () => ({
+  const squigglyCacheRef = useRef<{
+    a: SkPath;
+    b: SkPath;
+    tick: boolean;
+  } | null>(null);
+  if (squigglyCacheRef.current === null) {
+    squigglyCacheRef.current = {
       a: Skia.Path.Make(),
       b: Skia.Path.Make(),
       tick: false,
-    }),
-    [],
-  );
+    };
+  }
 
   // Squiggly path — animated each frame via timestamp
   const squigglyPath = useDerivedValue(() => {
+    const squigglyCache = squigglyCacheRef.current!;
     squigglyCache.tick = !squigglyCache.tick;
     const path = squigglyCache.tick ? squigglyCache.a : squigglyCache.b;
-    if (!isLoading.value && !isEmpty.value && morphT.value >= 1) {
+    if (!isLoading.get() && !isEmpty.value && morphT.get() >= 1) {
       path.reset();
       return path;
     }
     const pts = buildSquigglyPts(
-      engine.canvasWidth.value,
-      engine.canvasHeight.value,
+      engine.canvasWidth.get(),
+      engine.canvasHeight.get(),
       padding,
-      engine.timestamp.value,
+      engine.timestamp.get(),
     );
     return buildSplineInto(path, pts);
   });
 
   // Fades out quickly as the reveal animation begins (first 33% of morphT)
   const groupOpacity = useDerivedValue(() => {
-    if (!isLoading.value && !isEmpty.value) {
-      return Math.max(0, 1 - morphT.value * 3);
+    if (!isLoading.get() && !isEmpty.value) {
+      return Math.max(0, 1 - morphT.get() * 3);
     }
     return 1;
   });
 
   // Placeholder Y-axis rects: skeleton pills centred in the right gutter
   const labelLayout = useDerivedValue(() => {
-    const w = engine.canvasWidth.value;
-    const h = engine.canvasHeight.value;
+    const w = engine.canvasWidth.get();
+    const h = engine.canvasHeight.get();
     if (w === 0 || h === 0) {
       return { x: -200, ys: [0, 0, 0, 0] as [number, number, number, number] };
     }
@@ -135,16 +141,16 @@ export function LoadingOverlay({
   });
 
   // X and Y positions for the placeholder rects
-  const lx = useDerivedValue(() => labelLayout.value.x);
-  const ly0 = useDerivedValue(() => labelLayout.value.ys[0]);
-  const ly1 = useDerivedValue(() => labelLayout.value.ys[1]);
-  const ly2 = useDerivedValue(() => labelLayout.value.ys[2]);
-  const ly3 = useDerivedValue(() => labelLayout.value.ys[3]);
+  const lx = useDerivedValue(() => labelLayout.get().x);
+  const ly0 = useDerivedValue(() => labelLayout.get().ys[0]);
+  const ly1 = useDerivedValue(() => labelLayout.get().ys[1]);
+  const ly2 = useDerivedValue(() => labelLayout.get().ys[2]);
+  const ly3 = useDerivedValue(() => labelLayout.get().ys[3]);
 
   // Empty-state text + gradient gap
   const emptyGapLayout = useDerivedValue(() => {
-    const w = engine.canvasWidth.value;
-    const h = engine.canvasHeight.value;
+    const w = engine.canvasWidth.get();
+    const h = engine.canvasHeight.get();
     if (w === 0 || h === 0) {
       return {
         gapLeft: 0,
@@ -183,21 +189,21 @@ export function LoadingOverlay({
     };
   });
 
-  const gapLeft = useDerivedValue(() => emptyGapLayout.value.gapLeft);
+  const gapLeft = useDerivedValue(() => emptyGapLayout.get().gapLeft);
   const gapTop = useDerivedValue(
-    () => emptyGapLayout.value.centerY - emptyGapLayout.value.eraseH / 2,
+    () => emptyGapLayout.get().centerY - emptyGapLayout.get().eraseH / 2,
   );
   const gapWidth = useDerivedValue(
-    () => emptyGapLayout.value.gapRight - emptyGapLayout.value.gapLeft,
+    () => emptyGapLayout.get().gapRight - emptyGapLayout.get().gapLeft,
   );
-  const gapHeight = useDerivedValue(() => emptyGapLayout.value.eraseH);
-  const emptyTextX = useDerivedValue(() => emptyGapLayout.value.textX);
-  const emptyTextY = useDerivedValue(() => emptyGapLayout.value.textY);
-  const showGapGroup = useDerivedValue(() => emptyGapLayout.value.showGap);
+  const gapHeight = useDerivedValue(() => emptyGapLayout.get().eraseH);
+  const emptyTextX = useDerivedValue(() => emptyGapLayout.get().textX);
+  const emptyTextY = useDerivedValue(() => emptyGapLayout.get().textY);
+  const showGapGroup = useDerivedValue(() => emptyGapLayout.get().showGap);
 
   const gapGradientPositions = useDerivedValue(() => {
-    const L = emptyGapLayout.value.gapRight - emptyGapLayout.value.gapLeft;
-    const fw = emptyGapLayout.value.fadeW;
+    const L = emptyGapLayout.get().gapRight - emptyGapLayout.get().gapLeft;
+    const fw = emptyGapLayout.get().fadeW;
     if (L <= 0) return [0, 0, 1, 1] as number[];
     const t1 = Math.min(fw / L, 0.49);
     const t2 = Math.max(1 - fw / L, 0.51);
@@ -206,7 +212,7 @@ export function LoadingOverlay({
 
   const gapGradEnd = useDerivedValue(() =>
     vec(
-      Math.max(1, emptyGapLayout.value.gapRight - emptyGapLayout.value.gapLeft),
+      Math.max(1, emptyGapLayout.get().gapRight - emptyGapLayout.get().gapLeft),
       0,
     ),
   );

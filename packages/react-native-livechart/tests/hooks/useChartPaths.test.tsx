@@ -3,6 +3,7 @@ import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
 import { useChartPaths } from "../../src/hooks/useChartPaths";
 import { useSharedValue } from "react-native-reanimated";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 function makeEngine(
   overrides: Partial<SingleEngineState> = {},
@@ -18,7 +19,10 @@ function makeEngine(
     canvasHeight: { value: 120 },
     timestamp: { value: 1000 },
   };
-  return { ...base, ...overrides } as unknown as SingleEngineState;
+  return withSharedValueAccessors({
+    ...base,
+    ...overrides,
+  }) as unknown as SingleEngineState;
 }
 
 describe("useChartPaths", () => {

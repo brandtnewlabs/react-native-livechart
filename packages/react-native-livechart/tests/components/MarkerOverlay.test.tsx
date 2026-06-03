@@ -6,6 +6,7 @@ import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import { resolveTheme } from "../../src/theme";
 import type { Marker, SeriesConfig } from "../../src/types";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 const palette = resolveTheme("#3b82f6", "dark");
 
@@ -16,14 +17,14 @@ const font = {
 } as never;
 
 function engine(): ChartEngineLayout {
-  return {
+  return withSharedValueAccessors({
     displayMin: { value: 0 },
     displayMax: { value: 100 },
     displayWindow: { value: 30 },
     canvasWidth: { value: 400 },
     canvasHeight: { value: 300 },
     timestamp: { value: 1000 },
-  } as unknown as ChartEngineLayout;
+  }) as unknown as ChartEngineLayout;
 }
 
 const ALL_KINDS: Marker[] = [

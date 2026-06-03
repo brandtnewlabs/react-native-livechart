@@ -61,12 +61,12 @@ export function useCrosshair(
 
   const scrubTime = useDerivedValue(() =>
     computeScrubTime(
-      scrubActive.value,
-      scrubX.value,
+      scrubActive.get(),
+      scrubX.get(),
       padding,
-      engine.canvasWidth.value,
-      engine.timestamp.value,
-      engine.displayWindow.value,
+      engine.canvasWidth.get(),
+      engine.timestamp.get(),
+      engine.displayWindow.get(),
     ),
   );
 
@@ -80,32 +80,32 @@ export function useCrosshair(
     if (
       !isCandleMode ||
       !candlesSV ||
-      !scrubActive.value ||
-      scrubTime.value < 0
+      !scrubActive.get() ||
+      scrubTime.get() < 0
     )
       return null;
     return pickCandleAtTime(
-      candlesSV.value,
-      liveCandleSV?.value ?? null,
-      scrubTime.value,
+      candlesSV.get(),
+      liveCandleSV?.get() ?? null,
+      scrubTime.get(),
       candleWidthSecs,
     );
   });
 
   /* istanbul ignore next -- worklet */
   const scrubValue = useDerivedValue(() => {
-    if (!scrubActive.value || scrubTime.value < 0) return null;
+    if (!scrubActive.get() || scrubTime.get() < 0) return null;
     if (isCandleMode) {
-      return scrubCandle.value?.close ?? null;
+      return scrubCandle.get()?.close ?? null;
     }
-    return interpolateAtTime(engine.data.value, scrubTime.value);
+    return interpolateAtTime(engine.data.get(), scrubTime.get());
   });
 
   const crosshairOpacity = useDerivedValue(() =>
     computeCrosshairOpacity(
-      scrubActive.value,
-      scrubX.value,
-      engine.canvasWidth.value,
+      scrubActive.get(),
+      scrubX.get(),
+      engine.canvasWidth.get(),
       padding.right,
     ),
   );
@@ -113,24 +113,24 @@ export function useCrosshair(
   const tooltipLayout = useDerivedValue(() => {
     if (isCandleMode) {
       return computeCandleTooltipLayout(
-        scrubActive.value,
-        scrubX.value,
-        scrubCandle.value,
-        scrubTime.value,
+        scrubActive.get(),
+        scrubX.get(),
+        scrubCandle.get(),
+        scrubTime.get(),
         padding,
-        engine.canvasWidth.value,
+        engine.canvasWidth.get(),
         formatValue,
         formatTime,
         font,
       );
     }
     return deriveCrosshairTooltipSingle(
-      scrubActive.value,
-      scrubX.value,
-      scrubTime.value,
-      scrubValue.value,
+      scrubActive.get(),
+      scrubX.get(),
+      scrubTime.get(),
+      scrubValue.get(),
       padding,
-      engine.canvasWidth.value,
+      engine.canvasWidth.get(),
       formatValue,
       formatTime,
       font,
@@ -162,23 +162,23 @@ export function useCrosshair(
     () => {
       "worklet";
       if (!hasOnScrub) return "__idle__";
-      if (!scrubActive.value) return "__inactive__";
-      const time = scrubTime.value;
-      const val = scrubValue.value;
-      const x = scrubX.value;
+      if (!scrubActive.get()) return "__inactive__";
+      const time = scrubTime.get();
+      const val = scrubValue.get();
+      const x = scrubX.get();
       if (val === null || time < 0) return "__pending__";
-      const chartW = engine.canvasWidth.value - padding.left - padding.right;
+      const chartW = engine.canvasWidth.get() - padding.left - padding.right;
       if (chartW <= 0) return "__pending__";
-      const h = engine.canvasHeight.value;
+      const h = engine.canvasHeight.get();
       const chartH = h - padding.top - padding.bottom;
-      const valRange = engine.displayMax.value - engine.displayMin.value;
+      const valRange = engine.displayMax.get() - engine.displayMin.get();
       const dotY =
         valRange === 0
           ? padding.top + chartH / 2
-          : padding.top + ((engine.displayMax.value - val) / valRange) * chartH;
+          : padding.top + ((engine.displayMax.get() - val) / valRange) * chartH;
       let candleJson: string | null = null;
       if (isCandleMode) {
-        const c = scrubCandle.value;
+        const c = scrubCandle.get();
         if (c) candleJson = JSON.stringify(c);
       }
       return JSON.stringify([time, val, x, dotY, candleJson]);
@@ -214,21 +214,21 @@ export function useCrosshair(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;
-        scrubX.value = e.x;
-        scrubActive.value = true;
+        scrubX.set(e.x);
+        scrubActive.set(true);
       },
     )
     .onUpdate(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;
-        scrubX.value = e.x;
+        scrubX.set(e.x);
       },
     )
     .onFinalize(
       /* istanbul ignore next */ () => {
         "worklet";
-        scrubActive.value = false;
+        scrubActive.set(false);
         if (hasOnScrub) scheduleOnRN(handleScrubEnd);
       },
     );

@@ -2,6 +2,7 @@ import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { EngineState } from "../../src/core/useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
 import { useYAxis } from "../../src/hooks/useYAxis";
+import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 const font = {
   getSize: () => 12,
@@ -14,7 +15,7 @@ const font = {
 } as never;
 
 function makeEngine(): EngineState {
-  return {
+  return withSharedValueAccessors({
     data: { value: [] },
     value: { value: 1 },
     displayValue: { value: 1 },
@@ -24,7 +25,7 @@ function makeEngine(): EngineState {
     canvasWidth: { value: 400 },
     canvasHeight: { value: 300 },
     timestamp: { value: 1000 },
-  } as unknown as EngineState;
+  }) as unknown as EngineState;
 }
 
 describe("useYAxis", () => {

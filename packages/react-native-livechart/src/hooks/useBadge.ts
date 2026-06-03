@@ -1,5 +1,5 @@
-import { Skia, type SkFont } from "@shopify/react-native-skia";
-import { useMemo } from "react";
+import { Skia, type SkFont, type SkPath } from "@shopify/react-native-skia";
+import { useRef } from "react";
 import {
   useDerivedValue,
   useSharedValue,
@@ -49,18 +49,23 @@ export function useBadge(
   // Ping-pong between two persistent badge paths so the derived value always
   // returns a freshly-mutated SkPath without allocating a new one every frame.
   // See useChartPaths for the full rationale on per-frame Skia.Path.Make().
-  const cache = useMemo(
-    () => ({
+  const cacheRef = useRef<{
+    a: SkPath;
+    b: SkPath;
+    tick: boolean;
+  } | null>(null);
+  if (cacheRef.current === null) {
+    cacheRef.current = {
       a: Skia.Path.Make(),
       b: Skia.Path.Make(),
       tick: false,
-    }),
-    [],
-  );
+    };
+  }
 
   const badge = useDerivedValue(() => {
-    const w = engine.canvasWidth.value;
-    const h = engine.canvasHeight.value;
+    const cache = cacheRef.current!;
+    const w = engine.canvasWidth.get();
+    const h = engine.canvasHeight.get();
     cache.tick = !cache.tick;
     const path = cache.tick ? cache.a : cache.b;
     path.reset();
@@ -76,16 +81,16 @@ export function useBadge(
     }
 
     const chartH = h - padding.top - padding.bottom;
-    const dMin = engine.displayMin.value;
-    const dMax = engine.displayMax.value;
+    const dMin = engine.displayMin.get();
+    const dMax = engine.displayMax.get();
     const valRange = dMax - dMin;
     const dotY =
       valRange === 0
         ? padding.top + chartH / 2
         : padding.top +
-          ((dMax - engine.displayValue.value) / valRange) * chartH;
+          ((dMax - engine.displayValue.get()) / valRange) * chartH;
 
-    const text = formatValue(engine.displayValue.value);
+    const text = formatValue(engine.displayValue.get());
     const textW = measureFontTextWidth(font, text);
 
     const pillH = font.getSize() + BADGE_PILL_PAD_Y * 2;
@@ -163,14 +168,14 @@ export function useBadge(
     } else if (variant === "minimal") {
       bgColor = "rgba(255,255,255,0.95)";
     } else if (momentum) {
-      const m = momentum.value;
+      const m = momentum.get();
       const targetRgb = m === "up" ? upRgb : m === "down" ? downRgb : accentRgb;
-      colorR.value = lerp(colorR.value, targetRgb[0], 0.08, MS_PER_FRAME_60FPS);
-      colorG.value = lerp(colorG.value, targetRgb[1], 0.08, MS_PER_FRAME_60FPS);
-      colorB.value = lerp(colorB.value, targetRgb[2], 0.08, MS_PER_FRAME_60FPS);
+      colorR.set(lerp(colorR.get(), targetRgb[0], 0.08, MS_PER_FRAME_60FPS));
+      colorG.set(lerp(colorG.get(), targetRgb[1], 0.08, MS_PER_FRAME_60FPS));
+      colorB.set(lerp(colorB.get(), targetRgb[2], 0.08, MS_PER_FRAME_60FPS));
       bgColor = lerpColor(
-        [colorR.value, colorG.value, colorB.value],
-        [colorR.value, colorG.value, colorB.value],
+        [colorR.get(), colorG.get(), colorB.get()],
+        [colorR.get(), colorG.get(), colorB.get()],
         0,
       );
     } else {
