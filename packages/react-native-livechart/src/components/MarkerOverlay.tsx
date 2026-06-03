@@ -8,7 +8,7 @@ import {
   type SkFont,
   type SkPath,
 } from "@shopify/react-native-skia";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   useAnimatedReaction,
   useDerivedValue,
@@ -248,7 +248,8 @@ export function MarkerOverlay({
   /** Multi-series data, used to anchor markers by `seriesId`. */
   series?: SharedValue<SeriesConfig[]>;
 }) {
-  const [snapshot, setSnapshot] = useState<Marker[]>([]);
+  // Seed from the current markers at mount; the reaction below keeps it in sync.
+  const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.value.slice());
 
   const pull = useCallback((sv: SharedValue<Marker[]>) => {
     setSnapshot(sv.value.slice());
@@ -262,10 +263,6 @@ export function MarkerOverlay({
     },
     [markers, pull],
   );
-
-  useEffect(() => {
-    setSnapshot(markers.value.slice());
-  }, [markers, pull]);
 
   const axisY = useDerivedValue(
     () => engine.canvasHeight.value - padding.bottom,
