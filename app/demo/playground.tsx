@@ -148,8 +148,8 @@ export default function PlaygroundScreen() {
           paused={paused}
           exaggerate={exaggerate}
           valueLine={valueLine}
-          referenceLine={
-            showRefLine ? { value: startValue * 1.05, label: "+5%" } : undefined
+          referenceLines={
+            showRefLine ? [{ value: startValue * 1.05, label: "+5%" }] : undefined
           }
           scrub={{ tooltip: true }}
           loading={loading}

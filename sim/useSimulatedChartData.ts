@@ -104,9 +104,6 @@ export interface SimulatedChartOptions {
   random01?: () => number;
 }
 
-/** @deprecated Use `SimulatedChartOptions`. */
-export type SimulatedDataOptions = SimulatedChartOptions;
-
 export interface SimulatedData {
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;

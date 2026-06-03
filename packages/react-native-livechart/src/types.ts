@@ -545,12 +545,6 @@ export interface LiveChartCoreProps {
   yAxis?: boolean | YAxisConfig;
   /** X-axis time labels. `true` = defaults, `false` = hidden, or pass `XAxisConfig`. Default `true`. */
   xAxis?: boolean | XAxisConfig;
-  /**
-   * Single horizontal reference line at a fixed value.
-   * @deprecated Use `referenceLines` (supports multiple lines and bands). When both
-   * are set, this line is merged into the `referenceLines` array.
-   */
-  referenceLine?: ReferenceLine;
   /** Reference lines / bands drawn into the chart. Supports all three `ReferenceLine` forms. */
   referenceLines?: ReferenceLine[];
   /** Per-instance grid-line styling. Pass an object to override color / width / dash / opacity. */
@@ -656,11 +650,6 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
   series: SharedValue<SeriesConfig[]>;
   /** Called when a series toggle chip is tapped. */
   onSeriesToggle?: (id: string, visible: boolean) => void;
-  /**
-   * Show only colored dots in toggle chips (no text labels). Default `false`.
-   * @deprecated Use `legend={{ compact: true }}` instead.
-   */
-  seriesToggleCompact?: boolean;
   /** Live dot configuration (radius, pulse, value line, inline labels). */
   dot?: MultiSeriesDotConfig;
   /** Legend (toggle chips) configuration. `true` = defaults, `false` = hidden, or pass `LegendConfig`. Default `true`. */
