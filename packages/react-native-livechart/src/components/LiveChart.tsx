@@ -16,6 +16,7 @@ import {
   vec,
 } from "@shopify/react-native-skia";
 
+import { DEFAULT_ACCENT_COLOR } from "../constants";
 import {
   resolveBadge,
   resolveDegen,
@@ -89,7 +90,7 @@ function useLiveChartController({
 
   // ── Appearance ──────────────────────────────────────────────────────────
   theme = "dark",
-  accentColor = "#3b82f6",
+  accentColor = DEFAULT_ACCENT_COLOR,
   gradient = true,
   line: lineProp,
   font: fontProp,

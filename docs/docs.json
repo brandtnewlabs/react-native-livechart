@@ -4,9 +4,9 @@
   "name": "react-native-livechart",
   "description": "High-performance live line and candlestick charts for React Native, built on Skia and Reanimated.",
   "colors": {
-    "primary": "#3b82f6",
-    "light": "#60a5fa",
-    "dark": "#2563eb"
+    "primary": "#3323E6",
+    "light": "#5C4FEB",
+    "dark": "#291CC3"
   },
   "favicon": "/favicon.png",
   "icons": {

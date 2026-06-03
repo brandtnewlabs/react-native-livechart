@@ -15,7 +15,7 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
-import { MAX_MULTI_SERIES } from "../constants";
+import { DEFAULT_ACCENT_COLOR, MAX_MULTI_SERIES } from "../constants";
 import {
   lineColorsSignatureFromArray,
   lineStyleSignatureFromArray,
@@ -85,7 +85,7 @@ function lineColorsSig(s: SharedValue<SeriesConfig[]>) {
 function useLiveChartSeriesController({
   series,
   theme = "dark",
-  accentColor = "#3b82f6",
+  accentColor = DEFAULT_ACCENT_COLOR,
   line: lineProp,
   font: fontProp,
   insets,

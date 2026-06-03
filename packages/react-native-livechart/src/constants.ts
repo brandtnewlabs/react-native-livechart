@@ -35,3 +35,10 @@ export const EMPTY_GAP_FADE_WIDTH = 30;
  * Layout is fixed; not on `DegenOptions` because changing it needs matching renderer changes.
  */
 export const DEGEN_STRIDE = 8;
+
+/**
+ * Default chart accent color — the full light/dark palette is derived from this
+ * when a consumer omits `accentColor`. Single source of truth for the brand
+ * default; change it here to re-brand the default everywhere.
+ */
+export const DEFAULT_ACCENT_COLOR = "#3323E6";
