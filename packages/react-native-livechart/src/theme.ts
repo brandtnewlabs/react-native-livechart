@@ -14,15 +14,26 @@ import type { LiveChartPalette, SeriesConfig, ThemeMode } from "./types";
 const TW = {
   white: "#ffffff",
   black: "#000000",
-  neutral: {
-    /** neutral-200 */
-    200: "#e5e5e5",
-    /** neutral-900 */
-    900: "#171717",
-    /** neutral-950 */
-    950: "#0a0a0a",
-  },
+  /** Neutral base scale (backgrounds + text). Tailwind zinc 50–950. */
   zinc: {
+    /** zinc-50 */
+    50: "#fafafa",
+    /** zinc-100 */
+    100: "#f4f4f5",
+    /** zinc-200 */
+    200: "#e4e4e7",
+    /** zinc-300 */
+    300: "#d4d4d8",
+    /** zinc-400 */
+    400: "#a1a1aa",
+    /** zinc-500 */
+    500: "#71717a",
+    /** zinc-600 */
+    600: "#52525b",
+    /** zinc-700 */
+    700: "#3f3f46",
+    /** zinc-800 */
+    800: "#27272a",
     /** zinc-900 */
     900: "#18181b",
     /** zinc-950 */
@@ -159,12 +170,12 @@ export function resolveTheme(color: string, mode: ThemeMode): LiveChartPalette {
     crosshairLine: isDark ? twAlpha(TW.white, 0.2) : twAlpha(TW.black, 0.12),
     crosshairDim: twAlpha(TW.black, 0.12),
     tooltipBg: isDark ? twAlpha(TW.zinc[950], 0.95) : twAlpha(TW.white, 0.95),
-    tooltipText: isDark ? TW.neutral[200] : TW.neutral[900],
+    tooltipText: isDark ? TW.zinc[200] : TW.zinc[900],
     tooltipBorder: isDark ? twAlpha(TW.white, 0.1) : twAlpha(TW.black, 0.08),
 
     bgRgb: isDark
-      ? (parseColorRgb(TW.neutral[950]) as [number, number, number])
-      : (parseColorRgb(TW.white) as [number, number, number]),
+      ? (parseColorRgb(TW.zinc[950]) as [number, number, number])
+      : (parseColorRgb(TW.zinc[50]) as [number, number, number]),
 
     labelFontSize: 11,
     valueFontSize: 11,
