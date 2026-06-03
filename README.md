@@ -1,14 +1,37 @@
 # react-native-livechart
 
-High-performance **live** line and candlestick charts for React Native, built with **@shopify/react-native-skia**, **react-native-reanimated**, and **react-native-gesture-handler**. Data and live values are driven through Reanimated `SharedValue`s so the UI thread can animate without per-frame JS bridge traffic.
+[![npm version](https://img.shields.io/npm/v/react-native-livechart.svg)](https://www.npmjs.com/package/react-native-livechart)
+[![CI](https://github.com/brandtnewlabs/react-native-livechart/actions/workflows/test.yml/badge.svg)](https://github.com/brandtnewlabs/react-native-livechart/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/npm/l/react-native-livechart.svg)](LICENSE)
 
-The design, feature set, and API shape are **conceptually inspired by [liveline](https://github.com/benjitaylor/liveline)** — Benji Taylor’s real-time canvas chart for React — reimagined for React Native (this is not a fork; see [Acknowledgments](#acknowledgments)).
+High-performance **live** line and candlestick charts for React Native, built on **[@shopify/react-native-skia](https://shopify.github.io/react-native-skia/)**, **[react-native-reanimated](https://docs.swmansion.com/react-native-reanimated/)**, and **[react-native-gesture-handler](https://docs.swmansion.com/react-native-gesture-handler/)**. Data and live values flow through Reanimated `SharedValue`s, so the UI thread animates without per-frame JS bridge traffic.
 
-This repository contains the **library** (`packages/react-native-livechart`) and an **Expo example app** at the repo root.
+<!-- TODO(hero): replace this comment with a demo GIF/screenshot, e.g.:
+     <p align="center"><img src="assets/images/demo.gif" alt="react-native-livechart demo" width="320" /></p>
+     Capture from the Expo example app (npm start). -->
 
-## Requirements
+> The design, feature set, and API shape are **conceptually inspired by [liveline](https://github.com/benjitaylor/liveline)** — Benji Taylor's real-time canvas chart for React — reimagined for React Native. This is **not** a fork; see [Acknowledgments](#acknowledgments).
 
-Install the library’s **peer dependencies** in your app (versions should match your React Native / Expo SDK):
+## Features
+
+- 📈 **Line & candlestick** modes (with line/candle morph) in a single component
+- 🧬 **Multi-series** charts with a toggleable legend and per-series live dots
+- 🔍 **Scrubbing** with a crosshair and worklet-friendly `onScrub` payloads
+- ⚡ **Momentum** detection and **degen** effects (particle bursts + shake on big swings)
+- 🏷️ **Trade markers** driven by a `SharedValue` trade stream
+- 🎨 **Theming** with light/dark modes and an accent-driven palette
+- ⏳ **Loading** (breathing-line shell) and **paused** states out of the box
+- 🧵 **SharedValue-driven** rendering — history and live values stay on the UI thread
+
+## Install
+
+```bash
+npm install react-native-livechart
+```
+
+### Peer dependencies
+
+Install the library's **peer dependencies** in your app (versions should match your React Native / Expo SDK):
 
 | Peer                           | Role                                |
 | ------------------------------ | ----------------------------------- |
@@ -19,77 +42,20 @@ Install the library’s **peer dependencies** in your app (versions should match
 | `react-native-worklets`        | Required by Reanimated 4+           |
 | `react-native-gesture-handler` | Pan / scrub gestures                |
 
-Follow Skia, Reanimated, and Gesture Handler install docs for your toolchain (Babel plugin, `GestureHandlerRootView`, etc.).
+Follow the Skia, Reanimated, and Gesture Handler install docs for your toolchain (Babel plugin, `GestureHandlerRootView`, etc.).
 
 ### Babel (required)
 
-The package ships **TypeScript source**; your app’s bundler must compile it with the same stack as a typical **Expo / Reanimated 4** project. In practice that means:
+The package ships **TypeScript source**; your app's bundler compiles it with the same stack as a typical **Expo / Reanimated 4** project. In practice that means:
 
-- **`babel-preset-expo`** (or an equivalent that includes Reanimated’s Babel plugin), and
-- **`react-native-worklets/plugin`** — keep it **last** in the `plugins` array, matching this repo’s root [`babel.config.js`](babel.config.js).
+- **`babel-preset-expo`** (or an equivalent that includes Reanimated's Babel plugin), and
+- **`react-native-worklets/plugin`** — keep it **last** in the `plugins` array, matching this repo's root [`babel.config.js`](babel.config.js).
 
 If you omit Worklets or reorder plugins, worklets in the chart may fail at build or runtime.
 
 ### Metro / `package.json` exports
 
-From **Expo SDK 53+**, Metro resolves `import` using `package.json` **`exports`**, including the **`react-native`** condition (see [Expo Metro: ES Module resolution](https://docs.expo.dev/versions/latest/config/metro/#es-module-resolution)). This library’s runtime entry is **`src/index.ts`** under that condition. If you disabled package exports (`unstable_enablePackageExports: false`), align your resolver or re-enable exports so resolution matches the published map.
-
-## Install
-
-### Migrating from 0.1.x
-
-**1.0.0** is a **breaking** packaging change: runtime code is no longer precompiled in **`dist/*.js`**. Metro (or your bundler) compiles **`src/`** with **your** Babel + Worklets version, so there is no baked-in `__pluginVersion` in a published JS artifact.
-
-- Remove any dependency on **deep imports** of `react-native-livechart/dist/...` or other internal paths; import only from **`react-native-livechart`**.
-- Ensure your app meets **Babel** requirements above.
-- After `npm install`, the package’s **`prepare`** script emits **declaration files** only under `dist/` (for TypeScript); you do not consume those `.js` files at runtime.
-
-### From npm (when published)
-
-```bash
-npm install react-native-livechart
-```
-
-Set `"private": false` on `packages/react-native-livechart/package.json` and publish when you are ready.
-
-### Private GitHub repo (no public npm)
-
-The example app depends on the library via a local workspace link. In **another** project, use one of these patterns:
-
-**A. Tarball from a clone**
-
-```bash
-git clone git@github.com:brandtnewlabs/react-native-livechart.git
-cd react-native-livechart/packages/react-native-livechart
-npm install
-npm pack
-# In your app:
-npm install /path/to/react-native-livechart-1.0.0.tgz
-```
-
-On install, **`prepare`** runs **`npm run build`** in the package, which is **`tsc --emitDeclarationOnly`** into **`dist/`** (types only). Runtime code is **`src/**/\*.ts(x)`**, compiled by **your** Metro + Babel pipeline — there is no precompiled `dist/index.js` anymore.
-
-**Jest:** The repo root uses a small Jest resolver plus a minimal Worklets native proxy in [`jest-setup.js`](jest-setup.js) so `react-native-reanimated` / `react-native-worklets` 0.7+ can load without JSI. A few unit tests that depend on full shared-value round-trips from layout effects or chained toggles are skipped; exercise those flows in the Expo app or E2E.
-
-### Packaging (maintainers)
-
-[`packages/react-native-livechart/package.json`](packages/react-native-livechart/package.json) points **`react-native`**, **`main`**, **`module`**, and **`exports`** (except **`types`**) at **`./src/index.ts`**. **`dist/`** contains only **`.d.ts`** (+ maps) from [`tsconfig.build.json`](packages/react-native-livechart/tsconfig.build.json). [`babel.lib.config.cjs`](packages/react-native-livechart/babel.lib.config.cjs) remains available if you ever need a local Babel build for debugging; it is not part of the default publish path.
-
-**B. `file:` dependency**
-
-After cloning the monorepo:
-
-```json
-"dependencies": {
-  "react-native-livechart": "file:../react-native-livechart/packages/react-native-livechart"
-}
-```
-
-**C. SSH git URL (npm / Yarn / pnpm)**
-
-If your package manager supports installing a **subdirectory** of a git repo, point it at `packages/react-native-livechart`. Syntax varies by tool and version; tarball or `file:` is the most portable.
-
-You need **read access** to the private repository (SSH key or HTTPS token).
+From **Expo SDK 53+**, Metro resolves `import` using `package.json` **`exports`**, including the **`react-native`** condition (see [Expo Metro: ES Module resolution](https://docs.expo.dev/versions/latest/config/metro/#es-module-resolution)). This library's runtime entry is **`src/index.ts`** under that condition. If you disabled package exports (`unstable_enablePackageExports: false`), align your resolver or re-enable exports so resolution matches the published map.
 
 ## Quick start
 
@@ -103,11 +69,30 @@ const value = useSharedValue(0);
 <LiveChart data={data} value={value} />;
 ```
 
+Candlestick mode is a prop away:
+
+```tsx
+<LiveChart data={data} value={value} mode="candle" />
+```
+
+Multi-series with a legend:
+
+```tsx
+import { LiveChartSeries } from "react-native-livechart";
+
+const series = useSharedValue([
+  { id: "btc", label: "BTC", color: "#f7931a", data: [] },
+  { id: "eth", label: "ETH", color: "#627eea", data: [] },
+]);
+
+<LiveChartSeries series={series} legend dot />;
+```
+
 ## API overview
 
-### `LiveChart` (single series)
+The tables below are a **highlight** — the **canonical, full reference is the TypeScript types and JSDoc** shipped in the source (your editor surfaces them on hover and autocomplete).
 
-Key props (see TypeScript types and JSDoc in the source for the full list):
+### `LiveChart` (single series)
 
 | Prop                                     | Description                                                         |
 | ---------------------------------------- | ------------------------------------------------------------------- |
@@ -136,7 +121,7 @@ Key props (see TypeScript types and JSDoc in the source for the full list):
 | `onSeriesToggle` | Chip tap                                    |
 | `onScrub`        | Worklet-friendly multi-series scrub payload |
 
-Shared props (both components) include `font`, `insets`, `xAxis`, `yAxis`, `referenceLine`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, `emptyText`, etc.
+Shared props (both components) include `font`, `insets`, `xAxis`, `yAxis`, `referenceLine`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, `emptyText`, and more — see the types for the complete set.
 
 ## Examples (Expo app in this repo)
 
@@ -147,7 +132,7 @@ npm install
 npm start
 ```
 
-The example app bundles the library from **`src/`**; Metro’s [`watchFolders`](metro.config.js) include the package so Fast Refresh sees edits without a separate library bundler. Optionally run **`npm run build:lib:types:watch`** if you want **`dist/*.d.ts`** regenerated continuously for editor/tsconfig consumers.
+The example app bundles the library from **`src/`**; Metro's [`watchFolders`](metro.config.js) include the package so Fast Refresh sees edits without a separate library bundler. Optionally run **`npm run build:lib:types:watch`** if you want **`dist/*.d.ts`** regenerated continuously for editor/tsconfig consumers.
 
 Screens demonstrate candlestick mode, multi-series, scrub, momentum tuning, degen mode, loading / paused states, and more.
 
@@ -156,6 +141,12 @@ Screens demonstrate candlestick mode, multi-series, scrub, momentum tuning, dege
 - **Skia** draws grid, line, candles, badges, and overlays on the GPU.
 - **Reanimated** owns timeline layout, smoothing, and scrub state; hooks feed a small engine API on the UI thread.
 - **Gesture Handler** drives scrubbing and chart interactions.
+
+A frame-callback engine (`useFrameCallback`) runs a pure tick function on the UI thread each frame, updating display range, time window, and smoothed values, then writing results to `SharedValue`s. Path builders and overlays read those `SharedValue`s inside `useDerivedValue`, so React re-renders stay minimal.
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup, the `npm run verify` gate, and the worklets-plugin rule. By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Acknowledgments
 
