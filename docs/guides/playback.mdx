@@ -1,0 +1,78 @@
+---
+title: Playback & history
+icon: "gauge-high"
+description: "Control the time window, pausing, smoothing, the Y-axis range, and historical fills."
+---
+
+`LiveChart` runs a tick loop on the UI thread that scrolls the time window and eases the live
+value toward its target each frame. These props tune that engine.
+
+<Note>
+  **Live examples:**
+  [`app/demo/playback.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/playback.tsx)
+  and
+  [`app/demo/historical-data.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/historical-data.tsx)
+  in the example app.
+</Note>
+
+## Time window
+
+`timeWindow` is the visible span in seconds — the chart shows the most recent `timeWindow`
+seconds and scrolls left as new points arrive.
+
+```tsx
+<LiveChart data={data} value={value} timeWindow={60} />
+```
+
+## Pausing
+
+`paused` freezes the scroll. Live data keeps buffering while paused; resuming catches the window
+back up to real time.
+
+```tsx
+<LiveChart data={data} value={value} paused={isPaused} />
+```
+
+## Smoothing
+
+The live tip eases toward the latest `value` instead of snapping. `smoothing` is the lerp speed —
+`0` freezes the tip, `1` makes it instant. The default is `0.08`.
+
+```tsx
+<LiveChart data={data} value={value} smoothing={0.5} />
+```
+
+## Y-axis range
+
+By default the Y-axis fits the visible data with a little headroom. Three props reshape it:
+
+- **`exaggerate`** — tighten the axis so small moves fill the height.
+- **`nonNegative`** — clamp the lower bound at `0`.
+- **`maxValue`** — pin a hard upper bound.
+
+```tsx
+<LiveChart data={data} value={value} exaggerate nonNegative maxValue={150} />
+```
+
+## Historical data fill
+
+To render a fixed historical span edge-to-edge — rather than a live-scrolling tail — freeze the
+engine's clock with `nowOverride` and reserve a little right-edge space with `windowBuffer`:
+
+- **`nowOverride`** — override the engine's "now" (unix seconds). Set it to your dataset's last
+  timestamp so the window ends exactly there.
+- **`windowBuffer`** — right-edge padding as a fraction of `timeWindow`, so the latest point
+  isn't flush against the edge.
+
+```tsx
+<LiveChart
+  data={history}
+  value={lastValue}
+  timeWindow={span}
+  nowOverride={lastTime}
+  windowBuffer={0.04}
+  paused
+/>
+```
+
+See the full prop list in the [`LiveChart` reference](/api-reference/livechart).

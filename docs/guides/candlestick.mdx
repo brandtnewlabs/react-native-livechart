@@ -7,6 +7,12 @@ description: "Render OHLC candlestick bars with a live in-progress candle."
 Set `mode="candle"` and supply committed OHLC bars plus an optional in-progress candle. Both
 must be `SharedValue`s so the chart can read them on the UI thread.
 
+<Note>
+  **Live example:**
+  [`app/demo/candlestick.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/candlestick.tsx)
+  in the example app.
+</Note>
+
 ```tsx
 import { useSharedValue } from "react-native-reanimated";
 import { LiveChart, type CandlePoint } from "react-native-livechart";

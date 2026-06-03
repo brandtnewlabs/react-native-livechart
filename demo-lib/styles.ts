@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { APP_FONT_FAMILY } from "./fonts";
+import { APP_FONT_FAMILY, APP_FONT_FAMILY_MEDIUM } from "./fonts";
 import { colors } from "./theme";
 
 export const demoStyles = StyleSheet.create({
@@ -22,6 +22,13 @@ export const demoStyles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 8,
     lineHeight: 16,
+  },
+  demoDocsLink: {
+    color: colors.link,
+    fontSize: 12,
+    fontFamily: APP_FONT_FAMILY_MEDIUM,
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   chartContainer: {
     height: 300,
@@ -63,6 +70,9 @@ export const demoStyles = StyleSheet.create({
   },
   chipActive: {
     backgroundColor: "#3323E6",
+  },
+  chipDisabled: {
+    opacity: 0.5,
   },
   chipText: {
     color: colors.chipText,

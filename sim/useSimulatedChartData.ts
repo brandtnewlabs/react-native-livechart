@@ -14,8 +14,8 @@
  * read both `timestamp` and `data.value`/`series.value`, so in-place mutations are picked up without a
  * fresh top-level reference.
  *
- * Small JS-thread state (`lastMid`, per-series `values`, bonding-curve state, trade tape) is kept in `buf`
- * to generate the next delta; the candle path additionally keeps a JS-side `data` mirror because OHLC
+ * Small JS-thread state (`lastMid`, per-series `values`, trade tape) is kept in `buf` to generate the next
+ * delta; the candle path additionally keeps a JS-side `data` mirror because OHLC
  * re-aggregation needs the full tick array (single-series candle charts are memory-flat — one array).
  */
 import { useEffect, useRef, type RefObject } from "react";
@@ -35,12 +35,9 @@ import {
 } from "./chartSimCore";
 import {
   aggregateCandles,
-  bondingTrade,
-  createBondingCurve,
   generateMultiSeries,
   stepMultiSeriesValues,
   volatilityFor,
-  type BondingCurveState,
   type VolatilityMode,
 } from "./generators";
 import type { HistoryRange } from "./historyRange";
@@ -62,11 +59,8 @@ function defaultTradesPerSecond(mode: VolatilityMode): number {
 export { HISTORY_RANGE_SPAN_SECONDS } from "./chartSimCore";
 export type { HistoryRange } from "./historyRange";
 
-export type TradeSource = "orderbook" | "bonding-curve";
-
 export interface SimulatedChartOptions {
   volatilityMode?: VolatilityMode;
-  tradeSource?: TradeSource;
   startValue?: number;
   candleWidth?: number;
   paused?: boolean;
@@ -255,7 +249,6 @@ export function useSimulatedChartData(
 ): SimulatedData {
   const {
     volatilityMode = "normal",
-    tradeSource = "orderbook",
     startValue = 100,
     candleWidth = 60,
     paused = false,
@@ -297,15 +290,10 @@ export function useSimulatedChartData(
   const candles = useSharedValue<CandlePoint[]>([]);
   const liveCandle = useSharedValue<CandlePoint | null>(null);
 
-  const bondingCurveRef = useRef<BondingCurveState | null>(null);
-  if (bondingCurveRef.current === null) {
-    bondingCurveRef.current = createBondingCurve({ basePrice: startValue });
-  }
-
-  // Full reseed: history, optional tape bootstrap, multi-series baseline, bonding
-  // state. The data is built by the pure `computeSeed` helper; this effect only
-  // syncs that result into the JS-side ref and the SharedValues (no prop-derived
-  // data is transformed inline here).
+  // Full reseed: history, optional tape bootstrap, multi-series baseline. The data
+  // is built by the pure `computeSeed` helper; this effect only syncs that result
+  // into the JS-side ref and the SharedValues (no prop-derived data is transformed
+  // inline here).
   useEffect(() => {
     const seed = computeSeed({
       volatilityMode,
@@ -320,8 +308,6 @@ export function useSimulatedChartData(
       tokenSymbol,
       rng: random01Ref.current,
     });
-
-    bondingCurveRef.current = createBondingCurve({ basePrice: startValue });
 
     buf.current = {
       lastMid: seed.lastMid,
@@ -350,7 +336,6 @@ export function useSimulatedChartData(
     candleAggregation,
     tradeStreamEnabled,
     tokenSymbol,
-    tradeSource,
     resetNonce,
     data,
     value,
@@ -390,19 +375,13 @@ export function useSimulatedChartData(
       const now = Date.now() / 1000;
       const lastMid = b.lastMid;
 
-      let trade: TradeEvent;
-
-      if (tradeSource === "bonding-curve") {
-        const result = bondingTrade(bondingCurveRef.current!, rng);
-        bondingCurveRef.current = result.state;
-        trade = {
-          ...result.event,
-          time: now,
-          ...(tokenSymbol ? { symbol: tokenSymbol } : {}),
-        };
-      } else {
-        trade = generateLiveMidTrade(lastMid, spread, now, rng, tokenSymbol);
-      }
+      const trade: TradeEvent = generateLiveMidTrade(
+        lastMid,
+        spread,
+        now,
+        rng,
+        tokenSymbol,
+      );
 
       const newValue = trade.price;
       const newPoint: LiveChartPoint = { time: now, value: newValue };
@@ -494,7 +473,6 @@ export function useSimulatedChartData(
     tradesPerSecond,
     tradeArrivalJitter,
     volatilityMode,
-    tradeSource,
     startValue,
     maxPoints,
     candleWidth,

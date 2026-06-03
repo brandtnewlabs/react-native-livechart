@@ -15,4 +15,3 @@
 export const APP_FONT_FAMILY = "PlusJakartaSans_400Regular";
 export const APP_FONT_FAMILY_MEDIUM = "PlusJakartaSans_500Medium";
 export const APP_FONT_FAMILY_SEMIBOLD = "PlusJakartaSans_600SemiBold";
-export const APP_FONT_FAMILY_BOLD = "PlusJakartaSans_700Bold";

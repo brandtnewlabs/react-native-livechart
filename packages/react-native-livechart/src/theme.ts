@@ -168,7 +168,9 @@ export function resolveTheme(color: string, mode: ThemeMode): LiveChartPalette {
     timeLabel: isDark ? twAlpha(TW.white, 0.35) : twAlpha(TW.black, 0.3),
 
     crosshairLine: isDark ? twAlpha(TW.white, 0.2) : twAlpha(TW.black, 0.12),
-    crosshairDim: twAlpha(TW.black, 0.12),
+    // Scrim over the region ahead of the crosshair: darken on dark, brighten on
+    // light, so it always reads as a recessed wash toward the background.
+    crosshairDim: isDark ? twAlpha(TW.black, 0.12) : twAlpha(TW.white, 0.5),
     tooltipBg: isDark ? twAlpha(TW.zinc[950], 0.95) : twAlpha(TW.white, 0.95),
     tooltipText: isDark ? TW.zinc[200] : TW.zinc[900],
     tooltipBorder: isDark ? twAlpha(TW.white, 0.1) : twAlpha(TW.black, 0.08),

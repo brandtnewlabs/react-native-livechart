@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text } from "react-native";
 import { LiveChart, type LiveChartPoint } from "react-native-livechart";
-import { APP_THEME } from "../../demo-lib/theme";
 import { useSharedValue } from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { Chip, ControlRow } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
+import { APP_THEME } from "../../demo-lib/theme";
 import { demoStyles } from "../../demo-lib/styles";
 
 export const options = { title: "Historical data fill" };
@@ -23,6 +24,13 @@ function seedHistory(endTime: number): LiveChartPoint[] {
   return out;
 }
 
+const BUFFER_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: "0 (fill)" },
+  { value: 0.1, label: "0.1" },
+  { value: 0.3, label: "0.3" },
+  { value: 0.5, label: "0.5" },
+];
+
 export default function HistoricalDataScreen() {
   const [buffer, setBuffer] = useState(0);
 
@@ -37,6 +45,7 @@ export default function HistoricalDataScreen() {
 
   return (
     <DemoScreen
+      docs="guides/playback"
       description="nowOverride + windowBuffer — fill a fixed historical span edge-to-edge"
       chart={
         <LiveChart
@@ -56,29 +65,16 @@ export default function HistoricalDataScreen() {
         nowOverride pins the latest sample as &quot;now&quot;. buffer=0 fills the
         canvas; larger buffers pull the data left, off the right edge.
       </Text>
-      <View style={demoStyles.buttonRow}>
-        {[
-          { label: "0 (fill)", value: 0 },
-          { label: "0.1", value: 0.1 },
-          { label: "0.3", value: 0.3 },
-          { label: "0.5", value: 0.5 },
-        ].map((b) => (
-          <Pressable
+      <ControlRow>
+        {BUFFER_OPTIONS.map((b) => (
+          <Chip
             key={b.label}
-            style={[demoStyles.chip, buffer === b.value && demoStyles.chipActive]}
+            label={b.label}
+            active={buffer === b.value}
             onPress={() => setBuffer(b.value)}
-          >
-            <Text
-              style={[
-                demoStyles.chipText,
-                buffer === b.value && demoStyles.chipTextActive,
-              ]}
-            >
-              {b.label}
-            </Text>
-          </Pressable>
+          />
         ))}
-      </View>
+      </ControlRow>
     </DemoScreen>
   );
 }

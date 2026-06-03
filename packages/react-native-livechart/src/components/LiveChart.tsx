@@ -445,7 +445,8 @@ function useLiveChartController({
 type LiveChartModel = ReturnType<typeof useLiveChartController>;
 
 /** Main shaken chart stack: grid, fill, line/candles, axes, badge, dot, degen,
- *  value text, markers, and the loading/empty art. */
+ *  markers, and the loading/empty art. The live value text is a separate layer
+ *  (ChartValueOverlay) so it sits above the left-edge fade. */
 function ChartStack({ model }: { model: LiveChartModel }) {
   const {
     degenShakeTransform,
@@ -485,10 +486,6 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     degenCfg,
     degenPack,
     degenPackRevision,
-    showValue,
-    valueFont,
-    momentumSV,
-    valueMomentumColor,
     markersActive,
     markersSV,
     emptyText,
@@ -628,20 +625,6 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         </Group>
       )}
 
-      {showValue && (
-        <Group opacity={reveal.lineOpacity}>
-          <ValueTextOverlay
-            engine={engine}
-            padding={effectivePadding}
-            palette={palette}
-            font={valueFont}
-            formatValue={formatValue}
-            momentum={momentumSV}
-            momentumColor={valueMomentumColor}
-          />
-        </Group>
-      )}
-
       {markersActive && (
         <Group opacity={reveal.dotOpacity}>
           <MarkerOverlay
@@ -735,6 +718,42 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
   );
 }
 
+/** Live-value text drawn as its own canvas layer, above both the area gradient
+ *  and the left-edge fade, so the large number stays crisp at the left edge
+ *  instead of being washed out by the fade's `dstOut` blend. */
+function ChartValueOverlay({ model }: { model: LiveChartModel }) {
+  const {
+    showValue,
+    degenShakeTransform,
+    engine,
+    effectivePadding,
+    palette,
+    valueFont,
+    formatValue,
+    momentumSV,
+    valueMomentumColor,
+    reveal,
+  } = model;
+
+  if (!showValue) return null;
+
+  return (
+    <Group transform={degenShakeTransform}>
+      <Group opacity={reveal.lineOpacity}>
+        <ValueTextOverlay
+          engine={engine}
+          padding={effectivePadding}
+          palette={palette}
+          font={valueFont}
+          formatValue={formatValue}
+          momentum={momentumSV}
+          momentumColor={valueMomentumColor}
+        />
+      </Group>
+    </Group>
+  );
+}
+
 export function LiveChart(props: LiveChartProps) {
   const model = useLiveChartController(props);
   const {
@@ -771,6 +790,8 @@ export function LiveChart(props: LiveChartProps) {
               engine={engine}
             />
           )}
+
+          <ChartValueOverlay model={model} />
 
           <ChartScrubLayer model={model} />
         </Canvas>

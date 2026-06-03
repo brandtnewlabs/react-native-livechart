@@ -2,7 +2,6 @@ import type { VolatilityMode } from "../sim/generators";
 import {
   HISTORY_RANGE_SPAN_SECONDS,
   type HistoryRange,
-  type TradeSource,
 } from "../sim/useSimulatedChartData";
 
 export const ACCENT = "#3323E6";
@@ -44,8 +43,6 @@ export const VOLATILITY_MODES: VolatilityMode[] = [
   "volatile",
   "chaotic",
 ];
-
-export const TRADE_SOURCES: TradeSource[] = ["orderbook", "bonding-curve"];
 
 export const PRICE_RANGES: { label: string; value: number }[] = [
   { label: "0.001", value: 0.001 },
