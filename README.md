@@ -144,7 +144,7 @@ The tables below are a **highlight** — the **canonical, full reference is the 
 | `onSeriesToggle` | Chip tap                                    |
 | `onScrub`        | Worklet-friendly multi-series scrub payload |
 
-Shared props (both components) include `font`, `insets`, `xAxis`, `yAxis`, `referenceLine`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, `emptyText`, and more — see the types for the complete set.
+These tables are a **highlight, not the full surface** (`LiveChart` alone has ~48 props). Other shared props include `font`, `insets`, `smoothing`, `xAxis`, `yAxis`, `referenceLines`, `gridStyle`, `palette`, `markers`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, and `emptyText`; single-series adds `gradient`, `badge`, `pulse`, `valueLine`, and `showValue`. See the TypeScript types and JSDoc for the complete, canonical reference.
 
 ## Examples (Expo app in this repo)
 
