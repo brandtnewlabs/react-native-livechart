@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import {
-  runOnJS,
   useDerivedValue,
   useFrameCallback,
   useSharedValue,
   type DerivedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import { runOnJS } from "react-native-worklets";
 import { DEGEN_STRIDE } from "../constants";
 import type { ResolvedDegenConfig } from "../core/resolveConfig";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
@@ -109,8 +109,34 @@ export function useMultiSeriesDegen(
       shakeX.set(0);
       shakeY.set(0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- shared value refs are stable; react to cfg only
-  }, [degenOff, onShake, cfg]);
+  }, [
+    degenOff,
+    onShake,
+    cfg,
+    // SharedValue refs are stable (useSharedValue), so listing them satisfies
+    // exhaustive-deps without ever re-running the effect.
+    enabledSV,
+    shakeEnabledSV,
+    hasOnShakeListenerSV,
+    shakeStart,
+    shakeX,
+    shakeY,
+    scaleSV,
+    downSV,
+    shakeIntensitySV,
+    shakeDurationSecSV,
+    slotCountSV,
+    burstParticleCountSV,
+    particleBurstDurationSecSV,
+    dragSV,
+    sizeMinSV,
+    sizeMaxSV,
+    spreadAngleSV,
+    jitterXSV,
+    jitterYSV,
+    speedMinSV,
+    speedMaxSV,
+  ]);
 
   useFrameCallback(
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {

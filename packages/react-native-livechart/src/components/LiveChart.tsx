@@ -30,27 +30,25 @@ import {
   resolveYAxis,
 } from "../core/resolveConfig";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
-import {
-  resolveChartLayout,
-  useBadge,
-  useCandlePaths,
-  useCanvasLayout,
-  useChartColors,
-  useChartPaths,
-  useChartReveal,
-  useChartSkiaFont,
-  useCrosshair,
-  useDegen,
-  useLiveChartHasData,
-  useLiveDot,
-  useMarkers,
-  useModeBlend,
-  useMomentum,
-  useSingleChartReverseMorphInputs,
-  useTradeStream,
-  useXAxis,
-  useYAxis,
-} from "../hooks";
+import { resolveChartLayout } from "../hooks/resolveChartLayout";
+import { useBadge } from "../hooks/useBadge";
+import { useCandlePaths } from "../hooks/useCandlePaths";
+import { useCanvasLayout } from "../hooks/useCanvasLayout";
+import { useChartColors } from "../hooks/useChartColors";
+import { useChartPaths } from "../hooks/useChartPaths";
+import { useChartReveal } from "../hooks/useChartReveal";
+import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
+import { useCrosshair } from "../hooks/useCrosshair";
+import { useDegen } from "../hooks/useDegen";
+import { useLiveChartHasData } from "../hooks/useLiveChartHasData";
+import { useLiveDot } from "../hooks/useLiveDot";
+import { useMarkers } from "../hooks/useMarkers";
+import { useModeBlend } from "../hooks/useModeBlend";
+import { useMomentum } from "../hooks/useMomentum";
+import { useSingleChartReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
+import { useTradeStream } from "../hooks/useTradeStream";
+import { useXAxis } from "../hooks/useXAxis";
+import { useYAxis } from "../hooks/useYAxis";
 import {
   formatTime as defaultFormatTime,
   formatValue as defaultFormatValue,
@@ -377,6 +375,14 @@ export function LiveChart({
     effectivePadding,
   );
 
+  const tooltipBody = isCandle ? (
+    <MultiSeriesTooltipStack
+      tooltipLayout={crosshair.tooltipLayout}
+      font={skiaFont}
+      palette={palette}
+    />
+  ) : undefined;
+
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <GestureDetector gesture={rootGesture}>
@@ -433,10 +439,9 @@ export function LiveChart({
               </Group>
             )}
 
-            {allRefLines.map((rl, i) => (
+            {allRefLines.map((rl) => (
               <ReferenceLineOverlay
-                // eslint-disable-next-line react/no-array-index-key
-                key={i}
+                key={`${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
                 engine={engine}
                 padding={effectivePadding}
                 line={rl}
@@ -603,15 +608,8 @@ export function LiveChart({
                   tooltipBackground={scrubCfg.tooltipBackground}
                   tooltipColor={scrubCfg.tooltipColor}
                   tooltipBorderColor={scrubCfg.tooltipBorderColor}
-                  tooltipBody={
-                    isCandle ? (
-                      <MultiSeriesTooltipStack
-                        tooltipLayout={crosshair.tooltipLayout}
-                        font={skiaFont}
-                        palette={palette}
-                      />
-                    ) : undefined
-                  }
+                  // react-doctor-disable-next-line react-doctor/jsx-no-jsx-as-prop -- tooltipBody is an intentional slot-style API: the candle path injects a custom tooltip body (and consumers can swap in their own). It's already hoisted to a stable local const and memoized by React Compiler, so it isn't rebuilt each render; the only way to satisfy the rule is reshaping the public prop into a render-prop/children, which would break the slot API.
+                  tooltipBody={tooltipBody}
                 />
               )}
             </Group>

@@ -34,19 +34,17 @@ import {
   resolveYAxis,
 } from "../core/resolveConfig";
 import { useLiveChartSeriesEngine } from "../core/useLiveChartSeriesEngine";
-import {
-  resolveChartLayout,
-  useCanvasLayout,
-  useChartReveal,
-  useChartSkiaFont,
-  useCrosshairSeries,
-  useMarkers,
-  useMultiSeriesDegen,
-  useMultiSeriesLinePaths,
-  useMultiSeriesReverseMorphInputs,
-  useXAxis,
-  useYAxis,
-} from "../hooks";
+import { resolveChartLayout } from "../hooks/resolveChartLayout";
+import { useCanvasLayout } from "../hooks/useCanvasLayout";
+import { useChartReveal } from "../hooks/useChartReveal";
+import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
+import { useCrosshairSeries } from "../hooks/useCrosshairSeries";
+import { useMarkers } from "../hooks/useMarkers";
+import { useMultiSeriesDegen } from "../hooks/useMultiSeriesDegen";
+import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
+import { useMultiSeriesReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
+import { useXAxis } from "../hooks/useXAxis";
+import { useYAxis } from "../hooks/useYAxis";
 import {
   formatTime as defaultFormatTime,
   formatValue as defaultFormatValue,
@@ -354,10 +352,9 @@ export function LiveChartSeries({
             </Group>
           )}
 
-          {allRefLines.map((rl, i) => (
+          {allRefLines.map((rl) => (
             <ReferenceLineOverlay
-              // eslint-disable-next-line react/no-array-index-key
-              key={i}
+              key={`${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
               engine={engine}
               padding={effectivePadding}
               line={rl}

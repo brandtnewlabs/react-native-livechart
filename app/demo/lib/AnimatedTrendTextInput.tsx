@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, type TextStyle } from "react-native";
 import Animated, {
   Easing,
   interpolateColor,
-  runOnJS,
   type SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -11,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import { runOnJS } from "react-native-worklets";
 
 const FLASH_IN_MS = 100;
 const FLASH_OUT_MS = 280;
@@ -20,41 +20,47 @@ const TW_ZINC_400 = "#a1a1aa";
 const TW_EMERALD_400 = "#34d399";
 const TW_RED_400 = "#f87171";
 
-export type NumberFormatConfig = {
-  locales?: Intl.LocalesArgument;
-  options?: Intl.NumberFormatOptions;
-};
-
 export type AnimatedTrendTextInputProps = {
   sharedValue: SharedValue<number>;
   maximumFractionDigits?: number;
   /**
-   * When set, the label is formatted with `Intl.NumberFormat` (grouping, locale
-   * decimals, currency, etc.). Omit for a plain `toFixed`.
+   * Pre-built `Intl.NumberFormat` for grouping/locale/currency formatting.
+   * Construct it once at module scope and pass it in (building one is slow, so
+   * don't redo it per render); omit for a plain `toFixed`.
    */
-  numberFormat?: NumberFormatConfig;
+  formatter?: Intl.NumberFormat;
   baseColor?: string;
   upColor?: string;
   downColor?: string;
   style?: TextStyle;
 };
 
+function formatValue(
+  n: number,
+  formatter: Intl.NumberFormat | undefined,
+  maximumFractionDigits: number,
+): string {
+  if (!Number.isFinite(n)) return "—";
+  return formatter ? formatter.format(n) : n.toFixed(maximumFractionDigits);
+}
+
 /**
  * Live numeric readout that flashes green/red on change and fades back to
  * neutral.
  *
- * The text content is pushed into React state from a UI-thread
- * `useAnimatedReaction` (throttled to one render per value change). It used to
- * drive an `Animated.createAnimatedComponent(TextInput)` and set `text` via
- * `useAnimatedProps` every tick — that pattern leaks native memory on iOS
- * (resident memory climbs for as long as the value keeps updating). The color
- * flash stays on the UI thread via `useAnimatedStyle` (animating a `color`
- * style does not leak); only the string content crosses to JS.
+ * The latest raw value is pushed into React state from a UI-thread
+ * `useAnimatedReaction` (one render per value change); the displayed string is
+ * derived from it during render, so toggling the formatter re-formats without an
+ * effect. It used to drive an `Animated.createAnimatedComponent(TextInput)` and
+ * set `text` via `useAnimatedProps` every tick — that pattern leaks native
+ * memory on iOS (resident memory climbs for as long as the value keeps
+ * updating). The color flash stays on the UI thread via `useAnimatedStyle`
+ * (animating a `color` style does not leak); only the raw number crosses to JS.
  */
 export function AnimatedTrendTextInput({
   sharedValue,
   maximumFractionDigits = 6,
-  numberFormat,
+  formatter,
   baseColor = TW_ZINC_400,
   upColor = TW_EMERALD_400,
   downColor = TW_RED_400,
@@ -62,46 +68,11 @@ export function AnimatedTrendTextInput({
 }: AnimatedTrendTextInputProps) {
   const flash = useSharedValue(0);
 
-  // Explicitly memoized: constructing Intl.NumberFormat per render is wasteful
-  // (js-hoist-intl), and a stable `format` keeps the effect/reaction deps below
-  // from re-firing every render (no-effect-with-fresh-deps).
-  const formatter = useMemo(
-    () =>
-      numberFormat
-        ? new Intl.NumberFormat(numberFormat.locales, {
-            maximumFractionDigits,
-            ...numberFormat.options,
-          })
-        : null,
-    [numberFormat, maximumFractionDigits],
-  );
+  const [rawValue, setRawValue] = useState(() => sharedValue.get());
 
-  const format = useCallback(
-    (n: number) => {
-      if (!Number.isFinite(n)) return "—";
-      return formatter ? formatter.format(n) : n.toFixed(maximumFractionDigits);
-    },
-    [formatter, maximumFractionDigits],
-  );
+  const display = formatValue(rawValue, formatter, maximumFractionDigits);
 
-  const latest = useRef<number | null>(null);
-  if (latest.current === null) latest.current = sharedValue.get();
-  const [display, setDisplay] = useState(() => format(sharedValue.get()));
-
-  const onValue = useCallback(
-    (n: number) => {
-      latest.current = n;
-      setDisplay(format(n));
-    },
-    [format],
-  );
-
-  // Re-format the current value when the formatter changes (e.g. toggling Intl).
-  useEffect(() => {
-    setDisplay(format(latest.current!));
-  }, [format]);
-
-  // One reaction drives both the color flash (UI thread) and the text update
+  // One reaction drives both the color flash (UI thread) and the value update
   // (marshalled to JS once per change — not a per-frame native text push).
   useAnimatedReaction(
     () => sharedValue.get(),
@@ -123,9 +94,8 @@ export function AnimatedTrendTextInput({
           ),
         );
       }
-      runOnJS(onValue)(current);
+      runOnJS(setRawValue)(current);
     },
-    [onValue],
   );
 
   const animatedStyle = useAnimatedStyle(() => ({

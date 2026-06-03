@@ -1,5 +1,5 @@
 import { Link, type Href } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { MONO_FONT_FAMILY } from "react-native-livechart";
 
 const DEMOS: { href: Href; title: string; blurb: string }[] = [
@@ -91,6 +91,15 @@ const DEMOS: { href: Href; title: string; blurb: string }[] = [
   },
 ];
 
+const renderDemoItem = ({ item: d }: { item: (typeof DEMOS)[number] }) => (
+  <Link href={d.href} asChild>
+    <Pressable style={styles.row}>
+      <Text style={styles.rowTitle}>{d.title}</Text>
+      <Text style={styles.rowBlurb}>{d.blurb}</Text>
+    </Pressable>
+  </Link>
+);
+
 export default function Index() {
   return (
     <View style={styles.root}>
@@ -98,19 +107,13 @@ export default function Index() {
       <Text style={styles.subtitle}>
         Open a screen to manually test one feature area.
       </Text>
-      <ScrollView
+      <FlatList
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-      >
-        {DEMOS.map((d) => (
-          <Link key={d.title} href={d.href} asChild>
-            <Pressable style={styles.row}>
-              <Text style={styles.rowTitle}>{d.title}</Text>
-              <Text style={styles.rowBlurb}>{d.blurb}</Text>
-            </Pressable>
-          </Link>
-        ))}
-      </ScrollView>
+        data={DEMOS}
+        keyExtractor={(d) => d.title}
+        renderItem={renderDemoItem}
+      />
     </View>
   );
 }

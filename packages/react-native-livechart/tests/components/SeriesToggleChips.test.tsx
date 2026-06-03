@@ -1,5 +1,6 @@
 import { act, fireEvent, render } from "@testing-library/react-native";
-import { SeriesToggleChips, seriesMetaSig } from "../../src/components/SeriesToggleChips";
+import { SeriesToggleChips } from "../../src/components/SeriesToggleChips";
+import { seriesMetaSig } from "../../src/components/seriesMetaSig";
 
 import React from "react";
 import { useSharedValue } from "react-native-reanimated";

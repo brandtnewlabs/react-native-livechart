@@ -1,11 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
-  runOnJS,
   useFrameCallback,
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import { runOnJS } from "react-native-worklets";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import { projectMarkers, type ProjectedMarker } from "../math/markers";
@@ -35,14 +35,10 @@ export function useMarkers(
     cacheRef.current = { a: [] as ProjectedMarker[], b: [] as ProjectedMarker[], tick: false };
   }
 
-  const onHoverRef = useRef(onMarkerHover);
-  useEffect(() => {
-    onHoverRef.current = onMarkerHover;
-  });
   const emitHover =
     /* istanbul ignore next -- invoked only from the UI-thread tap worklet */
     (event: MarkerHoverEvent | null) => {
-      onHoverRef.current?.(event);
+      onMarkerHover?.(event);
     };
 
   useFrameCallback(

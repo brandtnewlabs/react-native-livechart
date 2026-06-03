@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { LiveChart, type ReferenceLine } from "react-native-livechart";
 
@@ -28,15 +28,21 @@ export default function HorizontalLinesScreen() {
   // Pin the time band ONCE when it's enabled (the band lives in absolute
   // unix-seconds space, so it then scrolls smoothly leftward with the chart).
   // Re-pinning on an interval would make it jump back to the right each tick.
+  // Pinned directly in the toggle handler below — it's a response to the button
+  // press, not derived state, so it doesn't belong in an effect.
   const [timeWindow, setTimeWindow] = useState<{
     from: number;
     to: number;
   } | null>(null);
-  useEffect(() => {
-    if (!timeBand) return;
-    const now = Date.now() / 1000;
-    setTimeWindow({ from: now - 20, to: now - 8 });
-  }, [timeBand]);
+
+  const toggleTimeBand = () => {
+    const next = !timeBand;
+    setTimeBand(next);
+    if (next) {
+      const now = Date.now() / 1000;
+      setTimeWindow({ from: now - 20, to: now - 8 });
+    }
+  };
 
   const referenceLines: ReferenceLine[] = [];
   if (lines) {
@@ -111,7 +117,7 @@ export default function HorizontalLinesScreen() {
         <Toggle
           label="Time band"
           on={timeBand}
-          onPress={() => setTimeBand((v) => !v)}
+          onPress={toggleTimeBand}
         />
       </View>
       <View style={demoStyles.buttonRow}>
