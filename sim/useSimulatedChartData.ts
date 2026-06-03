@@ -163,6 +163,95 @@ function seedTradeTapeFromMid(
   return out;
 }
 
+interface SeedResult {
+  history: LiveChartPoint[];
+  candleData: LiveChartPoint[];
+  initialTrades: TradeEvent[];
+  initialSeries: SeriesConfig[];
+  seriesValues: number[];
+  seriesIds: string[];
+  candles: CandlePoint[];
+  liveCandle: CandlePoint | null;
+  lastMid: number;
+}
+
+/**
+ * Pure seed computation: history, optional tape bootstrap, multi-series baseline,
+ * and the initial OHLC buckets. Kept out of the seeding effect so the effect only
+ * *syncs* the result into refs/SharedValues — it never transforms prop-derived
+ * data inline (which `no-event-handler` / `no-pass-data-to-parent` flag).
+ */
+function computeSeed(params: {
+  volatilityMode: VolatilityMode;
+  historyRange: HistoryRange;
+  historySpanSeconds?: number;
+  maxPoints: number;
+  startValue: number;
+  candleWidth: number;
+  multiSeries: boolean;
+  candleAggregation: boolean;
+  tradeStreamEnabled: boolean;
+  tokenSymbol?: string;
+  rng: () => number;
+}): SeedResult {
+  const {
+    volatilityMode,
+    historyRange,
+    historySpanSeconds,
+    maxPoints,
+    startValue,
+    candleWidth,
+    multiSeries,
+    candleAggregation,
+    tradeStreamEnabled,
+    tokenSymbol,
+    rng,
+  } = params;
+
+  const vol = volatilityFor(volatilityMode);
+  const { points: history } = buildSeededHistory(
+    { historyRange, historySpanSeconds },
+    maxPoints,
+    startValue,
+    vol,
+    rng,
+  );
+
+  const lastMid = history[history.length - 1]?.value ?? startValue;
+  const initialTrades = tradeStreamEnabled
+    ? seedTradeTapeFromMid(lastMid, INITIAL_TAPE_EVENTS, vol, rng, tokenSymbol)
+    : [];
+
+  const initialSeries = multiSeries
+    ? generateMultiSeries({
+        ids: ["yes", "no", "maybe"],
+        colors: ["#3b82f6", "#ef4444", "#f59e0b"],
+        labels: ["Yes", "No", "Maybe"],
+        count: 150,
+        sumToHundred: true,
+      })
+    : [];
+
+  const { candles, liveCandle } = candleAggregation
+    ? aggregateCandles(history, candleWidth)
+    : { candles: [] as CandlePoint[], liveCandle: null };
+
+  return {
+    history,
+    // Mirror history JS-side only when OHLC re-aggregation needs it. This copy is
+    // load-bearing: on the web/test mutable path `data.set` does not clone, so the
+    // mirror must be an independent array from the one handed to `data`.
+    candleData: candleAggregation ? history.slice() : [],
+    initialTrades,
+    initialSeries,
+    seriesValues: initialSeries.map((s) => s.value),
+    seriesIds: initialSeries.map((s) => s.id),
+    candles,
+    liveCandle,
+    lastMid,
+  };
+}
+
 /** @see module docstring for architecture (seed + TPS-driven live loop). */
 export function useSimulatedChartData(
   opts: SimulatedChartOptions = {},
@@ -216,67 +305,43 @@ export function useSimulatedChartData(
     bondingCurveRef.current = createBondingCurve({ basePrice: startValue });
   }
 
-  // Full reseed: history, optional tape bootstrap, multi-series baseline, bonding state.
+  // Full reseed: history, optional tape bootstrap, multi-series baseline, bonding
+  // state. The data is built by the pure `computeSeed` helper; this effect only
+  // syncs that result into the JS-side ref and the SharedValues (no prop-derived
+  // data is transformed inline here).
   useEffect(() => {
-    const rng = random01Ref.current;
-    const vol = volatilityFor(volatilityMode);
-    const { points: history } = buildSeededHistory(
-      {
-        historyRange,
-        historySpanSeconds: historySpanSecondsOpt,
-      },
+    const seed = computeSeed({
+      volatilityMode,
+      historyRange,
+      historySpanSeconds: historySpanSecondsOpt,
       maxPoints,
       startValue,
-      vol,
-      rng,
-    );
+      candleWidth,
+      multiSeries,
+      candleAggregation,
+      tradeStreamEnabled,
+      tokenSymbol,
+      rng: random01Ref.current,
+    });
 
     bondingCurveRef.current = createBondingCurve({ basePrice: startValue });
 
-    const lastMid = history[history.length - 1]?.value ?? startValue;
-    const initialTrades = tradeStreamEnabled
-      ? seedTradeTapeFromMid(
-          lastMid,
-          INITIAL_TAPE_EVENTS,
-          vol,
-          rng,
-          tokenSymbol,
-        )
-      : [];
-
-    const initialSeries = multiSeries
-      ? generateMultiSeries({
-          ids: ["yes", "no", "maybe"],
-          colors: ["#3b82f6", "#ef4444", "#f59e0b"],
-          labels: ["Yes", "No", "Maybe"],
-          count: 150,
-          sumToHundred: true,
-        })
-      : [];
-
     buf.current = {
-      lastMid,
-      seriesValues: initialSeries.map((s) => s.value),
-      seriesIds: initialSeries.map((s) => s.id),
-      // Mirror history JS-side only when OHLC re-aggregation needs it.
-      candleData: candleAggregation ? history.slice() : [],
-      tradeStream: initialTrades,
+      lastMid: seed.lastMid,
+      seriesValues: seed.seriesValues,
+      seriesIds: seed.seriesIds,
+      candleData: seed.candleData,
+      tradeStream: seed.initialTrades,
     };
 
     // Seed assigns the full arrays once (a single clone at seed time is fine);
     // the live loop then appends in place via `.modify`.
-    data.set(history);
-    value.set(lastMid);
-    tradeStream.set(initialTrades);
-    series.set(initialSeries);
-    if (candleAggregation) {
-      const c = aggregateCandles(history, candleWidth);
-      candles.set(c.candles);
-      liveCandle.set(c.liveCandle);
-    } else {
-      candles.set([]);
-      liveCandle.set(null);
-    }
+    data.set(seed.history);
+    value.set(seed.lastMid);
+    tradeStream.set(seed.initialTrades);
+    series.set(seed.initialSeries);
+    candles.set(seed.candles);
+    liveCandle.set(seed.liveCandle);
   }, [
     volatilityMode,
     historyRange,
@@ -298,17 +363,18 @@ export function useSimulatedChartData(
     liveCandle,
   ]);
 
-  // Re-bucket OHLC when `candleWidth` / aggregation toggles without throwing away tick history.
+  // Re-bucket OHLC when `candleWidth` / aggregation toggles without throwing away
+  // tick history. Computed unconditionally (empty when aggregation is off) and
+  // synced — no prop-derived `if` branch. The only guard is a ref check (skip
+  // until the tick mirror has been seeded), which isn't an event-handler shape.
   useEffect(() => {
-    if (!candleAggregation) {
-      candles.set([]);
-      liveCandle.set(null);
-      return;
-    }
-    if (buf.current.candleData.length === 0) return;
-    const c = aggregateCandles(buf.current.candleData, candleWidth);
-    candles.set(c.candles);
-    liveCandle.set(c.liveCandle);
+    if (candleAggregation && buf.current.candleData.length === 0) return;
+    const { candles: nextCandles, liveCandle: nextLiveCandle } =
+      candleAggregation
+        ? aggregateCandles(buf.current.candleData, candleWidth)
+        : { candles: [] as CandlePoint[], liveCandle: null };
+    candles.set(nextCandles);
+    liveCandle.set(nextLiveCandle);
   }, [candleWidth, candleAggregation, candles, liveCandle]);
 
   // Live: setInterval (jitter 0) or chained setTimeout (jitter > 0). Cleanup clears all timers.
