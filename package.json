@@ -23,7 +23,8 @@
     "verify": "npm run typecheck && npm run lint && npm test",
     "verify:coverage": "npm run typecheck && npm run lint && npm run test:coverage",
     "prepare": "husky",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "npx react-doctor@latest",
+    "docs": "cd docs && npx mint@latest dev"
   },
   "dependencies": {
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",

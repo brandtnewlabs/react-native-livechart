@@ -1,0 +1,70 @@
+---
+title: Line & area
+icon: "chart-line"
+description: "Customize the single-series line chart: gradient, badge, value line, dot, and live value."
+---
+
+`LiveChart` renders a single line series by default. History comes from a
+`SharedValue<LiveChartPoint[]>` and the live tip from a `SharedValue<number>`.
+
+```tsx
+<LiveChart data={data} value={value} accentColor="#22c55e" />
+```
+
+## Line styling
+
+Override the stroke with the `line` prop, and the area fill with `gradient`:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  line={{ width: 2, color: "#22c55e" }}
+  gradient={{ topOpacity: 0.35, bottomOpacity: 0 }}
+/>
+```
+
+Pass `gradient={false}` to remove the area fill entirely.
+
+## Badge, dot, and value line
+
+By default the chart draws a value badge at the tip, a pulsing live dot, and (optionally) a
+dashed value line across the plot.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  badge={{ variant: "default", position: "right" }}
+  pulse={{ interval: 2400, maxRadius: 20 }}
+  valueLine={{ intervals: [4, 4] }}
+/>
+```
+
+<Note>
+  Most boolean-ish props accept `true` (defaults), `false` (off), or a config object — for
+  example `badge`, `pulse`, `valueLine`, `gradient`, `scrub`, and `yAxis`.
+</Note>
+
+## Live value overlay
+
+Render the current value as large text in the top-left, optionally tinted by momentum:
+
+```tsx
+<LiveChart data={data} value={value} showValue valueMomentumColor />
+```
+
+## Formatting
+
+Customize axis, badge, and tooltip text with `formatValue` and `formatTime`:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  formatValue={(v) => `$${v.toFixed(2)}`}
+  formatTime={(t) => new Date(t * 1000).toLocaleTimeString()}
+/>
+```
+
+See the full prop list in the [`LiveChart` reference](/api-reference/livechart).

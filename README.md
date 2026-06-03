@@ -60,13 +60,36 @@ From **Expo SDK 53+**, Metro resolves `import` using `package.json` **`exports`*
 ## Quick start
 
 ```tsx
-import { LiveChart } from "react-native-livechart";
+import { useEffect } from "react";
+import { View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
+import { LiveChart, type LiveChartPoint } from "react-native-livechart";
 
-const data = useSharedValue<{ time: number; value: number }[]>([]);
-const value = useSharedValue(0);
+function LivePrice() {
+  const data = useSharedValue<LiveChartPoint[]>([]);
+  const value = useSharedValue(100);
 
-<LiveChart data={data} value={value} />;
+  useEffect(() => {
+    const id = setInterval(() => {
+      const next = value.get() + (Math.random() - 0.5) * 2;
+      // Reanimated 4: append in place on the UI thread + set the scalar — never `data.value = ...`
+      data.modify((arr) => {
+        "worklet";
+        arr.push({ time: Date.now() / 1000, value: next });
+        if (arr.length > 600) arr.shift();
+        return arr;
+      });
+      value.set(next);
+    }, 100);
+    return () => clearInterval(id);
+  }, [data, value]);
+
+  return (
+    <View style={{ height: 240 }}>
+      <LiveChart data={data} value={value} accentColor="#3b82f6" />
+    </View>
+  );
+}
 ```
 
 Candlestick mode is a prop away:
@@ -78,11 +101,11 @@ Candlestick mode is a prop away:
 Multi-series with a legend:
 
 ```tsx
-import { LiveChartSeries } from "react-native-livechart";
+import { LiveChartSeries, type SeriesConfig } from "react-native-livechart";
 
-const series = useSharedValue([
-  { id: "btc", label: "BTC", color: "#f7931a", data: [] },
-  { id: "eth", label: "ETH", color: "#627eea", data: [] },
+const series = useSharedValue<SeriesConfig[]>([
+  { id: "btc", label: "BTC", color: "#f7931a", data: [], value: 0 },
+  { id: "eth", label: "ETH", color: "#627eea", data: [], value: 0 },
 ]);
 
 <LiveChartSeries series={series} legend dot />;
@@ -121,7 +144,7 @@ The tables below are a **highlight** — the **canonical, full reference is the 
 | `onSeriesToggle` | Chip tap                                    |
 | `onScrub`        | Worklet-friendly multi-series scrub payload |
 
-Shared props (both components) include `font`, `insets`, `xAxis`, `yAxis`, `referenceLine`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, `emptyText`, and more — see the types for the complete set.
+These tables are a **highlight, not the full surface** (`LiveChart` alone has ~48 props). Other shared props include `font`, `insets`, `smoothing`, `xAxis`, `yAxis`, `referenceLines`, `gridStyle`, `palette`, `markers`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, and `emptyText`; single-series adds `gradient`, `badge`, `pulse`, `valueLine`, and `showValue`. See the TypeScript types and JSDoc for the complete, canonical reference.
 
 ## Examples (Expo app in this repo)
 

@@ -49,3 +49,8 @@ app-example
 
 # Generated at pack time from the repo-root README (single source of truth)
 /packages/react-native-livechart/README.md
+
+# Mintlify (local dev cache)
+.mint/
+.mintlify/
+docs/.mint/

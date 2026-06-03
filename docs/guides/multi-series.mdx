@@ -1,0 +1,70 @@
+---
+title: Multi-series
+icon: "layer-group"
+description: "Render several live series with a toggleable legend and per-series dots."
+---
+
+`LiveChartSeries` draws multiple line series that share an axis, time window, and crosshair.
+Pass a `SharedValue<SeriesConfig[]>`.
+
+```tsx
+import { useSharedValue } from "react-native-reanimated";
+import { LiveChartSeries, type SeriesConfig } from "react-native-livechart";
+
+const series = useSharedValue<SeriesConfig[]>([
+  { id: "btc", label: "BTC", color: "#f7931a", data: [], value: 0 },
+  { id: "eth", label: "ETH", color: "#627eea", data: [], value: 0 },
+]);
+
+<LiveChartSeries series={series} legend dot />;
+```
+
+Update the series the same way you feed a single chart — append points in place with
+`series.modify(...)` (mutating each entry's `data` array and `value`), or replace the whole array
+with `series.set(...)`. Avoid `series.value = ...`.
+
+## Series options
+
+Each `SeriesConfig` supports:
+
+| Field         | Purpose                                                        |
+| ------------- | ------------------------------------------------------------- |
+| `id`          | Stable identifier (required)                                   |
+| `data`        | `LiveChartPoint[]` history (required)                         |
+| `value`       | Latest live value for interpolation (required)                |
+| `color`       | Line color (falls back to the built-in series palette)        |
+| `label`       | Legend chip text                                               |
+| `visible`     | Show/hide the series (default `true`)                          |
+| `style`       | `"solid"` or `"dashed"` (with `intervals`)                     |
+| `strokeWidth` | Per-series width override                                      |
+| `glow`        | Soft glow behind the line                                      |
+| `kind`        | `"outcome"` (default) or `"derived"` (subdued/dashed chip)     |
+
+## Legend
+
+The legend renders toggle chips by default. Configure it with the `legend` prop, and listen for
+taps with `onSeriesToggle`:
+
+```tsx
+<LiveChartSeries
+  series={series}
+  legend={{ position: "top", compact: false }}
+  onSeriesToggle={(id, visible) => {
+    // Persist the toggle back onto the series shared value.
+    series.set(series.get().map((s) => (s.id === id ? { ...s, visible } : s)));
+  }}
+/>
+```
+
+## Per-series dots
+
+The `dot` prop controls the live dots, their pulse, value lines, and inline labels:
+
+```tsx
+<LiveChartSeries
+  series={series}
+  dot={{ radius: 3.5, pulse: true, valueLine: true, valueLabel: true }}
+/>
+```
+
+See the full prop list in the [`LiveChartSeries` reference](/api-reference/livechart-series).
