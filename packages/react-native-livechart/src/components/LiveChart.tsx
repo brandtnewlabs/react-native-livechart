@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
@@ -159,17 +158,11 @@ export function LiveChart({
   const tradeStreamResolved = resolveTradeStream(tradeStream);
 
   // Merge the legacy singular `referenceLine` into the `referenceLines` array.
-  const allRefLines = useMemo(
-    () => [
-      ...(referenceLine ? [referenceLine] : []),
-      ...(referenceLines ?? []),
-    ],
-    [referenceLine, referenceLines],
-  );
-  const refValues = useMemo(
-    () => collectReferenceValues(allRefLines),
-    [allRefLines],
-  );
+  const allRefLines = [
+    ...(referenceLine ? [referenceLine] : []),
+    ...(referenceLines ?? []),
+  ];
+  const refValues = collectReferenceValues(allRefLines);
 
   const badgeUsesRightGutter =
     badgeCfg !== null && (badgeCfg.position ?? "right") === "right";

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   runOnJS,
@@ -39,13 +39,11 @@ export function useMarkers(
   useEffect(() => {
     onHoverRef.current = onMarkerHover;
   });
-  const emitHover = useCallback(
+  const emitHover =
     /* istanbul ignore next -- invoked only from the UI-thread tap worklet */
     (event: MarkerHoverEvent | null) => {
       onHoverRef.current?.(event);
-    },
-    [],
-  );
+    };
 
   useFrameCallback(
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
@@ -74,24 +72,20 @@ export function useMarkers(
     },
   );
 
-  const tapGesture = useMemo(
-    () =>
-      Gesture.Tap().onEnd(
-        /* istanbul ignore next -- gesture worklet runs on UI thread, not in Jest */ (
-          e,
-        ) => {
-          "worklet";
-          const idx = nearestMarkerIndex(projected.get(), e.x, e.y, hitRadius);
-          if (idx < 0) {
-            runOnJS(emitHover)(null);
-            return;
-          }
-          const m = markers.get()[idx];
-          const p = projected.get()[idx];
-          runOnJS(emitHover)({ marker: m, point: { x: p.x, y: p.y } });
-        },
-      ),
-    [projected, markers, hitRadius, emitHover],
+  const tapGesture = Gesture.Tap().onEnd(
+    /* istanbul ignore next -- gesture worklet runs on UI thread, not in Jest */ (
+      e,
+    ) => {
+      "worklet";
+      const idx = nearestMarkerIndex(projected.get(), e.x, e.y, hitRadius);
+      if (idx < 0) {
+        runOnJS(emitHover)(null);
+        return;
+      }
+      const m = markers.get()[idx];
+      const p = projected.get()[idx];
+      runOnJS(emitHover)({ marker: m, point: { x: p.x, y: p.y } });
+    },
   );
 
   return { projected, tapGesture };

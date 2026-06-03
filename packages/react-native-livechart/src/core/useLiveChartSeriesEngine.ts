@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -50,7 +50,7 @@ export interface MultiEngineFrameRefs {
  * Reusable per-frame scratch for {@link applyLiveChartSeriesEngineFrame}. The two
  * output arrays ping-pong so the assigned reference still changes each frame
  * (Reanimated propagates on reference change) without allocating a fresh array
- * per frame. Create one per engine via `useMemo`.
+ * per frame. Create one per engine (the React Compiler keeps it stable).
  */
 export interface MultiSeriesEngineScratch {
   dvA: number[];
@@ -163,13 +163,14 @@ export function useLiveChartSeriesEngine(
   const { series } = config;
 
   // Reused per-frame output buffers (ping-ponged) — see applyLiveChartSeriesEngineFrame.
-  const scratch = useMemo<MultiSeriesEngineScratch>(
-    () => ({ dvA: [], dvB: [], opA: [], opB: [], tick: false }),
-    [],
-  );
+  const scratchRef = useRef<MultiSeriesEngineScratch | null>(null);
+  if (scratchRef.current === null) {
+    scratchRef.current = { dvA: [], dvB: [], opA: [], opB: [], tick: false };
+  }
 
   useFrameCallback((frameInfo) => {
     "worklet";
+    const scratch = scratchRef.current!;
     applyLiveChartSeriesEngineFrame(
       frameInfo,
       {

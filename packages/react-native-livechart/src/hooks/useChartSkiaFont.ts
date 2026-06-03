@@ -4,7 +4,6 @@ import {
   useFont,
   type SkFont,
 } from "@shopify/react-native-skia";
-import { useMemo } from "react";
 
 import { resolveFontConfig } from "../core/resolveConfig";
 import type { FontConfig } from "../types";
@@ -23,13 +22,9 @@ export function useChartSkiaFont(
   const typefaceSource = fontProp?.typeface ?? null;
   const customFont = useFont(typefaceSource, fontSize);
 
-  const fallbackFont = useMemo(
-    () =>
-      matchFont(
-        { fontFamily, fontSize, fontWeight },
-        fontProp?.fontManager ?? Skia.FontMgr.System(),
-      ),
-    [fontFamily, fontSize, fontWeight, fontProp?.fontManager],
+  const fallbackFont = matchFont(
+    { fontFamily, fontSize, fontWeight },
+    fontProp?.fontManager ?? Skia.FontMgr.System(),
   );
 
   if (typefaceSource != null) {

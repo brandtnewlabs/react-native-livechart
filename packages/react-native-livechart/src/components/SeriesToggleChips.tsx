@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -37,9 +37,9 @@ export function SeriesToggleChips({
     series.get().slice(),
   );
 
-  const pullSnapshot = useCallback((sv: SharedValue<SeriesConfig[]>) => {
+  const pullSnapshot = (sv: SharedValue<SeriesConfig[]>) => {
     setSnapshot(sv.get().slice());
-  }, []);
+  };
 
   useAnimatedReaction(
     () => seriesMetaSig(series.get()),

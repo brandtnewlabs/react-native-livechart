@@ -5,7 +5,7 @@
  * @see https://github.com/benjitaylor/liveline
  */
 import { Canvas, Group } from "@shopify/react-native-skia";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
@@ -132,17 +132,11 @@ export function LiveChartSeries({
   const legendCfg = resolveLegend(legendProp, seriesToggleCompact);
   const degenCfg = resolveDegen(degen);
 
-  const allRefLines = useMemo(
-    () => [
-      ...(referenceLine ? [referenceLine] : []),
-      ...(referenceLines ?? []),
-    ],
-    [referenceLine, referenceLines],
-  );
-  const refValues = useMemo(
-    () => collectReferenceValues(allRefLines),
-    [allRefLines],
-  );
+  const allRefLines = [
+    ...(referenceLine ? [referenceLine] : []),
+    ...(referenceLines ?? []),
+  ];
+  const refValues = collectReferenceValues(allRefLines);
 
   const palette = applyPaletteOverride(
     resolveTheme(accentColor, theme),
@@ -237,9 +231,9 @@ export function LiveChartSeries({
     resolveMultiSeriesLineColorsSnapshot(series.value),
   );
 
-  const syncColors = useCallback((sv: SharedValue<SeriesConfig[]>) => {
+  const syncColors = (sv: SharedValue<SeriesConfig[]>) => {
     setLineColors(resolveMultiSeriesLineColorsSnapshot(sv.value));
-  }, []);
+  };
 
   useAnimatedReaction(
     () => lineColorsSig(series),
@@ -256,9 +250,9 @@ export function LiveChartSeries({
     resolveMultiSeriesLineStylesSnapshot(series.value),
   );
 
-  const syncStyles = useCallback((sv: SharedValue<SeriesConfig[]>) => {
+  const syncStyles = (sv: SharedValue<SeriesConfig[]>) => {
     setLineStyles(resolveMultiSeriesLineStylesSnapshot(sv.value));
-  }, []);
+  };
 
   useAnimatedReaction(
     () => lineStyleSignatureFromArray(series.value),

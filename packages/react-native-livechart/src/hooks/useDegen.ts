@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   runOnJS,
   useDerivedValue,
@@ -61,9 +61,9 @@ export function useDegen(
     onShakeRef.current = onShake;
   });
 
-  const emitShake = useCallback((direction: "up" | "down") => {
+  const emitShake = (direction: "up" | "down") => {
     onShakeRef.current?.({ direction });
-  }, []);
+  };
 
   const degenOff = cfg === null;
   const resolvedScale = cfg?.scale ?? 1;
