@@ -1,4 +1,4 @@
-import { useImage } from "@shopify/react-native-skia";
+import { useImage, type SkImage } from "@shopify/react-native-skia";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import {
@@ -37,6 +37,17 @@ type GlyphMode = "shape" | "symbol" | "image";
 /** Visible time window (s). Markers are kept until they scroll just past it. */
 const WINDOW = 30;
 
+/** Per-kind glyph decoration for the current mode (shape = no icon/image override). */
+function decorate(
+  kind: MarkerKind,
+  mode: GlyphMode,
+  logo: SkImage | null,
+): Partial<Marker> {
+  if (mode === "symbol") return { icon: SYMBOLS[kind] };
+  if (mode === "image" && logo) return { image: logo, size: 22 };
+  return {};
+}
+
 export default function MarkersScreen() {
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -53,19 +64,6 @@ export default function MarkersScreen() {
   const [glyph, setGlyph] = useState<GlyphMode>("shape");
   const [hover, setHover] = useState("Tap a marker glyph");
 
-  // Latest glyph mode for the interval closure without re-arming it each toggle.
-  const glyphRef = useRef(glyph);
-  useEffect(() => {
-    glyphRef.current = glyph;
-  });
-
-  const decorate = (kind: MarkerKind): Partial<Marker> => {
-    const mode = glyphRef.current;
-    if (mode === "symbol") return { icon: SYMBOLS[kind] };
-    if (mode === "image" && logo) return { image: logo, size: 22 };
-    return {};
-  };
-
   // Drop a marker (cycling kinds) near the live edge every 1.5s.
   useEffect(() => {
     if (!auto) return;
@@ -79,7 +77,7 @@ export default function MarkersScreen() {
         kind,
         value: value.get(),
         data: { kind },
-        ...decorate(kind),
+        ...decorate(kind, glyph, logo),
       };
       // Keep markers until they scroll just past the left edge of the window
       // (not a fixed count — a low cap would evict still-visible markers
@@ -91,8 +89,7 @@ export default function MarkersScreen() {
       );
     }, 1500);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- glyph read via ref
-  }, [auto, markers, value]);
+  }, [auto, markers, value, glyph, logo]);
 
   const spawnAll = () => {
     const now = Date.now() / 1000;
@@ -104,7 +101,7 @@ export default function MarkersScreen() {
         kind,
         value: v * (1 + (i - 2) * 0.01),
         data: { kind },
-        ...decorate(kind),
+        ...decorate(kind, glyph, logo),
       })),
     );
   };
@@ -117,10 +114,9 @@ export default function MarkersScreen() {
         icon: undefined,
         image: undefined,
         size: undefined,
-        ...decorate(m.kind),
+        ...decorate(m.kind, glyph, logo),
       })),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- decorate reads glyphRef + logo
   }, [glyph, logo, markers]);
 
   return (
