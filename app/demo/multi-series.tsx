@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { TextInput } from "react-native";
 import {
   formatTime,
   LiveChartSeries,
@@ -15,11 +15,53 @@ import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "../../demo-lib/shared";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { demoStyles } from "../../demo-lib/styles";
+import { APP_THEME } from "../../demo-lib/theme";
 
 export const options = { title: "Multi-series" };
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+const DATA_OPTIONS: { value: boolean; label: string }[] = [
+  { value: false, label: "Simulated series" },
+  { value: true, label: "Empty series[]" },
+];
+
+const DOT_RADIUS_OPTIONS: { value: number; label: string }[] = [
+  { value: 2, label: "r=2" },
+  { value: 3.5, label: "r=3.5" },
+  { value: 5, label: "r=5" },
+  { value: 7, label: "r=7" },
+];
+
+const LEGEND_POSITION_OPTIONS: { value: "top" | "bottom"; label: string }[] = [
+  { value: "top", label: "Top" },
+  { value: "bottom", label: "Bottom" },
+];
+
+const WINDOW_OPTIONS = TIME_WINDOWS.slice(0, 4).map((w) => ({
+  value: w.secs,
+  label: w.label,
+}));
+
+const SMOOTHING_OPTIONS = SMOOTHING_PRESETS.map((s) => ({
+  value: s.value,
+  label: s.label,
+}));
+
+const THEME_OPTIONS: { value: "dark" | "light"; label: string }[] = [
+  { value: "dark", label: "Dark" },
+  { value: "light", label: "Light" },
+];
+
+const AXIS_OPTIONS: { value: "both" | "noY" | "noX" | "none"; label: string }[] =
+  [
+    { value: "both", label: "Both" },
+    { value: "noY", label: "No Y" },
+    { value: "noX", label: "No X" },
+    { value: "none", label: "None" },
+  ];
 
 export default function MultiSeriesScreen() {
   const seriesVisibilityRef = useRef<Record<string, boolean>>({});
@@ -31,7 +73,7 @@ export default function MultiSeriesScreen() {
   const [windowSecs, setWindowSecs] = useState(60);
   const [smoothing, setSmoothing] = useState(0.08);
   const [exaggerate, setExaggerate] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">(APP_THEME);
   const [showRef, setShowRef] = useState(false);
   const [axisVis, setAxisVis] = useState<"both" | "noY" | "noX" | "none">(
     "both",
@@ -107,14 +149,15 @@ export default function MultiSeriesScreen() {
           fontSize: 14,
           dotSize: 10,
           activeBackground: "rgba(96,165,250,0.18)",
-          activeColor: "#ffffff",
-          hiddenColor: "rgba(255,255,255,0.35)",
+          activeColor: "#0f172a",
+          hiddenColor: "rgba(0,0,0,0.35)",
         }
       : undefined,
   };
 
   return (
     <DemoScreen
+      docs="guides/multi-series"
       description="series, onSeriesToggle, scrub, axis visibility. Chart stays empty until at least one series has ≥2 points (toggle No series for shell)."
       chart={
         <>
@@ -180,349 +223,104 @@ export default function MultiSeriesScreen() {
         </>
       }
     >
-      <Text style={demoStyles.sectionLabel}>Data</Text>
-      <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, !empty && demoStyles.chipActive]}
-          onPress={() => setEmpty(false)}
-        >
-          <Text
-            style={[demoStyles.chipText, !empty && demoStyles.chipTextActive]}
-          >
-            Simulated series
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, empty && demoStyles.chipActive]}
-          onPress={() => setEmpty(true)}
-        >
-          <Text
-            style={[demoStyles.chipText, empty && demoStyles.chipTextActive]}
-          >
-            Empty series[]
-          </Text>
-        </Pressable>
-      </View>
+      <ChipRow label="Data" options={DATA_OPTIONS} value={empty} onChange={setEmpty} />
 
-      <Text style={demoStyles.sectionLabel}>Dot</Text>
-      <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, pulse && demoStyles.chipActive]}
-          onPress={() => setPulse((v) => !v)}
-        >
-          <Text
-            style={[demoStyles.chipText, pulse && demoStyles.chipTextActive]}
-          >
-            Pulse
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, valueLabels && demoStyles.chipActive]}
-          onPress={() => setValueLabels((v) => !v)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              valueLabels && demoStyles.chipTextActive,
-            ]}
-          >
-            Labels
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, valueLines && demoStyles.chipActive]}
-          onPress={() => setValueLines((v) => !v)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              valueLines && demoStyles.chipTextActive,
-            ]}
-          >
-            Value lines
-          </Text>
-        </Pressable>
-      </View>
-      <View style={demoStyles.buttonRow}>
-        {([2, 3.5, 5, 7] as const).map((r) => (
-          <Pressable
-            key={r}
-            style={[demoStyles.chip, dotRadius === r && demoStyles.chipActive]}
-            onPress={() => setDotRadius(r)}
-          >
-            <Text
-              style={[
-                demoStyles.chipText,
-                dotRadius === r && demoStyles.chipTextActive,
-              ]}
-            >
-              r={r}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <ControlRow label="Dot">
+        <ToggleChip label="Pulse" value={pulse} onChange={setPulse} />
+        <ToggleChip label="Labels" value={valueLabels} onChange={setValueLabels} />
+        <ToggleChip
+          label="Value lines"
+          value={valueLines}
+          onChange={setValueLines}
+        />
+      </ControlRow>
+      <ChipRow
+        options={DOT_RADIUS_OPTIONS}
+        value={dotRadius}
+        onChange={setDotRadius}
+      />
 
-      <Text style={demoStyles.sectionLabel}>Legend</Text>
-      <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, legendVisible && demoStyles.chipActive]}
-          onPress={() => setLegendVisible((v) => !v)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              legendVisible && demoStyles.chipTextActive,
-            ]}
-          >
-            Visible
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, legendCompact && demoStyles.chipActive]}
-          onPress={() => setLegendCompact((v) => !v)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              legendCompact && demoStyles.chipTextActive,
-            ]}
-          >
-            Compact
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[
-            demoStyles.chip,
-            legendPosition === "top" && demoStyles.chipActive,
-          ]}
-          onPress={() => setLegendPosition("top")}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              legendPosition === "top" && demoStyles.chipTextActive,
-            ]}
-          >
-            Top
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[
-            demoStyles.chip,
-            legendPosition === "bottom" && demoStyles.chipActive,
-          ]}
-          onPress={() => setLegendPosition("bottom")}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              legendPosition === "bottom" && demoStyles.chipTextActive,
-            ]}
-          >
-            Bottom
-          </Text>
-        </Pressable>
-      </View>
+      <ControlRow label="Legend">
+        <ToggleChip
+          label="Visible"
+          value={legendVisible}
+          onChange={setLegendVisible}
+        />
+        <ToggleChip
+          label="Compact"
+          value={legendCompact}
+          onChange={setLegendCompact}
+        />
+      </ControlRow>
+      <ChipRow
+        options={LEGEND_POSITION_OPTIONS}
+        value={legendPosition}
+        onChange={setLegendPosition}
+      />
 
-      <Text style={demoStyles.sectionLabel}>Per-series style & degen</Text>
-      <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, styled && demoStyles.chipActive]}
-          onPress={() => setStyled((v) => !v)}
-        >
-          <Text
-            style={[demoStyles.chipText, styled && demoStyles.chipTextActive]}
-          >
-            Styled lines
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, legendStyled && demoStyles.chipActive]}
-          onPress={() => setLegendStyled((v) => !v)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              legendStyled && demoStyles.chipTextActive,
-            ]}
-          >
-            Legend style
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, degenOn && demoStyles.chipActive]}
-          onPress={() => setDegenOn((v) => !v)}
-        >
-          <Text
-            style={[demoStyles.chipText, degenOn && demoStyles.chipTextActive]}
-          >
-            Degen
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, degenColors && demoStyles.chipActive]}
-          onPress={() => setDegenColors((v) => !v)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              degenColors && demoStyles.chipTextActive,
-            ]}
-          >
-            Degen colors
-          </Text>
-        </Pressable>
-      </View>
+      <ControlRow label="Per-series style & degen">
+        <ToggleChip label="Styled lines" value={styled} onChange={setStyled} />
+        <ToggleChip
+          label="Legend style"
+          value={legendStyled}
+          onChange={setLegendStyled}
+        />
+        <ToggleChip label="Degen" value={degenOn} onChange={setDegenOn} />
+        <ToggleChip
+          label="Degen colors"
+          value={degenColors}
+          onChange={setDegenColors}
+        />
+      </ControlRow>
 
-      <Text style={demoStyles.sectionLabel}>Time window</Text>
-      <View style={demoStyles.buttonRow}>
-        {TIME_WINDOWS.slice(0, 4).map((w) => (
-          <Pressable
-            key={w.label}
-            style={[
-              demoStyles.chip,
-              windowSecs === w.secs && demoStyles.chipActive,
-            ]}
-            onPress={() => setWindowSecs(w.secs)}
-          >
-            <Text
-              style={[
-                demoStyles.chipText,
-                windowSecs === w.secs && demoStyles.chipTextActive,
-              ]}
-            >
-              {w.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <ChipRow
+        label="Time window"
+        options={WINDOW_OPTIONS}
+        value={windowSecs}
+        onChange={setWindowSecs}
+      />
 
-      <Text style={demoStyles.sectionLabel}>Smoothing</Text>
-      <View style={demoStyles.buttonRow}>
-        {SMOOTHING_PRESETS.map((s) => (
-          <Pressable
-            key={s.label}
-            style={[
-              demoStyles.chip,
-              smoothing === s.value && demoStyles.chipActive,
-            ]}
-            onPress={() => setSmoothing(s.value)}
-          >
-            <Text
-              style={[
-                demoStyles.chipText,
-                smoothing === s.value && demoStyles.chipTextActive,
-              ]}
-            >
-              {s.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <ChipRow
+        label="Smoothing"
+        options={SMOOTHING_OPTIONS}
+        value={smoothing}
+        onChange={setSmoothing}
+      />
 
-      <Text style={demoStyles.sectionLabel}>Playback & theme</Text>
-      <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, paused && demoStyles.chipActive]}
-          onPress={() => setPaused((p) => !p)}
-        >
-          <Text
-            style={[demoStyles.chipText, paused && demoStyles.chipTextActive]}
-          >
-            Pause
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, exaggerate && demoStyles.chipActive]}
-          onPress={() => setExaggerate((e) => !e)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              exaggerate && demoStyles.chipTextActive,
-            ]}
-          >
-            Exaggerate
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, loading && demoStyles.chipActive]}
+      <ControlRow label="Playback & theme">
+        <ToggleChip
+          label="Pause"
+          value={paused}
+          onChange={() => setPaused((p) => !p)}
+        />
+        <ToggleChip
+          label="Exaggerate"
+          value={exaggerate}
+          onChange={() => setExaggerate((e) => !e)}
+        />
+        <Chip
+          label={loading ? "…" : "Load"}
+          active={loading}
+          disabled={loading}
           onPress={() => {
             setLoading(true);
             setTimeout(() => setLoading(false), 2000);
           }}
-          disabled={loading}
-        >
-          <Text
-            style={[demoStyles.chipText, loading && demoStyles.chipTextActive]}
-          >
-            {loading ? "…" : "Load"}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, theme === "dark" && demoStyles.chipActive]}
-          onPress={() => setTheme("dark")}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              theme === "dark" && demoStyles.chipTextActive,
-            ]}
-          >
-            Dark
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, theme === "light" && demoStyles.chipActive]}
-          onPress={() => setTheme("light")}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              theme === "light" && demoStyles.chipTextActive,
-            ]}
-          >
-            Light
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, showRef && demoStyles.chipActive]}
-          onPress={() => setShowRef((r) => !r)}
-        >
-          <Text
-            style={[demoStyles.chipText, showRef && demoStyles.chipTextActive]}
-          >
-            Ref line
-          </Text>
-        </Pressable>
-      </View>
+        />
+        <ToggleChip
+          label="Ref line"
+          value={showRef}
+          onChange={() => setShowRef((r) => !r)}
+        />
+      </ControlRow>
+      <ChipRow options={THEME_OPTIONS} value={theme} onChange={setTheme} />
 
-      <Text style={demoStyles.sectionLabel}>Axes</Text>
-      <View style={demoStyles.buttonRow}>
-        {(
-          [
-            ["both", "Both"],
-            ["noY", "No Y"],
-            ["noX", "No X"],
-            ["none", "None"],
-          ] as const
-        ).map(([k, label]) => (
-          <Pressable
-            key={k}
-            style={[demoStyles.chip, axisVis === k && demoStyles.chipActive]}
-            onPress={() => setAxisVis(k)}
-          >
-            <Text
-              style={[
-                demoStyles.chipText,
-                axisVis === k && demoStyles.chipTextActive,
-              ]}
-            >
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <ChipRow
+        label="Axes"
+        options={AXIS_OPTIONS}
+        value={axisVis}
+        onChange={setAxisVis}
+      />
     </DemoScreen>
   );
 }

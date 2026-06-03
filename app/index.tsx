@@ -1,97 +1,125 @@
 import { Link, type Href } from "expo-router";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { MONO_FONT_FAMILY } from "react-native-livechart";
+import { Pressable, SectionList, StyleSheet, Text, View } from "react-native";
+import { APP_FONT_FAMILY, APP_FONT_FAMILY_SEMIBOLD } from "../demo-lib/fonts";
+import { colors } from "../demo-lib/theme";
 
-const DEMOS: { href: Href; title: string; blurb: string }[] = [
+type Demo = { href: Href; title: string; blurb: string };
+type DemoSection = { title: string; data: Demo[] };
+
+/**
+ * Demos are grouped to mirror the docs taxonomy (core → interaction → effects
+ * → annotation → presentation), plus an "Engine & data" group for the
+ * playback / state / layout concerns the guides don't yet cover.
+ */
+const SECTIONS: DemoSection[] = [
   {
-    href: "/demo/playground",
-    title: "Playground",
-    blurb: "All-in-one: line/candle, trades, degen, loading, etc.",
+    title: "Get started",
+    data: [
+      {
+        href: "/demo/playground",
+        title: "Playground",
+        blurb: "Kitchen sink — most LiveChart props on one screen.",
+      },
+    ],
   },
   {
-    href: "/demo/line-playback",
-    title: "Line & playback",
-    blurb: "timeWindow, pause, smoothing, exaggerate.",
+    title: "Core charts",
+    data: [
+      {
+        href: "/demo/line",
+        title: "Line & area",
+        blurb: "Badge, pulse, value line, live value overlay.",
+      },
+      {
+        href: "/demo/candlestick",
+        title: "Candlestick",
+        blurb: "mode=candle, candles, liveCandle, candleWidth.",
+      },
+      {
+        href: "/demo/multi-series",
+        title: "Multi-series",
+        blurb: "LiveChartSeries: per-series style, legend, dots, scrub.",
+      },
+    ],
   },
   {
-    href: "/demo/candlestick",
-    title: "Candlestick",
-    blurb: "mode=candle, candles, liveCandle, candleWidth.",
+    title: "Interaction",
+    data: [
+      {
+        href: "/demo/scrubbing",
+        title: "Scrubbing",
+        blurb: "Scrub modes, styled tooltip, onScrub readout, candle OHLC.",
+      },
+    ],
   },
   {
-    href: "/demo/appearance",
+    title: "Effects",
+    data: [
+      {
+        href: "/demo/momentum-degen",
+        title: "Momentum & degen",
+        blurb: "Momentum badge tint + particle / shake presets.",
+      },
+    ],
+  },
+  {
+    title: "Annotations",
+    data: [
+      {
+        href: "/demo/markers",
+        title: "Markers & trades",
+        blurb: "markers[] glyphs, tap hover, tradeStream overlay.",
+      },
+      {
+        href: "/demo/reference-lines",
+        title: "Reference lines & bands",
+        blurb: "referenceLines: lines, value/time bands, off-axis badge.",
+      },
+    ],
+  },
+  {
     title: "Appearance",
-    blurb: "Theme, accent, gradient, line, font, container style.",
+    data: [
+      {
+        href: "/demo/theming",
+        title: "Theming",
+        blurb: "Theme, accent, gradient, line, font, grid, palette.",
+      },
+      {
+        href: "/demo/axes-grid",
+        title: "Axes & grid",
+        blurb: "Hide X/Y, minGap, insets; LiveChart vs LiveChartSeries.",
+      },
+    ],
   },
   {
-    href: "/demo/axes-insets",
-    title: "Axes & insets",
-    blurb: "Hide X/Y/both, minGap, insets; LiveChart vs LiveChartSeries.",
-  },
-  {
-    href: "/demo/chart-size",
-    title: "Chart size",
-    blurb: "Heights, narrow width, flex fill in fixed box.",
-  },
-  {
-    href: "/demo/badge-pulse",
-    title: "Badge & pulse",
-    blurb: "Badge variants, pulse, showValue overlay + momentum color.",
-  },
-  {
-    href: "/demo/momentum",
-    title: "Momentum",
-    blurb:
-      "Badge tint vs auto/forced/config; volatility + exaggerate to see changes.",
-  },
-  {
-    href: "/demo/scrub",
-    title: "Scrub",
-    blurb: "Scrub modes, styled tooltip, onScrub readout, candle OHLC.",
-  },
-  {
-    href: "/demo/horizontal-lines",
-    title: "Reference lines & bands",
-    blurb: "referenceLines array: lines, value/time bands, off-axis badge.",
-  },
-  {
-    href: "/demo/trade-stream",
-    title: "Trade stream",
-    blurb: "Markers, orderbook vs bonding-curve.",
-  },
-  {
-    href: "/demo/markers",
-    title: "Markers",
-    blurb: "markers[]: trade/boost/graduation/winner/clawback + tap hover.",
-  },
-  {
-    href: "/demo/degen",
-    title: "Degen",
-    blurb: "Particles, shake, DegenOptions presets.",
-  },
-  {
-    href: "/demo/edge-cases",
-    title: "Loading, empty, formatters",
-    blurb: "loading, empty data, formatValue / formatTime.",
-  },
-  {
-    href: "/demo/multi-series",
-    title: "Multi-series",
-    blurb: "Per-series style, degen, legend styling, toggles, scrub.",
-  },
-  {
-    href: "/demo/historical-data",
-    title: "Historical data fill",
-    blurb: "nowOverride + windowBuffer: fill a fixed span edge-to-edge.",
-  },
-  {
-    href: "/demo/transitions",
-    title: "Transitions",
-    blurb: "LiveChartTransition cross-fade between line and candle.",
+    title: "Engine & data",
+    data: [
+      {
+        href: "/demo/playback",
+        title: "Playback",
+        blurb: "timeWindow, paused, smoothing, exaggerate, range clamps.",
+      },
+      {
+        href: "/demo/states",
+        title: "States & formatting",
+        blurb: "Loading, empty data, formatValue / formatTime.",
+      },
+      {
+        href: "/demo/historical-data",
+        title: "Historical data fill",
+        blurb: "nowOverride + windowBuffer: fill a fixed span edge-to-edge.",
+      },
+      {
+        href: "/demo/transitions",
+        title: "Transitions",
+        blurb: "mode morph + LiveChartTransition cross-fade.",
+      },
+    ],
   },
 ];
 
-const renderDemoItem = ({ item: d }: { item: (typeof DEMOS)[number] }) => (
+const renderDemoItem = ({ item: d }: { item: Demo }) => (
   <Link href={d.href} asChild>
     <Pressable style={styles.row}>
       <Text style={styles.rowTitle}>{d.title}</Text>
@@ -100,19 +128,27 @@ const renderDemoItem = ({ item: d }: { item: (typeof DEMOS)[number] }) => (
   </Link>
 );
 
+const renderSectionHeader = ({
+  section,
+}: {
+  section: DemoSection;
+}) => <Text style={styles.sectionHeader}>{section.title}</Text>;
+
 export default function Index() {
   return (
     <View style={styles.root}>
       <Text style={styles.title}>LiveChart demos</Text>
       <Text style={styles.subtitle}>
-        Open a screen to manually test one feature area.
+        Grouped to match the docs. Open a screen to test one feature area.
       </Text>
-      <FlatList
+      <SectionList
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        data={DEMOS}
+        sections={SECTIONS}
         keyExtractor={(d) => d.title}
         renderItem={renderDemoItem}
+        renderSectionHeader={renderSectionHeader}
+        stickySectionHeadersEnabled={false}
       />
     </View>
   );
@@ -121,42 +157,49 @@ export default function Index() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "rgb(10, 10, 10)",
+    backgroundColor: colors.background,
     paddingTop: 56,
   },
   title: {
-    color: "#fff",
+    color: colors.text,
     fontSize: 22,
-    fontWeight: "600",
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY_SEMIBOLD,
     paddingHorizontal: 20,
   },
   subtitle: {
-    color: "rgba(255,255,255,0.45)",
+    color: colors.textMuted,
     fontSize: 13,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     paddingHorizontal: 20,
     marginTop: 6,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  sectionHeader: {
+    color: colors.textFaint,
+    fontSize: 11,
+    fontFamily: APP_FONT_FAMILY_SEMIBOLD,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginTop: 24,
+    marginBottom: 2,
+  },
   row: {
     marginTop: 14,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(255,255,255,0.12)",
+    borderBottomColor: colors.border,
   },
   rowTitle: {
-    color: "#60a5fa",
+    color: colors.link,
     fontSize: 16,
-    fontFamily: MONO_FONT_FAMILY,
-    fontWeight: "600",
+    fontFamily: APP_FONT_FAMILY_SEMIBOLD,
   },
   rowBlurb: {
-    color: "rgba(255,255,255,0.4)",
+    color: colors.textFaint,
     fontSize: 12,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     lineHeight: 17,
     marginTop: 6,
   },

@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text } from "react-native";
 import { LiveChart, LiveChartTransition } from "react-native-livechart";
 
-import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { ChipRow } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
+import { APP_THEME } from "../../demo-lib/theme";
 import { demoStyles } from "../../demo-lib/styles";
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
 export const options = { title: "Transitions" };
 
@@ -14,10 +16,29 @@ const CANDLE_WIDTH = 15;
 
 type Example = "mode" | "crossfade";
 
+const EXAMPLE_OPTIONS: { value: Example; label: string }[] = [
+  { value: "mode", label: "Line ↔ Candle (mode)" },
+  { value: "crossfade", label: "Cross-fade (transition)" },
+];
+
+type Mode = "line" | "candle";
+
+const MODE_OPTIONS: { value: Mode; label: string }[] = [
+  { value: "line", label: "line" },
+  { value: "candle", label: "candle" },
+];
+
+type Accent = "blue" | "violet";
+
+const ACCENT_OPTIONS: { value: Accent; label: string }[] = [
+  { value: "blue", label: "blue" },
+  { value: "violet", label: "violet" },
+];
+
 export default function TransitionsScreen() {
   const [example, setExample] = useState<Example>("mode");
-  const [mode, setMode] = useState<"line" | "candle">("line");
-  const [accent, setAccent] = useState<"blue" | "violet">("blue");
+  const [mode, setMode] = useState<Mode>("line");
+  const [accent, setAccent] = useState<Accent>("blue");
 
   const { data, value, candles, liveCandle } = useSimulatedChartData({
     multiSeries: false,
@@ -28,7 +49,8 @@ export default function TransitionsScreen() {
 
   return (
     <DemoScreen
-      description="Line↔candle uses one chart's mode prop (shared y-axis morph); LiveChartTransition cross-fades two instances"
+      docs="guides/transitions"
+      description="Line↔candle uses one chart's mode prop (shared y-axis morph); LiveChartTransition cross-fades two instances (here: accent color)"
       chart={
         example === "mode" ? (
           // Built-in line↔candle morph — ONE engine, so the y-axis eases
@@ -41,7 +63,7 @@ export default function TransitionsScreen() {
             liveCandle={liveCandle}
             candleWidth={CANDLE_WIDTH}
             accentColor={ACCENT}
-            theme="dark"
+            theme={APP_THEME}
             timeWindow={WINDOW}
             accessibilityLabel={`Price ${mode} chart`}
             scrub={false}
@@ -49,14 +71,14 @@ export default function TransitionsScreen() {
         ) : (
           // Cross-fade between two instances. keepMounted lets both settle their
           // y-range up front, so switching is a pure opacity fade. Same data +
-          // scale, so the two layers line up.
+          // scale, so the two layers line up — only the accent color differs.
           <LiveChartTransition active={accent} duration={350} keepMounted>
             <LiveChart
               key="blue"
               data={data}
               value={value}
               accentColor="#3b82f6"
-              theme="dark"
+              theme={APP_THEME}
               timeWindow={WINDOW}
               scrub={false}
             />
@@ -65,7 +87,7 @@ export default function TransitionsScreen() {
               data={data}
               value={value}
               accentColor="#a855f7"
-              theme="dark"
+              theme={APP_THEME}
               timeWindow={WINDOW}
               scrub={false}
             />
@@ -73,52 +95,21 @@ export default function TransitionsScreen() {
         )
       }
     >
-      <Text style={demoStyles.sectionLabel}>Example</Text>
-      <View style={demoStyles.buttonRow}>
-        {(
-          [
-            ["mode", "Line ↔ Candle (mode)"],
-            ["crossfade", "Cross-fade (transition)"],
-          ] as const
-        ).map(([k, label]) => (
-          <Pressable
-            key={k}
-            style={[demoStyles.chip, example === k && demoStyles.chipActive]}
-            onPress={() => setExample(k)}
-          >
-            <Text
-              style={[
-                demoStyles.chipText,
-                example === k && demoStyles.chipTextActive,
-              ]}
-            >
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <ChipRow
+        label="Example"
+        options={EXAMPLE_OPTIONS}
+        value={example}
+        onChange={setExample}
+      />
 
       {example === "mode" ? (
         <>
-          <Text style={demoStyles.sectionLabel}>Mode</Text>
-          <View style={demoStyles.buttonRow}>
-            {(["line", "candle"] as const).map((m) => (
-              <Pressable
-                key={m}
-                style={[demoStyles.chip, mode === m && demoStyles.chipActive]}
-                onPress={() => setMode(m)}
-              >
-                <Text
-                  style={[
-                    demoStyles.chipText,
-                    mode === m && demoStyles.chipTextActive,
-                  ]}
-                >
-                  {m}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <ChipRow
+            label="Mode"
+            options={MODE_OPTIONS}
+            value={mode}
+            onChange={setMode}
+          />
           <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
             One LiveChart with a toggled mode — the engine morphs line↔candle and
             the y-axis eases between the two ranges (no re-reveal).
@@ -126,28 +117,16 @@ export default function TransitionsScreen() {
         </>
       ) : (
         <>
-          <Text style={demoStyles.sectionLabel}>Active layer</Text>
-          <View style={demoStyles.buttonRow}>
-            {(["blue", "violet"] as const).map((a) => (
-              <Pressable
-                key={a}
-                style={[demoStyles.chip, accent === a && demoStyles.chipActive]}
-                onPress={() => setAccent(a)}
-              >
-                <Text
-                  style={[
-                    demoStyles.chipText,
-                    accent === a && demoStyles.chipTextActive,
-                  ]}
-                >
-                  {a}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <ChipRow
+            label="Active layer"
+            options={ACCENT_OPTIONS}
+            value={accent}
+            onChange={setAccent}
+          />
           <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
             LiveChartTransition cross-fades two chart instances (here: accent
-            color). keepMounted pre-settles both so there is no re-reveal.
+            color, blue↔violet). keepMounted pre-settles both so there is no
+            re-reveal.
           </Text>
         </>
       )}

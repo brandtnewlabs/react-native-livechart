@@ -8,6 +8,16 @@
     "light": "#5C4FEB",
     "dark": "#291CC3"
   },
+  "fonts": {
+    "heading": {
+      "family": "Plus Jakarta Sans",
+      "weight": 600
+    },
+    "body": {
+      "family": "Plus Jakarta Sans",
+      "weight": 400
+    }
+  },
   "favicon": "/favicon.png",
   "icons": {
     "library": "fontawesome"
@@ -31,6 +41,14 @@
               "guides/momentum-and-degen",
               "guides/markers-and-references",
               "guides/theming"
+            ]
+          },
+          {
+            "group": "Engine & data",
+            "pages": [
+              "guides/playback",
+              "guides/states-and-formatting",
+              "guides/transitions"
             ]
           }
         ]

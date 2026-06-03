@@ -6,7 +6,6 @@ import type {
   CandlePoint,
   LiveChartPoint,
   SeriesConfig,
-  TradeEvent,
 } from "react-native-livechart";
 
 // ─── Random walk ───────────────────────────────────────────────────────────────
@@ -133,65 +132,6 @@ export function aggregateCandles(
   return {
     candles: sorted.slice(0, -1),
     liveCandle: sorted[sorted.length - 1],
-  };
-}
-
-// ─── Bonding curve ─────────────────────────────────────────────────────────────
-
-export interface BondingCurveState {
-  supply: number;
-  basePrice: number;
-  initialSupply: number;
-  exponent: number;
-}
-
-export function createBondingCurve(
-  opts: Partial<BondingCurveState> = {},
-): BondingCurveState {
-  return {
-    supply: opts.supply ?? 1000,
-    basePrice: opts.basePrice ?? 100,
-    initialSupply: opts.initialSupply ?? 1000,
-    exponent: opts.exponent ?? 2,
-  };
-}
-
-/** Price at current supply: basePrice * (supply / initialSupply) ^ exponent */
-function bondingPrice(state: BondingCurveState): number {
-  return (
-    state.basePrice *
-    Math.pow(state.supply / state.initialSupply, state.exponent)
-  );
-}
-
-/**
- * Simulate a buy or sell on the bonding curve.
- * Returns the updated state and a TradeEvent.
- */
-export function bondingTrade(
-  state: BondingCurveState,
-  random01: () => number = Math.random,
-): {
-  state: BondingCurveState;
-  event: TradeEvent;
-} {
-  const isBuy = random01() > 0.45; // slight buy bias for upward trend
-  const amount = Math.pow(random01(), 2) * 20 + 1;
-  const newSupply = isBuy
-    ? state.supply + amount
-    : Math.max(1, state.supply - amount);
-
-  const newState = { ...state, supply: newSupply };
-  const price = bondingPrice(newState);
-
-  return {
-    state: newState,
-    event: {
-      side: isBuy ? "buy" : "sell",
-      price,
-      size: Math.round(amount * 100) / 100,
-      time: Date.now() / 1000,
-    },
   };
 }
 

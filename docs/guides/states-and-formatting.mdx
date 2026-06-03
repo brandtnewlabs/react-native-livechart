@@ -1,0 +1,61 @@
+---
+title: States & formatting
+icon: "spinner"
+description: "Loading and empty states, and worklet-safe value/time formatters."
+---
+
+Before data arrives — or when a feed runs dry — the chart shows a placeholder instead of a blank
+plot. These props control those states and the text the chart renders.
+
+<Note>
+  **Live example:**
+  [`app/demo/states.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/states.tsx)
+  in the example app.
+</Note>
+
+## Loading
+
+While you wait for data, pass `loading` to render a breathing-line placeholder.
+
+```tsx
+<LiveChart data={data} value={value} loading={!ready} />
+```
+
+## Empty state
+
+When there are fewer than two samples and `loading` is `false`, the chart shows an empty shell
+with a label. Customize the label with `emptyText`.
+
+```tsx
+<LiveChart data={data} value={value} emptyText="Waiting for trades…" />
+```
+
+## Formatting values & time
+
+`formatValue` and `formatTime` control the text on axes, the badge, and tooltips. They run on the
+UI thread, so **they must be worklet-safe** — mark them with the `"worklet"` directive and keep
+them pure (no JS-thread closures).
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  formatValue={(v) => {
+    "worklet";
+    return `$${v.toFixed(2)}`;
+  }}
+  formatTime={(t) => {
+    "worklet";
+    const s = Math.floor(t) % 60;
+    const m = Math.floor(t / 60) % 60;
+    const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+    return `${pad(m)}:${pad(s)}`;
+  }}
+/>
+```
+
+<Tip>
+  The library also exports worklet-safe
+  [`formatValue` / `formatTime`](/api-reference/hooks-and-utilities) helpers (adaptive `K` / `M`
+  suffixes and `HH:MM:SS`) you can pass directly or call from your own formatters.
+</Tip>

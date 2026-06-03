@@ -1,0 +1,49 @@
+---
+title: Transitions
+icon: "shuffle"
+description: "Animate between line and candle, or cross-fade between separate chart instances."
+---
+
+There are two kinds of transition: the built-in line/candle morph on a single chart, and
+`LiveChartTransition` for cross-fading between separate instances.
+
+<Note>
+  **Live example:**
+  [`app/demo/transitions.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/transitions.tsx)
+  in the example app.
+</Note>
+
+## Built-in line/candle morph
+
+Toggling the `mode` prop on a single `LiveChart` animates between line and candlestick on the
+same engine — no extra setup. The line path morphs into bars (and back) over one transition.
+
+```tsx
+const [mode, setMode] = useState<"line" | "candle">("line");
+
+<LiveChart
+  data={data}
+  value={value}
+  mode={mode}
+  candles={candles}
+  liveCandle={liveCandle}
+/>;
+```
+
+## Cross-fading instances
+
+To switch between *separate* charts — different symbols, timeframes, or accent treatments — wrap
+them in `LiveChartTransition`. It cross-fades by `key`:
+
+```tsx
+import { LiveChartTransition, LiveChart } from "react-native-livechart";
+
+<LiveChartTransition active={symbol} duration={300} keepMounted>
+  <LiveChart key="BTC" data={btc} value={btcValue} accentColor="#3b82f6" />
+  <LiveChart key="ETH" data={eth} value={ethValue} accentColor="#8b5cf6" />
+</LiveChartTransition>;
+```
+
+Set `keepMounted` so every child engine keeps running and switching is a pure cross-fade, with no
+reveal or range re-animation (it costs more — all engines run continuously). See the full props
+in the [`LiveChartTransition` reference](/api-reference/hooks-and-utilities).

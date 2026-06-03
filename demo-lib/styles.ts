@@ -1,26 +1,34 @@
 import { StyleSheet } from "react-native";
-import { MONO_FONT_FAMILY } from "react-native-livechart";
+import { APP_FONT_FAMILY, APP_FONT_FAMILY_MEDIUM } from "./fonts";
+import { colors } from "./theme";
 
 export const demoStyles = StyleSheet.create({
   demoRoot: {
     flex: 1,
-    backgroundColor: "rgb(10, 10, 10)",
+    backgroundColor: colors.background,
   },
   demoTitle: {
-    color: "rgba(255,255,255,0.45)",
+    color: colors.textMuted,
     fontSize: 12,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     paddingHorizontal: 16,
     paddingTop: 12,
     marginBottom: 4,
   },
   demoDesc: {
-    color: "rgba(255,255,255,0.35)",
+    color: colors.textFaint,
     fontSize: 11,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     paddingHorizontal: 16,
     marginBottom: 8,
     lineHeight: 16,
+  },
+  demoDocsLink: {
+    color: colors.link,
+    fontSize: 12,
+    fontFamily: APP_FONT_FAMILY_MEDIUM,
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   chartContainer: {
     height: 300,
@@ -40,9 +48,9 @@ export const demoStyles = StyleSheet.create({
     paddingBottom: 40,
   },
   sectionLabel: {
-    color: "rgba(255,255,255,0.4)",
+    color: colors.textFaint,
     fontSize: 11,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 8,
@@ -58,23 +66,26 @@ export const demoStyles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: colors.chipBackground,
   },
   chipActive: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#3323E6",
+  },
+  chipDisabled: {
+    opacity: 0.5,
   },
   chipText: {
-    color: "rgba(255,255,255,0.6)",
+    color: colors.chipText,
     fontSize: 13,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
   },
   chipTextActive: {
-    color: "#fff",
+    color: colors.chipTextActive,
   },
   scrubReadout: {
-    color: "rgba(255,255,255,0.55)",
+    color: colors.textMuted,
     fontSize: 12,
-    fontFamily: MONO_FONT_FAMILY,
+    fontFamily: APP_FONT_FAMILY,
     paddingHorizontal: 16,
     marginBottom: 8,
   },

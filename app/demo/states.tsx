@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
 import type { LiveChartPoint } from "react-native-livechart";
 import { LiveChart } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
-import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { Chip, ChipRow, ControlRow } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
-import { demoStyles } from "../../demo-lib/styles";
+import { APP_THEME } from "../../demo-lib/theme";
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Empty, loading, formatters" };
+export const options = { title: "States & formatting" };
 
 /** Worklet-safe — same as toISOString().slice(11, 19) in UTC (Date/toISOString not reliable inside UI worklets). */
 function formatTimeIsoUtcFragment(t: number): string {
@@ -26,11 +26,20 @@ function formatValueUsd(v: number): string {
   return `$${v.toFixed(2)}`;
 }
 
-export default function EdgeCasesScreen() {
+type FormatMode = "default" | "custom";
+
+const FORMAT_OPTIONS: { value: FormatMode; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "custom", label: "$ + ISO time" },
+];
+
+export default function StatesScreen() {
   const [empty, setEmpty] = useState(false);
   const [onePoint, setOnePoint] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [customFormat, setCustomFormat] = useState(false);
+  const [formatMode, setFormatMode] = useState<FormatMode>("default");
+
+  const customFormat = formatMode === "custom";
 
   const emptyData = useSharedValue<LiveChartPoint[]>([]);
   const emptyValue = useSharedValue(100);
@@ -52,13 +61,14 @@ export default function EdgeCasesScreen() {
 
   return (
     <DemoScreen
+      docs="guides/states-and-formatting"
       description="The chart stays in loading/empty shell until there are at least two line points and loading is false. One point only still counts as empty. formatValue/formatTime must be worklet-safe (same pattern as src/format.ts)."
       chart={
         <LiveChart
           data={chartData}
           value={chartValue}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           loading={loading}
           emptyText={showEmptyShell ? "Nothing to see here" : "No data"}
           formatValue={customFormat ? formatValueUsd : undefined}
@@ -67,79 +77,40 @@ export default function EdgeCasesScreen() {
         />
       }
     >
-      <Text style={demoStyles.sectionLabel}>States</Text>
-      <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, empty && demoStyles.chipActive]}
+      <ControlRow label="States">
+        <Chip
+          label="No points"
+          active={empty}
           onPress={() => {
             setEmpty((e) => !e);
             if (!empty) setOnePoint(false);
           }}
-        >
-          <Text
-            style={[demoStyles.chipText, empty && demoStyles.chipTextActive]}
-          >
-            No points
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, onePoint && demoStyles.chipActive]}
+        />
+        <Chip
+          label="1 point only"
+          active={onePoint}
           onPress={() => {
             setOnePoint((o) => !o);
             if (!onePoint) setEmpty(false);
           }}
-        >
-          <Text
-            style={[demoStyles.chipText, onePoint && demoStyles.chipTextActive]}
-          >
-            1 point only
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, loading && demoStyles.chipActive]}
+        />
+        <Chip
+          label={loading ? "Loading…" : "Loading 2s"}
+          active={loading}
+          disabled={loading}
           onPress={() => {
             setLoading(true);
             setTimeout(() => setLoading(false), 2000);
           }}
-          disabled={loading}
-        >
-          <Text
-            style={[demoStyles.chipText, loading && demoStyles.chipTextActive]}
-          >
-            {loading ? "Loading…" : "Loading 2s"}
-          </Text>
-        </Pressable>
-      </View>
+        />
+      </ControlRow>
 
-      <Text style={demoStyles.sectionLabel}>Formatters</Text>
-      <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, !customFormat && demoStyles.chipActive]}
-          onPress={() => setCustomFormat(false)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              !customFormat && demoStyles.chipTextActive,
-            ]}
-          >
-            Default
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[demoStyles.chip, customFormat && demoStyles.chipActive]}
-          onPress={() => setCustomFormat(true)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              customFormat && demoStyles.chipTextActive,
-            ]}
-          >
-            $ + ISO time
-          </Text>
-        </Pressable>
-      </View>
+      <ChipRow
+        label="Formatters"
+        options={FORMAT_OPTIONS}
+        value={formatMode}
+        onChange={setFormatMode}
+      />
     </DemoScreen>
   );
 }

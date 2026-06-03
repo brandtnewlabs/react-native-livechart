@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
 import { LiveChart, type ReferenceLine } from "react-native-livechart";
 
-import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
-import { demoStyles } from "../../demo-lib/styles";
+import { APP_THEME } from "../../demo-lib/theme";
+import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
 export const options = { title: "Reference lines & bands" };
 
 const START = 100;
 
-export default function HorizontalLinesScreen() {
+export default function ReferenceLinesScreen() {
   const [lines, setLines] = useState(true);
   const [valueBand, setValueBand] = useState(false);
   const [timeBand, setTimeBand] = useState(false);
@@ -35,8 +35,7 @@ export default function HorizontalLinesScreen() {
     to: number;
   } | null>(null);
 
-  const toggleTimeBand = () => {
-    const next = !timeBand;
+  const toggleTimeBand = (next: boolean) => {
     setTimeBand(next);
     if (next) {
       const now = Date.now() / 1000;
@@ -93,66 +92,41 @@ export default function HorizontalLinesScreen() {
 
   return (
     <DemoScreen
+      docs="guides/markers-and-references"
       description="referenceLines array — lines, value bands, time bands, off-axis badge"
       chart={
         <LiveChart
           data={data}
           value={value}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           referenceLines={referenceLines}
           valueLine={valueLine}
           scrub={false}
         />
       }
     >
-      <Text style={demoStyles.sectionLabel}>Reference forms</Text>
-      <View style={demoStyles.buttonRow}>
-        <Toggle label="Lines (±5%)" on={lines} onPress={() => setLines((v) => !v)} />
-        <Toggle
+      <ControlRow label="Reference forms">
+        <ToggleChip label="Lines (±5%)" value={lines} onChange={setLines} />
+        <ToggleChip
           label="Value band"
-          on={valueBand}
-          onPress={() => setValueBand((v) => !v)}
+          value={valueBand}
+          onChange={setValueBand}
         />
-        <Toggle
-          label="Time band"
-          on={timeBand}
-          onPress={toggleTimeBand}
-        />
-      </View>
-      <View style={demoStyles.buttonRow}>
-        <Toggle
+        <ToggleChip label="Time band" value={timeBand} onChange={toggleTimeBand} />
+      </ControlRow>
+      <ControlRow>
+        <ToggleChip
           label="Off-axis target"
-          on={offAxis}
-          onPress={() => setOffAxis((v) => !v)}
+          value={offAxis}
+          onChange={setOffAxis}
         />
-        <Toggle
+        <ToggleChip
           label="Value line"
-          on={valueLine}
-          onPress={() => setValueLine((v) => !v)}
+          value={valueLine}
+          onChange={setValueLine}
         />
-      </View>
+      </ControlRow>
     </DemoScreen>
-  );
-}
-
-function Toggle({
-  label,
-  on,
-  onPress,
-}: {
-  label: string;
-  on: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={[demoStyles.chip, on && demoStyles.chipActive]}
-      onPress={onPress}
-    >
-      <Text style={[demoStyles.chipText, on && demoStyles.chipTextActive]}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }

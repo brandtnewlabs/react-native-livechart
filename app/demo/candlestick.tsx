@@ -1,23 +1,25 @@
-import { Pressable, Text, View } from "react-native";
+import { useState } from "react";
+import type { CandlePoint } from "react-native-livechart";
+import { LiveChart } from "react-native-livechart";
+import { useSharedValue } from "react-native-reanimated";
+
+import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import {
   ACCENT,
   HISTORY_RANGE_PRESETS,
   TIME_WINDOWS,
   viewportSecsForHistoryPreset,
 } from "../../demo-lib/shared";
-
-import { useState } from "react";
-import type { CandlePoint } from "react-native-livechart";
-import { LiveChart } from "react-native-livechart";
-import { useSharedValue } from "react-native-reanimated";
+import { APP_THEME } from "../../demo-lib/theme";
 import {
   useSimulatedChartData,
   type HistoryRange,
 } from "../../sim/useSimulatedChartData";
-import { DemoScreen } from "../../demo-lib/DemoScreen";
-import { demoStyles } from "../../demo-lib/styles";
 
 export const options = { title: "Candlestick" };
+
+const WINDOW_OPTIONS = TIME_WINDOWS.map((w) => ({ value: w.secs, label: w.label }));
 
 export default function CandlestickScreen() {
   const [historyRange, setHistoryRange] = useState<HistoryRange>("1d");
@@ -39,6 +41,7 @@ export default function CandlestickScreen() {
 
   return (
     <DemoScreen
+      docs="guides/candlestick"
       description={`mode=candle, candleWidth=${candleWidthSecs}s. Needs ≥2 committed candles for the chart (live bar alone is not enough).`}
       chart={
         <LiveChart
@@ -49,77 +52,40 @@ export default function CandlestickScreen() {
           liveCandle={stripCandles ? nullLive : liveCandle}
           candleWidth={candleWidthSecs}
           accentColor={ACCENT}
-          theme="dark"
+          theme={APP_THEME}
           timeWindow={windowSecs}
           scrub={{ tooltip: true }}
         />
       }
     >
-      <Text style={demoStyles.sectionLabel}>History span</Text>
-      <View style={demoStyles.buttonRow}>
+      <ControlRow label="History span">
         {HISTORY_RANGE_PRESETS.map((r) => (
-          <Pressable
+          <Chip
             key={r.preset}
-            style={[
-              demoStyles.chip,
-              historyRange === r.preset && demoStyles.chipActive,
-            ]}
+            label={r.label}
+            active={historyRange === r.preset}
             onPress={() => {
               setHistoryRange(r.preset);
               setWindowSecs(viewportSecsForHistoryPreset(r.preset));
             }}
-          >
-            <Text
-              style={[
-                demoStyles.chipText,
-                historyRange === r.preset && demoStyles.chipTextActive,
-              ]}
-            >
-              {r.label}
-            </Text>
-          </Pressable>
+          />
         ))}
-      </View>
+      </ControlRow>
 
-      <Text style={demoStyles.sectionLabel}>Data</Text>
-      <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[demoStyles.chip, stripCandles && demoStyles.chipActive]}
-          onPress={() => setStripCandles((v) => !v)}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              stripCandles && demoStyles.chipTextActive,
-            ]}
-          >
-            No committed candles
-          </Text>
-        </Pressable>
-      </View>
+      <ControlRow label="Data">
+        <ToggleChip
+          label="No committed candles"
+          value={stripCandles}
+          onChange={setStripCandles}
+        />
+      </ControlRow>
 
-      <Text style={demoStyles.sectionLabel}>Time window</Text>
-      <View style={demoStyles.buttonRow}>
-        {TIME_WINDOWS.map((w) => (
-          <Pressable
-            key={w.label}
-            style={[
-              demoStyles.chip,
-              windowSecs === w.secs && demoStyles.chipActive,
-            ]}
-            onPress={() => setWindowSecs(w.secs)}
-          >
-            <Text
-              style={[
-                demoStyles.chipText,
-                windowSecs === w.secs && demoStyles.chipTextActive,
-              ]}
-            >
-              {w.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <ChipRow
+        label="Time window"
+        options={WINDOW_OPTIONS}
+        value={windowSecs}
+        onChange={setWindowSecs}
+      />
     </DemoScreen>
   );
 }
