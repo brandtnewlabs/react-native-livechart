@@ -415,14 +415,13 @@ describe("CrosshairOverlay", () => {
           palette={palette}
           font={font}
           showTooltip
-          tooltipBody={
-            <MultiSeriesTooltipStack
-              tooltipLayout={tooltipLayout}
-              font={font}
-              palette={palette}
-            />
-          }
-        />
+        >
+          <MultiSeriesTooltipStack
+            tooltipLayout={tooltipLayout}
+            font={font}
+            palette={palette}
+          />
+        </CrosshairOverlay>
       );
     }
     render(<Fixture />);
