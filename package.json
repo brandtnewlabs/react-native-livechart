@@ -22,7 +22,8 @@
     "pack:lib": "npm pack -w react-native-livechart",
     "verify": "npm run typecheck && npm run lint && npm test",
     "verify:coverage": "npm run typecheck && npm run lint && npm run test:coverage",
-    "prepare": "husky"
+    "prepare": "husky",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
@@ -63,6 +64,7 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "husky": "^9.1.7",
+    "react-doctor": "^0.2.16",
     "react-test-renderer": "^19.1.0",
     "typescript": "~5.9.2"
   }
