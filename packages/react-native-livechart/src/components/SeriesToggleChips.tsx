@@ -26,8 +26,12 @@ export function SeriesToggleChips({
     series.get().slice(),
   );
 
-  const pullSnapshot = (sv: SharedValue<SeriesConfig[]>) => {
-    setSnapshot(sv.get().slice());
+  // Read the `series` prop from closure rather than a SharedValue passed
+  // through `scheduleOnRN`: the handle serialized across the worklet→JS
+  // boundary exposes the native `.value` accessor but NOT the `.get()` method,
+  // so calling `.get()` on it throws ("sv.get is not a function").
+  const pullSnapshot = () => {
+    setSnapshot(series.get().slice());
   };
 
   useAnimatedReaction(
@@ -35,7 +39,7 @@ export function SeriesToggleChips({
     /* istanbul ignore next -- Reanimated reaction; snapshot seeded at mount, pulled here on change */
     (sig, prev) => {
       if (sig !== prev) {
-        scheduleOnRN(pullSnapshot, series);
+        scheduleOnRN(pullSnapshot);
       }
     },
     [series, pullSnapshot],

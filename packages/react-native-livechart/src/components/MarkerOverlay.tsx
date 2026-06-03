@@ -249,15 +249,19 @@ export function MarkerOverlay({
   // Seed from the current markers at mount; the reaction below keeps it in sync.
   const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
 
-  const pull = (sv: SharedValue<Marker[]>) => {
-    setSnapshot(sv.get().slice());
+  // Read the `markers` prop from closure rather than a SharedValue passed
+  // through `scheduleOnRN`: the handle serialized across the worklet→JS
+  // boundary exposes the native `.value` accessor but NOT the `.get()` method,
+  // so calling `.get()` on it throws ("sv.get is not a function").
+  const pull = () => {
+    setSnapshot(markers.get().slice());
   };
 
   useAnimatedReaction(
     () => markersSignature(markers.get()),
     /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
     (sig, prev) => {
-      if (sig !== prev) scheduleOnRN(pull, markers);
+      if (sig !== prev) scheduleOnRN(pull);
     },
     [markers, pull],
   );
