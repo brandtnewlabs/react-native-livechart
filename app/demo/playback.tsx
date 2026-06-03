@@ -63,6 +63,7 @@ export default function PlaybackScreen() {
 
   return (
     <DemoScreen
+      title="Playback"
       docs="guides/playback"
       description="timeWindow, paused, smoothing, exaggerate, nonNegative, maxValue (data sweeps ≈ -50…200)"
       chart={

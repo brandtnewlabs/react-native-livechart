@@ -41,6 +41,15 @@ export default function ScrubbingScreen() {
     candleAggregation: displayMode === "candle",
     tradeStream: false,
     candleWidth: candleWidthSecs,
+    // Dense seed (fine "1m" sampling over the window) so candle buckets get many
+    // ticks each — real bodies + wicks instead of flat one-point dojis.
+    historySpanSeconds: windowSecs,
+    historyRange: "1m",
+    volatilityMode: "volatile",
+    // Keep the re-aggregated tick buffer longer than the 300s window so the
+    // oldest committed candle never loses on-screen ticks (≈600s at the volatile
+    // default rate); otherwise it would mutate on every trade.
+    maxPoints: 6000,
   });
 
   const scrub =
@@ -60,6 +69,7 @@ export default function ScrubbingScreen() {
 
   return (
     <DemoScreen
+      title="Scrubbing"
       docs="guides/scrubbing"
       description="Scrub modes; candle mode shows ScrubPoint.candle in readout"
       chart={

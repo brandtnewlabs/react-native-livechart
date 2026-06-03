@@ -61,6 +61,7 @@ export default function StatesScreen() {
 
   return (
     <DemoScreen
+      title="States & formatting"
       docs="guides/states-and-formatting"
       description="The chart stays in loading/empty shell until there are at least two line points and loading is false. One point only still counts as empty. formatValue/formatTime must be worklet-safe (same pattern as src/format.ts)."
       chart={

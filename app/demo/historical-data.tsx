@@ -45,6 +45,7 @@ export default function HistoricalDataScreen() {
 
   return (
     <DemoScreen
+      title="Historical data fill"
       docs="guides/playback"
       description="nowOverride + windowBuffer — fill a fixed historical span edge-to-edge"
       chart={

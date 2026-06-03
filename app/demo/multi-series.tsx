@@ -95,8 +95,6 @@ export default function MultiSeriesScreen() {
   const [legendPosition, setLegendPosition] = useState<"top" | "bottom">("top");
   const [styled, setStyled] = useState(false);
   const [legendStyled, setLegendStyled] = useState(false);
-  const [degenOn, setDegenOn] = useState(false);
-  const [degenColors, setDegenColors] = useState(false);
 
   const sim = useSimulatedChartData({
     multiSeries: !empty,
@@ -157,6 +155,7 @@ export default function MultiSeriesScreen() {
 
   return (
     <DemoScreen
+      title="Multi-series"
       docs="guides/multi-series"
       description="series, onSeriesToggle, scrub, axis visibility. Chart stays empty until at least one series has ≥2 points (toggle No series for shell)."
       chart={
@@ -179,19 +178,14 @@ export default function MultiSeriesScreen() {
             loading={loading}
             smoothing={smoothing}
             exaggerate={exaggerate}
-            referenceLines={showRef ? [{ value: 52, label: "mid" }] : undefined}
+            referenceLines={
+              showRef ? [{ value: 33.3, label: "even" }] : undefined
+            }
             yAxis={yOn}
             xAxis={xOn}
             emptyText="No series"
             dot={dotConfig}
             legend={legendConfig}
-            degen={
-              degenOn
-                ? degenColors
-                  ? { colors: ["#f472b6", "#22d3ee", "#fde047"] }
-                  : true
-                : false
-            }
             scrub
             onSeriesToggle={
               empty
@@ -258,18 +252,12 @@ export default function MultiSeriesScreen() {
         onChange={setLegendPosition}
       />
 
-      <ControlRow label="Per-series style & degen">
+      <ControlRow label="Per-series style">
         <ToggleChip label="Styled lines" value={styled} onChange={setStyled} />
         <ToggleChip
           label="Legend style"
           value={legendStyled}
           onChange={setLegendStyled}
-        />
-        <ToggleChip label="Degen" value={degenOn} onChange={setDegenOn} />
-        <ToggleChip
-          label="Degen colors"
-          value={degenColors}
-          onChange={setDegenColors}
         />
       </ControlRow>
 

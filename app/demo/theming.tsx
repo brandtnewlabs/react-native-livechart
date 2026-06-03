@@ -85,10 +85,15 @@ export default function ThemingScreen() {
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,
+    // Dense seed so the styled line is fully drawn on first frame (the default
+    // sparse "1d" seed renders flat in a 30s window until live ticks arrive).
+    historySpanSeconds: 40,
+    historyRange: "1m",
   });
 
   return (
     <DemoScreen
+      title="Theming"
       docs="guides/theming"
       description="Theming: theme, accent, gradient, line, font (Skia: system / JetBrains / Google Sans Code), grid & palette, container style"
       chart={

@@ -65,10 +65,15 @@ export default function LineScreen() {
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,
+    // Dense seed so the line is fully drawn (and lively) on first frame instead
+    // of flat until live ticks fill the default 30s window.
+    historySpanSeconds: 40,
+    historyRange: "1m",
   });
 
   return (
     <DemoScreen
+      title="Line & area"
       docs="guides/line-and-area"
       description="The single line: badge, pulse, value line, and the live value overlay."
       chart={

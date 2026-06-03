@@ -23,6 +23,10 @@ export default function ReferenceLinesScreen() {
     candleAggregation: false,
     tradeStream: false,
     startValue: START,
+    // Dense seed so the line weaves through the reference lines/bands from the
+    // first frame instead of sitting flat until live ticks fill the window.
+    historySpanSeconds: 40,
+    historyRange: "1m",
   });
 
   // Pin the time band ONCE when it's enabled (the band lives in absolute
@@ -92,6 +96,7 @@ export default function ReferenceLinesScreen() {
 
   return (
     <DemoScreen
+      title="Reference lines & bands"
       docs="guides/markers-and-references"
       description="referenceLines array — lines, value bands, time bands, off-axis badge"
       chart={

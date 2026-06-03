@@ -1,5 +1,9 @@
 import { StyleSheet } from "react-native";
-import { APP_FONT_FAMILY, APP_FONT_FAMILY_MEDIUM } from "./fonts";
+import {
+  APP_FONT_FAMILY,
+  APP_FONT_FAMILY_MEDIUM,
+  APP_FONT_FAMILY_SEMIBOLD,
+} from "./fonts";
 import { colors } from "./theme";
 
 export const demoStyles = StyleSheet.create({
@@ -7,27 +11,48 @@ export const demoStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  demoTitle: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontFamily: APP_FONT_FAMILY,
+  demoHeader: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    marginBottom: 2,
+  },
+  backChevron: {
+    color: colors.link,
+    fontSize: 22,
+    lineHeight: 22,
+    marginRight: 2,
+    marginTop: -2,
+    fontFamily: APP_FONT_FAMILY_MEDIUM,
+  },
+  backText: {
+    color: colors.link,
+    fontSize: 15,
+    fontFamily: APP_FONT_FAMILY_MEDIUM,
+  },
+  demoHeading: {
+    color: colors.text,
+    fontSize: 22,
+    fontFamily: APP_FONT_FAMILY_SEMIBOLD,
     marginBottom: 4,
   },
   demoDesc: {
-    color: colors.textFaint,
-    fontSize: 11,
+    color: colors.textMuted,
+    fontSize: 13,
     fontFamily: APP_FONT_FAMILY,
-    paddingHorizontal: 16,
     marginBottom: 8,
-    lineHeight: 16,
+    lineHeight: 18,
   },
   demoDocsLink: {
     color: colors.link,
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: APP_FONT_FAMILY_MEDIUM,
-    paddingHorizontal: 16,
     marginBottom: 8,
   },
   chartContainer: {

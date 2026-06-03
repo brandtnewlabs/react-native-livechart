@@ -60,12 +60,17 @@ export default function AxesGridScreen() {
     multiSeries: which === "multi",
     candleAggregation: false,
     tradeStream: false,
+    // Dense seed so the single-series line fills the default 30s window on first
+    // frame instead of sitting flat until live ticks arrive.
+    historySpanSeconds: 40,
+    historyRange: "1m",
   });
 
   const insetCfg = INSETS[insets];
 
   return (
     <DemoScreen
+      title="Axes & grid"
       docs="guides/theming"
       description="Hide Y, X, or both; minGap; insets. Toggle single vs multi chart."
       chart={

@@ -87,8 +87,11 @@ export default function PlaygroundScreen() {
   const [volatilityMode, setVolatilityMode] =
     useState<VolatilityMode>("normal");
   const [paused, setPaused] = useState(false);
-  const [windowSecs, setWindowSecs] = useState(30);
-  const [historyRange, setHistoryRange] = useState<HistoryRange>("1d");
+  // Default to a short window + fine-grained seed so the flagship screen opens on
+  // a lively, fully-drawn line (a long "1d" seed sampled coarsely renders flat in
+  // a 30s window). The History span chips still let you seed longer ranges.
+  const [windowSecs, setWindowSecs] = useState(60);
+  const [historyRange, setHistoryRange] = useState<HistoryRange>("1m");
   const [tradesPerSecond, setTradesPerSecond] = useState(5);
   const [tradeArrivalJitter, setTradeArrivalJitter] = useState(0);
   const [tokenSymbol, setTokenSymbol] = useState("");
@@ -144,6 +147,7 @@ export default function PlaygroundScreen() {
 
   return (
     <DemoScreen
+      title="Playground"
       docs="quickstart"
       description="Kitchen-sink showcase: line/candle, scrub, reference lines, trade stream, degen effects, loading + empty states."
       chart={
