@@ -55,15 +55,6 @@ export function generateHistory(opts: HistoryOptions = {}): LiveChartPoint[] {
   return points;
 }
 
-/**
- * Advance a random walk by one step. Returns the new value.
- */
-export function walkStep(currentValue: number, volatility: number): number {
-  const step = currentValue * volatility * gaussianRandom();
-  const next = currentValue + step;
-  return Math.max(0.01, next);
-}
-
 // ─── Volatility presets ────────────────────────────────────────────────────────
 
 export type VolatilityMode = "calm" | "normal" | "volatile" | "chaotic";
@@ -78,20 +69,6 @@ export function volatilityFor(mode: VolatilityMode): number {
       return 0.012;
     case "chaotic":
       return 0.035;
-  }
-}
-
-/** Chart tick interval in ms (legacy demos). Live sim cadence uses `tradesPerSecond`, not this. */
-export function intervalFor(mode: VolatilityMode): number {
-  switch (mode) {
-    case "calm":
-      return 300;
-    case "normal":
-      return 200;
-    case "volatile":
-      return 100;
-    case "chaotic":
-      return 60;
   }
 }
 
@@ -159,35 +136,6 @@ export function aggregateCandles(
   };
 }
 
-// ─── Trade events ──────────────────────────────────────────────────────────────
-
-/**
- * Generate a batch of synthetic trade events around the current price.
- * Works for both orderbook-style and bonding-curve-style generation.
- */
-export function generateTradeEvents(
-  price: number,
-  count: number,
-  spread = 0.002,
-): TradeEvent[] {
-  const now = Date.now() / 1000;
-  const events: TradeEvent[] = [];
-  for (let i = 0; i < count; i++) {
-    const isBuy = Math.random() > 0.5;
-    const offset = Math.random() * spread * price;
-    const eventPrice = isBuy ? price + offset : price - offset;
-    // Power-law distributed size: many small, few large
-    const size = Math.pow(Math.random(), 3) * 10 + 0.01;
-    events.push({
-      side: isBuy ? "buy" : "sell",
-      price: eventPrice,
-      size: Math.round(size * 100) / 100,
-      time: now - (count - i) * 0.05,
-    });
-  }
-  return events;
-}
-
 // ─── Bonding curve ─────────────────────────────────────────────────────────────
 
 export interface BondingCurveState {
@@ -209,7 +157,7 @@ export function createBondingCurve(
 }
 
 /** Price at current supply: basePrice * (supply / initialSupply) ^ exponent */
-export function bondingPrice(state: BondingCurveState): number {
+function bondingPrice(state: BondingCurveState): number {
   return (
     state.basePrice *
     Math.pow(state.supply / state.initialSupply, state.exponent)
@@ -319,7 +267,7 @@ export function generateMultiSeries(opts: MultiSeriesOptions): SeriesConfig[] {
  * This is the JS-thread half of the live step: it reads only `s.value` (a
  * scalar) so the feed can generate the per-tick delta cheaply, then append the
  * point inside a Reanimated `.modify` worklet on the UI thread (avoiding a full
- * series-array clone per tick). See `stepMultiSeries` for the in-place variant.
+ * series-array clone per tick).
  */
 export function stepMultiSeriesValues(
   values: number[],
@@ -332,29 +280,4 @@ export function stepMultiSeriesValues(
     return rawValues.map((v) => (Math.max(0.5, v) / sum) * 100);
   }
   return rawValues.map((v) => Math.max(0.01, v));
-}
-
-/**
- * Advance all series by one step. Mutates the series `value` and `data` arrays
- * in place.
- *
- * @deprecated The live feed now computes next values via `stepMultiSeriesValues`
- * and appends the point inside a Reanimated `.modify` worklet, so the full
- * series array no longer has to be reassigned (and cloned to the UI thread)
- * every tick. Kept for any non-Reanimated callers.
- */
-export function stepMultiSeries(
-  series: SeriesConfig[],
-  sumToHundred = false,
-): void {
-  const now = Date.now() / 1000;
-  const values = stepMultiSeriesValues(
-    series.map((s) => s.value),
-    sumToHundred,
-  );
-
-  for (let i = 0; i < series.length; i++) {
-    series[i].value = values[i];
-    series[i].data.push({ time: now, value: values[i] });
-  }
 }
