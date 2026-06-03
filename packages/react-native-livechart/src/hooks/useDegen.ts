@@ -84,20 +84,17 @@ export function useDegen(
   const resolvedSpeedMax = cfg?.speedMax ?? 160;
 
   useEffect(() => {
-    if (degenOff) {
-      enabledSV.set(0);
-      shakeEnabledSV.set(0);
-      hasOnShakeListenerSV.set(0);
-      shakeStart.set(0);
-      shakeX.set(0);
-      shakeY.set(0);
-      return;
-    }
-    hasOnShakeListenerSV.set(onShake != null ? 1 : 0);
-    enabledSV.set(1);
+    // Mirror the resolved config into SharedValues for the UI-thread worklet.
+    // Everything is set unconditionally — no prop-derived `if` branch — so this
+    // is a plain external-store sync, not a disguised event handler. When degen
+    // is off, enabledSV is 0 and the frame worklet early-returns (zeroing the
+    // particle buffer and shake itself), so the remaining values are inert; the
+    // resolved* defaults already stand in for the null-config case.
+    enabledSV.set(degenOff ? 0 : 1);
+    shakeEnabledSV.set(!degenOff && resolvedShake ? 1 : 0);
+    hasOnShakeListenerSV.set(!degenOff && onShake != null ? 1 : 0);
     scaleSV.set(resolvedScale);
     downSV.set(resolvedDown ? 1 : 0);
-    shakeEnabledSV.set(resolvedShake ? 1 : 0);
     shakeIntensitySV.set(resolvedShakeIntensity);
     shakeDurationSecSV.set(resolvedShakeDurationSec);
     slotCountSV.set(resolvedSlotCount);
@@ -111,11 +108,6 @@ export function useDegen(
     jitterYSV.set(resolvedJitterY);
     speedMinSV.set(resolvedSpeedMin);
     speedMaxSV.set(resolvedSpeedMax);
-    if (!resolvedShake) {
-      shakeStart.set(0);
-      shakeX.set(0);
-      shakeY.set(0);
-    }
   }, [
     degenOff,
     onShake,
