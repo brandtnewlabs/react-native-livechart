@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, TextInput } from "react-native";
+import { StyleSheet, TextInput } from "react-native";
 import {
   formatTime,
   LiveChart,
@@ -18,10 +18,8 @@ import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { APP_FONT_FAMILY } from "../../demo-lib/fonts";
 import {
   ACCENT,
-  HISTORY_RANGE_PRESETS,
   PRICE_RANGES,
   TIME_WINDOWS,
-  viewportSecsForHistoryPreset,
   VOLATILITY_MODES,
 } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
@@ -42,10 +40,9 @@ const PLAYGROUND_HEADER_FORMATTER = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-const READOUT_OPTIONS: { value: boolean; label: string }[] = [
-  { value: false, label: "Plain toFixed" },
-  { value: true, label: "Intl en-US (grouping)" },
-];
+// Seed 1m of history into a 60s window so the screen opens on a lively, fully
+// drawn line (a long seed sampled coarsely renders flat in a short window).
+const HISTORY_SEED: HistoryRange = "1m";
 
 const MODE_OPTIONS: { value: "line" | "candle"; label: string }[] = [
   { value: "line", label: "Line" },
@@ -57,21 +54,10 @@ const WINDOW_OPTIONS = TIME_WINDOWS.map((w) => ({
   label: w.label,
 }));
 
-const HISTORY_OPTIONS = HISTORY_RANGE_PRESETS.map((r) => ({
-  value: r.preset,
-  label: r.label,
-}));
-
 const TRADES_PER_SECOND_OPTIONS = [1, 5, 10, 20].map((n) => ({
   value: n,
   label: String(n),
 }));
-
-const JITTER_OPTIONS = [
-  { value: 0, label: "0" },
-  { value: 0.25, label: "0.25" },
-  { value: 0.5, label: "0.5" },
-];
 
 const PRICE_OPTIONS = PRICE_RANGES.map((r) => ({
   value: r.value,
@@ -87,14 +73,8 @@ export default function PlaygroundScreen() {
   const [volatilityMode, setVolatilityMode] =
     useState<VolatilityMode>("normal");
   const [paused, setPaused] = useState(false);
-  // Default to a short window + fine-grained seed so the flagship screen opens on
-  // a lively, fully-drawn line (a long "1d" seed sampled coarsely renders flat in
-  // a 30s window). The History span chips still let you seed longer ranges.
   const [windowSecs, setWindowSecs] = useState(60);
-  const [historyRange, setHistoryRange] = useState<HistoryRange>("1m");
   const [tradesPerSecond, setTradesPerSecond] = useState(5);
-  const [tradeArrivalJitter, setTradeArrivalJitter] = useState(0);
-  const [tokenSymbol, setTokenSymbol] = useState("");
   const [startValue, setStartValue] = useState(100);
   const [loading, setLoading] = useState(false);
   const [forceEmpty, setForceEmpty] = useState(false);
@@ -105,7 +85,6 @@ export default function PlaygroundScreen() {
   const [simTradeStream, setSimTradeStream] = useState(true);
 
   const [displayMode, setDisplayMode] = useState<"line" | "candle">("line");
-  const [headerReadoutIntl, setHeaderReadoutIntl] = useState(true);
 
   const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
 
@@ -118,10 +97,8 @@ export default function PlaygroundScreen() {
       multiSeries: false,
       candleAggregation: displayMode === "candle",
       tradeStream: simTradeStream,
-      historyRange,
+      historyRange: HISTORY_SEED,
       tradesPerSecond,
-      tradeArrivalJitter,
-      tokenSymbol: tokenSymbol.trim() || undefined,
     });
   const volatilitySv = useSharedValue(volatilityMode);
   useEffect(() => {
@@ -185,9 +162,7 @@ export default function PlaygroundScreen() {
     >
       <AnimatedTrendTextInput
         sharedValue={forceEmpty ? emptyLineValue : value}
-        {...(headerReadoutIntl
-          ? { formatter: PLAYGROUND_HEADER_FORMATTER }
-          : {})}
+        formatter={PLAYGROUND_HEADER_FORMATTER}
         style={styles.readout}
       />
       <AnimatedTextInput
@@ -196,16 +171,6 @@ export default function PlaygroundScreen() {
         style={styles.readoutMeta}
         animatedProps={metaProps}
       />
-
-      <ChipRow
-        label="Header readout (AnimatedTrendTextInput)"
-        options={READOUT_OPTIONS}
-        value={headerReadoutIntl}
-        onChange={setHeaderReadoutIntl}
-      />
-      <Text style={styles.controlsHint}>
-        Use Price Range ≥ 1K to see thousand separators with Intl on.
-      </Text>
 
       <ChipRow
         label="Display mode"
@@ -222,36 +187,10 @@ export default function PlaygroundScreen() {
       />
 
       <ChipRow
-        label="History span (seed)"
-        options={HISTORY_OPTIONS}
-        value={historyRange}
-        onChange={(preset) => {
-          setHistoryRange(preset);
-          setWindowSecs(viewportSecsForHistoryPreset(preset));
-        }}
-      />
-
-      <ChipRow
         label="Trades / sec (live)"
         options={TRADES_PER_SECOND_OPTIONS}
         value={tradesPerSecond}
         onChange={setTradesPerSecond}
-      />
-
-      <ChipRow
-        label="Trade arrival jitter"
-        options={JITTER_OPTIONS}
-        value={tradeArrivalJitter}
-        onChange={setTradeArrivalJitter}
-      />
-
-      <Text style={styles.sectionLabel}>Token symbol (tape)</Text>
-      <TextInput
-        style={styles.textInput}
-        placeholder="e.g. PEPE"
-        placeholderTextColor={colors.placeholder}
-        value={tokenSymbol}
-        onChangeText={setTokenSymbol}
       />
 
       <ChipRow
@@ -269,15 +208,6 @@ export default function PlaygroundScreen() {
       />
 
       <ControlRow label="Chart options">
-        <Chip
-          label="Degen demo"
-          active={false}
-          onPress={() => {
-            setDegen(true);
-            setExaggerate(true);
-            setVolatilityMode("chaotic");
-          }}
-        />
         <ToggleChip
           label="Trade stream"
           value={simTradeStream}
@@ -332,33 +262,5 @@ const styles = StyleSheet.create({
     fontFamily: APP_FONT_FAMILY,
     marginBottom: 4,
     padding: 0,
-  },
-  controlsHint: {
-    color: colors.textFaint,
-    fontSize: 11,
-    fontFamily: APP_FONT_FAMILY,
-    marginTop: 4,
-    marginBottom: 4,
-    lineHeight: 15,
-  },
-  sectionLabel: {
-    color: colors.textFaint,
-    fontSize: 11,
-    fontFamily: APP_FONT_FAMILY,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 8,
-    marginTop: 14,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: colors.text,
-    fontFamily: APP_FONT_FAMILY,
-    fontSize: 14,
-    marginBottom: 8,
   },
 });

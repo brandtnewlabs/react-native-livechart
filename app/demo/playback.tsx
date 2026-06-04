@@ -4,7 +4,7 @@ import { useSharedValue } from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
-import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "../../demo-lib/shared";
+import { ACCENT, TIME_WINDOWS } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 
 export const options = { title: "Playback" };
@@ -13,15 +13,10 @@ export const options = { title: "Playback" };
 const wave = (t: number) => 75 + 125 * Math.sin(t / 3);
 
 const WINDOW_OPTIONS = TIME_WINDOWS.map((w) => ({ value: w.secs, label: w.label }));
-const SMOOTHING_OPTIONS = SMOOTHING_PRESETS.map((s) => ({
-  value: s.value,
-  label: s.label,
-}));
 
 export default function PlaybackScreen() {
   const [windowSecs, setWindowSecs] = useState(30);
   const [paused, setPaused] = useState(false);
-  const [smoothing, setSmoothing] = useState(0.08);
   const [exaggerate, setExaggerate] = useState(false);
   const [nonNegative, setNonNegative] = useState(false);
   const [maxValue, setMaxValue] = useState<number | undefined>(undefined);
@@ -65,7 +60,7 @@ export default function PlaybackScreen() {
     <DemoScreen
       title="Playback"
       docs="guides/playback"
-      description="timeWindow, paused, smoothing, exaggerate, nonNegative, maxValue (data sweeps ≈ -50…200)"
+      description="timeWindow, paused, exaggerate, nonNegative, maxValue (data sweeps ≈ -50…200)"
       chart={
         <LiveChart
           data={data}
@@ -74,7 +69,6 @@ export default function PlaybackScreen() {
           theme={APP_THEME}
           timeWindow={windowSecs}
           paused={paused}
-          smoothing={smoothing}
           exaggerate={exaggerate}
           nonNegative={nonNegative}
           maxValue={maxValue}
@@ -87,12 +81,6 @@ export default function PlaybackScreen() {
         options={WINDOW_OPTIONS}
         value={windowSecs}
         onChange={setWindowSecs}
-      />
-      <ChipRow
-        label="Smoothing"
-        options={SMOOTHING_OPTIONS}
-        value={smoothing}
-        onChange={setSmoothing}
       />
       <ControlRow label="Playback">
         <Chip

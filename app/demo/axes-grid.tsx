@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { ChartInsets } from "react-native-livechart";
 import { LiveChart, LiveChartSeries } from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -12,14 +11,7 @@ export const options = { title: "Axes & grid" };
 
 type ChartKind = "single" | "multi";
 type AxisVis = "both" | "noY" | "noX" | "none";
-type InsetPreset = "default" | "tight" | "loose";
 type GapPreset = "default" | "wide";
-
-const INSETS: Record<InsetPreset, ChartInsets | undefined> = {
-  default: undefined,
-  tight: { top: 6, bottom: 16, left: 6, right: 6 },
-  loose: { top: 20, bottom: 40, left: 20, right: 20 },
-};
 
 const CHART_OPTIONS: { value: ChartKind; label: string }[] = [
   { value: "single", label: "LiveChart" },
@@ -38,15 +30,8 @@ const GAP_OPTIONS: { value: GapPreset; label: string }[] = [
   { value: "wide", label: "Wide minGap" },
 ];
 
-const INSET_OPTIONS: { value: InsetPreset; label: string }[] = [
-  { value: "default", label: "Default" },
-  { value: "tight", label: "Tight" },
-  { value: "loose", label: "Loose" },
-];
-
 export default function AxesGridScreen() {
   const [vis, setVis] = useState<AxisVis>("both");
-  const [insets, setInsets] = useState<InsetPreset>("default");
   const [gap, setGap] = useState<GapPreset>("default");
   const [which, setWhich] = useState<ChartKind>("single");
 
@@ -66,13 +51,11 @@ export default function AxesGridScreen() {
     historyRange: "1m",
   });
 
-  const insetCfg = INSETS[insets];
-
   return (
     <DemoScreen
       title="Axes & grid"
       docs="guides/theming"
-      description="Hide Y, X, or both; minGap; insets. Toggle single vs multi chart."
+      description="Hide Y, X, or both; axis minGap. Toggle single vs multi chart."
       chart={
         which === "single" ? (
           <LiveChart
@@ -82,7 +65,6 @@ export default function AxesGridScreen() {
             theme={APP_THEME}
             yAxis={yAxis}
             xAxis={xAxis}
-            insets={insetCfg}
             scrub
           />
         ) : (
@@ -92,7 +74,6 @@ export default function AxesGridScreen() {
             theme={APP_THEME}
             yAxis={yAxis}
             xAxis={xAxis}
-            insets={insetCfg}
             scrub
           />
         )
@@ -115,12 +96,6 @@ export default function AxesGridScreen() {
         options={GAP_OPTIONS}
         value={gap}
         onChange={setGap}
-      />
-      <ChipRow
-        label="Insets"
-        options={INSET_OPTIONS}
-        value={insets}
-        onChange={setInsets}
       />
     </DemoScreen>
   );

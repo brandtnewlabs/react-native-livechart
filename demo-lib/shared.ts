@@ -58,12 +58,6 @@ export const PRICE_RANGES: { label: string; value: number }[] = [
   { label: "100M", value: 100_000_000 },
 ];
 
-export const SMOOTHING_PRESETS: { label: string; value: number }[] = [
-  { label: "Sharp", value: 0 },
-  { label: "Default", value: 0.08 },
-  { label: "Smooth", value: 0.5 },
-];
-
 export const ACCENT_PRESETS = [
   "#3323E6",
   "#22c55e",
