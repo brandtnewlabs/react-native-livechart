@@ -4,8 +4,8 @@ icon: "crosshairs"
 description: "Pan a crosshair across history and read the value under it."
 ---
 
-Scrubbing is on by default. Drag across the chart to reveal a vertical crosshair, a dimmed
-region ahead of it, and a tooltip pill with the value and time under your finger.
+Scrubbing is on by default. Drag across the chart to reveal a vertical crosshair, the content
+ahead of it faded back, and a tooltip pill with the value and time under your finger.
 
 <Note>
   **Live example:**
@@ -26,6 +26,27 @@ Disable it with `scrub={false}`, or configure the crosshair and tooltip:
   scrub={{ tooltip: true, crosshairLineColor: "#94a3b8" }}
 />
 ```
+
+## Trailing fade (`dimOpacity`)
+
+While scrubbing, the chart content to the **right** of the crosshair (the "future") is faded so the
+part you're inspecting stands out. This is done by erasing the trailing content's alpha — it reveals
+the **real background**, so it works on any background color (no need to match a mask color).
+
+`dimOpacity` sets the opacity of that trailing region: `1` disables the fade, `0` fully hides it.
+Default `0.3`.
+
+```tsx
+<LiveChart data={data} value={value} scrub={{ dimOpacity: 0.3 }} />
+```
+
+<Note>
+  `crosshairDimColor` is the legacy alternative: a solid (usually semi-transparent) color painted
+  *over* the trailing region. Because it's a mask on top, it only looks right when it matches the
+  background — prefer `dimOpacity`. When `crosshairDimColor` is set, it overrides the fade.
+</Note>
+
+The same `dimOpacity` option works on `LiveChartSeries`.
 
 ## Reading the scrub position (single series)
 

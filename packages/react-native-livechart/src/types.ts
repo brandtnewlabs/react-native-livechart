@@ -180,9 +180,22 @@ export interface XAxisConfig {
 export interface ScrubConfig {
   /** Show the value/time tooltip pill while scrubbing. Default `true`. */
   tooltip?: boolean;
+  /**
+   * Opacity of the chart content to the *right* of the crosshair (the "future")
+   * while scrubbing — `0` fully fades it out, `1` disables the dim. Implemented
+   * by erasing the content's alpha (`dstOut`), so it reveals the real background
+   * and works on any background color. Default `0.3`. Ignored when
+   * `crosshairDimColor` is set (that uses the legacy colored mask instead).
+   */
+  dimOpacity?: number;
   /** Vertical crosshair line stroke. Omit to use theme `crosshairLine`. */
   crosshairLineColor?: string;
-  /** Dimmed region fill to the right of the crosshair. Omit to use theme `crosshairDim`. */
+  /**
+   * Legacy: fill the region right of the crosshair with this solid (usually
+   * semi-transparent) color — a mask painted *over* the chart, so it only looks
+   * right when it matches the background. Prefer `dimOpacity`. When set, it
+   * overrides the `dimOpacity` fade.
+   */
   crosshairDimColor?: string;
   /** Tooltip pill background. Omit to use theme `tooltipBg`. */
   tooltipBackground?: string;

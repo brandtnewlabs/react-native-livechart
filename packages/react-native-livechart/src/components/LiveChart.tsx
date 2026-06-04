@@ -709,6 +709,7 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
           palette={palette}
           font={skiaFont}
           showTooltip={scrubCfg.tooltip}
+          dimOpacity={scrubCfg.dimOpacity}
           crosshairLineColor={scrubCfg.crosshairLineColor}
           crosshairDimColor={scrubCfg.crosshairDimColor}
           tooltipBackground={scrubCfg.tooltipBackground}
