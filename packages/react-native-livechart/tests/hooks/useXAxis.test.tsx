@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react-native";
 
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { EngineState } from "../../src/core/useLiveChartEngine";
-import { useXAxis } from "../../src/hooks/useXAxis";
+import { reformatXAxisLabels, useXAxis } from "../../src/hooks/useXAxis";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 const font = {
@@ -102,5 +102,47 @@ describe("useXAxis", () => {
     });
     expect(result.current.xAxisEntries.value.length).toBeGreaterThanOrEqual(0);
     expect(first).toBeGreaterThanOrEqual(0);
+  });
+
+  // The X-axis label cache formats each tick once (an allocation optimization),
+  // so a `formatTime` swapped at runtime would otherwise leave already-cached
+  // labels stale until they scroll off-window. `reformatXAxisLabels` is the
+  // refresh the hook runs (via an effect) when the formatter identity changes.
+  // We assert it directly: under the reanimated jest mock `useDerivedValue`
+  // does not recompute on rerender, so the effect's result is not observable
+  // through `xAxisEntries` here.
+  it("reformatXAxisLabels returns a fresh cache re-formatted with the new formatter, alpha preserved", () => {
+    const kA = Math.round(1699999920 * 100);
+    const kB = Math.round(1699999980 * 100);
+    const cache = {
+      [kA]: { alpha: 0.5, text: `A${1699999920}` },
+      [kB]: { alpha: 1, text: `A${1699999980}` },
+    };
+
+    const next = reformatXAxisLabels(cache, (t) => `B${Math.floor(t)}`);
+
+    expect(next[kA].text).toBe("B1699999920");
+    expect(next[kB].text).toBe("B1699999980");
+    // Alphas are carried over, so swapping the formatter doesn't restart the fade.
+    expect(next[kA].alpha).toBe(0.5);
+    expect(next[kB].alpha).toBe(1);
+    // The original cache is NOT mutated (it may already be serialized to a worklet).
+    expect(next).not.toBe(cache);
+    expect(next[kA]).not.toBe(cache[kA]);
+    expect(cache[kA].text).toBe("A1699999920");
+  });
+
+  it("re-runs the relabel effect without error when formatTime changes", () => {
+    const eng = makeEngine(400, 200, 120);
+    const { rerender } = renderHook(
+      ({ f }: { f: (t: number) => string }) =>
+        useXAxis(eng, DEFAULT_PADDING, f, font),
+      { initialProps: { f: (t: number) => `A${Math.floor(t)}` } },
+    );
+    expect(() =>
+      act(() => {
+        rerender({ f: (t: number) => `B${Math.floor(t)}` });
+      }),
+    ).not.toThrow();
   });
 });
