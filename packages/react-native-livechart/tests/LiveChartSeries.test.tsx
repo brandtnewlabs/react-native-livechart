@@ -57,7 +57,9 @@ describe("LiveChartSeries", () => {
     const screen = render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
     const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const layoutView =
+      views.find((v) => typeof v.props.onLayout === "function") ?? views[0];
+    fireEvent(layoutView, "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
@@ -82,7 +84,9 @@ describe("LiveChartSeries", () => {
     const screen = render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
     const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const layoutView =
+      views.find((v) => typeof v.props.onLayout === "function") ?? views[0];
+    fireEvent(layoutView, "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });

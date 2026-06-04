@@ -48,6 +48,8 @@ export interface ResolvedXAxisConfig {
 
 export interface ResolvedScrubConfig {
   tooltip: boolean;
+  /** Opacity of content right of the crosshair while scrubbing (dstOut fade). */
+  dimOpacity: number;
   /** undefined → palette.crosshairLine */
   crosshairLineColor: string | undefined;
   /** undefined → palette.crosshairDim */
@@ -204,6 +206,7 @@ export function resolveXAxis(
 
 const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltip: true,
+  dimOpacity: 0.3,
   crosshairLineColor: undefined,
   crosshairDimColor: undefined,
   tooltipBackground: undefined,

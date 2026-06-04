@@ -33,10 +33,20 @@ const DISPLAY_OPTIONS: { value: DisplayMode; label: string }[] = [
   { value: "candle", label: "Candle (OHLC in readout)" },
 ];
 
+// Opacity of the chart content to the right of the crosshair while scrubbing.
+// `1` = no fade, `0` = fully faded. Lower fades the "future" more.
+const DIM_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: "Off" },
+  { value: 0.6, label: "Light" },
+  { value: 0.3, label: "Default" },
+  { value: 0, label: "Full" },
+];
+
 export default function ScrubbingScreen() {
   const [scrubMode, setScrubMode] = useState<ScrubMode>("on");
   const [displayMode, setDisplayMode] = useState<DisplayMode>("line");
   const [styledTooltip, setStyledTooltip] = useState(false);
+  const [dimOpacity, setDimOpacity] = useState(0.3);
 
   // Readout flows through a SharedValue + animatedProps so each scrub frame
   // updates the text on the UI thread — no React re-render per pointer move.
@@ -70,16 +80,17 @@ export default function ScrubbingScreen() {
     scrubMode === "off"
       ? false
       : scrubMode === "noTooltip"
-        ? { tooltip: false }
+        ? { tooltip: false, dimOpacity }
         : styledTooltip
           ? {
               tooltip: true,
+              dimOpacity,
               tooltipBackground: "#1e293b",
               tooltipColor: "#fbbf24",
               tooltipBorderColor: "#fbbf24",
               crosshairLineColor: "#fbbf24",
             }
-          : true;
+          : { tooltip: true, dimOpacity };
 
   return (
     <DemoScreen
@@ -131,6 +142,12 @@ export default function ScrubbingScreen() {
         options={SCRUB_OPTIONS}
         value={scrubMode}
         onChange={setScrubMode}
+      />
+      <ChipRow
+        label="Trailing fade (dimOpacity)"
+        options={DIM_OPTIONS}
+        value={dimOpacity}
+        onChange={setDimOpacity}
       />
       <ControlRow>
         <ToggleChip

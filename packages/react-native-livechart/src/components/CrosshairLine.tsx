@@ -14,6 +14,7 @@ export function CrosshairLine({
   engine,
   padding,
   palette,
+  dimOpacity = 0.3,
   crosshairLineColor,
   crosshairDimColor,
 }: {
@@ -22,6 +23,8 @@ export function CrosshairLine({
   engine: ChartEngineLayout;
   padding: ChartPadding;
   palette: LiveChartPalette;
+  /** Opacity of content right of the crosshair (dstOut fade). Default 0.3. */
+  dimOpacity?: number;
   crosshairLineColor?: string;
   crosshairDimColor?: string;
 }) {
@@ -42,21 +45,46 @@ export function CrosshairLine({
     () => engine.canvasHeight.value - padding.top - padding.bottom,
   );
 
+  // dstOut erase color: alpha = fraction of trailing content to remove, ramped
+  // by the crosshair fade-in. RGB is irrelevant for dstOut.
+  const dimErase = useDerivedValue(
+    () => `rgba(0,0,0,${(1 - dimOpacity) * crosshairOpacity.value})`,
+  );
+
   return (
-    <Group opacity={crosshairOpacity}>
-      <Rect
-        x={scrubX}
-        y={padding.top}
-        width={dimWidth}
-        height={dimHeight}
-        color={crosshairDimColor ?? palette.crosshairDim}
-      />
-      <Line
-        p1={p1}
-        p2={p2}
-        color={crosshairLineColor ?? palette.crosshairLine}
-        strokeWidth={1}
-      />
-    </Group>
+    <>
+      {crosshairDimColor !== undefined ? (
+        // Legacy: solid colored mask painted over the chart (opt-in).
+        <Group opacity={crosshairOpacity}>
+          <Rect
+            x={scrubX}
+            y={padding.top}
+            width={dimWidth}
+            height={dimHeight}
+            color={crosshairDimColor}
+          />
+        </Group>
+      ) : dimOpacity < 1 ? (
+        // Erase the trailing content's alpha so it fades to the real background.
+        <Group blendMode="dstOut">
+          <Rect
+            x={scrubX}
+            y={padding.top}
+            width={dimWidth}
+            height={dimHeight}
+            color={dimErase}
+          />
+        </Group>
+      ) : null}
+
+      <Group opacity={crosshairOpacity}>
+        <Line
+          p1={p1}
+          p2={p2}
+          color={crosshairLineColor ?? palette.crosshairLine}
+          strokeWidth={1}
+        />
+      </Group>
+    </>
   );
 }

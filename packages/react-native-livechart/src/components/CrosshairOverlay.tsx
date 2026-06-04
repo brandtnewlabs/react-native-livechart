@@ -25,6 +25,7 @@ export function CrosshairOverlay({
   font,
   showTooltip = true,
   children,
+  dimOpacity = 0.3,
   crosshairLineColor,
   crosshairDimColor,
   tooltipBackground,
@@ -43,6 +44,8 @@ export function CrosshairOverlay({
    *  text (e.g. the multi-line candle stack). Passed as children so it composes
    *  instead of being threaded through as a JSX-valued prop. */
   children?: ReactNode;
+  /** Opacity of content right of the crosshair (dstOut fade). Default 0.3. */
+  dimOpacity?: number;
   crosshairLineColor?: string;
   crosshairDimColor?: string;
   tooltipBackground?: string;
@@ -78,24 +81,48 @@ export function CrosshairOverlay({
   const line1Y = useDerivedValue(() => tooltipLayout.value.line1Y);
   const line2Y = useDerivedValue(() => tooltipLayout.value.line2Y);
 
+  // dstOut erase color: alpha = how much of the trailing content to remove,
+  // ramped by the crosshair fade-in. Color RGB is irrelevant for dstOut.
+  const dimErase = useDerivedValue(
+    () => `rgba(0,0,0,${(1 - dimOpacity) * crosshairOpacity.value})`,
+  );
+
   return (
-    <Group opacity={crosshairOpacity}>
-      <Rect
-        x={scrubX}
-        y={padding.top}
-        width={dimWidth}
-        height={dimHeight}
-        color={crosshairDimColor ?? palette.crosshairDim}
-      />
+    <>
+      {crosshairDimColor !== undefined ? (
+        // Legacy: solid colored mask painted over the chart (opt-in).
+        <Group opacity={crosshairOpacity}>
+          <Rect
+            x={scrubX}
+            y={padding.top}
+            width={dimWidth}
+            height={dimHeight}
+            color={crosshairDimColor}
+          />
+        </Group>
+      ) : dimOpacity < 1 ? (
+        // Erase the trailing content's alpha so it fades to the real background
+        // (works on any background color, unlike a colored mask).
+        <Group blendMode="dstOut">
+          <Rect
+            x={scrubX}
+            y={padding.top}
+            width={dimWidth}
+            height={dimHeight}
+            color={dimErase}
+          />
+        </Group>
+      ) : null}
 
-      <Line
-        p1={p1}
-        p2={p2}
-        color={crosshairLineColor ?? palette.crosshairLine}
-        strokeWidth={1}
-      />
+      <Group opacity={crosshairOpacity}>
+        <Line
+          p1={p1}
+          p2={p2}
+          color={crosshairLineColor ?? palette.crosshairLine}
+          strokeWidth={1}
+        />
 
-      {showTooltip && (
+        {showTooltip && (
         <>
           <RoundedRect
             x={tipX}
@@ -137,6 +164,7 @@ export function CrosshairOverlay({
           )}
         </>
       )}
-    </Group>
+      </Group>
+    </>
   );
 }

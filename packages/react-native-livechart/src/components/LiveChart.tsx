@@ -1,3 +1,4 @@
+import { useLayoutEffect, useState } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
@@ -198,6 +199,22 @@ function useLiveChartController({
       }
     : null;
 
+  // Snapshot the live value off the render path to size the right gutter to the
+  // value label. Reading a SharedValue during render trips Reanimated's
+  // strict-mode warning, and the gutter only needs a representative magnitude —
+  // so read it in a layout effect (re-measures before paint, no visible reflow)
+  // once on mount, re-synced if the `value` SharedValue identity changes.
+  // react-doctor's "derive during render" fix is exactly what Reanimated forbids
+  // here, so suppress its effect-read rules at this seed.
+  const [valueLayoutSample, setValueLayoutSample] = useState<
+    number | undefined
+  >(undefined);
+  // react-doctor-disable-next-line react-doctor/no-derived-state-effect -- Reanimated: must read the SharedValue off the render path
+  useLayoutEffect(() => {
+    // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- Reanimated: seeding from a SharedValue off render is the warning-free path
+    setValueLayoutSample(value.get());
+  }, [value]);
+
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,
@@ -209,20 +226,19 @@ function useLiveChartController({
     xAxis: xAxisCfg !== null,
     font: skiaFont,
     formatValue,
-    currentValue: value.value,
+    currentValue: valueLayoutSample,
     pulse: pulseConfig,
   });
 
   // ── Reveal state ────────────────────────────────────────────
   // ≥2 line points or ≥2 committed candles; morphT=1 only when !loading && hasData.
-  const { hasData, initialMorphT } = useLiveChartHasData({
+  const { hasData } = useLiveChartHasData({
     isCandle,
     data,
     candles,
-    loading,
   });
 
-  const reveal = useChartReveal(loading, hasData, initialMorphT);
+  const reveal = useChartReveal(loading, hasData);
 
   // After data clears, keep last snapshot until morphT finishes dropping (web parity).
   const { lineEngineData, candlesEngine, liveEngine } =
@@ -357,6 +373,8 @@ function useLiveChartController({
     markersActive,
     markerHitRadius,
     onMarkerHover,
+    undefined, // seriesSV — single-series has none
+    engine.data, // anchor value-less markers to the line
   );
 
   const rootGesture = markersActive
@@ -633,6 +651,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
             padding={effectivePadding}
             palette={palette}
             font={skiaFont}
+            lineData={engine.data}
           />
         </Group>
       )}
@@ -696,6 +715,7 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
           palette={palette}
           font={skiaFont}
           showTooltip={scrubCfg.tooltip}
+          dimOpacity={scrubCfg.dimOpacity}
           crosshairLineColor={scrubCfg.crosshairLineColor}
           crosshairDimColor={scrubCfg.crosshairDimColor}
           tooltipBackground={scrubCfg.tooltipBackground}

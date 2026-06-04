@@ -144,7 +144,8 @@ interface PulseConfig {
 interface ValueLineConfig { strokeWidth?: number; intervals?: [number, number]; color?: string }
 interface ScrubConfig {
   tooltip?: boolean;
-  crosshairLineColor?: string; crosshairDimColor?: string;
+  dimOpacity?: number; // opacity of content right of the crosshair; default 0.3 (1 = off)
+  crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
   tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;
 }
 interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }

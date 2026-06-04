@@ -180,9 +180,22 @@ export interface XAxisConfig {
 export interface ScrubConfig {
   /** Show the value/time tooltip pill while scrubbing. Default `true`. */
   tooltip?: boolean;
+  /**
+   * Opacity of the chart content to the *right* of the crosshair (the "future")
+   * while scrubbing — `0` fully fades it out, `1` disables the dim. Implemented
+   * by erasing the content's alpha (`dstOut`), so it reveals the real background
+   * and works on any background color. Default `0.3`. Ignored when
+   * `crosshairDimColor` is set (that uses the legacy colored mask instead).
+   */
+  dimOpacity?: number;
   /** Vertical crosshair line stroke. Omit to use theme `crosshairLine`. */
   crosshairLineColor?: string;
-  /** Dimmed region fill to the right of the crosshair. Omit to use theme `crosshairDim`. */
+  /**
+   * Legacy: fill the region right of the crosshair with this solid (usually
+   * semi-transparent) color — a mask painted *over* the chart, so it only looks
+   * right when it matches the background. Prefer `dimOpacity`. When set, it
+   * overrides the `dimOpacity` fade.
+   */
   crosshairDimColor?: string;
   /** Tooltip pill background. Omit to use theme `tooltipBg`. */
   tooltipBackground?: string;
@@ -293,7 +306,11 @@ export interface Marker {
   kind: MarkerKind;
   /** Anchor y to this series' line at `time` (multi-series). */
   seriesId?: string;
-  /** Absolute y value in data space (takes precedence over `seriesId`). */
+  /**
+   * Absolute y value in data space. Takes precedence over `seriesId`. Omit it on
+   * a single-series chart to anchor the marker to the line at `time`
+   * (interpolated from the chart's `data`) — so the glyph always sits on the line.
+   */
   value?: number;
   /** Glyph color override. Defaults to a kind-specific palette accent. */
   color?: string;
@@ -308,6 +325,12 @@ export interface Marker {
    * precedence over `icon` and the built-in `kind` shape.
    */
   image?: SkImage;
+  /**
+   * Draw the `icon` inside a filled circular badge in the marker `color` (icon
+   * rendered in white) — e.g. a green `+` buy / red `−` sell tag. Requires
+   * `icon`; ignored without it. The badge sizes itself to the icon glyph.
+   */
+  pill?: boolean;
   /** Icon / image box size in px (icon font size or image width+height). Default `16`. */
   size?: number;
   /** Pass-through payload surfaced on `onMarkerHover`. */
@@ -403,7 +426,7 @@ export interface LegendStyle {
 export interface LegendConfig {
   /** Show the legend. Default `true`. */
   visible?: boolean;
-  /** Show only colored dots in toggle chips (no text labels). Default `false`. */
+  /** Use a smaller, denser chip layout (tighter padding + font). Default `false`. */
   compact?: boolean;
   /** Position of the legend relative to the chart. Default `"top"`. */
   position?: "top" | "bottom";

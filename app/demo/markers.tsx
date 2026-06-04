@@ -1,11 +1,6 @@
-import { useImage, type SkImage } from "@shopify/react-native-skia";
 import { useEffect, useRef, useState } from "react";
 import { Text } from "react-native";
-import {
-  LiveChart,
-  type Marker,
-  type MarkerKind,
-} from "react-native-livechart";
+import { LiveChart, type Marker } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -17,54 +12,36 @@ import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
 export const options = { title: "Markers" };
 
-const KINDS: MarkerKind[] = [
-  "trade",
-  "boost",
-  "graduation",
-  "winner",
-  "clawback",
-];
+type Side = "buy" | "sell";
 
-/** Plain text/symbol glyphs (render in the chart's mono font). */
-const SYMBOLS: Record<MarkerKind, string> = {
-  trade: "$",
-  boost: "*",
-  graduation: "^",
-  winner: "+",
-  clawback: "x",
-};
+// Tailwind green-600 / red-600 — saturated enough for the white +/− to read.
+const BUY_COLOR = "#16a34a";
+const SELL_COLOR = "#dc2626";
 
-type GlyphMode = "shape" | "symbol" | "image";
-
-const GLYPH_OPTIONS: { value: GlyphMode; label: string }[] = [
-  { value: "shape", label: "Shapes" },
-  { value: "symbol", label: "Symbols" },
-  { value: "image", label: "Image" },
-];
-
-const VOLATILITY_OPTIONS = VOLATILITY_MODES.map((m) => ({
-  value: m,
-  label: m,
-}));
+const VOLATILITY_OPTIONS = VOLATILITY_MODES.map((m) => ({ value: m, label: m }));
 
 /** Visible time window (s). Markers are kept until they scroll just past it. */
 const WINDOW = 30;
 
-/** Per-kind glyph decoration for the current mode (shape = no icon/image override). */
-function decorate(
-  kind: MarkerKind,
-  mode: GlyphMode,
-  logo: SkImage | null,
-): Partial<Marker> {
-  if (mode === "symbol") return { icon: SYMBOLS[kind] };
-  if (mode === "image" && logo) return { image: logo, size: 22 };
-  return {};
+/**
+ * Buy = green `+` pill, sell = red `−` pill. `value` is omitted so the marker
+ * anchors to the line at `time`; `pill` draws the colored badge around the icon.
+ */
+function makeMarker(id: string, time: number, side: Side): Marker {
+  return {
+    id,
+    time,
+    kind: "trade", // built-in shape is overridden by the pill + icon below
+    color: side === "buy" ? BUY_COLOR : SELL_COLOR,
+    icon: side === "buy" ? "+" : "−",
+    pill: true,
+    data: { side },
+  };
 }
 
 export default function MarkersScreen() {
   const [auto, setAuto] = useState(true);
-  const [glyph, setGlyph] = useState<GlyphMode>("shape");
-  const [hover, setHover] = useState("Tap a marker glyph");
+  const [hover, setHover] = useState("Tap a marker");
   const [streamOn, setStreamOn] = useState(false);
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("normal");
 
@@ -82,29 +59,30 @@ export default function MarkersScreen() {
     historyRange: "1m",
   });
 
-  const logo = useImage(require("../../assets/images/react-logo.png"));
-
   const markers = useSharedValue<Marker[]>([]);
   const counter = useRef(0);
 
-  // Drop a marker (cycling kinds) near the live edge every 1.5s.
+  const spawn = (side: Side) => {
+    const now = Date.now() / 1000;
+    counter.current += 1;
+    const m = makeMarker(`m${counter.current}`, now - 1, side);
+    // Keep markers until they scroll just past the left edge of the window; the
+    // generous slice is only an unbounded-growth safety net.
+    markers.set(
+      [...markers.get(), m]
+        .filter((x) => x.time > now - (WINDOW + 4))
+        .slice(-60),
+    );
+  };
+
+  // Auto-spawn: alternate buy / sell near the live edge every 1.5s.
   useEffect(() => {
     if (!auto) return;
     const id = setInterval(() => {
       const now = Date.now() / 1000;
-      const kind = KINDS[counter.current % KINDS.length];
       counter.current += 1;
-      const m: Marker = {
-        id: `m${counter.current}`,
-        time: now - 1,
-        kind,
-        value: value.get(),
-        data: { kind },
-        ...decorate(kind, glyph, logo),
-      };
-      // Keep markers until they scroll just past the left edge of the window
-      // (not a fixed count — a low cap would evict still-visible markers
-      // mid-chart). The generous slice is only an unbounded-growth safety net.
+      const side: Side = counter.current % 2 === 0 ? "buy" : "sell";
+      const m = makeMarker(`m${counter.current}`, now - 1, side);
       markers.set(
         [...markers.get(), m]
           .filter((x) => x.time > now - (WINDOW + 4))
@@ -112,41 +90,13 @@ export default function MarkersScreen() {
       );
     }, 1500);
     return () => clearInterval(id);
-  }, [auto, markers, value, glyph, logo]);
-
-  const spawnAll = () => {
-    const now = Date.now() / 1000;
-    const v = value.get();
-    markers.set(
-      KINDS.map((kind, i) => ({
-        id: `all-${kind}`,
-        time: now - 2 - i * 1.5,
-        kind,
-        value: v * (1 + (i - 2) * 0.01),
-        data: { kind },
-        ...decorate(kind, glyph, logo),
-      })),
-    );
-  };
-
-  // Re-decorate existing markers when the glyph mode changes.
-  useEffect(() => {
-    markers.set(
-      markers.get().map((m) => ({
-        ...m,
-        icon: undefined,
-        image: undefined,
-        size: undefined,
-        ...decorate(m.kind, glyph, logo),
-      })),
-    );
-  }, [glyph, logo, markers]);
+  }, [auto, markers]);
 
   return (
     <DemoScreen
       title="Markers & trades"
       docs="guides/markers-and-references"
-      description="markers[] — 5 kinds, tap to hover (onMarkerHover + markerHitRadius). Optional tradeStream overlay."
+      description="Buy / sell markers anchored to the line — green + pill (buy), red − pill (sell). Tap a pill to hover; optional tradeStream overlay."
       chart={
         <LiveChart
           data={data}
@@ -158,10 +108,11 @@ export default function MarkersScreen() {
           markerHitRadius={22}
           tradeStream={streamOn ? tradeStream : undefined}
           onMarkerHover={(e) => {
+            const side = (e?.marker.data as { side?: Side } | undefined)?.side;
             setHover(
               e
-                ? `${e.marker.kind} @ ${e.marker.value?.toFixed(2)} (${e.point.x.toFixed(0)}, ${e.point.y.toFixed(0)})`
-                : "missed — tap a glyph",
+                ? `${side ?? "marker"} @ (${e.point.x.toFixed(0)}, ${e.point.y.toFixed(0)})`
+                : "missed — tap a pill",
             );
           }}
           scrub={false}
@@ -177,29 +128,13 @@ export default function MarkersScreen() {
           active={auto}
           onPress={() => setAuto((v) => !v)}
         />
-        <Chip label="One of each" active={false} onPress={spawnAll} />
-        <Chip
-          label="Clear"
-          active={false}
-          onPress={() => {
-            markers.set([]);
-          }}
-        />
+        <Chip label="Buy +" active={false} onPress={() => spawn("buy")} />
+        <Chip label="Sell −" active={false} onPress={() => spawn("sell")} />
+        <Chip label="Clear" active={false} onPress={() => markers.set([])} />
       </ControlRow>
       <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
-        trade = ring · boost = asterisk · graduation = flag · winner = star ·
-        clawback = square
-      </Text>
-
-      <ChipRow
-        label="Glyph"
-        options={GLYPH_OPTIONS}
-        value={glyph}
-        onChange={setGlyph}
-      />
-      <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
-        Per-marker glyph: built-in shape, a text/emoji `icon`, or an `image`
-        (Skia SkImage). Image precedence: image &gt; icon &gt; shape.
+        Green + = buy · red − = sell. Markers omit `value`, so each anchors to the
+        line at its time.
       </Text>
 
       <ControlRow label="Trade stream">

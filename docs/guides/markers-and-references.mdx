@@ -38,8 +38,19 @@ const markers = useSharedValue<Marker[]>([
 ```
 
 Built-in `kind` glyphs are `"trade" | "boost" | "graduation" | "winner" | "clawback"`. Override
-the glyph with `icon` (text/emoji) or `image` (a Skia `SkImage`). In multi-series, anchor a
-marker to a line by setting `seriesId` instead of `value`.
+the glyph with `icon` (text/emoji) or `image` (a Skia `SkImage`). Set `pill` to wrap the `icon` in a
+filled circular badge in the marker `color` (icon rendered white) — e.g. a green `+` buy / red `−`
+sell tag:
+
+```tsx
+{ id: "buy-1", time, kind: "trade", icon: "+", color: "#16a34a", pill: true }
+{ id: "sell-1", time, kind: "trade", icon: "−", color: "#dc2626", pill: true }
+```
+
+**Anchoring `y`:** pass an absolute `value`, or omit it to pin the marker to the line. On a
+single-series chart, omitting `value` anchors the marker to the line at `time` (interpolated from
+`data`); in multi-series, set `seriesId` to anchor to that series' line. So for a marker that should
+always sit on the line, just give it a `time` and `kind`.
 
 ## Trade stream
 

@@ -55,6 +55,19 @@ describe("projectMarkers", () => {
     expect(out[0].y).toBeCloseTo(194);
   });
 
+  it("anchors a value-less marker to the single-series line via lineData", () => {
+    const lineData = [
+      { time: 980, value: 20 },
+      { time: 1000, value: 40 },
+    ];
+    const markers: Marker[] = [{ id: "a", time: 990, kind: "trade" }];
+    const out: ProjectedMarker[] = [];
+    projectMarkers(markers, out, { ...BASE, lineData });
+    // interpolated value at t=990 is 30 → y = 12 + ((100-30)/100)*260 = 194
+    expect(out[0].visible).toBe(true);
+    expect(out[0].y).toBeCloseTo(194);
+  });
+
   it("marks invisible when neither value nor a matching series resolves", () => {
     const out: ProjectedMarker[] = [];
     projectMarkers(

@@ -129,11 +129,21 @@ describe("resolveScrub", () => {
   });
 
   it("returns defaults for true", () => {
-    expect(resolveScrub(true)).toEqual({ tooltip: true });
+    expect(resolveScrub(true)).toEqual({ tooltip: true, dimOpacity: 0.3 });
   });
 
   it("merges partial config with defaults", () => {
-    expect(resolveScrub({ tooltip: false })).toEqual({ tooltip: false });
+    expect(resolveScrub({ tooltip: false })).toEqual({
+      tooltip: false,
+      dimOpacity: 0.3,
+    });
+  });
+
+  it("accepts a custom dimOpacity", () => {
+    expect(resolveScrub({ dimOpacity: 0.5 })).toEqual({
+      tooltip: true,
+      dimOpacity: 0.5,
+    });
   });
 });
 

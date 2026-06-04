@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { CandlePoint, LiveChartPoint } from "../types";
 
@@ -6,22 +5,19 @@ import type { CandlePoint, LiveChartPoint } from "../types";
  * Data presence for {@link LiveChart}: line mode needs ≥2 points;
  * candle mode needs ≥2 committed candles (`liveCandle` alone does not count).
  *
- * Also returns a one-shot `initialMorphT` for {@link useChartReveal} first paint
- * (reads shared values once on mount — same tradeoff as inline LiveChart).
+ * {@link useChartReveal} seeds its first-paint state off `hasData` directly (in a
+ * layout effect), so no JS-thread snapshot is read during render here.
  */
 export function useLiveChartHasData({
   isCandle,
   data,
   candles,
-  loading,
 }: {
   isCandle: boolean;
   data: SharedValue<LiveChartPoint[]>;
   candles: SharedValue<CandlePoint[]> | undefined;
-  loading: boolean;
 }): {
   hasData: SharedValue<boolean>;
-  initialMorphT: number;
 } {
   const hasData = useDerivedValue(() => {
     "worklet";
@@ -31,12 +27,5 @@ export function useLiveChartHasData({
     return data.value.length >= 2;
   });
 
-  const [initialMorphT] = useState<number>(() => {
-    const initialHas = isCandle
-      ? (candles?.value.length ?? 0) >= 2
-      : data.value.length >= 2;
-    return loading ? 0 : initialHas ? 1 : 0;
-  });
-
-  return { hasData, initialMorphT };
+  return { hasData };
 }

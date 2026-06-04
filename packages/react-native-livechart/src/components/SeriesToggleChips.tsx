@@ -4,13 +4,40 @@ import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
 import type { ResolvedLegendConfig } from "../core/resolveConfig";
-import type { SeriesConfig } from "../types";
+import type { LiveChartPalette, SeriesConfig } from "../types";
 import { seriesMetaSig } from "./seriesMetaSig";
 
 export interface SeriesToggleChipsProps {
   series: SharedValue<SeriesConfig[]>;
   legend: ResolvedLegendConfig;
+  /** Chart palette, used to derive theme-aware default chip colors. */
+  palette?: LiveChartPalette;
   onSeriesToggle?: (id: string, visible: boolean) => void;
+}
+
+/**
+ * Neutral, readable default chip colors derived from the chart background
+ * luminance, so the legend stays legible on both light and dark themes. Each is
+ * only a fallback — matching `legend.style` overrides win.
+ */
+function legendColorDefaults(palette: LiveChartPalette | undefined) {
+  const bg = palette?.bgRgb;
+  const isLight = bg
+    ? (0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2]) / 255 > 0.5
+    : false;
+  return isLight
+    ? {
+        activeBackground: "rgba(0,0,0,0.06)",
+        hiddenBackground: "rgba(0,0,0,0.03)",
+        activeColor: "rgba(0,0,0,0.85)",
+        hiddenColor: "rgba(0,0,0,0.4)",
+      }
+    : {
+        activeBackground: "rgba(255,255,255,0.12)",
+        hiddenBackground: "rgba(255,255,255,0.05)",
+        activeColor: "rgba(255,255,255,0.92)",
+        hiddenColor: "rgba(255,255,255,0.45)",
+      };
 }
 
 /**
@@ -19,6 +46,7 @@ export interface SeriesToggleChipsProps {
 export function SeriesToggleChips({
   series,
   legend,
+  palette,
   onSeriesToggle,
 }: SeriesToggleChipsProps) {
   // Seed from the current series at mount; the reaction below keeps it in sync.
@@ -64,6 +92,7 @@ export function SeriesToggleChips({
 
   const compact = legend.compact;
   const st = legend.style;
+  const fallback = legendColorDefaults(palette);
 
   return (
     <View style={[styles.row, compact && styles.rowCompact]}>
@@ -71,8 +100,12 @@ export function SeriesToggleChips({
         const on = s.visible !== false;
         const label = s.label ?? s.id;
         const swatchSize = st?.dotSize;
-        const chipBg = on ? st?.activeBackground : st?.hiddenBackground;
-        const textColor = on ? st?.activeColor : st?.hiddenColor;
+        const chipBg = on
+          ? (st?.activeBackground ?? fallback.activeBackground)
+          : (st?.hiddenBackground ?? fallback.hiddenBackground);
+        const textColor = on
+          ? (st?.activeColor ?? fallback.activeColor)
+          : (st?.hiddenColor ?? fallback.hiddenColor);
         return (
           <Pressable
             key={s.id}
@@ -80,9 +113,8 @@ export function SeriesToggleChips({
             style={[
               styles.chip,
               compact && styles.chipCompact,
-              on && styles.chipOn,
               st?.borderRadius !== undefined && { borderRadius: st.borderRadius },
-              chipBg !== undefined && { backgroundColor: chipBg },
+              { backgroundColor: chipBg },
             ]}
           >
             <View
@@ -100,10 +132,9 @@ export function SeriesToggleChips({
               style={[
                 styles.chipText,
                 compact && styles.chipTextCompact,
-                on && styles.chipTextOn,
                 s.kind === "derived" && styles.chipTextDerived,
                 st?.fontSize !== undefined && { fontSize: st.fontSize },
-                textColor !== undefined && { color: textColor },
+                { color: textColor },
               ]}
               numberOfLines={1}
             >
@@ -138,7 +169,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.06)",
     maxWidth: "48%",
   },
   chipCompact: {
@@ -148,9 +178,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     maxWidth: "32%",
   },
-  chipOn: {
-    backgroundColor: "rgba(59,130,246,0.25)",
-  },
   swatch: {
     width: 8,
     height: 8,
@@ -158,15 +185,11 @@ const styles = StyleSheet.create({
   },
   chipText: {
     flexShrink: 1,
-    color: "rgba(255,255,255,0.5)",
     fontSize: 13,
     fontFamily: MONO_FONT_FAMILY,
   },
   chipTextCompact: {
     fontSize: 11,
-  },
-  chipTextOn: {
-    color: "rgba(255,255,255,0.9)",
   },
   chipTextDerived: {
     fontStyle: "italic",
