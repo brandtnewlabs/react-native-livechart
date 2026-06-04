@@ -71,9 +71,12 @@ export function AnimatedTrendTextInput({
   // Seed off the render path: reading a SharedValue during render (incl. a
   // useState initializer) trips Reanimated's strict-mode warning. useLayoutEffect
   // runs before paint, so there's no placeholder flash; the reaction below keeps
-  // it live thereafter.
+  // it live thereafter. react-doctor's "derive during render" fix is exactly what
+  // Reanimated forbids here, so suppress its effect-read rules at this seed.
   const [rawValue, setRawValue] = useState(NaN);
+  // react-doctor-disable-next-line react-doctor/no-derived-state-effect -- Reanimated: must read the SharedValue off the render path
   useLayoutEffect(() => {
+    // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- Reanimated: seeding from a SharedValue off render is the warning-free path
     setRawValue(sharedValue.get());
   }, [sharedValue]);
 

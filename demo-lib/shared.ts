@@ -1,33 +1,6 @@
 import type { VolatilityMode } from "../sim/generators";
-import {
-  HISTORY_RANGE_SPAN_SECONDS,
-  type HistoryRange,
-} from "../sim/useSimulatedChartData";
 
 export const ACCENT = "#3323E6";
-
-/** Sim seed span presets (see `useSimulatedChartData` `historyRange`). */
-export const HISTORY_RANGE_PRESETS: {
-  label: string;
-  preset: HistoryRange;
-}[] = [
-  { label: "1m", preset: "1m" },
-  { label: "5m", preset: "5m" },
-  { label: "1h", preset: "1h" },
-  { label: "6h", preset: "6h" },
-  { label: "1d", preset: "1d" },
-  { label: "1w", preset: "1w" },
-  { label: "1mo", preset: "1mo" },
-  { label: "6mo", preset: "6mo" },
-  { label: "1y", preset: "1y" },
-];
-
-/** Cap visible window so very long spans stay drawable; full history remains in buffer. */
-export function viewportSecsForHistoryPreset(preset: HistoryRange): number {
-  const span = HISTORY_RANGE_SPAN_SECONDS[preset];
-  const cap = 7 * 86400;
-  return span > cap ? cap : span;
-}
 
 export const TIME_WINDOWS: { label: string; secs: number }[] = [
   { label: "30s", secs: 30 },

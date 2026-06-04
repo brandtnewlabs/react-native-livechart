@@ -204,10 +204,14 @@ function useLiveChartController({
   // strict-mode warning, and the gutter only needs a representative magnitude —
   // so read it in a layout effect (re-measures before paint, no visible reflow)
   // once on mount, re-synced if the `value` SharedValue identity changes.
+  // react-doctor's "derive during render" fix is exactly what Reanimated forbids
+  // here, so suppress its effect-read rules at this seed.
   const [valueLayoutSample, setValueLayoutSample] = useState<
     number | undefined
   >(undefined);
+  // react-doctor-disable-next-line react-doctor/no-derived-state-effect -- Reanimated: must read the SharedValue off the render path
   useLayoutEffect(() => {
+    // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- Reanimated: seeding from a SharedValue off render is the warning-free path
     setValueLayoutSample(value.get());
   }, [value]);
 
