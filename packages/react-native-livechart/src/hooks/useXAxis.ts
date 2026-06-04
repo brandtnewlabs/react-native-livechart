@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 
 import type { SkFont } from "@shopify/react-native-skia";
@@ -15,6 +16,27 @@ export interface XAxisEntry {
 }
 
 const FADE = 0.08;
+
+/**
+ * Build a fresh label cache that re-formats every tick's `text` with
+ * `formatTime`, preserving each entry's `alpha`. The cache (see {@link useXAxis})
+ * formats each tick once for allocation reasons; this refreshes it when the
+ * `formatTime` prop changes. Returns a NEW object (and new entry objects) rather
+ * than mutating `cache` in place — the cache is also read inside the derived
+ * value worklet, and mutating an already-serialized object from the JS thread
+ * is unsafe under Reanimated's worklet model. Replacing the SharedValue with a
+ * fresh object propagates cleanly to the UI thread.
+ */
+export function reformatXAxisLabels(
+  cache: Record<number, { alpha: number; text: string }>,
+  formatTime: (t: number) => string,
+): Record<number, { alpha: number; text: string }> {
+  const next: Record<number, { alpha: number; text: string }> = {};
+  for (const key in cache) {
+    next[key] = { alpha: cache[key].alpha, text: formatTime(Number(key) / 100) };
+  }
+  return next;
+}
 
 function xAxisKeyIsTarget(key: number, targetKeys: number[]): boolean {
   "worklet";
@@ -49,6 +71,16 @@ export function useXAxis(
   const labelAlphas = useSharedValue<
     Record<number, { alpha: number; text: string }>
   >({});
+
+  // A tick's key encodes its time, so its label is formatted once (below) and
+  // never re-formatted per frame — an allocation optimization. That assumes
+  // `formatTime` is stable; if the consumer swaps it at runtime, already-cached
+  // labels would otherwise keep their old text until they scroll off-window.
+  // Rebuild the cache with the new formatter (alphas preserved, so no fade
+  // restart) whenever the formatter identity changes.
+  useEffect(() => {
+    labelAlphas.set(reformatXAxisLabels(labelAlphas.get(), formatTime));
+  }, [formatTime, labelAlphas]);
 
   const xAxisEntries = useDerivedValue(() => {
     const w = engine.canvasWidth.get();
