@@ -1,5 +1,5 @@
-import type { Marker, SeriesConfig } from "../types";
-import { interpolateAtTime } from "./interpolate";
+import type { LiveChartPoint, Marker, SeriesConfig } from "../types";
+import { splineValueAtTime } from "./spline";
 
 /** Screen-space position for one marker, index-aligned with the marker array. */
 export interface ProjectedMarker {
@@ -21,6 +21,8 @@ export interface ProjectMarkersOpts {
   displayMax: number;
   /** Multi-series data, used to anchor markers by `seriesId`. */
   series?: SeriesConfig[];
+  /** Single-series line data; anchors markers that omit `value` (and `seriesId`). */
+  lineData?: LiveChartPoint[];
 }
 
 /** How far off-chart (px) a marker may sit before it is culled. */
@@ -64,10 +66,16 @@ function projectInto(
   } else if (seriesId !== undefined && opts.series) {
     for (let j = 0; j < opts.series.length; j++) {
       if (opts.series[j].id === seriesId) {
-        v = interpolateAtTime(opts.series[j].data, time);
+        // Evaluate the rendered spline (not the linear chord) so the glyph sits
+        // exactly on the curve between data points.
+        v = splineValueAtTime(opts.series[j].data, time);
         break;
       }
     }
+  } else if (opts.lineData) {
+    // Single-series anchor: omit `value` to pin the marker to the line at `time`
+    // (on the rendered spline curve, not the linear chord between points).
+    v = splineValueAtTime(opts.lineData, time);
   }
   if (v === null) {
     target.visible = false;

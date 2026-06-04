@@ -10,7 +10,12 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import { projectMarkers, type ProjectedMarker } from "../math/markers";
 import { nearestMarkerIndex } from "../math/markers";
-import type { Marker, MarkerHoverEvent, SeriesConfig } from "../types";
+import type {
+  LiveChartPoint,
+  Marker,
+  MarkerHoverEvent,
+  SeriesConfig,
+} from "../types";
 
 /**
  * Projects markers to screen positions each frame and builds a tap gesture that
@@ -24,6 +29,7 @@ export function useMarkers(
   hitRadius: number,
   onMarkerHover?: (event: MarkerHoverEvent | null) => void,
   seriesSV?: SharedValue<SeriesConfig[]>,
+  lineData?: SharedValue<LiveChartPoint[]>,
 ): { projected: SharedValue<ProjectedMarker[]>; tapGesture: ReturnType<typeof Gesture.Tap> } {
   const projected = useSharedValue<ProjectedMarker[]>([]);
   const cacheRef = useRef<{
@@ -63,6 +69,7 @@ export function useMarkers(
         displayMin: engine.displayMin.get(),
         displayMax: engine.displayMax.get(),
         series: seriesSV?.get(),
+        lineData: lineData?.get(),
       });
       projected.set(buf);
     },

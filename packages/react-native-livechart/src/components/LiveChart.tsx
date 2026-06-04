@@ -370,6 +370,8 @@ function useLiveChartController({
     markersActive,
     markerHitRadius,
     onMarkerHover,
+    undefined, // seriesSV — single-series has none
+    engine.data, // anchor value-less markers to the line
   );
 
   const rootGesture = markersActive
@@ -646,6 +648,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
             padding={effectivePadding}
             palette={palette}
             font={skiaFont}
+            lineData={engine.data}
           />
         </Group>
       )}

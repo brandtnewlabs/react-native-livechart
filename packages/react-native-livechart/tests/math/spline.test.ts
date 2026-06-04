@@ -1,4 +1,4 @@
-import { drawSpline } from "../../src/math/spline";
+import { drawSpline, splineValueAtTime } from "../../src/math/spline";
 
 function makePath() {
   return {
@@ -65,5 +65,50 @@ describe("drawSpline", () => {
     const path = makePath();
     drawSpline(path as never, [0, 0, 5, 5, 5, 10, 10, 10]);
     expect(path.cubicTo).toHaveBeenCalled();
+  });
+});
+
+describe("splineValueAtTime", () => {
+  const pts = [
+    { time: 0, value: 0 },
+    { time: 10, value: 10 },
+    { time: 20, value: 5 },
+  ];
+
+  it("returns null for empty data", () => {
+    expect(splineValueAtTime([], 5)).toBeNull();
+  });
+
+  it("returns the only value for a single point", () => {
+    expect(splineValueAtTime([{ time: 0, value: 7 }], 99)).toBe(7);
+  });
+
+  it("clamps to the endpoints outside the data range", () => {
+    expect(splineValueAtTime(pts, -5)).toBe(0);
+    expect(splineValueAtTime(pts, 25)).toBe(5);
+  });
+
+  it("passes exactly through data vertices (like the rendered curve)", () => {
+    expect(splineValueAtTime(pts, 0)).toBeCloseTo(0);
+    expect(splineValueAtTime(pts, 10)).toBeCloseTo(10);
+    expect(splineValueAtTime(pts, 20)).toBeCloseTo(5);
+  });
+
+  it("is linear for exactly two points (matches drawSpline's n===2 lineTo)", () => {
+    const two = [
+      { time: 0, value: 0 },
+      { time: 10, value: 20 },
+    ];
+    expect(splineValueAtTime(two, 5)).toBeCloseTo(10);
+    expect(splineValueAtTime(two, 2.5)).toBeCloseTo(5);
+  });
+
+  it("bows off the linear chord between vertices (curved, no overshoot)", () => {
+    // Midpoint of the rising segment: linear chord would be 5; the monotone
+    // cubic curves above it but never overshoots the [0, 10] vertex range.
+    const mid = splineValueAtTime(pts, 5) as number;
+    expect(mid).not.toBeCloseTo(5);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThanOrEqual(10);
   });
 });

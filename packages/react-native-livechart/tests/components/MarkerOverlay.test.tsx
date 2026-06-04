@@ -70,6 +70,25 @@ describe("MarkerOverlay", () => {
     render(<Fixture />);
   });
 
+  it("renders a pill badge around the icon", () => {
+    function Fixture() {
+      const markers = useSharedValue<Marker[]>([
+        { id: "buy", time: 999, kind: "trade", value: 50, icon: "+", color: "#16a34a", pill: true },
+        { id: "sell", time: 998, kind: "trade", value: 55, icon: "−", color: "#dc2626", pill: true },
+      ]);
+      return (
+        <MarkerOverlay
+          markers={markers}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
   it("renders an image icon", () => {
     function Fixture() {
       const markers = useSharedValue<Marker[]>([

@@ -17,10 +17,10 @@ import {
 import { scheduleOnRN } from "react-native-worklets";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
-import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { markersSignature, projectPoint } from "../math/markers";
 import type {
   LiveChartPalette,
+  LiveChartPoint,
   Marker,
   MarkerKind,
   SeriesConfig,
@@ -44,27 +44,37 @@ function defaultMarkerColor(kind: MarkerKind, palette: LiveChartPalette): string
 
 const OFF = -9999;
 const DEFAULT_ICON_SIZE = 16;
+/** Circular badge: padding around the icon glyph, background-colored ring width,
+ *  and the icon color drawn on the fill. */
+const PILL_PAD = 2;
+const PILL_BORDER = 2;
+const PILL_TEXT_COLOR = "#ffffff";
 
 function MarkerGlyph({
   marker,
   color,
+  bgColor,
   engine,
   padding,
   seriesSV,
+  lineDataSV,
   font,
   axisY,
 }: {
   marker: Marker;
   color: string;
+  /** Chart background color, drawn as a ring behind a `pill` badge. */
+  bgColor?: string;
   engine: ChartEngineLayout;
   padding: ChartPadding;
   seriesSV?: SharedValue<SeriesConfig[]>;
+  lineDataSV?: SharedValue<LiveChartPoint[]>;
   font: SkFont;
   axisY: SharedValue<number>;
 }) {
   // Capture only primitive anchor fields — never the full marker (which may
   // carry non-serializable `data` / `image`) — in the worklet closure.
-  const { kind, icon, image } = marker;
+  const { kind, icon, image, pill } = marker;
   const time = marker.time;
   const value = marker.value;
   const seriesId = marker.seriesId;
@@ -85,6 +95,7 @@ function MarkerGlyph({
       displayMin: engine.displayMin.get(),
       displayMax: engine.displayMax.get(),
       series: seriesSV?.get(),
+      lineData: lineDataSV?.get(),
     }),
   );
 
@@ -162,18 +173,22 @@ function MarkerGlyph({
   // (stable) font and icon, so measure once instead of every frame. Skia
   // `measureText`/`getMetrics` both allocate, so hoisting them out of the
   // per-frame worklet removes one measure + one metrics call per glyph/frame.
-  const halfIconW = measureFontTextWidth(font, icon ?? "") / 2;
-  const iconBaselineShift = (() => {
-    const fm = font.getMetrics();
-    return (fm.ascent + fm.descent) / 2;
-  })();
+  // Center the icon glyph on the marker using its measured bounds — tighter and
+  // more accurate than font ascent/descent, so `+` / `−` etc. sit centered both
+  // horizontally and vertically in the badge. Stable per render, not per frame.
+  const iconBounds = font.measureText(icon ?? "");
+  const iconDX = iconBounds.x + iconBounds.width / 2;
+  const iconDY = iconBounds.y + iconBounds.height / 2;
 
   const iconX = useDerivedValue(() =>
-    layout.get().visible ? layout.get().x - halfIconW : OFF,
+    layout.get().visible ? layout.get().x - iconDX : OFF,
   );
   const iconY = useDerivedValue(() =>
-    layout.get().visible ? layout.get().y - iconBaselineShift : OFF,
+    layout.get().visible ? layout.get().y - iconDY : OFF,
   );
+
+  // Circular badge radius — fits the glyph's larger dimension + padding.
+  const pillR = Math.max(iconBounds.width, iconBounds.height) / 2 + PILL_PAD;
 
   if (image) {
     return (
@@ -191,6 +206,26 @@ function MarkerGlyph({
   }
 
   if (icon) {
+    if (pill) {
+      // Filled circular badge in the marker color with the icon in white — e.g.
+      // a green `+` buy / red `−` sell tag. A background-colored ring underneath
+      // separates it from the line passing behind.
+      return (
+        <Group opacity={opacity}>
+          {bgColor !== undefined && (
+            <Circle cx={cx} cy={cy} r={pillR + PILL_BORDER} color={bgColor} />
+          )}
+          <Circle cx={cx} cy={cy} r={pillR} color={color} />
+          <SkiaText
+            x={iconX}
+            y={iconY}
+            text={icon}
+            font={font}
+            color={PILL_TEXT_COLOR}
+          />
+        </Group>
+      );
+    }
     return (
       <Group opacity={opacity}>
         <SkiaText x={iconX} y={iconY} text={icon} font={font} color={color} />
@@ -237,6 +272,7 @@ export function MarkerOverlay({
   palette,
   font,
   series,
+  lineData,
 }: {
   markers: SharedValue<Marker[]>;
   engine: ChartEngineLayout;
@@ -245,6 +281,8 @@ export function MarkerOverlay({
   font: SkFont;
   /** Multi-series data, used to anchor markers by `seriesId`. */
   series?: SharedValue<SeriesConfig[]>;
+  /** Single-series line data; anchors markers that omit `value`. */
+  lineData?: SharedValue<LiveChartPoint[]>;
 }) {
   // Seed from the current markers at mount; the reaction below keeps it in sync.
   const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
@@ -270,6 +308,8 @@ export function MarkerOverlay({
     () => engine.canvasHeight.get() - padding.bottom,
   );
 
+  const bgColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
+
   return (
     <Group>
       {snapshot.map((m) => (
@@ -277,9 +317,11 @@ export function MarkerOverlay({
           key={m.id}
           marker={m}
           color={m.color ?? defaultMarkerColor(m.kind, palette)}
+          bgColor={bgColor}
           engine={engine}
           padding={padding}
           seriesSV={series}
+          lineDataSV={lineData}
           font={font}
           axisY={axisY}
         />

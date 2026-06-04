@@ -1,4 +1,5 @@
 import type { SkPath } from "@shopify/react-native-skia";
+import type { LiveChartPoint } from "../types";
 
 /**
  * Reusable scratch buffers for {@link drawSpline}. Pass a persistent instance
@@ -94,4 +95,89 @@ export function drawSpline(path: SkPath, pts: number[], scratch?: SplineScratch)
       pts[j2 + 1],
     );
   }
+}
+
+/**
+ * Value of the Fritsch–Carlson monotone cubic — the same curve {@link drawSpline}
+ * renders — at `time`. Use this to anchor overlays (e.g. markers) exactly on the
+ * rendered line instead of on the straight chord between data points. Returns
+ * `null` for empty data; clamps to the endpoints outside the data range.
+ *
+ * The data→pixel mapping is affine, so evaluating the monotone cubic in data
+ * space and then projecting matches the pixel-space spline. Tangents use the
+ * immediate neighbors and the overshoot clamp is applied for this segment only
+ * (it does not cascade across segments as in `drawSpline`, which differs only on
+ * very steep runs where the clamp fires).
+ */
+export function splineValueAtTime(
+  points: LiveChartPoint[],
+  time: number,
+): number | null {
+  "worklet";
+  const n = points.length;
+  if (n === 0) return null;
+  if (n === 1 || time <= points[0].time) return points[0].value;
+  if (time >= points[n - 1].time) return points[n - 1].value;
+
+  // Segment [i, i+1] with points[i].time <= time < points[i+1].time.
+  let lo = 0;
+  let hi = n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (points[mid].time <= time) lo = mid;
+    else hi = mid;
+  }
+  const i = lo;
+  const ti = points[i].time;
+  const vi = points[i].value;
+  const tj = points[i + 1].time;
+  const vj = points[i + 1].value;
+  const hSeg = tj - ti;
+  /* istanbul ignore next -- guarded by the clamps above; defensive for duplicate times */
+  if (hSeg <= 0) return vi;
+
+  const deltaI = (vj - vi) / hSeg;
+  if (n === 2) return vi + deltaI * (time - ti); // drawSpline draws a straight line for n === 2
+
+  // Tangents at the segment ends (monotone-safe averages of adjacent secants).
+  let mi: number;
+  if (i === 0) {
+    mi = deltaI;
+  } else {
+    const dPrev = (vi - points[i - 1].value) / (ti - points[i - 1].time);
+    mi = dPrev * deltaI <= 0 ? 0 : (dPrev + deltaI) / 2;
+  }
+  let mj: number;
+  if (i + 1 === n - 1) {
+    mj = deltaI;
+  } else {
+    const dNext = (points[i + 2].value - vj) / (points[i + 2].time - tj);
+    mj = deltaI * dNext <= 0 ? 0 : (deltaI + dNext) / 2;
+  }
+
+  // Fritsch–Carlson overshoot clamp (alpha² + beta² <= 9).
+  if (deltaI === 0) {
+    mi = 0;
+    mj = 0;
+  } else {
+    const alpha = mi / deltaI;
+    const beta = mj / deltaI;
+    const s2c = alpha * alpha + beta * beta;
+    if (s2c > 9) {
+      const sc = 3 / Math.sqrt(s2c);
+      mi = sc * alpha * deltaI;
+      mj = sc * beta * deltaI;
+    }
+  }
+
+  // Cubic Hermite on [i, i+1]. x is linear in the Bézier parameter (the control
+  // points are equally spaced in x), so the parameter equals (time - ti) / hSeg.
+  const s = (time - ti) / hSeg;
+  const s2 = s * s;
+  const s3 = s2 * s;
+  const h00 = 2 * s3 - 3 * s2 + 1;
+  const h10 = s3 - 2 * s2 + s;
+  const h01 = -2 * s3 + 3 * s2;
+  const h11 = s3 - s2;
+  return h00 * vi + h10 * hSeg * mi + h01 * vj + h11 * hSeg * mj;
 }

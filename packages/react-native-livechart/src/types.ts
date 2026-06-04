@@ -306,7 +306,11 @@ export interface Marker {
   kind: MarkerKind;
   /** Anchor y to this series' line at `time` (multi-series). */
   seriesId?: string;
-  /** Absolute y value in data space (takes precedence over `seriesId`). */
+  /**
+   * Absolute y value in data space. Takes precedence over `seriesId`. Omit it on
+   * a single-series chart to anchor the marker to the line at `time`
+   * (interpolated from the chart's `data`) — so the glyph always sits on the line.
+   */
   value?: number;
   /** Glyph color override. Defaults to a kind-specific palette accent. */
   color?: string;
@@ -321,6 +325,12 @@ export interface Marker {
    * precedence over `icon` and the built-in `kind` shape.
    */
   image?: SkImage;
+  /**
+   * Draw the `icon` inside a filled circular badge in the marker `color` (icon
+   * rendered in white) — e.g. a green `+` buy / red `−` sell tag. Requires
+   * `icon`; ignored without it. The badge sizes itself to the icon glyph.
+   */
+  pill?: boolean;
   /** Icon / image box size in px (icon font size or image width+height). Default `16`. */
   size?: number;
   /** Pass-through payload surfaced on `onMarkerHover`. */
