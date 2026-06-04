@@ -1,0 +1,331 @@
+import {
+  Circle,
+  Group,
+  Image as SkiaImage,
+  Path,
+  Skia,
+  Text as SkiaText,
+  type SkFont,
+  type SkPath,
+} from "@shopify/react-native-skia";
+import { useRef, useState } from "react";
+import {
+  useAnimatedReaction,
+  useDerivedValue,
+  type SharedValue,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
+import type { ChartEngineLayout } from "../core/useLiveChartEngine";
+import type { ChartPadding } from "../draw/line";
+import { markersSignature, projectPoint } from "../math/markers";
+import type {
+  LiveChartPalette,
+  LiveChartPoint,
+  Marker,
+  MarkerKind,
+  SeriesConfig,
+} from "../types";
+
+/** Default glyph color per kind when `marker.color` is unset. */
+function defaultMarkerColor(kind: MarkerKind, palette: LiveChartPalette): string {
+  switch (kind) {
+    case "trade":
+      return palette.line;
+    case "boost":
+      return palette.refLine;
+    case "graduation":
+      return palette.dotUp;
+    case "winner":
+      return palette.dotUp;
+    case "clawback":
+      return palette.refLabel;
+  }
+}
+
+const OFF = -9999;
+const DEFAULT_ICON_SIZE = 16;
+/** Circular badge: padding around the icon glyph, background-colored ring width,
+ *  and the icon color drawn on the fill. */
+const PILL_PAD = 2;
+const PILL_BORDER = 2;
+const PILL_TEXT_COLOR = "#ffffff";
+
+function MarkerGlyph({
+  marker,
+  color,
+  bgColor,
+  engine,
+  padding,
+  seriesSV,
+  lineDataSV,
+  font,
+  axisY,
+}: {
+  marker: Marker;
+  color: string;
+  /** Chart background color, drawn as a ring behind a `pill` badge. */
+  bgColor?: string;
+  engine: ChartEngineLayout;
+  padding: ChartPadding;
+  seriesSV?: SharedValue<SeriesConfig[]>;
+  lineDataSV?: SharedValue<LiveChartPoint[]>;
+  font: SkFont;
+  axisY: SharedValue<number>;
+}) {
+  // Capture only primitive anchor fields — never the full marker (which may
+  // carry non-serializable `data` / `image`) — in the worklet closure.
+  const { kind, icon, image, pill } = marker;
+  const time = marker.time;
+  const value = marker.value;
+  const seriesId = marker.seriesId;
+  const size = marker.size ?? DEFAULT_ICON_SIZE;
+
+  // Each glyph projects its OWN marker — no shared index buffer, so reordering
+  // the marker array can't make a glyph flash another marker's position.
+  const layout = useDerivedValue(() =>
+    projectPoint(time, value, seriesId, {
+      canvasWidth: engine.canvasWidth.get(),
+      canvasHeight: engine.canvasHeight.get(),
+      padTop: padding.top,
+      padBottom: padding.bottom,
+      padLeft: padding.left,
+      padRight: padding.right,
+      timestamp: engine.timestamp.get(),
+      displayWindow: engine.displayWindow.get(),
+      displayMin: engine.displayMin.get(),
+      displayMax: engine.displayMax.get(),
+      series: seriesSV?.get(),
+      lineData: lineDataSV?.get(),
+    }),
+  );
+
+  const cx = useDerivedValue(() =>
+    layout.get().visible ? layout.get().x : OFF,
+  );
+  const cy = useDerivedValue(() =>
+    layout.get().visible ? layout.get().y : OFF,
+  );
+  const opacity = useDerivedValue(() => (layout.get().visible ? 1 : 0));
+
+  const cacheRef = useRef<{ a: SkPath; b: SkPath; tick: boolean } | null>(null);
+  if (cacheRef.current === null) {
+    cacheRef.current = { a: Skia.Path.Make(), b: Skia.Path.Make(), tick: false };
+  }
+
+  const glyphPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
+    cache.tick = !cache.tick;
+    const p: SkPath = cache.tick ? cache.a : cache.b;
+    p.reset();
+    const l = layout.get();
+    if (!l.visible) return p;
+    const x = l.x;
+    const y = l.y;
+    if (kind === "winner") {
+      const outer = 7;
+      const inner = 3;
+      for (let k = 0; k < 10; k++) {
+        const ang = -Math.PI / 2 + (k * Math.PI) / 5;
+        const rad = k % 2 === 0 ? outer : inner;
+        const px = x + rad * Math.cos(ang);
+        const py = y + rad * Math.sin(ang);
+        if (k === 0) p.moveTo(px, py);
+        else p.lineTo(px, py);
+      }
+      p.close();
+    } else if (kind === "boost") {
+      const L = 6;
+      for (let k = 0; k < 4; k++) {
+        const ang = (k * Math.PI) / 4;
+        const dx = L * Math.cos(ang);
+        const dy = L * Math.sin(ang);
+        p.moveTo(x - dx, y - dy);
+        p.lineTo(x + dx, y + dy);
+      }
+    } else if (kind === "graduation") {
+      p.moveTo(x, axisY.get());
+      p.lineTo(x, y);
+      p.moveTo(x, y - 7);
+      p.lineTo(x + 8, y - 4);
+      p.lineTo(x, y - 1);
+      p.close();
+    } else if (kind === "clawback") {
+      const s = 5;
+      const ay = axisY.get() - s;
+      p.moveTo(x - s, ay);
+      p.lineTo(x + s, ay);
+      p.lineTo(x + s, ay + s * 2);
+      p.lineTo(x - s, ay + s * 2);
+      p.close();
+    }
+    return p;
+  });
+
+  // Image icon centered on the marker.
+  const imgX = useDerivedValue(() =>
+    layout.get().visible ? layout.get().x - size / 2 : OFF,
+  );
+  const imgY = useDerivedValue(() =>
+    layout.get().visible ? layout.get().y - size / 2 : OFF,
+  );
+
+  // Text / emoji icon centering — width + baseline shift depend only on the
+  // (stable) font and icon, so measure once instead of every frame. Skia
+  // `measureText`/`getMetrics` both allocate, so hoisting them out of the
+  // per-frame worklet removes one measure + one metrics call per glyph/frame.
+  // Center the icon glyph on the marker using its measured bounds — tighter and
+  // more accurate than font ascent/descent, so `+` / `−` etc. sit centered both
+  // horizontally and vertically in the badge. Stable per render, not per frame.
+  const iconBounds = font.measureText(icon ?? "");
+  const iconDX = iconBounds.x + iconBounds.width / 2;
+  const iconDY = iconBounds.y + iconBounds.height / 2;
+
+  const iconX = useDerivedValue(() =>
+    layout.get().visible ? layout.get().x - iconDX : OFF,
+  );
+  const iconY = useDerivedValue(() =>
+    layout.get().visible ? layout.get().y - iconDY : OFF,
+  );
+
+  // Circular badge radius — fits the glyph's larger dimension + padding.
+  const pillR = Math.max(iconBounds.width, iconBounds.height) / 2 + PILL_PAD;
+
+  if (image) {
+    return (
+      <Group opacity={opacity}>
+        <SkiaImage
+          image={image}
+          x={imgX}
+          y={imgY}
+          width={size}
+          height={size}
+          fit="contain"
+        />
+      </Group>
+    );
+  }
+
+  if (icon) {
+    if (pill) {
+      // Filled circular badge in the marker color with the icon in white — e.g.
+      // a green `+` buy / red `−` sell tag. A background-colored ring underneath
+      // separates it from the line passing behind.
+      return (
+        <Group opacity={opacity}>
+          {bgColor !== undefined && (
+            <Circle cx={cx} cy={cy} r={pillR + PILL_BORDER} color={bgColor} />
+          )}
+          <Circle cx={cx} cy={cy} r={pillR} color={color} />
+          <SkiaText
+            x={iconX}
+            y={iconY}
+            text={icon}
+            font={font}
+            color={PILL_TEXT_COLOR}
+          />
+        </Group>
+      );
+    }
+    return (
+      <Group opacity={opacity}>
+        <SkiaText x={iconX} y={iconY} text={icon} font={font} color={color} />
+      </Group>
+    );
+  }
+
+  if (kind === "trade") {
+    return (
+      <Group opacity={opacity}>
+        <Circle cx={cx} cy={cy} r={5} color={color} style="stroke" strokeWidth={2} />
+        <Circle cx={cx} cy={cy} r={2} color={color} />
+      </Group>
+    );
+  }
+
+  const fill = kind === "winner" || kind === "clawback";
+  return (
+    <Group opacity={opacity}>
+      <Path
+        path={glyphPath}
+        color={color}
+        style={fill ? "fill" : "stroke"}
+        strokeWidth={1.5}
+        strokeCap="round"
+        strokeJoin="round"
+      />
+    </Group>
+  );
+}
+
+/**
+ * Renders the `markers` SharedValue as canvas glyphs. Marker metadata is
+ * mirrored into React state when it changes; each glyph projects its own
+ * position every frame (keyed by id), so adding/removing markers never makes a
+ * surviving glyph flash another marker's position.
+ *
+ * Glyph precedence per marker: `image` → `icon` (text) → built-in `kind` shape.
+ */
+export function MarkerOverlay({
+  markers,
+  engine,
+  padding,
+  palette,
+  font,
+  series,
+  lineData,
+}: {
+  markers: SharedValue<Marker[]>;
+  engine: ChartEngineLayout;
+  padding: ChartPadding;
+  palette: LiveChartPalette;
+  font: SkFont;
+  /** Multi-series data, used to anchor markers by `seriesId`. */
+  series?: SharedValue<SeriesConfig[]>;
+  /** Single-series line data; anchors markers that omit `value`. */
+  lineData?: SharedValue<LiveChartPoint[]>;
+}) {
+  // Seed from the current markers at mount; the reaction below keeps it in sync.
+  const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
+
+  // Read the `markers` prop from closure rather than a SharedValue passed
+  // through `scheduleOnRN`: the handle serialized across the worklet→JS
+  // boundary exposes the native `.value` accessor but NOT the `.get()` method,
+  // so calling `.get()` on it throws ("sv.get is not a function").
+  const pull = () => {
+    setSnapshot(markers.get().slice());
+  };
+
+  useAnimatedReaction(
+    () => markersSignature(markers.get()),
+    /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
+    (sig, prev) => {
+      if (sig !== prev) scheduleOnRN(pull);
+    },
+    [markers, pull],
+  );
+
+  const axisY = useDerivedValue(
+    () => engine.canvasHeight.get() - padding.bottom,
+  );
+
+  const bgColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
+
+  return (
+    <Group>
+      {snapshot.map((m) => (
+        <MarkerGlyph
+          key={m.id}
+          marker={m}
+          color={m.color ?? defaultMarkerColor(m.kind, palette)}
+          bgColor={bgColor}
+          engine={engine}
+          padding={padding}
+          seriesSV={series}
+          lineDataSV={lineData}
+          font={font}
+          axisY={axisY}
+        />
+      ))}
+    </Group>
+  );
+}

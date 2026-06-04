@@ -1,0 +1,80 @@
+---
+title: Quickstart
+icon: "rocket"
+description: "Render your first live chart with simulated data."
+---
+
+The chart reads its history and live value from Reanimated `SharedValue`s. You append new points
+with `data.modify(...)` and update the live value with `value.set(...)`; the engine interpolates
+and scrolls on the UI thread.
+
+## A minimal live chart
+
+This example feeds the chart a random walk on an interval. In a real app you'd update the shared
+values from your websocket / data source instead.
+
+```tsx
+import { useEffect } from "react";
+import { View } from "react-native";
+import { useSharedValue } from "react-native-reanimated";
+import { LiveChart, type LiveChartPoint } from "react-native-livechart";
+
+export function LivePrice() {
+  const data = useSharedValue<LiveChartPoint[]>([]);
+  const value = useSharedValue(100);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const time = Date.now() / 1000; // unix seconds
+      const next = value.get() + (Math.random() - 0.5) * 2;
+
+      // Append the new point in place on the UI thread — the full (growing)
+      // array is never re-cloned across the JS/UI boundary.
+      data.modify((arr) => {
+        "worklet";
+        arr.push({ time, value: next });
+        if (arr.length > 600) arr.shift();
+        return arr;
+      });
+      value.set(next);
+    }, 100);
+    return () => clearInterval(id);
+  }, [data, value]);
+
+  return (
+    <View style={{ height: 240 }}>
+      <LiveChart data={data} value={value} accentColor="#3323E6" />
+    </View>
+  );
+}
+```
+
+<Note>
+  Give the chart a sized container (a fixed height or `flex: 1`). It fills its parent via an
+  absolute-positioned Skia canvas.
+</Note>
+
+<Tip>
+  Use `data.modify(...)` for per-tick appends (it mutates in place on the UI thread) and
+  `value.set(...)` / `value.get()` for the scalar — not `data.value = ...`. The example app's
+  [`useSimulatedChartData`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/sim/useSimulatedChartData.ts)
+  hook drives every [demo screen](https://github.com/brandtnewlabs/react-native-livechart/tree/main/app/demo)
+  this way; in production you'd update these shared values from your own websocket / data source.
+</Tip>
+
+## What to explore next
+
+<CardGroup cols={2}>
+  <Card title="Line & area" icon="chart-line" href="/guides/line-and-area">
+    Badges, value lines, gradients, and the live dot.
+  </Card>
+  <Card title="Candlestick" icon="chart-candlestick" href="/guides/candlestick">
+    OHLC bars, live candle, and bucket sizing.
+  </Card>
+  <Card title="Multi-series" icon="layer-group" href="/guides/multi-series">
+    Several series with a toggleable legend.
+  </Card>
+  <Card title="Scrubbing" icon="crosshairs" href="/guides/scrubbing">
+    Crosshair interaction and `onScrub`.
+  </Card>
+</CardGroup>

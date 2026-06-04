@@ -1,0 +1,214 @@
+---
+title: Types
+icon: "code"
+description: "Exported TypeScript types — data shapes, config objects, and the palette."
+---
+
+All types are exported from the package root:
+
+```tsx
+import type { LiveChartPoint, SeriesConfig, ReferenceLine } from "react-native-livechart";
+```
+
+The source `.d.ts` and JSDoc remain the canonical reference (your editor surfaces them on hover);
+the most-used shapes are reproduced here.
+
+## Data
+
+```ts
+interface LiveChartPoint {
+  time: number;  // unix seconds
+  value: number;
+}
+
+interface CandlePoint {
+  time: number;  // bucket start, unix seconds
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+interface SeriesConfig {
+  id: string;
+  data: LiveChartPoint[];
+  value: number;            // latest live value
+  color?: string;
+  label?: string;
+  visible?: boolean;        // default true
+  style?: "solid" | "dashed";
+  intervals?: [number, number];
+  strokeWidth?: number;
+  glow?: boolean;
+  kind?: "outcome" | "derived";
+  valueLabel?: string;
+}
+```
+
+## Momentum
+
+```ts
+type Momentum = "up" | "down" | "flat";
+
+interface MomentumConfig {
+  threshold?: number; // default 0.12
+  lookback?: number;  // default 20
+}
+```
+
+## Annotations
+
+```ts
+type MarkerKind = "trade" | "boost" | "graduation" | "winner" | "clawback";
+
+interface Marker {
+  id: string;
+  time: number;        // unix seconds
+  kind: MarkerKind;
+  seriesId?: string;   // anchor to a series line (multi-series)
+  value?: number;      // absolute y (takes precedence over seriesId)
+  color?: string;
+  icon?: string;       // text/emoji glyph override
+  image?: SkImage;     // image glyph override
+  size?: number;       // default 16
+  data?: unknown;      // surfaced on onMarkerHover
+}
+
+interface TradeEvent {
+  side: "buy" | "sell";
+  price: number;
+  size: number;
+  time: number;        // unix seconds
+  symbol?: string;
+}
+
+interface ReferenceLine {
+  // Form A — horizontal line:
+  value?: number;
+  // Form B — horizontal band:
+  valueFrom?: number;
+  valueTo?: number;
+  // Form C — vertical time band (unix seconds):
+  from?: number;
+  to?: number;
+  // Shared:
+  label?: string;
+  strokeWidth?: number;
+  intervals?: [number, number];
+  color?: string;
+  fillOpacity?: number;          // default 0.16
+  labelColor?: string;
+  labelPosition?: "left" | "center" | "right";
+  showValue?: boolean;
+  excludeFromRange?: boolean;
+  offAxisBadge?: boolean;
+}
+```
+
+## Scrub payloads
+
+```ts
+interface ScrubPointCore {
+  time: number;
+  value: number;
+  x: number; // canvas X
+  y: number; // canvas Y
+}
+
+interface ScrubPoint extends ScrubPointCore {
+  candle?: CandlePoint; // candle mode only
+}
+
+interface ScrubPointMulti extends ScrubPointCore {
+  seriesValues: { id: string; label?: string; value: number }[];
+}
+```
+
+## Config objects
+
+These are the option shapes accepted by the matching props.
+
+```ts
+interface LineConfig { width?: number; color?: string }
+interface GradientConfig { topOpacity?: number; bottomOpacity?: number }
+interface BadgeConfig {
+  variant?: "default" | "minimal";
+  tail?: boolean;
+  background?: string;
+  position?: "right" | "left";
+}
+interface PulseConfig {
+  interval?: number; duration?: number; maxRadius?: number;
+  opacity?: number; strokeWidth?: number;
+}
+interface ValueLineConfig { strokeWidth?: number; intervals?: [number, number]; color?: string }
+interface ScrubConfig {
+  tooltip?: boolean;
+  dimOpacity?: number; // opacity of content right of the crosshair; default 0.3 (1 = off)
+  crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
+  tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;
+}
+interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }
+interface YAxisConfig { minGap?: number } // default 36
+interface XAxisConfig { minGap?: number } // default 60
+interface ChartInsets { top?: number; right?: number; bottom?: number; left?: number }
+interface LeftEdgeFadeConfig { width?: number; startColor?: string; endColor?: string }
+
+interface MultiSeriesDotConfig {
+  radius?: number;
+  pulse?: boolean | PulseConfig;
+  valueLine?: boolean | ValueLineConfig;
+  valueLabel?: boolean;
+}
+interface LegendConfig {
+  visible?: boolean;
+  compact?: boolean;
+  position?: "top" | "bottom";
+  style?: LegendStyle;
+}
+
+interface FontConfig {
+  fontFamily?: string;      // default "Menlo"
+  fontSize?: number;        // default 11
+  fontWeight?: FontWeight;
+  typeface?: DataSourceParam; // require(...) / path / Uint8Array
+  fontManager?: SkFontMgr | null;
+}
+```
+
+## DegenOptions
+
+The most-used fields (see the source for the full tuning surface):
+
+```ts
+interface DegenOptions {
+  scale?: number;               // default 1
+  downMomentum?: boolean;       // also trigger on down swings; default false
+  shake?: boolean;              // default true
+  shakeIntensity?: number;
+  shakeDurationSec?: number;    // default 0.45
+  burstParticleCount?: number;  // default 20
+  particleOpacity?: number;     // default 0.55
+  colors?: string | string[];
+  // ...plus particle slot/size/speed/jitter tuning
+}
+```
+
+## Palette
+
+`accentColor` + `theme` derive a full `LiveChartPalette`. Override any subset via the `palette`
+prop. Frequently overridden keys:
+
+```ts
+interface LiveChartPalette {
+  line: string;
+  fillTop: string; fillBottom: string;
+  gridLine: string; gridLabel: string;
+  dotUp: string; dotDown: string; dotFlat: string;
+  candleUp: string; candleDown: string; wickUp: string; wickDown: string;
+  dashLine: string; refLine: string; refLabel: string;
+  crosshairLine: string; crosshairDim: string;
+  tooltipBg: string; tooltipText: string; tooltipBorder: string;
+  // ...glow, badge, and font-size keys
+}
+```

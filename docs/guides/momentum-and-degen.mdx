@@ -1,0 +1,93 @@
+---
+title: Momentum & degen
+icon: "bolt"
+description: "Momentum-based coloring plus optional particle bursts and screen shake."
+---
+
+<Note>
+  **Live example:**
+  [`app/demo/momentum-degen.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/momentum-degen.tsx)
+  in the example app.
+</Note>
+
+## Momentum
+
+Momentum drives the live dot and badge color (up / down / flat). By default it's auto-detected
+from recent data.
+
+```tsx
+<LiveChart data={data} value={value} momentum />
+```
+
+The `momentum` prop accepts:
+
+- `true` — auto-detect (default)
+- `false` — disabled, always flat
+- `"up"` / `"down"` / `"flat"` — a forced value
+- `MomentumConfig` — auto-detect with custom sensitivity
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  momentum={{ threshold: 0.12, lookback: 20 }}
+/>
+```
+
+`threshold` is the fraction of the lookback range the tail delta must exceed to register as
+directional; `lookback` is how many recent points feed the range calculation.
+
+## Degen mode
+
+Degen mode adds a particle burst (and, by default, a screen shake) on momentum swings — great
+for trading / meme-market UIs.
+
+```tsx
+<LiveChart data={data} value={value} degen />
+```
+
+Tune it with `DegenOptions`:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  degen={{
+    scale: 1,
+    downMomentum: true,      // also trigger on down swings
+    shake: true,
+    shakeIntensity: 1,
+    burstParticleCount: 20,
+    colors: ["#22c55e", "#86efac"],
+  }}
+/>
+```
+
+<Note>
+  Degen is available on both `LiveChart` and `LiveChartSeries`. On multi-series each visible series
+  bursts off **its own** dot, in that series' color, on its own upward momentum swing (per-outcome).
+</Note>
+
+## Reacting to shake
+
+`onDegenShake` fires on the JS thread when a shake starts (unless `shake` is `false`) — useful
+for haptics:
+
+```tsx
+import * as Haptics from "expo-haptics";
+
+<LiveChart
+  data={data}
+  value={value}
+  degen
+  onDegenShake={({ direction }) => {
+    Haptics.impactAsync(
+      direction === "up"
+        ? Haptics.ImpactFeedbackStyle.Heavy
+        : Haptics.ImpactFeedbackStyle.Light,
+    );
+  }}
+/>;
+```
+
+See the full `DegenOptions` fields in the [`LiveChart` reference](/api-reference/livechart).

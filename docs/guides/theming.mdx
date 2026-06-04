@@ -1,0 +1,94 @@
+---
+title: Theming
+icon: "palette"
+description: "Theme the chart with a color scheme, accent color, palette overrides, and fonts."
+---
+
+<Note>
+  **Live examples:**
+  [`app/demo/theming.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/theming.tsx)
+  (colors, gradient, fonts) and
+  [`app/demo/axes-grid.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/axes-grid.tsx)
+  (axes, grid, insets) in the example app.
+</Note>
+
+## Theme & accent
+
+The palette is derived from two props: a `theme` (`"light"` or `"dark"`, default `"dark"`) and
+an `accentColor` (default `#3323E6`). Setting just these gets you a cohesive look.
+
+```tsx
+<LiveChart data={data} value={value} theme="light" accentColor="#8b5cf6" />
+```
+
+## Palette overrides
+
+For precise control, override individual resolved-palette keys with `palette`. Only the keys you
+set are replaced — everything else stays derived from `accentColor` + `theme`.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  palette={{
+    line: "#22c55e",
+    candleUp: "#16a34a",
+    candleDown: "#dc2626",
+    gridLine: "#1f2937",
+    tooltipBg: "#0f172a",
+  }}
+/>
+```
+
+Common keys include `line`, `fillTop` / `fillBottom`, `gridLine` / `gridLabel`,
+`dotUp` / `dotDown` / `dotFlat`, `candleUp` / `candleDown` / `wickUp` / `wickDown`,
+`crosshairLine`, and `tooltipBg` / `tooltipText`. See the [types reference](/api-reference/types)
+for the full `LiveChartPalette`.
+
+## Grid & axes
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  yAxis={{ minGap: 36 }}
+  xAxis={{ minGap: 60 }}
+  gridStyle={{ color: "#1f2937", intervals: [1, 3], opacity: 0.8 }}
+/>
+```
+
+Pass `yAxis={false}` or `xAxis={false}` to hide an axis. `gridStyle.intervals` of `[]` renders
+solid grid lines.
+
+## Fonts
+
+Chart text (axes, badges, tooltips) uses the `font` prop. Point it at a system family, or load a
+custom typeface from a Metro asset:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  font={{
+    fontFamily: "Menlo",
+    fontSize: 11,
+    typeface: require("./assets/GoogleSansCode-Regular.ttf"),
+  }}
+/>
+```
+
+For multiple weights, register a Skia font manager (`useFonts`) and pass it as `font.fontManager`.
+
+## Spacing
+
+Adjust the drawing area with `insets` (`top`, `right`, `bottom`, `left`) and soften the left edge
+with `leftEdgeFade`.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  insets={{ top: 12, bottom: 28, left: 12 }}
+  leftEdgeFade={{ width: 40 }}
+/>
+```

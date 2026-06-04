@@ -1,0 +1,82 @@
+---
+title: Hooks & utilities
+icon: "wrench"
+description: "LiveChartTransition, formatters, the mono font constant, and advanced hooks."
+---
+
+## LiveChartTransition
+
+Cross-fades between chart instances by `key` — handy when switching symbols, timeframes, or
+line/candle layouts.
+
+```tsx
+import { LiveChartTransition, LiveChart } from "react-native-livechart";
+
+<LiveChartTransition active={symbol} duration={300}>
+  <LiveChart key="BTC" data={btc} value={btcValue} />
+  <LiveChart key="ETH" data={eth} value={ethValue} />
+</LiveChartTransition>;
+```
+
+<ParamField body="active" type="string" required>
+  Key of the active child to show. Must match a child's `key`.
+</ParamField>
+
+<ParamField body="children" type="ReactNode" required>
+  Chart elements, each with a unique `key`.
+</ParamField>
+
+<ParamField body="duration" type="number" default="300">
+  Cross-fade duration in ms.
+</ParamField>
+
+<ParamField body="keepMounted" type="boolean" default="false">
+  Keep every child mounted so switching is a pure cross-fade (no reveal/range re-animation).
+  Costs more — all engines run continuously.
+</ParamField>
+
+<ParamField body="style" type="ViewStyle">
+  Container style.
+</ParamField>
+
+## Formatters
+
+Both formatters are **worklet-safe**, so you can pass them to `formatValue` / `formatTime` or call
+them inside your own worklets.
+
+```tsx
+import { formatValue, formatTime } from "react-native-livechart";
+
+formatValue(1234.5); // "1.23K"  — adaptive compact suffixes (K / M)
+formatValue(2_400_000); // "2.40M"
+formatTime(1700000000); // "HH:MM:SS" in local time
+```
+
+<ParamField body="formatValue" type="(v: number) => string">
+  Adaptive value formatter with compact `K` / `M` suffixes.
+</ParamField>
+
+<ParamField body="formatTime" type="(t: number) => string">
+  `HH:MM:SS` formatter for a unix-seconds timestamp.
+</ParamField>
+
+## MONO_FONT_FAMILY
+
+A platform-appropriate monospace family name (`"Menlo"` on iOS, `"monospace"` elsewhere) — useful
+for matching surrounding RN `Text` to the chart's mono look.
+
+```tsx
+import { MONO_FONT_FAMILY } from "react-native-livechart";
+
+<Text style={{ fontFamily: MONO_FONT_FAMILY }}>$142.50</Text>;
+```
+
+## Advanced hooks
+
+<Warning>
+  `useDegen` and `useTradeStream` are **low-level** hooks that operate on the internal chart
+  engine state. For almost all apps, use the [`degen`](/guides/momentum-and-degen) and
+  [`tradeStream`](/guides/markers-and-references) **props** on `LiveChart` instead — they wire
+  these hooks up for you. The hooks are exported only for advanced custom compositions and their
+  signatures depend on internal engine types.
+</Warning>
