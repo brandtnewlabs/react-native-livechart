@@ -133,10 +133,16 @@ export default function MomentumDegenScreen() {
     candleAggregation: false,
     tradeStream: false,
     volatilityMode: volatility,
+    // Seed the full default 30s window with dense, volatility-driven points so the
+    // chart starts lively (and momentum/degen have something to react to) instead
+    // of a flat line that only wakes up once live ticks arrive.
+    historySpanSeconds: 40,
+    historyRange: "1m",
   });
 
   return (
     <DemoScreen
+      title="Momentum & degen"
       docs="guides/momentum-and-degen"
       description={
         "Momentum tints the value badge (green = up, red = down, blue = flat); it eases slowly, so wait a beat after switching. " +

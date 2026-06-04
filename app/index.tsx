@@ -1,5 +1,6 @@
 import { Link, type Href } from "expo-router";
 import { Pressable, SectionList, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { APP_FONT_FAMILY, APP_FONT_FAMILY_SEMIBOLD } from "../demo-lib/fonts";
 import { colors } from "../demo-lib/theme";
 
@@ -33,7 +34,7 @@ const SECTIONS: DemoSection[] = [
       {
         href: "/demo/candlestick",
         title: "Candlestick",
-        blurb: "mode=candle, candles, liveCandle, candleWidth.",
+        blurb: "mode=candle: timeframes, candle colors, OHLC bodies + wicks.",
       },
       {
         href: "/demo/multi-series",
@@ -135,8 +136,9 @@ const renderSectionHeader = ({
 }) => <Text style={styles.sectionHeader}>{section.title}</Text>;
 
 export default function Index() {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top + 12 }]}>
       <Text style={styles.title}>LiveChart demos</Text>
       <Text style={styles.subtitle}>
         Grouped to match the docs. Open a screen to test one feature area.
@@ -158,7 +160,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: 56,
   },
   title: {
     color: colors.text,

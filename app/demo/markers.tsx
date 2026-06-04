@@ -76,6 +76,10 @@ export default function MarkersScreen() {
     tradesPerSecond: 5,
     tokenSymbol: "SIM",
     startValue: 100,
+    // Fill the 30s window with a lively seed so markers land on a real line from
+    // the first frame (a sparse default seed leaves it flat until live ticks land).
+    historySpanSeconds: 40,
+    historyRange: "1m",
   });
 
   const logo = useImage(require("../../assets/images/react-logo.png"));
@@ -140,6 +144,7 @@ export default function MarkersScreen() {
 
   return (
     <DemoScreen
+      title="Markers & trades"
       docs="guides/markers-and-references"
       description="markers[] — 5 kinds, tap to hover (onMarkerHover + markerHitRadius). Optional tradeStream overlay."
       chart={

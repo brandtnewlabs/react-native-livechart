@@ -45,10 +45,20 @@ export default function TransitionsScreen() {
     candleAggregation: true,
     tradeStream: false,
     candleWidth: CANDLE_WIDTH,
+    // Dense seed (fine "1m" sampling over the window) so the candle side of the
+    // morph shows real bodies + wicks rather than flat one-point dojis.
+    historySpanSeconds: WINDOW,
+    historyRange: "1m",
+    volatilityMode: "volatile",
+    // Keep the re-aggregated tick buffer longer than the 300s window so committed
+    // candles stay frozen (a shorter buffer evicts still-visible ticks and the
+    // oldest candle mutates each trade).
+    maxPoints: 6000,
   });
 
   return (
     <DemoScreen
+      title="Transitions"
       docs="guides/transitions"
       description="Line↔candle uses one chart's mode prop (shared y-axis morph); LiveChartTransition cross-fades two instances (here: accent color)"
       chart={
