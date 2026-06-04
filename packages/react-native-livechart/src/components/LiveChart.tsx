@@ -232,14 +232,13 @@ function useLiveChartController({
 
   // ── Reveal state ────────────────────────────────────────────
   // ≥2 line points or ≥2 committed candles; morphT=1 only when !loading && hasData.
-  const { hasData, initialMorphT } = useLiveChartHasData({
+  const { hasData } = useLiveChartHasData({
     isCandle,
     data,
     candles,
-    loading,
   });
 
-  const reveal = useChartReveal(loading, hasData, initialMorphT);
+  const reveal = useChartReveal(loading, hasData);
 
   // After data clears, keep last snapshot until morphT finishes dropping (web parity).
   const { lineEngineData, candlesEngine, liveEngine } =

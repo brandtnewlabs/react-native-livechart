@@ -5,7 +5,7 @@
  * @see https://github.com/benjitaylor/liveline
  */
 import { Canvas, Group } from "@shopify/react-native-skia";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
@@ -72,9 +72,22 @@ import { SeriesToggleChips } from "./SeriesToggleChips";
 import { XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
 
-function lineColorsSig(s: SharedValue<SeriesConfig[]>) {
+/**
+ * Signature of the per-series *config* (colors, stroke styles, labels, count) —
+ * everything the snapshot below feeds into layout and rendering. Excludes the
+ * per-tick `data`, so the snapshot only refreshes on real config changes.
+ */
+function seriesConfigSig(s: SharedValue<SeriesConfig[]>) {
   "worklet";
-  return lineColorsSignatureFromArray(s.value);
+  const arr = s.value;
+  let out =
+    lineColorsSignatureFromArray(arr) +
+    "\x1d" +
+    lineStyleSignatureFromArray(arr);
+  for (let i = 0; i < arr.length; i++) {
+    out += "\x1d" + (arr[i].label ?? arr[i].id);
+  }
+  return out;
 }
 
 /**
@@ -152,7 +165,21 @@ function useLiveChartSeriesController({
     palette.labelFontSize,
   );
 
-  const seriesSnapshot = series.value;
+  // Snapshot of the series config (colors, styles, labels) for layout + line
+  // rendering. Seeded off the render path below and refreshed by the reaction
+  // further down — reading the `series` SharedValue during render trips
+  // Reanimated's strict-mode warning. React flushes layout-effect state before
+  // paint, so the seed causes no flash.
+  const [seriesSnapshot, setSeriesSnapshot] = useState<SeriesConfig[]>([]);
+  // react-doctor-disable-next-line react-doctor/no-derived-state-effect -- Reanimated: series must be read off the render path
+  useLayoutEffect(() => {
+    // `.get()` (not `.value`): React Compiler hoists the `.value` getter read into
+    // render scope for memoization, which trips Reanimated's strict-mode warning;
+    // it leaves the `.get()` method call inside the effect.
+    // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- Reanimated: seeding from a SharedValue off render is the warning-free path
+    setSeriesSnapshot(series.get().slice());
+  }, [series]);
+
   const maxSeriesLabelWidth = dotCfg.valueLabel
     ? Math.max(
         0,
@@ -196,12 +223,7 @@ function useLiveChartSeriesController({
     return false;
   });
 
-  const [initialMorphT] = useState<number>(() => {
-    const anyReady = series.value.some((s) => s.data.length >= 2);
-    return loading ? 0 : anyReady ? 1 : 0;
-  });
-
-  const reveal = useChartReveal(loading, hasData, initialMorphT);
+  const reveal = useChartReveal(loading, hasData);
 
   const effectiveSeries = useMultiSeriesReverseMorphInputs({
     series,
@@ -224,45 +246,28 @@ function useLiveChartSeriesController({
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const linePaths = useMultiSeriesLinePaths(engine, effectivePadding);
 
-  // Seed from the current series at mount; the reaction below keeps it in sync.
-  const [lineColors, setLineColors] = useState<string[]>(() =>
-    resolveMultiSeriesLineColorsSnapshot(series.value),
-  );
+  // Per-series colors and stroke styles, derived from the off-render snapshot
+  // (React state — so no Reanimated read-during-render). The reaction below
+  // refreshes the snapshot when the series config signature changes. Plain
+  // derivations — React Compiler memoizes them, so no manual useMemo.
+  const lineColors = resolveMultiSeriesLineColorsSnapshot(seriesSnapshot);
+  const lineStyles = resolveMultiSeriesLineStylesSnapshot(seriesSnapshot);
 
   // Read the `series` prop from closure, not a SharedValue passed through
   // `scheduleOnRN`: the handle serialized across the worklet→JS boundary keeps
   // the native `.value` accessor but loses the `.get()` method (`.get()` on it
   // throws). Reading the prop directly is robust to either accessor.
-  const syncColors = () => {
-    setLineColors(resolveMultiSeriesLineColorsSnapshot(series.value));
+  const syncSnapshot = () => {
+    setSeriesSnapshot(series.get().slice());
   };
 
   useAnimatedReaction(
-    () => lineColorsSig(series),
+    () => seriesConfigSig(series),
     /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
     (sig, prev) => {
-      if (sig !== prev) scheduleOnRN(syncColors);
+      if (sig !== prev) scheduleOnRN(syncSnapshot);
     },
-    [series, syncColors],
-  );
-
-  // Per-series stroke style (dash / width / glow) — synced to React state when
-  // the style signature changes (not on every data tick), like the colors above.
-  const [lineStyles, setLineStyles] = useState<SeriesLineStyle[]>(() =>
-    resolveMultiSeriesLineStylesSnapshot(series.value),
-  );
-
-  const syncStyles = () => {
-    setLineStyles(resolveMultiSeriesLineStylesSnapshot(series.value));
-  };
-
-  useAnimatedReaction(
-    () => lineStyleSignatureFromArray(series.value),
-    /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
-    (sig, prev) => {
-      if (sig !== prev) scheduleOnRN(syncStyles);
-    },
-    [series, syncStyles],
+    [series, syncSnapshot],
   );
 
   const {

@@ -58,20 +58,27 @@ export interface ChartRevealState {
 export function useChartReveal(
   loading: boolean,
   hasData: SharedValue<boolean>,
-  initialMorphT: number,
 ): ChartRevealState {
-  const morphT = useSharedValue(initialMorphT);
+  // Best-guess initial so the common case — a live chart that already has data
+  // and isn't loading — paints fully revealed with no flash. The reaction below
+  // snaps it to the exact state on its first run.
+  const morphT = useSharedValue(loading ? 0 : 1);
   const isLoading = useSharedValue(loading);
 
   useLayoutEffect(() => {
     isLoading.set(loading);
   }, [loading, isLoading]);
 
+  // The reaction reads presence/loading on the UI thread (a worklet, never during
+  // render — so no Reanimated "reading `value` during render" warning), seeds the
+  // exact reveal state on its first run, then animates on later changes.
   useAnimatedReaction(
     () => !isLoading.get() && hasData.get(),
     (chartVisible, prev) => {
       "worklet";
-      if (prev === undefined) {
+      if (prev === null || prev === undefined) {
+        // First run: snap to the correct initial reveal state (no animation).
+        morphT.set(chartVisible ? 1 : 0);
         return;
       }
       if (prev !== chartVisible) {
