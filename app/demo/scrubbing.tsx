@@ -1,7 +1,11 @@
-import { Text } from "react-native";
+import { TextInput } from "react-native";
 
 import { useState } from "react";
-import { formatTime, LiveChart, type ScrubPoint } from "react-native-livechart";
+import { formatTime, LiveChart } from "react-native-livechart";
+import Animated, {
+  useAnimatedProps,
+  useSharedValue,
+} from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
@@ -11,6 +15,8 @@ import { demoStyles } from "../../demo-lib/styles";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
 export const options = { title: "Scrubbing" };
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 type ScrubMode = "off" | "on" | "noTooltip";
 
@@ -31,7 +37,15 @@ export default function ScrubbingScreen() {
   const [scrubMode, setScrubMode] = useState<ScrubMode>("on");
   const [displayMode, setDisplayMode] = useState<DisplayMode>("line");
   const [styledTooltip, setStyledTooltip] = useState(false);
-  const [readout, setReadout] = useState("—");
+
+  // Readout flows through a SharedValue + animatedProps so each scrub frame
+  // updates the text on the UI thread — no React re-render per pointer move.
+  // (A plain setState here re-rendered the whole screen ~60x/sec while scrubbing.)
+  const readoutText = useSharedValue("—");
+  const readoutProps = useAnimatedProps(() => {
+    const text = readoutText.get();
+    return { text, defaultValue: text };
+  });
 
   const windowSecs = 300;
   const candleWidthSecs = Math.max(5, Math.round(windowSecs / 20));
@@ -85,25 +99,32 @@ export default function ScrubbingScreen() {
           timeWindow={windowSecs}
           scrub={scrub}
           onScrub={(point) => {
+            "worklet";
             if (point === null) {
-              setReadout("— (live)");
+              readoutText.set("— (live)");
               return;
             }
-            const sp = point as ScrubPoint;
             let extra = "";
-            if (sp.candle) {
-              extra = ` | O:${sp.candle.open.toFixed(2)} H:${sp.candle.high.toFixed(2)} L:${sp.candle.low.toFixed(2)} C:${sp.candle.close.toFixed(2)}`;
+            if (point.candle) {
+              const c = point.candle;
+              extra = ` | O:${c.open.toFixed(2)} H:${c.high.toFixed(2)} L:${c.low.toFixed(2)} C:${c.close.toFixed(2)}`;
             }
-            setReadout(
-              `${sp.value.toFixed(4)} @ ${formatTime(sp.time)}${extra}`,
+            readoutText.set(
+              `${point.value.toFixed(4)} @ ${formatTime(point.time)}${extra}`,
             );
           }}
         />
       }
     >
-      <Text style={demoStyles.scrubReadout} numberOfLines={3}>
-        {readout}
-      </Text>
+      <AnimatedTextInput
+        editable={false}
+        multiline
+        numberOfLines={3}
+        scrollEnabled={false}
+        underlineColorAndroid="transparent"
+        style={demoStyles.scrubReadout}
+        animatedProps={readoutProps}
+      />
 
       <ChipRow
         label="Scrub"

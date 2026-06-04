@@ -1,7 +1,18 @@
 import { Link, type Href } from "expo-router";
-import { Pressable, SectionList, StyleSheet, Text, View } from "react-native";
+import {
+  Linking,
+  Pressable,
+  SectionList,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { APP_FONT_FAMILY, APP_FONT_FAMILY_SEMIBOLD } from "../demo-lib/fonts";
+import {
+  APP_FONT_FAMILY,
+  APP_FONT_FAMILY_MEDIUM,
+  APP_FONT_FAMILY_SEMIBOLD,
+} from "../demo-lib/fonts";
 import { colors } from "../demo-lib/theme";
 
 type Demo = { href: Href; title: string; blurb: string };
@@ -135,6 +146,25 @@ const renderSectionHeader = ({
   section: DemoSection;
 }) => <Text style={styles.sectionHeader}>{section.title}</Text>;
 
+/** brandtnew labs — Lennart Brandt (Product Designer & React Native dev). */
+const SITE_URL = "https://www.brandtnewlabs.com";
+const X_URL = "https://x.com/brandtnewlabs";
+
+const Footer = () => (
+  <View style={styles.footer}>
+    <Text style={styles.footerMade}>Made by Lennart Brandt</Text>
+    <Text style={styles.footerLinks}>
+      <Text style={styles.footerLink} onPress={() => Linking.openURL(X_URL)}>
+        @brandtnewlabs
+      </Text>
+      <Text style={styles.footerDot}>{"  ·  "}</Text>
+      <Text style={styles.footerLink} onPress={() => Linking.openURL(SITE_URL)}>
+        brandtnewlabs.com
+      </Text>
+    </Text>
+  </View>
+);
+
 export default function Index() {
   const insets = useSafeAreaInsets();
   return (
@@ -150,6 +180,7 @@ export default function Index() {
         keyExtractor={(d) => d.title}
         renderItem={renderDemoItem}
         renderSectionHeader={renderSectionHeader}
+        ListFooterComponent={Footer}
         stickySectionHeadersEnabled={false}
       />
     </View>
@@ -203,5 +234,30 @@ const styles = StyleSheet.create({
     fontFamily: APP_FONT_FAMILY,
     lineHeight: 17,
     marginTop: 6,
+  },
+  footer: {
+    marginTop: 32,
+    paddingTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  footerMade: {
+    color: colors.textFaint,
+    fontSize: 12,
+    fontFamily: APP_FONT_FAMILY,
+  },
+  footerLinks: {
+    marginTop: 5,
+    fontSize: 12,
+  },
+  footerLink: {
+    color: colors.link,
+    fontSize: 12,
+    fontFamily: APP_FONT_FAMILY_MEDIUM,
+  },
+  footerDot: {
+    color: colors.textFaint,
+    fontSize: 12,
+    fontFamily: APP_FONT_FAMILY,
   },
 });
