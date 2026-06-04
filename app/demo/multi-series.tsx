@@ -11,7 +11,7 @@ import Animated, {
   useAnimatedProps,
   useSharedValue,
 } from "react-native-reanimated";
-import { ACCENT, SMOOTHING_PRESETS, TIME_WINDOWS } from "../../demo-lib/shared";
+import { ACCENT, TIME_WINDOWS } from "../../demo-lib/shared";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -45,10 +45,23 @@ const WINDOW_OPTIONS = TIME_WINDOWS.slice(0, 4).map((w) => ({
   label: w.label,
 }));
 
-const SMOOTHING_OPTIONS = SMOOTHING_PRESETS.map((s) => ({
-  value: s.value,
-  label: s.label,
-}));
+// Honest control: `smoothing` is the engine's lerp rate for how fast the y-range
+// and live tips track new values — not curve smoothing. Lower = gentler/laggier
+// tracking, higher = snappier. Spread wide so the effect is visible.
+const RESPONSIVENESS_OPTIONS: { value: number; label: string }[] = [
+  { value: 0.03, label: "Smooth" },
+  { value: 0.12, label: "Default" },
+  { value: 0.5, label: "Snappy" },
+];
+
+// Opacity of the chart content right of the crosshair while scrubbing.
+// `1` = no fade, `0` = fully faded.
+const SCRUB_DIM_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: "Off" },
+  { value: 0.6, label: "Light" },
+  { value: 0.3, label: "Default" },
+  { value: 0, label: "Full" },
+];
 
 const THEME_OPTIONS: { value: "dark" | "light"; label: string }[] = [
   { value: "dark", label: "Dark" },
@@ -71,8 +84,10 @@ export default function MultiSeriesScreen() {
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [windowSecs, setWindowSecs] = useState(60);
-  const [smoothing, setSmoothing] = useState(0.08);
+  const [smoothing, setSmoothing] = useState(0.12);
   const [exaggerate, setExaggerate] = useState(false);
+  const [degen, setDegen] = useState(false);
+  const [scrubDim, setScrubDim] = useState(0.3);
   const [theme, setTheme] = useState<"dark" | "light">(APP_THEME);
   const [showRef, setShowRef] = useState(false);
   const [axisVis, setAxisVis] = useState<"both" | "noY" | "noX" | "none">(
@@ -91,7 +106,7 @@ export default function MultiSeriesScreen() {
   const [dotRadius, setDotRadius] = useState(3.5);
 
   const [legendVisible, setLegendVisible] = useState(true);
-  const [legendCompact, setLegendCompact] = useState(false);
+  const [legendCompact, setLegendCompact] = useState(true);
   const [legendPosition, setLegendPosition] = useState<"top" | "bottom">("top");
   const [styled, setStyled] = useState(false);
   const [legendStyled, setLegendStyled] = useState(false);
@@ -158,12 +173,13 @@ export default function MultiSeriesScreen() {
       title="Multi-series"
       docs="guides/multi-series"
       description="series, onSeriesToggle, scrub, axis visibility. Chart stays empty until at least one series has ≥2 points (toggle No series for shell)."
+      chartWrapperStyle={{ height: 360 }}
       chart={
         <>
           <AnimatedTextInput
             editable={false}
             multiline
-            numberOfLines={4}
+            numberOfLines={2}
             scrollEnabled={false}
             underlineColorAndroid="transparent"
             style={demoStyles.scrubReadout}
@@ -178,6 +194,7 @@ export default function MultiSeriesScreen() {
             loading={loading}
             smoothing={smoothing}
             exaggerate={exaggerate}
+            degen={degen ? true : undefined}
             referenceLines={
               showRef ? [{ value: 33.3, label: "even" }] : undefined
             }
@@ -186,7 +203,7 @@ export default function MultiSeriesScreen() {
             emptyText="No series"
             dot={dotConfig}
             legend={legendConfig}
-            scrub
+            scrub={{ dimOpacity: scrubDim }}
             onSeriesToggle={
               empty
                 ? undefined
@@ -269,10 +286,17 @@ export default function MultiSeriesScreen() {
       />
 
       <ChipRow
-        label="Smoothing"
-        options={SMOOTHING_OPTIONS}
+        label="Responsiveness"
+        options={RESPONSIVENESS_OPTIONS}
         value={smoothing}
         onChange={setSmoothing}
+      />
+
+      <ChipRow
+        label="Scrub trailing fade (dimOpacity)"
+        options={SCRUB_DIM_OPTIONS}
+        value={scrubDim}
+        onChange={setScrubDim}
       />
 
       <ControlRow label="Playback & theme">
@@ -285,6 +309,11 @@ export default function MultiSeriesScreen() {
           label="Exaggerate"
           value={exaggerate}
           onChange={() => setExaggerate((e) => !e)}
+        />
+        <ToggleChip
+          label="Degen"
+          value={degen}
+          onChange={() => setDegen((d) => !d)}
         />
         <Chip
           label={loading ? "…" : "Load"}

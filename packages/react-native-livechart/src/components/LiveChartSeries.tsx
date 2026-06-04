@@ -549,47 +549,54 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
       <SeriesToggleChips
         series={series}
         legend={legendCfg}
+        palette={palette}
         onSeriesToggle={onSeriesToggle}
       />
     ) : null;
 
   return (
-    <GestureDetector gesture={rootGesture}>
-      <View
-        style={[{ flex: 1, backgroundColor }, style]}
-        onLayout={onLayout}
-        accessible={accessibilityLabel != null}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityRole={accessibilityRole}
-      >
-        {legendCfg.position === "top" ? legend : null}
-        <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
-          <SeriesChartStack model={model} />
+    <View
+      style={[{ flex: 1, backgroundColor }, style]}
+      accessible={accessibilityLabel != null}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole}
+    >
+      {legendCfg.position === "top" ? legend : null}
+      {/* Gesture + layout wrap ONLY the canvas: the legend chips are Pressables
+          that must sit outside the scrub gesture to receive taps, and the engine
+          canvas height must measure the canvas alone (excluding the legend row),
+          else points map into a taller area and the x-axis draws past the edge. */}
+      <GestureDetector gesture={rootGesture}>
+        <View style={{ flex: 1 }} onLayout={onLayout}>
+          <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
+            <SeriesChartStack model={model} />
 
-          {leftEdgeFadeCfg && (
-            <LeftEdgeFade
-              paddingLeft={effectivePadding.left}
-              fadeWidth={leftEdgeFadeCfg.width}
-              startColor={leftEdgeFadeCfg.startColor}
-              endColor={leftEdgeFadeCfg.endColor}
-              engine={engine}
-            />
-          )}
+            {leftEdgeFadeCfg && (
+              <LeftEdgeFade
+                paddingLeft={effectivePadding.left}
+                fadeWidth={leftEdgeFadeCfg.width}
+                startColor={leftEdgeFadeCfg.startColor}
+                endColor={leftEdgeFadeCfg.endColor}
+                engine={engine}
+              />
+            )}
 
-          {scrubCfg && (
-            <CrosshairLine
-              scrubX={crosshair.scrubX}
-              crosshairOpacity={crosshair.crosshairOpacity}
-              engine={engine}
-              padding={effectivePadding}
-              palette={palette}
-              crosshairLineColor={scrubCfg.crosshairLineColor}
-              crosshairDimColor={scrubCfg.crosshairDimColor}
-            />
-          )}
-        </Canvas>
-        {legendCfg.position === "bottom" ? legend : null}
-      </View>
-    </GestureDetector>
+            {scrubCfg && (
+              <CrosshairLine
+                scrubX={crosshair.scrubX}
+                crosshairOpacity={crosshair.crosshairOpacity}
+                engine={engine}
+                padding={effectivePadding}
+                palette={palette}
+                dimOpacity={scrubCfg.dimOpacity}
+                crosshairLineColor={scrubCfg.crosshairLineColor}
+                crosshairDimColor={scrubCfg.crosshairDimColor}
+              />
+            )}
+          </Canvas>
+        </View>
+      </GestureDetector>
+      {legendCfg.position === "bottom" ? legend : null}
+    </View>
   );
 }

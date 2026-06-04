@@ -426,7 +426,7 @@ export interface LegendStyle {
 export interface LegendConfig {
   /** Show the legend. Default `true`. */
   visible?: boolean;
-  /** Show only colored dots in toggle chips (no text labels). Default `false`. */
+  /** Use a smaller, denser chip layout (tighter padding + font). Default `false`. */
   compact?: boolean;
   /** Position of the legend relative to the chart. Default `"top"`. */
   position?: "top" | "bottom";
