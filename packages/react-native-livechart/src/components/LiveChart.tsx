@@ -1,3 +1,4 @@
+import { useLayoutEffect, useState } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
@@ -198,6 +199,18 @@ function useLiveChartController({
       }
     : null;
 
+  // Snapshot the live value off the render path to size the right gutter to the
+  // value label. Reading a SharedValue during render trips Reanimated's
+  // strict-mode warning, and the gutter only needs a representative magnitude —
+  // so read it in a layout effect (re-measures before paint, no visible reflow)
+  // once on mount, re-synced if the `value` SharedValue identity changes.
+  const [valueLayoutSample, setValueLayoutSample] = useState<
+    number | undefined
+  >(undefined);
+  useLayoutEffect(() => {
+    setValueLayoutSample(value.get());
+  }, [value]);
+
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,
@@ -209,7 +222,7 @@ function useLiveChartController({
     xAxis: xAxisCfg !== null,
     font: skiaFont,
     formatValue,
-    currentValue: value.value,
+    currentValue: valueLayoutSample,
     pulse: pulseConfig,
   });
 
