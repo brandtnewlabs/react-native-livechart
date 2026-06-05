@@ -158,11 +158,14 @@ interface DotRingConfig {
   color?: string; // default: theme `badgeOuterBg`
   width?: number; // default 2.5
 }
-interface MultiSeriesDotConfig {
+// Shared live-dot styling (LiveChart `dot`; LiveChartSeries `dot` extends it)
+interface DotConfig {
   radius?: number; // color-filled dot radius, default 3.5
-  ring?: boolean | DotRingConfig; // haloed outer ring (like single-series), default true
+  ring?: boolean | DotRingConfig; // haloed outer ring, default true
   show?: boolean; // default true
-  color?: string; // dot fill, defaults to each series' line color
+  color?: string; // dot fill, defaults to the line color
+}
+interface MultiSeriesDotConfig extends DotConfig {
   pulse?: boolean | PulseConfig;
   valueLine?: boolean | ValueLineConfig;
   valueLabel?: boolean;

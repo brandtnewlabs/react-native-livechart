@@ -1,17 +1,19 @@
 import { Circle, Group } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import type { ResolvedPulseConfig } from "../core/resolveConfig";
+import type {
+  ResolvedDotRingConfig,
+  ResolvedPulseConfig,
+} from "../core/resolveConfig";
 import type { LiveChartPalette } from "../types";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 const MIN_PULSE_RADIUS = 9;
-export const DOT_OUTER_RADIUS = 6.5;
-const DOT_INNER_RADIUS = 3.5;
 
 /**
- * Live dot + expanding pulse ring. Peak ring size uses `pulse.maxRadius` and
- * `pulse.strokeWidth`; chart padding reserves the same outer extent via
- * `pulseRadialOutset` in `draw/line.ts` (see `resolveChartLayout`).
+ * Live dot + expanding pulse ring. The dot is a color-filled circle of `radius`
+ * with an optional contrasting outer `ring` (halo). Peak pulse size uses
+ * `pulse.maxRadius` / `pulse.strokeWidth`; chart padding reserves the same outer
+ * extent via `pulseRadialOutset` in `draw/line.ts` (see `resolveChartLayout`).
  */
 export function DotOverlay({
   dotX,
@@ -19,13 +21,24 @@ export function DotOverlay({
   palette,
   engine,
   pulse,
+  radius,
+  ring,
+  color,
 }: {
   dotX: SharedValue<number>;
   dotY: SharedValue<number>;
   palette: LiveChartPalette;
   engine: ChartEngineLayout;
   pulse: ResolvedPulseConfig | null;
+  /** Radius of the color-filled dot in pixels. */
+  radius: number;
+  /** Outer halo ring, or `null` for a flat dot. */
+  ring: ResolvedDotRingConfig | null;
+  /** Dot (and pulse) fill color; falls back to the chart line color. */
+  color: string | undefined;
 }) {
+  const dotColor = color ?? palette.line;
+
   const pulseRadius = useDerivedValue(() => {
     if (!pulse) return 0;
     const nowMs = engine.timestamp.value * 1000;
@@ -49,21 +62,23 @@ export function DotOverlay({
           cx={dotX}
           cy={dotY}
           r={pulseRadius}
-          color={palette.line}
+          color={dotColor}
           style="stroke"
           strokeWidth={pulse.strokeWidth}
           opacity={pulseOpacity}
         />
       )}
 
-      <Circle
-        cx={dotX}
-        cy={dotY}
-        r={DOT_OUTER_RADIUS}
-        color={palette.badgeOuterBg}
-      />
+      {ring && (
+        <Circle
+          cx={dotX}
+          cy={dotY}
+          r={radius + ring.width}
+          color={ring.color ?? palette.badgeOuterBg}
+        />
+      )}
 
-      <Circle cx={dotX} cy={dotY} r={DOT_INNER_RADIUS} color={palette.line} />
+      <Circle cx={dotX} cy={dotY} r={radius} color={dotColor} />
     </Group>
   );
 }

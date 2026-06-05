@@ -9,6 +9,7 @@ import type {
   LeftEdgeFadeConfig,
   LegendConfig,
   LegendStyle,
+  DotConfig,
   DotRingConfig,
   MultiSeriesDotConfig,
   PulseConfig,
@@ -478,7 +479,7 @@ export function resolveTradeStream(
   };
 }
 
-// ─── Multi-series dot ─────────────────────────────────────────────────────────
+// ─── Dot (shared) ─────────────────────────────────────────────────────────────
 
 /** Resolved halo ring. `color: undefined` means "use the theme `badgeOuterBg`". */
 export interface ResolvedDotRingConfig {
@@ -500,38 +501,47 @@ export function resolveDotRing(
   return { ...RING_DEFAULTS, ...prop };
 }
 
-export interface ResolvedMultiSeriesDotConfig {
+/** Shared, fully-resolved dot styling (single- and multi-series). */
+export interface ResolvedDotConfig {
   radius: number;
   ring: ResolvedDotRingConfig | null;
   show: boolean;
   color: string | undefined;
+}
+
+const DOT_DEFAULTS: ResolvedDotConfig = {
+  radius: 3.5,
+  ring: RING_DEFAULTS,
+  show: true,
+  color: undefined,
+};
+
+export function resolveDot(prop: DotConfig | undefined): ResolvedDotConfig {
+  if (!prop) return DOT_DEFAULTS;
+  return {
+    radius: prop.radius ?? DOT_DEFAULTS.radius,
+    ring: resolveDotRing(prop.ring),
+    show: prop.show ?? DOT_DEFAULTS.show,
+    color: prop.color,
+  };
+}
+
+// ─── Multi-series dot ─────────────────────────────────────────────────────────
+
+export interface ResolvedMultiSeriesDotConfig extends ResolvedDotConfig {
   pulse: ResolvedPulseConfig | null;
   valueLine: ResolvedValueLineConfig | null;
   valueLabel: boolean;
 }
 
-const MULTI_DOT_DEFAULTS: ResolvedMultiSeriesDotConfig = {
-  radius: 3.5,
-  ring: RING_DEFAULTS,
-  show: true,
-  color: undefined,
-  pulse: PULSE_DEFAULTS,
-  valueLine: null,
-  valueLabel: true,
-};
-
 export function resolveMultiSeriesDot(
   prop: MultiSeriesDotConfig | undefined,
 ): ResolvedMultiSeriesDotConfig {
-  if (!prop) return MULTI_DOT_DEFAULTS;
   return {
-    radius: prop.radius ?? MULTI_DOT_DEFAULTS.radius,
-    ring: resolveDotRing(prop.ring),
-    show: prop.show ?? MULTI_DOT_DEFAULTS.show,
-    color: prop.color,
-    pulse: resolvePulse(prop.pulse ?? true),
-    valueLine: resolveValueLine(prop.valueLine),
-    valueLabel: prop.valueLabel ?? MULTI_DOT_DEFAULTS.valueLabel,
+    ...resolveDot(prop),
+    pulse: resolvePulse(prop?.pulse ?? true),
+    valueLine: resolveValueLine(prop?.valueLine),
+    valueLabel: prop?.valueLabel ?? true,
   };
 }
 

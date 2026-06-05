@@ -57,6 +57,14 @@ provided; everything else has a default.
   Pulsing ring on the live dot.
 </ParamField>
 
+<ParamField body="dot" type="DotConfig">
+  Live dot styling — `radius`, `ring` (the contrasting outer halo, on by
+  default), `show`, and `color`. Pass `ring: false` for a flat dot, `show: false`
+  to hide it, or `color` to override the fill. The same `DotConfig` is shared
+  with `LiveChartSeries` (whose `dot` extends it with `pulse`, `valueLine`, and
+  `valueLabel`).
+</ParamField>
+
 <ParamField body="valueLine" type="boolean | ValueLineConfig">
   Horizontal dashed line at the current value.
 </ParamField>

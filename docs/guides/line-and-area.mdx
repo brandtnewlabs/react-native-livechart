@@ -47,6 +47,19 @@ dashed value line across the plot.
 />
 ```
 
+The live dot is a color-filled circle with a contrasting outer **ring** (halo). Style it via
+`dot` — the same `DotConfig` that `LiveChartSeries` uses:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  dot={{ radius: 4, ring: { color: "#0b0b0f", width: 3 } }}
+  // dot={{ ring: false }}  // flat dot, no halo
+  // dot={{ show: false }}  // hide the dot
+/>
+```
+
 <Note>
   Most boolean-ish props accept `true` (defaults), `false` (off), or a config object — for
   example `badge`, `pulse`, `valueLine`, `gradient`, `scrub`, and `yAxis`.

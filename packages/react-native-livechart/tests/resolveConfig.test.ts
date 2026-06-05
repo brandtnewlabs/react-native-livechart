@@ -1,6 +1,7 @@
 import {
   resolveBadge,
   resolveDegen,
+  resolveDot,
   resolveDotRing,
   resolveFontConfig,
   resolveGradient,
@@ -614,6 +615,25 @@ describe("resolveDotRing", () => {
       color: "#fff",
       width: 2.5,
     });
+  });
+});
+
+// ─── resolveDot ───────────────────────────────────────────────────────────────
+
+describe("resolveDot", () => {
+  it("defaults to a haloed, shown dot (line color)", () => {
+    expect(resolveDot(undefined)).toEqual({
+      radius: 3.5,
+      ring: { color: undefined, width: 2.5 },
+      show: true,
+      color: undefined,
+    });
+  });
+
+  it("applies overrides (flat ring, hidden, color, radius)", () => {
+    expect(
+      resolveDot({ radius: 6, ring: false, show: false, color: "#abcdef" }),
+    ).toEqual({ radius: 6, ring: null, show: false, color: "#abcdef" });
   });
 });
 

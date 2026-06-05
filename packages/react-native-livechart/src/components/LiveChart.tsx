@@ -21,6 +21,7 @@ import { DEFAULT_ACCENT_COLOR } from "../constants";
 import {
   resolveBadge,
   resolveDegen,
+  resolveDot,
   resolveGradient,
   resolveGridStyle,
   resolveLeftEdgeFade,
@@ -67,7 +68,7 @@ import type { LiveChartProps, Marker, TradeEvent } from "../types";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
-import { DOT_OUTER_RADIUS, DotOverlay } from "./DotOverlay";
+import { DotOverlay } from "./DotOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { MarkerOverlay } from "./MarkerOverlay";
@@ -127,6 +128,7 @@ function useLiveChartController({
   badge = true,
   momentum = true,
   pulse = true,
+  dot,
   valueLine = true,
   showValue = false,
   valueMomentumColor = false,
@@ -159,6 +161,9 @@ function useLiveChartController({
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
   const valueLineCfg = resolveValueLine(valueLine);
   const pulseCfg = resolvePulse(pulse);
+  const dotCfg = resolveDot(dot);
+  // Outer footprint of the dot (color-filled radius plus the halo ring).
+  const dotOuterRadius = dotCfg.radius + (dotCfg.ring?.width ?? 0);
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const degenCfg = resolveDegen(degen);
   const tradeStreamResolved = resolveTradeStream(tradeStream);
@@ -415,6 +420,8 @@ function useLiveChartController({
     gradientCfg,
     valueLineCfg,
     pulseCfg,
+    dotCfg,
+    dotOuterRadius,
     gridStyleCfg,
     degenCfg,
     tradeStreamResolved,
@@ -501,6 +508,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     xAxisEntries,
     dotX,
     pulseCfg,
+    dotCfg,
     degenCfg,
     degenPack,
     degenPackRevision,
@@ -613,15 +621,20 @@ function ChartStack({ model }: { model: LiveChartModel }) {
 
       {/* Live dot — the badge is drawn later (after the scrub layer) so the
           scrub dim never clips the live-price badge's left edge. */}
-      <Group opacity={reveal.dotOpacity}>
-        <DotOverlay
-          dotX={dotX}
-          dotY={dotY}
-          palette={palette}
-          engine={engine}
-          pulse={pulseCfg}
-        />
-      </Group>
+      {dotCfg.show && (
+        <Group opacity={reveal.dotOpacity}>
+          <DotOverlay
+            dotX={dotX}
+            dotY={dotY}
+            palette={palette}
+            engine={engine}
+            pulse={pulseCfg}
+            radius={dotCfg.radius}
+            ring={dotCfg.ring}
+            color={dotCfg.color}
+          />
+        </Group>
+      )}
 
       {degenCfg && (
         <Group opacity={reveal.dotOpacity}>
@@ -684,16 +697,18 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
     crosshair,
     isCandle,
     pulseCfg,
+    dotOuterRadius,
   } = model;
 
   if (!tradeStreamResolved && !scrubCfg) return null;
 
   // Extend the scrub dim past the plot's right edge to fully cover the live dot
-  // and its pulse ring (both centered on that edge). The gutter reserves an
-  // 8px gap beyond this extent for the Y-axis labels, so they stay readable.
-  const liveDotExtent = pulseCfg
-    ? pulseRadialOutset(pulseCfg.maxRadius, pulseCfg.strokeWidth)
-    : DOT_OUTER_RADIUS;
+  // (with its halo) and pulse ring, all centered on that edge. The gutter
+  // reserves an 8px gap beyond this for the Y-axis labels, so they stay readable.
+  const liveDotExtent = Math.max(
+    dotOuterRadius,
+    pulseCfg ? pulseRadialOutset(pulseCfg.maxRadius, pulseCfg.strokeWidth) : 0,
+  );
 
   return (
     <Group transform={degenShakeTransform}>
