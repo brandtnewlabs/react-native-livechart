@@ -34,6 +34,7 @@ import {
   resolveYAxis,
 } from "../core/resolveConfig";
 import { useLiveChartSeriesEngine } from "../core/useLiveChartSeriesEngine";
+import { pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useCanvasLayout } from "../hooks/useCanvasLayout";
 import { useChartReveal } from "../hooks/useChartReveal";
@@ -472,17 +473,9 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         />
       </Group>
 
-      {dotCfg.valueLabel && (
-        <Group opacity={reveal.dotOpacity}>
-          <MultiSeriesValueLabels
-            engine={engine}
-            padding={effectivePadding}
-            colors={lineColors}
-            font={skiaFont}
-            dotRadius={dotCfg.radius}
-          />
-        </Group>
-      )}
+      {/* Value labels are drawn later (after the crosshair layer) so the scrub
+          dim — which now covers the dots + pulse rings — never clips them.
+          They track each series' live value, not the scrub point. */}
 
       {degenCfg && (
         <Group opacity={reveal.dotOpacity}>
@@ -528,6 +521,35 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
   );
 }
 
+/** Per-series live-value labels, drawn above the scrub dim so the dim (which
+ *  covers the dots + pulse rings) never clips them. Keeps the degen shake
+ *  transform so they track the shaken stack. */
+function SeriesValueLabelLayer({ model }: { model: LiveChartSeriesModel }) {
+  const {
+    dotCfg,
+    engine,
+    effectivePadding,
+    lineColors,
+    skiaFont,
+    reveal,
+    degenShakeTransform,
+  } = model;
+  if (!dotCfg.valueLabel) return null;
+  return (
+    <Group transform={degenShakeTransform}>
+      <Group opacity={reveal.dotOpacity}>
+        <MultiSeriesValueLabels
+          engine={engine}
+          padding={effectivePadding}
+          colors={lineColors}
+          font={skiaFont}
+          dotRadius={dotCfg.radius}
+        />
+      </Group>
+    </Group>
+  );
+}
+
 export function LiveChartSeries(props: LiveChartSeriesProps) {
   const model = useLiveChartSeriesController(props);
   const {
@@ -549,6 +571,13 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     palette,
     dotCfg,
   } = model;
+
+  // Extend the scrub dim past the plot's right edge to fully cover the series
+  // dots and their pulse rings (centered on that edge). The gutter reserves
+  // room beyond this for the value/Y-axis labels, which are drawn on top.
+  const liveDotExtent = dotCfg.pulse
+    ? pulseRadialOutset(dotCfg.pulse.maxRadius, dotCfg.pulse.strokeWidth)
+    : dotCfg.radius;
 
   const legend =
     legendCfg.position === "top" || legendCfg.position === "bottom" ? (
@@ -595,11 +624,15 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 padding={effectivePadding}
                 palette={palette}
                 dimOpacity={scrubCfg.dimOpacity}
-                liveDotExtent={dotCfg.radius}
+                liveDotExtent={liveDotExtent}
                 crosshairLineColor={scrubCfg.crosshairLineColor}
                 crosshairDimColor={scrubCfg.crosshairDimColor}
               />
             )}
+
+            {/* Per-series value labels on top of the scrub dim so the dim never
+                clips them (they track each series' live value, not the scrub). */}
+            <SeriesValueLabelLayer model={model} />
           </Canvas>
         </View>
       </GestureDetector>
