@@ -547,6 +547,7 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     scrubCfg,
     crosshair,
     palette,
+    dotCfg,
   } = model;
 
   const legend =
@@ -594,6 +595,7 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 padding={effectivePadding}
                 palette={palette}
                 dimOpacity={scrubCfg.dimOpacity}
+                liveDotExtent={dotCfg.radius}
                 crosshairLineColor={scrubCfg.crosshairLineColor}
                 crosshairDimColor={scrubCfg.crosshairDimColor}
               />

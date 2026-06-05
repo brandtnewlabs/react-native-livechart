@@ -32,6 +32,7 @@ import {
   resolveYAxis,
 } from "../core/resolveConfig";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
+import { pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
 import { useCandlePaths } from "../hooks/useCandlePaths";
@@ -66,7 +67,7 @@ import type { LiveChartProps, Marker, TradeEvent } from "../types";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
-import { DotOverlay } from "./DotOverlay";
+import { DOT_OUTER_RADIUS, DotOverlay } from "./DotOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { MarkerOverlay } from "./MarkerOverlay";
@@ -688,9 +689,17 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
     reveal,
     crosshair,
     isCandle,
+    pulseCfg,
   } = model;
 
   if (!tradeStreamResolved && !scrubCfg) return null;
+
+  // Extend the scrub dim past the plot's right edge to fully cover the live dot
+  // and its pulse ring (both centered on that edge). The gutter reserves an
+  // 8px gap beyond this extent for the Y-axis labels, so they stay readable.
+  const liveDotExtent = pulseCfg
+    ? pulseRadialOutset(pulseCfg.maxRadius, pulseCfg.strokeWidth)
+    : DOT_OUTER_RADIUS;
 
   return (
     <Group transform={degenShakeTransform}>
@@ -716,6 +725,7 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
           font={skiaFont}
           showTooltip={scrubCfg.tooltip}
           dimOpacity={scrubCfg.dimOpacity}
+          liveDotExtent={liveDotExtent}
           crosshairLineColor={scrubCfg.crosshairLineColor}
           crosshairDimColor={scrubCfg.crosshairDimColor}
           tooltipBackground={scrubCfg.tooltipBackground}
