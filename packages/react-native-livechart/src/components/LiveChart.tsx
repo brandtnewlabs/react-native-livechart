@@ -499,7 +499,6 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     downBodiesPath,
     xAxisCfg,
     xAxisEntries,
-    badgeData,
     dotX,
     pulseCfg,
     degenCfg,
@@ -612,13 +611,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         />
       )}
 
-      {/* Badge and live dot */}
-      {badgeCfg && (
-        <Group opacity={reveal.badgeOpacity}>
-          <BadgeOverlay badge={badgeData} font={skiaFont} />
-        </Group>
-      )}
-
+      {/* Live dot — the badge is drawn later (after the scrub layer) so the
+          scrub dim never clips the live-price badge's left edge. */}
       <Group opacity={reveal.dotOpacity}>
         <DotOverlay
           dotX={dotX}
@@ -784,6 +778,20 @@ function ChartValueOverlay({ model }: { model: LiveChartModel }) {
   );
 }
 
+/** Live-price badge, drawn above the scrub dim so the dim never clips its left
+ *  edge. Shares the degen shake transform so it tracks the shaken stack. */
+function ChartBadgeLayer({ model }: { model: LiveChartModel }) {
+  const { badgeCfg, badgeData, skiaFont, reveal, degenShakeTransform } = model;
+  if (!badgeCfg) return null;
+  return (
+    <Group transform={degenShakeTransform}>
+      <Group opacity={reveal.badgeOpacity}>
+        <BadgeOverlay badge={badgeData} font={skiaFont} />
+      </Group>
+    </Group>
+  );
+}
+
 export function LiveChart(props: LiveChartProps) {
   const model = useLiveChartController(props);
   const {
@@ -824,6 +832,10 @@ export function LiveChart(props: LiveChartProps) {
           <ChartValueOverlay model={model} />
 
           <ChartScrubLayer model={model} />
+
+          {/* Live-price badge on top of the scrub dim so the dim never clips
+              its left edge (the badge tracks the live value, not the scrub). */}
+          <ChartBadgeLayer model={model} />
         </Canvas>
       </View>
     </GestureDetector>
