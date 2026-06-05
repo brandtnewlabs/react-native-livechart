@@ -132,13 +132,18 @@ describe("resolveScrub", () => {
   });
 
   it("returns defaults for true", () => {
-    expect(resolveScrub(true)).toEqual({ tooltip: true, dimOpacity: 0.3 });
+    expect(resolveScrub(true)).toEqual({
+      tooltip: true,
+      dimOpacity: 0.3,
+      panGestureDelay: 0,
+    });
   });
 
   it("merges partial config with defaults", () => {
     expect(resolveScrub({ tooltip: false })).toEqual({
       tooltip: false,
       dimOpacity: 0.3,
+      panGestureDelay: 0,
     });
   });
 
@@ -146,6 +151,15 @@ describe("resolveScrub", () => {
     expect(resolveScrub({ dimOpacity: 0.5 })).toEqual({
       tooltip: true,
       dimOpacity: 0.5,
+      panGestureDelay: 0,
+    });
+  });
+
+  it("carries a custom panGestureDelay (press-and-hold to scrub)", () => {
+    expect(resolveScrub({ panGestureDelay: 300 })).toEqual({
+      tooltip: true,
+      dimOpacity: 0.3,
+      panGestureDelay: 300,
     });
   });
 });

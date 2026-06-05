@@ -55,6 +55,8 @@ export function useCrosshair(
   enabled: boolean,
   onScrub?: (point: ScrubPoint | null) => void,
   candleOpts?: CrosshairCandleOpts,
+  /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
+  panGestureDelay = 0,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -207,7 +209,7 @@ export function useCrosshair(
 
   let gesture = Gesture.Pan()
     .minDistance(Platform.OS === "android" ? 10 : 0)
-    .activateAfterLongPress(0)
+    .activateAfterLongPress(panGestureDelay)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
     .onBegin(

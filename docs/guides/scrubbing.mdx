@@ -48,6 +48,21 @@ Default `0.3`.
 
 The same `dimOpacity` option works on `LiveChartSeries`.
 
+## Press-and-hold to scrub (`panGestureDelay`)
+
+By default scrubbing starts the moment the user drags. When the chart sits inside a horizontally
+swipeable container — most commonly a stack navigator with **swipe-back-to-previous-route** — that
+can steal the back gesture. `panGestureDelay` makes scrubbing a **press and hold**: the pan only
+activates after the finger is held for that many milliseconds, so a quick horizontal flick falls
+through to the parent gesture, while a deliberate hold begins scrubbing.
+
+```tsx
+// Hold ~250ms to scrub; a quick swipe navigates back instead.
+<LiveChart data={data} value={value} scrub={{ panGestureDelay: 250 }} />
+```
+
+`0` (the default) scrubs immediately. Works the same on `LiveChartSeries`.
+
 ## Reading the scrub position (single series)
 
 `onScrub` fires with a `ScrubPoint` while scrubbing, and `null` when it ends. It runs on the **JS
