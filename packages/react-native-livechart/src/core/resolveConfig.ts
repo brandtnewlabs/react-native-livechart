@@ -9,6 +9,7 @@ import type {
   LeftEdgeFadeConfig,
   LegendConfig,
   LegendStyle,
+  DotRingConfig,
   MultiSeriesDotConfig,
   PulseConfig,
   ReferenceLine,
@@ -479,8 +480,31 @@ export function resolveTradeStream(
 
 // ─── Multi-series dot ─────────────────────────────────────────────────────────
 
+/** Resolved halo ring. `color: undefined` means "use the theme `badgeOuterBg`". */
+export interface ResolvedDotRingConfig {
+  color: string | undefined;
+  width: number;
+}
+
+const RING_DEFAULTS: ResolvedDotRingConfig = {
+  color: undefined,
+  width: 2.5,
+};
+
+/** `undefined`/`true` → haloed defaults; `false` → null (flat circle). */
+export function resolveDotRing(
+  prop: boolean | DotRingConfig | undefined,
+): ResolvedDotRingConfig | null {
+  if (prop === false) return null;
+  if (prop === undefined || prop === true) return RING_DEFAULTS;
+  return { ...RING_DEFAULTS, ...prop };
+}
+
 export interface ResolvedMultiSeriesDotConfig {
   radius: number;
+  ring: ResolvedDotRingConfig | null;
+  show: boolean;
+  color: string | undefined;
   pulse: ResolvedPulseConfig | null;
   valueLine: ResolvedValueLineConfig | null;
   valueLabel: boolean;
@@ -488,6 +512,9 @@ export interface ResolvedMultiSeriesDotConfig {
 
 const MULTI_DOT_DEFAULTS: ResolvedMultiSeriesDotConfig = {
   radius: 3.5,
+  ring: RING_DEFAULTS,
+  show: true,
+  color: undefined,
   pulse: PULSE_DEFAULTS,
   valueLine: null,
   valueLabel: true,
@@ -499,6 +526,9 @@ export function resolveMultiSeriesDot(
   if (!prop) return MULTI_DOT_DEFAULTS;
   return {
     radius: prop.radius ?? MULTI_DOT_DEFAULTS.radius,
+    ring: resolveDotRing(prop.ring),
+    show: prop.show ?? MULTI_DOT_DEFAULTS.show,
+    color: prop.color,
     pulse: resolvePulse(prop.pulse ?? true),
     valueLine: resolveValueLine(prop.valueLine),
     valueLabel: prop.valueLabel ?? MULTI_DOT_DEFAULTS.valueLabel,

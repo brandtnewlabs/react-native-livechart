@@ -104,6 +104,8 @@ export default function MultiSeriesScreen() {
   const [valueLines, setValueLines] = useState(false);
   const [valueLabels, setValueLabels] = useState(true);
   const [dotRadius, setDotRadius] = useState(3.5);
+  const [dots, setDots] = useState(true);
+  const [ring, setRing] = useState(true);
 
   const [legendVisible, setLegendVisible] = useState(true);
   const [legendCompact, setLegendCompact] = useState(true);
@@ -147,6 +149,8 @@ export default function MultiSeriesScreen() {
 
   const dotConfig: MultiSeriesDotConfig = {
     radius: dotRadius,
+    show: dots,
+    ring,
     pulse,
     valueLine: valueLines,
     valueLabel: valueLabels,
@@ -237,6 +241,8 @@ export default function MultiSeriesScreen() {
       <ChipRow label="Data" options={DATA_OPTIONS} value={empty} onChange={setEmpty} />
 
       <ControlRow label="Dot">
+        <ToggleChip label="Dots" value={dots} onChange={setDots} />
+        <ToggleChip label="Ring" value={ring} onChange={setRing} />
         <ToggleChip label="Pulse" value={pulse} onChange={setPulse} />
         <ToggleChip label="Labels" value={valueLabels} onChange={setValueLabels} />
         <ToggleChip

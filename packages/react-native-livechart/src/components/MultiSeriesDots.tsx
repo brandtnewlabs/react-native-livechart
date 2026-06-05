@@ -3,7 +3,10 @@ import { Circle, Group } from "@shopify/react-native-skia";
 import { useDerivedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";
 import type { ChartPadding } from "../draw/line";
-import type { ResolvedPulseConfig } from "../core/resolveConfig";
+import type {
+  ResolvedDotRingConfig,
+  ResolvedPulseConfig,
+} from "../core/resolveConfig";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
 
 const MIN_PULSE_RADIUS = 6;
@@ -15,6 +18,8 @@ function SeriesDotAtIndex({
   padding,
   color,
   radius,
+  ring,
+  ringColor,
   pulse,
 }: {
   index: number;
@@ -22,6 +27,10 @@ function SeriesDotAtIndex({
   padding: ChartPadding;
   color: string;
   radius: number;
+  /** Outer halo ring, or `null` for a flat circle. */
+  ring: ResolvedDotRingConfig | null;
+  /** Fallback ring color when `ring.color` is unset (theme `badgeOuterBg`). */
+  ringColor: string;
   pulse: ResolvedPulseConfig | null;
 }) {
   const dotX = useDerivedValue(() => {
@@ -81,6 +90,14 @@ function SeriesDotAtIndex({
           opacity={pulseOpacity}
         />
       )}
+      {ring && (
+        <Circle
+          cx={dotX}
+          cy={dotY}
+          r={radius + ring.width}
+          color={ring.color ?? ringColor}
+        />
+      )}
       <Circle cx={dotX} cy={dotY} r={radius} color={color} />
     </Group>
   );
@@ -91,12 +108,21 @@ export function MultiSeriesDots({
   padding,
   colors,
   radius,
+  ring,
+  ringColor,
+  color,
   pulse,
 }: {
   engine: MultiEngineState;
   padding: ChartPadding;
   colors: string[];
   radius: number;
+  /** Outer halo ring, or `null` for flat circles. */
+  ring: ResolvedDotRingConfig | null;
+  /** Fallback ring color when `ring.color` is unset (theme `badgeOuterBg`). */
+  ringColor: string;
+  /** Fill color override; falls back to each series' line color. */
+  color: string | undefined;
   pulse: ResolvedPulseConfig | null;
 }) {
   return (
@@ -107,8 +133,10 @@ export function MultiSeriesDots({
           index={i}
           engine={engine}
           padding={padding}
-          color={colors[i] ?? "#ffffff"}
+          color={color ?? colors[i] ?? "#ffffff"}
           radius={radius}
+          ring={ring}
+          ringColor={ringColor}
           pulse={pulse}
         />
       ))}

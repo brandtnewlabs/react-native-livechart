@@ -32,7 +32,10 @@ accepts all the shared theming, axis, range, layout, and text props from
 ## Dots
 
 <ParamField body="dot" type="MultiSeriesDotConfig">
-  Per-series live dots: `radius`, `pulse`, `valueLine`, `valueLabel`.
+  Per-series live dots: `radius`, `ring`, `show`, `color`, `pulse`, `valueLine`,
+  `valueLabel`. Each dot is haloed with a contrasting outer `ring` by default
+  (matching the single-series live dot); pass `ring: false` for a flat circle,
+  `show: false` to hide the dots, or `color` to override the per-series fill.
 </ParamField>
 
 ## Scrub
