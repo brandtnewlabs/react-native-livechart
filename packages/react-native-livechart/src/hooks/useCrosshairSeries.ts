@@ -126,7 +126,11 @@ export function useCrosshairSeries(
     .activateAfterLongPress(panGestureDelay)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
-    .onBegin(
+    // Start scrubbing on ACTIVE (onStart), not on touch-down (onBegin):
+    // `activateAfterLongPress` only delays activation, so onBegin still fires
+    // immediately — using it would scrub instantly and ignore panGestureDelay,
+    // and leave scrubActive stuck for taps that never reach the long-press.
+    .onStart(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;
