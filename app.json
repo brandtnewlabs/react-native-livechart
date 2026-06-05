@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "react-native-livechart",
+    "name": "LiveChart",
     "slug": "react-native-livechart",
     "version": "1.0.0",
     "orientation": "portrait",
