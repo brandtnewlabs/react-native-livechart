@@ -55,6 +55,8 @@ export function useCrosshair(
   enabled: boolean,
   onScrub?: (point: ScrubPoint | null) => void,
   candleOpts?: CrosshairCandleOpts,
+  /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
+  panGestureDelay = 0,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -207,10 +209,14 @@ export function useCrosshair(
 
   let gesture = Gesture.Pan()
     .minDistance(Platform.OS === "android" ? 10 : 0)
-    .activateAfterLongPress(0)
+    .activateAfterLongPress(panGestureDelay)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
-    .onBegin(
+    // Start scrubbing on ACTIVE (onStart), not on touch-down (onBegin):
+    // `activateAfterLongPress` only delays activation, so onBegin still fires
+    // immediately — using it would scrub instantly and ignore panGestureDelay,
+    // and leave scrubActive stuck for taps that never reach the long-press.
+    .onStart(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;

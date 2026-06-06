@@ -203,6 +203,14 @@ export interface ScrubConfig {
   tooltipColor?: string;
   /** Tooltip pill border color. Omit to use theme `tooltipBorder`. */
   tooltipBorderColor?: string;
+  /**
+   * Press-and-hold delay in milliseconds before scrubbing activates — think of
+   * it as "press and hold to scrub." During the delay the pan is not captured,
+   * so a quick horizontal swipe falls through to a parent gesture (e.g. a
+   * navigator's swipe-back-to-previous-route). `0` = scrub immediately on drag.
+   * Default `0`.
+   */
+  panGestureDelay?: number;
 }
 
 /** Left-edge fade — soft erase so the chart blends into the left gutter (web liveline parity). */

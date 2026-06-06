@@ -62,6 +62,8 @@ export interface ResolvedScrubConfig {
   tooltipColor: string | undefined;
   /** undefined → palette.tooltipBorder */
   tooltipBorderColor: string | undefined;
+  /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
+  panGestureDelay: number;
 }
 
 export interface ResolvedGradientConfig {
@@ -214,6 +216,7 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltipBackground: undefined,
   tooltipColor: undefined,
   tooltipBorderColor: undefined,
+  panGestureDelay: 0,
 };
 
 /**

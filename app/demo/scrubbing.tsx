@@ -47,6 +47,10 @@ export default function ScrubbingScreen() {
   const [displayMode, setDisplayMode] = useState<DisplayMode>("line");
   const [styledTooltip, setStyledTooltip] = useState(false);
   const [dimOpacity, setDimOpacity] = useState(0.3);
+  const [holdToScrub, setHoldToScrub] = useState(false);
+  // Press-and-hold delay: lets a quick horizontal swipe pass through to a
+  // navigator's swipe-back gesture instead of scrubbing.
+  const panGestureDelay = holdToScrub ? 250 : 0;
 
   // Readout flows through a SharedValue + animatedProps so each scrub frame
   // updates the text on the UI thread — no React re-render per pointer move.
@@ -80,17 +84,18 @@ export default function ScrubbingScreen() {
     scrubMode === "off"
       ? false
       : scrubMode === "noTooltip"
-        ? { tooltip: false, dimOpacity }
+        ? { tooltip: false, dimOpacity, panGestureDelay }
         : styledTooltip
           ? {
               tooltip: true,
               dimOpacity,
+              panGestureDelay,
               tooltipBackground: "#1e293b",
               tooltipColor: "#fbbf24",
               tooltipBorderColor: "#fbbf24",
               crosshairLineColor: "#fbbf24",
             }
-          : { tooltip: true, dimOpacity };
+          : { tooltip: true, dimOpacity, panGestureDelay };
 
   return (
     <DemoScreen
@@ -154,6 +159,11 @@ export default function ScrubbingScreen() {
           label="Styled tooltip"
           value={styledTooltip}
           onChange={setStyledTooltip}
+        />
+        <ToggleChip
+          label="Hold to scrub (250ms)"
+          value={holdToScrub}
+          onChange={setHoldToScrub}
         />
       </ControlRow>
 

@@ -147,6 +147,7 @@ interface ScrubConfig {
   dimOpacity?: number; // opacity of content right of the crosshair; default 0.3 (1 = off)
   crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
   tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;
+  panGestureDelay?: number; // press-and-hold ms before scrubbing activates; default 0
 }
 interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }
 interface YAxisConfig { minGap?: number } // default 36

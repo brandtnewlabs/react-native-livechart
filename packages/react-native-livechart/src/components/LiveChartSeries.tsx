@@ -300,6 +300,7 @@ function useLiveChartSeriesController({
     effectivePadding,
     scrubEnabled,
     onScrub,
+    scrubCfg?.panGestureDelay ?? 0,
   );
 
   // `projected` is used internally by the hit-test gesture; the overlay

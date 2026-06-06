@@ -367,6 +367,7 @@ function useLiveChartController({
     scrubCfg !== null,
     onScrub,
     candleOpts,
+    scrubCfg?.panGestureDelay ?? 0,
   );
 
   const markersActive = markers != null;
