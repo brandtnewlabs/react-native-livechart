@@ -60,6 +60,8 @@ export default function LineScreen() {
   const [valueLine, setValueLine] = useState(true);
   const [showValue, setShowValue] = useState(false);
   const [valueMomentumColor, setValueMomentumColor] = useState(false);
+  const [dots, setDots] = useState(true);
+  const [ring, setRing] = useState(true);
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -84,6 +86,7 @@ export default function LineScreen() {
           theme={APP_THEME}
           badge={resolveBadge(badgeMode)}
           pulse={resolvePulse(pulseMode)}
+          dot={{ show: dots, ring }}
           valueLine={valueLine}
           showValue={showValue}
           valueMomentumColor={valueMomentumColor}
@@ -103,6 +106,10 @@ export default function LineScreen() {
         value={pulseMode}
         onChange={setPulseMode}
       />
+      <ControlRow label="Dot">
+        <ToggleChip label="Dot" value={dots} onChange={setDots} />
+        <ToggleChip label="Ring" value={ring} onChange={setRing} />
+      </ControlRow>
       <ControlRow label="Value line">
         <ToggleChip
           label="valueLine"

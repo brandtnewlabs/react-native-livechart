@@ -402,20 +402,28 @@ export interface DotRingConfig {
   width?: number;
 }
 
-/** Live dot configuration for multi-series charts. */
-export interface MultiSeriesDotConfig {
+/**
+ * Shared live-dot styling, used by both `LiveChart` (`dot`) and
+ * `LiveChartSeries` (`dot`, which extends this). A dot is a color-filled circle
+ * of `radius` with an optional contrasting outer `ring` (halo).
+ */
+export interface DotConfig {
   /** Radius of the (color-filled) dot in pixels. Default `3.5`. */
   radius?: number;
   /**
-   * Contrasting outer ring behind each dot — matches the single-series live
-   * dot's haloed look so dots read clearly against the lines. `true` = defaults,
-   * `false` = a flat circle, or pass `DotRingConfig`. Default `true`.
+   * Contrasting outer ring (halo) behind the dot, so it reads clearly against
+   * the line(s). `true` = defaults, `false` = a flat circle, or pass
+   * `DotRingConfig`. Default `true`.
    */
   ring?: boolean | DotRingConfig;
-  /** Show the series dots. `false` hides them (lines and labels still render). Default `true`. */
+  /** Show the dot. `false` hides it (line, badge, and labels still render). Default `true`. */
   show?: boolean;
-  /** Dot fill color. Defaults to each series' line color. */
+  /** Dot fill color. Defaults to the chart line color (per series for multi-series). */
   color?: string;
+}
+
+/** Live dot configuration for multi-series charts (extends the shared {@link DotConfig}). */
+export interface MultiSeriesDotConfig extends DotConfig {
   /** Pulsing ring animation on each series dot. `true` = defaults, or pass `PulseConfig`. Default `true`. */
   pulse?: boolean | PulseConfig;
   /** Horizontal dashed line at each series' live value. `true` = defaults, or pass `ValueLineConfig`. Default `false`. */
@@ -649,6 +657,8 @@ export interface LiveChartProps extends LiveChartCoreProps {
   momentum?: boolean | Momentum | MomentumConfig;
   /** Pulsing ring animation on the live dot. `true` = defaults, or pass `PulseConfig`. Default `true`. */
   pulse?: boolean | PulseConfig;
+  /** Live dot styling: `radius`, `ring` (halo), `show`, `color`. See {@link DotConfig}. */
+  dot?: DotConfig;
   /** Horizontal dashed line at the current live value. `true` = defaults, or pass `ValueLineConfig`. */
   valueLine?: boolean | ValueLineConfig;
   /** Render the live value as a large text overlay in the top-left. Default `false`. */

@@ -111,6 +111,9 @@ describe("DotOverlay", () => {
           dotY={dotY}
           palette={palette}
           engine={eng}
+          radius={3.5}
+          ring={{ color: undefined, width: 2.5 }}
+          color={undefined}
           pulse={PULSE_ON}
         />
       );
@@ -132,6 +135,9 @@ describe("DotOverlay", () => {
           dotY={dotY}
           palette={palette}
           engine={eng}
+          radius={3.5}
+          ring={null}
+          color={undefined}
           pulse={null}
         />
       );
@@ -150,6 +156,9 @@ describe("DotOverlay", () => {
           dotY={dotY}
           palette={palette}
           engine={eng}
+          radius={3.5}
+          ring={null}
+          color={undefined}
           pulse={null}
         />
       );
@@ -167,6 +176,9 @@ describe("DotOverlay", () => {
           dotY={dotY}
           palette={palette}
           engine={engine()}
+          radius={3.5}
+          ring={{ color: undefined, width: 2.5 }}
+          color="#abcdef"
           pulse={null}
         />
       );
@@ -188,6 +200,9 @@ describe("DotOverlay", () => {
           dotY={dotY}
           palette={palette}
           engine={eng}
+          radius={3.5}
+          ring={{ color: undefined, width: 2.5 }}
+          color={undefined}
           pulse={PULSE_ON}
         />
       );

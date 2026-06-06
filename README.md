@@ -139,6 +139,7 @@ The tables below are a **highlight** — the **canonical, full reference is the 
 | `degen`                                  | Particle burst + shake on momentum swings                           |
 | `scrub`                                  | Crosshair scrubbing                                                 |
 | `momentum`                               | `true` / `false` / `"up"`, `"down"`, or `"flat"` / `MomentumConfig` |
+| `dot`                                    | Live dot styling: `radius`, `ring` (halo), `show`, `color`          |
 | `onScrub`                                | Callback: `ScrubPoint` or `null`                                    |
 
 ### `LiveChartSeries` (multi-series)
@@ -151,7 +152,7 @@ The tables below are a **highlight** — the **canonical, full reference is the 
 | `onSeriesToggle` | Chip tap                                    |
 | `onScrub`        | Worklet-friendly multi-series scrub payload |
 
-These tables are a **highlight, not the full surface** (`LiveChart` alone has ~48 props). Other shared props include `font`, `insets`, `smoothing`, `xAxis`, `yAxis`, `referenceLines`, `gridStyle`, `palette`, `markers`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, and `emptyText`; single-series adds `gradient`, `badge`, `pulse`, `valueLine`, and `showValue`. See the TypeScript types and JSDoc for the complete, canonical reference.
+These tables are a **highlight, not the full surface** (`LiveChart` alone has ~48 props). Other shared props include `font`, `insets`, `smoothing`, `xAxis`, `yAxis`, `referenceLines`, `gridStyle`, `palette`, `markers`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, and `emptyText`; single-series adds `gradient`, `badge`, `pulse`, `valueLine`, and `showValue`. Both charts share the same `dot` styling (a `DotConfig` base — `radius`, `ring`, `show`, `color`); multi-series extends it with `pulse`, `valueLine`, and `valueLabel`. See the TypeScript types and JSDoc for the complete, canonical reference.
 
 ## Examples (Expo app in this repo)
 
