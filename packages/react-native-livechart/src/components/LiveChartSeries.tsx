@@ -144,6 +144,9 @@ function useLiveChartSeriesController({
   const scrubEnabled = scrubCfg !== null;
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
+  // Outer footprint of a dot (the color-filled radius plus the halo ring).
+  // Used to keep the gutter labels clear of the haloed dot.
+  const dotOuterRadius = dotCfg.radius + (dotCfg.ring?.width ?? 0);
   const legendCfg = resolveLegend(legendProp);
   const degenCfg = resolveDegen(degen);
 
@@ -191,7 +194,7 @@ function useLiveChartSeriesController({
     : 0;
 
   const seriesLabelInset = dotCfg.valueLabel
-    ? dotCfg.radius + 8 + maxSeriesLabelWidth + 8
+    ? dotOuterRadius + 8 + maxSeriesLabelWidth + 8
     : 0;
 
   const representativeValue =
@@ -210,7 +213,7 @@ function useLiveChartSeriesController({
     formatValue,
     currentValue: representativeValue,
     pulse: dotCfg.pulse,
-    multiSeriesDotRadius: dotCfg.radius,
+    multiSeriesDotRadius: dotOuterRadius,
     multiSeriesValueLabel: dotCfg.valueLabel,
     multiSeriesMaxLabelWidth: maxSeriesLabelWidth,
   });
@@ -332,6 +335,7 @@ function useLiveChartSeriesController({
     scrubCfg,
     gridStyleCfg,
     dotCfg,
+    dotOuterRadius,
     legendCfg,
     degenCfg,
     allRefLines,
@@ -463,15 +467,20 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         />
       )}
 
-      <Group opacity={reveal.dotOpacity}>
-        <MultiSeriesDots
-          engine={engine}
-          padding={effectivePadding}
-          colors={lineColors}
-          radius={dotCfg.radius}
-          pulse={dotCfg.pulse}
-        />
-      </Group>
+      {dotCfg.show && (
+        <Group opacity={reveal.dotOpacity}>
+          <MultiSeriesDots
+            engine={engine}
+            padding={effectivePadding}
+            colors={lineColors}
+            radius={dotCfg.radius}
+            ring={dotCfg.ring}
+            ringColor={palette.badgeOuterBg}
+            color={dotCfg.color}
+            pulse={dotCfg.pulse}
+          />
+        </Group>
+      )}
 
       {/* Value labels are drawn later (after the crosshair layer) so the scrub
           dim — which now covers the dots + pulse rings — never clips them.
@@ -527,6 +536,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
 function SeriesValueLabelLayer({ model }: { model: LiveChartSeriesModel }) {
   const {
     dotCfg,
+    dotOuterRadius,
     engine,
     effectivePadding,
     lineColors,
@@ -543,7 +553,7 @@ function SeriesValueLabelLayer({ model }: { model: LiveChartSeriesModel }) {
           padding={effectivePadding}
           colors={lineColors}
           font={skiaFont}
-          dotRadius={dotCfg.radius}
+          dotRadius={dotOuterRadius}
         />
       </Group>
     </Group>
@@ -570,14 +580,18 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     crosshair,
     palette,
     dotCfg,
+    dotOuterRadius,
   } = model;
 
   // Extend the scrub dim past the plot's right edge to fully cover the series
-  // dots and their pulse rings (centered on that edge). The gutter reserves
-  // room beyond this for the value/Y-axis labels, which are drawn on top.
-  const liveDotExtent = dotCfg.pulse
-    ? pulseRadialOutset(dotCfg.pulse.maxRadius, dotCfg.pulse.strokeWidth)
-    : dotCfg.radius;
+  // dots (with their halo) and pulse rings, all centered on that edge. The
+  // gutter reserves room beyond this for the value/Y-axis labels, drawn on top.
+  const liveDotExtent = Math.max(
+    dotOuterRadius,
+    dotCfg.pulse
+      ? pulseRadialOutset(dotCfg.pulse.maxRadius, dotCfg.pulse.strokeWidth)
+      : 0,
+  );
 
   const legend =
     legendCfg.position === "top" || legendCfg.position === "bottom" ? (

@@ -41,6 +41,9 @@ describe("MultiSeriesDots", () => {
           padding={padding}
           colors={["#3b82f6"]}
           radius={3.5}
+          ring={{ color: undefined, width: 2.5 }}
+          ringColor="#ffffff"
+          color={undefined}
           pulse={null}
         />
       );
@@ -81,6 +84,9 @@ describe("MultiSeriesDots", () => {
           padding={padding}
           colors={["#3b82f6"]}
           radius={3.5}
+          ring={{ color: undefined, width: 2.5 }}
+          ringColor="#ffffff"
+          color={undefined}
           pulse={null}
         />
       );
@@ -121,6 +127,9 @@ describe("MultiSeriesDots", () => {
           padding={padding}
           colors={["#3b82f6"]}
           radius={3.5}
+          ring={{ color: undefined, width: 2.5 }}
+          ringColor="#ffffff"
+          color={undefined}
           pulse={null}
         />
       );

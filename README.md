@@ -147,7 +147,7 @@ The tables below are a **highlight** — the **canonical, full reference is the 
 | ---------------- | ------------------------------------------- |
 | `series`         | `SharedValue<SeriesConfig[]>`               |
 | `legend`         | Toggle chips / compact legend               |
-| `dot`            | Per-series live dots, pulse, value lines    |
+| `dot`            | Per-series live dots: haloed `ring`, `show`, `color`, `radius`, `pulse`, `valueLine`, `valueLabel` |
 | `onSeriesToggle` | Chip tap                                    |
 | `onScrub`        | Worklet-friendly multi-series scrub payload |
 

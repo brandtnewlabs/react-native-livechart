@@ -392,10 +392,30 @@ export interface DegenShakePayload {
   direction: "up" | "down";
 }
 
+/** Contrasting outer ring drawn behind each series dot — the "haloed" look the
+ *  single-series live dot has, so dots stand out against the lines and one
+ *  another. */
+export interface DotRingConfig {
+  /** Ring color. Default: theme `badgeOuterBg` (a near-background halo). */
+  color?: string;
+  /** Ring thickness in pixels — how far the halo extends past the dot. Default `2.5`. */
+  width?: number;
+}
+
 /** Live dot configuration for multi-series charts. */
 export interface MultiSeriesDotConfig {
-  /** Dot radius in pixels. Default `3.5`. */
+  /** Radius of the (color-filled) dot in pixels. Default `3.5`. */
   radius?: number;
+  /**
+   * Contrasting outer ring behind each dot — matches the single-series live
+   * dot's haloed look so dots read clearly against the lines. `true` = defaults,
+   * `false` = a flat circle, or pass `DotRingConfig`. Default `true`.
+   */
+  ring?: boolean | DotRingConfig;
+  /** Show the series dots. `false` hides them (lines and labels still render). Default `true`. */
+  show?: boolean;
+  /** Dot fill color. Defaults to each series' line color. */
+  color?: string;
   /** Pulsing ring animation on each series dot. `true` = defaults, or pass `PulseConfig`. Default `true`. */
   pulse?: boolean | PulseConfig;
   /** Horizontal dashed line at each series' live value. `true` = defaults, or pass `ValueLineConfig`. Default `false`. */

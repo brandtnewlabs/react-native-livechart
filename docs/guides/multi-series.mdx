@@ -64,12 +64,29 @@ taps with `onSeriesToggle`:
 
 ## Per-series dots
 
-The `dot` prop controls the live dots, their pulse, value lines, and inline labels:
+The `dot` prop controls the live dots, their pulse, value lines, and inline labels.
+Each dot is **haloed** by default — a contrasting outer ring (in the chart
+background color) behind the colored dot, matching the single-series live dot so
+overlapping series stay legible:
 
 ```tsx
 <LiveChartSeries
   series={series}
-  dot={{ radius: 3.5, pulse: true, valueLine: true, valueLabel: true }}
+  dot={{ radius: 3.5, ring: true, pulse: true, valueLine: true, valueLabel: true }}
+/>
+```
+
+Tune or turn off the halo, hide the dots, or override the fill color:
+
+```tsx
+<LiveChartSeries
+  series={series}
+  // thicker, tinted halo
+  dot={{ ring: { color: "#0b0b0f", width: 3 } }}
+  // ...or a flat circle (no halo)
+  // dot={{ ring: false }}
+  // ...or hide the dots entirely (lines + labels still render)
+  // dot={{ show: false }}
 />
 ```
 

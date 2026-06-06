@@ -1,10 +1,12 @@
 import {
   resolveBadge,
   resolveDegen,
+  resolveDotRing,
   resolveFontConfig,
   resolveGradient,
   resolveGridStyle,
   resolveLeftEdgeFade,
+  resolveMultiSeriesDot,
   resolvePulse,
   resolveReferenceLineConfig,
   resolveScrub,
@@ -587,6 +589,66 @@ describe("resolveGridStyle", () => {
       strokeWidth: 2,
       intervals: [],
       opacity: 1,
+    });
+  });
+});
+
+// ─── resolveDotRing ───────────────────────────────────────────────────────────
+
+describe("resolveDotRing", () => {
+  it("returns null when disabled", () => {
+    expect(resolveDotRing(false)).toBeNull();
+  });
+
+  it("returns haloed defaults for true/undefined", () => {
+    expect(resolveDotRing(true)).toEqual({ color: undefined, width: 2.5 });
+    expect(resolveDotRing(undefined)).toEqual({ color: undefined, width: 2.5 });
+  });
+
+  it("merges a partial ring config over the defaults", () => {
+    expect(resolveDotRing({ color: "#000", width: 4 })).toEqual({
+      color: "#000",
+      width: 4,
+    });
+    expect(resolveDotRing({ color: "#fff" })).toEqual({
+      color: "#fff",
+      width: 2.5,
+    });
+  });
+});
+
+// ─── resolveMultiSeriesDot ──────────────────────────────────────────────────────
+
+describe("resolveMultiSeriesDot", () => {
+  it("defaults to a haloed, shown dot with pulse", () => {
+    expect(resolveMultiSeriesDot(undefined)).toEqual({
+      radius: 3.5,
+      ring: { color: undefined, width: 2.5 },
+      show: true,
+      color: undefined,
+      pulse: expect.objectContaining({ maxRadius: expect.any(Number) }),
+      valueLine: null,
+      valueLabel: true,
+    });
+  });
+
+  it("applies overrides (flat ring, hidden, color, label off)", () => {
+    expect(
+      resolveMultiSeriesDot({
+        radius: 5,
+        ring: false,
+        show: false,
+        color: "#abcdef",
+        valueLabel: false,
+      }),
+    ).toEqual({
+      radius: 5,
+      ring: null,
+      show: false,
+      color: "#abcdef",
+      pulse: expect.objectContaining({ maxRadius: expect.any(Number) }),
+      valueLine: null,
+      valueLabel: false,
     });
   });
 });
