@@ -15,6 +15,7 @@ export function CrosshairLine({
   padding,
   palette,
   dimOpacity = 0.3,
+  liveDotExtent = 0,
   crosshairLineColor,
   crosshairDimColor,
 }: {
@@ -25,6 +26,11 @@ export function CrosshairLine({
   palette: LiveChartPalette;
   /** Opacity of content right of the crosshair (dstOut fade). Default 0.3. */
   dimOpacity?: number;
+  /** How far the live series dots extend past the plot's right edge. The dim
+   *  region extends by this much so it fully covers the dots — centered on that
+   *  edge, otherwise only half-dimmed — while leaving the value/Y-axis labels
+   *  the gutter reserves beyond them bright. Default 0. */
+  liveDotExtent?: number;
   crosshairLineColor?: string;
   crosshairDimColor?: string;
 }) {
@@ -38,7 +44,7 @@ export function CrosshairLine({
   }));
 
   const dimWidth = useDerivedValue(() => {
-    const rightEdge = engine.canvasWidth.value - padding.right;
+    const rightEdge = engine.canvasWidth.value - padding.right + liveDotExtent;
     return Math.max(0, rightEdge - scrubX.value);
   });
   const dimHeight = useDerivedValue(

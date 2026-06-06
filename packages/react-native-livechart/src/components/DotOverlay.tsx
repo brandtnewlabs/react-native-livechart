@@ -5,7 +5,7 @@ import type { LiveChartPalette } from "../types";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 const MIN_PULSE_RADIUS = 9;
-const DOT_OUTER_RADIUS = 6.5;
+export const DOT_OUTER_RADIUS = 6.5;
 const DOT_INNER_RADIUS = 3.5;
 
 /**

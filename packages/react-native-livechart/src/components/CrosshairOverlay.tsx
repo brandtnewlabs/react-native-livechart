@@ -26,6 +26,7 @@ export function CrosshairOverlay({
   showTooltip = true,
   children,
   dimOpacity = 0.3,
+  liveDotExtent = 0,
   crosshairLineColor,
   crosshairDimColor,
   tooltipBackground,
@@ -46,6 +47,12 @@ export function CrosshairOverlay({
   children?: ReactNode;
   /** Opacity of content right of the crosshair (dstOut fade). Default 0.3. */
   dimOpacity?: number;
+  /** How far the live dot (and its pulse ring) extends past the plot's right
+   *  edge. The dim region extends by this much so it fully covers the live
+   *  indicator — which is centered on that edge and would otherwise be only
+   *  half-dimmed — while stopping short of the Y-axis labels the gutter
+   *  reserves beyond it. Default 0. */
+  liveDotExtent?: number;
   crosshairLineColor?: string;
   crosshairDimColor?: string;
   tooltipBackground?: string;
@@ -62,7 +69,7 @@ export function CrosshairOverlay({
   }));
 
   const dimWidth = useDerivedValue(() => {
-    const rightEdge = engine.canvasWidth.value - padding.right;
+    const rightEdge = engine.canvasWidth.value - padding.right + liveDotExtent;
     return Math.max(0, rightEdge - scrubX.value);
   });
   const dimHeight = useDerivedValue(
