@@ -188,6 +188,24 @@ describe("computeTooltipLayout", () => {
     expect(layout.timeStr.length).toBeGreaterThan(0);
   });
 
+  it("sizes text by character count when monoCharWidth is set (skips measureText)", () => {
+    const layout = computeTooltipLayout(
+      true,
+      50,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8, // monospace advance
+    );
+    // timeStr "HH:MM:SS" (8 chars) is the widest line; pill = 8*8 + 2*PAD_X(8)
+    expect(layout.timeStr.length).toBe(8);
+    expect(layout.w).toBe(8 * 8 + 16);
+  });
+
   it("places tooltip to the right of crosshair when space is available", () => {
     const layout = computeTooltipLayout(
       true,
@@ -262,6 +280,23 @@ describe("computeTooltipLayoutMulti", () => {
       font,
     );
     expect(layout.x).toBeLessThan(0);
+  });
+
+  it("sizes rows by character count when monoCharWidth is set (skips measureText)", () => {
+    const layout = computeTooltipLayoutMulti(
+      true,
+      50,
+      [
+        { text: "abc", dim: false },
+        { text: "abcde", dim: true }, // widest, 5 chars
+      ],
+      padding,
+      400,
+      font,
+      8, // monospace advance
+    );
+    // widest row is 5 chars; pill = 5*8 + 2*PAD_X(8)
+    expect(layout.w).toBe(5 * 8 + 16);
   });
 
   it("builds stackedLines for each row", () => {

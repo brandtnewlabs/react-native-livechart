@@ -112,6 +112,11 @@ export function useCrosshair(
     ),
   );
 
+  // Monospace advance width, measured once per render (not per scrub frame) so
+  // the tooltip layout worklet can size text by character count instead of a
+  // per-frame Skia measureText.
+  const monoCharWidth = font.measureText("0").width;
+
   const tooltipLayout = useDerivedValue(() => {
     if (isCandleMode) {
       return computeCandleTooltipLayout(
@@ -124,6 +129,7 @@ export function useCrosshair(
         formatValue,
         formatTime,
         font,
+        monoCharWidth,
       );
     }
     return deriveCrosshairTooltipSingle(
@@ -136,6 +142,7 @@ export function useCrosshair(
       formatValue,
       formatTime,
       font,
+      monoCharWidth,
     );
   });
 

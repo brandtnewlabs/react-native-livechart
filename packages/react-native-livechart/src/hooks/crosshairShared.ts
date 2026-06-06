@@ -109,6 +109,11 @@ export function computeTooltipLayout(
   formatValue: (v: number) => string,
   formatTime: (t: number) => string,
   font: SkFont,
+  /** Monospace advance width. When > 0, text width is `len * monoCharWidth`
+   *  instead of a per-frame Skia `measureText` — scrubbing re-runs this worklet
+   *  every frame, and `measureText` shapes text each call (a real cost,
+   *  especially in the simulator). Falls back to `measureText` when 0. */
+  monoCharWidth = 0,
 ): TooltipLayout {
   "worklet";
   if (!scrubActive || scrubValue === null) return HIDDEN_TOOLTIP;
@@ -122,8 +127,14 @@ export function computeTooltipLayout(
   const lineH = -fm.ascent + fm.descent;
   const totalH = TOOLTIP_PAD_Y * 2 + lineH * 2 + TOOLTIP_LINE_GAP;
 
-  const valueW = measureFontTextWidth(font, valueStr);
-  const timeW = measureFontTextWidth(font, timeStr);
+  const valueW =
+    monoCharWidth > 0
+      ? valueStr.length * monoCharWidth
+      : measureFontTextWidth(font, valueStr);
+  const timeW =
+    monoCharWidth > 0
+      ? timeStr.length * monoCharWidth
+      : measureFontTextWidth(font, timeStr);
   const contentW = Math.max(valueW, timeW);
   const pillW = contentW + TOOLTIP_PAD_X * 2;
 
@@ -166,6 +177,9 @@ export function computeTooltipLayoutMulti(
   padding: ChartPadding,
   canvasWidth: number,
   font: SkFont,
+  /** Monospace advance width; when > 0, sizes text by length instead of a
+   *  per-frame Skia `measureText`. See {@link computeTooltipLayout}. */
+  monoCharWidth = 0,
 ): TooltipLayout {
   "worklet";
   if (!scrubActive || lines.length === 0) return HIDDEN_TOOLTIP;
@@ -179,7 +193,10 @@ export function computeTooltipLayoutMulti(
   let contentW = 0;
   const lineWidths: number[] = [];
   for (let i = 0; i < n; i++) {
-    const w = measureFontTextWidth(font, lines[i].text);
+    const w =
+      monoCharWidth > 0
+        ? lines[i].text.length * monoCharWidth
+        : measureFontTextWidth(font, lines[i].text);
     lineWidths.push(w);
     if (w > contentW) contentW = w;
   }
@@ -237,6 +254,7 @@ export function computeCandleTooltipLayout(
   formatValue: (v: number) => string,
   formatTime: (t: number) => string,
   font: SkFont,
+  monoCharWidth = 0,
 ): TooltipLayout {
   "worklet";
   if (!scrubActive || !candle) return HIDDEN_TOOLTIP;
@@ -254,6 +272,7 @@ export function computeCandleTooltipLayout(
     padding,
     canvasWidth,
     font,
+    monoCharWidth,
   );
 }
 
@@ -279,6 +298,7 @@ export function deriveCrosshairTooltipSingle(
   formatValue: (v: number) => string,
   formatTime: (t: number) => string,
   font: SkFont,
+  monoCharWidth = 0,
 ): TooltipLayout {
   "worklet";
   if (!scrubActive || scrubTime < 0) return HIDDEN_TOOLTIP;
@@ -292,5 +312,6 @@ export function deriveCrosshairTooltipSingle(
     formatValue,
     formatTime,
     font,
+    monoCharWidth,
   );
 }
