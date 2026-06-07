@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>react-native-livechart — How it works</title>
+<style>
+  :root {
+    --bg: #070b12;
+    --bg-2: #0b111c;
+    --panel: #111a28;
+    --panel-2: #16202f;
+    --line: rgba(255,255,255,0.07);
+    --line-2: rgba(255,255,255,0.12);
+    --text: #e7eef6;
+    --muted: #8b9bb0;
+    --muted-2: #5e6e84;
+    --up: #2ebd85;
+    --up-glow: rgba(46,189,133,0.35);
+    --down: #f6465d;
+    --down-glow: rgba(246,70,93,0.30);
+    --accent: #4dabf7;
+    --accent-2: #00e0ff;
+    --purple: #b18cff;
+    --gold: #f5c451;
+    --radius: 16px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(77,171,247,0.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(177,140,255,0.08), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: var(--accent); text-decoration: none; }
+
+  /* ---------- Nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px);
+    background: rgba(7,11,18,0.72);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner {
+    max-width: 1180px; margin: 0 auto; padding: 12px 24px;
+    display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.02em; }
+  .brand .spark {
+    width: 26px; height: 18px;
+  }
+  .nav-links { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  .nav-links a {
+    color: var(--muted); font-size: 13px; font-weight: 500;
+    padding: 6px 11px; border-radius: 8px; transition: all .15s;
+  }
+  .nav-links a:hover { color: var(--text); background: var(--panel); }
+
+  /* ---------- Layout ---------- */
+  section { max-width: 1180px; margin: 0 auto; padding: 64px 24px; }
+  .section-tag {
+    display: inline-block; font-family: var(--mono); font-size: 12px;
+    color: var(--accent-2); letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 4px 10px; border: 1px solid rgba(0,224,255,0.25); border-radius: 999px;
+    margin-bottom: 18px; background: rgba(0,224,255,0.05);
+  }
+  h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.05; letter-spacing: -0.03em; margin: 0 0 18px; font-weight: 800; }
+  h2 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -0.02em; margin: 0 0 14px; font-weight: 750; }
+  h3 { font-size: 19px; margin: 0 0 8px; font-weight: 650; letter-spacing: -0.01em; }
+  p.lead { font-size: 18px; color: var(--muted); max-width: 720px; }
+  .muted { color: var(--muted); }
+  .grad-text {
+    background: linear-gradient(100deg, var(--up), var(--accent-2) 55%, var(--accent));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .panel {
+    background: linear-gradient(180deg, var(--panel), var(--bg-2));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .glow-border { box-shadow: 0 0 0 1px rgba(77,171,247,0.10), 0 24px 60px -30px rgba(0,224,255,0.25); }
+
+  code, .mono { font-family: var(--mono); }
+  .chip {
+    font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 6px;
+    background: var(--panel-2); border: 1px solid var(--line-2); color: var(--accent-2);
+  }
+
+  /* ---------- Hero ---------- */
+  .hero { padding-top: 56px; padding-bottom: 40px; }
+  .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  @media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    position: relative;
+    background: linear-gradient(180deg, #0d1726, #0a0f1a);
+    border: 1px solid var(--line-2);
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 40px 90px -40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .chart-canvas-wrap { position: relative; width: 100%; }
+  canvas { display: block; width: 100%; border-radius: 12px; }
+  .chart-hint {
+    position: absolute; bottom: 10px; left: 14px;
+    font-size: 11px; color: var(--muted-2); font-family: var(--mono);
+    pointer-events: none; opacity: 0.8;
+  }
+
+  .stat-row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .stat {
+    flex: 1; min-width: 110px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .stat .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat .v { font-size: 20px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
+
+  /* ---------- Pipeline ---------- */
+  .pipeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 30px; }
+  @media (max-width: 880px) { .pipeline { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .pipeline { grid-template-columns: 1fr; } }
+  .stage {
+    position: relative; cursor: pointer; text-align: left;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 14px; transition: all .2s; color: inherit; font: inherit;
+  }
+  .stage:hover { border-color: var(--line-2); transform: translateY(-3px); }
+  .stage.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 20px 40px -24px var(--accent); background: var(--panel-2); }
+  .stage .num { font-family: var(--mono); font-size: 12px; color: var(--accent-2); }
+  .stage .ico { font-size: 22px; margin: 6px 0; }
+  .stage h4 { margin: 0; font-size: 15px; }
+  .stage .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .stage .arrow {
+    position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+    color: var(--muted-2); font-size: 16px; z-index: 2;
+  }
+  @media (max-width: 880px) { .stage .arrow { display: none; } }
+  .stage-detail {
+    margin-top: 22px; border: 1px solid var(--line); border-radius: 16px;
+    background: var(--bg-2); padding: 0; overflow: hidden;
+  }
+  .stage-detail-inner { padding: 24px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 26px; }
+  @media (max-width: 760px) { .stage-detail-inner { grid-template-columns: 1fr; } }
+  .stage-detail h3 { color: var(--text); }
+  .stage-detail .files { display: flex; flex-direction: column; gap: 8px; }
+  .file-pill {
+    font-family: var(--mono); font-size: 12.5px; color: var(--muted);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 11px; display: flex; align-items: center; gap: 8px;
+  }
+  .file-pill b { color: var(--accent-2); font-weight: 500; }
+  .kv { display: flex; flex-direction: column; gap: 12px; }
+  .kv .item { padding-left: 14px; border-left: 2px solid var(--line-2); }
+  .kv .item .t { font-weight: 650; font-size: 14px; }
+  .kv .item .d { font-size: 13px; color: var(--muted); }
+
+  /* flow particles canvas */
+  .flow-wrap { position: relative; margin-top: 8px; }
+
+  /* ---------- generic grids ---------- */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 820px) { .two-col { grid-template-columns: 1fr; } }
+  .three-col { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+  @media (max-width: 820px) { .three-col { grid-template-columns: 1fr; } }
+
+  /* ---------- toggles ---------- */
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+  .toggle {
+    user-select: none; cursor: pointer; font-size: 13px; font-weight: 550;
+    padding: 8px 13px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--muted); display: flex; align-items: center; gap: 8px;
+    transition: all .15s;
+  }
+  .toggle:hover { border-color: var(--line-2); color: var(--text); }
+  .toggle.on { color: var(--text); border-color: var(--accent); background: rgba(77,171,247,0.10); }
+  .toggle .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted-2); transition: all .15s; }
+  .toggle.on .dot { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; font-size: 13px; }
+  .slider-row label { color: var(--muted); min-width: 120px; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-row .val { font-family: var(--mono); color: var(--accent-2); min-width: 56px; text-align: right; }
+
+  /* ---------- tick engine viz ---------- */
+  .tick-viz { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  .lerp-stage { position: relative; height: 92px; background: var(--bg-2); border:1px solid var(--line); border-radius: 12px; overflow: hidden; }
+
+  /* ---------- arch map ---------- */
+  .layer { margin-bottom: 14px; }
+  .layer-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .layer-head .badge {
+    font-family: var(--mono); font-size: 11px; padding: 3px 9px; border-radius: 6px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .nodes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .node {
+    font-family: var(--mono); font-size: 12px; padding: 7px 11px; border-radius: 9px;
+    background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+    transition: all .15s; cursor: default; position: relative;
+  }
+  .node:hover { color: var(--text); border-color: var(--line-2); transform: translateY(-2px); }
+  .node .tip {
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    background: #04070d; border: 1px solid var(--line-2); border-radius: 8px;
+    padding: 8px 11px; font-family: var(--sans); font-size: 12px; color: var(--text);
+    width: max-content; max-width: 240px; opacity: 0; pointer-events: none; transition: opacity .15s;
+    z-index: 5; box-shadow: 0 16px 40px -16px #000;
+  }
+  .node:hover .tip { opacity: 1; }
+
+  /* ---------- components compare ---------- */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 820px) { .compare { grid-template-columns: 1fr; } }
+  .feat-list { list-style: none; padding: 0; margin: 14px 0 0; }
+  .feat-list li { font-size: 13.5px; padding: 6px 0; color: var(--muted); display: flex; gap: 9px; align-items: baseline; }
+  .feat-list li::before { content: "▸"; color: var(--up); font-size: 11px; }
+
+  footer { border-top: 1px solid var(--line); margin-top: 40px; }
+  footer .inner { max-width: 1180px; margin: 0 auto; padding: 36px 24px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+  .pill-tabs { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+  .pill-tabs button {
+    font: inherit; font-size: 13px; font-weight: 550; cursor: pointer;
+    background: transparent; border: 0; color: var(--muted); padding: 7px 14px; border-radius: 8px; transition: all .15s;
+  }
+  .pill-tabs button.on { background: var(--accent); color: #05121f; }
+
+  .callout {
+    border-left: 3px solid var(--gold); background: rgba(245,196,81,0.06);
+    padding: 12px 16px; border-radius: 0 10px 10px 0; font-size: 14px; color: var(--muted);
+    margin-top: 16px;
+  }
+  .callout b { color: var(--gold); }
+
+  .fade-up { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
+  .fade-up.in { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="brand">
+      <svg class="spark" viewBox="0 0 52 36" fill="none">
+        <path d="M2 26 L12 22 L20 27 L30 9 L40 17 L50 6" stroke="url(#g)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="50" cy="6" r="4" fill="#2ebd85"/>
+        <defs><linearGradient id="g" x1="0" y1="0" x2="52" y2="0"><stop stop-color="#4dabf7"/><stop offset="1" stop-color="#2ebd85"/></linearGradient></defs>
+      </svg>
+      <span>react-native-livechart</span>
+    </div>
+    <div class="nav-links">
+      <a href="#idea">The idea</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#engine">Frame engine</a>
+      <a href="#draw">Drawing</a>
+      <a href="#playground">Playground</a>
+      <a href="#components">Components</a>
+      <a href="#map">Architecture</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ======================= HERO ======================= -->
+<section class="hero">
+  <div class="hero-grid">
+    <div>
+      <span class="section-tag">Interactive explainer</span>
+      <h1>A live chart that runs <span class="grad-text">entirely on the UI thread</span>.</h1>
+      <p class="lead">
+        A high-performance charting library for React Native, built on Skia, Reanimated, and
+        Gesture Handler. Every data point and live value flows through Reanimated
+        <code>SharedValue</code>s — so a 60&nbsp;fps tick loop animates without ever touching the JS bridge.
+      </p>
+      <p class="muted" style="font-size:14px;margin-top:18px">
+        The chart on the right is a faithful browser re-implementation of the real engine —
+        same exponential <code>lerp</code>, same Fritsch–Carlson monotone spline, same nice-interval grid.
+        <b style="color:var(--text)">Hover / drag across it to scrub.</b>
+      </p>
+    </div>
+    <div class="chart-card glow-border">
+      <div class="chart-canvas-wrap">
+        <canvas id="hero-canvas"></canvas>
+        <div class="chart-hint">tick · 60fps · SharedValue-driven</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="k">displayValue</div><div class="v" id="hero-val" style="color:var(--up)">—</div></div>
+        <div class="stat"><div class="k">visible points</div><div class="v" id="hero-pts">—</div></div>
+        <div class="stat"><div class="k">momentum</div><div class="v" id="hero-mom">—</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= THE IDEA ======================= -->
+<section id="idea" class="fade-up">
+  <span class="section-tag">The big idea</span>
+  <h2>Why a <span class="grad-text">SharedValue</span> pipeline?</h2>
+  <p class="lead">In React Native, animating from JS means crossing the bridge every frame — a recipe for jank.
+  This library keeps the whole render loop on the UI thread, where Reanimated worklets run.</p>
+
+  <div class="two-col" style="margin-top:28px">
+    <div class="panel">
+      <h3 style="color:var(--down)">❌ The naive way — JS-driven</h3>
+      <div class="flow-wrap"><canvas id="bridge-bad" height="140"></canvas></div>
+      <p class="muted" style="font-size:14px;margin-bottom:0">
+        New data → <code>setState</code> → React re-render → serialize props across the bridge → native redraw.
+        At 60&nbsp;fps that's 60 round-trips a second fighting the JS event loop. Frames drop the moment JS is busy.
+      </p>
+    </div>
+    <div class="panel glow-border">
+      <h3 style="color:var(--up)">✅ This library — worklet-driven</h3>
+      <div class="flow-wrap"><canvas id="bridge-good" height="140"></canvas></div>
+      <p class="muted" style="font-size:14px;margin-bottom:0">
+        Data lands in a <code>SharedValue&lt;LiveChartPoint[]&gt;</code>. A <code>useFrameCallback</code> tick reads it,
+        mutates display state, and <b style="color:var(--text)">rewrites a pooled <code>SkPath</code> in place</b> — never allocating a
+        new one — all on the UI thread. React barely re-renders at all.
+      </p>
+    </div>
+  </div>
+
+  <div class="three-col" style="margin-top:18px">
+    <div class="panel">
+      <h3>🧵 Worklets</h3>
+      <p class="muted" style="font-size:14px;margin:0">Functions tagged <code>"worklet"</code> run on the UI thread. The tick functions are <b>pure</b> — no hooks, no SharedValues — so they unit-test without Reanimated.</p>
+    </div>
+    <div class="panel">
+      <h3>♻️ SkPath reuse</h3>
+      <p class="muted" style="font-size:14px;margin:0">Path builders <code>.reset()</code> and ping-pong two pooled <code>SkPath</code> instances per curve instead of allocating each frame — an iOS GC-pressure win.</p>
+    </div>
+    <div class="panel">
+      <h3>📦 Ships TS source</h3>
+      <p class="muted" style="font-size:14px;margin:0">The package <code>main</code> points at <code>src/index.ts</code>; the consumer's Metro + Babel compiles it. <code>dist/</code> holds only <code>.d.ts</code> types.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PIPELINE ======================= -->
+<section id="pipeline" class="fade-up">
+  <span class="section-tag">The pipeline</span>
+  <h2>From a number to pixels, five stages deep</h2>
+  <p class="lead">Click a stage to expand it. Watch the data packets flow left-to-right — that's one value's journey, 60 times a second.</p>
+
+  <div class="flow-wrap" style="margin-top:24px"><canvas id="pipe-flow" height="64"></canvas></div>
+
+  <div class="pipeline" id="pipeline-stages"></div>
+  <div class="stage-detail" id="stage-detail"></div>
+</section>
+
+<!-- ======================= FRAME ENGINE ======================= -->
+<section id="engine" class="fade-up">
+  <span class="section-tag">The frame engine</span>
+  <h2>What happens inside one <span class="grad-text">tick</span></h2>
+  <p class="lead">
+    Each frame, a pure tick function (<code>tickLiveChartEngineFrame</code>) mutates display state and writes it to SharedValues.
+    Three motions matter most — and you can drive all three below.
+  </p>
+
+  <div class="two-col" style="margin-top:26px">
+    <div class="panel">
+      <h3>1 · The exponential lerp</h3>
+      <p class="muted" style="font-size:14px">
+        The raw value <em>jumps</em> when new data arrives. <code>displayValue</code> chases it with a frame-rate-independent
+        ease. This is the library's actual formula:
+      </p>
+      <pre style="font-family:var(--mono);font-size:12.5px;background:#04070d;border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;color:var(--muted)"><span style="color:var(--purple)">const</span> factor = 1 - Math.pow(1 - <span style="color:var(--accent-2)">speed</span>, dt / 16.67);
+displayValue += (target - displayValue) * factor;</pre>
+      <div class="lerp-stage"><canvas id="lerp-canvas"></canvas></div>
+      <div class="slider-row">
+        <label>smoothing (speed)</label>
+        <input type="range" id="lerp-speed" min="0.02" max="0.4" step="0.01" value="0.08" />
+        <span class="val" id="lerp-speed-v">0.08</span>
+      </div>
+      <p class="muted" style="font-size:12.5px;margin-bottom:0">
+        <span style="color:var(--gold)">●</span> target (raw, jumps) &nbsp;
+        <span style="color:var(--up)">●</span> displayValue (smoothed)
+      </p>
+    </div>
+
+    <div class="panel">
+      <h3>2 · Binary-search the visible window</h3>
+      <p class="muted" style="font-size:14px">
+        The viewport shows the last <code>timeWindow</code> seconds. Rather than scan every point, the tick
+        binary-searches for the first point ≥ <code>timestamp − displayWindow</code>, then walks forward.
+      </p>
+      <div class="lerp-stage" style="height:64px"><canvas id="window-canvas"></canvas></div>
+
+      <h3 style="margin-top:22px">3 · Scan the Y-range, add margin</h3>
+      <p class="muted" style="font-size:14px">
+        It scans visible points (plus the live value and reference lines) for min/max, then pads by
+        <b>~12%</b>. Each bound <b>snaps outward to fit instantly</b> but <b>eases back in</b> — so a spike shows
+        at once yet doesn't leave the axis flickering.
+      </p>
+      <div class="lerp-stage" style="height:96px"><canvas id="range-canvas"></canvas></div>
+      <label class="toggle on" id="exaggerate-toggle" style="margin-top:12px;display:inline-flex">
+        <span class="dot"></span> exaggerate mode (tighter ~1% margin)
+      </label>
+    </div>
+  </div>
+
+  <div class="callout">
+    <b>Why pure?</b> The tick functions take a mutable state object + inputs and return <code>void</code> after mutating —
+    no React, no Reanimated. That's what lets <code>liveChartEngineTick.ts</code> be covered by plain Jest tests
+    (90% branches / 95% lines) without a UI-thread round-trip.
+  </div>
+</section>
+
+<!-- ======================= DRAWING LAYER ======================= -->
+<section id="draw" class="fade-up">
+  <span class="section-tag">The drawing layer</span>
+  <h2>Turning display state into an <span class="grad-text">SkPath</span></h2>
+  <p class="lead">
+    Inside a <code>useDerivedValue</code>, the draw functions map data to screen coordinates and build the path.
+    Two details make it cheap and smooth.
+  </p>
+
+  <div class="two-col" style="margin-top:26px">
+    <div class="panel">
+      <h3>Pixel decimation</h3>
+      <p class="muted" style="font-size:14px;margin-bottom:14px">
+        A wide <code>timeWindow</code> can pack 1000+ points into a few hundred pixels. Once the line is denser than
+        ~2 points per pixel, <code>buildLinePoints</code> keeps only the <b>lowest and highest sample in each pixel
+        column</b> — so every spike's envelope survives while the vertex count stays bounded by the canvas width.
+        Fewer <code>cubicTo</code> calls, same shape. Toggle it and watch the count.
+      </p>
+      <div class="chart-canvas-wrap"><canvas id="decim-canvas"></canvas></div>
+      <div class="toggles" style="margin-top:14px">
+        <label class="toggle on" id="decim-toggle"><span class="dot"></span> Decimate to pixel resolution</label>
+        <label class="toggle on" id="dots-toggle"><span class="dot"></span> Show vertices</label>
+      </div>
+      <p class="muted" style="font-size:13px;margin-bottom:0;margin-top:12px">
+        rendered vertices: <b id="decim-count" class="mono" style="color:var(--accent-2)">—</b>
+        <span id="decim-saved" style="color:var(--up)"></span>
+      </p>
+    </div>
+
+    <div class="panel">
+      <h3>Fritsch–Carlson monotone spline</h3>
+      <p class="muted" style="font-size:14px;margin-bottom:14px">
+        A straight polyline looks harsh; a naive cubic <em>overshoots</em> past your data. The monotone spline
+        (<code>drawSpline</code>) guarantees the curve never exceeds the local min/max — smooth, but honest.
+      </p>
+      <div class="chart-canvas-wrap"><canvas id="spline-canvas"></canvas></div>
+      <div class="pill-tabs" style="margin-top:14px" id="spline-tabs">
+        <button data-mode="linear">Linear (polyline)</button>
+        <button data-mode="overshoot">Naive cubic</button>
+        <button data-mode="monotone" class="on">Monotone ✓</button>
+      </div>
+      <p class="muted" style="font-size:13px;margin-bottom:0;margin-top:12px" id="spline-note">
+        The monotone curve hugs the points without inventing peaks that aren't in the data.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PLAYGROUND ======================= -->
+<section id="playground" class="fade-up">
+  <span class="section-tag">Playground</span>
+  <h2>Compose the overlays</h2>
+  <p class="lead">
+    <code>LiveChart</code> is a single Skia <code>&lt;Canvas&gt;</code> with a stack of z-ordered overlays drawn into it, each independently configurable.
+    Flip them on the live chart — every option resolves through <code>resolveConfig.ts</code> from a
+    <code>boolean | Partial&lt;Config&gt;</code>.
+  </p>
+
+  <div class="two-col" style="margin-top:24px;grid-template-columns:1.4fr 1fr">
+    <div class="chart-card">
+      <div class="chart-canvas-wrap">
+        <canvas id="play-canvas"></canvas>
+        <div class="chart-hint" id="play-hint">drag to scrub</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 style="margin-bottom:14px">Overlays & behavior</h3>
+      <div class="toggles" id="play-toggles"></div>
+      <div class="slider-row">
+        <label>timeWindow</label>
+        <input type="range" id="play-window" min="8" max="60" step="1" value="26" />
+        <span class="val" id="play-window-v">26s</span>
+      </div>
+      <div class="slider-row">
+        <label>volatility</label>
+        <input type="range" id="play-vol" min="0.2" max="3" step="0.1" value="1" />
+        <span class="val" id="play-vol-v">1.0×</span>
+      </div>
+      <p class="muted" style="font-size:12.5px;margin:16px 0 0">
+        Each overlay is its own component reading SharedValues:
+        <code>BadgeOverlay</code>, <code>DotOverlay</code>, <code>YAxisOverlay</code>,
+        <code>CrosshairOverlay</code>, <code>TradeStreamOverlay</code>,
+        <code>DegenParticlesOverlay</code>, <code>ReferenceLineOverlay</code>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= COMPONENTS ======================= -->
+<section id="components" class="fade-up">
+  <span class="section-tag">Two components</span>
+  <h2>One series, or many</h2>
+  <p class="lead">Both compose from the same engine, draw layer, and overlay set — they differ in what enters and what each frame tracks.</p>
+
+  <div class="compare" style="margin-top:24px">
+    <div class="panel">
+      <h3 style="color:var(--up)">LiveChart <span class="chip">single-series</span></h3>
+      <p class="muted" style="font-size:14px;margin-top:6px">
+        <code>data: SharedValue&lt;LiveChartPoint[]&gt;</code> + a live <code>value</code>. Line or candle mode.
+      </p>
+      <ul class="feat-list">
+        <li>Momentum-tinted badge & dot (auto-detected from the data)</li>
+        <li>Scrub crosshair with tooltip pill</li>
+        <li>Degen particle burst + screen shake on momentum swings</li>
+        <li>Trade markers & a scrolling buy/sell stream</li>
+        <li>Candlestick mode with live, forming candle</li>
+        <li>Off-axis badges for out-of-range reference lines</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 style="color:var(--accent)">LiveChartSeries <span class="chip">multi-series</span></h3>
+      <p class="muted" style="font-size:14px;margin-top:6px">
+        <code>series: SharedValue&lt;SeriesConfig[]&gt;</code> — each with its own id, color, data & live value.
+      </p>
+      <div class="chart-canvas-wrap" style="margin:10px 0 14px"><canvas id="multi-canvas"></canvas></div>
+      <ul class="feat-list">
+        <li>Toggleable series via legend chips — opacity eases 0↔1 per series</li>
+        <li>Per-series dots, pulse rings, and inline value labels</li>
+        <li>Y-range scans only the <em>visible</em> series</li>
+        <li>Crosshair returns every series' value at the scrub time</li>
+        <li>Output buffers ping-pong to notify subscribers without allocation</li>
+      </ul>
+      <div class="toggles" id="multi-toggles" style="margin-top:6px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ARCH MAP ======================= -->
+<section id="map" class="fade-up">
+  <span class="section-tag">Architecture map</span>
+  <h2>The source, by layer</h2>
+  <p class="lead">Hover any module for what it does. This mirrors <code>packages/react-native-livechart/src/</code>.</p>
+  <div id="arch-map" style="margin-top:26px"></div>
+</section>
+
+<footer>
+  <div class="inner">
+    <span>react-native-livechart · built on <b style="color:var(--text)">Skia</b> · <b style="color:var(--text)">Reanimated</b> · <b style="color:var(--text)">Gesture Handler</b></span>
+    <span class="mono">interactive explainer · all chart math ported from the real engine</span>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   Shared chart math — ported faithfully from the library
+   ============================================================ */
+const MS60 = 1000 / 60;
+
+// Exponential, frame-rate-independent lerp (src/math/lerp.ts)
+function lerp(current, target, speed, dt = MS60) {
+  const factor = 1 - Math.pow(1 - speed, dt / MS60);
+  return current + (target - current) * factor;
+}
+
+// Fritsch–Carlson monotone cubic — builds a Path2D (src/math/spline.ts)
+function splinePath(pts /* [x0,y0,x1,y1,...] */) {
+  const p = new Path2D();
+  const n = pts.length >> 1;
+  if (n === 0) return p;
+  p.moveTo(pts[0], pts[1]);
+  if (n === 1) return p;
+  if (n === 2) { p.lineTo(pts[2], pts[3]); return p; }
+  const h = new Array(n - 1), delta = new Array(n - 1), m = new Array(n);
+  for (let i = 0; i < n - 1; i++) {
+    const i2 = i * 2, j2 = i2 + 2;
+    h[i] = pts[j2] - pts[i2];
+    delta[i] = h[i] === 0 ? 0 : (pts[j2 + 1] - pts[i2 + 1]) / h[i];
+  }
+  m[0] = delta[0]; m[n - 1] = delta[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    if (delta[i - 1] * delta[i] <= 0) m[i] = 0;
+    else m[i] = (delta[i - 1] + delta[i]) / 2;
+  }
+  for (let i = 0; i < n - 1; i++) {
+    if (delta[i] === 0) { m[i] = 0; m[i + 1] = 0; }
+    else {
+      const a = m[i] / delta[i], b = m[i + 1] / delta[i], s2 = a * a + b * b;
+      if (s2 > 9) { const s = 3 / Math.sqrt(s2); m[i] = s * a * delta[i]; m[i + 1] = s * b * delta[i]; }
+    }
+  }
+  for (let i = 0; i < n - 1; i++) {
+    const i2 = i * 2, j2 = i2 + 2, hi = h[i];
+    p.bezierCurveTo(
+      pts[i2] + hi / 3, pts[i2 + 1] + (m[i] * hi) / 3,
+      pts[j2] - hi / 3, pts[j2 + 1] - (m[i + 1] * hi) / 3,
+      pts[j2], pts[j2 + 1]
+    );
+  }
+  return p;
+}
+
+// naive (Catmull-Rom-ish) cubic that DOES overshoot — for the comparison demo
+function naiveSplinePath(pts) {
+  const p = new Path2D();
+  const n = pts.length >> 1;
+  if (n === 0) return p;
+  p.moveTo(pts[0], pts[1]);
+  const P = (i) => [pts[Math.max(0, Math.min(n - 1, i)) * 2], pts[Math.max(0, Math.min(n - 1, i)) * 2 + 1]];
+  for (let i = 0; i < n - 1; i++) {
+    const [x0, y0] = P(i - 1), [x1, y1] = P(i), [x2, y2] = P(i + 1), [x3, y3] = P(i + 2);
+    // exaggerated tangents -> overshoot
+    const t = 0.9;
+    p.bezierCurveTo(
+      x1 + (x2 - x0) / 6 * t, y1 + (y2 - y0) / 6 * t * 1.8,
+      x2 - (x3 - x1) / 6 * t, y2 - (y3 - y1) / 6 * t * 1.8,
+      x2, y2
+    );
+  }
+  return p;
+}
+
+// momentum detection — ported verbatim from src/math/momentum.ts (lookback 20 for
+// the threshold range, last 5 points for velocity; threshold 0.12 of that range).
+function detectMomentum(values, lookback = 20, threshold = 0.12) {
+  const n = values.length;
+  if (n < 5) return "flat";
+  const start = Math.max(0, n - lookback);
+  let min = Infinity, max = -Infinity;
+  for (let i = start; i < n; i++) { const v = values[i]; if (v < min) min = v; if (v > max) max = v; }
+  const range = max - min;
+  if (range === 0) return "flat";
+  const tailStart = Math.max(start, n - 5);
+  const delta = values[n - 1] - values[tailStart];
+  const absThreshold = range * threshold;
+  if (delta > absThreshold) return "up";
+  if (delta < -absThreshold) return "down";
+  return "flat";
+}
+
+// nice Y-axis interval — ported from src/draw/grid.ts: TradingView cycling divisors
+// (2, 2.5, 2 …) with hysteresis (sticks while spacing stays in [0.5×, 4×] minGap).
+function pickInterval(valRange, pxPerUnit, minGap, prev) {
+  if (prev > 0) {
+    const px = prev * pxPerUnit;
+    if (px >= minGap * 0.5 && px <= minGap * 4) return prev;
+  }
+  const divisorSets = [[2, 2.5, 2], [2, 2, 2.5], [2.5, 2, 2]];
+  let best = Infinity;
+  for (let s = 0; s < divisorSets.length; s++) {
+    const divs = divisorSets[s];
+    let span = Math.pow(10, Math.ceil(Math.log10(valRange)));
+    let i = 0;
+    while ((span / divs[i % 3]) * pxPerUnit >= minGap) { span /= divs[i % 3]; i++; }
+    if (span < best) best = span;
+  }
+  return best === Infinity ? valRange / 5 : best;
+}
+
+const COL = {
+  up: '#2ebd85', down: '#f6465d', accent: '#4dabf7', accent2: '#00e0ff',
+  gold: '#f5c451', purple: '#b18cff', muted: '#8b9bb0', grid: 'rgba(255,255,255,0.055)',
+  text: '#e7eef6'
+};
+
+/* ============================================================
+   HiDPI canvas helper
+   ============================================================ */
+function fitCanvas(canvas, cssHeight) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = canvas.clientWidth || canvas.parentElement.clientWidth;
+  const h = cssHeight || canvas.clientHeight || 240;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  if (!cssHeight) { /* height from CSS */ } else { canvas.style.height = h + 'px'; }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+/* ============================================================
+   LiveChartSim — the reusable engine behind hero/playground
+   ============================================================ */
+class LiveChartSim {
+  constructor(canvas, opts = {}) {
+    this.canvas = canvas;
+    this.opts = Object.assign({
+      timeWindow: 26, volatility: 1, height: 300,
+      badge: true, dot: true, grid: true, fill: true, yaxis: true,
+      momentum: true, valueLine: false, scrub: true, degen: false,
+      tradeStream: false, refLine: false, pulse: true,
+      base: 100, color: null
+    }, opts);
+    // data
+    this.data = []; // {time, value}
+    this.t = 0;     // seconds
+    this.raw = this.opts.base;
+    this.displayValue = this.opts.base;
+    this.displayMin = this.opts.base - 5;
+    this.displayMax = this.opts.base + 5;
+    this.displayWindow = this.opts.timeWindow; // eased toward opts.timeWindow each tick
+    this._gridPrev = 0;                         // hysteresis state for pickInterval
+    this.nextPointAt = 0;
+    this.pointEvery = 0.42;
+    // scrub
+    this.scrubX = null; this.scrubbing = false;
+    // degen particles
+    this.particles = [];
+    this.shake = 0;
+    // trade stream
+    this.trades = [];
+    this.lastMom = 'flat';
+    // seed history
+    for (let i = -this.opts.timeWindow - 6; i < 0; i += this.pointEvery) {
+      this.t = i;
+      this._wander();
+      this.data.push({ time: i, value: this.raw });
+    }
+    this.t = 0; this.displayValue = this.raw;
+    this._bindScrub();
+  }
+
+  _wander() {
+    const v = this.opts.volatility;
+    // mean-reverting random walk with occasional momentum bursts
+    const drift = (this.opts.base - this.raw) * 0.012;
+    const shock = (Math.random() - 0.5) * 2.6 * v;
+    const burst = Math.random() < 0.04 ? (Math.random() - 0.5) * 10 * v : 0;
+    this.raw += drift + shock + burst;
+  }
+
+  _bindScrub() {
+    const c = this.canvas;
+    const setX = (e) => {
+      const r = c.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+      this.scrubX = x; this.scrubbing = true;
+    };
+    const end = () => { this.scrubbing = false; this.scrubX = null; };
+    c.addEventListener('mousemove', (e) => { if (this.opts.scrub) setX(e); });
+    c.addEventListener('mouseleave', end);
+    c.addEventListener('touchstart', (e) => { if (this.opts.scrub) { setX(e); } }, { passive: true });
+    c.addEventListener('touchmove', (e) => { if (this.opts.scrub) { setX(e); e.preventDefault(); } }, { passive: false });
+    c.addEventListener('touchend', end);
+  }
+
+  update(dt) {
+    this.t += dt;
+    // emit points
+    if (this.t >= this.nextPointAt) {
+      this.nextPointAt = this.t + this.pointEvery;
+      this._wander();
+      this.data.push({ time: this.t, value: this.raw });
+      // trade stream / degen on momentum flip
+      const vals = this.data.slice(-30).map(p => p.value);
+      const mom = detectMomentum(vals);
+      if (this.opts.tradeStream && Math.random() < 0.6) {
+        this.trades.push({ side: this.raw >= this.displayValue ? 'buy' : 'sell', y: 0.2 + Math.random() * 0.6, life: 1, amt: (Math.random() * 4 + 0.2) });
+      }
+      if (this.opts.degen && mom !== this.lastMom && mom !== 'flat') {
+        this._burst(mom);
+      }
+      this.lastMom = mom;
+    }
+    // prune old
+    const cutoff = this.t - this.opts.timeWindow - 4;
+    while (this.data.length > 2 && this.data[1].time < cutoff) this.data.shift();
+
+    // ENGINE TICK — constants mirror liveChartEngineTick.ts:
+    //   smoothing 0.08, adaptiveSpeedBoost 0.12, margin 0.12,
+    //   minRange = rawRange*0.1 || 0.4, bounds snap outward / ease inward at smoothing.
+    const SMOOTHING = 0.08, ADAPTIVE_BOOST = 0.12;
+    const target = this.data[this.data.length - 1].value;
+    const dvRange = this.displayMax - this.displayMin;
+    const gapRatio = dvRange > 0 ? Math.min(Math.abs(target - this.displayValue) / dvRange, 1) : 0;
+    const adaptiveSpeed = SMOOTHING + (1 - gapRatio) * ADAPTIVE_BOOST;
+    this.displayValue = lerp(this.displayValue, target, adaptiveSpeed, dt * 1000);
+
+    // displayWindow eases toward the configured timeWindow (animates the slider).
+    this.displayWindow = lerp(this.displayWindow, this.opts.timeWindow, SMOOTHING, dt * 1000);
+
+    // visible window Y-range scan (binary-search analog: filter from winStart)
+    const winStart = this.t - this.displayWindow;
+    let tMin = Infinity, tMax = -Infinity;
+    for (const p of this.data) {
+      if (p.time < winStart) continue;
+      if (p.value < tMin) tMin = p.value; if (p.value > tMax) tMax = p.value;
+    }
+    if (this.displayValue < tMin) tMin = this.displayValue;
+    if (this.displayValue > tMax) tMax = this.displayValue;
+    if (this.opts.refLine) { if (this.opts.base < tMin) tMin = this.opts.base; if (this.opts.base > tMax) tMax = this.opts.base; }
+    if (tMin !== Infinity && tMax !== -Infinity) {
+      const rawRange = tMax - tMin;
+      const minRange = rawRange * 0.1 || 0.4;
+      if (rawRange < minRange) {
+        const mid = (tMin + tMax) / 2;
+        tMin = mid - minRange / 2; tMax = mid + minRange / 2;
+      } else {
+        const margin = rawRange * 0.12;
+        tMin -= margin; tMax += margin;
+      }
+      // snap outward instantly, ease back in at smoothing
+      this.displayMin = tMin < this.displayMin ? tMin : lerp(this.displayMin, tMin, SMOOTHING, dt * 1000);
+      this.displayMax = tMax > this.displayMax ? tMax : lerp(this.displayMax, tMax, SMOOTHING, dt * 1000);
+    }
+
+    // particles
+    for (const pt of this.particles) {
+      pt.vy += 26 * dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.life -= dt * 0.9;
+    }
+    this.particles = this.particles.filter(p => p.life > 0);
+    this.shake = lerp(this.shake, 0, 0.12, dt * 1000);
+
+    // trades
+    for (const tr of this.trades) { tr.y -= dt * 0.10; tr.life -= dt * 0.5; }
+    this.trades = this.trades.filter(t => t.life > 0 && t.y > -0.1);
+  }
+
+  _burst(mom) {
+    const col = mom === 'up' ? COL.up : COL.down;
+    for (let i = 0; i < 16; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 30 + Math.random() * 70;
+      this.particles.push({ x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 30, life: 1, col, sz: 1.5 + Math.random() * 2.5 });
+    }
+    this.shake = 6;
+  }
+
+  draw() {
+    const o = this.opts;
+    const { ctx, w, h } = fitCanvas(this.canvas, o.height);
+    ctx.clearRect(0, 0, w, h);
+
+    const padR = o.yaxis ? 46 : 12;
+    const padT = 16, padB = 18, padL = 12;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    const t0 = this.t - this.displayWindow, t1 = this.t + this.displayWindow * 0.04;
+    const vMin = this.displayMin, vMax = this.displayMax;
+
+    const X = (time) => padL + ((time - t0) / (t1 - t0)) * plotW;
+    const Y = (val) => padT + (1 - (val - vMin) / (vMax - vMin || 1)) * plotH;
+
+    // shake transform
+    const sh = this.shake;
+    ctx.save();
+    if (sh > 0.1) ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
+
+    // momentum color
+    const vals = this.data.slice(-30).map(p => p.value);
+    const mom = o.momentum ? detectMomentum(vals) : 'flat';
+    const lineCol = o.color || (mom === 'up' ? COL.up : mom === 'down' ? COL.down : COL.accent);
+    this._mom = mom;
+
+    // grid + y axis
+    if (o.grid || o.yaxis) {
+      const interval = pickInterval(vMax - vMin, plotH / (vMax - vMin || 1), 36, this._gridPrev);
+      this._gridPrev = interval;
+      const start = Math.ceil(vMin / interval) * interval;
+      ctx.font = '11px ui-monospace, monospace';
+      ctx.textBaseline = 'middle';
+      for (let v = start; v <= vMax; v += interval) {
+        const y = Y(v);
+        if (o.grid) {
+          ctx.strokeStyle = COL.grid; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+        }
+        if (o.yaxis) {
+          ctx.fillStyle = COL.muted; ctx.textAlign = 'left';
+          ctx.fillText(v.toFixed(interval < 1 ? 1 : 0), padL + plotW + 8, y);
+        }
+      }
+    }
+
+    // reference line
+    if (o.refLine) {
+      const y = Y(o.base);
+      ctx.strokeStyle = 'rgba(245,196,81,0.5)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // build visible point array with decimation
+    const pts = [];
+    let lastPX = -1e9;
+    for (const p of this.data) {
+      if (p.time < t0 - this.pointEvery) continue;
+      const px = X(p.time);
+      if (px - lastPX < 0.9 && pts.length >= 4) continue;
+      lastPX = px;
+      pts.push(px, Y(p.value));
+    }
+    // live edge point
+    pts.push(X(this.t), Y(this.displayValue));
+
+    const livePx = pts[pts.length - 2], livePy = pts[pts.length - 1];
+
+    // fill
+    if (o.fill && pts.length >= 4) {
+      const path = splinePath(pts);
+      const fill = new Path2D(path);
+      fill.lineTo(livePx, padT + plotH);
+      fill.lineTo(pts[0], padT + plotH);
+      fill.closePath();
+      const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+      grad.addColorStop(0, hexA(lineCol, 0.28));
+      grad.addColorStop(1, hexA(lineCol, 0));
+      ctx.fillStyle = grad; ctx.fill(fill);
+    }
+
+    // dim non-scrub region
+    let scrubVal = null, scrubTime = null;
+    if (this.scrubbing && this.scrubX != null) {
+      const sx = Math.max(padL, Math.min(padL + plotW, this.scrubX));
+      scrubTime = t0 + ((sx - padL) / plotW) * (t1 - t0);
+      // interpolate value at scrubTime
+      scrubVal = interpAt(this.data, scrubTime, this.displayValue, this.t);
+    }
+
+    // main line
+    if (pts.length >= 4) {
+      const path = splinePath(pts);
+      ctx.save();
+      ctx.shadowColor = hexA(lineCol, 0.5); ctx.shadowBlur = 9;
+      ctx.strokeStyle = lineCol; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.stroke(path);
+      ctx.restore();
+    }
+
+    // trade stream
+    if (o.tradeStream) {
+      ctx.font = '10px ui-monospace, monospace'; ctx.textAlign = 'left';
+      for (const tr of this.trades) {
+        const ty = padT + tr.y * plotH;
+        ctx.globalAlpha = Math.max(0, Math.min(1, tr.life));
+        ctx.fillStyle = tr.side === 'buy' ? COL.up : COL.down;
+        ctx.fillText((tr.side === 'buy' ? '▲ ' : '▼ ') + tr.amt.toFixed(2), padL + plotW * 0.62, ty);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // value line
+    if (o.valueLine) {
+      ctx.strokeStyle = hexA(lineCol, 0.4); ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(padL, livePy); ctx.lineTo(livePx, livePy); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // dot + pulse
+    if (o.dot) {
+      if (o.pulse) {
+        const ph = (this.t * 0.9) % 1;
+        ctx.beginPath(); ctx.arc(livePx, livePy, 4 + ph * 16, 0, 7);
+        ctx.strokeStyle = hexA(lineCol, (1 - ph) * 0.5); ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(livePx, livePy, 7, 0, 7);
+      ctx.fillStyle = hexA(lineCol, 0.18); ctx.fill();
+      ctx.beginPath(); ctx.arc(livePx, livePy, 3.6, 0, 7);
+      ctx.fillStyle = lineCol; ctx.shadowColor = lineCol; ctx.shadowBlur = 10; ctx.fill(); ctx.shadowBlur = 0;
+    }
+
+    // particles
+    for (const p of this.particles) {
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.col;
+      ctx.beginPath(); ctx.arc(livePx + p.x, livePy + p.y, p.sz, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // badge
+    if (o.badge) {
+      const txt = this.displayValue.toFixed(2);
+      ctx.font = '600 12px ui-monospace, monospace';
+      const tw = ctx.measureText(txt).width;
+      let bx = livePx + 12, by = livePy;
+      if (bx + tw + 16 > padL + plotW + padR) bx = livePx - tw - 28;
+      roundRect(ctx, bx, by - 11, tw + 16, 22, 6);
+      ctx.fillStyle = lineCol; ctx.fill();
+      ctx.fillStyle = '#06121d'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(txt, bx + 8, by + 0.5);
+    }
+
+    // crosshair / scrub
+    if (scrubVal != null && scrubTime != null) {
+      const sx = X(scrubTime), sy = Y(scrubVal);
+      ctx.strokeStyle = hexA(COL.text, 0.35); ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(sx, padT); ctx.lineTo(sx, padT + plotH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(sx, sy, 4.5, 0, 7); ctx.fillStyle = COL.text; ctx.fill();
+      // tooltip
+      const txt = scrubVal.toFixed(2);
+      ctx.font = '600 12px ui-monospace, monospace';
+      const tw = ctx.measureText(txt).width;
+      let tx = sx + 10; if (tx + tw + 14 > padL + plotW) tx = sx - tw - 24;
+      roundRect(ctx, tx, padT + 4, tw + 14, 22, 6);
+      ctx.fillStyle = '#04070d'; ctx.fill();
+      ctx.strokeStyle = hexA(COL.text, 0.2); ctx.lineWidth = 1; roundRect(ctx, tx, padT + 4, tw + 14, 22, 6); ctx.stroke();
+      ctx.fillStyle = COL.text; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(txt, tx + 7, padT + 15);
+    }
+
+    ctx.restore();
+    // expose stats
+    this._visiblePts = pts.length >> 1;
+  }
+}
+
+/* ---- small canvas helpers ---- */
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function hexA(hex, a) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function interpAt(data, time, liveVal, liveTime) {
+  // include live point as the last anchor
+  const arr = data.concat([{ time: liveTime, value: liveVal }]);
+  if (time <= arr[0].time) return arr[0].value;
+  if (time >= arr[arr.length - 1].time) return arr[arr.length - 1].value;
+  let lo = 0, hi = arr.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (arr[m].time <= time) lo = m; else hi = m; }
+  const a = arr[lo], b = arr[lo + 1];
+  const f = (time - a.time) / (b.time - a.time || 1);
+  return a.value + (b.value - a.value) * f;
+}
+
+/* ============================================================
+   Global animation loop
+   ============================================================ */
+const sims = [];
+let lastTs = 0;
+function loop(ts) {
+  const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
+  lastTs = ts;
+  for (const s of sims) { if (s.active) { s.sim.update(dt); s.sim.draw(); } }
+  for (const extra of extraDraws) extra(dt, ts);
+  requestAnimationFrame(loop);
+}
+const extraDraws = [];
+
+function register(sim, el) {
+  const entry = { sim, active: true };
+  sims.push(entry);
+  // pause offscreen
+  const io = new IntersectionObserver((es) => { es.forEach(e => entry.active = e.isIntersecting); }, { threshold: 0.01 });
+  io.observe(el || sim.canvas);
+  return entry;
+}
+
+/* ============================================================
+   HERO chart
+   ============================================================ */
+const heroSim = new LiveChartSim(document.getElementById('hero-canvas'), {
+  height: 320, timeWindow: 28, badge: true, dot: true, grid: true, yaxis: true,
+  fill: true, momentum: true, scrub: true, pulse: true, base: 100, volatility: 1.2
+});
+register(heroSim, document.getElementById('hero-canvas'));
+const heroVal = document.getElementById('hero-val'),
+      heroPts = document.getElementById('hero-pts'),
+      heroMom = document.getElementById('hero-mom');
+extraDraws.push(() => {
+  heroVal.textContent = heroSim.displayValue.toFixed(2);
+  const mom = heroSim._mom || 'flat';
+  const c = mom === 'up' ? COL.up : mom === 'down' ? COL.down : COL.accent;
+  heroVal.style.color = c;
+  heroPts.textContent = heroSim._visiblePts || '—';
+  heroMom.textContent = mom; heroMom.style.color = c;
+});
+
+/* ============================================================
+   IDEA — bridge vs worklet flow diagrams
+   ============================================================ */
+function bridgeDiagram(canvasId, bad) {
+  const canvas = document.getElementById(canvasId);
+  let particles = [];
+  let spawnT = 0;
+  extraDraws.push((dt, ts) => {
+    const { ctx, w, h } = fitCanvas(canvas, 140);
+    ctx.clearRect(0, 0, w, h);
+    const laneY = h / 2;
+    const x0 = 30, x1 = w - 30;
+    // nodes
+    const nodeL = bad ? 'JS' : 'JS', nodeR = bad ? 'Native' : 'UI thread';
+    const mid = (x0 + x1) / 2;
+    // bridge zone
+    if (bad) {
+      ctx.fillStyle = 'rgba(246,70,93,0.07)';
+      roundRect(ctx, mid - 34, 18, 68, h - 36, 8); ctx.fill();
+      ctx.fillStyle = COL.down; ctx.font = '10px ui-monospace'; ctx.textAlign = 'center';
+      ctx.fillText('BRIDGE', mid, 30);
+    }
+    // track
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x0, laneY); ctx.lineTo(x1, laneY); ctx.stroke();
+    // end nodes
+    [[x0, nodeL], [x1, nodeR]].forEach(([x, label]) => {
+      ctx.fillStyle = bad ? '#1a2433' : 'rgba(46,189,133,0.12)';
+      roundRect(ctx, x - 26, laneY - 16, 52, 32, 8); ctx.fill();
+      ctx.strokeStyle = bad ? 'rgba(255,255,255,0.1)' : COL.up; ctx.lineWidth = 1; roundRect(ctx, x - 26, laneY - 16, 52, 32, 8); ctx.stroke();
+      ctx.fillStyle = COL.text; ctx.font = '600 11px var(--sans), sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, x, laneY);
+    });
+    // spawn packets
+    spawnT -= dt;
+    if (spawnT <= 0) { spawnT = bad ? 0.5 : 0.18; particles.push({ p: 0, stalled: false }); }
+    const speed = bad ? 0.7 : 2.2;
+    for (const pk of particles) {
+      // bad: stutter near bridge
+      if (bad && pk.p > 0.42 && pk.p < 0.58 && Math.random() < 0.12) pk.stalled = true;
+      if (pk.stalled && Math.random() < 0.05) pk.stalled = false;
+      if (!pk.stalled) pk.p += dt * speed;
+      const px = x0 + (x1 - x0) * Math.min(1, pk.p);
+      const col = bad ? (pk.stalled ? COL.down : COL.gold) : COL.up;
+      ctx.beginPath(); ctx.arc(px, laneY, 4, 0, 7);
+      ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.fill(); ctx.shadowBlur = 0;
+    }
+    particles = particles.filter(p => p.p < 1.02);
+  });
+}
+bridgeDiagram('bridge-bad', true);
+bridgeDiagram('bridge-good', false);
+
+/* ============================================================
+   PIPELINE
+   ============================================================ */
+const STAGES = [
+  {
+    num: '01', ico: '📥', title: 'Input', sub: 'SharedValue',
+    detailTitle: 'Data enters as a SharedValue',
+    body: 'Your code grows a <code>SharedValue&lt;LiveChartPoint[]&gt;</code> — each point is just <code>{ time, value }</code>. A separate <code>SharedValue&lt;number&gt;</code> carries the live "now" value. React isn\'t in this path at all: the <code>useFrameCallback</code> loop <b>polls</b> both shared values fresh every frame (<code>data.value</code> / <code>value.value</code>), so a write is just a mutation the next tick happens to read — no subscription, nothing scheduled.',
+    files: [['types.ts', 'LiveChartPoint, SeriesConfig'], ['index.ts', 'public API surface']],
+    kv: [['LiveChartPoint', '{ time: unix-seconds, value: number }'], ['Multi-series', 'SeriesConfig[] — id, data, color, visible, kind'], ['Live value', 'SharedValue<number>, interpolated each frame']]
+  },
+  {
+    num: '02', ico: '🔁', title: 'Frame engine', sub: 'useFrameCallback',
+    detailTitle: 'The 60 fps tick mutates display state',
+    body: 'A <code>useFrameCallback</code> runs a <b>pure</b> tick each frame. It lerps the smoothed value, binary-searches the visible window, scans the Y-range, and applies margins — writing the result into ~5 SharedValues. Pure means it is unit-tested without Reanimated.',
+    files: [['core/liveChartEngineTick.ts', 'tickLiveChartEngineFrame'], ['core/useLiveChartEngine.ts', 'hook + frame callback'], ['core/liveChartSeriesEngineTick.ts', 'multi-series tick']],
+    kv: [['Outputs', 'displayValue, displayMin, displayMax, displayWindow, timestamp'], ['Value motion', 'adaptive exponential lerp toward target'], ['Axis motion', 'snap outward to fit · ease back in']]
+  },
+  {
+    num: '03', ico: '✏️', title: 'Draw layer', sub: 'SkPath builders',
+    detailTitle: 'Display state → screen-space SkPath',
+    body: 'Inside <code>useDerivedValue</code>, draw functions map <code>(time, value)</code> to pixels, decimate to pixel resolution, and rewrite a monotone-cubic <code>SkPath</code>. Paths are <code>.reset()</code> and ping-ponged in place — no per-frame allocation.',
+    files: [['draw/line.ts', 'buildLinePoints + decimation'], ['draw/candle.ts', 'buildCandleGeometry'], ['draw/grid.ts', 'nice-interval Y labels'], ['math/spline.ts', 'drawSpline (Fritsch–Carlson)']],
+    kv: [['Line', 'SkPath (stroke) + SkPath (gradient fill)'], ['Candle', '{ bodies[], wicks[] } screen rects'], ['Grid', 'label entries with per-label alpha fade']]
+  },
+  {
+    num: '04', ico: '🎨', title: 'Skia canvas', sub: 'GPU render',
+    detailTitle: 'Skia paints the paths on the GPU',
+    body: 'A single <code>&lt;Canvas&gt;</code> renders the line, gradient fill, candles, grid lines and reference bands. The chart stack lives in one <code>&lt;Group&gt;</code> under the screen-shake transform, with the scrub, value and badge layers as sibling Groups in the same canvas. Because the paths are SharedValue-derived, Skia redraws on the UI thread the instant the engine updates them.',
+    files: [['@shopify/react-native-skia', 'Canvas, Path, Group'], ['hooks/useChartPaths.ts', 'derived line + fill'], ['hooks/useCandlePaths.ts', 'derived candle geometry']],
+    kv: [['Stroke', '<Path> main chart line'], ['Fill', '<Path> gradient under line'], ['Grid / refs', 'dashed <Path> lines + bands']]
+  },
+  {
+    num: '05', ico: '🏷️', title: 'Overlays', sub: 'one Skia canvas',
+    detailTitle: 'Skia layers in the same canvas, reading the same SharedValues',
+    body: 'These aren\'t separate native views — they\'re Skia layers drawn into the <b>same single <code>&lt;Canvas&gt;</code></b> as the line, just later in draw order (badge, dot, crosshair, axes, trade stream, particles). Each reads the engine\'s SharedValues, so one repaint keeps them all pixel-locked to the line at zero JS cost. The lone exception is the multi-series legend — an interactive RN <code>Pressable</code> stacked over the canvas.',
+    files: [['components/BadgeOverlay.tsx', 'value pill'], ['components/CrosshairOverlay.tsx', 'scrub line + tooltip'], ['components/DegenParticlesOverlay.tsx', 'burst + shake'], ['hooks/useCrosshair.ts', 'pan-gesture scrub state']],
+    kv: [['Same canvas', 'overlays are z-ordered Skia layers, not native views — one repaint/frame'], ['Shared transform', 'badge / scrub / stack share the degen-shake Group'], ['Legend exception', 'multi-series chips are an RN Pressable, not Skia']]
+  }
+];
+
+const stagesEl = document.getElementById('pipeline-stages');
+const detailEl = document.getElementById('stage-detail');
+let activeStage = 1;
+STAGES.forEach((s, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'stage' + (i === activeStage ? ' active' : '');
+  btn.innerHTML = `<div class="num">${s.num}</div><div class="ico">${s.ico}</div><h4>${s.title}</h4>
+    <div class="sub">${s.sub}</div>${i < STAGES.length - 1 ? '<div class="arrow">→</div>' : ''}`;
+  btn.addEventListener('click', () => { activeStage = i; renderStages(); });
+  stagesEl.appendChild(btn);
+});
+function renderStages() {
+  [...stagesEl.children].forEach((c, i) => c.classList.toggle('active', i === activeStage));
+  const s = STAGES[activeStage];
+  detailEl.innerHTML = `<div class="stage-detail-inner">
+    <div>
+      <span class="chip">${s.num} · ${s.sub}</span>
+      <h3 style="margin-top:12px">${s.detailTitle}</h3>
+      <p class="muted" style="font-size:14.5px">${s.body}</p>
+      <div class="kv">${s.kv.map(([t, d]) => `<div class="item"><div class="t">${t}</div><div class="d">${d}</div></div>`).join('')}</div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">source</div>
+      <div class="files">${s.files.map(([f, d]) => `<div class="file-pill">📄 <b>${f}</b><span style="margin-left:auto;color:var(--muted-2)">${d}</span></div>`).join('')}</div>
+    </div>
+  </div>`;
+}
+renderStages();
+
+// pipeline flow animation — packets travel across the 5 stages
+(function pipeFlow() {
+  const canvas = document.getElementById('pipe-flow');
+  let packets = [], spawnT = 0;
+  extraDraws.push((dt) => {
+    const { ctx, w, h } = fitCanvas(canvas, 64);
+    ctx.clearRect(0, 0, w, h);
+    const y = h / 2, x0 = 40, x1 = w - 40;
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    // stage ticks
+    for (let i = 0; i < 5; i++) {
+      const x = x0 + (x1 - x0) * (i / 4);
+      ctx.fillStyle = i === activeStage ? COL.accent2 : 'rgba(255,255,255,0.25)';
+      ctx.beginPath(); ctx.arc(x, y, i === activeStage ? 5 : 3, 0, 7); ctx.fill();
+    }
+    spawnT -= dt; if (spawnT <= 0) { spawnT = 0.7; packets.push({ p: 0 }); }
+    for (const pk of packets) {
+      pk.p += dt * 0.32;
+      const x = x0 + (x1 - x0) * pk.p;
+      const cols = [COL.purple, COL.accent, COL.accent2, COL.up, COL.gold];
+      const stg = Math.min(4, Math.floor(pk.p * 5));
+      const c = cols[stg];
+      ctx.globalAlpha = pk.p < 0.04 ? pk.p / 0.04 : (pk.p > 0.96 ? (1 - pk.p) / 0.04 : 1);
+      ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+    packets = packets.filter(p => p.p < 1);
+  });
+})();
+
+/* ============================================================
+   FRAME ENGINE — lerp follower
+   ============================================================ */
+(function lerpViz() {
+  const canvas = document.getElementById('lerp-canvas');
+  let target = 0.5, display = 0.5, jumpT = 0;
+  const speedSlider = document.getElementById('lerp-speed');
+  const speedV = document.getElementById('lerp-speed-v');
+  speedSlider.addEventListener('input', () => speedV.textContent = (+speedSlider.value).toFixed(2));
+  const hist = [];
+  extraDraws.push((dt) => {
+    jumpT -= dt;
+    if (jumpT <= 0) { jumpT = 1.4 + Math.random(); target = 0.12 + Math.random() * 0.76; }
+    display = lerp(display, target, +speedSlider.value, dt * 1000);
+    hist.push(display); if (hist.length > 200) hist.shift();
+    const { ctx, w, h } = fitCanvas(canvas, 92);
+    ctx.clearRect(0, 0, w, h);
+    const TY = (v) => 14 + (1 - v) * (h - 28);
+    // target line
+    ctx.strokeStyle = hexA(COL.gold, 0.5); ctx.lineWidth = 1; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(0, TY(target)); ctx.lineTo(w, TY(target)); ctx.stroke(); ctx.setLineDash([]);
+    // history trail
+    ctx.strokeStyle = COL.up; ctx.lineWidth = 2; ctx.beginPath();
+    hist.forEach((v, i) => { const x = w - (hist.length - i) * (w / 200); i ? ctx.lineTo(x, TY(v)) : ctx.moveTo(x, TY(v)); });
+    ctx.stroke();
+    // dots
+    ctx.fillStyle = COL.gold; ctx.beginPath(); ctx.arc(w - 14, TY(target), 5, 0, 7); ctx.fill();
+    ctx.fillStyle = COL.up; ctx.shadowColor = COL.up; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(w - 14, TY(display), 5.5, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+  });
+})();
+
+/* ============================================================
+   FRAME ENGINE — binary search window
+   ============================================================ */
+(function windowViz() {
+  const canvas = document.getElementById('window-canvas');
+  const N = 26; let scrollT = 0;
+  extraDraws.push((dt) => {
+    scrollT += dt * 0.25;
+    const { ctx, w, h } = fitCanvas(canvas, 64);
+    ctx.clearRect(0, 0, w, h);
+    const y = h / 2;
+    const cutoff = 0.42 + Math.sin(scrollT) * 0.06; // fraction where window begins
+    // points
+    for (let i = 0; i < N; i++) {
+      const x = 16 + (w - 32) * (i / (N - 1));
+      const inWin = x >= 16 + (w - 32) * cutoff;
+      ctx.fillStyle = inWin ? COL.accent2 : 'rgba(255,255,255,0.18)';
+      ctx.beginPath(); ctx.arc(x, y + Math.sin(i * 0.7 + scrollT) * 8, inWin ? 4 : 3, 0, 7); ctx.fill();
+    }
+    // window edge
+    const ex = 16 + (w - 32) * cutoff;
+    ctx.strokeStyle = COL.gold; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(ex, 6); ctx.lineTo(ex, h - 6); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = COL.gold; ctx.font = '10px ui-monospace'; ctx.textAlign = 'left';
+    ctx.fillText('first visible →', ex + 6, 14);
+    // shaded visible zone
+    ctx.fillStyle = 'rgba(0,224,255,0.05)'; ctx.fillRect(ex, 0, w - ex - 8, h);
+  });
+})();
+
+/* ============================================================
+   FRAME ENGINE — Y range margin
+   ============================================================ */
+(function rangeViz() {
+  const canvas = document.getElementById('range-canvas');
+  const exToggle = document.getElementById('exaggerate-toggle');
+  let exaggerate = false;
+  exToggle.addEventListener('click', () => { exaggerate = !exToggle.classList.contains('on'); exToggle.classList.toggle('on'); });
+  exToggle.classList.remove('on'); // start off
+  let phase = 0, dataMin = 0.4, dataMax = 0.6, dMinD = 0.3, dMaxD = 0.7;
+  extraDraws.push((dt) => {
+    phase += dt;
+    dataMin = 0.42 + Math.sin(phase * 0.8) * 0.08;
+    dataMax = 0.58 + Math.cos(phase * 0.6) * 0.16 + (Math.sin(phase * 2.3) > 0.95 ? 0.15 : 0);
+    // margin 0.12 normal / 0.01 exaggerate; snap outward, ease in at smoothing 0.08
+    const margin = (dataMax - dataMin) * (exaggerate ? 0.01 : 0.12);
+    const tMin = dataMin - margin, tMax = dataMax + margin;
+    dMinD = tMin < dMinD ? tMin : lerp(dMinD, tMin, 0.08, dt * 1000);
+    dMaxD = tMax > dMaxD ? tMax : lerp(dMaxD, tMax, 0.08, dt * 1000);
+    const { ctx, w, h } = fitCanvas(canvas, 96);
+    ctx.clearRect(0, 0, w, h);
+    const Y = (v) => 8 + (1 - v) * (h - 16);
+    // display band
+    ctx.fillStyle = 'rgba(77,171,247,0.08)';
+    ctx.fillRect(0, Y(dMaxD), w, Y(dMinD) - Y(dMaxD));
+    [['displayMax', dMaxD, COL.accent], ['displayMin', dMinD, COL.accent]].forEach(([l, v, c]) => {
+      ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, Y(v)); ctx.lineTo(w, Y(v)); ctx.stroke();
+      ctx.fillStyle = c; ctx.font = '9px ui-monospace'; ctx.textAlign = 'left'; ctx.fillText(l, 6, Y(v) - 4);
+    });
+    // data band
+    [['data max', dataMax], ['data min', dataMin]].forEach(([l, v]) => {
+      ctx.strokeStyle = COL.gold; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(0, Y(v)); ctx.lineTo(w, Y(v)); ctx.stroke(); ctx.setLineDash([]);
+    });
+    ctx.fillStyle = COL.gold; ctx.textAlign = 'right'; ctx.font = '9px ui-monospace';
+    ctx.fillText('data range', w - 6, Y(dataMax) - 4);
+  });
+})();
+
+/* ============================================================
+   DRAW — decimation demo
+   ============================================================ */
+(function decimViz() {
+  const canvas = document.getElementById('decim-canvas');
+  const decT = document.getElementById('decim-toggle');
+  const dotT = document.getElementById('dots-toggle');
+  const countEl = document.getElementById('decim-count');
+  const savedEl = document.getElementById('decim-saved');
+  let decimate = true, showDots = true;
+  decT.addEventListener('click', () => { decimate = !decT.classList.contains('on'); decT.classList.toggle('on'); });
+  dotT.addEventListener('click', () => { showDots = !dotT.classList.contains('on'); dotT.classList.toggle('on'); });
+  // a dense static dataset — denser than ~2 samples/pixel so min/max-per-column
+  // decimation visibly reduces the vertex count (mirrors a wide timeWindow).
+  const raw = [];
+  let v = 0.5;
+  for (let i = 0; i < 2400; i++) { v += (Math.random() - 0.5) * 0.03; v = Math.max(0.08, Math.min(0.92, v)); raw.push(v); }
+  extraDraws.push(() => {
+    const { ctx, w, h } = fitCanvas(canvas, 200);
+    ctx.clearRect(0, 0, w, h);
+    const padL = 8, padR = 8, padT = 12, padB = 12;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    const pts = [];
+    const total = raw.length;
+    const xOf = (i) => padL + (i / (total - 1)) * plotW;
+    const yOf = (i) => padT + (1 - raw[i]) * plotH;
+    if (!decimate) {
+      for (let i = 0; i < total; i++) pts.push(xOf(i), yOf(i));
+    } else {
+      // Mirror buildLinePoints: keep the lowest + highest sample in each pixel
+      // column (emitted in time order) so the envelope survives at ~2 pts/px.
+      let curCol = -2147483648, minI = 0, maxI = 0, open = false;
+      const flush = () => {
+        const a = minI <= maxI ? minI : maxI, b = minI <= maxI ? maxI : minI;
+        pts.push(xOf(a), yOf(a));
+        if (b !== a) pts.push(xOf(b), yOf(b));
+      };
+      for (let i = 0; i < total; i++) {
+        const col = xOf(i) | 0;
+        if (col !== curCol) { if (open) flush(); curCol = col; minI = i; maxI = i; open = true; }
+        else { if (raw[i] < raw[minI]) minI = i; if (raw[i] > raw[maxI]) maxI = i; }
+      }
+      if (open) flush();
+    }
+    // fill
+    const path = splinePath(pts);
+    const fill = new Path2D(path);
+    fill.lineTo(pts[pts.length - 2], padT + plotH); fill.lineTo(pts[0], padT + plotH); fill.closePath();
+    const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+    grad.addColorStop(0, hexA(COL.accent, 0.22)); grad.addColorStop(1, hexA(COL.accent, 0));
+    ctx.fillStyle = grad; ctx.fill(fill);
+    // line
+    ctx.strokeStyle = COL.accent; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    ctx.stroke(path);
+    // dots
+    if (showDots) {
+      ctx.fillStyle = COL.accent2;
+      for (let i = 0; i < pts.length; i += 2) { ctx.beginPath(); ctx.arc(pts[i], pts[i + 1], 1.7, 0, 7); ctx.fill(); }
+    }
+    const n = pts.length >> 1;
+    countEl.textContent = n + ' / ' + total;
+    savedEl.textContent = decimate ? ` · dropped ${total - n} (${Math.round((1 - n / total) * 100)}%)` : '';
+  });
+})();
+
+/* ============================================================
+   DRAW — spline comparison
+   ============================================================ */
+(function splineViz() {
+  const canvas = document.getElementById('spline-canvas');
+  const tabs = document.getElementById('spline-tabs');
+  const note = document.getElementById('spline-note');
+  let mode = 'monotone';
+  const notes = {
+    linear: 'A raw polyline — accurate, but every data point is a hard corner.',
+    overshoot: 'A naive cubic smooths the corners but <b style="color:var(--down)">overshoots</b> — inventing peaks and dips your data never had.',
+    monotone: 'The monotone curve hugs the points without inventing peaks that aren\'t in the data.'
+  };
+  tabs.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    mode = b.dataset.mode;
+    [...tabs.children].forEach(c => c.classList.toggle('on', c === b));
+    note.innerHTML = notes[mode];
+  });
+  // a dataset with a sharp spike (where overshoot is visible)
+  const ys = [0.5, 0.52, 0.48, 0.85, 0.5, 0.46, 0.2, 0.5, 0.55, 0.5];
+  extraDraws.push(() => {
+    const { ctx, w, h } = fitCanvas(canvas, 200);
+    ctx.clearRect(0, 0, w, h);
+    const padL = 16, padR = 16, padT = 18, padB = 18;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    const pts = [];
+    ys.forEach((y, i) => pts.push(padL + (i / (ys.length - 1)) * plotW, padT + (1 - y) * plotH));
+    // overshoot reference band (data envelope)
+    let ymin = Math.min(...ys), ymax = Math.max(...ys);
+    ctx.strokeStyle = 'rgba(246,70,93,0.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(padL, padT + (1 - ymax) * plotH); ctx.lineTo(padL + plotW, padT + (1 - ymax) * plotH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(padL, padT + (1 - ymin) * plotH); ctx.lineTo(padL + plotW, padT + (1 - ymin) * plotH); ctx.stroke();
+    ctx.setLineDash([]);
+    // path
+    let path;
+    if (mode === 'linear') { path = new Path2D(); path.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) path.lineTo(pts[i], pts[i + 1]); }
+    else if (mode === 'overshoot') path = naiveSplinePath(pts);
+    else path = splinePath(pts);
+    const col = mode === 'overshoot' ? COL.down : COL.up;
+    ctx.strokeStyle = col; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.shadowColor = hexA(col, 0.4); ctx.shadowBlur = 8; ctx.stroke(path); ctx.shadowBlur = 0;
+    // vertices
+    ctx.fillStyle = COL.text;
+    for (let i = 0; i < pts.length; i += 2) { ctx.beginPath(); ctx.arc(pts[i], pts[i + 1], 3, 0, 7); ctx.fill(); }
+  });
+})();
+
+/* ============================================================
+   PLAYGROUND
+   ============================================================ */
+const playSim = new LiveChartSim(document.getElementById('play-canvas'), {
+  height: 340, timeWindow: 26, base: 100, volatility: 1,
+  badge: true, dot: true, grid: true, yaxis: true, fill: true, momentum: true,
+  scrub: true, pulse: true, valueLine: false, degen: false, tradeStream: false, refLine: false
+});
+register(playSim, document.getElementById('play-canvas'));
+const PLAY_TOGGLES = [
+  ['fill', 'Gradient fill'], ['grid', 'Grid'], ['yaxis', 'Y-axis labels'],
+  ['badge', 'Value badge'], ['dot', 'Live dot'], ['pulse', 'Pulse ring'],
+  ['momentum', 'Momentum color'], ['valueLine', 'Value line'], ['refLine', 'Reference line'],
+  ['scrub', 'Scrub'], ['tradeStream', 'Trade stream'], ['degen', 'Degen 🚀']
+];
+const ptEl = document.getElementById('play-toggles');
+PLAY_TOGGLES.forEach(([key, label]) => {
+  const el = document.createElement('label');
+  el.className = 'toggle' + (playSim.opts[key] ? ' on' : '');
+  el.innerHTML = `<span class="dot"></span> ${label}`;
+  el.addEventListener('click', () => { playSim.opts[key] = !el.classList.contains('on'); el.classList.toggle('on'); });
+  ptEl.appendChild(el);
+});
+const pw = document.getElementById('play-window'), pwv = document.getElementById('play-window-v');
+pw.addEventListener('input', () => { playSim.opts.timeWindow = +pw.value; pwv.textContent = pw.value + 's'; });
+const pv = document.getElementById('play-vol'), pvv = document.getElementById('play-vol-v');
+pv.addEventListener('input', () => { playSim.opts.volatility = +pv.value; pvv.textContent = (+pv.value).toFixed(1) + '×'; });
+
+/* ============================================================
+   MULTI-SERIES demo
+   ============================================================ */
+(function multiSeries() {
+  const canvas = document.getElementById('multi-canvas');
+  const togglesEl = document.getElementById('multi-toggles');
+  const seriesDefs = [
+    { id: 'A', color: COL.up, base: 60, v: 60, raw: 60, data: [], opacity: 1, visible: true },
+    { id: 'B', color: COL.accent, base: 50, v: 50, raw: 50, data: [], opacity: 1, visible: true },
+    { id: 'C', color: COL.purple, base: 40, v: 40, raw: 40, data: [], opacity: 1, visible: true }
+  ];
+  let t = 0, nextPt = 0;
+  const tw = 24, every = 0.5;
+  // tracked engine state (mirrors the multi-series engine's SharedValues)
+  let displayMin = 35, displayMax = 65, displayWindow = tw, gridPrev = 0;
+  // seed
+  for (let i = -tw - 4; i < 0; i += every) {
+    seriesDefs.forEach(s => { s.raw += (s.base - s.raw) * 0.05 + (Math.random() - 0.5) * 2.2; s.data.push({ time: i, value: s.raw }); });
+  }
+  // legend chips
+  seriesDefs.forEach(s => {
+    const el = document.createElement('label');
+    el.className = 'toggle on';
+    el.innerHTML = `<span class="dot" style="background:${s.color};box-shadow:0 0 8px ${s.color}"></span> Series ${s.id}`;
+    el.addEventListener('click', () => { s.visible = !el.classList.contains('on'); el.classList.toggle('on'); });
+    togglesEl.appendChild(el);
+  });
+  extraDraws.push((dt) => {
+    t += dt;
+    if (t >= nextPt) {
+      nextPt = t + every;
+      seriesDefs.forEach(s => { s.raw += (s.base - s.raw) * 0.04 + (Math.random() - 0.5) * 2.6 + (Math.random() < 0.05 ? (Math.random() - 0.5) * 8 : 0); s.data.push({ time: t, value: s.raw }); });
+    }
+    const cutoff = t - tw - 2;
+    seriesDefs.forEach(s => { while (s.data.length > 2 && s.data[1].time < cutoff) s.data.shift(); });
+    // ENGINE TICK (multi-series) — constants mirror liveChartSeriesEngineTick.ts:
+    //   per-series adaptive value lerp (0.08 + 0.12·(1−gapRatio)), opacity ease 0.08,
+    //   Y-range over VISIBLE series only, margin 0.12, snap-out / ease-in at 0.08.
+    const SMOOTHING = 0.08, ADAPTIVE_BOOST = 0.12;
+    displayWindow = lerp(displayWindow, tw, SMOOTHING, dt * 1000);
+    const range = displayMax - displayMin;
+    seriesDefs.forEach(s => {
+      const tgt = s.data[s.data.length - 1].value;
+      const gapRatio = range > 0 ? Math.min(Math.abs(tgt - s.v) / range, 1) : 0;
+      s.v = lerp(s.v, tgt, SMOOTHING + (1 - gapRatio) * ADAPTIVE_BOOST, dt * 1000);
+      s.opacity = lerp(s.opacity, s.visible ? 1 : 0, SMOOTHING, dt * 1000);
+    });
+    const { ctx, w, h } = fitCanvas(canvas, 200);
+    ctx.clearRect(0, 0, w, h);
+    const padL = 10, padR = 10, padT = 14, padB = 14;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    const winStart = t - displayWindow;
+    // Y-range over VISIBLE series only (each live tip folded in)
+    let tMin = Infinity, tMax = -Infinity;
+    seriesDefs.forEach(s => {
+      if (!s.visible) return;
+      for (const p of s.data) { if (p.time < winStart) continue; if (p.value < tMin) tMin = p.value; if (p.value > tMax) tMax = p.value; }
+      if (s.v < tMin) tMin = s.v; if (s.v > tMax) tMax = s.v;
+    });
+    if (tMin !== Infinity && tMax !== -Infinity) {
+      const rawRange = tMax - tMin, minRange = rawRange * 0.1 || 0.4;
+      if (rawRange < minRange) { const mid = (tMin + tMax) / 2; tMin = mid - minRange / 2; tMax = mid + minRange / 2; }
+      else { const margin = rawRange * 0.12; tMin -= margin; tMax += margin; }
+      displayMin = tMin < displayMin ? tMin : lerp(displayMin, tMin, SMOOTHING, dt * 1000);
+      displayMax = tMax > displayMax ? tMax : lerp(displayMax, tMax, SMOOTHING, dt * 1000);
+    }
+    const t0 = t - displayWindow, t1 = t + displayWindow * 0.04;
+    const X = (tm) => padL + ((tm - t0) / (t1 - t0)) * plotW;
+    const Y = (val) => padT + (1 - (val - displayMin) / (displayMax - displayMin || 1)) * plotH;
+    // grid (same nice-interval picker + hysteresis as the single-series chart)
+    const interval = pickInterval(displayMax - displayMin, plotH / (displayMax - displayMin || 1), 36, gridPrev);
+    gridPrev = interval;
+    ctx.strokeStyle = COL.grid; ctx.lineWidth = 1;
+    for (let v2 = Math.ceil(displayMin / interval) * interval; v2 <= displayMax; v2 += interval) { const y = Y(v2); ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke(); }
+    // each series
+    seriesDefs.forEach(s => {
+      if (s.opacity < 0.02) return;
+      const pts = [];
+      let lastPX = -1e9;
+      for (const p of s.data) { if (p.time < t0 - every) continue; const px = X(p.time); if (px - lastPX < 0.9 && pts.length >= 4) continue; lastPX = px; pts.push(px, Y(p.value)); }
+      pts.push(X(t), Y(s.v));
+      if (pts.length < 4) return;
+      ctx.globalAlpha = s.opacity;
+      const path = splinePath(pts);
+      ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.shadowColor = hexA(s.color, 0.4); ctx.shadowBlur = 6; ctx.stroke(path); ctx.shadowBlur = 0;
+      // dot + label
+      const lx = pts[pts.length - 2], ly = pts[pts.length - 1];
+      ctx.beginPath(); ctx.arc(lx, ly, 3.4, 0, 7); ctx.fillStyle = s.color; ctx.fill();
+      ctx.font = '600 10px ui-monospace'; ctx.fillStyle = s.color; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(s.v.toFixed(1), Math.min(lx - 6, padL + plotW - 4), ly - 8);
+      ctx.globalAlpha = 1;
+    });
+  });
+})();
+
+/* ============================================================
+   ARCHITECTURE MAP
+   ============================================================ */
+const ARCH = [
+  { name: 'core', color: COL.accent2, badge: 'engine', desc: 'Tick loop + config',
+    nodes: [
+      ['liveChartEngineTick.ts', 'Pure single-series tick — mutates display state'],
+      ['useLiveChartEngine.ts', 'Hook: useFrameCallback wrapper + SharedValue setup'],
+      ['liveChartSeriesEngineTick.ts', 'Pure multi-series tick — per-series lerp + opacity'],
+      ['useLiveChartSeriesEngine.ts', 'Multi-series frame loop, output buffer ping-pong'],
+      ['resolveConfig.ts', 'Normalizes boolean | Partial<Config> into resolved config'],
+      ['multiSeriesLayout.ts', 'Series color/style signature tracking']
+    ] },
+  { name: 'draw', color: COL.up, badge: 'skpath', desc: 'Path builders (worklet)',
+    nodes: [
+      ['line.ts', 'buildLinePoints — data→pixels + decimation'],
+      ['candle.ts', 'buildCandleGeometry — body/wick rects'],
+      ['grid.ts', 'computeGridEntries — nice-interval Y labels'],
+      ['trade.ts', 'Trade stream state machine'],
+      ['markerAtlas.ts', 'Marker glyph atlas']
+    ] },
+  { name: 'math', color: COL.gold, badge: 'pure', desc: 'Worklet-safe primitives',
+    nodes: [
+      ['lerp.ts', 'Frame-rate-independent exponential lerp'],
+      ['spline.ts', 'Fritsch–Carlson monotone cubic (no overshoot)'],
+      ['interpolate.ts', 'Binary search + linear interp for scrubbing'],
+      ['momentum.ts', 'up / down / flat from recent vs lookback'],
+      ['color.ts', 'hex→rgb, RGB lerp (worklet-safe)'],
+      ['range.ts', 'Y-range with margins'],
+      ['degenTick.ts', 'Particle ring buffer (spawn/update/expire)'],
+      ['referenceLines.ts', 'Collect + classify reference values'],
+      ['intervals.ts', 'niceTimeInterval — X-axis time spacing'],
+      ['squiggly.ts', 'Loading-state squiggle']
+    ] },
+  { name: 'components', color: COL.accent, badge: 'react', desc: 'Components + overlays',
+    nodes: [
+      ['LiveChart.tsx', 'Single-series chart + controller'],
+      ['LiveChartSeries.tsx', 'Multi-series chart + controller'],
+      ['BadgeOverlay.tsx', 'Momentum-tinted value pill'],
+      ['DotOverlay.tsx', 'Live dot + halo + pulse'],
+      ['CrosshairOverlay.tsx', 'Scrub line + tooltip'],
+      ['YAxisOverlay.tsx', 'Grid labels'],
+      ['XAxisOverlay.tsx', 'Time labels'],
+      ['TradeStreamOverlay.tsx', 'Scrolling buy/sell labels'],
+      ['DegenParticlesOverlay.tsx', 'Burst + screen shake'],
+      ['ReferenceLineOverlay.tsx', 'Lines/bands + off-axis badges'],
+      ['MarkerOverlay.tsx', 'Trade/event markers'],
+      ['MultiSeriesDots.tsx', 'Per-series dots + pulse + labels'],
+      ['SeriesToggleChips.tsx', 'Legend chips'],
+      ['LoadingOverlay.tsx', 'Squiggly breathing line']
+    ] },
+  { name: 'hooks', color: COL.purple, badge: 'derived', desc: 'Derived values + gestures',
+    nodes: [
+      ['useChartPaths.ts', 'Build/ping-pong line + fill SkPath'],
+      ['useCandlePaths.ts', 'Candle geometry'],
+      ['useYAxis.ts', 'Grid entries + alpha fades'],
+      ['useCrosshair.ts', 'Single-series scrub (pan gesture)'],
+      ['useCrosshairSeries.ts', 'Multi-series scrub'],
+      ['useMomentum.ts', 'Momentum detection'],
+      ['useBadge.ts', 'Badge path + text + color lerp'],
+      ['useLiveDot.ts', 'Live dot geometry'],
+      ['useDegen.ts', 'Particle buffer + shake'],
+      ['useTradeStream.ts', 'Trade label animation'],
+      ['useMarkers.ts', 'Marker hit-test + render'],
+      ['useChartReveal.ts', 'Squiggle→real morph'],
+      ['useCanvasLayout.ts', 'Measure + feed engine'],
+      ['useChartColors.ts', 'Theme + accent → palette']
+    ] }
+];
+const mapEl = document.getElementById('arch-map');
+ARCH.forEach(layer => {
+  const div = document.createElement('div');
+  div.className = 'layer';
+  div.innerHTML = `<div class="layer-head">
+      <span class="badge" style="color:${layer.color};background:${hexA(layer.color, 0.12)};border:1px solid ${hexA(layer.color, 0.3)}">src/${layer.name}/</span>
+      <span class="muted" style="font-size:13px">${layer.desc}</span>
+    </div>
+    <div class="nodes">${layer.nodes.map(([n, d]) => `<div class="node"><span class="tip">${d}</span>${n}</div>`).join('')}</div>`;
+  mapEl.appendChild(div);
+});
+
+/* ============================================================
+   Scroll reveal + start loop
+   ============================================================ */
+const revealIO = new IntersectionObserver((es) => {
+  es.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); });
+}, { threshold: 0.08 });
+document.querySelectorAll('.fade-up').forEach(el => revealIO.observe(el));
+
+requestAnimationFrame(loop);
+window.addEventListener('resize', () => { /* canvases refit each frame via fitCanvas */ });
+</script>
+</body>
+</html>
