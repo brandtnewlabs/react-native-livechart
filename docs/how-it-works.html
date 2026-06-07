@@ -324,8 +324,8 @@
       <div class="flow-wrap"><canvas id="bridge-good" height="140"></canvas></div>
       <p class="muted" style="font-size:14px;margin-bottom:0">
         Data lands in a <code>SharedValue&lt;LiveChartPoint[]&gt;</code>. A <code>useFrameCallback</code> tick reads it,
-        mutates display state, and <b style="color:var(--text)">rewrites a pooled <code>SkPath</code> in place</b> — never allocating a
-        new one — all on the UI thread. React barely re-renders at all.
+        mutates display state, and <b style="color:var(--text)">builds the path into a reused <code>Skia.PathBuilder</code>,
+        detaching a fresh immutable <code>SkPath</code></b> each frame — all on the UI thread. React barely re-renders at all.
       </p>
     </div>
   </div>
@@ -336,8 +336,8 @@
       <p class="muted" style="font-size:14px;margin:0">Functions tagged <code>"worklet"</code> run on the UI thread. The tick functions are <b>pure</b> — no hooks, no SharedValues — so they unit-test without Reanimated.</p>
     </div>
     <div class="panel">
-      <h3>♻️ SkPath reuse</h3>
-      <p class="muted" style="font-size:14px;margin:0">Path builders <code>.reset()</code> and ping-pong two pooled <code>SkPath</code> instances per curve instead of allocating each frame — an iOS GC-pressure win.</p>
+      <h3>♻️ PathBuilder + detach</h3>
+      <p class="muted" style="font-size:14px;margin:0">A reused <code>Skia.PathBuilder</code> (held in a <code>SharedValue</code>) emits the verbs; <code>detach()</code> yields a fresh immutable <code>SkPath</code> — a new reference Reanimated repaints on, and forward-compatible with Skia 3.0.</p>
     </div>
     <div class="panel">
       <h3>📦 Ships TS source</h3>
@@ -1155,7 +1155,7 @@ const STAGES = [
   {
     num: '03', ico: '✏️', title: 'Draw layer', sub: 'SkPath builders',
     detailTitle: 'Display state → screen-space SkPath',
-    body: 'Inside <code>useDerivedValue</code>, draw functions map <code>(time, value)</code> to pixels, decimate to pixel resolution, and rewrite a monotone-cubic <code>SkPath</code>. Paths are <code>.reset()</code> and ping-ponged in place — no per-frame allocation.',
+    body: 'Inside <code>useDerivedValue</code>, draw functions map <code>(time, value)</code> to pixels, decimate to pixel resolution, and emit a monotone-cubic curve into a reused <code>Skia.PathBuilder</code>. <code>detach()</code> hands back a fresh immutable <code>SkPath</code> each frame — a new reference Reanimated repaints on, with no per-frame <code>Skia.Path.Make()</code>.',
     files: [['draw/line.ts', 'buildLinePoints + decimation'], ['draw/candle.ts', 'buildCandleGeometry'], ['draw/grid.ts', 'nice-interval Y labels'], ['math/spline.ts', 'drawSpline (Fritsch–Carlson)']],
     kv: [['Line', 'SkPath (stroke) + SkPath (gradient fill)'], ['Candle', '{ bodies[], wicks[] } screen rects'], ['Grid', 'label entries with per-label alpha fade']]
   },
@@ -1627,7 +1627,8 @@ const ARCH = [
     ] },
   { name: 'hooks', color: COL.purple, badge: 'derived', desc: 'Derived values + gestures',
     nodes: [
-      ['useChartPaths.ts', 'Build/ping-pong line + fill SkPath'],
+      ['usePathBuilder.ts', 'Worklet-shareable PathBuilder (reused via SharedValue)'],
+      ['useChartPaths.ts', 'Line + fill SkPath via PathBuilder.detach()'],
       ['useCandlePaths.ts', 'Candle geometry'],
       ['useYAxis.ts', 'Grid entries + alpha fades'],
       ['useCrosshair.ts', 'Single-series scrub (pan gesture)'],
