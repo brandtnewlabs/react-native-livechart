@@ -3,16 +3,14 @@ import {
   Group,
   Path,
   RoundedRect,
-  Skia,
   Text as SkiaText,
   type SkFont,
-  type SkPath,
 } from "@shopify/react-native-skia";
-import { useRef } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
+import { usePathBuilder } from "../hooks/usePathBuilder";
 import { useReferenceLine } from "../hooks/useReferenceLine";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { referenceLineForm } from "../math/referenceLines";
@@ -65,131 +63,91 @@ export function ReferenceLineOverlay({
   const badgeBorderColor = line.badgeBorderColor ?? color;
   const badgeRadius = line.badgeRadius ?? OFF_AXIS_PILL_RADIUS;
 
-  const cacheRef = useRef<{
-    lineA: SkPath;
-    lineB: SkPath;
-    lineT: boolean;
-    bandA: SkPath;
-    bandB: SkPath;
-    bandT: boolean;
-    borderA: SkPath;
-    borderB: SkPath;
-    borderT: boolean;
-    offA: SkPath;
-    offB: SkPath;
-    offT: boolean;
-    chevA: SkPath;
-    chevB: SkPath;
-    chevT: boolean;
-  } | null>(null);
-  if (cacheRef.current === null) {
-    cacheRef.current = {
-      lineA: Skia.Path.Make(),
-      lineB: Skia.Path.Make(),
-      lineT: false,
-      bandA: Skia.Path.Make(),
-      bandB: Skia.Path.Make(),
-      bandT: false,
-      borderA: Skia.Path.Make(),
-      borderB: Skia.Path.Make(),
-      borderT: false,
-      offA: Skia.Path.Make(),
-      offB: Skia.Path.Make(),
-      offT: false,
-      chevA: Skia.Path.Make(),
-      chevB: Skia.Path.Make(),
-      chevT: false,
-    };
-  }
+  const lineBuilder = usePathBuilder();
+  const bandBuilder = usePathBuilder();
+  const borderBuilder = usePathBuilder();
+  const offBuilder = usePathBuilder();
+  const chevBuilder = usePathBuilder();
 
   const linePath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.lineT = !cache.lineT;
-    const p = cache.lineT ? cache.lineA : cache.lineB;
-    p.reset();
+    const b = lineBuilder.value;
     const l = layout.get();
-    if (!l.visible || l.offAxis || isBand) return p;
-    p.moveTo(l.x1, l.y);
-    p.lineTo(l.x2, l.y);
-    return p;
+    if (l.visible && !l.offAxis && !isBand) {
+      b.moveTo(l.x1, l.y);
+      b.lineTo(l.x2, l.y);
+    }
+    return b.detach();
   });
 
   const bandPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.bandT = !cache.bandT;
-    const p = cache.bandT ? cache.bandA : cache.bandB;
-    p.reset();
+    const b = bandBuilder.value;
     const l = layout.get();
-    if (!l.visible || !isBand) return p;
-    p.moveTo(l.x1, l.y);
-    p.lineTo(l.x2, l.y);
-    p.lineTo(l.x2, l.yBottom);
-    p.lineTo(l.x1, l.yBottom);
-    p.close();
-    return p;
+    if (l.visible && isBand) {
+      b.moveTo(l.x1, l.y);
+      b.lineTo(l.x2, l.y);
+      b.lineTo(l.x2, l.yBottom);
+      b.lineTo(l.x1, l.yBottom);
+      b.close();
+    }
+    return b.detach();
   });
 
   const bandBorderPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.borderT = !cache.borderT;
-    const p = cache.borderT ? cache.borderA : cache.borderB;
-    p.reset();
+    const b = borderBuilder.value;
     const l = layout.get();
-    if (!l.visible || !hasBandBorder) return p;
-    if (form === "time-band") {
-      // Vertical edges at the band's left / right.
-      p.moveTo(l.x1, l.y);
-      p.lineTo(l.x1, l.yBottom);
-      p.moveTo(l.x2, l.y);
-      p.lineTo(l.x2, l.yBottom);
-    } else {
-      // Horizontal edges at the band's top / bottom.
-      p.moveTo(l.x1, l.y);
-      p.lineTo(l.x2, l.y);
-      p.moveTo(l.x1, l.yBottom);
-      p.lineTo(l.x2, l.yBottom);
+    if (l.visible && hasBandBorder) {
+      if (form === "time-band") {
+        // Vertical edges at the band's left / right.
+        b.moveTo(l.x1, l.y);
+        b.lineTo(l.x1, l.yBottom);
+        b.moveTo(l.x2, l.y);
+        b.lineTo(l.x2, l.yBottom);
+      } else {
+        // Horizontal edges at the band's top / bottom.
+        b.moveTo(l.x1, l.y);
+        b.lineTo(l.x2, l.y);
+        b.moveTo(l.x1, l.yBottom);
+        b.lineTo(l.x2, l.yBottom);
+      }
     }
-    return p;
+    return b.detach();
   });
 
   const offLinePath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.offT = !cache.offT;
-    const p = cache.offT ? cache.offA : cache.offB;
-    p.reset();
+    const b = offBuilder.value;
     const l = layout.get();
-    if (!l.visible || !l.offAxis) return p;
-    // Start the connector just past the badge pill's right edge so the dashed
-    // line runs out to the chart edge rather than behind the badge.
-    const pillRight =
-      l.labelX + measureFontTextWidth(font, l.label) + OFF_AXIS_PILL_PAD_X;
-    const start = pillRight + 4;
-    if (start >= l.x2) return p;
-    p.moveTo(start, l.y);
-    p.lineTo(l.x2, l.y);
-    return p;
+    if (l.visible && l.offAxis) {
+      // Start the connector just past the badge pill's right edge so the dashed
+      // line runs out to the chart edge rather than behind the badge.
+      const pillRight =
+        l.labelX + measureFontTextWidth(font, l.label) + OFF_AXIS_PILL_PAD_X;
+      const start = pillRight + 4;
+      if (start < l.x2) {
+        b.moveTo(start, l.y);
+        b.lineTo(l.x2, l.y);
+      }
+    }
+    return b.detach();
   });
 
   const chevronPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.chevT = !cache.chevT;
-    const p = cache.chevT ? cache.chevA : cache.chevB;
-    p.reset();
+    const b = chevBuilder.value;
     const l = layout.get();
-    if (!l.visible || !l.offAxis) return p;
-    const cx = l.x1 + 6;
-    const cy = l.y;
-    const s = 4;
-    if (l.chevronUp) {
-      p.moveTo(cx - s, cy + s);
-      p.lineTo(cx, cy - s);
-      p.lineTo(cx + s, cy + s);
-    } else {
-      p.moveTo(cx - s, cy - s);
-      p.lineTo(cx, cy + s);
-      p.lineTo(cx + s, cy - s);
+    if (l.visible && l.offAxis) {
+      const cx = l.x1 + 6;
+      const cy = l.y;
+      const s = 4;
+      if (l.chevronUp) {
+        b.moveTo(cx - s, cy + s);
+        b.lineTo(cx, cy - s);
+        b.lineTo(cx + s, cy + s);
+      } else {
+        b.moveTo(cx - s, cy - s);
+        b.lineTo(cx, cy + s);
+        b.lineTo(cx + s, cy - s);
+      }
     }
-    return p;
+    return b.detach();
   });
 
   const lineOpacity = useDerivedValue(() =>

@@ -1,15 +1,9 @@
-import {
-  Group,
-  Path,
-  Skia,
-  type SkFont,
-  type SkPath,
-} from "@shopify/react-native-skia";
-import { useRef } from "react";
+import { Group, Path, type SkFont } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import type { XAxisEntry } from "../hooks/useXAxis";
+import { usePathBuilder } from "../hooks/usePathBuilder";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import type { LiveChartPalette } from "../types";
 import { AnimatedLabel } from "./AnimatedLabel";
@@ -31,40 +25,26 @@ export function XAxisOverlay({
   palette: LiveChartPalette;
   font: SkFont;
 }) {
-  const axisCacheRef = useRef<{
-    a: SkPath;
-    b: SkPath;
-    tick: boolean;
-  } | null>(null);
-  if (axisCacheRef.current === null) {
-    axisCacheRef.current = {
-      a: Skia.Path.Make(),
-      b: Skia.Path.Make(),
-      tick: false,
-    };
-  }
+  const axisBuilder = usePathBuilder();
 
   const axisPath = useDerivedValue(() => {
     "worklet";
-    const axisCache = axisCacheRef.current!;
-    axisCache.tick = !axisCache.tick;
-    const path = axisCache.tick ? axisCache.a : axisCache.b;
-    path.reset();
+    const b = axisBuilder.value;
     const w = engine.canvasWidth.get();
     const h = engine.canvasHeight.get();
     const lineY = h - padding.bottom;
 
     // Bottom axis line
-    path.moveTo(padding.left, lineY);
-    path.lineTo(w - padding.right, lineY);
+    b.moveTo(padding.left, lineY);
+    b.lineTo(w - padding.right, lineY);
 
     // Tick marks
     const items = entries.get();
     for (let i = 0; i < items.length; i++) {
-      path.moveTo(items[i].x, lineY);
-      path.lineTo(items[i].x, lineY + TICK_HEIGHT);
+      b.moveTo(items[i].x, lineY);
+      b.lineTo(items[i].x, lineY + TICK_HEIGHT);
     }
-    return path;
+    return b.detach();
   });
 
   // Transform XAxisEntry[] into { x, y, label, alpha } for AnimatedLabel

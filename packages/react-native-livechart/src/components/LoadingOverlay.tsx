@@ -4,13 +4,10 @@ import {
   Path,
   Rect,
   RoundedRect,
-  Skia,
   Text as SkiaText,
   vec,
   type SkFont,
-  type SkPath,
 } from "@shopify/react-native-skia";
-import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import {
   BADGE_METRICS_DEFAULTS,
@@ -22,6 +19,10 @@ import {
   pillTextLeftX,
   type ChartPadding,
 } from "../draw/line";
+import {
+  usePathBuilder,
+  type ReanimatedPathBuilder,
+} from "../hooks/usePathBuilder";
 import { drawSpline } from "../math/spline";
 import { buildSquigglyPts } from "../math/squiggly";
 import type {
@@ -37,14 +38,14 @@ const RECT_H = 4;
 const RECT_R = 4;
 const RECT_SPACING = 32;
 
-function buildSplineInto(path: ReturnType<typeof Skia.Path.Make>, pts: number[]) {
+function buildSplineDetached(b: ReanimatedPathBuilder, pts: number[]) {
   "worklet";
-  path.reset();
   const n = pts.length >> 1;
-  if (n < 2) return path;
-  path.moveTo(pts[0], pts[1]);
-  drawSpline(path, pts);
-  return path;
+  if (n >= 2) {
+    b.moveTo(pts[0], pts[1]);
+    drawSpline(b, pts);
+  }
+  return b.detach();
 }
 
 export function LoadingOverlay({
@@ -85,29 +86,14 @@ export function LoadingOverlay({
   const leftInset =
     badgeMetrics.dotGap + badgeTailAndCap(font.getSize(), badgeTail, badgeMetrics);
 
-  // Ping-pong persistent paths — avoid allocating a JSI-backed SkPath per frame
-  // while the squiggly loading/empty-state animation is running.
-  const squigglyCacheRef = useRef<{
-    a: SkPath;
-    b: SkPath;
-    tick: boolean;
-  } | null>(null);
-  if (squigglyCacheRef.current === null) {
-    squigglyCacheRef.current = {
-      a: Skia.Path.Make(),
-      b: Skia.Path.Make(),
-      tick: false,
-    };
-  }
+  // Squiggly path — built into a reused PathBuilder and detach()-ed each frame.
+  const squigglyBuilder = usePathBuilder();
 
   // Squiggly path — animated each frame via timestamp
   const squigglyPath = useDerivedValue(() => {
-    const squigglyCache = squigglyCacheRef.current!;
-    squigglyCache.tick = !squigglyCache.tick;
-    const path = squigglyCache.tick ? squigglyCache.a : squigglyCache.b;
+    const b = squigglyBuilder.value;
     if (!isLoading.get() && !isEmpty.value && morphT.get() >= 1) {
-      path.reset();
-      return path;
+      return b.detach();
     }
     const pts = buildSquigglyPts(
       engine.canvasWidth.get(),
@@ -115,7 +101,7 @@ export function LoadingOverlay({
       padding,
       engine.timestamp.get(),
     );
-    return buildSplineInto(path, pts);
+    return buildSplineDetached(b, pts);
   });
 
   // Fades out quickly as the reveal animation begins (first 33% of morphT)

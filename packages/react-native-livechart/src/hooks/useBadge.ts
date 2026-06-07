@@ -1,5 +1,4 @@
-import { Skia, type SkFont, type SkPath } from "@shopify/react-native-skia";
-import { useRef } from "react";
+import { type SkFont } from "@shopify/react-native-skia";
 import {
   useDerivedValue,
   useSharedValue,
@@ -25,6 +24,7 @@ import type {
   LiveChartPalette,
   Momentum,
 } from "../types";
+import { usePathBuilder } from "./usePathBuilder";
 
 export function useBadge(
   engine: ChartEngineWithLiveValue,
@@ -48,32 +48,17 @@ export function useBadge(
   const downRgb = hexToRgb(palette.dotDown);
   const accentRgb = hexToRgb(palette.badgeBg);
 
-  // Ping-pong between two persistent badge paths so the derived value always
-  // returns a freshly-mutated SkPath without allocating a new one every frame.
-  // See useChartPaths for the full rationale on per-frame Skia.Path.Make().
-  const cacheRef = useRef<{
-    a: SkPath;
-    b: SkPath;
-    tick: boolean;
-  } | null>(null);
-  if (cacheRef.current === null) {
-    cacheRef.current = {
-      a: Skia.Path.Make(),
-      b: Skia.Path.Make(),
-      tick: false,
-    };
-  }
+  // Pill path is built into a reused PathBuilder and finalized with detach()
+  // each frame — a fresh immutable SkPath, no per-frame Skia.Path.Make().
+  const badgeBuilder = usePathBuilder();
 
   const badge = useDerivedValue(() => {
-    const cache = cacheRef.current!;
+    const b = badgeBuilder.value;
     const w = engine.canvasWidth.get();
     const h = engine.canvasHeight.get();
-    cache.tick = !cache.tick;
-    const path = cache.tick ? cache.a : cache.b;
-    path.reset();
     if (w === 0 || h === 0) {
       return {
-        path,
+        path: b.detach(),
         textX: 0,
         textY: 0,
         text: "",
@@ -108,7 +93,7 @@ export function useBadge(
       const bodyLeft = Math.max(badgeMetrics.marginEdge, bodyRight - pillW);
       const pillBodyW = bodyRight - bodyLeft;
       textX = (bodyLeft + bodyRight - textW) / 2;
-      path.addRRect({
+      b.addRRect({
         rect: { x: bodyLeft, y: badgeY, width: pillBodyW, height: pillH },
         rx: r,
         ry: r,
@@ -132,16 +117,16 @@ export function useBadge(
         const badgeX = w - padding.right + badgeMetrics.dotGap;
         const cx = tl + pillW - r;
 
-        path.moveTo(badgeX + tl, badgeY);
-        path.lineTo(badgeX + cx, badgeY);
-        path.arcToOval(
+        b.moveTo(badgeX + tl, badgeY);
+        b.lineTo(badgeX + cx, badgeY);
+        b.arcToOval(
           { x: badgeX + cx - r, y: badgeY, width: r * 2, height: pillH },
           -90,
           180,
           false,
         );
-        path.lineTo(badgeX + tl, badgeY + pillH);
-        path.cubicTo(
+        b.lineTo(badgeX + tl, badgeY + pillH);
+        b.cubicTo(
           badgeX + badgeMetrics.tailLength + 2,
           badgeY + pillH,
           badgeX + 3,
@@ -149,7 +134,7 @@ export function useBadge(
           badgeX,
           badgeY + r,
         );
-        path.cubicTo(
+        b.cubicTo(
           badgeX + 3,
           badgeY + r - badgeMetrics.tailSpread,
           badgeX + badgeMetrics.tailLength + 2,
@@ -157,9 +142,9 @@ export function useBadge(
           badgeX + tl,
           badgeY,
         );
-        path.close();
+        b.close();
       } else {
-        path.addRRect({
+        b.addRRect({
           rect: { x: bodyLeft, y: badgeY, width: pillW, height: pillH },
           rx: r,
           ry: r,
@@ -199,7 +184,7 @@ export function useBadge(
     const textColor =
       variant === "minimal" ? "rgba(100,100,100,1)" : palette.badgeText;
 
-    return { path, textX, textY, text, bgColor, textColor };
+    return { path: b.detach(), textX, textY, text, bgColor, textColor };
   });
 
   return badge;

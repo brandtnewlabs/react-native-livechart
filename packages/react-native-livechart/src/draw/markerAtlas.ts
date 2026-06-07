@@ -207,17 +207,17 @@ function cellSpec(m: Marker, palette: LiveChartPalette, font: SkFont): CellSpec 
       w: box,
       h: box,
       draw: (canvas, cx, cy) => {
-        const p = Skia.Path.Make();
+        const pb = Skia.PathBuilder.Make();
         for (let k = 0; k < 10; k++) {
           const ang = -Math.PI / 2 + (k * Math.PI) / 5;
           const rad = k % 2 === 0 ? outer : inner;
           const px = cx + rad * Math.cos(ang);
           const py = cy + rad * Math.sin(ang);
-          if (k === 0) p.moveTo(px, py);
-          else p.lineTo(px, py);
+          if (k === 0) pb.moveTo(px, py);
+          else pb.lineTo(px, py);
         }
-        p.close();
-        canvas.drawPath(p, fillPaint(color));
+        pb.close();
+        canvas.drawPath(pb.detach(), fillPaint(color));
       },
     };
   }
@@ -229,15 +229,15 @@ function cellSpec(m: Marker, palette: LiveChartPalette, font: SkFont): CellSpec 
       w: box,
       h: box,
       draw: (canvas, cx, cy) => {
-        const p = Skia.Path.Make();
+        const pb = Skia.PathBuilder.Make();
         for (let k = 0; k < 4; k++) {
           const ang = (k * Math.PI) / 4;
           const dx = L * Math.cos(ang);
           const dy = L * Math.sin(ang);
-          p.moveTo(cx - dx, cy - dy);
-          p.lineTo(cx + dx, cy + dy);
+          pb.moveTo(cx - dx, cy - dy);
+          pb.lineTo(cx + dx, cy + dy);
         }
-        canvas.drawPath(p, strokePaint(color, 1.5, true));
+        canvas.drawPath(pb.detach(), strokePaint(color, 1.5, true));
       },
     };
   }

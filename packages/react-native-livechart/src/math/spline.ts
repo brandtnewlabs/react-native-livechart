@@ -1,4 +1,3 @@
-import type { SkPath } from "@shopify/react-native-skia";
 import type { LiveChartPoint } from "../types";
 
 /**
@@ -33,7 +32,28 @@ export function makeSplineScratch(): SplineScratch {
  *
  * @see https://github.com/benjitaylor/liveline
  */
-export function drawSpline(path: SkPath, pts: number[], scratch?: SplineScratch) {
+/**
+ * Minimal structural sink for {@link drawSpline}: just the verb-emitting methods
+ * it calls. Both `SkPath` and `SkPathBuilder` satisfy it, so the spline can be
+ * built into either a mutable `SkPath` or a `Skia.PathBuilder`.
+ */
+export type SplinePathSink = {
+  lineTo: (x: number, y: number) => unknown;
+  cubicTo: (
+    c1x: number,
+    c1y: number,
+    c2x: number,
+    c2y: number,
+    x: number,
+    y: number,
+  ) => unknown;
+};
+
+export function drawSpline(
+  path: SplinePathSink,
+  pts: number[],
+  scratch?: SplineScratch,
+) {
   "worklet";
   const n = pts.length >> 1;
   if (n < 2) return;

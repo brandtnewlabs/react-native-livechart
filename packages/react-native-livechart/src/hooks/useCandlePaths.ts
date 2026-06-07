@@ -1,5 +1,4 @@
-import { Skia, type SkPath } from "@shopify/react-native-skia";
-import { useRef } from "react";
+import { Skia } from "@shopify/react-native-skia";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -12,15 +11,15 @@ import { buildCandleGeometry } from "../draw/candle";
 import type { ChartPadding } from "../draw/line";
 import { lerp } from "../math/lerp";
 import type { CandleMetrics, CandlePoint } from "../types";
+import { usePathBuilder } from "./usePathBuilder";
 
 const CANDLE_WIDTH_LERP_SPEED = 0.08;
 
 /**
- * Persistent candle `SkPath`s — two per geometry slot (up/down bodies + up/down wicks).
- * Each derived value ping-pongs between its pair and mutates the picked path in place
- * so we don't allocate a new JSI-backed `SkPath` per frame. See {@link useChartPaths}
- * for the rationale (this was the primary driver of the iOS memory climb under live
- * ticking).
+ * Candle paths (up/down bodies + up/down wicks). Each is built into a reused
+ * `Skia.PathBuilder` and finalized with `detach()` each frame — a fresh
+ * immutable `SkPath`, so Skia repaints without a per-curve ping-pong and no
+ * mutable `SkPath` is retained across frames.
  */
 export function useCandlePaths(
   engine: SingleEngineState,
@@ -34,36 +33,10 @@ export function useCandlePaths(
   const targetCandleWidth = useDerivedValue(() => candleWidthSecs);
   const displayCandleWidth = useSharedValue(candleWidthSecs);
 
-  const cacheRef = useRef<{
-    upBodiesA: SkPath;
-    upBodiesB: SkPath;
-    downBodiesA: SkPath;
-    downBodiesB: SkPath;
-    upWicksA: SkPath;
-    upWicksB: SkPath;
-    downWicksA: SkPath;
-    downWicksB: SkPath;
-    ubTick: boolean;
-    dbTick: boolean;
-    uwTick: boolean;
-    dwTick: boolean;
-  } | null>(null);
-  if (cacheRef.current === null) {
-    cacheRef.current = {
-      upBodiesA: Skia.Path.Make(),
-      upBodiesB: Skia.Path.Make(),
-      downBodiesA: Skia.Path.Make(),
-      downBodiesB: Skia.Path.Make(),
-      upWicksA: Skia.Path.Make(),
-      upWicksB: Skia.Path.Make(),
-      downWicksA: Skia.Path.Make(),
-      downWicksB: Skia.Path.Make(),
-      ubTick: false,
-      dbTick: false,
-      uwTick: false,
-      dwTick: false,
-    };
-  }
+  const upBodiesBuilder = usePathBuilder();
+  const downBodiesBuilder = usePathBuilder();
+  const upWicksBuilder = usePathBuilder();
+  const downWicksBuilder = usePathBuilder();
 
   useFrameCallback((frameInfo) => {
     "worklet";
@@ -99,68 +72,56 @@ export function useCandlePaths(
 
   /* istanbul ignore next -- worklet */
   const upBodiesPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.ubTick = !cache.ubTick;
-    const path = cache.ubTick ? cache.upBodiesA : cache.upBodiesB;
-    path.reset();
+    const b = upBodiesBuilder.value;
     const { bodies } = geometry.value;
     for (let i = 0; i < bodies.length; i++) {
       if (bodies[i].up) {
-        path.addRect(
+        b.addRect(
           Skia.XYWHRect(bodies[i].x, bodies[i].y, bodies[i].w, bodies[i].h),
         );
       }
     }
-    return path;
+    return b.detach();
   });
 
   /* istanbul ignore next -- worklet */
   const downBodiesPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.dbTick = !cache.dbTick;
-    const path = cache.dbTick ? cache.downBodiesA : cache.downBodiesB;
-    path.reset();
+    const b = downBodiesBuilder.value;
     const { bodies } = geometry.value;
     for (let i = 0; i < bodies.length; i++) {
       if (!bodies[i].up) {
-        path.addRect(
+        b.addRect(
           Skia.XYWHRect(bodies[i].x, bodies[i].y, bodies[i].w, bodies[i].h),
         );
       }
     }
-    return path;
+    return b.detach();
   });
 
   /* istanbul ignore next -- worklet */
   const upWicksPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.uwTick = !cache.uwTick;
-    const path = cache.uwTick ? cache.upWicksA : cache.upWicksB;
-    path.reset();
+    const b = upWicksBuilder.value;
     const { wicks } = geometry.value;
     for (let i = 0; i < wicks.length; i++) {
       if (wicks[i].up) {
-        path.moveTo(wicks[i].x, wicks[i].y1);
-        path.lineTo(wicks[i].x, wicks[i].y2);
+        b.moveTo(wicks[i].x, wicks[i].y1);
+        b.lineTo(wicks[i].x, wicks[i].y2);
       }
     }
-    return path;
+    return b.detach();
   });
 
   /* istanbul ignore next -- worklet */
   const downWicksPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.dwTick = !cache.dwTick;
-    const path = cache.dwTick ? cache.downWicksA : cache.downWicksB;
-    path.reset();
+    const b = downWicksBuilder.value;
     const { wicks } = geometry.value;
     for (let i = 0; i < wicks.length; i++) {
       if (!wicks[i].up) {
-        path.moveTo(wicks[i].x, wicks[i].y1);
-        path.lineTo(wicks[i].x, wicks[i].y2);
+        b.moveTo(wicks[i].x, wicks[i].y1);
+        b.lineTo(wicks[i].x, wicks[i].y2);
       }
     }
-    return path;
+    return b.detach();
   });
 
   return { upBodiesPath, downBodiesPath, upWicksPath, downWicksPath } as const;
