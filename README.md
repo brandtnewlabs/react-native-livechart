@@ -13,6 +13,8 @@ High-performance **live** line and candlestick charts for React Native, built on
 
 📖 **[Documentation →](https://react-native-livechart.brandtnewlabs.com)**
 
+🤖 **Docs MCP** — point an AI assistant (Claude, Cursor, …) at the docs via the hosted MCP server: `https://react-native-livechart.brandtnewlabs.com/mcp`
+
 <!-- TODO(hero): replace this comment with a demo GIF/screenshot, e.g.:
      <p align="center"><img src="https://raw.githubusercontent.com/brandtnewlabs/react-native-livechart/main/assets/images/demo.gif" alt="react-native-livechart demo" width="320" /></p>
      Capture from the Expo example app (npm start). -->
