@@ -1,6 +1,6 @@
 import type { CandlePoint, LiveChartPoint } from "../types";
 
-import { ADAPTIVE_SPEED_BOOST } from "../constants";
+import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
 
 export interface EngineTickMutable {
@@ -18,6 +18,8 @@ export interface EngineTickInput {
   timeWindow: number;
   smoothing: number;
   exaggerate: boolean;
+  /** Extra catch-up speed added to `smoothing` when the live value lags. Default `0.12`. */
+  adaptiveSpeedBoost?: number;
   referenceValue: number | undefined;
   /** Additional reference values (lines + bands) folded into the Y range. */
   referenceValues?: number[];
@@ -68,7 +70,10 @@ export function tickLiveChartEngineFrame(
   const range = state.displayMax - state.displayMin;
   const gapRatio =
     range > 0 ? Math.min(Math.abs(target - state.displayValue) / range, 1) : 0;
-  const adaptiveSpeed = speed + (1 - gapRatio) * ADAPTIVE_SPEED_BOOST;
+  const adaptiveSpeed =
+    speed +
+    (1 - gapRatio) *
+      (input.adaptiveSpeedBoost ?? MOTION_METRICS_DEFAULTS.adaptiveSpeedBoost);
 
   state.displayValue = lerp(
     state.displayValue,

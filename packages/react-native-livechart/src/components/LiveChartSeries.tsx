@@ -28,6 +28,7 @@ import {
   resolveGridStyle,
   resolveLeftEdgeFade,
   resolveLegend,
+  resolveMetrics,
   resolveMultiSeriesDot,
   resolveScrub,
   resolveXAxis,
@@ -123,6 +124,7 @@ function useLiveChartSeriesController({
   referenceLines,
   gridStyle,
   palette: paletteOverride,
+  metrics,
   scrub = false,
   onScrub,
   onSeriesToggle,
@@ -149,6 +151,7 @@ function useLiveChartSeriesController({
   const dotOuterRadius = dotCfg.radius + (dotCfg.ring?.width ?? 0);
   const legendCfg = resolveLegend(legendProp);
   const degenCfg = resolveDegen(degen);
+  const metricsCfg = resolveMetrics(metrics);
 
   const allRefLines = referenceLines ?? [];
   const refValues = collectReferenceValues(allRefLines);
@@ -208,6 +211,7 @@ function useLiveChartSeriesController({
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
     badge: false,
+    badgeMetrics: metricsCfg.badge,
     xAxis: xAxisCfg !== null,
     font: skiaFont,
     formatValue,
@@ -240,6 +244,7 @@ function useLiveChartSeriesController({
     timeWindow,
     paused,
     smoothing,
+    adaptiveSpeedBoost: metricsCfg.motion.adaptiveSpeedBoost,
     exaggerate,
     referenceValues: refValues,
     nonNegative,
@@ -286,6 +291,7 @@ function useLiveChartSeriesController({
     formatValue,
     skiaFont,
     yAxisCfg?.minGap ?? 36,
+    metricsCfg.grid,
   );
 
   const { xAxisEntries } = useXAxis(
@@ -339,6 +345,7 @@ function useLiveChartSeriesController({
     dotOuterRadius,
     legendCfg,
     degenCfg,
+    metricsCfg,
     allRefLines,
     leftEdgeFadeCfg,
     // theme / layout / fonts
@@ -402,6 +409,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     markersSV,
     series,
     emptyText,
+    metricsCfg,
   } = model;
 
   return (
@@ -526,6 +534,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         emptyText={emptyText}
         strokeWidth={strokeWidth}
         badge={false}
+        emptyMetrics={metricsCfg.emptyState}
       />
     </Group>
   );

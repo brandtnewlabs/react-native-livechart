@@ -13,10 +13,8 @@ import {
 import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import {
-  BADGE_DOT_GAP,
-  EMPTY_GAP_FADE_WIDTH,
-  EMPTY_STATE_LABEL_ALPHA,
-  EMPTY_TEXT_GAP_PAD,
+  BADGE_METRICS_DEFAULTS,
+  EMPTY_STATE_METRICS_DEFAULTS,
 } from "../constants";
 import {
   badgeTailAndCap,
@@ -26,7 +24,11 @@ import {
 } from "../draw/line";
 import { drawSpline } from "../math/spline";
 import { buildSquigglyPts } from "../math/squiggly";
-import type { LiveChartPalette } from "../types";
+import type {
+  BadgeMetrics,
+  EmptyStateMetrics,
+  LiveChartPalette,
+} from "../types";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 const PLACEHOLDER_LABEL_COUNT = 4;
@@ -57,6 +59,8 @@ export function LoadingOverlay({
   strokeWidth,
   badge = false,
   badgeTail = true,
+  badgeMetrics = BADGE_METRICS_DEFAULTS,
+  emptyMetrics = EMPTY_STATE_METRICS_DEFAULTS,
 }: {
   engine: ChartEngineLayout;
   padding: ChartPadding;
@@ -72,9 +76,14 @@ export function LoadingOverlay({
   badge?: boolean;
   /** Whether the badge tail spike is shown; affects the left inset used for skeleton alignment. */
   badgeTail?: boolean;
+  /** Badge pill geometry tokens (kept in sync with GridOverlay/useBadge). */
+  badgeMetrics?: BadgeMetrics;
+  /** Empty-state layout tokens. */
+  emptyMetrics?: EmptyStateMetrics;
 }) {
   // Same left-inset formula as GridOverlay (only used when badge=true)
-  const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize(), badgeTail);
+  const leftInset =
+    badgeMetrics.dotGap + badgeTailAndCap(font.getSize(), badgeTail, badgeMetrics);
 
   // Ping-pong persistent paths — avoid allocating a JSI-backed SkPath per frame
   // while the squiggly loading/empty-state animation is running.
@@ -127,7 +136,7 @@ export function LoadingOverlay({
     const chartH = h - padding.top - padding.bottom;
     // Mirror GridOverlay: pillTextLeftX when badge is on, gutterCenteredTextLeftX otherwise
     const x = badge
-      ? pillTextLeftX(w, padding.right, leftInset, RECT_W)
+      ? pillTextLeftX(w, padding.right, leftInset, RECT_W, badgeMetrics)
       : gutterCenteredTextLeftX(w, padding.right, RECT_W);
     // Centre the group of rects around the chart's vertical midpoint
     const groupH = (PLACEHOLDER_LABEL_COUNT - 1) * RECT_SPACING;
@@ -157,7 +166,7 @@ export function LoadingOverlay({
         gapRight: 0,
         centerY: 0,
         eraseH: 0,
-        fadeW: EMPTY_GAP_FADE_WIDTH,
+        fadeW: emptyMetrics.gapFadeWidth,
         textX: 0,
         textY: 0,
         textW: 0,
@@ -168,8 +177,8 @@ export function LoadingOverlay({
     const centerY = padding.top + chartH / 2;
     const chartCentreX = (padding.left + w - padding.right) / 2;
     const textW = font.measureText(emptyText).width;
-    const gapHalf = textW / 2 + EMPTY_TEXT_GAP_PAD;
-    const fadeW = EMPTY_GAP_FADE_WIDTH;
+    const gapHalf = textW / 2 + emptyMetrics.gapPad;
+    const fadeW = emptyMetrics.gapFadeWidth;
     const gapLeft = chartCentreX - gapHalf - fadeW;
     const gapRight = chartCentreX + gapHalf + fadeW;
     const eraseH = Math.max(56, chartH * 0.28) + strokeWidth;
@@ -221,7 +230,7 @@ export function LoadingOverlay({
     isEmpty.value ? emptyText : "",
   );
   const emptyLabelOpacity = useDerivedValue(() =>
-    isEmpty.value ? EMPTY_STATE_LABEL_ALPHA : 0,
+    isEmpty.value ? emptyMetrics.labelOpacity : 0,
   );
 
   return (

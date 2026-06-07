@@ -1,4 +1,5 @@
-import type { CandlePoint } from "../types";
+import { CANDLE_METRICS_DEFAULTS } from "../constants";
+import type { CandleMetrics, CandlePoint } from "../types";
 import type { ChartPadding } from "./line";
 
 export interface CandleRect {
@@ -20,9 +21,6 @@ export interface CandleGeometry {
   bodies: CandleRect[];
   wicks: CandleWick[];
 }
-
-const MIN_BODY_PX = 1;
-const MAX_BODY_PX = 40;
 
 function candleTimeToX(
   t: number,
@@ -62,6 +60,7 @@ function appendCandleShapes(
   valRange: number,
   candleWidthSecs: number,
   bodyW: number,
+  minBodyPx: number,
   bodies: CandleRect[],
   wicks: CandleWick[],
 ): void {
@@ -94,7 +93,7 @@ function appendCandleShapes(
     valRange,
     chartH,
   );
-  const bodyH = Math.max(MIN_BODY_PX, bodyBot - bodyTop);
+  const bodyH = Math.max(minBodyPx, bodyBot - bodyTop);
 
   let bx = xCenter - bodyW / 2;
   let bw = bodyW;
@@ -132,6 +131,7 @@ export function buildCandleGeometry(
   displayMin: number,
   displayMax: number,
   candleWidthSecs: number,
+  metrics: CandleMetrics = CANDLE_METRICS_DEFAULTS,
 ): CandleGeometry {
   "worklet";
   const chartW = canvasW - padding.left - padding.right;
@@ -142,7 +142,10 @@ export function buildCandleGeometry(
     return { bodies: [], wicks: [] };
 
   const slotPx = (candleWidthSecs / windowSecs) * chartW;
-  const bodyW = Math.max(1, Math.min(slotPx * 0.8, slotPx - 2, MAX_BODY_PX));
+  const bodyW = Math.max(
+    1,
+    Math.min(slotPx * metrics.bodyWidthRatio, slotPx - 2, metrics.maxBodyPx),
+  );
 
   const bodies: CandleRect[] = [];
   const wicks: CandleWick[] = [];
@@ -180,6 +183,7 @@ export function buildCandleGeometry(
       valRange,
       candleWidthSecs,
       bodyW,
+      metrics.minBodyPx,
       bodies,
       wicks,
     );
@@ -201,6 +205,7 @@ export function buildCandleGeometry(
       valRange,
       candleWidthSecs,
       bodyW,
+      metrics.minBodyPx,
       bodies,
       wicks,
     );

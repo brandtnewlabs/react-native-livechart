@@ -6,12 +6,12 @@ import {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
-import { MS_PER_FRAME_60FPS } from "../constants";
+import { CANDLE_METRICS_DEFAULTS, MS_PER_FRAME_60FPS } from "../constants";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { buildCandleGeometry } from "../draw/candle";
 import type { ChartPadding } from "../draw/line";
 import { lerp } from "../math/lerp";
-import type { CandlePoint } from "../types";
+import type { CandleMetrics, CandlePoint } from "../types";
 
 const CANDLE_WIDTH_LERP_SPEED = 0.08;
 
@@ -29,6 +29,7 @@ export function useCandlePaths(
   liveCandle: SharedValue<CandlePoint | null> | undefined,
   candleWidthSecs: number,
   active: boolean,
+  candleMetrics: CandleMetrics = CANDLE_METRICS_DEFAULTS,
 ) {
   const targetCandleWidth = useDerivedValue(() => candleWidthSecs);
   const displayCandleWidth = useSharedValue(candleWidthSecs);
@@ -92,6 +93,7 @@ export function useCandlePaths(
       engine.displayMin.value,
       engine.displayMax.value,
       displayCandleWidth.get(),
+      candleMetrics,
     );
   });
 

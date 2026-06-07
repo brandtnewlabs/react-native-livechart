@@ -16,6 +16,7 @@ import {
   resolveAutoRight,
   resolvePadding,
 } from "../../src/draw/line";
+import { BADGE_METRICS_DEFAULTS } from "../../src/constants";
 
 describe("gutterCenteredTextLeftX", () => {
   it("matches grid label placement", () => {
@@ -231,5 +232,45 @@ describe("buildLinePoints", () => {
     const out = buildLinePoints(data, 1, now, 30, 0, 10, 200, 120, pad);
     const n = out.length >> 1;
     expect(n).toBeGreaterThan(0);
+  });
+});
+
+describe("badge geometry metrics overrides", () => {
+  it("badgeTailAndCap honors custom tailLength and padY", () => {
+    const m = { ...BADGE_METRICS_DEFAULTS, tailLength: 12, padY: 5 };
+    // tailLength + (fontSize + padY*2)/2 = 12 + (12 + 10)/2 = 12 + 11 = 23
+    expect(badgeTailAndCap(12, true, m)).toBe(23);
+    // showTail=false drops the tail term -> (12 + 10)/2 = 11
+    expect(badgeTailAndCap(12, false, m)).toBe(11);
+  });
+
+  it("minPaddingRightForBadgeYAxisAlign honors custom dotGap/padX/marginEdge", () => {
+    const base = minPaddingRightForBadgeYAxisAlign(12, 35);
+    const wider = minPaddingRightForBadgeYAxisAlign(12, 35, true, {
+      ...BADGE_METRICS_DEFAULTS,
+      dotGap: BADGE_DOT_GAP + 10,
+    });
+    expect(wider - base).toBe(10);
+  });
+
+  it("minPaddingLeftForBadge honors custom geometry", () => {
+    const m = { ...BADGE_METRICS_DEFAULTS, padX: BADGE_PILL_PAD_X + 5 };
+    const base = minPaddingLeftForBadge(40);
+    // padX appears twice in the formula -> +10
+    expect(minPaddingLeftForBadge(40, m) - base).toBe(10);
+  });
+
+  it("resolvePadding threads badge metrics into the auto right gutter", () => {
+    const wide = resolvePadding(
+      undefined,
+      true,
+      true,
+      false,
+      true,
+      true,
+      { ...BADGE_METRICS_DEFAULTS, marginEdge: BADGE_MARGIN_RIGHT + 8 },
+    );
+    const base = resolvePadding(undefined, true, true, false, true, true);
+    expect(wide.right - base.right).toBe(8);
   });
 });

@@ -6,11 +6,8 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import {
-  BADGE_DOT_GAP,
-  BADGE_MARGIN_RIGHT,
-  BADGE_PILL_PAD_X,
-  BADGE_PILL_PAD_Y,
-  BADGE_TAIL_LEN,
+  BADGE_METRICS_DEFAULTS,
+  MOTION_METRICS_DEFAULTS,
   MS_PER_FRAME_60FPS,
 } from "../constants";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
@@ -22,9 +19,12 @@ import {
 } from "../draw/line";
 import { hexToRgb, lerpColor } from "../math/color";
 import { lerp } from "../math/lerp";
-import type { BadgeVariant, LiveChartPalette, Momentum } from "../types";
-
-const TAIL_SPREAD = 2.5;
+import type {
+  BadgeMetrics,
+  BadgeVariant,
+  LiveChartPalette,
+  Momentum,
+} from "../types";
 
 export function useBadge(
   engine: ChartEngineWithLiveValue,
@@ -37,6 +37,8 @@ export function useBadge(
   momentum?: SharedValue<Momentum>,
   position: "right" | "left" = "right",
   background?: string,
+  badgeMetrics: BadgeMetrics = BADGE_METRICS_DEFAULTS,
+  badgeColorSpeed: number = MOTION_METRICS_DEFAULTS.badgeColorSpeed,
 ) {
   const colorR = useSharedValue(0);
   const colorG = useSharedValue(0);
@@ -93,7 +95,7 @@ export function useBadge(
     const text = formatValue(engine.displayValue.get());
     const textW = measureFontTextWidth(font, text);
 
-    const pillH = font.getSize() + BADGE_PILL_PAD_Y * 2;
+    const pillH = font.getSize() + badgeMetrics.padY * 2;
     const r = pillH / 2;
     const badgeY = dotY - pillH / 2;
     let textX: number;
@@ -101,9 +103,9 @@ export function useBadge(
     if (position === "left") {
       // Pill to the left of the live dot; no tail (`showTail` applies to right gutter only).
       const dotXPos = w - padding.right;
-      const pillW = 2 * BADGE_PILL_PAD_X + textW;
-      const bodyRight = dotXPos - BADGE_DOT_GAP;
-      const bodyLeft = Math.max(BADGE_MARGIN_RIGHT, bodyRight - pillW);
+      const pillW = 2 * badgeMetrics.padX + textW;
+      const bodyRight = dotXPos - badgeMetrics.dotGap;
+      const bodyLeft = Math.max(badgeMetrics.marginEdge, bodyRight - pillW);
       const pillBodyW = bodyRight - bodyLeft;
       textX = (bodyLeft + bodyRight - textW) / 2;
       path.addRRect({
@@ -113,15 +115,21 @@ export function useBadge(
       });
     } else {
       // Right-gutter badge (default): asymmetric layout with optional tail.
-      const tl = badgeTailAndCap(font.getSize(), showTail);
-      const bodyLeft = w - padding.right + BADGE_DOT_GAP + tl;
-      const bodyRight = w - BADGE_MARGIN_RIGHT;
+      const tl = badgeTailAndCap(font.getSize(), showTail, badgeMetrics);
+      const bodyLeft = w - padding.right + badgeMetrics.dotGap + tl;
+      const bodyRight = w - badgeMetrics.marginEdge;
       const pillW = bodyRight - bodyLeft;
       // Text centered in pill body — same formula used by GridOverlay.
-      textX = pillTextLeftX(w, padding.right, BADGE_DOT_GAP + tl, textW);
+      textX = pillTextLeftX(
+        w,
+        padding.right,
+        badgeMetrics.dotGap + tl,
+        textW,
+        badgeMetrics,
+      );
 
       if (showTail) {
-        const badgeX = w - padding.right + BADGE_DOT_GAP;
+        const badgeX = w - padding.right + badgeMetrics.dotGap;
         const cx = tl + pillW - r;
 
         path.moveTo(badgeX + tl, badgeY);
@@ -134,17 +142,17 @@ export function useBadge(
         );
         path.lineTo(badgeX + tl, badgeY + pillH);
         path.cubicTo(
-          badgeX + BADGE_TAIL_LEN + 2,
+          badgeX + badgeMetrics.tailLength + 2,
           badgeY + pillH,
           badgeX + 3,
-          badgeY + r + TAIL_SPREAD,
+          badgeY + r + badgeMetrics.tailSpread,
           badgeX,
           badgeY + r,
         );
         path.cubicTo(
           badgeX + 3,
-          badgeY + r - TAIL_SPREAD,
-          badgeX + BADGE_TAIL_LEN + 2,
+          badgeY + r - badgeMetrics.tailSpread,
+          badgeX + badgeMetrics.tailLength + 2,
           badgeY,
           badgeX + tl,
           badgeY,
@@ -170,9 +178,15 @@ export function useBadge(
     } else if (momentum) {
       const m = momentum.get();
       const targetRgb = m === "up" ? upRgb : m === "down" ? downRgb : accentRgb;
-      colorR.set(lerp(colorR.get(), targetRgb[0], 0.08, MS_PER_FRAME_60FPS));
-      colorG.set(lerp(colorG.get(), targetRgb[1], 0.08, MS_PER_FRAME_60FPS));
-      colorB.set(lerp(colorB.get(), targetRgb[2], 0.08, MS_PER_FRAME_60FPS));
+      colorR.set(
+        lerp(colorR.get(), targetRgb[0], badgeColorSpeed, MS_PER_FRAME_60FPS),
+      );
+      colorG.set(
+        lerp(colorG.get(), targetRgb[1], badgeColorSpeed, MS_PER_FRAME_60FPS),
+      );
+      colorB.set(
+        lerp(colorB.get(), targetRgb[2], badgeColorSpeed, MS_PER_FRAME_60FPS),
+      );
       bgColor = lerpColor(
         [colorR.get(), colorG.get(), colorB.get()],
         [colorR.get(), colorG.get(), colorB.get()],

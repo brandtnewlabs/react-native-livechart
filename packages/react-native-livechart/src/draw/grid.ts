@@ -1,4 +1,6 @@
+import { GRID_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
+import type { GridMetrics } from "../types";
 
 export interface YAxisEntry {
   y: number;
@@ -64,9 +66,6 @@ function divisible(val: number, interval: number): boolean {
   return Math.abs(ratio - Math.round(ratio)) < 0.01;
 }
 
-const FADE_IN = 0.18;
-const FADE_OUT = 0.12;
-
 /** Map data value → canvas Y (nested arrows inside worklets are not UI-thread-safe). */
 function gridValueToY(
   val: number,
@@ -94,6 +93,7 @@ export function computeGridEntries(
   formatValue: (v: number) => string,
   dt: number,
   minGap = 36,
+  grid: GridMetrics = GRID_METRICS_DEFAULTS,
 ): { entries: YAxisEntry[]; interval: number } {
   "worklet";
   const chartH = canvasHeight - padTop - padBottom;
@@ -135,7 +135,7 @@ export function computeGridEntries(
     const key = Number(keys[i]);
     const alpha = labelAlphas[key];
     const target = targets[key] ?? 0;
-    const speed = target >= alpha ? FADE_IN : FADE_OUT;
+    const speed = target >= alpha ? grid.fadeInSpeed : grid.fadeOutSpeed;
     let next = lerp(alpha, target, speed, dt);
     if (Math.abs(next - target) < 0.02) next = target;
     if (next < 0.01 && target === 0) {
@@ -152,7 +152,7 @@ export function computeGridEntries(
     /* istanbul ignore else -- key already tracked after phase 2 when targets repeat across frames */
     if (labelAlphas[key] === undefined) {
       /* istanbul ignore next -- targets keys always map to a number; ?? keeps types safe */
-      labelAlphas[key] = (targets[key] ?? 0) * FADE_IN;
+      labelAlphas[key] = (targets[key] ?? 0) * grid.fadeInSpeed;
     }
   }
 

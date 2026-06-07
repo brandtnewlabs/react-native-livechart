@@ -1,32 +1,72 @@
+import type {
+  BadgeMetrics,
+  CandleMetrics,
+  EmptyStateMetrics,
+  GridMetrics,
+  MotionMetrics,
+} from "./types";
+
 /** Milliseconds per frame at 60 fps — baseline for frame-rate-independent lerp. */
 export const MS_PER_FRAME_60FPS = 16.67;
 
-/** Extra speed applied to catch up when the live dot lags behind the target. */
-export const ADAPTIVE_SPEED_BOOST = 0.12;
+// ─── Metric default tokens (single source of truth for LiveChartMetrics) ─────
+// The resolved `metrics` config (see resolveMetrics) is assembled from these
+// objects. Draw/worklet helpers default their metric params to the matching
+// object so call sites that don't thread metrics keep the built-in behavior.
 
+/** Default value-badge pill geometry. */
+export const BADGE_METRICS_DEFAULTS: BadgeMetrics = {
+  padX: 10,
+  padY: 3,
+  tailLength: 5,
+  marginEdge: 4,
+  dotGap: 12,
+  tailSpread: 2.5,
+};
+
+/** Default candlestick body/wick geometry. */
+export const CANDLE_METRICS_DEFAULTS: CandleMetrics = {
+  minBodyPx: 1,
+  maxBodyPx: 40,
+  bodyWidthRatio: 0.8,
+};
+
+/** Default grid + axis-label fade speeds. */
+export const GRID_METRICS_DEFAULTS: GridMetrics = {
+  fadeInSpeed: 0.18,
+  fadeOutSpeed: 0.12,
+};
+
+/** Default per-frame lerp speeds for value/color transitions. */
+export const MOTION_METRICS_DEFAULTS: MotionMetrics = {
+  badgeColorSpeed: 0.08,
+  adaptiveSpeedBoost: 0.12,
+};
+
+/** Default empty-state (no-data) layout. */
+export const EMPTY_STATE_METRICS_DEFAULTS: EmptyStateMetrics = {
+  labelOpacity: 0.35,
+  gapPad: 20,
+  gapFadeWidth: 30,
+};
+
+// Back-compat scalar aliases — canonical source is BADGE_METRICS_DEFAULTS above.
 /** Horizontal padding inside the badge pill, on each side of the label. */
-export const BADGE_PILL_PAD_X = 10;
+export const BADGE_PILL_PAD_X = BADGE_METRICS_DEFAULTS.padX;
 /** Vertical padding above and below the label inside the badge pill. */
-export const BADGE_PILL_PAD_Y = 3;
+export const BADGE_PILL_PAD_Y = BADGE_METRICS_DEFAULTS.padY;
 /** Length of the badge tail (the pointed spike toward the dot). */
-export const BADGE_TAIL_LEN = 5;
+export const BADGE_TAIL_LEN = BADGE_METRICS_DEFAULTS.tailLength;
 /** Gap between the pill's right edge and the canvas right edge. */
-export const BADGE_MARGIN_RIGHT = 4;
+export const BADGE_MARGIN_RIGHT = BADGE_METRICS_DEFAULTS.marginEdge;
 /** Gap between the live dot and the badge tail tip. */
-export const BADGE_DOT_GAP = 12;
+export const BADGE_DOT_GAP = BADGE_METRICS_DEFAULTS.dotGap;
 
 /** Maximum simultaneous series rendered (paths/dots slots). */
 export const MAX_MULTI_SERIES = 12;
 
 /** Default width (px) of the left-edge fade band */
 export const FADE_EDGE_WIDTH = 40;
-
-/** Empty-state label opacity. */
-export const EMPTY_STATE_LABEL_ALPHA = 0.35;
-/** Half-padding (px) around empty text for the squiggle “gap” erase band. */
-export const EMPTY_TEXT_GAP_PAD = 20;
-/** Horizontal fade width (px) on each side of the empty-text gap. */
-export const EMPTY_GAP_FADE_WIDTH = 30;
 
 /**
  * Floats per degen particle slot: `x, y, vx, vy, t0, active, size, colorIndex`.

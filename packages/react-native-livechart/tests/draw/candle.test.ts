@@ -203,3 +203,42 @@ describe("buildCandleGeometry", () => {
     expect(result.bodies[0].x).toBeCloseTo(xCenter - result.bodies[0].w / 2, 1);
   });
 });
+
+describe("candle geometry metrics overrides", () => {
+  const c = [makeCandle(0, 100, 110, 90, 105)];
+
+  it("caps body width at maxBodyPx", () => {
+    const def = buildCandleGeometry(c, null, pad, 1000, 210, 0, 60, 90, 110, 60);
+    expect(def.bodies[0].w).toBe(40); // default maxBodyPx
+    const narrow = buildCandleGeometry(c, null, pad, 1000, 210, 0, 60, 90, 110, 60, {
+      minBodyPx: 1,
+      maxBodyPx: 20,
+      bodyWidthRatio: 0.8,
+    });
+    expect(narrow.bodies[0].w).toBe(20);
+  });
+
+  it("scales body width by bodyWidthRatio", () => {
+    // chartW = 60 - 20 = 40, slotPx = 40; ratio binds below maxBodyPx.
+    const def = buildCandleGeometry(c, null, pad, 60, 210, 0, 60, 90, 110, 60);
+    expect(def.bodies[0].w).toBe(32); // 40 * 0.8
+    const thin = buildCandleGeometry(c, null, pad, 60, 210, 0, 60, 90, 110, 60, {
+      minBodyPx: 1,
+      maxBodyPx: 40,
+      bodyWidthRatio: 0.5,
+    });
+    expect(thin.bodies[0].w).toBe(20); // 40 * 0.5
+  });
+
+  it("floors body height at minBodyPx for a doji", () => {
+    const doji = [makeCandle(0, 100, 110, 90, 100)]; // open === close
+    const def = buildCandleGeometry(doji, null, pad, 1000, 210, 0, 60, 90, 110, 60);
+    expect(def.bodies[0].h).toBe(1); // default minBodyPx
+    const tall = buildCandleGeometry(doji, null, pad, 1000, 210, 0, 60, 90, 110, 60, {
+      minBodyPx: 6,
+      maxBodyPx: 40,
+      bodyWidthRatio: 0.8,
+    });
+    expect(tall.bodies[0].h).toBe(6);
+  });
+});

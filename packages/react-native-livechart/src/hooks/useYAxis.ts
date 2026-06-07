@@ -1,10 +1,11 @@
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 
 import type { SkFont } from "@shopify/react-native-skia";
-import { MS_PER_FRAME_60FPS } from "../constants";
+import { GRID_METRICS_DEFAULTS, MS_PER_FRAME_60FPS } from "../constants";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import { computeGridEntries } from "../draw/grid";
 import type { ChartPadding } from "../draw/line";
+import type { GridMetrics } from "../types";
 
 /**
  * Compute Y-axis grid entries (values + labels) with animated fade-in/out.
@@ -17,6 +18,7 @@ export function useYAxis(
   formatValue: (v: number) => string,
   font: SkFont,
   minGap = 36,
+  gridMetrics: GridMetrics = GRID_METRICS_DEFAULTS,
 ) {
   const prevInterval = useSharedValue(0);
   const labelAlphas = useSharedValue<Record<number, number>>({});
@@ -36,6 +38,7 @@ export function useYAxis(
       formatValue,
       dt,
       minGap,
+      gridMetrics,
     );
 
     prevInterval.set(result.interval);

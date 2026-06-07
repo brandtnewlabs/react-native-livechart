@@ -549,6 +549,92 @@ export interface CandlePoint {
   close: number;
 }
 
+// ── Metrics (sizing & motion tokens) ─────────────────────────────────────────
+
+/**
+ * Spatial sizing & motion tokens — the geometry/timing analogue of
+ * {@link LiveChartPalette}. Where `palette` controls *color*, `metrics` controls
+ * *shape* (badge geometry, candle bounds) and *feel* (fade/lerp speeds). Override
+ * via the `metrics` prop; only the namespaces/keys you set are replaced.
+ */
+export interface LiveChartMetrics {
+  /** Value-badge pill geometry. */
+  badge: BadgeMetrics;
+  /** Candlestick body/wick geometry. */
+  candle: CandleMetrics;
+  /** Grid + axis-label fade animation. */
+  grid: GridMetrics;
+  /** Per-frame lerp speeds for value/color transitions. */
+  motion: MotionMetrics;
+  /** Empty-state (no-data) layout. */
+  emptyState: EmptyStateMetrics;
+}
+
+/** Value-badge pill geometry (the "metrics" analogue of badge colors). */
+export interface BadgeMetrics {
+  /** Horizontal padding inside the pill, each side of the label. Default `10`. */
+  padX: number;
+  /** Vertical padding above and below the label. Default `3`. */
+  padY: number;
+  /** Length of the pointed tail toward the live dot. Default `5`. */
+  tailLength: number;
+  /** Gap between the pill's outer edge and the canvas edge. Default `4`. */
+  marginEdge: number;
+  /** Gap between the live dot and the badge tail tip. Default `12`. */
+  dotGap: number;
+  /** Vertical spread of the tail curve's control points. Default `2.5`. */
+  tailSpread: number;
+}
+
+/** Candlestick body/wick geometry. */
+export interface CandleMetrics {
+  /** Minimum candle body height in pixels (so dojis stay visible). Default `1`. */
+  minBodyPx: number;
+  /** Maximum candle body width in pixels. Default `40`. */
+  maxBodyPx: number;
+  /** Body width as a fraction of the per-candle slot width (0–1). Default `0.8`. */
+  bodyWidthRatio: number;
+}
+
+/** Grid-line and axis-label fade animation speeds. */
+export interface GridMetrics {
+  /** Per-frame alpha lerp speed when a grid line / label fades in. Default `0.18`. */
+  fadeInSpeed: number;
+  /** Per-frame alpha lerp speed when a grid line / label fades out. Default `0.12`. */
+  fadeOutSpeed: number;
+}
+
+/** Per-frame lerp speeds for value/color transitions. */
+export interface MotionMetrics {
+  /** Per-frame lerp speed for the badge background color transition. Default `0.08`. */
+  badgeColorSpeed: number;
+  /** Extra catch-up speed added to `smoothing` when the live value lags its target. Default `0.12`. */
+  adaptiveSpeedBoost: number;
+}
+
+/** Empty-state (no-data) layout. */
+export interface EmptyStateMetrics {
+  /** Opacity of the empty-state label. Default `0.35`. */
+  labelOpacity: number;
+  /** Half-padding (px) around the empty text for the squiggle "gap" erase band. Default `20`. */
+  gapPad: number;
+  /** Horizontal fade width (px) on each side of the empty-text gap. Default `30`. */
+  gapFadeWidth: number;
+}
+
+/**
+ * Caller-supplied `metrics` override — every namespace and field is optional, and
+ * only the keys you set replace the resolved default (per-namespace shallow merge,
+ * same model as `palette`).
+ */
+export interface LiveChartMetricsOverride {
+  badge?: Partial<BadgeMetrics>;
+  candle?: Partial<CandleMetrics>;
+  grid?: Partial<GridMetrics>;
+  motion?: Partial<MotionMetrics>;
+  emptyState?: Partial<EmptyStateMetrics>;
+}
+
 // ── Component Props ──────────────────────────────────────────────────────────
 
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
@@ -622,6 +708,12 @@ export interface LiveChartCoreProps {
    * `accentColor` + `theme`. Only the keys you set are replaced.
    */
   palette?: Partial<LiveChartPalette>;
+  /**
+   * Override sizing & motion tokens — the geometry/feel analogue of `palette`.
+   * Namespaced (`badge`, `candle`, `grid`, `motion`, `emptyState`); only the keys
+   * you set are replaced. See {@link LiveChartMetrics}.
+   */
+  metrics?: LiveChartMetricsOverride;
   /**
    * Right-edge buffer as a fraction of `timeWindow`. Pushes the live edge past the
    * current time so the latest point has breathing room; pass `0` to land the latest
