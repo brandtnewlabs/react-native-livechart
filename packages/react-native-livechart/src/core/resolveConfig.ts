@@ -148,6 +148,28 @@ export interface ResolvedLeftEdgeFadeConfig {
 
 // ─── Resolver functions ───────────────────────────────────────────────────────
 
+/**
+ * Uniform `boolean | Config` feature-flag resolver, shared by every toggle below.
+ * - `false` → `null` (explicitly disabled)
+ * - `undefined` → `defaultOn ? defaults : null` (the feature's default state)
+ * - `true` → `defaults`
+ * - object → defaults shallow-merged with the caller's overrides
+ *
+ * `defaultOn` makes each toggle's default explicit at the resolver. Toggles whose
+ * default-on is owned by the component prop (e.g. `badge = true`) pass
+ * `defaultOn: false` here, so a bare resolver call without that default stays off.
+ */
+function resolveToggle<C extends object, R extends object>(
+  prop: boolean | C | undefined,
+  defaults: R,
+  defaultOn: boolean,
+): R | null {
+  if (prop === false) return null;
+  if (prop == null) return defaultOn ? defaults : null;
+  if (prop === true) return defaults;
+  return { ...defaults, ...prop } as R;
+}
+
 const VALUE_LINE_DEFAULTS: ResolvedValueLineConfig = {
   strokeWidth: 1,
   intervals: [4, 4],
@@ -161,9 +183,7 @@ const VALUE_LINE_DEFAULTS: ResolvedValueLineConfig = {
 export function resolveValueLine(
   prop: boolean | ValueLineConfig | undefined,
 ): ResolvedValueLineConfig | null {
-  if (!prop) return null;
-  if (prop === true) return VALUE_LINE_DEFAULTS;
-  return { ...VALUE_LINE_DEFAULTS, ...prop };
+  return resolveToggle(prop, VALUE_LINE_DEFAULTS, false);
 }
 
 const BADGE_DEFAULTS: ResolvedBadgeConfig = {
@@ -180,9 +200,7 @@ const BADGE_DEFAULTS: ResolvedBadgeConfig = {
 export function resolveBadge(
   prop: boolean | BadgeConfig | undefined,
 ): ResolvedBadgeConfig | null {
-  if (!prop) return null;
-  if (prop === true) return BADGE_DEFAULTS;
-  return { ...BADGE_DEFAULTS, ...prop };
+  return resolveToggle(prop, BADGE_DEFAULTS, false);
 }
 
 const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
@@ -196,9 +214,7 @@ const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
 export function resolveYAxis(
   prop: boolean | YAxisConfig | undefined,
 ): ResolvedYAxisConfig | null {
-  if (!prop) return null;
-  if (prop === true) return Y_AXIS_DEFAULTS;
-  return { ...Y_AXIS_DEFAULTS, ...prop };
+  return resolveToggle(prop, Y_AXIS_DEFAULTS, false);
 }
 
 const X_AXIS_DEFAULTS: ResolvedXAxisConfig = {
@@ -207,14 +223,12 @@ const X_AXIS_DEFAULTS: ResolvedXAxisConfig = {
 
 /**
  * Resolves `xAxis` prop to a fully-typed config or null (disabled).
- * Defaults to enabled (`true`) so `undefined` also returns the defaults.
+ * Defaults to enabled (`true`) so a bare `undefined` also returns the defaults.
  */
 export function resolveXAxis(
   prop: boolean | XAxisConfig | undefined,
 ): ResolvedXAxisConfig | null {
-  if (prop === false) return null;
-  if (prop === undefined || prop === true) return X_AXIS_DEFAULTS;
-  return { ...X_AXIS_DEFAULTS, ...prop };
+  return resolveToggle(prop, X_AXIS_DEFAULTS, true);
 }
 
 const SCRUB_DEFAULTS: ResolvedScrubConfig = {
@@ -235,9 +249,7 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
 export function resolveScrub(
   prop: boolean | ScrubConfig | undefined,
 ): ResolvedScrubConfig | null {
-  if (!prop) return null;
-  if (prop === true) return SCRUB_DEFAULTS;
-  return { ...SCRUB_DEFAULTS, ...prop };
+  return resolveToggle(prop, SCRUB_DEFAULTS, false);
 }
 
 const GRADIENT_DEFAULTS: ResolvedGradientConfig = {
@@ -252,9 +264,7 @@ const GRADIENT_DEFAULTS: ResolvedGradientConfig = {
 export function resolveGradient(
   prop: boolean | GradientConfig | undefined,
 ): ResolvedGradientConfig | null {
-  if (!prop) return null;
-  if (prop === true) return GRADIENT_DEFAULTS;
-  return { ...GRADIENT_DEFAULTS, ...prop };
+  return resolveToggle(prop, GRADIENT_DEFAULTS, false);
 }
 
 /** Fallback when no theme background is passed (e.g. unit tests). */
@@ -304,9 +314,7 @@ const PULSE_DEFAULTS: ResolvedPulseConfig = {
 export function resolvePulse(
   prop: boolean | PulseConfig | undefined,
 ): ResolvedPulseConfig | null {
-  if (!prop) return null;
-  if (prop === true) return PULSE_DEFAULTS;
-  return { ...PULSE_DEFAULTS, ...prop };
+  return resolveToggle(prop, PULSE_DEFAULTS, false);
 }
 
 const REFERENCE_LINE_VISUAL_DEFAULTS = {
@@ -508,9 +516,7 @@ const RING_DEFAULTS: ResolvedDotRingConfig = {
 export function resolveDotRing(
   prop: boolean | DotRingConfig | undefined,
 ): ResolvedDotRingConfig | null {
-  if (prop === false) return null;
-  if (prop === undefined || prop === true) return RING_DEFAULTS;
-  return { ...RING_DEFAULTS, ...prop };
+  return resolveToggle(prop, RING_DEFAULTS, true);
 }
 
 /** Shared, fully-resolved dot styling (single- and multi-series). */
@@ -528,8 +534,18 @@ const DOT_DEFAULTS: ResolvedDotConfig = {
   color: undefined,
 };
 
-export function resolveDot(prop: DotConfig | undefined): ResolvedDotConfig {
-  if (!prop) return DOT_DEFAULTS;
+/**
+ * Resolves the `dot` prop. Always returns a config (the live dot's geometry is
+ * read unconditionally); visibility rides on `show`.
+ * - `false` → defaults with `show: false` (the canonical "hide the dot")
+ * - `undefined`/`true` → shown defaults
+ * - object → merged with defaults (honoring an explicit `show`)
+ */
+export function resolveDot(
+  prop: boolean | DotConfig | undefined,
+): ResolvedDotConfig {
+  if (prop === false) return { ...DOT_DEFAULTS, show: false };
+  if (prop == null || prop === true) return DOT_DEFAULTS;
   return {
     radius: prop.radius ?? DOT_DEFAULTS.radius,
     ring: resolveDotRing(prop.ring),
@@ -547,13 +563,14 @@ export interface ResolvedMultiSeriesDotConfig extends ResolvedDotConfig {
 }
 
 export function resolveMultiSeriesDot(
-  prop: MultiSeriesDotConfig | undefined,
+  prop: boolean | MultiSeriesDotConfig | undefined,
 ): ResolvedMultiSeriesDotConfig {
+  const cfg = typeof prop === "object" && prop !== null ? prop : undefined;
   return {
     ...resolveDot(prop),
-    pulse: resolvePulse(prop?.pulse ?? true),
-    valueLine: resolveValueLine(prop?.valueLine),
-    valueLabel: prop?.valueLabel ?? true,
+    pulse: resolvePulse(cfg?.pulse ?? true),
+    valueLine: resolveValueLine(cfg?.valueLine),
+    valueLabel: cfg?.valueLabel ?? true,
   };
 }
 

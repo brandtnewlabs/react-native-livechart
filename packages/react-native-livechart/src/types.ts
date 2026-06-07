@@ -424,7 +424,12 @@ export interface DotConfig {
    * `DotRingConfig`. Default `true`.
    */
   ring?: boolean | DotRingConfig;
-  /** Show the dot. `false` hides it (line, badge, and labels still render). Default `true`. */
+  /**
+   * Show the dot. `false` hides it (line, badge, and labels still render). Default `true`.
+   *
+   * @deprecated Pass `dot={false}` to hide the dot — the uniform `boolean | Config`
+   * convention. `show` still works and is equivalent to `dot={{ show: false }}`.
+   */
   show?: boolean;
   /** Dot fill color. Defaults to the chart line color (per series for multi-series). */
   color?: string;
@@ -757,8 +762,11 @@ export interface LiveChartProps extends LiveChartCoreProps {
   momentum?: boolean | Momentum | MomentumConfig;
   /** Pulsing ring animation on the live dot. `true` = defaults, or pass `PulseConfig`. Default `true`. */
   pulse?: boolean | PulseConfig;
-  /** Live dot styling: `radius`, `ring` (halo), `show`, `color`. See {@link DotConfig}. */
-  dot?: DotConfig;
+  /**
+   * Live dot styling. `true`/omitted = shown defaults, `false` = hidden, or pass
+   * `DotConfig` (`radius`, `ring` halo, `color`). See {@link DotConfig}. Default `true`.
+   */
+  dot?: boolean | DotConfig;
   /** Horizontal dashed line at the current live value. `true` = defaults, or pass `ValueLineConfig`. */
   valueLine?: boolean | ValueLineConfig;
   /** Render the live value as a large text overlay in the top-left. Default `false`. */
@@ -803,8 +811,12 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
   series: SharedValue<SeriesConfig[]>;
   /** Called when a series toggle chip is tapped. */
   onSeriesToggle?: (id: string, visible: boolean) => void;
-  /** Live dot configuration (radius, pulse, value line, inline labels). */
-  dot?: MultiSeriesDotConfig;
+  /**
+   * Per-series live dot configuration. `true`/omitted = shown defaults, `false` =
+   * hidden, or pass `MultiSeriesDotConfig` (radius, pulse, value line, inline
+   * labels). Default `true`.
+   */
+  dot?: boolean | MultiSeriesDotConfig;
   /** Legend (toggle chips) configuration. `true` = defaults, `false` = hidden, or pass `LegendConfig`. Default `true`. */
   legend?: boolean | LegendConfig;
   /**

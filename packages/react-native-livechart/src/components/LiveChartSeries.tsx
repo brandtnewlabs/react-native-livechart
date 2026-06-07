@@ -125,7 +125,7 @@ function useLiveChartSeriesController({
   gridStyle,
   palette: paletteOverride,
   metrics,
-  scrub = false,
+  scrub = true,
   onScrub,
   onSeriesToggle,
   dot: dotProp,
