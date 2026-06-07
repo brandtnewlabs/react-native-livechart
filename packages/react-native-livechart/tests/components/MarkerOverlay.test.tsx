@@ -97,7 +97,7 @@ describe("MarkerOverlay", () => {
           time: 999,
           kind: "trade",
           value: 50,
-          image: {} as never,
+          image: { width: () => 20, height: () => 20 } as never,
           size: 20,
         },
       ]);

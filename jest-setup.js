@@ -71,6 +71,27 @@ jest.mock("@shopify/react-native-skia", () => {
     rewind: jest.fn(),
   });
 
+  const createCanvas = () => ({
+    save: jest.fn(),
+    restore: jest.fn(),
+    translate: jest.fn(),
+    drawCircle: jest.fn(),
+    drawText: jest.fn(),
+    drawPath: jest.fn(),
+    drawImageRect: jest.fn(),
+    drawImage: jest.fn(),
+    clear: jest.fn(),
+  });
+
+  const createMockPaint = () => ({
+    setAntiAlias: jest.fn(),
+    setColor: jest.fn(),
+    setStyle: jest.fn(),
+    setStrokeWidth: jest.fn(),
+    setStrokeCap: jest.fn(),
+    setStrokeJoin: jest.fn(),
+  });
+
   const mockFont = {
     getSize: () => 12,
     measureText: (text) => ({
@@ -96,8 +117,13 @@ jest.mock("@shopify/react-native-skia", () => {
     DashPathEffect: View,
     Blur: View,
     Image: View,
+    Atlas: View,
     LinearGradient: View,
     vec: (x, y) => ({ x, y }),
+    PaintStyle: { Fill: 0, Stroke: 1 },
+    StrokeCap: { Butt: 0, Round: 1, Square: 2 },
+    StrokeJoin: { Miter: 0, Round: 1, Bevel: 2 },
+    drawAsImageFromPicture: jest.fn(() => ({})),
     matchFont: jest.fn(() => mockFont),
     useFont: jest.fn(() => mockFont),
     useFonts: jest.fn(() => null),
@@ -108,6 +134,14 @@ jest.mock("@shopify/react-native-skia", () => {
       FontMgr: {
         System: jest.fn(() => ({})),
       },
+      PictureRecorder: jest.fn(() => ({
+        beginRecording: jest.fn(() => createCanvas()),
+        finishRecordingAsPicture: jest.fn(() => ({})),
+      })),
+      RSXform: jest.fn((scos, ssin, tx, ty) => ({ scos, ssin, tx, ty })),
+      XYWHRect: jest.fn((x, y, width, height) => ({ x, y, width, height })),
+      Color: jest.fn((c) => c),
+      Paint: jest.fn(() => createMockPaint()),
     },
   };
 });
