@@ -43,6 +43,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   change array size when the live-dot extent changed; the affected
   `useDerivedValue`s now use explicit dependency arrays.
 
+### Performance
+
+- The line is now decimated to ~2 points per horizontal pixel (min/max per pixel
+  column, preserving the envelope and volatility spikes). Previously every visible
+  sample was rebuilt and stroked each frame, so a dense or wide time window that
+  saturated over time made the per-frame cost scale with sample count rather than
+  canvas width — dropping frames, most visibly while scrubbing. Sparse windows are
+  unchanged. Bounds the per-frame line cost to the canvas width regardless of data
+  density.
+
 ## [1.1.0] - 2026-06-05
 
 ### Added

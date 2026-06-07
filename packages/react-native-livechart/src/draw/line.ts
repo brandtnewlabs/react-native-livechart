@@ -252,12 +252,80 @@ export function buildLinePoints(
   }
   const startIdx = Math.max(0, lo - 1);
 
-  for (let i = startIdx; i < data.length; i++) {
-    if (data[i].time > now) break;
+  // End of the visible range: first index strictly after `now` (upper bound).
+  let elo = startIdx;
+  let ehi = data.length;
+  while (elo < ehi) {
+    const emid = (elo + ehi) >> 1;
+    if (data[emid].time <= now) elo = emid + 1;
+    else ehi = emid;
+  }
+  const endIdx = elo;
+
+  const xScale = chartW / windowSecs;
+  const yScale = chartH / valRange;
+
+  // Decimate to ~2 points per horizontal pixel once the window is denser than
+  // that. Drawing more points than the canvas is wide is wasted per-frame work
+  // (array build + Skia stroke) that scales with sample count rather than
+  // pixels — the dominant cost on dense / wide-window charts, and the reason
+  // scrubbing a saturated window drops frames. Below the threshold we keep the
+  // exact per-sample path (and existing behaviour) untouched.
+  const maxPlainPoints = Math.ceil(chartW * 2);
+
+  if (endIdx - startIdx <= maxPlainPoints) {
+    for (let i = startIdx; i < endIdx; i++) {
+      pts.push(
+        padding.left + (data[i].time - winStart) * xScale,
+        padding.top + (displayMax - data[i].value) * yScale,
+      );
+    }
+  } else {
+    // Min/max-per-pixel-column decimation: within each pixel column keep the
+    // lowest- and highest-value samples (emitted in their original time order)
+    // so the line's envelope and any volatility spikes survive at full vertical
+    // fidelity while the point count stays bounded by the canvas width.
+    let curCol = -2147483648;
+    let minIdx = startIdx;
+    let maxIdx = startIdx;
+    for (let i = startIdx; i < endIdx; i++) {
+      const col = ((data[i].time - winStart) * xScale) | 0;
+      if (col !== curCol) {
+        if (curCol !== -2147483648) {
+          const a = minIdx <= maxIdx ? minIdx : maxIdx;
+          const b = minIdx <= maxIdx ? maxIdx : minIdx;
+          pts.push(
+            padding.left + (data[a].time - winStart) * xScale,
+            padding.top + (displayMax - data[a].value) * yScale,
+          );
+          if (b !== a) {
+            pts.push(
+              padding.left + (data[b].time - winStart) * xScale,
+              padding.top + (displayMax - data[b].value) * yScale,
+            );
+          }
+        }
+        curCol = col;
+        minIdx = i;
+        maxIdx = i;
+      } else {
+        if (data[i].value < data[minIdx].value) minIdx = i;
+        if (data[i].value > data[maxIdx].value) maxIdx = i;
+      }
+    }
+    // Flush the final column.
+    const a = minIdx <= maxIdx ? minIdx : maxIdx;
+    const b = minIdx <= maxIdx ? maxIdx : minIdx;
     pts.push(
-      padding.left + ((data[i].time - winStart) / windowSecs) * chartW,
-      padding.top + ((displayMax - data[i].value) / valRange) * chartH,
+      padding.left + (data[a].time - winStart) * xScale,
+      padding.top + (displayMax - data[a].value) * yScale,
     );
+    if (b !== a) {
+      pts.push(
+        padding.left + (data[b].time - winStart) * xScale,
+        padding.top + (displayMax - data[b].value) * yScale,
+      );
+    }
   }
 
   // Live tip at current time with smoothed value
