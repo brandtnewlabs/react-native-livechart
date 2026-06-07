@@ -10,8 +10,8 @@ import { LiveChartSeries } from "react-native-livechart";
 
 `LiveChartSeries` draws several line series sharing an axis, time window, and crosshair. It
 accepts all the shared theming, axis, range, layout, and text props from
-[`LiveChart`](/api-reference/livechart) (`theme`, `accentColor`, `palette`, `font`, `timeWindow`,
-`yAxis`, `referenceLines`, `formatValue`, …), plus the multi-series props below.
+[`LiveChart`](/api-reference/livechart) (`theme`, `accentColor`, `palette`, `metrics`, `font`,
+`timeWindow`, `yAxis`, `referenceLines`, `formatValue`, …), plus the multi-series props below.
 
 ## Series data
 
@@ -31,17 +31,19 @@ accepts all the shared theming, axis, range, layout, and text props from
 
 ## Dots
 
-<ParamField body="dot" type="MultiSeriesDotConfig">
-  Per-series live dots: `radius`, `ring`, `show`, `color`, `pulse`, `valueLine`,
+<ParamField body="dot" type="boolean | MultiSeriesDotConfig" default="true">
+  Per-series live dots: `radius`, `ring`, `color`, `pulse`, `valueLine`,
   `valueLabel`. Each dot is haloed with a contrasting outer `ring` by default
   (matching the single-series live dot); pass `ring: false` for a flat circle,
-  `show: false` to hide the dots, or `color` to override the per-series fill.
+  `dot={false}` to hide the dots, or `color` to override the per-series fill.
+  (The deprecated `dot={{ show: false }}` still hides them.)
 </ParamField>
 
 ## Scrub
 
 <ParamField body="scrub" type="boolean | ScrubConfig" default="true">
-  Crosshair scrubbing on drag.
+  Crosshair scrubbing on drag. **As of v2 this defaults to `true`** (it previously
+  defaulted to `false`); pass `scrub={false}` to disable.
 </ParamField>
 
 <ParamField body="onScrub" type="(point: ScrubPointMulti | null) => void">
