@@ -62,7 +62,7 @@ Both compose from a shared set of overlay components and hooks in `src/component
 
 - **SharedValue-driven**: Data enters as `SharedValue<LiveChartPoint[]>`. The engine, path builders, and overlays all read SharedValues — React re-renders are minimal.
 - **Worklets**: Functions tagged `"worklet"` or used inside `useDerivedValue`/`useFrameCallback` run on the UI thread. Keep them free of JS-thread closures and non-worklet imports.
-- **SkPath reuse**: Drawing functions accept and `.rewind()` existing SkPath instances rather than allocating new ones each frame (iOS memory optimization).
+- **SkPath reuse**: Drawing functions `.reset()` and re-emit into persistent SkPath instances rather than allocating new ones each frame. Each curve keeps two paths and ping-pongs them per frame so the returned reference still changes and Reanimated re-notifies its subscribers (iOS memory optimization; see `useChartPaths.ts`).
 - **Library ships TypeScript source**: The package's `main`/`exports` point at `src/index.ts`. The consumer's Metro + Babel compiles it. `dist/` only contains `.d.ts` files.
 
 ## Testing
