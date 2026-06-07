@@ -45,6 +45,38 @@ Common keys include `line`, `fillTop` / `fillBottom`, `gridLine` / `gridLabel`,
 `crosshairLine`, and `tooltipBg` / `tooltipText`. See the [types reference](/api-reference/types)
 for the full `LiveChartPalette`.
 
+## Sizing and motion tokens
+
+Where `palette` controls _color_, `metrics` controls _shape_ (badge geometry, candle bounds) and
+_feel_ (fade and lerp speeds) — the same override model, namespaced. Only the keys you set are
+replaced; everything else keeps the built-in default.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  metrics={{
+    badge: { padX: 14, tailLength: 8 }, // roomier value pill
+    candle: { maxBodyPx: 24 }, // thinner candles
+    grid: { fadeInSpeed: 0.3 }, // snappier grid fade-in
+    motion: { badgeColorSpeed: 0.2 }, // faster badge color transitions
+  }}
+/>
+```
+
+The five namespaces:
+
+| Namespace    | Controls                                                                                  |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| `badge`      | Value-pill geometry: `padX`, `padY`, `tailLength`, `marginEdge`, `dotGap`, `tailSpread`.   |
+| `candle`     | Candle geometry: `minBodyPx`, `maxBodyPx`, `bodyWidthRatio`.                               |
+| `grid`       | Grid + axis-label fade: `fadeInSpeed`, `fadeOutSpeed`.                                     |
+| `motion`     | Lerp speeds: `badgeColorSpeed`, `adaptiveSpeedBoost` (extra catch-up on top of `smoothing`). |
+| `emptyState` | No-data layout: `labelOpacity`, `gapPad`, `gapFadeWidth`.                                  |
+
+`metrics` is available on both `LiveChart` and `LiveChartSeries`. See the
+[types reference](/api-reference/types) for the full `LiveChartMetrics` shape and every default.
+
 ## Grid & axes
 
 ```tsx

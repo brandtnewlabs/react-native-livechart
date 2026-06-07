@@ -163,7 +163,7 @@ interface DotRingConfig {
 interface DotConfig {
   radius?: number; // color-filled dot radius, default 3.5
   ring?: boolean | DotRingConfig; // haloed outer ring, default true
-  show?: boolean; // default true
+  show?: boolean; // @deprecated — prefer dot={false}; default true
   color?: string; // dot fill, defaults to the line color
 }
 interface MultiSeriesDotConfig extends DotConfig {
@@ -222,4 +222,60 @@ interface LiveChartPalette {
   tooltipBg: string; tooltipText: string; tooltipBorder: string;
   // ...glow, badge, and font-size keys
 }
+```
+
+## Metrics
+
+The geometry/motion analogue of `LiveChartPalette`. Override any subset via the `metrics` prop
+(per-namespace shallow merge — only the keys you set are replaced). See the
+[Theming guide](/guides/theming#sizing-and-motion-tokens).
+
+```ts
+interface LiveChartMetrics {
+  badge: BadgeMetrics;
+  candle: CandleMetrics;
+  grid: GridMetrics;
+  motion: MotionMetrics;
+  emptyState: EmptyStateMetrics;
+}
+
+interface BadgeMetrics {
+  padX: number;        // pill horizontal padding, default 10
+  padY: number;        // pill vertical padding, default 3
+  tailLength: number;  // tail spike toward the dot, default 5
+  marginEdge: number;  // gap from the canvas edge, default 4
+  dotGap: number;      // gap between the dot and the tail tip, default 12
+  tailSpread: number;  // tail curve control-point spread, default 2.5
+}
+
+interface CandleMetrics {
+  minBodyPx: number;      // min body height so dojis stay visible, default 1
+  maxBodyPx: number;      // max body width, default 40
+  bodyWidthRatio: number; // body width as a fraction of the slot, default 0.8
+}
+
+interface GridMetrics {
+  fadeInSpeed: number;  // per-frame alpha lerp when a line/label fades in, default 0.18
+  fadeOutSpeed: number; // per-frame alpha lerp when it fades out, default 0.12
+}
+
+interface MotionMetrics {
+  badgeColorSpeed: number;    // badge color transition lerp speed, default 0.08
+  adaptiveSpeedBoost: number; // extra catch-up over `smoothing` when the value lags, default 0.12
+}
+
+interface EmptyStateMetrics {
+  labelOpacity: number; // empty-state label opacity, default 0.35
+  gapPad: number;       // half-padding around the empty text, default 20
+  gapFadeWidth: number; // fade width each side of the empty-text gap, default 30
+}
+
+// `metrics` prop type — every namespace and field optional:
+type LiveChartMetricsOverride = {
+  badge?: Partial<BadgeMetrics>;
+  candle?: Partial<CandleMetrics>;
+  grid?: Partial<GridMetrics>;
+  motion?: Partial<MotionMetrics>;
+  emptyState?: Partial<EmptyStateMetrics>;
+};
 ```

@@ -5,6 +5,36 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - Unreleased
+
+### Added
+
+- **`metrics` prop** on both `LiveChart` and `LiveChartSeries` — sizing & motion
+  tokens, the geometry/feel analogue of `palette`. Namespaced (`badge`, `candle`,
+  `grid`, `motion`, `emptyState`) with per-key shallow-merge overrides. Exposes
+  previously-hardcoded constants: badge pill geometry, candle body bounds,
+  grid/axis fade speeds, badge color + adaptive catch-up lerp speeds, and
+  empty-state layout. New types: `LiveChartMetrics`, `LiveChartMetricsOverride`,
+  `BadgeMetrics`, `CandleMetrics`, `GridMetrics`, `MotionMetrics`,
+  `EmptyStateMetrics`.
+- `dot` now accepts a boolean on both charts — `dot={false}` hides the live dot,
+  `dot` / `dot={true}` uses shown defaults. Brings `dot` in line with the uniform
+  `boolean | Config` feature-flag convention shared by every other overlay.
+
+### Changed
+
+- **BREAKING:** `LiveChartSeries` enables crosshair scrubbing by default (`scrub`
+  previously defaulted to `false`, now `true`, matching `LiveChart`). Legend chips
+  sit outside the scrub gesture, so taps are unaffected. Pass `scrub={false}` to
+  restore the previous behavior.
+- Feature-flag resolution is unified behind a single `resolveToggle` helper, so
+  every overlay toggle follows the identical `boolean | Config` shape.
+
+### Deprecated
+
+- **BREAKING (soft):** `DotConfig.show` is deprecated in favor of `dot={false}`.
+  `dot={{ show: false }}` still works and is equivalent.
+
 ## [1.1.0] - 2026-06-05
 
 ### Added

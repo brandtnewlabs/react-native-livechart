@@ -57,12 +57,13 @@ provided; everything else has a default.
   Pulsing ring on the live dot.
 </ParamField>
 
-<ParamField body="dot" type="DotConfig">
-  Live dot styling — `radius`, `ring` (the contrasting outer halo, on by
-  default), `show`, and `color`. Pass `ring: false` for a flat dot, `show: false`
-  to hide it, or `color` to override the fill. The same `DotConfig` is shared
+<ParamField body="dot" type="boolean | DotConfig" default="true">
+  Live dot styling. Pass `false` to hide the dot, or a `DotConfig` for `radius`,
+  `ring` (the contrasting outer halo, on by default), and `color` — `ring: false`
+  gives a flat dot, `color` overrides the fill. The same `DotConfig` is shared
   with `LiveChartSeries` (whose `dot` extends it with `pulse`, `valueLine`, and
-  `valueLabel`).
+  `valueLabel`). `dot={false}` is the canonical "hide" — the deprecated
+  `dot={{ show: false }}` still works.
 </ParamField>
 
 <ParamField body="valueLine" type="boolean | ValueLineConfig">
@@ -185,6 +186,13 @@ provided; everything else has a default.
 
 <ParamField body="palette" type="Partial<LiveChartPalette>">
   Override individual resolved-palette keys.
+</ParamField>
+
+<ParamField body="metrics" type="LiveChartMetricsOverride">
+  Sizing & motion tokens — the geometry/feel analogue of `palette`. Namespaced
+  (`badge`, `candle`, `grid`, `motion`, `emptyState`); only the keys you set are
+  replaced. See the [Theming guide](/guides/theming#sizing-and-motion-tokens) and
+  [`LiveChartMetrics`](/api-reference/types).
 </ParamField>
 
 <ParamField body="font" type="FontConfig">

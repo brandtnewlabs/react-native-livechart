@@ -26,7 +26,7 @@ High-performance **live** line and candlestick charts for React Native, built on
 - 🔍 **Scrubbing** with a crosshair and worklet-friendly `onScrub` payloads
 - ⚡ **Momentum** detection and **degen** effects (particle bursts + shake on big swings)
 - 🏷️ **Trade markers** driven by a `SharedValue` trade stream
-- 🎨 **Theming** with light/dark modes and an accent-driven palette
+- 🎨 **Theming** with light/dark modes, an accent-driven `palette`, and `metrics` sizing/motion tokens
 - ⏳ **Loading** (breathing-line shell) and **paused** states out of the box
 - 🧵 **SharedValue-driven** rendering — history and live values stay on the UI thread
 
@@ -139,7 +139,8 @@ The tables below are a **highlight** — the **canonical, full reference is the 
 | `degen`                                  | Particle burst + shake on momentum swings                           |
 | `scrub`                                  | Crosshair scrubbing                                                 |
 | `momentum`                               | `true` / `false` / `"up"`, `"down"`, or `"flat"` / `MomentumConfig` |
-| `dot`                                    | Live dot styling: `radius`, `ring` (halo), `show`, `color`          |
+| `dot`                                    | `true` / `false` (hide) / `DotConfig` — `radius`, `ring` (halo), `color` |
+| `metrics`                                | Sizing & motion tokens — geometry/feel analogue of `palette`        |
 | `onScrub`                                | Callback: `ScrubPoint` or `null`                                    |
 
 ### `LiveChartSeries` (multi-series)
@@ -148,11 +149,21 @@ The tables below are a **highlight** — the **canonical, full reference is the 
 | ---------------- | ------------------------------------------- |
 | `series`         | `SharedValue<SeriesConfig[]>`               |
 | `legend`         | Toggle chips / compact legend               |
-| `dot`            | Per-series live dots: haloed `ring`, `show`, `color`, `radius`, `pulse`, `valueLine`, `valueLabel` |
+| `dot`            | `true` / `false` (hide) / `MultiSeriesDotConfig` — haloed `ring`, `color`, `radius`, `pulse`, `valueLine`, `valueLabel` |
+| `scrub`          | Crosshair scrubbing (**on by default** as of v2)            |
 | `onSeriesToggle` | Chip tap                                    |
 | `onScrub`        | Worklet-friendly multi-series scrub payload |
 
-These tables are a **highlight, not the full surface** (`LiveChart` alone has ~48 props). Other shared props include `font`, `insets`, `smoothing`, `xAxis`, `yAxis`, `referenceLines`, `gridStyle`, `palette`, `markers`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, and `emptyText`; single-series adds `gradient`, `badge`, `pulse`, `valueLine`, and `showValue`. Both charts share the same `dot` styling (a `DotConfig` base — `radius`, `ring`, `show`, `color`); multi-series extends it with `pulse`, `valueLine`, and `valueLabel`. See the TypeScript types and JSDoc for the complete, canonical reference.
+These tables are a **highlight, not the full surface** (`LiveChart` alone has ~48 props). Other shared props include `font`, `insets`, `smoothing`, `xAxis`, `yAxis`, `referenceLines`, `gridStyle`, `palette`, `metrics`, `markers`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, and `emptyText`; single-series adds `gradient`, `badge`, `pulse`, `valueLine`, and `showValue`. Every overlay toggle follows the same **`boolean | Config`** convention (`badge`, `gradient`, `pulse`, `valueLine`, `scrub`, `yAxis`, `xAxis`, `leftEdgeFade`, `legend`, and `dot`) — pass `true`/omit for defaults, `false` to disable, or an object to customize. Both charts share the same `dot` styling (a `DotConfig` base — `radius`, `ring`, `color`); multi-series extends it with `pulse`, `valueLine`, and `valueLabel`. Beyond `palette` (color), `metrics` exposes sizing & motion tokens (badge/candle geometry, grid/motion speeds) with the same per-key override model. See the TypeScript types and JSDoc for the complete, canonical reference.
+
+## Migrating to v2
+
+v2 makes the feature-flag surface uniform and adds the `metrics` token object. Two behavior changes to know about:
+
+- **`LiveChartSeries` scrubs by default.** Crosshair scrubbing is now on by default (it previously defaulted off), matching `LiveChart`. Pass `scrub={false}` to restore the old behavior.
+- **`dot.show` is deprecated.** Prefer `dot={false}` to hide the live dot — every overlay toggle now follows the same `boolean | Config` convention. `dot={{ show: false }}` still works.
+
+Everything else is additive: the new [`metrics`](https://react-native-livechart.brandtnewlabs.com/guides/theming#sizing-and-motion-tokens) prop is optional, and omitting it keeps the built-in geometry and motion.
 
 ## Examples (Expo app in this repo)
 
