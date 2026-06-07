@@ -274,3 +274,37 @@ describe("badge geometry metrics overrides", () => {
     expect(wide.right - base.right).toBe(8);
   });
 });
+
+describe("buildLinePoints decimation", () => {
+  const pad = DEFAULT_PADDING;
+  const canvasW = 400;
+  const canvasH = 200;
+  const chartW = canvasW - pad.left - pad.right; // 376
+
+  it("keeps the exact per-sample path below ~2 points per pixel", () => {
+    const data = Array.from({ length: 50 }, (_, i) => ({ time: i, value: i }));
+    const out = buildLinePoints(data, 49, 49, 50, 0, 50, canvasW, canvasH, pad);
+    // 50 visible samples + the live tip, no decimation.
+    expect(out.length / 2).toBe(51);
+  });
+
+  it("decimates a dense window to ~pixel resolution", () => {
+    const N = 2000;
+    const data = Array.from({ length: N }, (_, i) => ({ time: i, value: 1 }));
+    const out = buildLinePoints(data, 1, N - 1, N, 0, 100, canvasW, canvasH, pad);
+    const count = out.length / 2;
+    expect(count).toBeLessThan(N); // far fewer than the sample count
+    expect(count).toBeLessThanOrEqual(chartW * 2 + 4); // bounded by ~2/pixel + tip
+  });
+
+  it("preserves volatility spikes through decimation (min/max per column)", () => {
+    const N = 2000;
+    const data = Array.from({ length: N }, (_, i) => ({ time: i, value: 1 }));
+    data[1000].value = 100; // single tall spike mid-window
+    const out = buildLinePoints(data, 1, N - 1, N, 0, 100, canvasW, canvasH, pad);
+    // The spike (value 100 => y at padding.top) must survive as the column max.
+    let minY = Infinity;
+    for (let i = 1; i < out.length; i += 2) minY = Math.min(minY, out[i]);
+    expect(minY).toBeCloseTo(pad.top, 0);
+  });
+});
