@@ -33,7 +33,7 @@
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
-    "@shopify/react-native-skia": "2.2.12",
+    "@shopify/react-native-skia": "2.6.4",
     "@types/jest": "29.5.14",
     "expo": "~54.0.35",
     "expo-constants": "~18.0.13",
