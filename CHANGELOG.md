@@ -35,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING (soft):** `DotConfig.show` is deprecated in favor of `dot={false}`.
   `dot={{ show: false }}` still works and is equivalent.
 
+### Fixed
+
+- Crosshair overlays no longer emit React's "the final argument passed to
+  useMemo/useEffect changed size between renders" error while scrubbing. With
+  React Compiler enabled, Reanimated's auto-detected worklet dependencies could
+  change array size when the live-dot extent changed; the affected
+  `useDerivedValue`s now use explicit dependency arrays.
+
 ## [1.1.0] - 2026-06-05
 
 ### Added

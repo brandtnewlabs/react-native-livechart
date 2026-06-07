@@ -34,27 +34,41 @@ export function CrosshairLine({
   crosshairLineColor?: string;
   crosshairDimColor?: string;
 }) {
-  const p1 = useDerivedValue(() => ({
-    x: scrubX.value,
-    y: padding.top,
-  }));
-  const p2 = useDerivedValue(() => ({
-    x: scrubX.value,
-    y: engine.canvasHeight.value - padding.bottom,
-  }));
+  // Explicit dependency arrays: with React Compiler enabled, Reanimated's
+  // auto-detected worklet dependencies can change array size between renders
+  // (e.g. when `liveDotExtent` flips 0 → the live-dot extent), which trips
+  // React's "final argument changed size between renders" error. Listing the
+  // captured plain values keeps the dependency array a constant size. SharedValue
+  // reads stay reactive regardless of this list.
+  const p1 = useDerivedValue(
+    () => ({
+      x: scrubX.value,
+      y: padding.top,
+    }),
+    [scrubX, padding.top],
+  );
+  const p2 = useDerivedValue(
+    () => ({
+      x: scrubX.value,
+      y: engine.canvasHeight.value - padding.bottom,
+    }),
+    [scrubX, engine.canvasHeight, padding.bottom],
+  );
 
   const dimWidth = useDerivedValue(() => {
     const rightEdge = engine.canvasWidth.value - padding.right + liveDotExtent;
     return Math.max(0, rightEdge - scrubX.value);
-  });
+  }, [engine.canvasWidth, padding.right, liveDotExtent, scrubX]);
   const dimHeight = useDerivedValue(
     () => engine.canvasHeight.value - padding.top - padding.bottom,
+    [engine.canvasHeight, padding.top, padding.bottom],
   );
 
   // dstOut erase color: alpha = fraction of trailing content to remove, ramped
   // by the crosshair fade-in. RGB is irrelevant for dstOut.
   const dimErase = useDerivedValue(
     () => `rgba(0,0,0,${(1 - dimOpacity) * crosshairOpacity.value})`,
+    [dimOpacity, crosshairOpacity],
   );
 
   return (
