@@ -657,6 +657,20 @@ describe("resolveDot", () => {
       resolveDot({ radius: 6, ring: false, show: false, color: "#abcdef" }),
     ).toEqual({ radius: 6, ring: null, show: false, color: "#abcdef" });
   });
+
+  it("treats `true` as shown defaults", () => {
+    expect(resolveDot(true)).toEqual(resolveDot(undefined));
+    expect(resolveDot(true).show).toBe(true);
+  });
+
+  it("treats `false` as shown:false over the defaults (dot={false})", () => {
+    expect(resolveDot(false)).toEqual({
+      radius: 3.5,
+      ring: { color: undefined, width: 2.5 },
+      show: false,
+      color: undefined,
+    });
+  });
 });
 
 // ─── resolveMultiSeriesDot ──────────────────────────────────────────────────────
@@ -692,6 +706,19 @@ describe("resolveMultiSeriesDot", () => {
       valueLine: null,
       valueLabel: false,
     });
+  });
+
+  it("treats `true` as shown defaults with pulse", () => {
+    expect(resolveMultiSeriesDot(true)).toEqual(
+      resolveMultiSeriesDot(undefined),
+    );
+  });
+
+  it("treats `false` as a hidden dot (dot={false})", () => {
+    const r = resolveMultiSeriesDot(false);
+    expect(r.show).toBe(false);
+    expect(r.radius).toBe(3.5);
+    expect(r.valueLabel).toBe(true);
   });
 });
 
