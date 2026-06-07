@@ -4,7 +4,6 @@ import {
   Path,
   Skia,
   type SkFont,
-  type SkPath,
 } from "@shopify/react-native-skia";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -15,6 +14,7 @@ import {
 import { scheduleOnRN } from "react-native-worklets";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
+import { usePathBuilder } from "../hooks/usePathBuilder";
 import {
   buildMarkerAtlas,
   defaultMarkerColor,
@@ -84,37 +84,32 @@ function ConnectorGlyph({
 
   const opacity = useDerivedValue(() => (layout.get().visible ? 1 : 0));
 
-  const cacheRef = useRef<{ a: SkPath; b: SkPath; tick: boolean } | null>(null);
-  if (cacheRef.current === null) {
-    cacheRef.current = { a: Skia.Path.Make(), b: Skia.Path.Make(), tick: false };
-  }
+  const glyphBuilder = usePathBuilder();
 
   const glyphPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.tick = !cache.tick;
-    const p: SkPath = cache.tick ? cache.a : cache.b;
-    p.reset();
+    const b = glyphBuilder.value;
     const l = layout.get();
-    if (!l.visible) return p;
-    const x = l.visible ? l.x : OFF;
-    const y = l.y;
-    if (kind === "graduation") {
-      p.moveTo(x, axisY.get());
-      p.lineTo(x, y);
-      p.moveTo(x, y - 7);
-      p.lineTo(x + 8, y - 4);
-      p.lineTo(x, y - 1);
-      p.close();
-    } else if (kind === "clawback") {
-      const s = 5;
-      const ay = axisY.get() - s;
-      p.moveTo(x - s, ay);
-      p.lineTo(x + s, ay);
-      p.lineTo(x + s, ay + s * 2);
-      p.lineTo(x - s, ay + s * 2);
-      p.close();
+    if (l.visible) {
+      const x = l.x;
+      const y = l.y;
+      if (kind === "graduation") {
+        b.moveTo(x, axisY.get());
+        b.lineTo(x, y);
+        b.moveTo(x, y - 7);
+        b.lineTo(x + 8, y - 4);
+        b.lineTo(x, y - 1);
+        b.close();
+      } else if (kind === "clawback") {
+        const s = 5;
+        const ay = axisY.get() - s;
+        b.moveTo(x - s, ay);
+        b.lineTo(x + s, ay);
+        b.lineTo(x + s, ay + s * 2);
+        b.lineTo(x - s, ay + s * 2);
+        b.close();
+      }
     }
-    return p;
+    return b.detach();
   });
 
   const fill = kind === "clawback";

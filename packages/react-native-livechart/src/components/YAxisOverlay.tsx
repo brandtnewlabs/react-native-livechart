@@ -2,11 +2,8 @@ import {
   DashPathEffect,
   Group,
   Path,
-  Skia,
   type SkFont,
-  type SkPath,
 } from "@shopify/react-native-skia";
-import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { BADGE_METRICS_DEFAULTS } from "../constants";
 import type { ResolvedGridStyleConfig } from "../core/resolveConfig";
@@ -18,6 +15,7 @@ import {
   pillTextLeftX,
   type ChartPadding,
 } from "../draw/line";
+import { usePathBuilder } from "../hooks/usePathBuilder";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import type { BadgeMetrics, LiveChartPalette } from "../types";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
@@ -57,31 +55,17 @@ export function YAxisOverlay({
   const gridWidth = gridStyle?.strokeWidth ?? 1;
   const gridIntervals = gridStyle?.intervals ?? [];
   const gridOpacity = gridStyle?.opacity ?? 1;
-  const gridCacheRef = useRef<{
-    a: SkPath;
-    b: SkPath;
-    tick: boolean;
-  } | null>(null);
-  if (gridCacheRef.current === null) {
-    gridCacheRef.current = {
-      a: Skia.Path.Make(),
-      b: Skia.Path.Make(),
-      tick: false,
-    };
-  }
+  const gridBuilder = usePathBuilder();
 
   const gridLinesPath = useDerivedValue(() => {
-    const gridCache = gridCacheRef.current!;
-    gridCache.tick = !gridCache.tick;
-    const path = gridCache.tick ? gridCache.a : gridCache.b;
-    path.reset();
+    const b = gridBuilder.value;
     const items = entries.get();
     const w = engine.canvasWidth.get();
     for (let i = 0; i < items.length; i++) {
-      path.moveTo(padding.left, items[i].y);
-      path.lineTo(w - padding.right, items[i].y);
+      b.moveTo(padding.left, items[i].y);
+      b.lineTo(w - padding.right, items[i].y);
     }
-    return path;
+    return b.detach();
   });
 
   const leftInset =

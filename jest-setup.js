@@ -71,6 +71,36 @@ jest.mock("@shopify/react-native-skia", () => {
     rewind: jest.fn(),
   });
 
+  // Mutable builder → immutable SkPath (build/detach return a mock path).
+  const createPathBuilder = () => {
+    const b = {
+      moveTo: jest.fn(() => b),
+      lineTo: jest.fn(() => b),
+      quadTo: jest.fn(() => b),
+      conicTo: jest.fn(() => b),
+      cubicTo: jest.fn(() => b),
+      close: jest.fn(() => b),
+      addRect: jest.fn(() => b),
+      addRRect: jest.fn(() => b),
+      addOval: jest.fn(() => b),
+      addCircle: jest.fn(() => b),
+      addPath: jest.fn(() => b),
+      addPoly: jest.fn(() => b),
+      arcToOval: jest.fn(() => b),
+      setFillType: jest.fn(() => b),
+      setIsVolatile: jest.fn(() => b),
+      offset: jest.fn(() => b),
+      transform: jest.fn(() => b),
+      reset: jest.fn(() => b),
+      computeBounds: jest.fn(() => ({ x: 0, y: 0, width: 0, height: 0 })),
+      isEmpty: jest.fn(() => true),
+      countPoints: jest.fn(() => 0),
+      build: jest.fn(() => createPath()),
+      detach: jest.fn(() => createPath()),
+    };
+    return b;
+  };
+
   const createCanvas = () => ({
     save: jest.fn(),
     restore: jest.fn(),
@@ -130,6 +160,10 @@ jest.mock("@shopify/react-native-skia", () => {
     Skia: {
       Path: {
         Make: jest.fn(() => createPath()),
+      },
+      PathBuilder: {
+        Make: jest.fn(() => createPathBuilder()),
+        MakeFromPath: jest.fn(() => createPathBuilder()),
       },
       FontMgr: {
         System: jest.fn(() => ({})),

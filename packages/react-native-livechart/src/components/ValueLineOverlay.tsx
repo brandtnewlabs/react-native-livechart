@@ -1,14 +1,9 @@
-import {
-  DashPathEffect,
-  Path,
-  Skia,
-  type SkPath,
-} from "@shopify/react-native-skia";
-import { useRef } from "react";
+import { DashPathEffect, Path } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { ChartPadding } from "../draw/line";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
+import { usePathBuilder } from "../hooks/usePathBuilder";
 
 /**
  * A dashed horizontal line that tracks the live display value — sitting at
@@ -29,30 +24,16 @@ export function ValueLineOverlay({
   intervals: [number, number];
   color: string;
 }) {
-  // Ping-pong persistent paths — avoid allocating a JSI-backed SkPath per frame.
-  const cacheRef = useRef<{
-    a: SkPath;
-    b: SkPath;
-    tick: boolean;
-  } | null>(null);
-  if (cacheRef.current === null) {
-    cacheRef.current = {
-      a: Skia.Path.Make(),
-      b: Skia.Path.Make(),
-      tick: false,
-    };
-  }
+  const builder = usePathBuilder();
 
   const path = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.tick = !cache.tick;
-    const p = cache.tick ? cache.a : cache.b;
-    p.reset();
+    const b = builder.value;
     const y = dotY.get();
-    if (y < 0) return p;
-    p.moveTo(padding.left, y);
-    p.lineTo(engine.canvasWidth.get() - padding.right, y);
-    return p;
+    if (y >= 0) {
+      b.moveTo(padding.left, y);
+      b.lineTo(engine.canvasWidth.get() - padding.right, y);
+    }
+    return b.detach();
   });
 
   return (

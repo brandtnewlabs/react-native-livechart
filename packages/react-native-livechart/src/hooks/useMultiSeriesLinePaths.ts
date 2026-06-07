@@ -5,51 +5,46 @@ import { MAX_MULTI_SERIES } from "../constants";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { drawSpline, makeSplineScratch } from "../math/spline";
+import { usePathBuilders } from "./usePathBuilder";
 
 /**
- * One derived shared value holding up to `MAX_MULTI_SERIES` Skia paths (unused slots are empty paths).
+ * One derived shared value holding up to `MAX_MULTI_SERIES` Skia paths (unused
+ * slots reuse one cached empty path).
  *
- * Each slot ping-pongs between two persistent `SkPath`s so `MultiSeriesStroke`'s
- * per-slot `useDerivedValue(() => paths.value[index])` sees a fresh reference each
- * tick (otherwise Reanimated's setter short-circuits and Skia never repaints).
- * No new JSI-backed `SkPath` is allocated per frame. See {@link useChartPaths}
- * for the memory rationale.
+ * Each visible series' path is built into a per-slot `Skia.PathBuilder` (reused
+ * across frames via a SharedValue) and finalized with `detach()` — a fresh
+ * immutable `SkPath` per frame, so `MultiSeriesStroke`'s per-slot
+ * `useDerivedValue(() => paths.value[index])` repaints without the two-SkPath
+ * ping-pong. Only visible series allocate a path.
  */
 export function useMultiSeriesLinePaths(
   engine: MultiEngineState,
   padding: ChartPadding,
-): SharedValue<ReturnType<typeof Skia.Path.Make>[]> {
+): SharedValue<SkPath[]> {
+  const builders = usePathBuilders(MAX_MULTI_SERIES);
+
   const poolRef = useRef<{
-    a: SkPath[];
-    b: SkPath[];
-    tick: boolean;
+    empty: SkPath;
     ptsBuf: number[];
     scratch: ReturnType<typeof makeSplineScratch>;
   } | null>(null);
   if (poolRef.current === null) {
-    const a: SkPath[] = [];
-    const b: SkPath[] = [];
-    for (let i = 0; i < MAX_MULTI_SERIES; i++) {
-      a.push(Skia.Path.Make());
-      b.push(Skia.Path.Make());
-    }
-    // One point buffer + spline scratch, reused across slots (built sequentially)
-    // and across frames — no per-frame, per-series array allocation.
-    poolRef.current = { a, b, tick: false, ptsBuf: [] as number[], scratch: makeSplineScratch() };
+    poolRef.current = {
+      empty: Skia.Path.Make(),
+      ptsBuf: [] as number[],
+      scratch: makeSplineScratch(),
+    };
   }
 
   return useDerivedValue(() => {
     const pool = poolRef.current!;
-    pool.tick = !pool.tick;
-    const slots = pool.tick ? pool.a : pool.b;
+    const slots = builders.value;
     const s = engine.series.get();
     const displays = engine.displaySeriesValues.get();
-    const out: ReturnType<typeof Skia.Path.Make>[] = [];
+    const out: SkPath[] = [];
     for (let i = 0; i < MAX_MULTI_SERIES; i++) {
-      const path = slots[i];
-      path.reset();
       if (i >= s.length) {
-        out.push(path);
+        out.push(pool.empty);
         continue;
       }
       const pts = buildLinePoints(
@@ -66,10 +61,13 @@ export function useMultiSeriesLinePaths(
       );
       const n = pts.length >> 1;
       if (n >= 2) {
-        path.moveTo(pts[0], pts[1]);
-        drawSpline(path, pts, pool.scratch);
+        const b = slots[i];
+        b.moveTo(pts[0], pts[1]);
+        drawSpline(b, pts, pool.scratch);
+        out.push(b.detach());
+      } else {
+        out.push(pool.empty);
       }
-      out.push(path);
     }
     return out;
   });

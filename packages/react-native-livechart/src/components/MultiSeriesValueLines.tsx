@@ -1,17 +1,11 @@
-import {
-  DashPathEffect,
-  Group,
-  Path,
-  Skia,
-  type SkPath,
-} from "@shopify/react-native-skia";
+import { DashPathEffect, Group, Path } from "@shopify/react-native-skia";
 
-import { useRef } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";
 import type { ChartPadding } from "../draw/line";
 import type { ResolvedValueLineConfig } from "../core/resolveConfig";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
+import { usePathBuilder } from "../hooks/usePathBuilder";
 
 function SeriesValueLineAtIndex({
   index,
@@ -26,44 +20,30 @@ function SeriesValueLineAtIndex({
   color: string;
   config: ResolvedValueLineConfig;
 }) {
-  const cacheRef = useRef<{
-    a: SkPath;
-    b: SkPath;
-    tick: boolean;
-  } | null>(null);
-  if (cacheRef.current === null) {
-    cacheRef.current = {
-      a: Skia.Path.Make(),
-      b: Skia.Path.Make(),
-      tick: false,
-    };
-  }
+  const builder = usePathBuilder();
 
   const path = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    cache.tick = !cache.tick;
-    const p = cache.tick ? cache.a : cache.b;
-    p.reset();
+    const b = builder.value;
     const h = engine.canvasHeight.get();
-    if (h === 0) return p;
     const s = engine.series.get();
     const displays = engine.displaySeriesValues.get();
-    if (index >= s.length) return p;
+    if (h !== 0 && index < s.length) {
+      const chartH = h - padding.top - padding.bottom;
+      const dMin = engine.displayMin.get();
+      const dMax = engine.displayMax.get();
+      const valRange = dMax - dMin;
+      const v = displays[index] ?? s[index].value;
+      const y =
+        valRange === 0
+          ? padding.top + chartH / 2
+          : padding.top + ((dMax - v) / valRange) * chartH;
 
-    const chartH = h - padding.top - padding.bottom;
-    const dMin = engine.displayMin.get();
-    const dMax = engine.displayMax.get();
-    const valRange = dMax - dMin;
-    const v = displays[index] ?? s[index].value;
-    const y =
-      valRange === 0
-        ? padding.top + chartH / 2
-        : padding.top + ((dMax - v) / valRange) * chartH;
-
-    if (y < 0) return p;
-    p.moveTo(padding.left, y);
-    p.lineTo(engine.canvasWidth.get() - padding.right, y);
-    return p;
+      if (y >= 0) {
+        b.moveTo(padding.left, y);
+        b.lineTo(engine.canvasWidth.get() - padding.right, y);
+      }
+    }
+    return b.detach();
   });
 
   const opacity = useDerivedValue(() => {

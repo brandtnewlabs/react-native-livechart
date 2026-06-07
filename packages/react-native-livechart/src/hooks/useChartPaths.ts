@@ -5,30 +5,29 @@ import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { drawSpline, makeSplineScratch } from "../math/spline";
 import { blendPtsY, squigglifyPts } from "../math/squiggly";
+import { usePathBuilder } from "./usePathBuilder";
 
 /**
- * Persistent `linePath` / `fillPath` `SkPath`s that are **mutated in place** each frame.
+ * Builds the `linePath` / `fillPath` with `Skia.PathBuilder`s reused across
+ * frames (one per curve, held in a SharedValue) and finalized with `detach()` —
+ * which returns a fresh immutable `SkPath` each frame and resets the builder.
+ * The fresh reference makes Reanimated notify subscribers (re-record + repaint)
+ * without the two-SkPath ping-pong the mutable-path pool needed.
  *
- * Why not `useDerivedValue(() => Skia.Path.Make())`? Each call would allocate a brand-new
- * JSI-backed `SkPath`, and on iOS the native GC lags the JS GC under a steady firehose —
- * resident memory climbs steadily for as long as the chart is mounted. Here we allocate
- * two paths per curve once and ping-pong the reference each frame so Reanimated's
- * value-equality early-return still fires its subscribers (i.e. the Skia reanimated
- * container re-records and repaints).
+ * The flat point buffer still ping-pongs (ptsA/ptsB) so the intermediate
+ * `flatPts` derived value changes reference each frame and re-runs linePath /
+ * fillPath.
  */
 export function useChartPaths(
   engine: SingleEngineState,
   padding: ChartPadding,
   morphT?: SharedValue<number>,
 ) {
-  // Two persistent paths per curve; ping-pong so the returned reference changes
-  // every frame, which keeps Reanimated's setter from short-circuiting the notify.
+  const lineBuilder = usePathBuilder();
+  const fillBuilder = usePathBuilder();
+
   const cacheRef = useRef<{
-    lineA: SkPath;
-    lineB: SkPath;
-    fillA: SkPath;
-    fillB: SkPath;
-    tick: boolean;
+    emptyPath: SkPath;
     ptsA: number[];
     ptsB: number[];
     ptsTick: boolean;
@@ -36,13 +35,7 @@ export function useChartPaths(
   } | null>(null);
   if (cacheRef.current === null) {
     cacheRef.current = {
-      lineA: Skia.Path.Make(),
-      lineB: Skia.Path.Make(),
-      fillA: Skia.Path.Make(),
-      fillB: Skia.Path.Make(),
-      tick: false,
-      // Ping-pong point buffers: reused across frames but the returned reference
-      // still alternates, so Reanimated keeps notifying linePath/fillPath.
+      emptyPath: Skia.Path.Make(),
       ptsA: [] as number[],
       ptsB: [] as number[],
       ptsTick: false,
@@ -89,32 +82,27 @@ export function useChartPaths(
   const linePath = useDerivedValue(() => {
     const cache = cacheRef.current!;
     const pts = flatPts.get();
-    cache.tick = !cache.tick;
-    const path = cache.tick ? cache.lineA : cache.lineB;
-    path.reset();
     const n = pts.length >> 1;
-    if (n < 2) return path;
-    path.moveTo(pts[0], pts[1]);
-    drawSpline(path, pts, cache.scratch);
-    return path;
+    if (n < 2) return cache.emptyPath;
+    const b = lineBuilder.value;
+    b.moveTo(pts[0], pts[1]);
+    drawSpline(b, pts, cache.scratch);
+    return b.detach();
   });
 
   const fillPath = useDerivedValue(() => {
     const cache = cacheRef.current!;
     const pts = flatPts.get();
-    // Use the same tick flag flipped by linePath — flipping again here would
-    // keep both paths in sync, so just read the current parity.
-    const path = cache.tick ? cache.fillA : cache.fillB;
-    path.reset();
     const n = pts.length >> 1;
-    if (n < 2) return path;
-    path.moveTo(pts[0], pts[1]);
-    drawSpline(path, pts, cache.scratch);
+    if (n < 2) return cache.emptyPath;
+    const b = fillBuilder.value;
+    b.moveTo(pts[0], pts[1]);
+    drawSpline(b, pts, cache.scratch);
     const bottom = engine.canvasHeight.get() - padding.bottom;
-    path.lineTo(pts[(n - 1) * 2], bottom);
-    path.lineTo(pts[0], bottom);
-    path.close();
-    return path;
+    b.lineTo(pts[(n - 1) * 2], bottom);
+    b.lineTo(pts[0], bottom);
+    b.close();
+    return b.detach();
   });
 
   return { linePath, fillPath } as const;
