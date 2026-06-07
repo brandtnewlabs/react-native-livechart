@@ -5,6 +5,28 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-06-07
+
+### Changed
+
+- **BREAKING:** `@shopify/react-native-skia` **`>=2.6.0`** is now required (the
+  peer dependency range moves up from `>=2.0.0`). Path construction now uses the
+  `Skia.PathBuilder` API (`PathBuilder.detach()`), which Skia introduced in
+  **2.6.0** — on older Skia the chart throws at runtime (`Skia.PathBuilder` is
+  `undefined`). Upgrade Skia to `2.6.0`+ before upgrading this package. No
+  public API of this library changed.
+- All per-frame path building — line, fill, candles, badge, Y/X axes & grid,
+  value lines, reference lines/bands, markers, and the loading squiggle —
+  migrated from the pooled mutable-`SkPath` + ping-pong pattern to a reused
+  `Skia.PathBuilder` finalized with `detach()`. This drops the two-buffer
+  ping-pong and is forward-compatible with Skia's move to an immutable `SkPath`.
+
+### Performance
+
+- The PathBuilder migration is performance-neutral: on-device profiling
+  (iPhone 17 Pro / iOS 26.4, 3-series scene) measured equivalent frame rate
+  (60fps), CPU, and flat memory versus the previous pooled-path approach.
+
 ## [2.0.1] - 2026-06-07
 
 ### Documentation

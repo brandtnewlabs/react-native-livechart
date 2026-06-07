@@ -39,7 +39,7 @@
   "module": "./src/index.ts",
   "name": "react-native-livechart",
   "peerDependencies": {
-    "@shopify/react-native-skia": ">=2.0.0",
+    "@shopify/react-native-skia": ">=2.6.0",
     "react": ">=18.0.0",
     "react-native": ">=0.76.0",
     "react-native-gesture-handler": ">=2.0.0",
@@ -68,5 +68,5 @@
   },
   "sideEffects": false,
   "types": "./dist/index.d.ts",
-  "version": "2.0.1"
+  "version": "3.0.0"
 }
