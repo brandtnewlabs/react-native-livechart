@@ -7,6 +7,7 @@ import {
   resolveGradient,
   resolveGridStyle,
   resolveLeftEdgeFade,
+  resolveMetrics,
   resolveMultiSeriesDot,
   resolvePulse,
   resolveReferenceLineConfig,
@@ -17,7 +18,14 @@ import {
   resolveYAxis,
 } from "../src/core/resolveConfig";
 
-import { FADE_EDGE_WIDTH } from "../src/constants";
+import {
+  BADGE_METRICS_DEFAULTS,
+  CANDLE_METRICS_DEFAULTS,
+  EMPTY_STATE_METRICS_DEFAULTS,
+  FADE_EDGE_WIDTH,
+  GRID_METRICS_DEFAULTS,
+  MOTION_METRICS_DEFAULTS,
+} from "../src/constants";
 import { leftEdgeFadeColorsFromBgRgb } from "../src/theme";
 
 // ─── resolveValueLine ─────────────────────────────────────────────────────────
@@ -684,5 +692,79 @@ describe("resolveMultiSeriesDot", () => {
       valueLine: null,
       valueLabel: false,
     });
+  });
+});
+
+// ─── resolveMetrics ─────────────────────────────────────────────────────────
+
+describe("resolveMetrics", () => {
+  it("returns full defaults for undefined", () => {
+    expect(resolveMetrics(undefined)).toEqual({
+      badge: BADGE_METRICS_DEFAULTS,
+      candle: CANDLE_METRICS_DEFAULTS,
+      grid: GRID_METRICS_DEFAULTS,
+      motion: MOTION_METRICS_DEFAULTS,
+      emptyState: EMPTY_STATE_METRICS_DEFAULTS,
+    });
+  });
+
+  it("ships the documented default values", () => {
+    const m = resolveMetrics(undefined);
+    expect(m.badge).toEqual({
+      padX: 10,
+      padY: 3,
+      tailLength: 5,
+      marginEdge: 4,
+      dotGap: 12,
+      tailSpread: 2.5,
+    });
+    expect(m.candle).toEqual({
+      minBodyPx: 1,
+      maxBodyPx: 40,
+      bodyWidthRatio: 0.8,
+    });
+    expect(m.grid).toEqual({ fadeInSpeed: 0.18, fadeOutSpeed: 0.12 });
+    expect(m.motion).toEqual({
+      badgeColorSpeed: 0.08,
+      adaptiveSpeedBoost: 0.12,
+    });
+    expect(m.emptyState).toEqual({
+      labelOpacity: 0.35,
+      gapPad: 20,
+      gapFadeWidth: 30,
+    });
+  });
+
+  it("replaces only the keys set within a namespace", () => {
+    const m = resolveMetrics({ badge: { padX: 20, tailLength: 9 } });
+    expect(m.badge).toEqual({
+      padX: 20,
+      padY: 3,
+      tailLength: 9,
+      marginEdge: 4,
+      dotGap: 12,
+      tailSpread: 2.5,
+    });
+    // Untouched namespaces keep their defaults.
+    expect(m.candle).toEqual(CANDLE_METRICS_DEFAULTS);
+    expect(m.motion).toEqual(MOTION_METRICS_DEFAULTS);
+  });
+
+  it("merges multiple namespaces independently", () => {
+    const m = resolveMetrics({
+      candle: { maxBodyPx: 12 },
+      grid: { fadeInSpeed: 0.5 },
+      motion: { adaptiveSpeedBoost: 0 },
+      emptyState: { labelOpacity: 1 },
+    });
+    expect(m.candle).toEqual({ minBodyPx: 1, maxBodyPx: 12, bodyWidthRatio: 0.8 });
+    expect(m.grid).toEqual({ fadeInSpeed: 0.5, fadeOutSpeed: 0.12 });
+    expect(m.motion).toEqual({ badgeColorSpeed: 0.08, adaptiveSpeedBoost: 0 });
+    expect(m.emptyState).toEqual({
+      labelOpacity: 1,
+      gapPad: 20,
+      gapFadeWidth: 30,
+    });
+    expect(m.badge).toEqual(BADGE_METRICS_DEFAULTS);
   });
 });

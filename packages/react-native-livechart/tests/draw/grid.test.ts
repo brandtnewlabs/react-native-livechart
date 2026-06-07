@@ -140,3 +140,24 @@ describe("computeGridEntries", () => {
     expect(alphas).toBeDefined();
   });
 });
+
+describe("computeGridEntries grid-fade metrics", () => {
+  const fmt = (v: number) => v.toFixed(0);
+
+  it("seeds new-label alpha by the custom fadeInSpeed", () => {
+    const slowAlphas: Record<number, number> = {};
+    const slow = computeGridEntries(0, 100, 400, 12, 28, 0, slowAlphas, fmt, 16.67, 36, {
+      fadeInSpeed: 0.18,
+      fadeOutSpeed: 0.12,
+    });
+    const fastAlphas: Record<number, number> = {};
+    const fast = computeGridEntries(0, 100, 400, 12, 28, 0, fastAlphas, fmt, 16.67, 36, {
+      fadeInSpeed: 0.9,
+      fadeOutSpeed: 0.12,
+    });
+    const maxSlow = Math.max(...slow.entries.map((e) => e.alpha));
+    const maxFast = Math.max(...fast.entries.map((e) => e.alpha));
+    // Same label set; a faster fade-in seeds a higher initial alpha.
+    expect(maxFast).toBeGreaterThan(maxSlow);
+  });
+});

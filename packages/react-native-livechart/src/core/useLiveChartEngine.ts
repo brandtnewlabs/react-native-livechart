@@ -21,6 +21,8 @@ export interface EngineConfig {
   value: SharedValue<number>;
   timeWindow: number;
   smoothing: number;
+  /** Extra catch-up speed added to `smoothing` when the live value lags. */
+  adaptiveSpeedBoost?: number;
   exaggerate?: boolean;
   referenceValue?: number;
   referenceValues?: number[];
@@ -78,6 +80,7 @@ export interface EngineFrameRefs {
   timestamp: SharedValue<number>;
   timeWindow: SharedValue<number>;
   smoothing: SharedValue<number>;
+  adaptiveSpeedBoostSV?: SharedValue<number | undefined>;
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
   referenceValues?: SharedValue<number[] | undefined>;
@@ -114,6 +117,7 @@ export function applyLiveChartEngineFrame(
     canvasHeight: sv.canvasHeight.value,
     timeWindow: sv.timeWindow.value,
     smoothing: sv.smoothing.value,
+    adaptiveSpeedBoost: sv.adaptiveSpeedBoostSV?.value,
     exaggerate: sv.exaggerateSV.value,
     referenceValue: sv.referenceValue.value,
     referenceValues: sv.referenceValues?.value,
@@ -140,6 +144,7 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
   // Low-frequency config → UI thread via useDerivedValue
   const timeWindow = useDerivedValue(() => config.timeWindow);
   const smoothing = useDerivedValue(() => config.smoothing);
+  const adaptiveSpeedBoostSV = useDerivedValue(() => config.adaptiveSpeedBoost);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
   const referenceValues = useDerivedValue(() => config.referenceValues);
@@ -179,6 +184,7 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
       canvasHeight,
       timeWindow,
       smoothing,
+      adaptiveSpeedBoostSV,
       exaggerateSV,
       referenceValue,
       referenceValues,

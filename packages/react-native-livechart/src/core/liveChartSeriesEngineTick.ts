@@ -1,4 +1,4 @@
-import { ADAPTIVE_SPEED_BOOST } from "../constants";
+import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
 import type { SeriesConfig } from "../types";
 
@@ -18,6 +18,8 @@ export interface MultiEngineTickInput {
   timeWindow: number;
   smoothing: number;
   exaggerate: boolean;
+  /** Extra catch-up speed added to `smoothing` when a series tip lags. Default `0.12`. */
+  adaptiveSpeedBoost?: number;
   referenceValue: number | undefined;
   /** Additional reference values (lines + bands) folded into the Y range. */
   referenceValues?: number[];
@@ -80,7 +82,11 @@ export function tickLiveChartSeriesEngineFrame(
     const cur = state.displayValues[i];
     const gapRatio =
       range > 0 ? Math.min(Math.abs(target - cur) / range, 1) : 0;
-    const adaptiveSpeed = speed + (1 - gapRatio) * ADAPTIVE_SPEED_BOOST;
+    const adaptiveSpeed =
+      speed +
+      (1 - gapRatio) *
+        (input.adaptiveSpeedBoost ??
+          MOTION_METRICS_DEFAULTS.adaptiveSpeedBoost);
     state.displayValues[i] = lerp(cur, target, adaptiveSpeed, input.dt);
 
     const targetOp = series[i].visible !== false ? 1 : 0;

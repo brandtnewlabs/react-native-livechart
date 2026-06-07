@@ -9,7 +9,7 @@ import {
   resolvePadding,
   type ChartPadding,
 } from "../draw/line";
-import type { ChartInsets, LiveChartPalette } from "../types";
+import type { BadgeMetrics, ChartInsets, LiveChartPalette } from "../types";
 
 export interface ChartLayoutConfig {
   palette: LiveChartPalette;
@@ -17,6 +17,8 @@ export interface ChartLayoutConfig {
   insetsOverride?: ChartInsets;
   yAxis: boolean;
   badge: boolean;
+  /** Badge pill geometry tokens. Omit for built-in defaults. */
+  badgeMetrics?: BadgeMetrics;
   /**
    * When true (default if omitted and `badge` is true), reserve the wide right gutter for the badge.
    * Set false when the badge is anchored left of the live dot (`position: "left"`).
@@ -79,6 +81,7 @@ export function resolveChartLayout(
           config.font.getSize(),
           measuredYAxisLabelWidth,
           showTail,
+          config.badgeMetrics,
         )
       : config.multiSeriesValueLabel && config.yAxis
         ? Math.max(
@@ -91,7 +94,12 @@ export function resolveChartLayout(
             ? Math.max(measuredYAxisLabelWidth + 16 + dotR * 2, 44)
             : resolveAutoRight(false, false);
   } else {
-    rightPad = resolveAutoRight(config.yAxis, badgeUsesRightGutter, showTail);
+    rightPad = resolveAutoRight(
+      config.yAxis,
+      badgeUsesRightGutter,
+      showTail,
+      config.badgeMetrics,
+    );
   }
 
   if (config.pulse && config.yAxis && config.insetsOverride?.right == null) {
@@ -121,6 +129,7 @@ export function resolveChartLayout(
     false,
     xAxis,
     showTail,
+    config.badgeMetrics,
   );
 
   let padding: ChartPadding = { ...base, right: rightPad, left: leftPad };

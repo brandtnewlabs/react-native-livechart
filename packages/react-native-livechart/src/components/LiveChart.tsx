@@ -25,6 +25,7 @@ import {
   resolveGradient,
   resolveGridStyle,
   resolveLeftEdgeFade,
+  resolveMetrics,
   resolvePulse,
   resolveScrub,
   resolveTradeStream,
@@ -135,6 +136,7 @@ function useLiveChartController({
   referenceLines,
   gridStyle,
   palette: paletteOverride,
+  metrics,
   scrub = true,
   tradeStream,
   degen,
@@ -167,6 +169,7 @@ function useLiveChartController({
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const degenCfg = resolveDegen(degen);
   const tradeStreamResolved = resolveTradeStream(tradeStream);
+  const metricsCfg = resolveMetrics(metrics);
 
   const allRefLines = referenceLines ?? [];
   const refValues = collectReferenceValues(allRefLines);
@@ -227,6 +230,7 @@ function useLiveChartController({
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
     badge: badgeCfg !== null,
+    badgeMetrics: metricsCfg.badge,
     badgeUsesRightGutter,
     badgeShowTail: badgeCfg?.tail ?? true,
     xAxis: xAxisCfg !== null,
@@ -266,6 +270,7 @@ function useLiveChartController({
     timeWindow,
     paused,
     smoothing,
+    adaptiveSpeedBoost: metricsCfg.motion.adaptiveSpeedBoost,
     exaggerate,
     referenceValues: refValues,
     nonNegative,
@@ -300,6 +305,7 @@ function useLiveChartController({
       isCandle ? liveEngine : liveCandle,
       candleWidth,
       isCandle,
+      metricsCfg.candle,
     );
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
 
@@ -325,6 +331,7 @@ function useLiveChartController({
     formatValue,
     skiaFont,
     yAxisCfg?.minGap ?? 36,
+    metricsCfg.grid,
   );
 
   const { xAxisEntries } = useXAxis(
@@ -345,6 +352,8 @@ function useLiveChartController({
     momentumSV,
     badgeCfg?.position ?? "right",
     badgeCfg?.background,
+    metricsCfg.badge,
+    metricsCfg.motion.badgeColorSpeed,
   );
 
   // Scrub/crosshair must see the same stash-backed candles as the engine.
@@ -427,6 +436,7 @@ function useLiveChartController({
     degenCfg,
     tradeStreamResolved,
     leftEdgeFadeCfg,
+    metricsCfg,
     allRefLines,
     badgeUsesRightGutter,
     // theme / layout / fonts
@@ -516,6 +526,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     markersActive,
     markersSV,
     emptyText,
+    metricsCfg,
   } = model;
 
   return (
@@ -531,6 +542,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
             font={skiaFont}
             badge={badgeUsesRightGutter}
             badgeTail={badgeCfg?.tail ?? true}
+            badgeMetrics={metricsCfg.badge}
             gridStyle={gridStyleCfg}
           />
         </Group>
@@ -678,6 +690,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         strokeWidth={strokeWidth}
         badge={badgeCfg !== null}
         badgeTail={badgeCfg?.tail ?? true}
+        badgeMetrics={metricsCfg.badge}
+        emptyMetrics={metricsCfg.emptyState}
       />
     </Group>
   );

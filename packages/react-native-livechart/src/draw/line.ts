@@ -1,11 +1,5 @@
-import {
-  BADGE_DOT_GAP,
-  BADGE_MARGIN_RIGHT,
-  BADGE_PILL_PAD_X,
-  BADGE_PILL_PAD_Y,
-  BADGE_TAIL_LEN,
-} from "../constants";
-import type { ChartInsets, LiveChartPoint } from "../types";
+import { BADGE_METRICS_DEFAULTS } from "../constants";
+import type { BadgeMetrics, ChartInsets, LiveChartPoint } from "../types";
 export {
   BADGE_DOT_GAP,
   BADGE_MARGIN_RIGHT,
@@ -36,10 +30,14 @@ export const DEFAULT_PADDING: ChartPadding = {
  * When `showTail` is false the tail spike is omitted and only the round cap
  * radius is returned, letting callers shrink the right gutter.
  */
-export function badgeTailAndCap(fontSize: number, showTail = true): number {
+export function badgeTailAndCap(
+  fontSize: number,
+  showTail = true,
+  badge: BadgeMetrics = BADGE_METRICS_DEFAULTS,
+): number {
   "worklet";
-  const pillH = fontSize + BADGE_PILL_PAD_Y * 2;
-  return (showTail ? BADGE_TAIL_LEN : 0) + pillH / 2;
+  const pillH = fontSize + badge.padY * 2;
+  return (showTail ? badge.tailLength : 0) + pillH / 2;
 }
 
 /**
@@ -56,10 +54,11 @@ export function pillTextLeftX(
   paddingRight: number,
   tl: number,
   textWidth: number,
+  badge: BadgeMetrics = BADGE_METRICS_DEFAULTS,
 ): number {
   "worklet";
   const bodyLeft = canvasWidth - paddingRight + tl;
-  const bodyRight = canvasWidth - BADGE_MARGIN_RIGHT;
+  const bodyRight = canvasWidth - badge.marginEdge;
   return (bodyLeft + bodyRight - textWidth) / 2;
 }
 
@@ -98,10 +97,11 @@ export function minPaddingRightForBadgeYAxisAlign(
   fontSize: number,
   textWidth: number,
   showTail = true,
+  badge: BadgeMetrics = BADGE_METRICS_DEFAULTS,
 ): number {
-  const tl = badgeTailAndCap(fontSize, showTail);
+  const tl = badgeTailAndCap(fontSize, showTail, badge);
   return Math.ceil(
-    BADGE_DOT_GAP + tl + 2 * BADGE_PILL_PAD_X + textWidth + BADGE_MARGIN_RIGHT,
+    badge.dotGap + tl + 2 * badge.padX + textWidth + badge.marginEdge,
   );
 }
 
@@ -110,8 +110,9 @@ export function resolveAutoRight(
   yAxis: boolean,
   badge: boolean,
   showTail = true,
+  badgeMetrics: BadgeMetrics = BADGE_METRICS_DEFAULTS,
 ): number {
-  if (badge) return minPaddingRightForBadgeYAxisAlign(12, 49, showTail);
+  if (badge) return minPaddingRightForBadgeYAxisAlign(12, 49, showTail, badgeMetrics);
   if (yAxis) return 44;
   return DEFAULT_PADDING.right;
 }
@@ -120,15 +121,21 @@ export function resolveAutoRight(
  * Minimum `padding.left` for a badge pill drawn in the left chart margin (label width + horizontal padding + dot gap).
  * `resolveChartLayout` does not call this; it remains available for custom layouts or `resolvePadding(..., badgeOnLeft: true)`.
  */
-export function minPaddingLeftForBadge(textWidth: number): number {
+export function minPaddingLeftForBadge(
+  textWidth: number,
+  badge: BadgeMetrics = BADGE_METRICS_DEFAULTS,
+): number {
   return Math.ceil(
-    BADGE_MARGIN_RIGHT + 2 * BADGE_PILL_PAD_X + textWidth + BADGE_DOT_GAP,
+    badge.marginEdge + 2 * badge.padX + textWidth + badge.dotGap,
   );
 }
 
 /** Default left inset, or a wider inset when `badgeOnLeft` is true (see `minPaddingLeftForBadge`). */
-export function resolveAutoLeft(badgeOnLeft: boolean): number {
-  if (badgeOnLeft) return minPaddingLeftForBadge(49);
+export function resolveAutoLeft(
+  badgeOnLeft: boolean,
+  badgeMetrics: BadgeMetrics = BADGE_METRICS_DEFAULTS,
+): number {
+  if (badgeOnLeft) return minPaddingLeftForBadge(49, badgeMetrics);
   return DEFAULT_PADDING.left;
 }
 
@@ -171,9 +178,15 @@ export function resolvePadding(
   badgeOnLeft = false,
   xAxis = true,
   showTail = true,
+  badgeMetrics: BadgeMetrics = BADGE_METRICS_DEFAULTS,
 ): ChartPadding {
-  const autoRight = resolveAutoRight(yAxis, badge && !badgeOnLeft, showTail);
-  const autoLeft = resolveAutoLeft(badgeOnLeft);
+  const autoRight = resolveAutoRight(
+    yAxis,
+    badge && !badgeOnLeft,
+    showTail,
+    badgeMetrics,
+  );
+  const autoLeft = resolveAutoLeft(badgeOnLeft, badgeMetrics);
   const autoBottom = xAxis ? DEFAULT_PADDING.bottom : 8;
   if (!override) {
     return {

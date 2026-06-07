@@ -9,6 +9,8 @@ import type {
   LeftEdgeFadeConfig,
   LegendConfig,
   LegendStyle,
+  LiveChartMetrics,
+  LiveChartMetricsOverride,
   DotConfig,
   DotRingConfig,
   MultiSeriesDotConfig,
@@ -22,7 +24,14 @@ import type {
 } from "../types";
 
 import type { SharedValue } from "react-native-reanimated";
-import { FADE_EDGE_WIDTH } from "../constants";
+import {
+  BADGE_METRICS_DEFAULTS,
+  CANDLE_METRICS_DEFAULTS,
+  EMPTY_STATE_METRICS_DEFAULTS,
+  FADE_EDGE_WIDTH,
+  GRID_METRICS_DEFAULTS,
+  MOTION_METRICS_DEFAULTS,
+} from "../constants";
 
 // ─── Resolved types (all fields required, no optionals) ──────────────────────
 
@@ -577,5 +586,35 @@ export function resolveLegend(
     compact: prop.compact ?? LEGEND_DEFAULTS.compact,
     position: prop.position ?? LEGEND_DEFAULTS.position,
     style: prop.style,
+  };
+}
+
+// ─── Metrics (sizing & motion tokens) ─────────────────────────────────────────
+
+/** Canonical resolved metrics — every namespace/field present. */
+const METRICS_DEFAULTS: LiveChartMetrics = {
+  badge: BADGE_METRICS_DEFAULTS,
+  candle: CANDLE_METRICS_DEFAULTS,
+  grid: GRID_METRICS_DEFAULTS,
+  motion: MOTION_METRICS_DEFAULTS,
+  emptyState: EMPTY_STATE_METRICS_DEFAULTS,
+};
+
+/**
+ * Resolve the `metrics` prop into a fully-typed config. Per-namespace shallow
+ * merge over the defaults — only the keys the caller sets are replaced, the same
+ * model as `applyPaletteOverride`. Returns the shared defaults object when no
+ * override is supplied (treated read-only by consumers).
+ */
+export function resolveMetrics(
+  prop: LiveChartMetricsOverride | undefined,
+): LiveChartMetrics {
+  if (!prop) return METRICS_DEFAULTS;
+  return {
+    badge: { ...METRICS_DEFAULTS.badge, ...prop.badge },
+    candle: { ...METRICS_DEFAULTS.candle, ...prop.candle },
+    grid: { ...METRICS_DEFAULTS.grid, ...prop.grid },
+    motion: { ...METRICS_DEFAULTS.motion, ...prop.motion },
+    emptyState: { ...METRICS_DEFAULTS.emptyState, ...prop.emptyState },
   };
 }

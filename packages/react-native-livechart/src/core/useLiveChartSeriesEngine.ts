@@ -14,6 +14,8 @@ export interface MultiSeriesEngineConfig {
   series: SharedValue<SeriesConfig[]>;
   timeWindow: number;
   smoothing: number;
+  /** Extra catch-up speed added to `smoothing` when a series tip lags. */
+  adaptiveSpeedBoost?: number;
   exaggerate?: boolean;
   referenceValue?: number;
   referenceValues?: number[];
@@ -36,6 +38,7 @@ export interface MultiEngineFrameRefs {
   canvasHeight: SharedValue<number>;
   timeWindow: SharedValue<number>;
   smoothing: SharedValue<number>;
+  adaptiveSpeedBoostSV?: SharedValue<number | undefined>;
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
   referenceValues?: SharedValue<number[] | undefined>;
@@ -107,6 +110,7 @@ export function applyLiveChartSeriesEngineFrame(
     canvasHeight: sv.canvasHeight.value,
     timeWindow: sv.timeWindow.value,
     smoothing: sv.smoothing.value,
+    adaptiveSpeedBoost: sv.adaptiveSpeedBoostSV?.value,
     exaggerate: sv.exaggerateSV.value,
     referenceValue: sv.referenceValue.value,
     referenceValues: sv.referenceValues?.value,
@@ -135,6 +139,7 @@ export function useLiveChartSeriesEngine(
 ): MultiEngineState {
   const timeWindow = useDerivedValue(() => config.timeWindow);
   const smoothing = useDerivedValue(() => config.smoothing);
+  const adaptiveSpeedBoostSV = useDerivedValue(() => config.adaptiveSpeedBoost);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
   const referenceValues = useDerivedValue(() => config.referenceValues);
@@ -185,6 +190,7 @@ export function useLiveChartSeriesEngine(
         canvasHeight,
         timeWindow,
         smoothing,
+        adaptiveSpeedBoostSV,
         exaggerateSV,
         referenceValue,
         referenceValues,

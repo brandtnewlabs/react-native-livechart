@@ -631,3 +631,42 @@ describe("tickLiveChartEngineFrame", () => {
     });
   });
 });
+
+describe("tickLiveChartEngineFrame adaptiveSpeedBoost", () => {
+  function run(adaptiveSpeedBoost?: number) {
+    const s = {
+      displayValue: 0,
+      displayMin: 0,
+      displayMax: 10,
+      displayWindow: 30,
+      timestamp: 1000,
+    };
+    tickLiveChartEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.08,
+      adaptiveSpeedBoost,
+      exaggerate: false,
+      referenceValue: undefined,
+      targetValue: 5,
+      points: [{ time: 1000, value: 5 }],
+      nowSeconds: 1000,
+    });
+    return s.displayValue;
+  }
+
+  it("converges faster with a larger boost", () => {
+    const none = run(0);
+    const big = run(1);
+    expect(big).toBeGreaterThan(none);
+  });
+
+  it("defaults to the motion-metrics boost when omitted", () => {
+    // Omitted (0.12 default) sits between no boost (0) and a large boost (1).
+    const omitted = run(undefined);
+    expect(omitted).toBeGreaterThan(run(0));
+    expect(omitted).toBeLessThan(run(1));
+  });
+});

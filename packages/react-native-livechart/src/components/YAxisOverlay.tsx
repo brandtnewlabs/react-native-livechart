@@ -8,7 +8,7 @@ import {
 } from "@shopify/react-native-skia";
 import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import { BADGE_DOT_GAP } from "../constants";
+import { BADGE_METRICS_DEFAULTS } from "../constants";
 import type { ResolvedGridStyleConfig } from "../core/resolveConfig";
 import type { YAxisEntry } from "../draw/grid";
 import {
@@ -19,7 +19,7 @@ import {
   type ChartPadding,
 } from "../draw/line";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
-import type { LiveChartPalette } from "../types";
+import type { BadgeMetrics, LiveChartPalette } from "../types";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
@@ -33,6 +33,7 @@ export function YAxisOverlay({
   font,
   badge = false,
   badgeTail = true,
+  badgeMetrics = BADGE_METRICS_DEFAULTS,
   seriesLabelInset = 0,
   gridStyle,
 }: {
@@ -45,6 +46,8 @@ export function YAxisOverlay({
   badge?: boolean;
   /** Whether the badge tail spike is shown; affects the left inset used for label alignment. */
   badgeTail?: boolean;
+  /** Badge pill geometry tokens (kept in sync with useBadge). */
+  badgeMetrics?: BadgeMetrics;
   /** When > 0, series labels occupy the left portion of the gutter; Y-axis labels right-align. */
   seriesLabelInset?: number;
   /** Grid-line styling overrides. Omit for the legacy solid 1px line. */
@@ -81,7 +84,8 @@ export function YAxisOverlay({
     return path;
   });
 
-  const leftInset = BADGE_DOT_GAP + badgeTailAndCap(font.getSize(), badgeTail);
+  const leftInset =
+    badgeMetrics.dotGap + badgeTailAndCap(font.getSize(), badgeTail, badgeMetrics);
 
   const labelEntries = useDerivedValue(() => {
     const items = entries.get();
@@ -93,7 +97,7 @@ export function YAxisOverlay({
       const e = items[i];
       const textW = measureFontTextWidth(font, e.label);
       const x = badge
-        ? pillTextLeftX(w, padding.right, leftInset, textW)
+        ? pillTextLeftX(w, padding.right, leftInset, textW, badgeMetrics)
         : seriesLabelInset > 0
           ? gutterRightAlignedTextLeftX(w, textW)
           : gutterCenteredTextLeftX(w, padding.right, textW);
