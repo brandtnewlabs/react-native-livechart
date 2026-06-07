@@ -1,87 +1,70 @@
 import {
-  Circle,
+  Atlas,
   Group,
-  Image as SkiaImage,
   Path,
   Skia,
-  Text as SkiaText,
   type SkFont,
   type SkPath,
 } from "@shopify/react-native-skia";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
-  useAnimatedReaction,
   useDerivedValue,
+  useAnimatedReaction,
   type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
-import { markersSignature, projectPoint } from "../math/markers";
+import {
+  buildMarkerAtlas,
+  defaultMarkerColor,
+  isConnectorMarker,
+  markerAppearanceSig,
+  type AtlasCell,
+} from "../draw/markerAtlas";
+import {
+  markersSignature,
+  projectMarkers,
+  projectPoint,
+  type ProjectedMarker,
+} from "../math/markers";
 import type {
   LiveChartPalette,
   LiveChartPoint,
   Marker,
-  MarkerKind,
   SeriesConfig,
 } from "../types";
 
-/** Default glyph color per kind when `marker.color` is unset. */
-function defaultMarkerColor(kind: MarkerKind, palette: LiveChartPalette): string {
-  switch (kind) {
-    case "trade":
-      return palette.line;
-    case "boost":
-      return palette.refLine;
-    case "graduation":
-      return palette.dotUp;
-    case "winner":
-      return palette.dotUp;
-    case "clawback":
-      return palette.refLabel;
-  }
-}
-
 const OFF = -9999;
-const DEFAULT_ICON_SIZE = 16;
-/** Circular badge: padding around the icon glyph, background-colored ring width,
- *  and the icon color drawn on the fill. */
-const PILL_PAD = 2;
-const PILL_BORDER = 2;
-const PILL_TEXT_COLOR = "#ffffff";
 
-function MarkerGlyph({
+/**
+ * Self-projecting fallback for the axis-anchored kinds (graduation stem + flag,
+ * clawback box) that can't be fixed-size atlas sprites. Rare, so the per-glyph
+ * worklet cost here is negligible; each glyph still projects its OWN marker so
+ * reordering the array can't make it flash another marker's position.
+ */
+function ConnectorGlyph({
   marker,
   color,
-  bgColor,
   engine,
   padding,
   seriesSV,
   lineDataSV,
-  font,
   axisY,
 }: {
   marker: Marker;
   color: string;
-  /** Chart background color, drawn as a ring behind a `pill` badge. */
-  bgColor?: string;
   engine: ChartEngineLayout;
   padding: ChartPadding;
   seriesSV?: SharedValue<SeriesConfig[]>;
   lineDataSV?: SharedValue<LiveChartPoint[]>;
-  font: SkFont;
   axisY: SharedValue<number>;
 }) {
-  // Capture only primitive anchor fields — never the full marker (which may
-  // carry non-serializable `data` / `image`) — in the worklet closure.
-  const { kind, icon, image, pill } = marker;
+  const { kind } = marker;
   const time = marker.time;
   const value = marker.value;
   const seriesId = marker.seriesId;
-  const size = marker.size ?? DEFAULT_ICON_SIZE;
 
-  // Each glyph projects its OWN marker — no shared index buffer, so reordering
-  // the marker array can't make a glyph flash another marker's position.
   const layout = useDerivedValue(() =>
     projectPoint(time, value, seriesId, {
       canvasWidth: engine.canvasWidth.get(),
@@ -99,12 +82,6 @@ function MarkerGlyph({
     }),
   );
 
-  const cx = useDerivedValue(() =>
-    layout.get().visible ? layout.get().x : OFF,
-  );
-  const cy = useDerivedValue(() =>
-    layout.get().visible ? layout.get().y : OFF,
-  );
   const opacity = useDerivedValue(() => (layout.get().visible ? 1 : 0));
 
   const cacheRef = useRef<{ a: SkPath; b: SkPath; tick: boolean } | null>(null);
@@ -119,30 +96,9 @@ function MarkerGlyph({
     p.reset();
     const l = layout.get();
     if (!l.visible) return p;
-    const x = l.x;
+    const x = l.visible ? l.x : OFF;
     const y = l.y;
-    if (kind === "winner") {
-      const outer = 7;
-      const inner = 3;
-      for (let k = 0; k < 10; k++) {
-        const ang = -Math.PI / 2 + (k * Math.PI) / 5;
-        const rad = k % 2 === 0 ? outer : inner;
-        const px = x + rad * Math.cos(ang);
-        const py = y + rad * Math.sin(ang);
-        if (k === 0) p.moveTo(px, py);
-        else p.lineTo(px, py);
-      }
-      p.close();
-    } else if (kind === "boost") {
-      const L = 6;
-      for (let k = 0; k < 4; k++) {
-        const ang = (k * Math.PI) / 4;
-        const dx = L * Math.cos(ang);
-        const dy = L * Math.sin(ang);
-        p.moveTo(x - dx, y - dy);
-        p.lineTo(x + dx, y + dy);
-      }
-    } else if (kind === "graduation") {
+    if (kind === "graduation") {
       p.moveTo(x, axisY.get());
       p.lineTo(x, y);
       p.moveTo(x, y - 7);
@@ -161,88 +117,7 @@ function MarkerGlyph({
     return p;
   });
 
-  // Image icon centered on the marker.
-  const imgX = useDerivedValue(() =>
-    layout.get().visible ? layout.get().x - size / 2 : OFF,
-  );
-  const imgY = useDerivedValue(() =>
-    layout.get().visible ? layout.get().y - size / 2 : OFF,
-  );
-
-  // Text / emoji icon centering — width + baseline shift depend only on the
-  // (stable) font and icon, so measure once instead of every frame. Skia
-  // `measureText`/`getMetrics` both allocate, so hoisting them out of the
-  // per-frame worklet removes one measure + one metrics call per glyph/frame.
-  // Center the icon glyph on the marker using its measured bounds — tighter and
-  // more accurate than font ascent/descent, so `+` / `−` etc. sit centered both
-  // horizontally and vertically in the badge. Stable per render, not per frame.
-  const iconBounds = font.measureText(icon ?? "");
-  const iconDX = iconBounds.x + iconBounds.width / 2;
-  const iconDY = iconBounds.y + iconBounds.height / 2;
-
-  const iconX = useDerivedValue(() =>
-    layout.get().visible ? layout.get().x - iconDX : OFF,
-  );
-  const iconY = useDerivedValue(() =>
-    layout.get().visible ? layout.get().y - iconDY : OFF,
-  );
-
-  // Circular badge radius — fits the glyph's larger dimension + padding.
-  const pillR = Math.max(iconBounds.width, iconBounds.height) / 2 + PILL_PAD;
-
-  if (image) {
-    return (
-      <Group opacity={opacity}>
-        <SkiaImage
-          image={image}
-          x={imgX}
-          y={imgY}
-          width={size}
-          height={size}
-          fit="contain"
-        />
-      </Group>
-    );
-  }
-
-  if (icon) {
-    if (pill) {
-      // Filled circular badge in the marker color with the icon in white — e.g.
-      // a green `+` buy / red `−` sell tag. A background-colored ring underneath
-      // separates it from the line passing behind.
-      return (
-        <Group opacity={opacity}>
-          {bgColor !== undefined && (
-            <Circle cx={cx} cy={cy} r={pillR + PILL_BORDER} color={bgColor} />
-          )}
-          <Circle cx={cx} cy={cy} r={pillR} color={color} />
-          <SkiaText
-            x={iconX}
-            y={iconY}
-            text={icon}
-            font={font}
-            color={PILL_TEXT_COLOR}
-          />
-        </Group>
-      );
-    }
-    return (
-      <Group opacity={opacity}>
-        <SkiaText x={iconX} y={iconY} text={icon} font={font} color={color} />
-      </Group>
-    );
-  }
-
-  if (kind === "trade") {
-    return (
-      <Group opacity={opacity}>
-        <Circle cx={cx} cy={cy} r={5} color={color} style="stroke" strokeWidth={2} />
-        <Circle cx={cx} cy={cy} r={2} color={color} />
-      </Group>
-    );
-  }
-
-  const fill = kind === "winner" || kind === "clawback";
+  const fill = kind === "clawback";
   return (
     <Group opacity={opacity}>
       <Path
@@ -258,10 +133,14 @@ function MarkerGlyph({
 }
 
 /**
- * Renders the `markers` SharedValue as canvas glyphs. Marker metadata is
- * mirrored into React state when it changes; each glyph projects its own
- * position every frame (keyed by id), so adding/removing markers never makes a
- * surviving glyph flash another marker's position.
+ * Renders the `markers` SharedValue as canvas glyphs.
+ *
+ * Every "stamp" glyph (icon, pill, image, and the trade/winner/boost shapes) is
+ * pre-rasterized once per distinct appearance into a single packed atlas image,
+ * then drawn each frame with ONE `drawAtlas` call driven by a single worklet —
+ * so per-frame UI-thread cost is O(1) mappers + one draw, not O(markers × ~9
+ * derived values + N Skia subtrees). Axis-anchored kinds (graduation/clawback)
+ * fall back to `ConnectorGlyph`.
  *
  * Glyph precedence per marker: `image` → `icon` (text) → built-in `kind` shape.
  */
@@ -288,9 +167,7 @@ export function MarkerOverlay({
   const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
 
   // Read the `markers` prop from closure rather than a SharedValue passed
-  // through `scheduleOnRN`: the handle serialized across the worklet→JS
-  // boundary exposes the native `.value` accessor but NOT the `.get()` method,
-  // so calling `.get()` on it throws ("sv.get is not a function").
+  // through `scheduleOnRN` (which loses `.get()`); mirrors the data model.
   const pull = () => {
     setSnapshot(markers.get().slice());
   };
@@ -304,25 +181,103 @@ export function MarkerOverlay({
     [markers, pull],
   );
 
+  // Rebuild the atlas image only when the set of distinct appearances or the
+  // theme/font changes — never per frame. `markersSignature` already drives the
+  // snapshot, so this useMemo re-runs at most at the snapshot cadence.
+  const appearanceKey = useMemo(() => {
+    const sigs = new Set<string>();
+    for (let i = 0; i < snapshot.length; i++) {
+      const m = snapshot[i];
+      if (!isConnectorMarker(m)) sigs.add(markerAppearanceSig(m));
+    }
+    return Array.from(sigs).sort().join("\x1e");
+  }, [snapshot]);
+  // Cells bake in resolved colors; include the palette fields they depend on.
+  const paletteKey = `${palette.bgRgb.join(",")}|${palette.line}|${palette.refLine}|${palette.dotUp}|${palette.refLabel}`;
+  const atlas = useMemo(
+    () => buildMarkerAtlas(snapshot, palette, font),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- appearanceKey/paletteKey capture the inputs that change cell pixels
+    [appearanceKey, paletteKey, font],
+  );
+  const cells: Record<string, AtlasCell> = atlas.cells;
+  const atlasImage = atlas.image;
+
+  // One pooled, ping-ponged projection buffer reused every frame (no per-frame
+  // array allocation for the projection itself).
+  const projRef = useRef<{
+    a: ProjectedMarker[];
+    b: ProjectedMarker[];
+    tick: boolean;
+  } | null>(null);
+  if (projRef.current === null) {
+    projRef.current = { a: [], b: [], tick: false };
+  }
+
+  // Single per-frame worklet: project all markers, then emit a transform +
+  // source rect for each visible atlas marker. Three mappers total regardless
+  // of marker count (this + the two thin readers below).
+  const atlasData = useDerivedValue(
+    () => {
+      const ms = markers.get();
+      const proj = projRef.current!;
+      proj.tick = !proj.tick;
+      const buf = proj.tick ? proj.a : proj.b;
+      projectMarkers(ms, buf, {
+        canvasWidth: engine.canvasWidth.get(),
+        canvasHeight: engine.canvasHeight.get(),
+        padTop: padding.top,
+        padBottom: padding.bottom,
+        padLeft: padding.left,
+        padRight: padding.right,
+        timestamp: engine.timestamp.get(),
+        displayWindow: engine.displayWindow.get(),
+        displayMin: engine.displayMin.get(),
+        displayMax: engine.displayMax.get(),
+        series: series?.get(),
+        lineData: lineData?.get(),
+      });
+      const transforms = [];
+      const sprites = [];
+      for (let i = 0; i < ms.length; i++) {
+        const pt = buf[i];
+        if (!pt.visible) continue;
+        const m = ms[i];
+        if (isConnectorMarker(m)) continue;
+        const cell = cells[markerAppearanceSig(m)];
+        if (!cell) continue;
+        // Center the cell on the projected point (RSXform: scale 1, no rotation).
+        transforms.push(
+          Skia.RSXform(1, 0, pt.x - cell.w / 2, pt.y - cell.h / 2),
+        );
+        sprites.push(cell.rect);
+      }
+      return { transforms, sprites };
+    },
+    [cells, markers, engine, padding, series, lineData],
+  );
+  const transforms = useDerivedValue(() => atlasData.get().transforms, [atlasData]);
+  const sprites = useDerivedValue(() => atlasData.get().sprites, [atlasData]);
+
   const axisY = useDerivedValue(
     () => engine.canvasHeight.get() - padding.bottom,
   );
 
-  const bgColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
+  const connectors = snapshot.filter(isConnectorMarker);
 
   return (
     <Group>
-      {snapshot.map((m) => (
-        <MarkerGlyph
+      {atlasImage && (
+        <Atlas image={atlasImage} sprites={sprites} transforms={transforms} />
+      )}
+      {connectors.map((m) => (
+        <ConnectorGlyph
           key={m.id}
           marker={m}
           color={m.color ?? defaultMarkerColor(m.kind, palette)}
-          bgColor={bgColor}
           engine={engine}
           padding={padding}
           seriesSV={series}
           lineDataSV={lineData}
-          font={font}
           axisY={axisY}
         />
       ))}
