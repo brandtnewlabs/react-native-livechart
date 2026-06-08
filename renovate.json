@@ -20,26 +20,18 @@
       "enabled": false
     },
     {
-      "description": "Group non-major devDependencies into one PR and auto-merge once CI is green.",
+      "description": "Group non-major devDependencies into a single review PR.",
       "matchDepTypes": ["devDependencies"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "dev dependencies (non-major)",
-      "automerge": true
+      "groupName": "dev dependencies (non-major)"
     },
     {
-      "description": "Never auto-merge 0.x bumps — a minor on a 0.x package can be breaking.",
-      "matchCurrentVersion": "/^0\\./",
-      "automerge": false
-    },
-    {
-      "description": "Keep GitHub Actions current; group and auto-merge non-major.",
+      "description": "Group GitHub Actions bumps into a single review PR.",
       "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["minor", "patch", "digest"],
-      "groupName": "github actions",
-      "automerge": true
+      "groupName": "github actions"
     },
     {
-      "description": "React Native ecosystem majors are high-risk — separate PR, no auto-merge, flagged for review.",
+      "description": "Flag React Native ecosystem majors for extra review.",
       "matchPackageNames": [
         "expo",
         "react",
@@ -50,8 +42,7 @@
         "react-native-worklets"
       ],
       "matchUpdateTypes": ["major"],
-      "addLabels": ["needs-attention"],
-      "automerge": false
+      "addLabels": ["needs-attention"]
     }
   ]
 }
