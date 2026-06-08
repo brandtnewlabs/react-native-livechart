@@ -12,6 +12,11 @@ export interface ChartColors {
   gradientTopColor: string;
   /** Bottom gradient stop — custom opacity or palette default. */
   gradientBottomColor: string;
+  /** Gradient color stops (top → bottom). Custom `colors` when provided, else the
+   *  2-stop `[gradientTopColor, gradientBottomColor]` fallback. */
+  gradientColors: string[];
+  /** Stop positions matching `gradientColors`, or undefined for even spacing. */
+  gradientPositions: number[] | undefined;
 }
 
 /**
@@ -39,10 +44,24 @@ export function useChartColors(
       ? `rgba(${r}, ${g}, ${b}, ${gradientCfg.bottomOpacity})`
       : palette.fillBottom;
 
+  const customColors = gradientCfg?.colors;
+  const hasCustomColors = Array.isArray(customColors) && customColors.length >= 2;
+  const gradientColors = hasCustomColors
+    ? customColors
+    : [gradientTopColor, gradientBottomColor];
+  const gradientPositions =
+    hasCustomColors &&
+    gradientCfg?.positions !== undefined &&
+    gradientCfg.positions.length === customColors.length
+      ? gradientCfg.positions
+      : undefined;
+
   return {
     backgroundColor,
     gradientEnd,
     gradientTopColor,
     gradientBottomColor,
+    gradientColors,
+    gradientPositions,
   };
 }

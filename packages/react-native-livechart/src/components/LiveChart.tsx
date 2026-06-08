@@ -410,6 +410,8 @@ function useLiveChartController({
     gradientEnd,
     gradientTopColor,
     gradientBottomColor,
+    gradientColors,
+    gradientPositions,
   } = useChartColors(
     palette,
     gradientCfg,
@@ -460,6 +462,8 @@ function useLiveChartController({
     gradientEnd,
     gradientTopColor,
     gradientBottomColor,
+    gradientColors,
+    gradientPositions,
     lineGroupOpacity,
     candleGroupOpacity,
     onLayout,
@@ -510,8 +514,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     gradientCfg,
     fillPath,
     gradientEnd,
-    gradientTopColor,
-    gradientBottomColor,
+    gradientColors,
+    gradientPositions,
     valueLineCfg,
     dotY,
     allRefLines,
@@ -565,7 +569,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
             <LinearGradient
               start={vec(0, effectivePadding.top)}
               end={vec(0, gradientEnd)}
-              colors={[gradientTopColor, gradientBottomColor]}
+              colors={gradientColors}
+              positions={gradientPositions}
             />
           </Path>
         </Group>

@@ -268,6 +268,8 @@ describe("resolveGradient", () => {
     expect(resolveGradient(true)).toEqual({
       topOpacity: undefined,
       bottomOpacity: undefined,
+      colors: undefined,
+      positions: undefined,
     });
   });
 
@@ -275,6 +277,8 @@ describe("resolveGradient", () => {
     expect(resolveGradient({ topOpacity: 0.25 })).toEqual({
       topOpacity: 0.25,
       bottomOpacity: undefined,
+      colors: undefined,
+      positions: undefined,
     });
   });
 
@@ -282,6 +286,38 @@ describe("resolveGradient", () => {
     expect(resolveGradient({ topOpacity: 0.3, bottomOpacity: 0.05 })).toEqual({
       topOpacity: 0.3,
       bottomOpacity: 0.05,
+      colors: undefined,
+      positions: undefined,
+    });
+  });
+
+  it("preserves explicit color stops", () => {
+    const colors = ["rgba(0,0,0,0.4)", "rgba(0,0,0,0.1)", "rgba(0,0,0,0)"];
+    expect(resolveGradient({ colors })).toEqual({
+      topOpacity: undefined,
+      bottomOpacity: undefined,
+      colors,
+      positions: undefined,
+    });
+  });
+
+  it("preserves color stops with positions", () => {
+    const colors = ["#fff", "#000"];
+    const positions = [0, 1];
+    expect(resolveGradient({ colors, positions })).toEqual({
+      topOpacity: undefined,
+      bottomOpacity: undefined,
+      colors,
+      positions,
+    });
+  });
+
+  it("leaves colors/positions undefined for an opacity-only object", () => {
+    expect(resolveGradient({ topOpacity: 0.5 })).toEqual({
+      topOpacity: 0.5,
+      bottomOpacity: undefined,
+      colors: undefined,
+      positions: undefined,
     });
   });
 });

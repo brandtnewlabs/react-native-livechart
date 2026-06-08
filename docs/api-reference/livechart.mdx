@@ -46,7 +46,9 @@ provided; everything else has a default.
 </ParamField>
 
 <ParamField body="gradient" type="boolean | GradientConfig" default="true">
-  Area fill under the line.
+  Area fill under the line. Pass a `GradientConfig` with `colors` (≥ 2 stops, top
+  → bottom) for a custom multi-color fill; otherwise the fill is derived from the
+  accent color.
 </ParamField>
 
 <ParamField body="badge" type="boolean | BadgeConfig" default="true">

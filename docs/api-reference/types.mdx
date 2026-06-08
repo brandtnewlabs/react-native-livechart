@@ -130,7 +130,14 @@ These are the option shapes accepted by the matching props.
 
 ```ts
 interface LineConfig { width?: number; color?: string }
-interface GradientConfig { topOpacity?: number; bottomOpacity?: number }
+interface GradientConfig {
+  topOpacity?: number;    // accent-derived top fill opacity
+  bottomOpacity?: number; // accent-derived bottom fill opacity
+  colors?: string[];      // explicit gradient stops (top → bottom), ≥ 2 entries;
+                          //   overrides topOpacity/bottomOpacity when provided
+  positions?: number[];   // optional stop positions (0..1, ascending), same
+                          //   length as colors; ignored if the lengths differ
+}
 interface BadgeConfig {
   variant?: "default" | "minimal";
   tail?: boolean;
