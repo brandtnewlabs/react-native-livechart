@@ -15,11 +15,18 @@ High-performance **live** line and candlestick charts for React Native, built on
 
 🤖 **Docs MCP** — point an AI assistant (Claude, Cursor, …) at the docs via the hosted MCP server: `https://react-native-livechart.brandtnewlabs.com/mcp`
 
+<!-- gh-only:start -->
+<div align="center">
+  <video src="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/006-line-area.mp4" poster="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/006-line-area.jpg" controls muted loop playsinline width="720"></video>
+</div>
+<!-- gh-only:end -->
+<!-- npm-only:start
 <p align="center">
-  <img src="https://raw.githubusercontent.com/brandtnewlabs/react-native-livechart/main/assets/images/hero.gif" alt="react-native-livechart live demo" width="360" />
+  <img src="https://raw.githubusercontent.com/brandtnewlabs/react-native-livechart/main/assets/images/hero.jpg" alt="react-native-livechart" width="480" />
 </p>
 
-<p align="center"><a href="https://react-native-livechart.brandtnewlabs.com"><b>▶ Watch the full video demos in the docs →</b></a></p>
+<p align="center"><a href="https://react-native-livechart.brandtnewlabs.com"><b>▶ Watch the live demos in the docs →</b></a></p>
+npm-only:end -->
 
 > The design, feature set, and API shape are **conceptually inspired by [liveline](https://github.com/benjitaylor/liveline)** — Benji Taylor's real-time canvas chart for React — reimagined for React Native. This is **not** a fork; see [Acknowledgments](#acknowledgments).
 
@@ -36,7 +43,32 @@ High-performance **live** line and candlestick charts for React Native, built on
 
 ## Demos
 
-See every feature in motion — line & area, candlestick, multi-series, scrubbing, momentum & degen, markers, theming, and more — in the **[documentation](https://react-native-livechart.brandtnewlabs.com)**.
+<!-- gh-only:start -->
+Recorded from the Expo example app in this repo — the full set is in the [docs](https://react-native-livechart.brandtnewlabs.com).
+
+**Momentum & degen** — particle bursts and a screen shake on momentum swings
+
+<video src="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/003-momentum-degen-fps.mp4" poster="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/003-momentum-degen-fps.jpg" controls muted loop playsinline width="720"></video>
+
+**Candlestick** — OHLC bars with a live, forming candle
+
+<video src="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/007-candlestick.mp4" poster="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/007-candlestick.jpg" controls muted loop playsinline width="720"></video>
+
+**Multi-series** — toggleable legend and per-series dots
+
+<video src="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/005-multi-series.mp4" poster="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/005-multi-series.jpg" controls muted loop playsinline width="720"></video>
+
+**Scrubbing** — a crosshair and tooltip under your finger
+
+<video src="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/002-scrubbing.mp4" poster="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/002-scrubbing.jpg" controls muted loop playsinline width="720"></video>
+
+**Theming** — light/dark and an accent-driven palette
+
+<video src="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/010-theming.mp4" poster="https://github.com/brandtnewlabs/react-native-livechart/releases/download/media/010-theming.jpg" controls muted loop playsinline width="720"></video>
+<!-- gh-only:end -->
+<!-- npm-only:start
+See every feature in motion — line & area, candlestick, multi-series, scrubbing, momentum & degen, markers, theming, and more — in the [documentation](https://react-native-livechart.brandtnewlabs.com).
+npm-only:end -->
 
 ## Install
 

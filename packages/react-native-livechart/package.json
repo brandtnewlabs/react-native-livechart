@@ -59,7 +59,7 @@
   "scripts": {
     "build": "rimraf dist && tsc -p tsconfig.build.json",
     "build:types:watch": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
-    "prepack": "npm run build && node -e \"require('fs').copyFileSync('../../README.md','README.md')\"",
+    "prepack": "npm run build && node ../../scripts/make-npm-readme.mjs",
     "prepare": "node -e \"if (!require('fs').existsSync('dist/index.d.ts')) process.exit(1)\" || npm run build",
     "test": "npm --prefix ../.. run test:lib",
     "test:coverage": "npm --prefix ../.. run test:coverage -- packages/react-native-livechart",
