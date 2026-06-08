@@ -114,6 +114,8 @@ function useLiveChartController({
   timeWindow = 30,
   paused = false,
   loading = false,
+  // `static` is a reserved word — alias it so the destructure parses.
+  static: isStatic = false,
   smoothing = 0.08,
   exaggerate = false,
   nonNegative = false,
@@ -172,13 +174,17 @@ function useLiveChartController({
   const scrubCfg = resolveScrub(scrub);
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
   const valueLineCfg = resolveValueLine(valueLine);
-  const pulseCfg = resolvePulse(pulse);
+  // Static charts run zero loops: force the pulse off so its `withRepeat`-driven
+  // ring never starts (the DotOverlay reads `pulseCfg`, so null = no pulse).
+  const pulseCfg = isStatic ? null : resolvePulse(pulse);
   const dotCfg = resolveDot(dot);
   const selectionDotCfg = resolveSelectionDot(selectionDot);
   // Outer footprint of the dot (color-filled radius plus the halo ring).
   const dotOuterRadius = dotCfg.radius + (dotCfg.ring?.width ?? 0);
   const gridStyleCfg = resolveGridStyle(gridStyle);
-  const degenCfg = resolveDegen(degen);
+  // Static charts run zero loops: force degen off so `useDegen`'s frame callback
+  // never starts (also passed `isStatic` below as a belt-and-braces autostart gate).
+  const degenCfg = isStatic ? null : resolveDegen(degen);
   const tradeStreamResolved = resolveTradeStream(tradeStream);
   const metricsCfg = resolveMetrics(metrics);
 
@@ -259,7 +265,7 @@ function useLiveChartController({
     candles,
   });
 
-  const reveal = useChartReveal(loading, hasData);
+  const reveal = useChartReveal(loading, hasData, isStatic);
 
   // After data clears, keep last snapshot until morphT finishes dropping (web parity).
   const { lineEngineData, candlesEngine, liveEngine } =
@@ -280,6 +286,7 @@ function useLiveChartController({
     value,
     timeWindow,
     paused,
+    static: isStatic,
     smoothing,
     adaptiveSpeedBoost: metricsCfg.motion.adaptiveSpeedBoost,
     exaggerate,
@@ -317,6 +324,7 @@ function useLiveChartController({
       candleWidth,
       isCandle,
       metricsCfg.candle,
+      !isStatic, // static: no candle-width lerp loop
     );
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
 
@@ -326,14 +334,15 @@ function useLiveChartController({
     engine,
     tradeStreamSV,
     effectivePadding,
-    tradeStreamResolved !== null,
+    !isStatic && tradeStreamResolved !== null,
+    !isStatic, // static: no trade-tape loop
   );
 
   const {
     pack: degenPack,
     packRevision: degenPackRevision,
     shakeTransform: degenShakeTransform,
-  } = useDegen(engine, dotX, dotY, momentumSV, degenCfg, onDegenShake);
+  } = useDegen(engine, dotX, dotY, momentumSV, degenCfg, onDegenShake, isStatic);
 
   // ── Overlay hooks ─────────────────────────────────────────────────────
   const { yAxisEntries } = useYAxis(
@@ -384,7 +393,8 @@ function useLiveChartController({
     formatValue,
     formatTime,
     skiaFont,
-    scrubCfg !== null,
+    // Static charts have an inert pan gesture — no scrub work on the UI thread.
+    !isStatic && scrubCfg !== null,
     onScrub,
     candleOpts,
     scrubCfg?.panGestureDelay ?? 0,
@@ -399,11 +409,12 @@ function useLiveChartController({
     engine,
     effectivePadding,
     markersSV,
-    markersActive,
+    !isStatic && markersActive,
     markerHitRadius,
     onMarkerHover,
     undefined, // seriesSV — single-series has none
     engine.data, // anchor value-less markers to the line
+    !isStatic, // static: no marker-projection loop
   );
 
   const rootGesture = markersActive

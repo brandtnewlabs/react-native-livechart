@@ -182,6 +182,14 @@ provided; everything else has a default.
   Breathing-line loading shell until data is ready.
 </ParamField>
 
+<ParamField body="static" type="boolean" default="false">
+  Render once with no per-frame animation loops — engine, degen, trades, candles,
+  markers, pulse, and entry reveal are all disabled, and scrubbing is off. Keeps
+  many small charts cheap when you render a list or grid of sparklines. Frame the
+  data edge-to-edge with `timeWindow` + `nowOverride`. See the
+  [Sparklines guide](/guides/sparklines).
+</ParamField>
+
 <ParamField body="smoothing" type="number" default="0.08">
   Value-lerp speed (0 = frozen, 1 = instant).
 </ParamField>

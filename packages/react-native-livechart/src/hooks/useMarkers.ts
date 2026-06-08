@@ -30,6 +30,8 @@ export function useMarkers(
   onMarkerHover?: (event: MarkerHoverEvent | null) => void,
   seriesSV?: SharedValue<SeriesConfig[]>,
   lineData?: SharedValue<LiveChartPoint[]>,
+  /** Static charts run no loops: register without starting. Default `true`. */
+  autostart = true,
 ): { projected: SharedValue<ProjectedMarker[]>; tapGesture: ReturnType<typeof Gesture.Tap> } {
   const projected = useSharedValue<ProjectedMarker[]>([]);
   const cacheRef = useRef<{
@@ -73,6 +75,7 @@ export function useMarkers(
       });
       projected.set(buf);
     },
+    autostart,
   );
 
   const tapGesture = Gesture.Tap().onEnd(
