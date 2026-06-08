@@ -7,6 +7,7 @@
  */
 import { useState } from "react";
 import {
+  useAnimatedReaction,
   useDerivedValue,
   useFrameCallback,
   useSharedValue,
@@ -31,6 +32,12 @@ export interface EngineConfig {
   nowOverride?: number;
   windowBuffer?: number;
   paused?: boolean;
+  /**
+   * Loop-free render: settle the display state once (smoothing forced to 1, no
+   * per-frame frame callback) for many small charts in a list. See
+   * {@link LiveChartProps.static}.
+   */
+  static?: boolean;
   mode?: "line" | "candle";
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
@@ -143,7 +150,11 @@ export function applyLiveChartEngineFrame(
 export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
   // Low-frequency config → UI thread via useDerivedValue
   const timeWindow = useDerivedValue(() => config.timeWindow);
-  const smoothing = useDerivedValue(() => config.smoothing);
+  // Static charts snap to their target in one tick (smoothing=1), so the single
+  // settle reaction below produces the final state with no per-frame easing.
+  const smoothing = useDerivedValue(() =>
+    config.static ? 1 : config.smoothing,
+  );
   const adaptiveSpeedBoostSV = useDerivedValue(() => config.adaptiveSpeedBoost);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
@@ -170,34 +181,74 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
   // no useDerivedValue bridging, no closure serialization per tick.
   const { data, value, candles, liveCandle } = config;
 
+  // Static charts run zero per-frame loops. `isStaticSV` gates both the
+  // frame-callback autostart and the one-shot settle reaction below.
+  const isStaticSV = useDerivedValue(() => config.static ?? false);
+
+  // Single refs object shared by the frame callback and the settle reaction so
+  // they can never drift out of sync.
+  const frameRefs: EngineFrameRefs = {
+    data,
+    value,
+    displayValue,
+    displayMin,
+    displayMax,
+    displayWindow,
+    timestamp,
+    canvasWidth,
+    canvasHeight,
+    timeWindow,
+    smoothing,
+    adaptiveSpeedBoostSV,
+    exaggerateSV,
+    referenceValue,
+    referenceValues,
+    nonNegativeSV,
+    maxValueSV,
+    nowOverrideSV,
+    windowBufferSV,
+    pausedSV,
+    modeSV,
+    candles,
+    liveCandle,
+  };
+
+  // `autostart=false` registers the frame callback without running it — the live
+  // loop is fully inert in static mode (the invariant that makes this worth it).
   useFrameCallback((frameInfo) => {
     "worklet";
-    applyLiveChartEngineFrame(frameInfo, {
-      data,
-      value,
-      displayValue,
-      displayMin,
-      displayMax,
-      displayWindow,
-      timestamp,
-      canvasWidth,
-      canvasHeight,
-      timeWindow,
-      smoothing,
-      adaptiveSpeedBoostSV,
-      exaggerateSV,
-      referenceValue,
-      referenceValues,
-      nonNegativeSV,
-      maxValueSV,
-      nowOverrideSV,
-      windowBufferSV,
-      pausedSV,
-      modeSV,
-      candles,
-      liveCandle,
-    });
-  });
+    applyLiveChartEngineFrame(frameInfo, frameRefs);
+  }, !config.static);
+
+  // One-shot settle for static charts: the fingerprint changes when the canvas
+  // lays out (width 0→real) or the framing inputs change, and the handler runs a
+  // single snap tick (smoothing=1). Inert when not static — `prepare` returns a
+  // constant so it never fires.
+  useAnimatedReaction(
+    () => {
+      if (!isStaticSV.get()) return 0; // inert when not static — never changes
+      const d = data.get();
+      const n = d.length;
+      return [
+        n,
+        n ? d[0].time : 0,
+        n ? d[0].value : 0,
+        n ? d[n - 1].time : 0,
+        n ? d[n - 1].value : 0,
+        value.get(),
+        canvasWidth.get(),
+        canvasHeight.get(),
+        timeWindow.get(),
+      ].join(",");
+    },
+    (curr, prev) => {
+      if (!isStaticSV.get() || curr === prev) return;
+      applyLiveChartEngineFrame(
+        { timeSincePreviousFrame: MS_PER_FRAME_60FPS },
+        frameRefs,
+      );
+    },
+  );
 
   return {
     data,

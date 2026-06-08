@@ -25,6 +25,8 @@ export function useTradeStream(
   tradeStream: SharedValue<TradeEvent[]>,
   padding: ChartPadding,
   active: boolean,
+  /** Static charts run no loops: register without starting. Default `true`. */
+  autostart = true,
 ): SharedValue<TradeMarker[]> {
   const markers = useSharedValue<TradeMarker[]>([]);
   const state = useSharedValue<TradeStreamState>(createTradeStreamState());
@@ -58,6 +60,7 @@ export function useTradeStream(
       const chartH = chartBottom - chartTop;
       markers.set(projectLabels(s, chartTop, chartH));
     },
+    autostart,
   );
 
   return markers;

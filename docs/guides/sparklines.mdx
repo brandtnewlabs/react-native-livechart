@@ -1,0 +1,77 @@
+---
+title: Sparklines
+icon: "chart-simple"
+description: "Render many cheap, non-animated mini-charts in a list or grid with static mode."
+---
+
+`static` renders a `LiveChart` **once** with zero per-frame animation loops. The engine tick
+loop, the degen/trade/candle/marker callbacks, the pulse, and the entry reveal are all
+disabled, and scrubbing is off. That makes each instance cheap enough to put dozens of them in a
+scrolling list — a watchlist row, a token grid, a portfolio of sparklines.
+
+It mirrors `react-native-graph`'s `animated={false}`.
+
+## When to use it
+
+Reach for `static` when you're rendering **many** mini-charts at once and don't need them to
+animate or respond to touch. A single hero chart should stay live; a `FlatList` of forty
+thumbnails should be `static`.
+
+## A sparkline cell
+
+Strip the chrome you don't need in a thumbnail — badge, axes, pulse — and frame the data
+edge-to-edge:
+
+```tsx
+function SparklineCell({ history, lastValue, lastTime, span }) {
+  return (
+    <LiveChart
+      static
+      data={history}
+      value={lastValue}
+      timeWindow={span}
+      nowOverride={lastTime}
+      badge={false}
+      yAxis={false}
+      xAxis={false}
+      pulse={false}
+    />
+  );
+}
+```
+
+Drop it into a list or grid:
+
+```tsx
+<FlatList
+  data={tokens}
+  numColumns={2}
+  keyExtractor={(t) => t.id}
+  renderItem={({ item }) => (
+    <SparklineCell
+      history={item.history}
+      lastValue={item.lastValue}
+      lastTime={item.lastTime}
+      span={item.span}
+    />
+  )}
+/>
+```
+
+## Framing the data
+
+A static chart never scrolls, so you decide exactly what's on screen. Set `timeWindow` to the
+span you want to show and `nowOverride` to your dataset's last timestamp (unix seconds) so the
+window ends right at the latest point. This is the same approach as the
+[historical data fill](/guides/playback#historical-data-fill) pattern in the playback guide.
+
+## `static` vs `paused`
+
+They sound similar but do opposite things:
+
+- **`paused`** freezes a **live** chart — the tick loop keeps running, the value keeps buffering,
+  and resuming catches the window back up to real time. Use it for one interactive chart.
+- **`static`** removes the loops **entirely** — nothing animates and nothing recovers, because
+  there's nothing to recover. Use it for many instances at once.
+
+See the full prop list in the [`LiveChart` reference](/api-reference/livechart).

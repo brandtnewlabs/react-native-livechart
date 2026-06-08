@@ -52,6 +52,11 @@ const SECTIONS: DemoSection[] = [
         title: "Multi-series",
         blurb: "LiveChartSeries: per-series style, legend, dots, scrub.",
       },
+      {
+        href: "/demo/sparklines",
+        title: "Sparklines",
+        blurb: "Many static mini-charts in a list (no per-chart animation loop).",
+      },
     ],
   },
   {

@@ -893,6 +893,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
   data: SharedValue<LiveChartPoint[]>;
   /** Latest live value for smooth interpolation between data updates. */
   value: SharedValue<number>;
+  /** Render once with no per-frame animation loop — for many small charts (sparklines)
+   *  in a list. Pulse/scrub/degen and the entry animation are disabled. Frame the data
+   *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
+  static?: boolean;
   /** Called when the user scrubs the crosshair. `null` when scrub ends. */
   onScrub?: (point: ScrubPoint | null) => void;
   /**

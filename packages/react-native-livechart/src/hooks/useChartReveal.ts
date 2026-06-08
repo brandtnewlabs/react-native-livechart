@@ -58,6 +58,8 @@ export interface ChartRevealState {
 export function useChartReveal(
   loading: boolean,
   hasData: SharedValue<boolean>,
+  /** Static charts skip the entry ramp: morphT snaps to its target, no `withTiming`. */
+  isStatic = false,
 ): ChartRevealState {
   // Best-guess initial so the common case — a live chart that already has data
   // and isn't loading — paints fully revealed with no flash. The reaction below
@@ -71,13 +73,14 @@ export function useChartReveal(
 
   // The reaction reads presence/loading on the UI thread (a worklet, never during
   // render — so no Reanimated "reading `value` during render" warning), seeds the
-  // exact reveal state on its first run, then animates on later changes.
+  // exact reveal state on its first run, then animates on later changes. Static
+  // charts always snap (no `withTiming` ramp) so no entry animation ever runs.
   useAnimatedReaction(
     () => !isLoading.get() && hasData.get(),
     (chartVisible, prev) => {
       "worklet";
-      if (prev === null || prev === undefined) {
-        // First run: snap to the correct initial reveal state (no animation).
+      if (isStatic || prev === null || prev === undefined) {
+        // Static, or first run: snap to the correct reveal state (no animation).
         morphT.set(chartVisible ? 1 : 0);
         return;
       }
@@ -90,7 +93,7 @@ export function useChartReveal(
         );
       }
     },
-    [hasData],
+    [hasData, isStatic],
   );
 
   const isEmpty = useDerivedValue(() => !isLoading.get() && !hasData.get());

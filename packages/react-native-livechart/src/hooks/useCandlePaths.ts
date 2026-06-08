@@ -29,6 +29,8 @@ export function useCandlePaths(
   candleWidthSecs: number,
   active: boolean,
   candleMetrics: CandleMetrics = CANDLE_METRICS_DEFAULTS,
+  /** Static charts run no loops: register without starting. Default `true`. */
+  autostart = true,
 ) {
   const targetCandleWidth = useDerivedValue(() => candleWidthSecs);
   const displayCandleWidth = useSharedValue(candleWidthSecs);
@@ -50,7 +52,7 @@ export function useCandlePaths(
         dt,
       ),
     );
-  });
+  }, autostart);
 
   /* istanbul ignore next -- worklet */
   const geometry = useDerivedValue(() => {
