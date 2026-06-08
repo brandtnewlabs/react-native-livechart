@@ -737,6 +737,10 @@ export interface LiveChartCoreProps {
   accessibilityRole?: "image" | "none" | "adjustable" | "summary";
   /** Crosshair scrubbing on hover/drag. `true` = defaults, `false` = disabled, or pass `ScrubConfig`. Default `true`. */
   scrub?: boolean | ScrubConfig;
+  /** Called once when the user starts scrubbing/panning the chart. */
+  onGestureStart?: () => void;
+  /** Called once when the user stops scrubbing/panning the chart. */
+  onGestureEnd?: () => void;
   /**
    * Fade out chart content on the left (destination-out style). `true` = defaults, `false` = off,
    * or pass `LeftEdgeFadeConfig`. Default `true`.

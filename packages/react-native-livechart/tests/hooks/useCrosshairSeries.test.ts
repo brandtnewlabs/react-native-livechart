@@ -325,6 +325,40 @@ describe("useCrosshairSeries (hook)", () => {
     expect(result.current.scrubActive.value).toBe(false);
   });
 
+  it("accepts onGestureStart/onGestureEnd and still returns a gesture", () => {
+    const onGestureStart = jest.fn();
+    const onGestureEnd = jest.fn();
+    const engine = makeEngine({
+      series: {
+        value: [
+          {
+            id: "a",
+            data: [{ time: 1_700_000_000, value: 5 }],
+            value: 5,
+            color: "#00f",
+          },
+        ],
+      },
+    });
+    const { result } = renderHook(() =>
+      useCrosshairSeries(
+        engine,
+        padding,
+        true,
+        undefined, // onScrub
+        0, // panGestureDelay
+        onGestureStart,
+        onGestureEnd,
+      ),
+    );
+    expect(result.current.gesture).toBeDefined();
+    expect(result.current.scrubActive.value).toBe(false);
+    // Callbacks fire only from the UI-thread gesture worklets (istanbul-ignored),
+    // so nothing is invoked at render time.
+    expect(onGestureStart).not.toHaveBeenCalled();
+    expect(onGestureEnd).not.toHaveBeenCalled();
+  });
+
   it("uses Android pan minDistance when Platform.OS is android", () => {
     const prev = Platform.OS;
     Object.defineProperty(Platform, "OS", {

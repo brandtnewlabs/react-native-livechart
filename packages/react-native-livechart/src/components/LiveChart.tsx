@@ -147,6 +147,8 @@ function useLiveChartController({
 
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
+  onGestureStart,
+  onGestureEnd,
   onDegenShake,
 }: LiveChartProps) {
   const emptyTradeStream = useSharedValue<TradeEvent[]>([]);
@@ -377,6 +379,8 @@ function useLiveChartController({
     onScrub,
     candleOpts,
     scrubCfg?.panGestureDelay ?? 0,
+    onGestureStart,
+    onGestureEnd,
   );
 
   const markersActive = markers != null;

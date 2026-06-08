@@ -127,6 +127,8 @@ function useLiveChartSeriesController({
   metrics,
   scrub = true,
   onScrub,
+  onGestureStart,
+  onGestureEnd,
   onSeriesToggle,
   dot: dotProp,
   legend: legendProp,
@@ -307,6 +309,8 @@ function useLiveChartSeriesController({
     scrubEnabled,
     onScrub,
     scrubCfg?.panGestureDelay ?? 0,
+    onGestureStart,
+    onGestureEnd,
   );
 
   // `projected` is used internally by the hit-test gesture; the overlay

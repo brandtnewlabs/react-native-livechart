@@ -57,9 +57,14 @@ export function useCrosshair(
   candleOpts?: CrosshairCandleOpts,
   /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
   panGestureDelay = 0,
+  onGestureStart?: () => void,
+  onGestureEnd?: () => void,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
+  // Tracks whether the active scrub phase actually began, so a tap that never
+  // activates doesn't emit a spurious onGestureEnd.
+  const gestureStarted = useSharedValue(false);
 
   const scrubTime = useDerivedValue(() =>
     computeScrubTime(
@@ -165,7 +170,19 @@ export function useCrosshair(
     onScrub?.(null);
   }
 
+  /* istanbul ignore next */
+  function handleGestureStart() {
+    onGestureStart?.();
+  }
+
+  /* istanbul ignore next */
+  function handleGestureEnd() {
+    onGestureEnd?.();
+  }
+
   const hasOnScrub = onScrub != null;
+  const hasOnGestureStart = onGestureStart != null;
+  const hasOnGestureEnd = onGestureEnd != null;
 
   useAnimatedReaction(
     () => {
@@ -229,6 +246,8 @@ export function useCrosshair(
         if (!enabled) return;
         scrubX.set(e.x);
         scrubActive.set(true);
+        gestureStarted.set(true);
+        if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
       },
     )
     .onUpdate(
@@ -243,6 +262,10 @@ export function useCrosshair(
         "worklet";
         scrubActive.set(false);
         if (hasOnScrub) scheduleOnRN(handleScrubEnd);
+        if (gestureStarted.get()) {
+          gestureStarted.set(false);
+          if (hasOnGestureEnd) scheduleOnRN(handleGestureEnd);
+        }
       },
     );
 
