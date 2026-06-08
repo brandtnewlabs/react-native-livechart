@@ -1,99 +1,38 @@
-import { Circle, Group } from "@shopify/react-native-skia";
+import {
+  Atlas,
+  Skia,
+  type SkColor,
+  type SkRSXform,
+  type SkRect,
+} from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import { DEGEN_STRIDE } from "../constants";
+import {
+  buildParticleInstances,
+  buildParticleSprite,
+} from "../draw/particleAtlas";
+import { parseColorRgb } from "../theme";
 import type { LiveChartPalette } from "../types";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 type DegenPack = SharedValue<Float64Array<ArrayBuffer>>;
 
 /**
- * Renders one particle slot from the packed ring buffer.
- * Buffer layout per slot (stride = DEGEN_STRIDE = 8):
- *   [0] x, [1] y, [2] vx, [3] vy, [4] t0, [5] active, [6] size, [7] colorIndex
- * See `math/degenTick.ts` for the authoritative layout documentation.
+ * Renders the degen particle burst with a single `drawAtlas` call.
  *
- * Each particle stores a `colorIndex` (set at spawn) that selects its color
- * from `colorList`, so multi-series bursts render in their own series' color.
+ * Every active particle shares one pre-rasterized white-circle sprite and
+ * differs only in position, scale, color, and opacity — the ideal `drawAtlas`
+ * case. A single per-frame worklet projects the packed ring buffer (layout:
+ * `[x, y, vx, vy, t0, active, size, colorIndex]`, stride = DEGEN_STRIDE = 8;
+ * see `math/degenTick.ts`) into transforms + per-sprite colors, replacing the
+ * old O(slots × 4 derived values + 1 `<Circle>` each) fan-out with O(1) mappers
+ * and one draw.
+ *
+ * Per-particle color/opacity is baked into the sprite color (`rgba(r,g,b,a)`)
+ * and applied with the `"modulate"` blend mode, which multiplies the white
+ * sprite by each color — so a white AA circle becomes a soft, correctly-tinted,
+ * correctly-faded particle, visually equivalent to the old `<Circle color
+ * opacity>`.
  */
-function DegenSlot({
-  index,
-  pack,
-  packRevision,
-  engine,
-  particleBurstDurationSec,
-  particleOpacity,
-  colorList,
-}: {
-  index: number;
-  pack: DegenPack;
-  packRevision: SharedValue<number>;
-  engine: ChartEngineLayout;
-  particleBurstDurationSec: number;
-  particleOpacity: number;
-  colorList: string[];
-}) {
-  const base = index * DEGEN_STRIDE;
-
-  /* istanbul ignore next -- useDerivedValue worklet runs on UI thread, not in Jest */
-  const cx = useDerivedValue(() => {
-    const rev = packRevision.value;
-    const buf = pack.value;
-    const active = buf[base + 5];
-    if (!(rev >= 0) || !(active > 0.5)) return -9999;
-    return buf[base + 0];
-  });
-
-  /* istanbul ignore next -- worklet */
-  const cy = useDerivedValue(() => {
-    const rev = packRevision.value;
-    const buf = pack.value;
-    const active = buf[base + 5];
-    if (!(rev >= 0) || !(active > 0.5)) return -9999;
-    return buf[base + 1];
-  });
-
-  /* istanbul ignore next -- worklet */
-  const r = useDerivedValue(() => {
-    const rev = packRevision.value;
-    const buf = pack.value;
-    const active = buf[base + 5];
-    if (!(rev >= 0) || !(active > 0.5)) return 0;
-    const now = engine.timestamp.value;
-    const dt = now - buf[base + 4];
-    if (dt < 0) return 0;
-    const life = Math.max(0, 1 - dt / particleBurstDurationSec);
-    const size = buf[base + 6] || 1;
-    return size * (0.5 + life * 0.5);
-  });
-
-  /* istanbul ignore next -- worklet */
-  const opacity = useDerivedValue(() => {
-    const rev = packRevision.value;
-    const buf = pack.value;
-    const active = buf[base + 5];
-    if (!(rev >= 0) || !(active > 0.5)) return 0;
-    const now = engine.timestamp.value;
-    const dt = now - buf[base + 4];
-    if (dt < 0) return 0;
-    const life = Math.max(0, 1 - dt / particleBurstDurationSec);
-    return life * particleOpacity;
-  });
-
-  /* istanbul ignore next -- worklet */
-  const color = useDerivedValue(() => {
-    // Read packRevision so this re-runs each frame — the pack buffer is mutated
-    // in place (stable reference), so without this the color would freeze at the
-    // mount-time colorIndex (0) for every particle.
-    const rev = packRevision.value;
-    const buf = pack.value;
-    if (!(rev >= 0)) return colorList[0];
-    const idx = Math.max(0, Math.floor(buf[base + 7]));
-    return colorList[idx % colorList.length];
-  });
-
-  return <Circle cx={cx} cy={cy} r={r} color={color} opacity={opacity} />;
-}
-
 export function DegenParticlesOverlay({
   pack,
   packRevision,
@@ -115,27 +54,72 @@ export function DegenParticlesOverlay({
 }) {
   /* istanbul ignore next -- branch depends on render-time props */
   const colorList = colors && colors.length > 0 ? colors : [palette.line];
-  // Fixed-size persistent slot pool. Each <DegenSlot> renders whatever particle
-  // currently occupies slot `i` (read from `pack` by index), and particles cycle
-  // through the slots over time. The pool is positional — slot `i` always renders
-  // ring-buffer index `i`, and the list only grows/shrinks at the tail, never
-  // reorders — so each slot has a permanent identity. Key by that stable per-slot
-  // id (`particle-slot-<i>`) rather than the bare array index.
-  const slotKeys = Array.from(
-    { length: particleSlotCount },
-    (_, i) => `particle-slot-${i}`,
-  );
-  const slots = slotKeys.map((slotKey, i) => (
-    <DegenSlot
-      key={slotKey}
-      index={i}
-      pack={pack}
-      packRevision={packRevision}
-      engine={engine}
-      particleBurstDurationSec={particleBurstDurationSec}
-      particleOpacity={particleOpacity}
-      colorList={colorList}
+
+  // White-circle sprite has no per-render inputs; React Compiler memoizes it.
+  const sprite = buildParticleSprite();
+
+  // Pre-parse the color list to [r,g,b] tuples so the per-frame worklet never
+  // parses arbitrary color strings (only formats `rgba(...)`). React Compiler
+  // memoizes this on `colorList`.
+  const colorRgb = colorList.map((c) => parseColorRgb(c));
+
+  // Single per-frame worklet. Reads `packRevision` so it re-runs each frame
+  // while a burst is alive (the pack buffer is mutated in place, so its
+  // reference is stable and wouldn't otherwise re-notify).
+  const atlasData = useDerivedValue(() => {
+    const rev = packRevision.get();
+    const transforms: SkRSXform[] = [];
+    const sprites: SkRect[] = [];
+    const colorsOut: SkColor[] = [];
+    if (rev >= 0) {
+      const instances = buildParticleInstances(
+        pack.get(),
+        particleSlotCount,
+        engine.timestamp.get(),
+        particleBurstDurationSec,
+        particleOpacity,
+        sprite.radius,
+      );
+      const half = sprite.size / 2;
+      for (let i = 0; i < instances.length; i++) {
+        const inst = instances[i];
+        // Center the scaled sprite on (x, y); RSXform has no rotation.
+        transforms.push(
+          Skia.RSXform(
+            inst.scale,
+            0,
+            inst.x - inst.scale * half,
+            inst.y - inst.scale * half,
+          ),
+        );
+        sprites.push(Skia.XYWHRect(0, 0, sprite.size, sprite.size));
+        const [r, g, b] = colorRgb[inst.colorIndex % colorRgb.length];
+        colorsOut.push(Skia.Color(`rgba(${r}, ${g}, ${b}, ${inst.alpha})`));
+      }
+    }
+    return { transforms, sprites, colors: colorsOut };
+  }, [
+    pack,
+    packRevision,
+    engine,
+    particleSlotCount,
+    particleBurstDurationSec,
+    particleOpacity,
+    sprite,
+    colorRgb,
+  ]);
+
+  const transforms = useDerivedValue(() => atlasData.get().transforms, [atlasData]);
+  const sprites = useDerivedValue(() => atlasData.get().sprites, [atlasData]);
+  const atlasColors = useDerivedValue(() => atlasData.get().colors, [atlasData]);
+
+  return (
+    <Atlas
+      image={sprite.image}
+      sprites={sprites}
+      transforms={transforms}
+      colors={atlasColors}
+      colorBlendMode="modulate"
     />
-  ));
-  return <Group>{slots}</Group>;
+  );
 }
