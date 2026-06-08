@@ -5,6 +5,7 @@ import { interpolateAtTime } from "../../src/math/interpolate";
 import { resolveTheme } from "../../src/theme";
 import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
+import { computeScrubDotY } from "../../src/hooks/crosshairShared";
 import {
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
@@ -135,6 +136,51 @@ describe("computeCrosshairOpacity", () => {
     expect(
       computeCrosshairOpacity(true, dotX - 4, canvasWidth, paddingRight),
     ).toBeCloseTo(1);
+  });
+});
+
+// ─── computeScrubDotY ────────────────────────────────────────────────────────
+
+describe("computeScrubDotY", () => {
+  // canvasHeight 300, padTop 12, padBottom 28 → chartH 260.
+  const canvasHeight = 300;
+  const padTop = 12;
+  const padBottom = 28;
+
+  it("returns -1 (sentinel) when value is null", () => {
+    expect(
+      computeScrubDotY(null, 0, 100, canvasHeight, padTop, padBottom),
+    ).toBe(-1);
+  });
+
+  it("returns -1 when the canvas is not yet laid out (chartH <= 0)", () => {
+    expect(computeScrubDotY(50, 0, 100, 0, padTop, padBottom)).toBe(-1);
+  });
+
+  it("pins the dot to the vertical center for a degenerate (zero) range", () => {
+    // chartH 260 → center at padTop + 130 = 142.
+    expect(computeScrubDotY(50, 50, 50, canvasHeight, padTop, padBottom)).toBe(
+      142,
+    );
+  });
+
+  it("maps the top of the range to padTop", () => {
+    expect(
+      computeScrubDotY(100, 0, 100, canvasHeight, padTop, padBottom),
+    ).toBeCloseTo(padTop);
+  });
+
+  it("maps the bottom of the range to the plot's bottom edge", () => {
+    // padTop + chartH = 12 + 260 = 272 = canvasHeight - padBottom.
+    expect(
+      computeScrubDotY(0, 0, 100, canvasHeight, padTop, padBottom),
+    ).toBeCloseTo(272);
+  });
+
+  it("maps a mid value to the mid pixel", () => {
+    expect(
+      computeScrubDotY(50, 0, 100, canvasHeight, padTop, padBottom),
+    ).toBeCloseTo(142);
   });
 });
 

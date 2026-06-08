@@ -12,6 +12,8 @@ import {
   resolvePulse,
   resolveReferenceLineConfig,
   resolveScrub,
+  resolveSelectionDot,
+  resolveSelectionDotRing,
   resolveTradeStream,
   resolveValueLine,
   resolveXAxis,
@@ -719,6 +721,77 @@ describe("resolveMultiSeriesDot", () => {
     expect(r.show).toBe(false);
     expect(r.radius).toBe(3.5);
     expect(r.valueLabel).toBe(true);
+  });
+});
+
+// ─── resolveSelectionDotRing ─────────────────────────────────────────────────
+
+describe("resolveSelectionDotRing", () => {
+  it("returns null when disabled", () => {
+    expect(resolveSelectionDotRing(false)).toBeNull();
+  });
+
+  it("returns defaults for true/undefined (ring on)", () => {
+    expect(resolveSelectionDotRing(true)).toEqual({ color: undefined, width: 2 });
+    expect(resolveSelectionDotRing(undefined)).toEqual({
+      color: undefined,
+      width: 2,
+    });
+  });
+
+  it("merges a partial ring config over the defaults", () => {
+    expect(resolveSelectionDotRing({ width: 3 })).toEqual({
+      color: undefined,
+      width: 3,
+    });
+    expect(resolveSelectionDotRing({ color: "#fbbf24" })).toEqual({
+      color: "#fbbf24",
+      width: 2,
+    });
+  });
+});
+
+// ─── resolveSelectionDot ─────────────────────────────────────────────────────
+
+describe("resolveSelectionDot", () => {
+  it("defaults to the built-in dot for undefined/true (default ON)", () => {
+    const expected = {
+      size: 4,
+      color: undefined,
+      ring: { color: undefined, width: 2 },
+    };
+    expect(resolveSelectionDot(undefined)).toEqual(expected);
+    expect(resolveSelectionDot(true)).toEqual(expected);
+  });
+
+  it("returns null when disabled (selectionDot={false})", () => {
+    expect(resolveSelectionDot(false)).toBeNull();
+  });
+
+  it("applies size/color/ring knobs from a config object", () => {
+    expect(
+      resolveSelectionDot({ size: 6, color: "#abcdef", ring: { width: 3 } }),
+    ).toEqual({
+      size: 6,
+      color: "#abcdef",
+      ring: { color: undefined, width: 3 },
+      component: undefined,
+    });
+  });
+
+  it("turns the ring off via ring:false", () => {
+    const r = resolveSelectionDot({ ring: false })!;
+    expect(r.ring).toBeNull();
+    expect(r.size).toBe(4);
+  });
+
+  it("carries a custom component through", () => {
+    const Custom = () => null;
+    const r = resolveSelectionDot({ component: Custom })!;
+    expect(r.component).toBe(Custom);
+    // size/color/ring still resolved (ignored by the slot when component set)
+    expect(r.size).toBe(4);
+    expect(r.ring).toEqual({ color: undefined, width: 2 });
   });
 });
 

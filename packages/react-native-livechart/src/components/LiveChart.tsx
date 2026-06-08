@@ -28,6 +28,7 @@ import {
   resolveMetrics,
   resolvePulse,
   resolveScrub,
+  resolveSelectionDot,
   resolveTradeStream,
   resolveValueLine,
   resolveXAxis,
@@ -138,6 +139,7 @@ function useLiveChartController({
   palette: paletteOverride,
   metrics,
   scrub = true,
+  selectionDot,
   tradeStream,
   degen,
   markers,
@@ -166,6 +168,7 @@ function useLiveChartController({
   const valueLineCfg = resolveValueLine(valueLine);
   const pulseCfg = resolvePulse(pulse);
   const dotCfg = resolveDot(dot);
+  const selectionDotCfg = resolveSelectionDot(selectionDot);
   // Outer footprint of the dot (color-filled radius plus the halo ring).
   const dotOuterRadius = dotCfg.radius + (dotCfg.ring?.width ?? 0);
   const gridStyleCfg = resolveGridStyle(gridStyle);
@@ -480,6 +483,9 @@ function useLiveChartController({
     rootGesture,
     markersActive,
     markersSV,
+    // selection dot: resolved config + fallback color (the chart line/accent color)
+    selectionDot: selectionDotCfg,
+    selectionColor: lineProp?.color ?? palette.line,
   };
 }
 
@@ -717,6 +723,8 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
     isCandle,
     pulseCfg,
     dotOuterRadius,
+    selectionDot,
+    selectionColor,
   } = model;
 
   if (!tradeStreamResolved && !scrubCfg) return null;
@@ -752,6 +760,10 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
           palette={palette}
           font={skiaFont}
           showTooltip={scrubCfg.tooltip}
+          selectionDot={selectionDot}
+          selectionY={crosshair.scrubDotY}
+          scrubActive={crosshair.scrubActive}
+          selectionColor={selectionColor}
           dimOpacity={scrubCfg.dimOpacity}
           liveDotExtent={liveDotExtent}
           crosshairLineColor={scrubCfg.crosshairLineColor}

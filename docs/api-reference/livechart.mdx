@@ -120,6 +120,12 @@ provided; everything else has a default.
   Crosshair scrubbing on drag.
 </ParamField>
 
+<ParamField body="selectionDot" type="boolean | SelectionDotConfig" default="true">
+  Dot drawn at the scrub intersection while scrubbing. `false` hides it; pass a
+  config to set `size` / `color` / `ring`, or `{ component }` for a fully custom
+  Skia dot. See [Scrubbing](/guides/scrubbing#selection-dot).
+</ParamField>
+
 <ParamField body="onScrub" type="(point: ScrubPoint | null) => void">
   Fires while scrubbing; `null` when it ends.
 </ParamField>

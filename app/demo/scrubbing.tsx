@@ -1,7 +1,12 @@
 import { Text, TextInput } from "react-native";
 
+import { Circle, Group } from "@shopify/react-native-skia";
 import { useState } from "react";
-import { formatTime, LiveChart } from "react-native-livechart";
+import {
+  formatTime,
+  LiveChart,
+  type SelectionDotProps,
+} from "react-native-livechart";
 import Animated, {
   useAnimatedProps,
   useSharedValue,
@@ -42,11 +47,33 @@ const DIM_OPTIONS: { value: number; label: string }[] = [
   { value: 0, label: "Full" },
 ];
 
+type DotMode = "default" | "styled" | "custom" | "off";
+
+const DOT_OPTIONS: { value: DotMode; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "styled", label: "Styled" },
+  { value: "custom", label: "Custom" },
+  { value: "off", label: "Off" },
+];
+
+// Custom selection dot: a hollow amber ring with a center fill, drawn at the
+// scrub intersection. A Skia component receiving the scrub position as
+// SharedValues, so it animates on the UI thread (no re-renders while scrubbing).
+function RingSelectionDot({ x, y, opacity, size }: SelectionDotProps) {
+  return (
+    <Group opacity={opacity}>
+      <Circle cx={x} cy={y} r={size + 3} color="#fbbf24" style="stroke" strokeWidth={2} />
+      <Circle cx={x} cy={y} r={size - 1} color="#fbbf24" />
+    </Group>
+  );
+}
+
 export default function ScrubbingScreen() {
   const [scrubMode, setScrubMode] = useState<ScrubMode>("on");
   const [displayMode, setDisplayMode] = useState<DisplayMode>("line");
   const [styledTooltip, setStyledTooltip] = useState(false);
   const [dimOpacity, setDimOpacity] = useState(0.3);
+  const [dotMode, setDotMode] = useState<DotMode>("default");
   const [holdToScrub, setHoldToScrub] = useState(false);
   // onGestureStart/onGestureEnd are JS-thread callbacks, so plain React state
   // is fine here (they fire once per gesture, not once per pointer move).
@@ -102,6 +129,18 @@ export default function ScrubbingScreen() {
             }
           : { tooltip: true, dimOpacity, panGestureDelay };
 
+  // The `boolean | SelectionDotConfig` idiom: `true` = built-in dot, `false` =
+  // hidden, a config tweaks size/color/ring, and `{ component }` swaps in a
+  // fully custom Skia dot.
+  const selectionDot =
+    dotMode === "custom"
+      ? { component: RingSelectionDot }
+      : dotMode === "styled"
+        ? { size: 6, color: "#fbbf24", ring: { width: 2 } }
+        : dotMode === "off"
+          ? false
+          : true;
+
   return (
     <DemoScreen
       title="Scrubbing"
@@ -119,6 +158,7 @@ export default function ScrubbingScreen() {
           theme={APP_THEME}
           timeWindow={windowSecs}
           scrub={scrub}
+          selectionDot={selectionDot}
           onGestureStart={() => setGestureState("scrubbing…")}
           onGestureEnd={() => setGestureState("idle")}
           onScrub={(point) => {
@@ -162,6 +202,12 @@ export default function ScrubbingScreen() {
         options={DIM_OPTIONS}
         value={dimOpacity}
         onChange={setDimOpacity}
+      />
+      <ChipRow
+        label="Selection dot"
+        options={DOT_OPTIONS}
+        value={dotMode}
+        onChange={setDotMode}
       />
       <ControlRow>
         <ToggleChip

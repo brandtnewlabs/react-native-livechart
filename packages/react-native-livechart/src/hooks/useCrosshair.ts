@@ -16,6 +16,7 @@ import type { CandlePoint, LiveChartPalette, ScrubPoint } from "../types";
 import {
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
+  computeScrubDotY,
   computeScrubTime,
   deriveCrosshairTooltipSingle,
   type CrosshairState,
@@ -117,6 +118,19 @@ export function useCrosshair(
     ),
   );
 
+  // Y pixel of the scrub intersection — used by the selection dot. -1 when
+  // there's no value to mark.
+  const scrubDotY = useDerivedValue(() =>
+    computeScrubDotY(
+      scrubValue.get(),
+      engine.displayMin.get(),
+      engine.displayMax.get(),
+      engine.canvasHeight.get(),
+      padding.top,
+      padding.bottom,
+    ),
+  );
+
   // Monospace advance width, measured once per render (not per scrub frame) so
   // the tooltip layout worklet can size text by character count instead of a
   // per-frame Skia measureText.
@@ -195,13 +209,14 @@ export function useCrosshair(
       if (val === null || time < 0) return "__pending__";
       const chartW = engine.canvasWidth.get() - padding.left - padding.right;
       if (chartW <= 0) return "__pending__";
-      const h = engine.canvasHeight.get();
-      const chartH = h - padding.top - padding.bottom;
-      const valRange = engine.displayMax.get() - engine.displayMin.get();
-      const dotY =
-        valRange === 0
-          ? padding.top + chartH / 2
-          : padding.top + ((engine.displayMax.get() - val) / valRange) * chartH;
+      const dotY = computeScrubDotY(
+        val,
+        engine.displayMin.get(),
+        engine.displayMax.get(),
+        engine.canvasHeight.get(),
+        padding.top,
+        padding.bottom,
+      );
       let candleJson: string | null = null;
       if (isCandleMode) {
         const c = scrubCandle.get();
@@ -281,6 +296,7 @@ export function useCrosshair(
     scrubValue,
     crosshairOpacity,
     tooltipLayout,
+    scrubDotY,
     gesture,
   };
 }

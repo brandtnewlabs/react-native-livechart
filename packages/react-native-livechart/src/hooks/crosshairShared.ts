@@ -54,7 +54,33 @@ export interface CrosshairState {
   scrubValue: SharedValue<number | null>;
   crosshairOpacity: SharedValue<number>;
   tooltipLayout: SharedValue<TooltipLayout>;
+  /** Scrub intersection Y in canvas px; -1 when there's no dot to draw
+   *  (inactive / no value / degenerate range). See {@link computeScrubDotY}. */
+  scrubDotY: SharedValue<number>;
   gesture: ReturnType<typeof Gesture.Pan>;
+}
+
+/**
+ * Maps a scrub value to its Y pixel at the crosshair intersection — the same
+ * mapping the live dot and tooltip use. Returns -1 when there is no dot to draw
+ * (value is null or the canvas isn't laid out); a degenerate (zero) range pins
+ * the dot to the vertical center of the plot.
+ */
+export function computeScrubDotY(
+  value: number | null,
+  displayMin: number,
+  displayMax: number,
+  canvasHeight: number,
+  padTop: number,
+  padBottom: number,
+): number {
+  "worklet";
+  if (value === null) return -1;
+  const chartH = canvasHeight - padTop - padBottom;
+  if (chartH <= 0) return -1;
+  const valRange = displayMax - displayMin;
+  if (valRange === 0) return padTop + chartH / 2;
+  return padTop + ((displayMax - value) / valRange) * chartH;
 }
 
 /**

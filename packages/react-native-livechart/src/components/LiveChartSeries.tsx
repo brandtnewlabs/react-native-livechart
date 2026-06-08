@@ -31,6 +31,7 @@ import {
   resolveMetrics,
   resolveMultiSeriesDot,
   resolveScrub,
+  resolveSelectionDot,
   resolveXAxis,
   resolveYAxis,
 } from "../core/resolveConfig";
@@ -126,6 +127,7 @@ function useLiveChartSeriesController({
   palette: paletteOverride,
   metrics,
   scrub = true,
+  selectionDot,
   onScrub,
   onGestureStart,
   onGestureEnd,
@@ -146,6 +148,7 @@ function useLiveChartSeriesController({
   const xAxisCfg = resolveXAxis(xAxis);
   const scrubCfg = resolveScrub(scrub);
   const scrubEnabled = scrubCfg !== null;
+  const selectionDotCfg = resolveSelectionDot(selectionDot);
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
   // Outer footprint of a dot (the color-filled radius plus the halo ring).
@@ -377,6 +380,9 @@ function useLiveChartSeriesController({
     rootGesture,
     markersActive,
     markersSV,
+    // selection dot: resolved config + fallback color (the leading series' color)
+    selectionDot: selectionDotCfg,
+    selectionColor: lineColors[0],
   };
 }
 
@@ -595,6 +601,8 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     palette,
     dotCfg,
     dotOuterRadius,
+    selectionDot,
+    selectionColor,
   } = model;
 
   // Extend the scrub dim past the plot's right edge to fully cover the series
@@ -651,6 +659,10 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 engine={engine}
                 padding={effectivePadding}
                 palette={palette}
+                selectionDot={selectionDot}
+                selectionY={crosshair.scrubDotY}
+                scrubActive={crosshair.scrubActive}
+                selectionColor={selectionColor}
                 dimOpacity={scrubCfg.dimOpacity}
                 liveDotExtent={liveDotExtent}
                 crosshairLineColor={scrubCfg.crosshairLineColor}
