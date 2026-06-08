@@ -32,12 +32,20 @@ const THEME_OPTIONS: { value: "dark" | "light"; label: string }[] = [
 
 const ACCENT_OPTIONS = ACCENT_PRESETS.map((c) => ({ value: c, label: c }));
 
-type GradientMode = "on" | "off" | "custom";
+type GradientMode = "on" | "off" | "custom" | "multi";
 
 const GRADIENT_OPTIONS: { value: GradientMode; label: string }[] = [
   { value: "on", label: "On" },
   { value: "off", label: "Off" },
   { value: "custom", label: "Custom opacity" },
+  { value: "multi", label: "Multi-color" },
+];
+
+/** A 3-stop area fill (accent → violet → transparent). */
+const MULTI_GRADIENT_COLORS = [
+  "rgba(51,35,230,0.45)",
+  "rgba(168,85,247,0.25)",
+  "rgba(168,85,247,0)",
 ];
 
 const FONT_SIZE_OPTIONS = FONT_SIZES.map((s) => ({
@@ -61,6 +69,7 @@ export default function ThemingScreen() {
   const [accent, setAccent] = useState(ACCENT_PRESETS[0]);
   const [gradientOn, setGradientOn] = useState(true);
   const [gradientCfg, setGradientCfg] = useState(false);
+  const [gradientMulti, setGradientMulti] = useState(false);
   const [lineWide, setLineWide] = useState(false);
   const [lineColor, setLineColor] = useState(false);
   const [fontSize, setFontSize] = useState(11);
@@ -73,12 +82,15 @@ export default function ThemingScreen() {
 
   const gradientMode: GradientMode = !gradientOn
     ? "off"
-    : gradientCfg
-      ? "custom"
-      : "on";
+    : gradientMulti
+      ? "multi"
+      : gradientCfg
+        ? "custom"
+        : "on";
   const setGradientMode = (mode: GradientMode) => {
     setGradientOn(mode !== "off");
     setGradientCfg(mode === "custom");
+    setGradientMulti(mode === "multi");
   };
 
   const { data, value } = useSimulatedChartData({
@@ -103,7 +115,11 @@ export default function ThemingScreen() {
           accentColor={accent}
           theme={theme}
           gradient={
-            gradientCfg ? { topOpacity: 0.5, bottomOpacity: 0.05 } : gradientOn
+            gradientMulti
+              ? { colors: MULTI_GRADIENT_COLORS }
+              : gradientCfg
+                ? { topOpacity: 0.5, bottomOpacity: 0.05 }
+                : gradientOn
           }
           line={
             lineWide || lineColor

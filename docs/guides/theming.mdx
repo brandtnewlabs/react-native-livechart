@@ -49,6 +49,24 @@ Common keys include `line`, `fillTop` / `fillBottom`, `gridLine` / `gridLabel`,
 `crosshairLine`, and `tooltipBg` / `tooltipText`. See the [types reference](/api-reference/types)
 for the full `LiveChartPalette`.
 
+## Gradient fill
+
+The area under the line is filled with a gradient. By default it's derived from the accent color
+(`gradient.topOpacity` / `gradient.bottomOpacity`). For full control, pass explicit `colors` (top →
+bottom, at least two stops):
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  gradient={{ colors: ["rgba(51,35,230,0.45)", "rgba(168,85,247,0.25)", "rgba(168,85,247,0)"] }}
+/>
+```
+
+Omitting `colors` falls back to the accent-derived top/bottom opacity. Custom `colors` are
+single-series only — multi-series lines have no area fill. See the [`GradientConfig`
+reference](/api-reference/types) for `positions` and the opacity fields.
+
 ## Sizing and motion tokens
 
 Where `palette` controls _color_, `metrics` controls _shape_ (badge geometry, candle bounds) and

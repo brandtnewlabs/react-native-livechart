@@ -84,6 +84,10 @@ export interface ResolvedGradientConfig {
   topOpacity: number | undefined;
   /** undefined → use palette.fillBottom (transparent) at render time */
   bottomOpacity: number | undefined;
+  /** Explicit color stops (top → bottom); overrides the opacity stops. */
+  colors: string[] | undefined;
+  /** Stop positions (0..1) matching `colors` length. */
+  positions: number[] | undefined;
 }
 
 export interface ResolvedPulseConfig {
@@ -259,6 +263,8 @@ export function resolveScrub(
 const GRADIENT_DEFAULTS: ResolvedGradientConfig = {
   topOpacity: undefined,
   bottomOpacity: undefined,
+  colors: undefined,
+  positions: undefined,
 };
 
 /**
