@@ -19,6 +19,23 @@ accepts all the shared theming, axis, range, layout, and text props from
   Array of series definitions. Read on the UI thread. See [`SeriesConfig`](/api-reference/types).
 </ParamField>
 
+## Axis labels
+
+Shared with [`LiveChart`](/api-reference/livechart#axes-grid-range). Both
+default off.
+
+<ParamField body="topLabel" type="boolean | AxisLabelConfig" default="false">
+  Edge label at the plot's top. `true` shows the built-in value label — the
+  chart's current top Y-axis bound, updated each frame. Pass
+  [`AxisLabelConfig`](/api-reference/types#axislabelconfig) (`format` / `color` /
+  `position`) or `{ render }` for a custom element.
+</ParamField>
+
+<ParamField body="bottomLabel" type="boolean | AxisLabelConfig" default="false">
+  Edge label at the plot's bottom (the current bottom Y-axis bound), with the
+  same options as `topLabel`.
+</ParamField>
+
 ## Legend
 
 <ParamField body="legend" type="boolean | LegendConfig" default="true">
