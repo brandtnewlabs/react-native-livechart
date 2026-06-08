@@ -1,6 +1,11 @@
 import { useState } from "react";
-import type { BadgeConfig, PulseConfig } from "react-native-livechart";
+import type {
+  BadgeConfig,
+  LineConfig,
+  PulseConfig,
+} from "react-native-livechart";
 import { LiveChart } from "react-native-livechart";
+import { StyleSheet, TextInput } from "react-native";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
@@ -11,6 +16,37 @@ import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 export const options = { title: "Line & area" };
 
 type BadgeMode = "on" | "off" | "left" | "minimal" | "noTail" | "customBg";
+
+type LineMode = "default" | "solid" | "gradient" | "tricolor" | "custom";
+
+const LINE_OPTIONS: { value: LineMode; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "solid", label: "Solid" },
+  { value: "gradient", label: "Gradient" },
+  { value: "tricolor", label: "3-color" },
+  { value: "custom", label: "Custom" },
+];
+
+function resolveLine(
+  mode: LineMode,
+  customColors: string[],
+): LineConfig | undefined {
+  switch (mode) {
+    case "solid":
+      return { color: "#ff6b6b" };
+    case "gradient":
+      return { colors: ["#ff6b6b", "#6b6bff"] };
+    case "tricolor":
+      return { colors: ["#ff6b6b", "#6bff6b", "#6b6bff"] };
+    case "custom": {
+      const valid = customColors.filter((c) => c.trim().length > 0);
+      if (valid.length < 2) return undefined;
+      return { colors: valid };
+    }
+    default:
+      return undefined;
+  }
+}
 
 function resolveBadge(mode: BadgeMode): boolean | BadgeConfig {
   switch (mode) {
@@ -57,6 +93,8 @@ const PULSE_OPTIONS: { value: PulseMode; label: string }[] = [
 export default function LineScreen() {
   const [badgeMode, setBadgeMode] = useState<BadgeMode>("on");
   const [pulseMode, setPulseMode] = useState<PulseMode>("on");
+  const [lineMode, setLineMode] = useState<LineMode>("default");
+  const [customColors, setCustomColors] = useState(["#ff6b6b", "#6bff6b"]);
   const [valueLine, setValueLine] = useState(true);
   const [showValue, setShowValue] = useState(false);
   const [valueMomentumColor, setValueMomentumColor] = useState(false);
@@ -84,6 +122,7 @@ export default function LineScreen() {
           value={value}
           accentColor={ACCENT}
           theme={APP_THEME}
+          line={resolveLine(lineMode, customColors)}
           badge={resolveBadge(badgeMode)}
           pulse={resolvePulse(pulseMode)}
           dot={{ show: dots, ring }}
@@ -100,6 +139,47 @@ export default function LineScreen() {
         value={badgeMode}
         onChange={setBadgeMode}
       />
+      <ChipRow
+        label="Line"
+        options={LINE_OPTIONS}
+        value={lineMode}
+        onChange={setLineMode}
+      />
+      {lineMode === "custom" && (
+        <ControlRow label="Gradient colors">
+          {customColors.map((c, i) => (
+            <TextInput
+              key={i}
+              style={styles.colorInput}
+              value={c}
+              onChangeText={(t) =>
+                setCustomColors((prev) => {
+                  const next = [...prev];
+                  next[i] = t;
+                  return next;
+                })
+              }
+              placeholder="#ff0000"
+              placeholderTextColor="#666"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          ))}
+          <TextInput
+            style={styles.colorInput}
+            value=""
+            onChangeText={(t) =>
+              t.trim().length > 0
+                ? setCustomColors((prev) => [...prev, t])
+                : undefined
+            }
+            placeholder="+ add color"
+            placeholderTextColor="#666"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </ControlRow>
+      )}
       <ChipRow
         label="Pulse"
         options={PULSE_OPTIONS}
@@ -132,3 +212,18 @@ export default function LineScreen() {
     </DemoScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  colorInput: {
+    width: 100,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#333",
+    backgroundColor: "#1a1a1a",
+    color: "#eee",
+    fontSize: 13,
+    paddingHorizontal: 10,
+    fontFamily: "JetBrainsMono_400Regular",
+  },
+});

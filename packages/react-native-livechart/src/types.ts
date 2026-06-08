@@ -142,6 +142,11 @@ export interface LineConfig {
   width?: number;
   /** Line color override. Defaults to palette-derived accent. */
   color?: string;
+  /**
+   * Two or more CSS color strings → horizontal gradient along the stroke
+   * (left → right). Takes precedence over `color` when set.
+   */
+  colors?: string[];
 }
 
 /** Area fill gradient beneath the chart line. */

@@ -106,6 +106,20 @@ describe("LiveChart", () => {
     render(<Harness line={{ width: 3, color: "#ff0000" }} />);
   });
 
+  it("accepts LineConfig with gradient colors", () => {
+    render(<Harness line={{ colors: ["#ff0000", "#0000ff"] }} />);
+  });
+
+  it("accepts LineConfig with empty colors array (no gradient)", () => {
+    render(<Harness line={{ colors: [] }} />);
+  });
+
+  it("accepts LineConfig with both color and colors", () => {
+    render(
+      <Harness line={{ color: "#ff0000", colors: ["#00ff00", "#0000ff"] }} />,
+    );
+  });
+
   it("accepts PulseConfig", () => {
     render(<Harness pulse={{ interval: 2000, maxRadius: 30 }} />);
   });

@@ -289,7 +289,7 @@ function useLiveChartController({
   );
 
   // ── Per-frame derived values ───────────────────────────────────────────
-  const { layoutHeight, onLayout } = useCanvasLayout(engine);
+  const { layoutWidth, layoutHeight, onLayout } = useCanvasLayout(engine);
 
   const { linePath, fillPath } = useChartPaths(
     engine,
@@ -455,6 +455,7 @@ function useLiveChartController({
     gradientBottomColor,
     lineGroupOpacity,
     candleGroupOpacity,
+    layoutWidth,
     onLayout,
     linePath,
     fillPath,
@@ -527,6 +528,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     markersSV,
     emptyText,
     metricsCfg,
+    layoutWidth,
   } = model;
 
   return (
@@ -593,10 +595,18 @@ function ChartStack({ model }: { model: LiveChartModel }) {
           path={linePath}
           style="stroke"
           strokeWidth={strokeWidth}
-          color={lineProp?.color ?? palette.line}
           strokeCap="round"
           strokeJoin="round"
-        />
+          color={lineProp?.color ?? palette.line}
+        >
+          {lineProp?.colors?.length ? (
+            <LinearGradient
+              start={vec(0, 0)}
+              end={vec(layoutWidth, 0)}
+              colors={lineProp.colors}
+            />
+          ) : null}
+        </Path>
       </Group>
 
       {/* Candle bodies/wicks (fades in in candle mode) */}
