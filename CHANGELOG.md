@@ -5,6 +5,35 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-06-09
+
+### Added
+
+- **Scrub gesture callbacks** — `onGestureStart` / `onGestureEnd` on both
+  `LiveChart` and `LiveChartSeries`, fired when a scrub interaction begins and
+  ends (e.g. pause a parent carousel or disable list scrolling while scrubbing).
+- **`selectionDot`** on both charts — customize the dot drawn at the scrub
+  position: `boolean | SelectionDotConfig` with `size`, `color`, `ring`
+  (`boolean | SelectionDotRingConfig`), or a fully custom `component`
+  (`ComponentType<SelectionDotProps>`). New exported types: `SelectionDotConfig`,
+  `SelectionDotRingConfig`, `SelectionDotProps`.
+- **Multi-color area-fill gradients** — `GradientConfig.colors?: string[]` (with
+  optional `positions?: number[]`) renders a custom multi-stop fill, mirroring
+  react-native-graph's `gradientFillColors`. Omit for the existing two-stop
+  top/bottom fallback. Single-series only.
+- **Axis labels** — `topLabel` / `bottomLabel` (`boolean | AxisLabelConfig`) on
+  both charts draw labels at the high/low of the visible range (Robinhood-style),
+  with `format`, `color`, `position`, or a custom `render` render-prop. New type:
+  `AxisLabelConfig`.
+- **`static` mode** — `static={true}` on `LiveChart` renders a non-animated,
+  gesture-free sparkline, cheap enough for long lists.
+
+### Performance
+
+- The degen particle burst now renders through a single `drawAtlas` call instead
+  of a per-particle `<Circle>` fan-out (one shared pre-rasterized sprite plus
+  per-instance transforms/colors), cutting per-frame CPU on dense bursts.
+
 ## [3.0.0] - 2026-06-07
 
 ### Changed
@@ -140,6 +169,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[3.1.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.1.0
 [2.0.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v2.0.1
 [2.0.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v2.0.0
 [1.0.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v1.0.0
