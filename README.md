@@ -15,9 +15,11 @@ High-performance **live** line and candlestick charts for React Native, built on
 
 🤖 **Docs MCP** — point an AI assistant (Claude, Cursor, …) at the docs via the hosted MCP server: `https://react-native-livechart.brandtnewlabs.com/mcp`
 
-<!-- TODO(hero): replace this comment with a demo GIF/screenshot, e.g.:
-     <p align="center"><img src="https://raw.githubusercontent.com/brandtnewlabs/react-native-livechart/main/assets/images/demo.gif" alt="react-native-livechart demo" width="320" /></p>
-     Capture from the Expo example app (npm start). -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/brandtnewlabs/react-native-livechart/main/assets/images/hero.gif" alt="react-native-livechart live demo" width="360" />
+</p>
+
+<p align="center"><a href="https://react-native-livechart.brandtnewlabs.com"><b>▶ Watch the full video demos in the docs →</b></a></p>
 
 > The design, feature set, and API shape are **conceptually inspired by [liveline](https://github.com/benjitaylor/liveline)** — Benji Taylor's real-time canvas chart for React — reimagined for React Native. This is **not** a fork; see [Acknowledgments](#acknowledgments).
 
@@ -31,6 +33,10 @@ High-performance **live** line and candlestick charts for React Native, built on
 - 🎨 **Theming** with light/dark modes, an accent-driven `palette`, and `metrics` sizing/motion tokens
 - ⏳ **Loading** (breathing-line shell) and **paused** states out of the box
 - 🧵 **SharedValue-driven** rendering — history and live values stay on the UI thread
+
+## Demos
+
+See every feature in motion — line & area, candlestick, multi-series, scrubbing, momentum & degen, markers, theming, and more — in the **[documentation](https://react-native-livechart.brandtnewlabs.com)**.
 
 ## Install
 
