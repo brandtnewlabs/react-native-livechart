@@ -170,6 +170,13 @@ interface SelectionDotConfig {
 interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }
 interface YAxisConfig { minGap?: number } // default 36
 interface XAxisConfig { minGap?: number } // default 60
+// Edge label (topLabel / bottomLabel). Default off — both opt-in.
+interface AxisLabelConfig {
+  format?: (v: number) => string; // built-in value formatter; defaults to formatValue
+  color?: string;                 // text color; defaults to palette.gridLabel (muted)
+  position?: "left" | "right";    // alignment within the plot width; default "right"
+  render?: () => React.ReactElement | null; // custom element; overrides the built-in value
+}
 interface ChartInsets { top?: number; right?: number; bottom?: number; left?: number }
 interface LeftEdgeFadeConfig { width?: number; startColor?: string; endColor?: string }
 
@@ -204,6 +211,17 @@ interface FontConfig {
   fontManager?: SkFontMgr | null;
 }
 ```
+
+## AxisLabelConfig
+
+Shape for the `topLabel` / `bottomLabel` props. Both are opt-in (default off).
+With `true`, the chart floats its current top (`topLabel`) / bottom
+(`bottomLabel`) Y-axis bound at that edge, formatted with `format` (falling back
+to the chart's `formatValue`) in `color` (falling back to the muted
+`palette.gridLabel`), aligned by `position`. The values track the live Y-axis
+range each frame on the UI thread. Set `render` to float a fully custom element
+at the edge instead of the built-in value. See
+[Axis labels](/guides/theming#axis-edge-labels).
 
 ## SelectionDotProps
 

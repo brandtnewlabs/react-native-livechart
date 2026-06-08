@@ -24,6 +24,7 @@ import {
   type SeriesLineStyle,
 } from "../core/multiSeriesLayout";
 import {
+  resolveAxisLabel,
   resolveDegen,
   resolveGridStyle,
   resolveLeftEdgeFade,
@@ -61,6 +62,7 @@ import {
   resolveTheme,
 } from "../theme";
 import type { LiveChartSeriesProps, Marker, SeriesConfig } from "../types";
+import { AxisLabelOverlay } from "./AxisLabelOverlay";
 import { CrosshairLine } from "./CrosshairLine";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
@@ -122,6 +124,8 @@ function useLiveChartSeriesController({
   formatTime = defaultFormatTime,
   yAxis = true,
   xAxis = true,
+  topLabel,
+  bottomLabel,
   referenceLines,
   gridStyle,
   palette: paletteOverride,
@@ -146,6 +150,8 @@ function useLiveChartSeriesController({
   const markersActive = markers != null;
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
+  const topLabelCfg = resolveAxisLabel(topLabel);
+  const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const scrubCfg = resolveScrub(scrub);
   const scrubEnabled = scrubCfg !== null;
   const selectionDotCfg = resolveSelectionDot(selectionDot);
@@ -383,6 +389,9 @@ function useLiveChartSeriesController({
     // selection dot: resolved config + fallback color (the leading series' color)
     selectionDot: selectionDotCfg,
     selectionColor: lineColors[0],
+    // RN axis edge labels (floated over the canvas as a sibling layer)
+    topLabelCfg,
+    bottomLabelCfg,
   };
 }
 
@@ -603,6 +612,9 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     dotOuterRadius,
     selectionDot,
     selectionColor,
+    formatValue,
+    topLabelCfg,
+    bottomLabelCfg,
   } = model;
 
   // Extend the scrub dim past the plot's right edge to fully cover the series
@@ -674,6 +686,18 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 clips them (they track each series' live value, not the scrub). */}
             <SeriesValueLabelLayer model={model} />
           </Canvas>
+
+          {/* RN labels floated over the canvas (sibling of <Canvas>, an RN
+              view). Inside the canvas wrapper so its top/bottom edges align
+              with the plot area, not the legend row. */}
+          <AxisLabelOverlay
+            topLabel={topLabelCfg}
+            bottomLabel={bottomLabelCfg}
+            engine={engine}
+            formatValue={formatValue}
+            defaultColor={palette.gridLabel}
+            padding={effectivePadding}
+          />
         </View>
       </GestureDetector>
       {legendCfg.position === "bottom" ? legend : null}

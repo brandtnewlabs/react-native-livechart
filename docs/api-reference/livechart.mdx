@@ -152,6 +152,20 @@ provided; everything else has a default.
   Value-axis grid + labels.
 </ParamField>
 
+<ParamField body="topLabel" type="boolean | AxisLabelConfig" default="false">
+  Edge label floated at the plot's **top**. `true` shows the built-in value
+  label — the chart's current top Y-axis bound, formatted and updated each frame
+  (Robinhood-style high). Pass [`AxisLabelConfig`](/api-reference/types#axislabelconfig)
+  to set `format` / `color` / `position`, or `{ render }` to float a fully custom
+  element instead. See [Axis labels](/guides/theming#axis-edge-labels).
+</ParamField>
+
+<ParamField body="bottomLabel" type="boolean | AxisLabelConfig" default="false">
+  Edge label floated at the plot's **bottom**. `true` shows the built-in value
+  label — the chart's current bottom Y-axis bound (the low) — with the same
+  `AxisLabelConfig` knobs and `render` escape hatch as `topLabel`.
+</ParamField>
+
 <ParamField body="gridStyle" type="GridStyleConfig">
   Grid-line color / width / dash / opacity.
 </ParamField>

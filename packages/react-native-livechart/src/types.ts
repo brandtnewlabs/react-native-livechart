@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactElement } from "react";
 import type { ViewStyle } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
@@ -174,6 +174,24 @@ export interface BadgeConfig {
 export interface YAxisConfig {
   /** Minimum pixel gap between grid lines. Default `36`. */
   minGap?: number;
+}
+
+/**
+ * Axis edge label — the value floated at the plot's top or bottom edge
+ * (Robinhood-style high/low). Pass `topLabel`/`bottomLabel` as `true` for the
+ * batteries-included value label (the chart's current top/bottom Y-axis bound,
+ * updated each frame), an object to configure it, or `{ render }` to float a
+ * fully custom element instead.
+ */
+export interface AxisLabelConfig {
+  /** Formatter for the built-in value. Defaults to the chart's `formatValue`. */
+  format?: (v: number) => string;
+  /** Text color. Defaults to a muted label color (`palette.gridLabel`). */
+  color?: string;
+  /** Horizontal alignment within the plot width. Default `"right"`. */
+  position?: "left" | "right";
+  /** Full custom element, floated at the edge. Overrides the built-in value label. */
+  render?: () => ReactElement | null;
 }
 
 /** X-axis (time) configuration. */
@@ -750,6 +768,20 @@ export interface LiveChartCoreProps {
   yAxis?: boolean | YAxisConfig;
   /** X-axis time labels. `true` = defaults, `false` = hidden, or pass `XAxisConfig`. Default `true`. */
   xAxis?: boolean | XAxisConfig;
+  /**
+   * Label floated at the top edge of the plot area. `true` = the built-in value
+   * label showing the chart's current TOP Y-axis bound (updated each frame),
+   * `false`/omitted = none, or pass `AxisLabelConfig` to configure it (or supply
+   * a custom `render`). Default off.
+   */
+  topLabel?: boolean | AxisLabelConfig;
+  /**
+   * Label floated at the bottom edge of the plot area. `true` = the built-in
+   * value label showing the chart's current BOTTOM Y-axis bound (updated each
+   * frame), `false`/omitted = none, or pass `AxisLabelConfig` (or a custom
+   * `render`). Default off.
+   */
+  bottomLabel?: boolean | AxisLabelConfig;
   /** Reference lines / bands drawn into the chart. Supports all three `ReferenceLine` forms. */
   referenceLines?: ReferenceLine[];
   /** Per-instance grid-line styling. Pass an object to override color / width / dash / opacity. */

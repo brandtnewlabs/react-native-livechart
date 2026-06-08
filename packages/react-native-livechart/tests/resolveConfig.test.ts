@@ -1,4 +1,5 @@
 import {
+  resolveAxisLabel,
   resolveBadge,
   resolveDegen,
   resolveDot,
@@ -127,6 +128,47 @@ describe("resolveYAxis", () => {
 
   it("merges partial config with defaults", () => {
     expect(resolveYAxis({ minGap: 48 })).toEqual({ minGap: 48 });
+  });
+});
+
+// ─── resolveAxisLabel ──────────────────────────────────────────────────────────
+
+describe("resolveAxisLabel", () => {
+  it("returns null for undefined (opt-in, default off)", () => {
+    expect(resolveAxisLabel(undefined)).toBeNull();
+  });
+
+  it("returns null for false", () => {
+    expect(resolveAxisLabel(false)).toBeNull();
+  });
+
+  it("returns the built-in defaults for true", () => {
+    expect(resolveAxisLabel(true)).toEqual({
+      format: undefined,
+      color: undefined,
+      position: "right",
+      render: undefined,
+    });
+  });
+
+  it("merges partial config (color / position) with defaults", () => {
+    expect(resolveAxisLabel({ color: "#abc", position: "left" })).toEqual({
+      format: undefined,
+      color: "#abc",
+      position: "left",
+      render: undefined,
+    });
+  });
+
+  it("carries through a custom format and render escape hatch", () => {
+    const format = (v: number) => `$${v}`;
+    const render = () => null;
+    expect(resolveAxisLabel({ format, render })).toEqual({
+      format,
+      color: undefined,
+      position: "right",
+      render,
+    });
   });
 });
 

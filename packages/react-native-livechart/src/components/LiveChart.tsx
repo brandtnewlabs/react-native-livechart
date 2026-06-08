@@ -19,6 +19,7 @@ import {
 
 import { DEFAULT_ACCENT_COLOR } from "../constants";
 import {
+  resolveAxisLabel,
   resolveBadge,
   resolveDegen,
   resolveDot,
@@ -67,6 +68,7 @@ import {
   resolveTheme,
 } from "../theme";
 import type { LiveChartProps, Marker, TradeEvent } from "../types";
+import { AxisLabelOverlay } from "./AxisLabelOverlay";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
@@ -127,6 +129,8 @@ function useLiveChartController({
   // ── Overlays ────────────────────────────────────────────────────────────
   yAxis = true,
   xAxis = true,
+  topLabel,
+  bottomLabel,
   badge = true,
   momentum = true,
   pulse = true,
@@ -162,6 +166,8 @@ function useLiveChartController({
   // ── Resolve feature configs ────────────────────────────────────────────
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
+  const topLabelCfg = resolveAxisLabel(topLabel);
+  const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const badgeCfg = resolveBadge(badge);
   const scrubCfg = resolveScrub(scrub);
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
@@ -490,6 +496,9 @@ function useLiveChartController({
     // selection dot: resolved config + fallback color (the chart line/accent color)
     selectionDot: selectionDotCfg,
     selectionColor: lineProp?.color ?? palette.line,
+    // RN axis edge labels (floated over the canvas as a sibling layer)
+    topLabelCfg,
+    bottomLabelCfg,
   };
 }
 
@@ -855,6 +864,10 @@ export function LiveChart(props: LiveChartProps) {
     leftEdgeFadeCfg,
     effectivePadding,
     engine,
+    palette,
+    formatValue,
+    topLabelCfg,
+    bottomLabelCfg,
   } = model;
 
   return (
@@ -888,6 +901,17 @@ export function LiveChart(props: LiveChartProps) {
               its left edge (the badge tracks the live value, not the scrub). */}
           <ChartBadgeLayer model={model} />
         </Canvas>
+
+        {/* RN labels floated over the canvas (sibling of <Canvas>, an RN view).
+            Pinned to the plot's top/bottom edges via the resolved padding. */}
+        <AxisLabelOverlay
+          topLabel={topLabelCfg}
+          bottomLabel={bottomLabelCfg}
+          engine={engine}
+          formatValue={formatValue}
+          defaultColor={palette.gridLabel}
+          padding={effectivePadding}
+        />
       </View>
     </GestureDetector>
   );

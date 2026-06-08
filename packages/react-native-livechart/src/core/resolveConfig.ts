@@ -1,4 +1,5 @@
 import type {
+  AxisLabelConfig,
   BadgeConfig,
   BadgeVariant,
   DegenOptions,
@@ -26,7 +27,7 @@ import type {
   YAxisConfig,
 } from "../types";
 
-import type { ComponentType } from "react";
+import type { ComponentType, ReactElement } from "react";
 import type { SharedValue } from "react-native-reanimated";
 import {
   BADGE_METRICS_DEFAULTS,
@@ -55,6 +56,16 @@ export interface ResolvedBadgeConfig {
 
 export interface ResolvedYAxisConfig {
   minGap: number;
+}
+
+export interface ResolvedAxisLabelConfig {
+  /** undefined → use the chart's `formatValue` at render time. */
+  format?: (v: number) => string;
+  /** undefined → use the muted default label color at render time. */
+  color?: string;
+  position: "left" | "right";
+  /** When set, the built-in value label is replaced by this custom element. */
+  render?: () => ReactElement | null;
 }
 
 export interface ResolvedXAxisConfig {
@@ -223,6 +234,24 @@ export function resolveYAxis(
   prop: boolean | YAxisConfig | undefined,
 ): ResolvedYAxisConfig | null {
   return resolveToggle(prop, Y_AXIS_DEFAULTS, false);
+}
+
+const AXIS_LABEL_DEFAULTS: ResolvedAxisLabelConfig = {
+  format: undefined,
+  color: undefined,
+  position: "right",
+  render: undefined,
+};
+
+/**
+ * Resolves a `topLabel` / `bottomLabel` prop to a fully-typed config or null
+ * (no label). Opt-in, so `undefined`/`false` → null; `true` → the built-in
+ * value label with defaults; object → configured built-in (or a custom `render`).
+ */
+export function resolveAxisLabel(
+  prop: boolean | AxisLabelConfig | undefined,
+): ResolvedAxisLabelConfig | null {
+  return resolveToggle(prop, AXIS_LABEL_DEFAULTS, false);
 }
 
 const X_AXIS_DEFAULTS: ResolvedXAxisConfig = {
