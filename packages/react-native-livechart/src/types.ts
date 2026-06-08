@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import type { ViewStyle } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
@@ -211,6 +212,55 @@ export interface ScrubConfig {
    * Default `0`.
    */
   panGestureDelay?: number;
+}
+
+/**
+ * Props passed to a custom {@link SelectionDotConfig.component} — the dot drawn
+ * at the scrub intersection while scrubbing. All positional inputs are
+ * SharedValues so the dot animates on the UI thread without re-renders.
+ */
+export interface SelectionDotProps {
+  /** Scrub X in canvas px. */
+  x: SharedValue<number>;
+  /** Scrub Y in canvas px (the line/value intersection). */
+  y: SharedValue<number>;
+  /** Whether scrubbing is active. */
+  active: SharedValue<boolean>;
+  /** Crosshair fade opacity (0..1), already ramped. */
+  opacity: SharedValue<number>;
+  /** Resolved dot color (accent/series color). */
+  color: string;
+  /** Suggested dot radius in px. */
+  size: number;
+}
+
+/** Outer ring drawn around the built-in selection dot (the subtle halo). */
+export interface SelectionDotRingConfig {
+  /** Ring color. Defaults to the dot color. */
+  color?: string;
+  /** Ring thickness in pixels — how far the halo extends past the dot. Default `2`. */
+  width?: number;
+}
+
+/**
+ * Selection-dot styling — the dot drawn at the scrub intersection while
+ * scrubbing. Pass `selectionDot={false}` to hide it, an object to configure the
+ * built-in dot, or `{ component }` to supply a fully custom Skia dot.
+ */
+export interface SelectionDotConfig {
+  /** Dot radius in px. Default `4`. */
+  size?: number;
+  /** Dot color. Defaults to the line / leading-series color. */
+  color?: string;
+  /**
+   * Outer ring around the dot. `true`/config = on, `false` = off. Default on.
+   */
+  ring?: boolean | SelectionDotRingConfig;
+  /**
+   * Fully custom Skia dot — receives the scrub position as SharedValues. When
+   * set, the `size` / `color` / `ring` knobs are ignored.
+   */
+  component?: ComponentType<SelectionDotProps>;
 }
 
 /** Left-edge fade — soft erase so the chart blends into the left gutter (web liveline parity). */
@@ -737,6 +787,12 @@ export interface LiveChartCoreProps {
   accessibilityRole?: "image" | "none" | "adjustable" | "summary";
   /** Crosshair scrubbing on hover/drag. `true` = defaults, `false` = disabled, or pass `ScrubConfig`. Default `true`. */
   scrub?: boolean | ScrubConfig;
+  /**
+   * Selection dot drawn at the scrub intersection while scrubbing. `true`/omitted
+   * = built-in dot, `false` = hidden, or pass `SelectionDotConfig` (`size`,
+   * `color`, `ring`, or a custom `component`). Default `true`.
+   */
+  selectionDot?: boolean | SelectionDotConfig;
   /** Called once when the user starts scrubbing/panning the chart. */
   onGestureStart?: () => void;
   /** Called once when the user stops scrubbing/panning the chart. */

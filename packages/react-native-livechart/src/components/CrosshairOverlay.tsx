@@ -11,7 +11,9 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { type ChartPadding } from "../draw/line";
 import { type TooltipLayout } from "../hooks/crosshairShared";
 import type { LiveChartPalette } from "../types";
+import type { ResolvedSelectionDotConfig } from "../core/resolveConfig";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
+import { SelectionDotSlot } from "./SelectionDot";
 
 const TOOLTIP_RADIUS = 5;
 
@@ -25,6 +27,11 @@ export function CrosshairOverlay({
   font,
   showTooltip = true,
   children,
+  renderTooltip,
+  selectionDot,
+  selectionY,
+  scrubActive,
+  selectionColor,
   dimOpacity = 0.3,
   liveDotExtent = 0,
   crosshairLineColor,
@@ -45,6 +52,19 @@ export function CrosshairOverlay({
    *  text (e.g. the multi-line candle stack). Passed as children so it composes
    *  instead of being threaded through as a JSX-valued prop. */
   children?: ReactNode;
+  /** Public custom-tooltip hook for line mode: when provided (and no `children`
+   *  are passed), its result replaces the default value/time tooltip body. */
+  renderTooltip?: () => ReactNode;
+  /** Resolved selection-dot config; `null` hides it, a `component` renders the
+   *  consumer's dot, otherwise the built-in dot. */
+  selectionDot?: ResolvedSelectionDotConfig | null;
+  /** Scrub intersection Y in canvas px (the value the dot marks); -1 hides it. */
+  selectionY?: SharedValue<number>;
+  /** Whether scrubbing is active (passed through to a custom dot). */
+  scrubActive?: SharedValue<number> | SharedValue<boolean>;
+  /** Fallback selection-dot color (accent / leading-series color), used when the
+   *  config's own `color` is unset. */
+  selectionColor?: string;
   /** Opacity of content right of the crosshair (dstOut fade). Default 0.3. */
   dimOpacity?: number;
   /** How far the live dot (and its pulse ring) extends past the plot's right
@@ -143,6 +163,17 @@ export function CrosshairOverlay({
           strokeWidth={1}
         />
 
+        {/* Selection dot at the scrub intersection. `null` hides it; a custom
+            component renders the consumer's dot; otherwise the built-in dot. */}
+        <SelectionDotSlot
+          config={selectionDot}
+          x={scrubX}
+          y={selectionY}
+          active={scrubActive}
+          opacity={crosshairOpacity}
+          color={selectionColor ?? palette.line}
+        />
+
         {showTooltip && (
         <>
           <RoundedRect
@@ -165,24 +196,25 @@ export function CrosshairOverlay({
             strokeWidth={1}
           />
 
-          {children ?? (
-            <Group>
-              <SkiaText
-                x={valueTextX}
-                y={line1Y}
-                text={valueStr}
-                font={font}
-                color={tooltipColor ?? palette.tooltipText}
-              />
-              <SkiaText
-                x={timeTextX}
-                y={line2Y}
-                text={timeStr}
-                font={font}
-                color={palette.gridLabel}
-              />
-            </Group>
-          )}
+          {children ??
+            renderTooltip?.() ?? (
+              <Group>
+                <SkiaText
+                  x={valueTextX}
+                  y={line1Y}
+                  text={valueStr}
+                  font={font}
+                  color={tooltipColor ?? palette.tooltipText}
+                />
+                <SkiaText
+                  x={timeTextX}
+                  y={line2Y}
+                  text={timeStr}
+                  font={font}
+                  color={palette.gridLabel}
+                />
+              </Group>
+            )}
         </>
       )}
       </Group>

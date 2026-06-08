@@ -15,6 +15,7 @@ import {
 } from "./crosshairSeries";
 import {
   computeCrosshairOpacity,
+  computeScrubDotY,
   computeScrubTime,
   HIDDEN_TOOLTIP,
   type CrosshairState,
@@ -68,6 +69,19 @@ export function useCrosshairSeries(
     ),
   );
 
+  // Y pixel of the scrub intersection (leading-series value) — used by the
+  // selection dot. -1 when there's no value to mark.
+  const scrubDotY = useDerivedValue(() =>
+    computeScrubDotY(
+      scrubValue.get(),
+      engine.displayMin.get(),
+      engine.displayMax.get(),
+      engine.canvasHeight.get(),
+      padding.top,
+      padding.bottom,
+    ),
+  );
+
   const tooltipLayout = useSharedValue(HIDDEN_TOOLTIP);
 
   /* istanbul ignore next */
@@ -95,14 +109,14 @@ export function useCrosshairSeries(
       if (chartW <= 0) return "__pending__";
       const r = interpolateSeriesAtTime(engine.series.get(), time);
       if (r.primary === null) return "__pending__";
-      const h = engine.canvasHeight.get();
-      const chartH = h - padding.top - padding.bottom;
-      const valRange = engine.displayMax.get() - engine.displayMin.get();
-      const dotY =
-        valRange === 0
-          ? padding.top + chartH / 2
-          : padding.top +
-            ((engine.displayMax.get() - r.primary) / valRange) * chartH;
+      const dotY = computeScrubDotY(
+        r.primary,
+        engine.displayMin.get(),
+        engine.displayMax.get(),
+        engine.canvasHeight.get(),
+        padding.top,
+        padding.bottom,
+      );
       return JSON.stringify({
         time,
         x,
@@ -188,6 +202,7 @@ export function useCrosshairSeries(
     scrubValue,
     crosshairOpacity,
     tooltipLayout,
+    scrubDotY,
     gesture,
   };
 }

@@ -2,7 +2,9 @@ import { Group, Line, Rect } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { type ChartPadding } from "../draw/line";
 import type { LiveChartPalette } from "../types";
+import type { ResolvedSelectionDotConfig } from "../core/resolveConfig";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
+import { SelectionDotSlot } from "./SelectionDot";
 
 /**
  * Crosshair vertical line + dim region to the right. No tooltip pill —
@@ -14,6 +16,10 @@ export function CrosshairLine({
   engine,
   padding,
   palette,
+  selectionDot,
+  selectionY,
+  scrubActive,
+  selectionColor,
   dimOpacity = 0.3,
   liveDotExtent = 0,
   crosshairLineColor,
@@ -24,6 +30,16 @@ export function CrosshairLine({
   engine: ChartEngineLayout;
   padding: ChartPadding;
   palette: LiveChartPalette;
+  /** Resolved selection-dot config; `null` hides it, a `component` renders the
+   *  consumer's dot, otherwise the built-in dot. */
+  selectionDot?: ResolvedSelectionDotConfig | null;
+  /** Scrub intersection Y in canvas px (the value the dot marks); -1 hides it. */
+  selectionY?: SharedValue<number>;
+  /** Whether scrubbing is active (passed through to a custom dot). */
+  scrubActive?: SharedValue<number> | SharedValue<boolean>;
+  /** Fallback selection-dot color (leading-series color), used when the config's
+   *  own `color` is unset. */
+  selectionColor?: string;
   /** Opacity of content right of the crosshair (dstOut fade). Default 0.3. */
   dimOpacity?: number;
   /** How far the live series dots extend past the plot's right edge. The dim
@@ -103,6 +119,17 @@ export function CrosshairLine({
           p2={p2}
           color={crosshairLineColor ?? palette.crosshairLine}
           strokeWidth={1}
+        />
+
+        {/* Selection dot at the scrub intersection (leading series). `null`
+            hides it; a custom component renders the consumer's dot. */}
+        <SelectionDotSlot
+          config={selectionDot}
+          x={scrubX}
+          y={selectionY}
+          active={scrubActive}
+          opacity={crosshairOpacity}
+          color={selectionColor ?? palette.line}
         />
       </Group>
     </>

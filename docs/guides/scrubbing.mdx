@@ -67,6 +67,50 @@ through to the parent gesture, while a deliberate hold begins scrubbing.
 
 `0` (the default) scrubs immediately. Works the same on `LiveChartSeries`.
 
+## Selection dot
+
+A dot is drawn at the scrub intersection — where the crosshair meets the line (or the leading
+series, on `LiveChartSeries`). It's **on by default**, so you get it for free with `scrub`.
+
+Turn it off, or tweak its look, with the `boolean | SelectionDotConfig` `selectionDot` prop:
+
+```tsx
+// Hide the dot
+<LiveChart data={data} value={value} selectionDot={false} />
+
+// Bigger amber dot, slightly thicker halo
+<LiveChart
+  data={data}
+  value={value}
+  selectionDot={{ size: 6, color: "#fbbf24", ring: { width: 2 } }}
+/>
+
+// Flat dot, no outer ring
+<LiveChart data={data} value={value} selectionDot={{ ring: false }} />
+```
+
+For full control, pass a `component` — a Skia dot that receives the scrub position as
+`SharedValue`s (`SelectionDotProps`), so it animates on the UI thread without re-renders. When set,
+the `size` / `color` / `ring` knobs are ignored.
+
+```tsx
+import { Circle, Group } from "@shopify/react-native-skia";
+import type { SelectionDotProps } from "react-native-livechart";
+
+function RingDot({ x, y, opacity, color, size }: SelectionDotProps) {
+  return (
+    <Group opacity={opacity}>
+      <Circle cx={x} cy={y} r={size + 3} color={color} style="stroke" strokeWidth={2} />
+      <Circle cx={x} cy={y} r={size - 1} color={color} />
+    </Group>
+  );
+}
+
+<LiveChart data={data} value={value} selectionDot={{ component: RingDot }} />;
+```
+
+The same `selectionDot` prop works on `LiveChartSeries`.
+
 ## Reading the scrub position (single series)
 
 `onScrub` fires with a `ScrubPoint` while scrubbing, and `null` when it ends. It runs on the **JS

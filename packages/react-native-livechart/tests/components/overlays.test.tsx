@@ -1,5 +1,6 @@
 import { AnimatedLabel } from "../../src/components/AnimatedLabel";
 import { BadgeOverlay } from "../../src/components/BadgeOverlay";
+import { CrosshairLine } from "../../src/components/CrosshairLine";
 import { CrosshairOverlay } from "../../src/components/CrosshairOverlay";
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import { DotOverlay } from "../../src/components/DotOverlay";
@@ -9,13 +10,17 @@ import { MultiSeriesTooltipStack } from "../../src/components/MultiSeriesTooltip
 import React from "react";
 import type { ReferenceLine } from "../../src/types";
 import { ReferenceLineOverlay } from "../../src/components/ReferenceLineOverlay";
-import { Skia } from "@shopify/react-native-skia";
+import { Circle, Skia } from "@shopify/react-native-skia";
 import type { TooltipLayout } from "../../src/hooks/crosshairShared";
+import type { SelectionDotProps } from "../../src/types";
 import { ValueLineOverlay } from "../../src/components/ValueLineOverlay";
 import { XAxisOverlay } from "../../src/components/XAxisOverlay";
 import { YAxisOverlay } from "../../src/components/YAxisOverlay";
 import { render } from "@testing-library/react-native";
-import { resolvePulse } from "../../src/core/resolveConfig";
+import {
+  resolvePulse,
+  resolveSelectionDot,
+} from "../../src/core/resolveConfig";
 import { resolveTheme } from "../../src/theme";
 import { useSharedValue } from "react-native-reanimated";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
@@ -457,6 +462,280 @@ describe("CrosshairOverlay", () => {
           palette={palette}
           font={font}
           showTooltip={false}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders the built-in selection dot for the default config", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          selectionDot={resolveSelectionDot(true)}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+          selectionColor="#abcdef"
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders the configured built-in dot (size/color/ring knobs)", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          selectionDot={resolveSelectionDot({
+            size: 6,
+            color: "#fbbf24",
+            ring: { width: 3 },
+          })}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+          selectionColor="#abcdef"
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders a flat dot (no ring) when ring is off", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          selectionDot={resolveSelectionDot({ ring: false })}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("hides the built-in dot off-screen when selectionY is negative (sentinel)", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(-1);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          selectionDot={resolveSelectionDot(true)}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders no dot when selectionDot resolves to null (selectionDot={false})", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          selectionDot={resolveSelectionDot(false)}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+          selectionColor="#abcdef"
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders a custom selection-dot component", () => {
+    const Custom = ({ x, y, color, size }: SelectionDotProps) => (
+      <Circle cx={x} cy={y} r={size} color={color} />
+    );
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          selectionDot={resolveSelectionDot({ size: 6, component: Custom })}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+          selectionColor="#abcdef"
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders a custom tooltip body via renderTooltip", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          showTooltip
+          renderTooltip={() => <Circle cx={1} cy={2} r={3} color="#fff" />}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+});
+
+describe("CrosshairLine", () => {
+  it("renders the built-in selection dot for the default config", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      return (
+        <CrosshairLine
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          selectionDot={resolveSelectionDot(true)}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+          selectionColor="#abcdef"
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders no dot when selectionDot resolves to null (selectionDot={false})", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      return (
+        <CrosshairLine
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          selectionDot={resolveSelectionDot(false)}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders nothing for the dot when scrubActive is absent (early return)", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      return (
+        <CrosshairLine
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          selectionDot={resolveSelectionDot(true)}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders a custom selection-dot component", () => {
+    const Custom = ({ x, y, color, size }: SelectionDotProps) => (
+      <Circle cx={x} cy={y} r={size} color={color} />
+    );
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      return (
+        <CrosshairLine
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          selectionDot={resolveSelectionDot({ component: Custom })}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+          selectionColor="#abcdef"
         />
       );
     }

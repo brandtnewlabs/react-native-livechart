@@ -46,6 +46,13 @@ accepts all the shared theming, axis, range, layout, and text props from
   defaulted to `false`); pass `scrub={false}` to disable.
 </ParamField>
 
+<ParamField body="selectionDot" type="boolean | SelectionDotConfig" default="true">
+  Dot drawn at the scrub intersection (anchored to the leading series) while
+  scrubbing. `false` hides it; pass a config to set `size` / `color` / `ring`, or
+  `{ component }` for a fully custom Skia dot. See
+  [Scrubbing](/guides/scrubbing#selection-dot).
+</ParamField>
+
 <ParamField body="onScrub" type="(point: ScrubPointMulti | null) => void">
   **Worklet** callback fired on the UI thread each frame while scrubbing; `null` when it ends.
   Includes a per-series value array. See [Scrubbing](/guides/scrubbing).

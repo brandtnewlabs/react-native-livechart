@@ -17,12 +17,16 @@ import type {
   PulseConfig,
   ReferenceLine,
   ScrubConfig,
+  SelectionDotConfig,
+  SelectionDotProps,
+  SelectionDotRingConfig,
   TradeEvent,
   ValueLineConfig,
   XAxisConfig,
   YAxisConfig,
 } from "../types";
 
+import type { ComponentType } from "react";
 import type { SharedValue } from "react-native-reanimated";
 import {
   BADGE_METRICS_DEFAULTS,
@@ -571,6 +575,65 @@ export function resolveMultiSeriesDot(
     pulse: resolvePulse(cfg?.pulse ?? true),
     valueLine: resolveValueLine(cfg?.valueLine),
     valueLabel: cfg?.valueLabel ?? true,
+  };
+}
+
+// ─── Selection dot ──────────────────────────────────────────────────────────
+
+/** Resolved selection-dot ring. `color: undefined` → use the dot color. */
+export interface ResolvedSelectionDotRingConfig {
+  color: string | undefined;
+  width: number;
+}
+
+const SELECTION_DOT_RING_DEFAULTS: ResolvedSelectionDotRingConfig = {
+  color: undefined,
+  width: 2,
+};
+
+/** `undefined`/`true` → ring defaults; `false` → null (no ring). */
+export function resolveSelectionDotRing(
+  prop: boolean | SelectionDotRingConfig | undefined,
+): ResolvedSelectionDotRingConfig | null {
+  return resolveToggle(prop, SELECTION_DOT_RING_DEFAULTS, true);
+}
+
+/** Fully-resolved selection-dot styling. */
+export interface ResolvedSelectionDotConfig {
+  size: number;
+  /** undefined → use the line / leading-series color at render time. */
+  color: string | undefined;
+  ring: ResolvedSelectionDotRingConfig | null;
+  /** When set, the built-in size/color/ring knobs are ignored. */
+  component?: ComponentType<SelectionDotProps>;
+}
+
+const SELECTION_DOT_SIZE_DEFAULT = 4;
+
+const SELECTION_DOT_DEFAULTS: ResolvedSelectionDotConfig = {
+  size: SELECTION_DOT_SIZE_DEFAULT,
+  color: undefined,
+  ring: SELECTION_DOT_RING_DEFAULTS,
+};
+
+/**
+ * Resolves the `selectionDot` prop to a fully-typed config or null (hidden).
+ * Defaults to ON, so `undefined`/`true` yield the built-in dot.
+ * - `false` → `null` (no dot)
+ * - `undefined`/`true` → built-in dot with defaults
+ * - object → configured built-in dot, or the custom `component` when set
+ *   (the size/color/ring knobs are still resolved but ignored by the slot)
+ */
+export function resolveSelectionDot(
+  prop: boolean | SelectionDotConfig | undefined,
+): ResolvedSelectionDotConfig | null {
+  if (prop === false) return null;
+  if (prop == null || prop === true) return SELECTION_DOT_DEFAULTS;
+  return {
+    size: prop.size ?? SELECTION_DOT_DEFAULTS.size,
+    color: prop.color,
+    ring: resolveSelectionDotRing(prop.ring),
+    component: prop.component,
   };
 }
 
