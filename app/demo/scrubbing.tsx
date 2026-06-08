@@ -1,4 +1,4 @@
-import { TextInput } from "react-native";
+import { Text, TextInput } from "react-native";
 
 import { useState } from "react";
 import { formatTime, LiveChart } from "react-native-livechart";
@@ -48,6 +48,11 @@ export default function ScrubbingScreen() {
   const [styledTooltip, setStyledTooltip] = useState(false);
   const [dimOpacity, setDimOpacity] = useState(0.3);
   const [holdToScrub, setHoldToScrub] = useState(false);
+  // onGestureStart/onGestureEnd are JS-thread callbacks, so plain React state
+  // is fine here (they fire once per gesture, not once per pointer move).
+  const [gestureState, setGestureState] = useState<"idle" | "scrubbing…">(
+    "idle",
+  );
   // Press-and-hold delay: lets a quick horizontal swipe pass through to a
   // navigator's swipe-back gesture instead of scrubbing.
   const panGestureDelay = holdToScrub ? 250 : 0;
@@ -114,6 +119,8 @@ export default function ScrubbingScreen() {
           theme={APP_THEME}
           timeWindow={windowSecs}
           scrub={scrub}
+          onGestureStart={() => setGestureState("scrubbing…")}
+          onGestureEnd={() => setGestureState("idle")}
           onScrub={(point) => {
             "worklet";
             if (point === null) {
@@ -132,6 +139,8 @@ export default function ScrubbingScreen() {
         />
       }
     >
+      <Text style={demoStyles.scrubReadout}>Gesture: {gestureState}</Text>
+
       <AnimatedTextInput
         editable={false}
         multiline

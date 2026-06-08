@@ -124,6 +124,16 @@ provided; everything else has a default.
   Fires while scrubbing; `null` when it ends.
 </ParamField>
 
+<ParamField body="onGestureStart" type="() => void">
+  JS-thread callback fired once when the user starts scrubbing. Respects
+  `scrub.panGestureDelay` (it fires when the pan activates, not on first touch).
+</ParamField>
+
+<ParamField body="onGestureEnd" type="() => void">
+  JS-thread callback fired once when the user stops scrubbing. Fires only if a
+  scrub actually started — a tap that never activates emits neither callback.
+</ParamField>
+
 ## Axes, grid & range
 
 <ParamField body="xAxis" type="boolean | XAxisConfig" default="true">
