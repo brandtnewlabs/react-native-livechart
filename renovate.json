@@ -1,0 +1,57 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Library peer dependencies (RN, Skia, Reanimated, Worklets, Gesture Handler) are the consumer's choice — never bump them here.",
+      "matchDepTypes": ["peerDependencies"],
+      "enabled": false
+    },
+    {
+      "description": "Group non-major devDependencies into one PR and auto-merge once CI is green.",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dev dependencies (non-major)",
+      "automerge": true
+    },
+    {
+      "description": "Never auto-merge 0.x bumps — a minor on a 0.x package can be breaking.",
+      "matchCurrentVersion": "/^0\\./",
+      "automerge": false
+    },
+    {
+      "description": "Keep GitHub Actions current; group and auto-merge non-major.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "github actions",
+      "automerge": true
+    },
+    {
+      "description": "React Native ecosystem majors are high-risk — separate PR, no auto-merge, flagged for review.",
+      "matchPackageNames": [
+        "expo",
+        "react",
+        "react-native",
+        "@shopify/react-native-skia",
+        "react-native-reanimated",
+        "react-native-gesture-handler",
+        "react-native-worklets"
+      ],
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["needs-attention"],
+      "automerge": false
+    }
+  ]
+}
