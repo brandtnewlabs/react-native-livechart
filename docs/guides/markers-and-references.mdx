@@ -135,6 +135,30 @@ const segments: ChartSegment[] = [
 Each segment can de-emphasize with a solid `mutedColor` (use an alpha color to
 fade) or a `mutedColors` gradient, force itself focused with `active`, and mark its
 edge with a dashed `divider` + `label` (the label shows only when the divider
-does). See [`ChartSegment`](/api-reference/types#chartsegment) for every field, and
+does). Colors are optional — `mutedColor`, `dividerColor`, and the label all
+default to the chart palette, so a bare `{ from, to }` segment works.
+
+### Opting a segment out
+
+By default every segment participates in the scrub-focus dimming. Set
+`recolorLine: false` to opt one out: its line always stays the base color — it's
+never dimmed, and focusing another segment won't dim it — but it still draws its
+`divider` + `label`. Use it to keep a session neutral while only the others react:
+
+```tsx
+const segments: ChartSegment[] = [
+  { to: open, mutedColor: "rgba(154,160,166,0.4)" },           // pre-market — dims
+  { from: open, to: close, divider: true, label: "Regular",
+    recolorLine: false },                                      // labeled, never dims
+  { from: close, mutedColor: "rgba(154,160,166,0.4)",
+    divider: true, label: "After hours" },                     // after-hours — dims
+];
+```
+
+A non-recolor segment also behaves like a gap for the focus logic: scrubbing
+inside its range dims the *other* (recolor) segments, and an `active` flag on it
+has no effect (only `recolorLine` segments can take focus).
+
+See [`ChartSegment`](/api-reference/types#chartsegment) for every field, and
 [`app/demo/segments.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/segments.tsx)
 for a live example.
