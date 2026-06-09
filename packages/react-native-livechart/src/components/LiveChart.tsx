@@ -195,15 +195,6 @@ function useLiveChartController({
   const allRefLines = referenceLines ?? [];
   const refValues = collectReferenceValues(allRefLines);
 
-  // Time-range segments (after-hours, overnight, …). Resolved once per render
-  // like reference lines. `hasRecolorSegments` is a render-time gate for the
-  // line-recolor gradient pass (its per-frame visibility is handled by the
-  // gradient's transparent stops, not by mounting/unmounting the Path).
-  const resolvedSegments = (segments ?? []).map((s) =>
-    resolveSegment(s, accentColor),
-  );
-  const hasRecolorSegments = resolvedSegments.some((s) => s.recolorLine);
-
   const badgeUsesRightGutter =
     badgeCfg !== null && (badgeCfg.position ?? "right") === "right";
 
@@ -212,6 +203,20 @@ function useLiveChartController({
     resolveTheme(accentColor, theme),
     paletteOverride,
   );
+
+  // Time-range segments (sessions, after-hours, …). Resolved once per render like
+  // reference lines; the divider/label/muted colors default to the chart palette
+  // (no per-segment base color needed). `hasRecolorSegments` is a render-time gate
+  // for the line-recolor gradient pass (per-frame visibility is handled by the
+  // gradient's transparent stops, not by mounting/unmounting the Path).
+  const resolvedSegments = (segments ?? []).map((s) =>
+    resolveSegment(s, {
+      muted: palette.gridLabel,
+      divider: palette.refLine,
+      label: palette.refLabel,
+    }),
+  );
+  const hasRecolorSegments = resolvedSegments.some((s) => s.recolorLine);
 
   const leftEdgeFadeCfg = resolveLeftEdgeFade(
     leftEdgeFade,

@@ -6,6 +6,7 @@ import { resolveSegment } from "../../src/core/resolveSegment";
 import { useSegmentLineGradient } from "../../src/hooks/useSegmentLineGradient";
 
 const PADDING = { top: 12, right: 10, bottom: 28, left: 10 };
+const DEFAULTS = { muted: "#9aa0a6", divider: "#5b5b5b", label: "#cccccc" };
 
 function engine(
   partial: Partial<{ canvasWidth: number }> = {},
@@ -34,7 +35,7 @@ describe("useSegmentLineGradient", () => {
     const { result } = renderHook(() =>
       useSegmentLineGradient(
         engine(),
-        [resolveSegment({ from: 110, to: 120, mutedColor: "#abc" }, "#fff")],
+        [resolveSegment({ from: 110, to: 120, mutedColor: "#abc" }, DEFAULTS)],
         PADDING,
         BASE,
         scrubX,
@@ -54,7 +55,7 @@ describe("useSegmentLineGradient", () => {
     const { result } = renderHook(() =>
       useSegmentLineGradient(
         engine(),
-        [resolveSegment({ from: 110, to: 120 }, "#fff")],
+        [resolveSegment({ from: 110, to: 120 }, DEFAULTS)],
         PADDING,
         BASE,
         scrubX,
@@ -70,7 +71,7 @@ describe("useSegmentLineGradient", () => {
     const { result } = renderHook(() =>
       useSegmentLineGradient(
         engine({ canvasWidth: 0 }),
-        [resolveSegment({ from: 110, to: 120 }, "#fff")],
+        [resolveSegment({ from: 110, to: 120 }, DEFAULTS)],
         PADDING,
         BASE,
         scrubX,

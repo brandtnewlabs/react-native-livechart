@@ -75,7 +75,7 @@ export function SegmentDividerOverlay({
             y={labelY}
             text={labelText}
             font={font}
-            color={segment.color}
+            color={segment.labelColor}
           />
         </Group>
       ) : null}

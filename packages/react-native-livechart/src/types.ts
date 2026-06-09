@@ -130,10 +130,6 @@ export interface ChartSegment {
   /** Segment end, unix seconds. Omit to extend to the live edge (now). */
   to?: number;
 
-  /** Base segment color — the default for `mutedColor`, `dividerColor`, and the
-   *  label. Default: the chart accent color. */
-  color?: string;
-
   /**
    * Participate in scrub-focus line styling. At rest the line is one uniform
    * color; while scrubbing (or when a segment is `active`), the focused segment
@@ -143,7 +139,8 @@ export interface ChartSegment {
   recolorLine?: boolean;
   /** De-emphasis line color, used when this segment is NOT the focused one. An
    *  alpha-reduced color (e.g. `"rgba(154,160,166,0.4)"`) fades the line — it
-   *  paints the stroke directly, not a layer on top. Default: `color`. */
+   *  paints the stroke directly, not a layer on top. Defaults to the chart's muted
+   *  palette color (`palette.gridLabel`). */
   mutedColor?: string;
   /**
    * Two or more CSS colors → horizontal gradient across the segment's sub-range
@@ -158,11 +155,12 @@ export interface ChartSegment {
 
   /** Draw a vertical dashed divider at the `from` edge (market-close marker). Default `false`. */
   divider?: boolean;
-  /** Divider color. Default: `color`. */
+  /** Divider color. Defaults to the chart's reference-line color (`palette.refLine`). */
   dividerColor?: string;
 
   /** Optional label captioning the divider at the top of the segment. Shown only
-   *  when `divider` is set. */
+   *  when `divider` is set; drawn in the chart's reference-label color
+   *  (`palette.refLabel`). */
   label?: string;
   /** Label horizontal anchor within the segment. Default `"left"`. */
   labelPosition?: "left" | "right";

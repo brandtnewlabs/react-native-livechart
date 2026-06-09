@@ -62,22 +62,19 @@ export default function SegmentsScreen() {
   const value = useSharedValue(seed.points[seed.points.length - 1].value);
 
   const rgb = COLORS[colorIdx].rgb;
-  const solid = `rgb(${rgb})`;
   const dim = `rgba(${rgb},${opacity})`; // a non-focused session's line color
   // "Gradient line" fades a de-emphasized session out along its length — a
   // pronounced drop so the gradient reads clearly during scrub / active.
   const dimSoft = `rgba(${rgb},${(opacity * 0.12).toFixed(3)})`;
 
-  // Shared styling: at rest every session is the base accent (uniform line). When
-  // a session is focused (scrubbed / active) it stays accent; the OTHERS take this
-  // de-emphasis color (set by the Color + Opacity controls). `color` drives the
-  // crisp divider + label; `mutedColor` fades the line itself.
+  // Shared styling: at rest every session is the base line color (uniform line).
+  // When a session is focused (scrubbed / active) it stays the base color; the
+  // OTHERS take this de-emphasis color (set by the Color + Opacity controls). The
+  // divider + label need no color — they inherit the chart palette.
   const dimStyle: Partial<ChartSegment> = {
     recolorLine: true,
     mutedColor: dim,
     mutedColors: gradientLine ? [dim, dimSoft] : undefined,
-    color: solid,
-    dividerColor: solid,
   };
 
   const segments: ChartSegment[] = [];

@@ -1,25 +1,25 @@
-import { resolveSegment } from "../src/core/resolveSegment";
+import {
+  resolveSegment,
+  type SegmentColorDefaults,
+} from "../src/core/resolveSegment";
 
-const ACCENT = "#3323E6";
+const DEFAULTS: SegmentColorDefaults = {
+  muted: "#9aa0a6",
+  divider: "#5b5b5b",
+  label: "#cccccc",
+};
 
 describe("resolveSegment", () => {
-  it("fills defaults from the accent color for a bare segment", () => {
-    const r = resolveSegment({}, ACCENT);
-    expect(r.color).toBe(ACCENT);
+  it("falls back to the palette defaults for a bare segment", () => {
+    const r = resolveSegment({}, DEFAULTS);
     expect(r.recolorLine).toBe(true);
-    expect(r.mutedColor).toBe(ACCENT);
+    expect(r.mutedColor).toBe(DEFAULTS.muted);
     expect(r.mutedColors).toBeUndefined();
     expect(r.active).toBe(false);
     expect(r.divider).toBe(false);
-    expect(r.dividerColor).toBe(ACCENT);
+    expect(r.dividerColor).toBe(DEFAULTS.divider);
+    expect(r.labelColor).toBe(DEFAULTS.label);
     expect(r.labelPosition).toBe("left");
-  });
-
-  it("derives sub-colors from an explicit base color", () => {
-    const r = resolveSegment({ color: "#ff8800" }, ACCENT);
-    expect(r.color).toBe("#ff8800");
-    expect(r.mutedColor).toBe("#ff8800");
-    expect(r.dividerColor).toBe("#ff8800");
   });
 
   it("respects explicit overrides", () => {
@@ -27,7 +27,6 @@ describe("resolveSegment", () => {
       {
         from: 100,
         to: 200,
-        color: "#111",
         recolorLine: false,
         mutedColor: "#333",
         active: true,
@@ -36,25 +35,27 @@ describe("resolveSegment", () => {
         label: "After hours",
         labelPosition: "right",
       },
-      ACCENT,
+      DEFAULTS,
     );
     expect(r.from).toBe(100);
     expect(r.to).toBe(200);
-    expect(r.color).toBe("#111");
     expect(r.recolorLine).toBe(false);
     expect(r.mutedColor).toBe("#333");
     expect(r.active).toBe(true);
     expect(r.divider).toBe(true);
     expect(r.dividerColor).toBe("#444");
     expect(r.label).toBe("After hours");
+    // The label color always comes from the palette (no per-segment override).
+    expect(r.labelColor).toBe(DEFAULTS.label);
     expect(r.labelPosition).toBe("right");
   });
 
   it("keeps a ≥2 mutedColors gradient and drops a too-short one", () => {
-    expect(resolveSegment({ mutedColors: ["#a", "#b"] }, ACCENT).mutedColors).toEqual([
-      "#a",
-      "#b",
-    ]);
-    expect(resolveSegment({ mutedColors: ["#a"] }, ACCENT).mutedColors).toBeUndefined();
+    expect(
+      resolveSegment({ mutedColors: ["#a", "#b"] }, DEFAULTS).mutedColors,
+    ).toEqual(["#a", "#b"]);
+    expect(
+      resolveSegment({ mutedColors: ["#a"] }, DEFAULTS).mutedColors,
+    ).toBeUndefined();
   });
 });

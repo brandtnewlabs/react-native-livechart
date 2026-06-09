@@ -41,7 +41,8 @@ function Fixture({
   );
 }
 
-const seg = (s: ChartSegment) => resolveSegment(s, "#3323E6");
+const seg = (s: ChartSegment) =>
+  resolveSegment(s, { muted: "#9aa0a6", divider: "#5b5b5b", label: "#cccccc" });
 
 describe("SegmentDividerOverlay", () => {
   it("renders a divider", () => {

@@ -9,12 +9,12 @@ const X2 = 210;
 
 function mkSeg(partial: Partial<ResolvedSegment> = {}): ResolvedSegment {
   return {
-    color: "#fff",
     recolorLine: true,
     mutedColor: "#abcdef",
     active: false,
     divider: false,
     dividerColor: "#fff",
+    labelColor: "#fff",
     labelPosition: "left",
     ...partial,
   };

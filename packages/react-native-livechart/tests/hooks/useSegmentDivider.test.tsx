@@ -12,6 +12,7 @@ const font = {
 
 // padding left=10, right=10 → plot [10, 390] at width 400; window [100,130].
 const PADDING = { top: 12, right: 10, bottom: 28, left: 10 };
+const DEFAULTS = { muted: "#9aa0a6", divider: "#5b5b5b", label: "#cccccc" };
 
 function engine(
   partial: Partial<{ canvasWidth: number; canvasHeight: number }> = {},
@@ -32,7 +33,7 @@ describe("useSegmentDivider", () => {
       useSegmentDivider(
         engine({ canvasWidth: 0 }),
         PADDING,
-        resolveSegment({ from: 110, to: 120 }, "#fff"),
+        resolveSegment({ from: 110, to: 120 }, DEFAULTS),
         font,
       ),
     );
@@ -44,7 +45,7 @@ describe("useSegmentDivider", () => {
       useSegmentDivider(
         engine(),
         PADDING,
-        resolveSegment({ from: 50, to: 70 }, "#fff"),
+        resolveSegment({ from: 50, to: 70 }, DEFAULTS),
         font,
       ),
     );
@@ -56,7 +57,7 @@ describe("useSegmentDivider", () => {
       useSegmentDivider(
         engine(),
         PADDING,
-        resolveSegment({ from: 110, to: 120 }, "#fff"),
+        resolveSegment({ from: 110, to: 120 }, DEFAULTS),
         font,
       ),
     );
@@ -74,7 +75,7 @@ describe("useSegmentDivider", () => {
         PADDING,
         resolveSegment(
           { from: 110, to: 120, label: "AH", labelPosition: "right" },
-          "#fff",
+          DEFAULTS,
         ),
         font,
       ),
