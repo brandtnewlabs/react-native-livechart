@@ -116,12 +116,13 @@ export interface ReferenceLine {
 }
 
 /**
- * A highlightable time-range segment of the chart — e.g. an after-hours or
- * overnight session drawn as a distinct region of the same line (Robinhood-style
- * extended-hours segmentation). A segment renders a translucent background band
- * over its `[from, to]` range and (by default) recolors the line within it. The
- * band brightens to its highlight color/opacity when the user scrubs inside it,
- * or whenever `active` is set (e.g. the session is currently after-hours).
+ * A time-range segment of the chart — e.g. a pre-market / regular / after-hours
+ * session — distinguished with a **scrub-focus** interaction (Robinhood-style
+ * extended-hours segmentation). At rest the whole line is one uniform color;
+ * while the user scrubs (or when a segment is `active`) the focused segment keeps
+ * the base color and every other segment is de-emphasized by recoloring the line
+ * stroke itself (no overlay). An optional dashed `divider` + `label` mark a
+ * segment's leading edge.
  */
 export interface ChartSegment {
   /** Segment start, unix seconds. Omit to extend to the chart's left edge. */
@@ -129,14 +130,9 @@ export interface ChartSegment {
   /** Segment end, unix seconds. Omit to extend to the live edge (now). */
   to?: number;
 
-  /** Resting band fill color. Default: the chart accent color. */
+  /** Base segment color — the default for `lineColor`, `dividerColor`, and the
+   *  label. Default: the chart accent color. */
   color?: string;
-  /** Resting band fill opacity (0–1). Default `0.06`. */
-  opacity?: number;
-  /** Band fill color when highlighted (hover or `active`). Default: `color`. */
-  highlightColor?: string;
-  /** Band fill opacity when highlighted (0–1). Default `0.16`. */
-  highlightOpacity?: number;
 
   /**
    * Participate in scrub-focus line styling. At rest the line is one uniform
@@ -165,10 +161,10 @@ export interface ChartSegment {
   /** Divider color. Default: `color`. */
   dividerColor?: string;
 
-  /** Optional label captioning the divider at the top of the band. Shown only
+  /** Optional label captioning the divider at the top of the segment. Shown only
    *  when `divider` is set. */
   label?: string;
-  /** Label horizontal anchor within the band. Default `"left"`. */
+  /** Label horizontal anchor within the segment. Default `"left"`. */
   labelPosition?: "left" | "right";
 }
 
@@ -929,9 +925,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
   /** Horizontal dashed line at the current live value. `true` = defaults, or pass `ValueLineConfig`. */
   valueLine?: boolean | ValueLineConfig;
   /**
-   * Highlightable time-range segments (after-hours, overnight, etc.). Each
-   * {@link ChartSegment} draws a translucent band over its `[from, to]` range and
-   * recolors the line within it, brightening on scrub-hover or when `active`.
+   * Time-range segments (sessions, after-hours, overnight, etc.). At rest the
+   * line is one uniform color; scrubbing a {@link ChartSegment} — or marking one
+   * `active` — keeps it full while the others de-emphasize (`lineColor` /
+   * `lineColors`). Optional dashed `divider` + `label` mark a segment's edge.
    */
   segments?: ChartSegment[];
   /** Render the live value as a large text overlay in the top-left. Default `false`. */

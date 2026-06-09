@@ -70,15 +70,12 @@ export default function SegmentsScreen() {
 
   // Shared styling: at rest every session is the base accent (uniform line). When
   // a session is focused (scrubbed / active) it stays accent; the OTHERS take this
-  // de-emphasis color (set by the Color + Opacity controls). No band — the line
-  // color carries it.
+  // de-emphasis color (set by the Color + Opacity controls). `color` drives the
+  // crisp divider + label; `lineColor` fades the line itself.
   const dimStyle: Partial<ChartSegment> = {
     recolorLine: true,
     lineColor: dim,
     lineColors: gradientLine ? [dim, dimSoft] : undefined,
-    // No band at all — the line focus is the only emphasis (no overlays).
-    opacity: 0,
-    highlightOpacity: 0,
     color: solid,
     dividerColor: solid,
   };

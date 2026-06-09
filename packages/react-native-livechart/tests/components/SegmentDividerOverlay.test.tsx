@@ -1,8 +1,7 @@
 import { render } from "@testing-library/react-native";
 import React from "react";
-import { useSharedValue } from "react-native-reanimated";
 
-import { SegmentBandOverlay } from "../../src/components/SegmentBandOverlay";
+import { SegmentDividerOverlay } from "../../src/components/SegmentDividerOverlay";
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { resolveSegment, type ResolvedSegment } from "../../src/core/resolveSegment";
 import { DEFAULT_PADDING } from "../../src/draw/line";
@@ -27,24 +26,16 @@ function engine(canvasWidth = 400): ChartEngineLayout {
 
 function Fixture({
   segment,
-  scrubAt = -1,
-  scrubbing = false,
   canvasWidth = 400,
 }: {
   segment: ResolvedSegment;
-  scrubAt?: number;
-  scrubbing?: boolean;
   canvasWidth?: number;
 }) {
-  const scrubX = useSharedValue(scrubAt);
-  const scrubActive = useSharedValue(scrubbing);
   return (
-    <SegmentBandOverlay
+    <SegmentDividerOverlay
       engine={engine(canvasWidth)}
       padding={DEFAULT_PADDING}
       segment={segment}
-      scrubX={scrubX}
-      scrubActive={scrubActive}
       font={font}
     />
   );
@@ -52,19 +43,9 @@ function Fixture({
 
 const seg = (s: ChartSegment) => resolveSegment(s, "#3323E6");
 
-describe("SegmentBandOverlay", () => {
-  it("renders a resting band", () => {
-    render(<Fixture segment={seg({ from: 110, to: 120 })} />);
-  });
-
-  it("renders a highlighted band while scrubbing inside it", () => {
-    render(
-      <Fixture
-        segment={seg({ from: 110, to: 125 })}
-        scrubAt={250}
-        scrubbing
-      />,
-    );
+describe("SegmentDividerOverlay", () => {
+  it("renders a divider", () => {
+    render(<Fixture segment={seg({ from: 110, to: 120, divider: true })} />);
   });
 
   it("renders a divider and a label", () => {
@@ -90,20 +71,13 @@ describe("SegmentBandOverlay", () => {
     expect(screen.queryByText("After hours")).toBeNull();
   });
 
-  it("renders a gradient-recolored active segment", () => {
-    render(
-      <Fixture
-        segment={seg({
-          from: 110,
-          to: 120,
-          active: true,
-          lineColors: ["#aa0000", "#0000cc"],
-        })}
-      />,
-    );
+  it("renders nothing for a segment without a divider", () => {
+    // No divider, no label — the segment contributes only the line recolor
+    // (drawn elsewhere), so this overlay is empty but must not throw.
+    render(<Fixture segment={seg({ from: 110, to: 120 })} />);
   });
 
-  it("renders nothing visible when the band is off-screen", () => {
-    render(<Fixture segment={seg({ from: 110, to: 120 })} canvasWidth={0} />);
+  it("renders nothing visible when the segment is off-screen", () => {
+    render(<Fixture segment={seg({ from: 110, to: 120, divider: true })} canvasWidth={0} />);
   });
 });

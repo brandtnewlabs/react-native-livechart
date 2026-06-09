@@ -6,9 +6,6 @@ describe("resolveSegment", () => {
   it("fills defaults from the accent color for a bare segment", () => {
     const r = resolveSegment({}, ACCENT);
     expect(r.color).toBe(ACCENT);
-    expect(r.opacity).toBe(0.06);
-    expect(r.highlightColor).toBe(ACCENT);
-    expect(r.highlightOpacity).toBe(0.16);
     expect(r.recolorLine).toBe(true);
     expect(r.lineColor).toBe(ACCENT);
     expect(r.lineColors).toBeUndefined();
@@ -18,10 +15,9 @@ describe("resolveSegment", () => {
     expect(r.labelPosition).toBe("left");
   });
 
-  it("derives sub-colors from an explicit band color", () => {
+  it("derives sub-colors from an explicit base color", () => {
     const r = resolveSegment({ color: "#ff8800" }, ACCENT);
     expect(r.color).toBe("#ff8800");
-    expect(r.highlightColor).toBe("#ff8800");
     expect(r.lineColor).toBe("#ff8800");
     expect(r.dividerColor).toBe("#ff8800");
   });
@@ -32,9 +28,6 @@ describe("resolveSegment", () => {
         from: 100,
         to: 200,
         color: "#111",
-        opacity: 0.2,
-        highlightColor: "#222",
-        highlightOpacity: 0.5,
         recolorLine: false,
         lineColor: "#333",
         active: true,
@@ -47,9 +40,7 @@ describe("resolveSegment", () => {
     );
     expect(r.from).toBe(100);
     expect(r.to).toBe(200);
-    expect(r.opacity).toBe(0.2);
-    expect(r.highlightColor).toBe("#222");
-    expect(r.highlightOpacity).toBe(0.5);
+    expect(r.color).toBe("#111");
     expect(r.recolorLine).toBe(false);
     expect(r.lineColor).toBe("#333");
     expect(r.active).toBe(true);

@@ -5,54 +5,48 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ResolvedSegment } from "../core/resolveSegment";
 import type { ChartPadding } from "../draw/line";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
-import { segmentBandX, segmentHighlighted } from "../math/segments";
+import { segmentBandX } from "../math/segments";
 
-/** Screen-space geometry + highlight state for one segment band, per frame. */
-export interface SegmentBandLayout {
+/** Screen-space geometry for one segment's divider + label, per frame. */
+export interface SegmentDividerLayout {
   visible: boolean;
-  /** Band left edge (px). */
+  /** Segment left edge (px) — the divider sits here. */
   x1: number;
-  /** Band right edge (px). */
+  /** Segment right edge (px). */
   x2: number;
-  /** Band top edge (plot top). */
+  /** Segment top edge (plot top). */
   yTop: number;
-  /** Band bottom edge (plot bottom). */
+  /** Segment bottom edge (plot bottom). */
   yBottom: number;
-  /** True while highlighted (scrub inside the band, or `active`). */
-  highlighted: boolean;
   label: string;
   labelX: number;
   labelY: number;
 }
 
-const INVISIBLE: SegmentBandLayout = {
+const INVISIBLE: SegmentDividerLayout = {
   visible: false,
   x1: 0,
   x2: 0,
   yTop: 0,
   yBottom: 0,
-  highlighted: false,
   label: "",
   labelX: 0,
   labelY: -1,
 };
 
 /**
- * Derives the screen-space band for a single resolved segment each frame: x-range
- * projected from its `[from, to]` time range, top/bottom plot edges, the
- * scrub/active highlight flag, and the label anchor. Mirrors `useReferenceLine`'s
- * time-band derivation; the band math lives in pure `segmentBandX` /
- * `segmentHighlighted` so it is unit-testable without Reanimated.
+ * Derives the screen-space geometry for a single segment's dashed divider and
+ * caption label each frame: the x-extent projected from its `[from, to]` time
+ * range, the plot's top/bottom edges, and the label anchor. The projection math
+ * lives in pure `segmentBandX` so it is unit-testable without Reanimated.
  */
-export function useSegmentBand(
+export function useSegmentDivider(
   engine: ChartEngineLayout,
   padding: ChartPadding,
   segment: ResolvedSegment,
-  scrubX: SharedValue<number>,
-  scrubActive: SharedValue<boolean>,
   font: SkFont,
-): SharedValue<SegmentBandLayout> {
-  return useDerivedValue<SegmentBandLayout>(() => {
+): SharedValue<SegmentDividerLayout> {
+  return useDerivedValue<SegmentDividerLayout>(() => {
     const w = engine.canvasWidth.value;
     const h = engine.canvasHeight.value;
     if (w === 0 || h === 0) return INVISIBLE;
@@ -67,13 +61,6 @@ export function useSegmentBand(
 
     const yTop = padding.top;
     const yBottom = h - padding.bottom;
-    const highlighted = segmentHighlighted(
-      segment.active,
-      scrubActive.value,
-      scrubX.value,
-      band.bx1,
-      band.bx2,
-    );
 
     const label = segment.label ?? "";
     const fm = font.getMetrics();
@@ -89,7 +76,6 @@ export function useSegmentBand(
       x2: band.bx2,
       yTop,
       yBottom,
-      highlighted,
       label,
       labelX,
       labelY,

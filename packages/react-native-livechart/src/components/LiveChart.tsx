@@ -81,7 +81,7 @@ import { MarkerOverlay } from "./MarkerOverlay";
 import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
 import { ValueTextOverlay } from "./ValueTextOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
-import { SegmentBandOverlay } from "./SegmentBandOverlay";
+import { SegmentDividerOverlay } from "./SegmentDividerOverlay";
 import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
@@ -583,7 +583,6 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     resolvedSegments,
     hasRecolorSegments,
     segmentGradient,
-    crosshair,
     formatValue,
     lineGroupOpacity,
     linePath,
@@ -643,16 +642,14 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         </Group>
       )}
 
-      {/* Segment bands (over the fill, behind the line) — translucent regions
-          that highlight on scrub-hover or when `active`. */}
+      {/* Segment dividers + labels (behind the line). The scrub-focus emphasis is
+          painted on the line stroke itself, below — this overlay draws no fill. */}
       {resolvedSegments.map((seg, i) => (
-        <SegmentBandOverlay
+        <SegmentDividerOverlay
           key={`seg-${seg.from ?? "start"}-${seg.to ?? "end"}-${i}`}
           engine={engine}
           padding={effectivePadding}
           segment={seg}
-          scrubX={crosshair.scrubX}
-          scrubActive={crosshair.scrubActive}
           font={skiaFont}
         />
       ))}

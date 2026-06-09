@@ -1,9 +1,5 @@
 import type { ResolvedSegment } from "../../src/core/resolveSegment";
-import {
-  segmentBandX,
-  segmentHighlighted,
-  segmentLineGradient,
-} from "../../src/math/segments";
+import { segmentBandX, segmentLineGradient } from "../../src/math/segments";
 
 // Window [100, 130] (winStart=100, win=30) projected into plot [x1=10, x2=210].
 const WIN_START = 100;
@@ -14,9 +10,6 @@ const X2 = 210;
 function mkSeg(partial: Partial<ResolvedSegment> = {}): ResolvedSegment {
   return {
     color: "#fff",
-    opacity: 0.06,
-    highlightColor: "#fff",
-    highlightOpacity: 0.16,
     recolorLine: true,
     lineColor: "#abcdef",
     active: false,
@@ -82,28 +75,6 @@ describe("segmentBandX", () => {
     expect(rev.visible).toBe(true);
     expect(rev.bx1).toBeCloseTo(fwd.bx1);
     expect(rev.bx2).toBeCloseTo(fwd.bx2);
-  });
-});
-
-describe("segmentHighlighted", () => {
-  it("is true when active, regardless of scrub", () => {
-    expect(segmentHighlighted(true, false, -1, 50, 150)).toBe(true);
-  });
-
-  it("is true when scrubbing inside the band", () => {
-    expect(segmentHighlighted(false, true, 100, 50, 150)).toBe(true);
-  });
-
-  it("is false when scrubbing outside the band", () => {
-    expect(segmentHighlighted(false, true, 200, 50, 150)).toBe(false);
-  });
-
-  it("is false when not scrubbing even if x is in range", () => {
-    expect(segmentHighlighted(false, false, 100, 50, 150)).toBe(false);
-  });
-
-  it("is false when idle (scrubX = -1)", () => {
-    expect(segmentHighlighted(false, false, -1, 50, 150)).toBe(false);
   });
 });
 

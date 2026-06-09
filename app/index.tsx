@@ -95,7 +95,7 @@ const SECTIONS: DemoSection[] = [
       {
         href: "/demo/segments",
         title: "Segments",
-        blurb: "segments: after-hours / overnight regions — recolored line, highlight band, divider.",
+        blurb: "segments: after-hours / overnight sessions — scrub-focus line recolor, divider + label.",
       },
     ],
   },

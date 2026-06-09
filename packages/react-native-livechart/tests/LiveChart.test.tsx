@@ -75,11 +75,11 @@ describe("LiveChart", () => {
     );
   });
 
-  it("renders time-range segments (band + recolor + divider + active)", () => {
+  it("renders time-range segments (recolor + divider + active)", () => {
     const screen = render(
       <Harness
         segments={[
-          // Plain band, no line recolor.
+          // Non-recolor segment (excluded from the scrub-focus gradient).
           { from: 1699999900, to: 1699999950, recolorLine: false },
           // Active recolored segment with a divider and a label.
           {
@@ -88,7 +88,6 @@ describe("LiveChart", () => {
             active: true,
             divider: true,
             label: "After hours",
-            highlightColor: "#ff8800",
           },
           // Gradient-recolored segment extending to the live edge.
           { from: 1700000010, lineColors: ["#aa0000", "#0000cc"] },

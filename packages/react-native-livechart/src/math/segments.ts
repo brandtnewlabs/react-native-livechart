@@ -45,23 +45,6 @@ export function segmentBandX(
   return { visible: true, bx1, bx2 };
 }
 
-/**
- * Whether a segment should render its highlighted appearance: forced on by
- * `active`, otherwise on while the scrub crosshair sits inside the band's x-range.
- * `scrubX` is `-1` when idle, so the `scrubActive` gate keeps the range test safe.
- */
-export function segmentHighlighted(
-  active: boolean,
-  scrubActive: boolean,
-  scrubX: number,
-  bx1: number,
-  bx2: number,
-): boolean {
-  "worklet";
-  if (active) return true;
-  return scrubActive && scrubX >= bx1 && scrubX <= bx2;
-}
-
 /** Horizontal stroke gradient for the recolored line segments. */
 export interface SegmentGradient {
   colors: string[];

@@ -5,61 +5,36 @@ import {
   Text as SkiaText,
   type SkFont,
 } from "@shopify/react-native-skia";
-import { useDerivedValue, type SharedValue } from "react-native-reanimated";
+import { useDerivedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ResolvedSegment } from "../core/resolveSegment";
 import type { ChartPadding } from "../draw/line";
 import { usePathBuilder } from "../hooks/usePathBuilder";
-import { useSegmentBand } from "../hooks/useSegmentBand";
+import { useSegmentDivider } from "../hooks/useSegmentDivider";
 
 /**
- * Renders one chart segment: a translucent background band over its time range,
- * an optional dashed divider at the leading edge, and an optional label that
- * captions that divider (so the label shows only when the divider does). The band
- * fill color/opacity switch to the segment's highlight values while it's
- * highlighted (scrub-hover or `active`). Self-contained so callers can `.map()`
- * over a variable-length `segments` array, mirroring `ReferenceLineOverlay`.
+ * Renders one segment's edge markers: an optional dashed vertical divider at its
+ * leading (`from`) edge and an optional label captioning that divider (so the
+ * label shows only when the divider does). The scrub-focus emphasis is carried by
+ * the line stroke itself (see `useSegmentLineGradient`), so this overlay draws no
+ * fill. Self-contained so callers can `.map()` over a variable-length `segments`
+ * array, mirroring `ReferenceLineOverlay`.
  */
-export function SegmentBandOverlay({
+export function SegmentDividerOverlay({
   engine,
   padding,
   segment,
-  scrubX,
-  scrubActive,
   font,
 }: {
   engine: ChartEngineLayout;
   padding: ChartPadding;
   segment: ResolvedSegment;
-  scrubX: SharedValue<number>;
-  scrubActive: SharedValue<boolean>;
   font: SkFont;
 }) {
-  const layout = useSegmentBand(
-    engine,
-    padding,
-    segment,
-    scrubX,
-    scrubActive,
-    font,
-  );
+  const layout = useSegmentDivider(engine, padding, segment, font);
 
-  const bandBuilder = usePathBuilder();
   const dividerBuilder = usePathBuilder();
-
-  const bandPath = useDerivedValue(() => {
-    const b = bandBuilder.value;
-    const l = layout.value;
-    if (l.visible) {
-      b.moveTo(l.x1, l.yTop);
-      b.lineTo(l.x2, l.yTop);
-      b.lineTo(l.x2, l.yBottom);
-      b.lineTo(l.x1, l.yBottom);
-      b.close();
-    }
-    return b.detach();
-  });
 
   const dividerPath = useDerivedValue(() => {
     const b = dividerBuilder.value;
@@ -71,16 +46,6 @@ export function SegmentBandOverlay({
     return b.detach();
   });
 
-  // Highlight switches the band's fill color + opacity (scrub-hover or `active`).
-  const bandOpacity = useDerivedValue(() => {
-    const l = layout.value;
-    if (!l.visible) return 0;
-    return l.highlighted ? segment.highlightOpacity : segment.opacity;
-  });
-  const bandColor = useDerivedValue(() =>
-    layout.value.highlighted ? segment.highlightColor : segment.color,
-  );
-
   const dividerOpacity = useDerivedValue(() => (layout.value.visible ? 1 : 0));
   const labelOpacity = useDerivedValue(() => (layout.value.visible ? 1 : 0));
   const labelX = useDerivedValue(() => layout.value.labelX);
@@ -89,10 +54,6 @@ export function SegmentBandOverlay({
 
   return (
     <Group>
-      <Group opacity={bandOpacity}>
-        <Path path={bandPath} style="fill" color={bandColor} />
-      </Group>
-
       {segment.divider && (
         <Group opacity={dividerOpacity}>
           <Path

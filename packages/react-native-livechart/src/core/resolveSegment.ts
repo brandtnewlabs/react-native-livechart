@@ -8,10 +8,8 @@ import type { ChartSegment } from "../types";
 export interface ResolvedSegment {
   from?: number;
   to?: number;
+  /** Base color — the default for `lineColor`, `dividerColor`, and the label. */
   color: string;
-  opacity: number;
-  highlightColor: string;
-  highlightOpacity: number;
   recolorLine: boolean;
   /** Solid line-tint color (already defaulted to `color`). */
   lineColor: string;
@@ -25,16 +23,11 @@ export interface ResolvedSegment {
   labelPosition: "left" | "right";
 }
 
-/** Resting band opacity when a segment isn't highlighted. */
-const DEFAULT_OPACITY = 0.06;
-/** Band opacity when a segment is highlighted (hover or `active`). */
-const DEFAULT_HIGHLIGHT_OPACITY = 0.16;
-
 /**
  * Normalize a user-facing {@link ChartSegment} into a fully-resolved segment with
- * defaults filled in. Every color falls back to the band `color`, which itself
- * defaults to the chart accent color. Pure — called once per segment at render
- * time, not per frame.
+ * defaults filled in. Every color falls back to `color`, which itself defaults to
+ * the chart accent color. Pure — called once per segment at render time, not per
+ * frame.
  */
 export function resolveSegment(
   seg: ChartSegment,
@@ -45,9 +38,6 @@ export function resolveSegment(
     from: seg.from,
     to: seg.to,
     color,
-    opacity: seg.opacity ?? DEFAULT_OPACITY,
-    highlightColor: seg.highlightColor ?? color,
-    highlightOpacity: seg.highlightOpacity ?? DEFAULT_HIGHLIGHT_OPACITY,
     recolorLine: seg.recolorLine ?? true,
     lineColor: seg.lineColor ?? color,
     lineColors:

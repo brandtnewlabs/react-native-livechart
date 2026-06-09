@@ -1,9 +1,8 @@
 import { renderHook } from "@testing-library/react-native";
-import type { SharedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { resolveSegment } from "../../src/core/resolveSegment";
-import { useSegmentBand } from "../../src/hooks/useSegmentBand";
+import { useSegmentDivider } from "../../src/hooks/useSegmentDivider";
 
 const font = {
   getSize: () => 12,
@@ -27,22 +26,13 @@ function engine(
   } as unknown as ChartEngineLayout;
 }
 
-const scrub = (x: number, active: boolean) =>
-  ({
-    scrubX: { value: x } as unknown as SharedValue<number>,
-    scrubActive: { value: active } as unknown as SharedValue<boolean>,
-  });
-
-describe("useSegmentBand", () => {
+describe("useSegmentDivider", () => {
   it("is invisible when the canvas is not laid out", () => {
-    const { scrubX, scrubActive } = scrub(-1, false);
     const { result } = renderHook(() =>
-      useSegmentBand(
+      useSegmentDivider(
         engine({ canvasWidth: 0 }),
         PADDING,
         resolveSegment({ from: 110, to: 120 }, "#fff"),
-        scrubX,
-        scrubActive,
         font,
       ),
     );
@@ -50,29 +40,23 @@ describe("useSegmentBand", () => {
   });
 
   it("is invisible for an off-screen range", () => {
-    const { scrubX, scrubActive } = scrub(-1, false);
     const { result } = renderHook(() =>
-      useSegmentBand(
+      useSegmentDivider(
         engine(),
         PADDING,
         resolveSegment({ from: 50, to: 70 }, "#fff"),
-        scrubX,
-        scrubActive,
         font,
       ),
     );
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("projects a visible band with plot top/bottom edges", () => {
-    const { scrubX, scrubActive } = scrub(-1, false);
+  it("projects a visible segment with plot top/bottom edges", () => {
     const { result } = renderHook(() =>
-      useSegmentBand(
+      useSegmentDivider(
         engine(),
         PADDING,
         resolveSegment({ from: 110, to: 120 }, "#fff"),
-        scrubX,
-        scrubActive,
         font,
       ),
     );
@@ -81,57 +65,23 @@ describe("useSegmentBand", () => {
     expect(l.x2).toBeGreaterThan(l.x1);
     expect(l.yTop).toBe(PADDING.top);
     expect(l.yBottom).toBe(300 - PADDING.bottom);
-    expect(l.highlighted).toBe(false);
   });
 
-  it("highlights while scrubbing inside the band", () => {
-    const { scrubX, scrubActive } = scrub(250, true);
+  it("anchors a right-positioned label inside the segment", () => {
     const { result } = renderHook(() =>
-      useSegmentBand(
-        engine(),
-        PADDING,
-        resolveSegment({ from: 110, to: 125 }, "#fff"),
-        scrubX,
-        scrubActive,
-        font,
-      ),
-    );
-    expect(result.current.value.highlighted).toBe(true);
-  });
-
-  it("highlights when active even without scrubbing", () => {
-    const { scrubX, scrubActive } = scrub(-1, false);
-    const { result } = renderHook(() =>
-      useSegmentBand(
-        engine(),
-        PADDING,
-        resolveSegment({ from: 110, to: 120, active: true }, "#fff"),
-        scrubX,
-        scrubActive,
-        font,
-      ),
-    );
-    expect(result.current.value.highlighted).toBe(true);
-  });
-
-  it("anchors a right-positioned label inside the band", () => {
-    const { scrubX, scrubActive } = scrub(-1, false);
-    const { result } = renderHook(() =>
-      useSegmentBand(
+      useSegmentDivider(
         engine(),
         PADDING,
         resolveSegment(
           { from: 110, to: 120, label: "AH", labelPosition: "right" },
           "#fff",
         ),
-        scrubX,
-        scrubActive,
         font,
       ),
     );
     const l = result.current.value;
     expect(l.label).toBe("AH");
-    // right anchor: label sits left of the band's right edge.
+    // right anchor: label sits left of the segment's right edge.
     expect(l.labelX).toBeLessThan(l.x2);
   });
 });
