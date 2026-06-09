@@ -129,7 +129,7 @@ interface ScrubPointMulti extends ScrubPointCore {
 These are the option shapes accepted by the matching props.
 
 ```ts
-interface LineConfig { width?: number; color?: string }
+interface LineConfig { width?: number; color?: string; colors?: string[] }
 interface GradientConfig {
   topOpacity?: number;    // accent-derived top fill opacity
   bottomOpacity?: number; // accent-derived bottom fill opacity

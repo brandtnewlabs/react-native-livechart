@@ -28,6 +28,7 @@ describe("useCanvasLayout", () => {
       } as never);
     });
 
+    expect(result.current.layoutWidth).toBe(320);
     expect(result.current.layoutHeight).toBe(240);
     expect(engine.canvasWidth.value).toBe(320);
     expect(engine.canvasHeight.value).toBe(240);
