@@ -92,6 +92,11 @@ const SECTIONS: DemoSection[] = [
         title: "Reference lines & bands",
         blurb: "referenceLines: lines, value/time bands, off-axis badge.",
       },
+      {
+        href: "/demo/segments",
+        title: "Segments",
+        blurb: "segments: after-hours / overnight regions — recolored line, highlight band, divider.",
+      },
     ],
   },
   {

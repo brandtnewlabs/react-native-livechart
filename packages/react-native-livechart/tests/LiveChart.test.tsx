@@ -75,6 +75,40 @@ describe("LiveChart", () => {
     );
   });
 
+  it("renders time-range segments (band + recolor + divider + active)", () => {
+    const screen = render(
+      <Harness
+        segments={[
+          // Plain band, no line recolor.
+          { from: 1699999900, to: 1699999950, recolorLine: false },
+          // Active recolored segment with a divider and a label.
+          {
+            from: 1699999970,
+            to: 1700000000,
+            active: true,
+            divider: true,
+            label: "After hours",
+            highlightColor: "#ff8800",
+          },
+          // Gradient-recolored segment extending to the live edge.
+          { from: 1700000010, lineColors: ["#aa0000", "#0000cc"] },
+        ]}
+      />,
+    );
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
+
+  it("renders segments in candle mode", () => {
+    render(
+      <CandleHarness
+        segments={[{ from: 1700000000, to: 1700000120, divider: true }]}
+      />,
+    );
+  });
+
   it("renders with scrub enabled (default tooltip)", () => {
     const screen = render(<Harness scrub />);
     const views = screen.UNSAFE_getAllByType(View);

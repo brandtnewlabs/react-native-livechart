@@ -115,6 +115,63 @@ export interface ReferenceLine {
   badgeRadius?: number;
 }
 
+/**
+ * A highlightable time-range segment of the chart — e.g. an after-hours or
+ * overnight session drawn as a distinct region of the same line (Robinhood-style
+ * extended-hours segmentation). A segment renders a translucent background band
+ * over its `[from, to]` range and (by default) recolors the line within it. The
+ * band brightens to its highlight color/opacity when the user scrubs inside it,
+ * or whenever `active` is set (e.g. the session is currently after-hours).
+ */
+export interface ChartSegment {
+  /** Segment start, unix seconds. Omit to extend to the chart's left edge. */
+  from?: number;
+  /** Segment end, unix seconds. Omit to extend to the live edge (now). */
+  to?: number;
+
+  /** Resting band fill color. Default: the chart accent color. */
+  color?: string;
+  /** Resting band fill opacity (0–1). Default `0.06`. */
+  opacity?: number;
+  /** Band fill color when highlighted (hover or `active`). Default: `color`. */
+  highlightColor?: string;
+  /** Band fill opacity when highlighted (0–1). Default `0.16`. */
+  highlightOpacity?: number;
+
+  /**
+   * Participate in scrub-focus line styling. At rest the line is one uniform
+   * color; while scrubbing (or when a segment is `active`), the focused segment
+   * keeps the base line color and every OTHER `recolorLine` segment is
+   * de-emphasized with `lineColor` / `lineColors`. Default `true`.
+   */
+  recolorLine?: boolean;
+  /** De-emphasis line color, used when this segment is NOT the focused one. An
+   *  alpha-reduced color (e.g. `"rgba(154,160,166,0.4)"`) fades the line — it
+   *  paints the stroke directly, not a layer on top. Default: `color`. */
+  lineColor?: string;
+  /**
+   * Two or more CSS colors → horizontal gradient across the segment's sub-range
+   * (left → right) for the de-emphasized state, mirroring `LineConfig.colors`.
+   * Takes precedence over `lineColor` when set.
+   */
+  lineColors?: string[];
+
+  /** Force this segment to be the focused one without scrubbing — it stays full
+   *  while the others are de-emphasized (e.g. the session is currently after-hours). */
+  active?: boolean;
+
+  /** Draw a vertical dashed divider at the `from` edge (market-close marker). Default `false`. */
+  divider?: boolean;
+  /** Divider color. Default: `color`. */
+  dividerColor?: string;
+
+  /** Optional label captioning the divider at the top of the band. Shown only
+   *  when `divider` is set. */
+  label?: string;
+  /** Label horizontal anchor within the band. Default `"left"`. */
+  labelPosition?: "left" | "right";
+}
+
 /** Per-instance grid-line styling for the horizontal value-axis grid. */
 export interface GridStyleConfig {
   /** Stroke color. Defaults to palette `gridLine`. */
@@ -871,6 +928,12 @@ export interface LiveChartProps extends LiveChartCoreProps {
   dot?: boolean | DotConfig;
   /** Horizontal dashed line at the current live value. `true` = defaults, or pass `ValueLineConfig`. */
   valueLine?: boolean | ValueLineConfig;
+  /**
+   * Highlightable time-range segments (after-hours, overnight, etc.). Each
+   * {@link ChartSegment} draws a translucent band over its `[from, to]` range and
+   * recolors the line within it, brightening on scrub-hover or when `active`.
+   */
+  segments?: ChartSegment[];
   /** Render the live value as a large text overlay in the top-left. Default `false`. */
   showValue?: boolean;
   /** Tint the `showValue` text by momentum (green up / red down). Default `false`. */

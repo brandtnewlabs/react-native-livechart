@@ -35,6 +35,7 @@ export type {
   CandleMetrics,
   CandlePoint,
   ChartInsets,
+  ChartSegment,
   DegenOptions,
   DegenShakePayload,
   EmptyStateMetrics,

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { useSharedValue } from "react-native-reanimated";
+import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 
 /**
  * Single-series live chart. UX and prop vocabulary parallel Benji Taylor’s
@@ -35,6 +35,7 @@ import {
   resolveXAxis,
   resolveYAxis,
 } from "../core/resolveConfig";
+import { resolveSegment } from "../core/resolveSegment";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import { pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
@@ -52,6 +53,7 @@ import { useLiveDot } from "../hooks/useLiveDot";
 import { useMarkers } from "../hooks/useMarkers";
 import { useModeBlend } from "../hooks/useModeBlend";
 import { useMomentum } from "../hooks/useMomentum";
+import { useSegmentLineGradient } from "../hooks/useSegmentLineGradient";
 import { useSingleChartReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import { useTradeStream } from "../hooks/useTradeStream";
 import { useXAxis } from "../hooks/useXAxis";
@@ -79,6 +81,7 @@ import { MarkerOverlay } from "./MarkerOverlay";
 import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
 import { ValueTextOverlay } from "./ValueTextOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
+import { SegmentBandOverlay } from "./SegmentBandOverlay";
 import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
@@ -141,6 +144,7 @@ function useLiveChartController({
   showValue = false,
   valueMomentumColor = false,
   referenceLines,
+  segments,
   gridStyle,
   palette: paletteOverride,
   metrics,
@@ -190,6 +194,15 @@ function useLiveChartController({
 
   const allRefLines = referenceLines ?? [];
   const refValues = collectReferenceValues(allRefLines);
+
+  // Time-range segments (after-hours, overnight, …). Resolved once per render
+  // like reference lines. `hasRecolorSegments` is a render-time gate for the
+  // line-recolor gradient pass (its per-frame visibility is handled by the
+  // gradient's transparent stops, not by mounting/unmounting the Path).
+  const resolvedSegments = (segments ?? []).map((s) =>
+    resolveSegment(s, accentColor),
+  );
+  const hasRecolorSegments = resolvedSegments.some((s) => s.recolorLine);
 
   const badgeUsesRightGutter =
     badgeCfg !== null && (badgeCfg.position ?? "right") === "right";
@@ -437,6 +450,29 @@ function useLiveChartController({
     effectivePadding,
   );
 
+  // Scrub-focus gradient painted onto the line stroke: uniform at rest, and while
+  // scrubbing (or with an `active` segment) the focused segment stays full while
+  // the others are de-emphasized. Declared after `crosshair` so it can read the
+  // live scrub state.
+  const segmentGradient = useSegmentLineGradient(
+    engine,
+    resolvedSegments,
+    effectivePadding,
+    lineProp?.color ?? palette.line,
+    crosshair.scrubX,
+    crosshair.scrubActive,
+  );
+
+  // Hide the live dot while scrubbing when a selection dot is marking the scrub
+  // point instead — otherwise both dots show at once.
+  const selectionDotDuringScrub =
+    !isStatic && scrubCfg !== null && selectionDotCfg !== null;
+  const liveDotOpacity = useDerivedValue(
+    () =>
+      reveal.dotOpacity.value *
+      (selectionDotDuringScrub && crosshair.scrubActive.value ? 0 : 1),
+  );
+
   return {
     // passthrough props the render needs
     style,
@@ -464,6 +500,9 @@ function useLiveChartController({
     leftEdgeFadeCfg,
     metricsCfg,
     allRefLines,
+    resolvedSegments,
+    hasRecolorSegments,
+    segmentGradient,
     badgeUsesRightGutter,
     // theme / layout / fonts
     palette,
@@ -493,6 +532,7 @@ function useLiveChartController({
     downWicksPath,
     dotX,
     dotY,
+    liveDotOpacity,
     momentumSV,
     tradeMarkers,
     degenPack,
@@ -540,6 +580,10 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     valueLineCfg,
     dotY,
     allRefLines,
+    resolvedSegments,
+    hasRecolorSegments,
+    segmentGradient,
+    crosshair,
     formatValue,
     lineGroupOpacity,
     linePath,
@@ -553,6 +597,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     xAxisCfg,
     xAxisEntries,
     dotX,
+    liveDotOpacity,
     pulseCfg,
     dotCfg,
     degenCfg,
@@ -598,6 +643,20 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         </Group>
       )}
 
+      {/* Segment bands (over the fill, behind the line) — translucent regions
+          that highlight on scrub-hover or when `active`. */}
+      {resolvedSegments.map((seg, i) => (
+        <SegmentBandOverlay
+          key={`seg-${seg.from ?? "start"}-${seg.to ?? "end"}-${i}`}
+          engine={engine}
+          padding={effectivePadding}
+          segment={seg}
+          scrubX={crosshair.scrubX}
+          scrubActive={crosshair.scrubActive}
+          font={skiaFont}
+        />
+      ))}
+
       {/* Value line + reference line (behind chart line) */}
       {valueLineCfg && (
         <Group opacity={reveal.lineOpacity}>
@@ -624,7 +683,10 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         />
       ))}
 
-      {/* Chart line (fades out in candle mode) */}
+      {/* Chart line (fades out in candle mode). When segments recolor the line, a
+          full-width gradient paints the base color outside segments and each
+          segment's color within — so the line itself is recolored/faded (alpha in
+          the segment color reduces the line's opacity), not covered by an overlay. */}
       <Group opacity={lineGroupOpacity}>
         <Path
           path={linePath}
@@ -634,7 +696,14 @@ function ChartStack({ model }: { model: LiveChartModel }) {
           strokeJoin="round"
           color={lineProp?.color ?? palette.line}
         >
-          {lineProp?.colors?.length ? (
+          {hasRecolorSegments ? (
+            <LinearGradient
+              start={vec(0, 0)}
+              end={segmentGradient.gradientEnd}
+              colors={segmentGradient.colors}
+              positions={segmentGradient.positions}
+            />
+          ) : lineProp?.colors?.length ? (
             <LinearGradient
               start={vec(0, 0)}
               end={vec(layoutWidth, 0)}
@@ -678,9 +747,10 @@ function ChartStack({ model }: { model: LiveChartModel }) {
       )}
 
       {/* Live dot — the badge is drawn later (after the scrub layer) so the
-          scrub dim never clips the live-price badge's left edge. */}
+          scrub dim never clips the live-price badge's left edge. Hidden while
+          scrubbing when a selection dot marks the scrub point instead. */}
       {dotCfg.show && (
-        <Group opacity={reveal.dotOpacity}>
+        <Group opacity={liveDotOpacity}>
           <DotOverlay
             dotX={dotX}
             dotY={dotY}

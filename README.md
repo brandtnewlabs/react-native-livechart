@@ -30,6 +30,7 @@ High-performance **live** line and candlestick charts for React Native, built on
 - 🔍 **Scrubbing** with a crosshair and worklet-friendly `onScrub` payloads
 - ⚡ **Momentum** detection and **degen** effects (particle bursts + shake on big swings)
 - 🏷️ **Trade markers** driven by a `SharedValue` trade stream
+- 🕔 **Segments** — label time ranges (after-hours, overnight, sessions) with scrub-focus: one color at rest, and scrubbing a segment keeps it full while the others de-emphasize
 - 🎨 **Theming** with light/dark modes, an accent-driven `palette`, and `metrics` sizing/motion tokens
 - ⏳ **Loading** (breathing-line shell) and **paused** states out of the box
 - 🧵 **SharedValue-driven** rendering — history and live values stay on the UI thread
@@ -144,6 +145,7 @@ The tables below are a **highlight** — the **canonical, full reference is the 
 | `mode`                                   | `"line"` (default) or `"candle"`                                    |
 | `candles` / `liveCandle` / `candleWidth` | Candlestick mode                                                    |
 | `tradeStream`                            | `SharedValue<TradeEvent[]>` for trade markers                       |
+| `segments`                               | `ChartSegment[]` — labeled time ranges (sessions, after-hours) with scrub-focus dimming |
 | `degen`                                  | Particle burst + shake on momentum swings                           |
 | `scrub`                                  | Crosshair scrubbing                                                 |
 | `momentum`                               | `true` / `false` / `"up"`, `"down"`, or `"flat"` / `MomentumConfig` |
@@ -162,7 +164,7 @@ The tables below are a **highlight** — the **canonical, full reference is the 
 | `onSeriesToggle` | Chip tap                                    |
 | `onScrub`        | Worklet-friendly multi-series scrub payload |
 
-These tables are a **highlight, not the full surface** (`LiveChart` alone has ~48 props). Other shared props include `font`, `insets`, `smoothing`, `xAxis`, `yAxis`, `referenceLines`, `gridStyle`, `palette`, `metrics`, `markers`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, and `emptyText`; single-series adds `gradient`, `badge`, `pulse`, `valueLine`, and `showValue`. Every overlay toggle follows the same **`boolean | Config`** convention (`badge`, `gradient`, `pulse`, `valueLine`, `scrub`, `yAxis`, `xAxis`, `leftEdgeFade`, `legend`, and `dot`) — pass `true`/omit for defaults, `false` to disable, or an object to customize. Both charts share the same `dot` styling (a `DotConfig` base — `radius`, `ring`, `color`); multi-series extends it with `pulse`, `valueLine`, and `valueLabel`. Beyond `palette` (color), `metrics` exposes sizing & motion tokens (badge/candle geometry, grid/motion speeds) with the same per-key override model. See the TypeScript types and JSDoc for the complete, canonical reference.
+These tables are a **highlight, not the full surface** (`LiveChart` alone has ~48 props). Other shared props include `font`, `insets`, `smoothing`, `xAxis`, `yAxis`, `referenceLines`, `gridStyle`, `palette`, `metrics`, `markers`, `leftEdgeFade`, `line`, `formatValue`, `formatTime`, and `emptyText`; single-series adds `gradient`, `badge`, `pulse`, `valueLine`, `segments`, and `showValue`. Every overlay toggle follows the same **`boolean | Config`** convention (`badge`, `gradient`, `pulse`, `valueLine`, `scrub`, `yAxis`, `xAxis`, `leftEdgeFade`, `legend`, and `dot`) — pass `true`/omit for defaults, `false` to disable, or an object to customize. Both charts share the same `dot` styling (a `DotConfig` base — `radius`, `ring`, `color`); multi-series extends it with `pulse`, `valueLine`, and `valueLabel`. Beyond `palette` (color), `metrics` exposes sizing & motion tokens (badge/candle geometry, grid/motion speeds) with the same per-key override model. See the TypeScript types and JSDoc for the complete, canonical reference.
 
 ## Migrating to v2
 
