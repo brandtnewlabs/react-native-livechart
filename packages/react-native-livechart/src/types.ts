@@ -130,7 +130,7 @@ export interface ChartSegment {
   /** Segment end, unix seconds. Omit to extend to the live edge (now). */
   to?: number;
 
-  /** Base segment color — the default for `lineColor`, `dividerColor`, and the
+  /** Base segment color — the default for `mutedColor`, `dividerColor`, and the
    *  label. Default: the chart accent color. */
   color?: string;
 
@@ -138,19 +138,19 @@ export interface ChartSegment {
    * Participate in scrub-focus line styling. At rest the line is one uniform
    * color; while scrubbing (or when a segment is `active`), the focused segment
    * keeps the base line color and every OTHER `recolorLine` segment is
-   * de-emphasized with `lineColor` / `lineColors`. Default `true`.
+   * de-emphasized with `mutedColor` / `mutedColors`. Default `true`.
    */
   recolorLine?: boolean;
   /** De-emphasis line color, used when this segment is NOT the focused one. An
    *  alpha-reduced color (e.g. `"rgba(154,160,166,0.4)"`) fades the line — it
    *  paints the stroke directly, not a layer on top. Default: `color`. */
-  lineColor?: string;
+  mutedColor?: string;
   /**
    * Two or more CSS colors → horizontal gradient across the segment's sub-range
    * (left → right) for the de-emphasized state, mirroring `LineConfig.colors`.
-   * Takes precedence over `lineColor` when set.
+   * Takes precedence over `mutedColor` when set.
    */
-  lineColors?: string[];
+  mutedColors?: string[];
 
   /** Force this segment to be the focused one without scrubbing — it stays full
    *  while the others are de-emphasized (e.g. the session is currently after-hours). */
@@ -927,8 +927,8 @@ export interface LiveChartProps extends LiveChartCoreProps {
   /**
    * Time-range segments (sessions, after-hours, overnight, etc.). At rest the
    * line is one uniform color; scrubbing a {@link ChartSegment} — or marking one
-   * `active` — keeps it full while the others de-emphasize (`lineColor` /
-   * `lineColors`). Optional dashed `divider` + `label` mark a segment's edge.
+   * `active` — keeps it full while the others de-emphasize (`mutedColor` /
+   * `mutedColors`). Optional dashed `divider` + `label` mark a segment's edge.
    */
   segments?: ChartSegment[];
   /** Render the live value as a large text overlay in the top-left. Default `false`. */

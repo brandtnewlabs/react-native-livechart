@@ -107,12 +107,12 @@ interface ReferenceLine {
 interface ChartSegment {
   from?: number;             // unix seconds; omit → chart's left edge
   to?: number;               // unix seconds; omit → live edge (now)
-  color?: string;            // base color — default for lineColor/dividerColor/label; default: accent
+  color?: string;            // base color — default for mutedColor/dividerColor/label; default: accent
   // Scrub-focus line styling (the headline interaction):
   recolorLine?: boolean;     // participate in scrub-focus; default true
-  lineColor?: string;        // de-emphasis color when NOT focused; default: color
+  mutedColor?: string;        // de-emphasis color when NOT focused; default: color
                              //   (an alpha color, e.g. "rgba(154,160,166,0.4)", fades the line)
-  lineColors?: string[];     // ≥2 → de-emphasis gradient; precedence over lineColor
+  mutedColors?: string[];     // ≥2 → de-emphasis gradient; precedence over mutedColor
   active?: boolean;          // force-focus this segment without scrubbing; default false
   // Divider + label:
   divider?: boolean;         // dashed vertical line at `from`; default false

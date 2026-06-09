@@ -7,8 +7,8 @@ describe("resolveSegment", () => {
     const r = resolveSegment({}, ACCENT);
     expect(r.color).toBe(ACCENT);
     expect(r.recolorLine).toBe(true);
-    expect(r.lineColor).toBe(ACCENT);
-    expect(r.lineColors).toBeUndefined();
+    expect(r.mutedColor).toBe(ACCENT);
+    expect(r.mutedColors).toBeUndefined();
     expect(r.active).toBe(false);
     expect(r.divider).toBe(false);
     expect(r.dividerColor).toBe(ACCENT);
@@ -18,7 +18,7 @@ describe("resolveSegment", () => {
   it("derives sub-colors from an explicit base color", () => {
     const r = resolveSegment({ color: "#ff8800" }, ACCENT);
     expect(r.color).toBe("#ff8800");
-    expect(r.lineColor).toBe("#ff8800");
+    expect(r.mutedColor).toBe("#ff8800");
     expect(r.dividerColor).toBe("#ff8800");
   });
 
@@ -29,7 +29,7 @@ describe("resolveSegment", () => {
         to: 200,
         color: "#111",
         recolorLine: false,
-        lineColor: "#333",
+        mutedColor: "#333",
         active: true,
         divider: true,
         dividerColor: "#444",
@@ -42,7 +42,7 @@ describe("resolveSegment", () => {
     expect(r.to).toBe(200);
     expect(r.color).toBe("#111");
     expect(r.recolorLine).toBe(false);
-    expect(r.lineColor).toBe("#333");
+    expect(r.mutedColor).toBe("#333");
     expect(r.active).toBe(true);
     expect(r.divider).toBe(true);
     expect(r.dividerColor).toBe("#444");
@@ -50,11 +50,11 @@ describe("resolveSegment", () => {
     expect(r.labelPosition).toBe("right");
   });
 
-  it("keeps a ≥2 lineColors gradient and drops a too-short one", () => {
-    expect(resolveSegment({ lineColors: ["#a", "#b"] }, ACCENT).lineColors).toEqual([
+  it("keeps a ≥2 mutedColors gradient and drops a too-short one", () => {
+    expect(resolveSegment({ mutedColors: ["#a", "#b"] }, ACCENT).mutedColors).toEqual([
       "#a",
       "#b",
     ]);
-    expect(resolveSegment({ lineColors: ["#a"] }, ACCENT).lineColors).toBeUndefined();
+    expect(resolveSegment({ mutedColors: ["#a"] }, ACCENT).mutedColors).toBeUndefined();
   });
 });

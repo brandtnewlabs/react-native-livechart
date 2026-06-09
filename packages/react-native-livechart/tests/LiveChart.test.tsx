@@ -90,7 +90,7 @@ describe("LiveChart", () => {
             label: "After hours",
           },
           // Gradient-recolored segment extending to the live edge.
-          { from: 1700000010, lineColors: ["#aa0000", "#0000cc"] },
+          { from: 1700000010, mutedColors: ["#aa0000", "#0000cc"] },
         ]}
       />,
     );

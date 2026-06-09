@@ -8,13 +8,13 @@ import type { ChartSegment } from "../types";
 export interface ResolvedSegment {
   from?: number;
   to?: number;
-  /** Base color — the default for `lineColor`, `dividerColor`, and the label. */
+  /** Base color — the default for `mutedColor`, `dividerColor`, and the label. */
   color: string;
   recolorLine: boolean;
   /** Solid line-tint color (already defaulted to `color`). */
-  lineColor: string;
-  /** Optional ≥2-color gradient for the recolored line; takes precedence over `lineColor`. */
-  lineColors?: string[];
+  mutedColor: string;
+  /** Optional ≥2-color gradient for the recolored line; takes precedence over `mutedColor`. */
+  mutedColors?: string[];
   active: boolean;
   divider: boolean;
   /** Divider color (already defaulted to `color`). */
@@ -39,9 +39,9 @@ export function resolveSegment(
     to: seg.to,
     color,
     recolorLine: seg.recolorLine ?? true,
-    lineColor: seg.lineColor ?? color,
-    lineColors:
-      seg.lineColors && seg.lineColors.length >= 2 ? seg.lineColors : undefined,
+    mutedColor: seg.mutedColor ?? color,
+    mutedColors:
+      seg.mutedColors && seg.mutedColors.length >= 2 ? seg.mutedColors : undefined,
     active: seg.active ?? false,
     divider: seg.divider ?? false,
     dividerColor: seg.dividerColor ?? color,

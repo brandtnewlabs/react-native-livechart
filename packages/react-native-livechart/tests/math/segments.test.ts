@@ -11,7 +11,7 @@ function mkSeg(partial: Partial<ResolvedSegment> = {}): ResolvedSegment {
   return {
     color: "#fff",
     recolorLine: true,
-    lineColor: "#abcdef",
+    mutedColor: "#abcdef",
     active: false,
     divider: false,
     dividerColor: "#fff",
@@ -85,8 +85,8 @@ describe("segmentLineGradient", () => {
   const BASE = "#0000ff"; // base line color (the focused / at-rest color)
 
   // Two adjacent sessions: A = px[43.3, 110], B = px[110, 176.7].
-  const A = () => mkSeg({ from: 105, to: 115, lineColor: "#aaaaaa" });
-  const B = () => mkSeg({ from: 115, to: 125, lineColor: "#bbbbbb" });
+  const A = () => mkSeg({ from: 105, to: 115, mutedColor: "#aaaaaa" });
+  const B = () => mkSeg({ from: 115, to: 125, mutedColor: "#bbbbbb" });
   const SCRUB_IN_A = 70;
   const SCRUB_IN_B = 150;
   const SCRUB_IN_GAP = 20; // left of A (a non-segment gap)
@@ -218,7 +218,7 @@ describe("segmentLineGradient", () => {
 
   it("an active segment stays full and de-emphasizes the others", () => {
     const g = segmentLineGradient(
-      [mkSeg({ from: 105, to: 115, lineColor: "#aaaaaa", active: true }), B()],
+      [mkSeg({ from: 105, to: 115, mutedColor: "#aaaaaa", active: true }), B()],
       WIN_START,
       WIN,
       CW,
@@ -235,9 +235,9 @@ describe("segmentLineGradient", () => {
   it("handles open-ended dim segments (omitted from / to)", () => {
     const g = segmentLineGradient(
       [
-        mkSeg({ to: 110, lineColor: "#aaaaaa" }), // pre-market: from omitted → left edge
-        mkSeg({ from: 110, to: 120, lineColor: "#cccccc", active: true }), // focused
-        mkSeg({ from: 120, lineColor: "#bbbbbb" }), // after-hours: to omitted → live edge
+        mkSeg({ to: 110, mutedColor: "#aaaaaa" }), // pre-market: from omitted → left edge
+        mkSeg({ from: 110, to: 120, mutedColor: "#cccccc", active: true }), // focused
+        mkSeg({ from: 120, mutedColor: "#bbbbbb" }), // after-hours: to omitted → live edge
       ],
       WIN_START,
       WIN,
@@ -258,7 +258,7 @@ describe("segmentLineGradient", () => {
 
   it("preserves an alpha dim color so the line is faded, not overlaid", () => {
     const g = segmentLineGradient(
-      [A(), mkSeg({ from: 115, to: 125, lineColor: "rgba(154,160,166,0.45)" })],
+      [A(), mkSeg({ from: 115, to: 125, mutedColor: "rgba(154,160,166,0.45)" })],
       WIN_START,
       WIN,
       CW,
@@ -273,7 +273,7 @@ describe("segmentLineGradient", () => {
 
   it("spreads a gradient dim segment's colors across its sub-range", () => {
     const g = segmentLineGradient(
-      [A(), mkSeg({ from: 115, to: 125, lineColors: ["#b00000", "#0000b0"] })],
+      [A(), mkSeg({ from: 115, to: 125, mutedColors: ["#b00000", "#0000b0"] })],
       WIN_START,
       WIN,
       CW,
@@ -288,11 +288,11 @@ describe("segmentLineGradient", () => {
     expect(nonDecreasing(g.positions)).toBe(true);
   });
 
-  it("prefers lineColors over lineColor for the dim color", () => {
+  it("prefers mutedColors over mutedColor for the dim color", () => {
     const g = segmentLineGradient(
       [
         A(),
-        mkSeg({ from: 115, to: 125, lineColor: "#bbbbbb", lineColors: ["#111", "#222"] }),
+        mkSeg({ from: 115, to: 125, mutedColor: "#bbbbbb", mutedColors: ["#111", "#222"] }),
       ],
       WIN_START,
       WIN,
@@ -314,7 +314,7 @@ describe("segmentLineGradient", () => {
     // Focus B (active); the other segment is off-screen → nothing to dim → null.
     expect(
       segmentLineGradient(
-        [mkSeg({ from: 50, to: 70, lineColor: "#aaaaaa" }), mkSeg({ from: 115, to: 125, active: true })],
+        [mkSeg({ from: 50, to: 70, mutedColor: "#aaaaaa" }), mkSeg({ from: 115, to: 125, active: true })],
         WIN_START,
         WIN,
         CW,
@@ -330,7 +330,7 @@ describe("segmentLineGradient", () => {
   it("skips a zero-width dim segment (from === to)", () => {
     expect(
       segmentLineGradient(
-        [mkSeg({ from: 115, to: 115, lineColor: "#aaaaaa" }), mkSeg({ from: 118, to: 125, active: true })],
+        [mkSeg({ from: 115, to: 115, mutedColor: "#aaaaaa" }), mkSeg({ from: 118, to: 125, active: true })],
         WIN_START,
         WIN,
         CW,
@@ -346,7 +346,7 @@ describe("segmentLineGradient", () => {
   it("clamps an edge-overflowing dim segment to [0,1]", () => {
     const g = segmentLineGradient(
       [
-        mkSeg({ from: 80, to: 200, lineColor: "#cccccc" }), // overflows both edges
+        mkSeg({ from: 80, to: 200, mutedColor: "#cccccc" }), // overflows both edges
         mkSeg({ from: 118, to: 125, active: true }), // focus
       ],
       WIN_START,
@@ -367,7 +367,7 @@ describe("segmentLineGradient", () => {
 
   it("normalizes a reversed dim segment (from > to)", () => {
     const fwd = segmentLineGradient(
-      [A(), mkSeg({ from: 115, to: 125, lineColor: "#bbbbbb" })],
+      [A(), mkSeg({ from: 115, to: 125, mutedColor: "#bbbbbb" })],
       WIN_START,
       WIN,
       CW,
@@ -378,7 +378,7 @@ describe("segmentLineGradient", () => {
       SCRUB_IN_A,
     )!;
     const rev = segmentLineGradient(
-      [A(), mkSeg({ from: 125, to: 115, lineColor: "#bbbbbb" })],
+      [A(), mkSeg({ from: 125, to: 115, mutedColor: "#bbbbbb" })],
       WIN_START,
       WIN,
       CW,
@@ -395,8 +395,8 @@ describe("segmentLineGradient", () => {
   it("keeps positions non-decreasing for overlapping dim segments", () => {
     const g = segmentLineGradient(
       [
-        mkSeg({ from: 105, to: 122, lineColor: "#aaaaaa" }),
-        mkSeg({ from: 110, to: 128, lineColor: "#bbbbbb" }),
+        mkSeg({ from: 105, to: 122, mutedColor: "#aaaaaa" }),
+        mkSeg({ from: 110, to: 128, mutedColor: "#bbbbbb" }),
       ],
       WIN_START,
       WIN,

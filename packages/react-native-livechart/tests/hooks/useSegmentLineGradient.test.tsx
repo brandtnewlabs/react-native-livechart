@@ -34,7 +34,7 @@ describe("useSegmentLineGradient", () => {
     const { result } = renderHook(() =>
       useSegmentLineGradient(
         engine(),
-        [resolveSegment({ from: 110, to: 120, lineColor: "#abc" }, "#fff")],
+        [resolveSegment({ from: 110, to: 120, mutedColor: "#abc" }, "#fff")],
         PADDING,
         BASE,
         scrubX,

@@ -56,8 +56,8 @@ export interface SegmentGradient {
  * "scrub focus" (the Robinhood model): the whole line is its plain `baseColor`
  * until the user scrubs (or a segment is forced `active`). While focused, the
  * segment under the scrub — or the `active` one — stays `baseColor` (full), and
- * every OTHER `recolorLine` segment is de-emphasized with its own `lineColor` /
- * `lineColors` (a different hue and/or a reduced alpha that fades it). Because it
+ * every OTHER `recolorLine` segment is de-emphasized with its own `mutedColor` /
+ * `mutedColors` (a different hue and/or a reduced alpha that fades it). Because it
  * paints the line directly (not a layer on top), an alpha-reduced color genuinely
  * lowers the line's opacity there.
  *
@@ -102,7 +102,7 @@ export function segmentLineGradient(
 
   const chartW = plotRight - plotLeft;
 
-  // Collect the NON-focused segments — they get de-emphasized (their lineColor);
+  // Collect the NON-focused segments — they get de-emphasized (their mutedColor);
   // the focused segment (under the scrub, or `active`) stays the base color.
   const spans: { f1: number; f2: number; cols: string[] }[] = [];
   for (let i = 0; i < segments.length; i++) {
@@ -130,9 +130,9 @@ export function segmentLineGradient(
     const f2 = px2 / canvasWidth;
     if (f2 <= f1) continue;
     const cols =
-      seg.lineColors && seg.lineColors.length >= 2
-        ? seg.lineColors
-        : [seg.lineColor];
+      seg.mutedColors && seg.mutedColors.length >= 2
+        ? seg.mutedColors
+        : [seg.mutedColor];
     spans.push({ f1, f2, cols });
   }
   if (spans.length === 0) return null; // nothing to de-emphasize → uniform line

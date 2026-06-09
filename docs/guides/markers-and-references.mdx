@@ -113,7 +113,7 @@ sessions, overnight windows, and the like — using a **scrub-focus** interactio
 (the Robinhood model). At rest the whole line is one uniform color. While the user
 scrubs (or when a segment is `active`), the segment under the scrub line keeps the
 base color and every other segment is **de-emphasized**. The recolor paints the
-line stroke itself via a horizontal gradient — an alpha-reduced `lineColor`
+line stroke itself via a horizontal gradient — an alpha-reduced `mutedColor`
 genuinely fades the line there, so there's no panel drawn on top. Single-series
 `LiveChart` only.
 
@@ -122,18 +122,18 @@ import { LiveChart, type ChartSegment } from "react-native-livechart";
 
 const segments: ChartSegment[] = [
   // pre-market: left edge → t1 (de-emphasizes to grey when not focused)
-  { to: t1, lineColor: "rgba(154,160,166,0.4)" },
+  { to: t1, mutedColor: "rgba(154,160,166,0.4)" },
   // regular session, with a dashed divider + label at its start
-  { from: t1, to: t2, lineColor: "rgba(154,160,166,0.4)", divider: true, label: "Regular" },
+  { from: t1, to: t2, mutedColor: "rgba(154,160,166,0.4)", divider: true, label: "Regular" },
   // after-hours: t2 → live edge; `active` force-focuses it without a scrub
-  { from: t2, lineColor: "rgba(154,160,166,0.4)", divider: true, label: "After hours" },
+  { from: t2, mutedColor: "rgba(154,160,166,0.4)", divider: true, label: "After hours" },
 ];
 
 <LiveChart data={data} value={value} segments={segments} />;
 ```
 
-Each segment can de-emphasize with a solid `lineColor` (use an alpha color to
-fade) or a `lineColors` gradient, force itself focused with `active`, and mark its
+Each segment can de-emphasize with a solid `mutedColor` (use an alpha color to
+fade) or a `mutedColors` gradient, force itself focused with `active`, and mark its
 edge with a dashed `divider` + `label` (the label shows only when the divider
 does). See [`ChartSegment`](/api-reference/types#chartsegment) for every field, and
 [`app/demo/segments.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/segments.tsx)

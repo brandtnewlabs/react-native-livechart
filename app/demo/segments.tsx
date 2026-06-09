@@ -71,11 +71,11 @@ export default function SegmentsScreen() {
   // Shared styling: at rest every session is the base accent (uniform line). When
   // a session is focused (scrubbed / active) it stays accent; the OTHERS take this
   // de-emphasis color (set by the Color + Opacity controls). `color` drives the
-  // crisp divider + label; `lineColor` fades the line itself.
+  // crisp divider + label; `mutedColor` fades the line itself.
   const dimStyle: Partial<ChartSegment> = {
     recolorLine: true,
-    lineColor: dim,
-    lineColors: gradientLine ? [dim, dimSoft] : undefined,
+    mutedColor: dim,
+    mutedColors: gradientLine ? [dim, dimSoft] : undefined,
     color: solid,
     dividerColor: solid,
   };
