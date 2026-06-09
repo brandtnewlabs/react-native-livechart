@@ -103,6 +103,23 @@ interface ReferenceLine {
   excludeFromRange?: boolean;
   offAxisBadge?: boolean;
 }
+
+interface ChartSegment {
+  from?: number;             // unix seconds; omit → chart's left edge
+  to?: number;               // unix seconds; omit → live edge (now)
+  // Scrub-focus line styling (the headline interaction):
+  recolorLine?: boolean;     // join scrub-focus dimming; default true. false → line
+                             //   never dims (divider/label still draw); behaves as a gap
+  mutedColor?: string;       // de-emphasis color when NOT focused; default: palette.gridLabel
+                             //   (an alpha color, e.g. "rgba(154,160,166,0.4)", fades the line)
+  mutedColors?: string[];    // ≥2 → de-emphasis gradient; precedence over mutedColor
+  active?: boolean;          // force-focus this segment without scrubbing; default false
+  // Divider + label (colors inherit the chart palette — no base color needed):
+  divider?: boolean;         // dashed vertical line at `from`; default false
+  dividerColor?: string;     // default: palette.refLine
+  label?: string;            // caption — shown only with the divider; drawn in palette.refLabel
+  labelPosition?: "left" | "right"; // default "left"
+}
 ```
 
 ## Scrub payloads

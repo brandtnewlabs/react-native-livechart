@@ -115,6 +115,57 @@ export interface ReferenceLine {
   badgeRadius?: number;
 }
 
+/**
+ * A time-range segment of the chart — e.g. a pre-market / regular / after-hours
+ * session — distinguished with a **scrub-focus** interaction (Robinhood-style
+ * extended-hours segmentation). At rest the whole line is one uniform color;
+ * while the user scrubs (or when a segment is `active`) the focused segment keeps
+ * the base color and every other segment is de-emphasized by recoloring the line
+ * stroke itself (no overlay). An optional dashed `divider` + `label` mark a
+ * segment's leading edge.
+ */
+export interface ChartSegment {
+  /** Segment start, unix seconds. Omit to extend to the chart's left edge. */
+  from?: number;
+  /** Segment end, unix seconds. Omit to extend to the live edge (now). */
+  to?: number;
+
+  /**
+   * Participate in scrub-focus line styling. At rest the line is one uniform
+   * color; while scrubbing (or when a segment is `active`), the focused segment
+   * keeps the base line color and every OTHER `recolorLine` segment is
+   * de-emphasized with `mutedColor` / `mutedColors`. Default `true`.
+   */
+  recolorLine?: boolean;
+  /** De-emphasis line color, used when this segment is NOT the focused one. An
+   *  alpha-reduced color (e.g. `"rgba(154,160,166,0.4)"`) fades the line — it
+   *  paints the stroke directly, not a layer on top. Defaults to the chart's muted
+   *  palette color (`palette.gridLabel`). */
+  mutedColor?: string;
+  /**
+   * Two or more CSS colors → horizontal gradient across the segment's sub-range
+   * (left → right) for the de-emphasized state, mirroring `LineConfig.colors`.
+   * Takes precedence over `mutedColor` when set.
+   */
+  mutedColors?: string[];
+
+  /** Force this segment to be the focused one without scrubbing — it stays full
+   *  while the others are de-emphasized (e.g. the session is currently after-hours). */
+  active?: boolean;
+
+  /** Draw a vertical dashed divider at the `from` edge (market-close marker). Default `false`. */
+  divider?: boolean;
+  /** Divider color. Defaults to the chart's reference-line color (`palette.refLine`). */
+  dividerColor?: string;
+
+  /** Optional label captioning the divider at the top of the segment. Shown only
+   *  when `divider` is set; drawn in the chart's reference-label color
+   *  (`palette.refLabel`). */
+  label?: string;
+  /** Label horizontal anchor within the segment. Default `"left"`. */
+  labelPosition?: "left" | "right";
+}
+
 /** Per-instance grid-line styling for the horizontal value-axis grid. */
 export interface GridStyleConfig {
   /** Stroke color. Defaults to palette `gridLine`. */
@@ -871,6 +922,13 @@ export interface LiveChartProps extends LiveChartCoreProps {
   dot?: boolean | DotConfig;
   /** Horizontal dashed line at the current live value. `true` = defaults, or pass `ValueLineConfig`. */
   valueLine?: boolean | ValueLineConfig;
+  /**
+   * Time-range segments (sessions, after-hours, overnight, etc.). At rest the
+   * line is one uniform color; scrubbing a {@link ChartSegment} — or marking one
+   * `active` — keeps it full while the others de-emphasize (`mutedColor` /
+   * `mutedColors`). Optional dashed `divider` + `label` mark a segment's edge.
+   */
+  segments?: ChartSegment[];
   /** Render the live value as a large text overlay in the top-left. Default `false`. */
   showValue?: boolean;
   /** Tint the `showValue` text by momentum (green up / red down). Default `false`. */
