@@ -28,6 +28,7 @@ export { useTradeStream } from "./hooks/useTradeStream";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type {
+  AxisLabelConfig,
   BadgeConfig,
   BadgeMetrics,
   BadgeVariant,
@@ -67,6 +68,9 @@ export type {
   ScrubPointCore,
   ScrubPointMulti,
   ScrubSeriesValue,
+  SelectionDotConfig,
+  SelectionDotProps,
+  SelectionDotRingConfig,
   SeriesConfig,
   ThemeMode,
   TradeEvent,

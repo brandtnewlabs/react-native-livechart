@@ -5,6 +5,7 @@ import {
   useDerivedValue,
   useSharedValue,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
 import { type ChartPadding } from "../draw/line";
 import type { ScrubPointMulti } from "../types";
@@ -14,6 +15,7 @@ import {
 } from "./crosshairSeries";
 import {
   computeCrosshairOpacity,
+  computeScrubDotY,
   computeScrubTime,
   HIDDEN_TOOLTIP,
   type CrosshairState,
@@ -30,9 +32,14 @@ export function useCrosshairSeries(
   onScrub?: (point: ScrubPointMulti | null) => void,
   /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
   panGestureDelay = 0,
+  onGestureStart?: () => void,
+  onGestureEnd?: () => void,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
+  // Tracks whether the active scrub phase actually began, so a tap that never
+  // activates doesn't emit a spurious onGestureEnd.
+  const gestureStarted = useSharedValue(false);
 
   const scrubTime = useDerivedValue(() =>
     computeScrubTime(
@@ -62,9 +69,34 @@ export function useCrosshairSeries(
     ),
   );
 
+  // Y pixel of the scrub intersection (leading-series value) — used by the
+  // selection dot. -1 when there's no value to mark.
+  const scrubDotY = useDerivedValue(() =>
+    computeScrubDotY(
+      scrubValue.get(),
+      engine.displayMin.get(),
+      engine.displayMax.get(),
+      engine.canvasHeight.get(),
+      padding.top,
+      padding.bottom,
+    ),
+  );
+
   const tooltipLayout = useSharedValue(HIDDEN_TOOLTIP);
 
+  /* istanbul ignore next */
+  function handleGestureStart() {
+    onGestureStart?.();
+  }
+
+  /* istanbul ignore next */
+  function handleGestureEnd() {
+    onGestureEnd?.();
+  }
+
   const hasOnScrub = onScrub != null;
+  const hasOnGestureStart = onGestureStart != null;
+  const hasOnGestureEnd = onGestureEnd != null;
 
   useAnimatedReaction(
     () => {
@@ -77,14 +109,14 @@ export function useCrosshairSeries(
       if (chartW <= 0) return "__pending__";
       const r = interpolateSeriesAtTime(engine.series.get(), time);
       if (r.primary === null) return "__pending__";
-      const h = engine.canvasHeight.get();
-      const chartH = h - padding.top - padding.bottom;
-      const valRange = engine.displayMax.get() - engine.displayMin.get();
-      const dotY =
-        valRange === 0
-          ? padding.top + chartH / 2
-          : padding.top +
-            ((engine.displayMax.get() - r.primary) / valRange) * chartH;
+      const dotY = computeScrubDotY(
+        r.primary,
+        engine.displayMin.get(),
+        engine.displayMax.get(),
+        engine.canvasHeight.get(),
+        padding.top,
+        padding.bottom,
+      );
       return JSON.stringify({
         time,
         x,
@@ -136,6 +168,8 @@ export function useCrosshairSeries(
         if (!enabled) return;
         scrubX.set(e.x);
         scrubActive.set(true);
+        gestureStarted.set(true);
+        if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
       },
     )
     .onUpdate(
@@ -149,6 +183,10 @@ export function useCrosshairSeries(
       /* istanbul ignore next */ () => {
         "worklet";
         scrubActive.set(false);
+        if (gestureStarted.get()) {
+          gestureStarted.set(false);
+          if (hasOnGestureEnd) scheduleOnRN(handleGestureEnd);
+        }
       },
     );
 
@@ -164,6 +202,7 @@ export function useCrosshairSeries(
     scrubValue,
     crosshairOpacity,
     tooltipLayout,
+    scrubDotY,
     gesture,
   };
 }

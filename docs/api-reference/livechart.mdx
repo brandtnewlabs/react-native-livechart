@@ -46,7 +46,9 @@ provided; everything else has a default.
 </ParamField>
 
 <ParamField body="gradient" type="boolean | GradientConfig" default="true">
-  Area fill under the line.
+  Area fill under the line. Pass a `GradientConfig` with `colors` (≥ 2 stops, top
+  → bottom) for a custom multi-color fill; otherwise the fill is derived from the
+  accent color.
 </ParamField>
 
 <ParamField body="badge" type="boolean | BadgeConfig" default="true">
@@ -120,8 +122,24 @@ provided; everything else has a default.
   Crosshair scrubbing on drag.
 </ParamField>
 
+<ParamField body="selectionDot" type="boolean | SelectionDotConfig" default="true">
+  Dot drawn at the scrub intersection while scrubbing. `false` hides it; pass a
+  config to set `size` / `color` / `ring`, or `{ component }` for a fully custom
+  Skia dot. See [Scrubbing](/guides/scrubbing#selection-dot).
+</ParamField>
+
 <ParamField body="onScrub" type="(point: ScrubPoint | null) => void">
   Fires while scrubbing; `null` when it ends.
+</ParamField>
+
+<ParamField body="onGestureStart" type="() => void">
+  JS-thread callback fired once when the user starts scrubbing. Respects
+  `scrub.panGestureDelay` (it fires when the pan activates, not on first touch).
+</ParamField>
+
+<ParamField body="onGestureEnd" type="() => void">
+  JS-thread callback fired once when the user stops scrubbing. Fires only if a
+  scrub actually started — a tap that never activates emits neither callback.
 </ParamField>
 
 ## Axes, grid & range
@@ -132,6 +150,20 @@ provided; everything else has a default.
 
 <ParamField body="yAxis" type="boolean | YAxisConfig" default="true">
   Value-axis grid + labels.
+</ParamField>
+
+<ParamField body="topLabel" type="boolean | AxisLabelConfig" default="false">
+  Edge label floated at the plot's **top**. `true` shows the built-in value
+  label — the chart's current top Y-axis bound, formatted and updated each frame
+  (Robinhood-style high). Pass [`AxisLabelConfig`](/api-reference/types#axislabelconfig)
+  to set `format` / `color` / `position`, or `{ render }` to float a fully custom
+  element instead. See [Axis labels](/guides/theming#axis-edge-labels).
+</ParamField>
+
+<ParamField body="bottomLabel" type="boolean | AxisLabelConfig" default="false">
+  Edge label floated at the plot's **bottom**. `true` shows the built-in value
+  label — the chart's current bottom Y-axis bound (the low) — with the same
+  `AxisLabelConfig` knobs and `render` escape hatch as `topLabel`.
 </ParamField>
 
 <ParamField body="gridStyle" type="GridStyleConfig">
@@ -148,6 +180,14 @@ provided; everything else has a default.
 
 <ParamField body="loading" type="boolean">
   Breathing-line loading shell until data is ready.
+</ParamField>
+
+<ParamField body="static" type="boolean" default="false">
+  Render once with no per-frame animation loops — engine, degen, trades, candles,
+  markers, pulse, and entry reveal are all disabled, and scrubbing is off. Keeps
+  many small charts cheap when you render a list or grid of sparklines. Frame the
+  data edge-to-edge with `timeWindow` + `nowOverride`. See the
+  [Sparklines guide](/guides/sparklines).
 </ParamField>
 
 <ParamField body="smoothing" type="number" default="0.08">

@@ -49,6 +49,24 @@ Common keys include `line`, `fillTop` / `fillBottom`, `gridLine` / `gridLabel`,
 `crosshairLine`, and `tooltipBg` / `tooltipText`. See the [types reference](/api-reference/types)
 for the full `LiveChartPalette`.
 
+## Gradient fill
+
+The area under the line is filled with a gradient. By default it's derived from the accent color
+(`gradient.topOpacity` / `gradient.bottomOpacity`). For full control, pass explicit `colors` (top →
+bottom, at least two stops):
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  gradient={{ colors: ["rgba(51,35,230,0.45)", "rgba(168,85,247,0.25)", "rgba(168,85,247,0)"] }}
+/>
+```
+
+Omitting `colors` falls back to the accent-derived top/bottom opacity. Custom `colors` are
+single-series only — multi-series lines have no area fill. See the [`GradientConfig`
+reference](/api-reference/types) for `positions` and the opacity fields.
+
 ## Sizing and motion tokens
 
 Where `palette` controls _color_, `metrics` controls _shape_ (badge geometry, candle bounds) and
@@ -95,6 +113,44 @@ The five namespaces:
 
 Pass `yAxis={false}` or `xAxis={false}` to hide an axis. `gridStyle.intervals` of `[]` renders
 solid grid lines.
+
+## Axis edge labels
+
+`topLabel` and `bottomLabel` float a value at the top / bottom edge of the plot — the
+Robinhood-style high/low readout. Pass `true` for the batteries-included label: the chart shows
+its current top (`topLabel`) and bottom (`bottomLabel`) Y-axis bound, formatted with the chart's
+`formatValue` and updated each frame on the UI thread.
+
+```tsx
+<LiveChart data={data} value={value} topLabel bottomLabel />
+```
+
+Both default off. Pass an [`AxisLabelConfig`](/api-reference/types#axislabelconfig) to tune the
+built-in label — `format`, `color`, and `position` (`"left"` | `"right"`, default `"right"`):
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  topLabel={{ color: "#22d3ee", position: "left" }}
+  bottomLabel={{ format: (v) => `$${v.toFixed(2)}` }}
+/>
+```
+
+For full control, the `render` escape hatch floats any element at the edge (it overrides the
+built-in value):
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  topLabel={{ render: () => <Text style={styles.highLabel}>High</Text> }}
+/>
+```
+
+The same props work on [`LiveChartSeries`](/api-reference/livechart-series#axis-labels), where the
+bounds track the combined range of the visible series. The labels are display-only
+(`pointerEvents="none"`), so they never block scrubbing.
 
 ## Fonts
 

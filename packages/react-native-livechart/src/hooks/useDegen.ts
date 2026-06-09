@@ -20,6 +20,8 @@ export function useDegen(
   momentumSV: SharedValue<Momentum>,
   cfg: ResolvedDegenConfig | null,
   onShake?: (payload: DegenShakePayload) => void,
+  /** Static charts run no loops: register the frame callback without starting it. */
+  isStatic = false,
 ): {
   pack: SharedValue<Float64Array<ArrayBuffer>>;
   packRevision: SharedValue<number>;
@@ -248,6 +250,10 @@ export function useDegen(
       }
       prevActiveCount.set(activeCount);
     },
+    // Static charts register the callback but never start it, so no degen frame
+    // loop runs. Live charts keep the default (autostart) loop unchanged. The
+    // controller also forces `cfg` to null in static, so degen is doubly off.
+    !isStatic,
   );
 
   const shakeTransform = useDerivedValue(() => {

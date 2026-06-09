@@ -130,7 +130,14 @@ These are the option shapes accepted by the matching props.
 
 ```ts
 interface LineConfig { width?: number; color?: string; colors?: string[] }
-interface GradientConfig { topOpacity?: number; bottomOpacity?: number }
+interface GradientConfig {
+  topOpacity?: number;    // accent-derived top fill opacity
+  bottomOpacity?: number; // accent-derived bottom fill opacity
+  colors?: string[];      // explicit gradient stops (top → bottom), ≥ 2 entries;
+                          //   overrides topOpacity/bottomOpacity when provided
+  positions?: number[];   // optional stop positions (0..1, ascending), same
+                          //   length as colors; ignored if the lengths differ
+}
 interface BadgeConfig {
   variant?: "default" | "minimal";
   tail?: boolean;
@@ -149,9 +156,27 @@ interface ScrubConfig {
   tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;
   panGestureDelay?: number; // press-and-hold ms before scrubbing activates; default 0
 }
+interface SelectionDotRingConfig {
+  color?: string; // ring color, defaults to the dot color
+  width?: number; // ring thickness past the dot, default 2
+}
+// The scrub-intersection dot (selectionDot). Default ON.
+interface SelectionDotConfig {
+  size?: number; // dot radius, default 4
+  color?: string; // dot color, defaults to the line / leading-series color
+  ring?: boolean | SelectionDotRingConfig; // outer halo, default on
+  component?: ComponentType<SelectionDotProps>; // custom Skia dot; ignores size/color/ring
+}
 interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }
 interface YAxisConfig { minGap?: number } // default 36
 interface XAxisConfig { minGap?: number } // default 60
+// Edge label (topLabel / bottomLabel). Default off — both opt-in.
+interface AxisLabelConfig {
+  format?: (v: number) => string; // built-in value formatter; defaults to formatValue
+  color?: string;                 // text color; defaults to palette.gridLabel (muted)
+  position?: "left" | "right";    // alignment within the plot width; default "right"
+  render?: () => React.ReactElement | null; // custom element; overrides the built-in value
+}
 interface ChartInsets { top?: number; right?: number; bottom?: number; left?: number }
 interface LeftEdgeFadeConfig { width?: number; startColor?: string; endColor?: string }
 
@@ -184,6 +209,34 @@ interface FontConfig {
   fontWeight?: FontWeight;
   typeface?: DataSourceParam; // require(...) / path / Uint8Array
   fontManager?: SkFontMgr | null;
+}
+```
+
+## AxisLabelConfig
+
+Shape for the `topLabel` / `bottomLabel` props. Both are opt-in (default off).
+With `true`, the chart floats its current top (`topLabel`) / bottom
+(`bottomLabel`) Y-axis bound at that edge, formatted with `format` (falling back
+to the chart's `formatValue`) in `color` (falling back to the muted
+`palette.gridLabel`), aligned by `position`. The values track the live Y-axis
+range each frame on the UI thread. Set `render` to float a fully custom element
+at the edge instead of the built-in value. See
+[Axis labels](/guides/theming#axis-edge-labels).
+
+## SelectionDotProps
+
+Props passed to a custom `selectionDot.component` — the dot drawn at the scrub
+intersection. Every positional input is a `SharedValue`, so the dot animates on
+the UI thread without re-renders.
+
+```ts
+interface SelectionDotProps {
+  x: SharedValue<number>;       // scrub X in canvas px
+  y: SharedValue<number>;       // scrub Y (line / value intersection)
+  active: SharedValue<boolean>; // whether scrubbing is active
+  opacity: SharedValue<number>; // crosshair fade opacity (0..1), already ramped
+  color: string;                // resolved dot color (line / series accent)
+  size: number;                 // suggested dot radius in px
 }
 ```
 

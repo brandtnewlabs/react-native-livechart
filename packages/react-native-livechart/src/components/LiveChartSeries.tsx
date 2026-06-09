@@ -24,6 +24,7 @@ import {
   type SeriesLineStyle,
 } from "../core/multiSeriesLayout";
 import {
+  resolveAxisLabel,
   resolveDegen,
   resolveGridStyle,
   resolveLeftEdgeFade,
@@ -31,6 +32,7 @@ import {
   resolveMetrics,
   resolveMultiSeriesDot,
   resolveScrub,
+  resolveSelectionDot,
   resolveXAxis,
   resolveYAxis,
 } from "../core/resolveConfig";
@@ -60,6 +62,7 @@ import {
   resolveTheme,
 } from "../theme";
 import type { LiveChartSeriesProps, Marker, SeriesConfig } from "../types";
+import { AxisLabelOverlay } from "./AxisLabelOverlay";
 import { CrosshairLine } from "./CrosshairLine";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
@@ -121,12 +124,17 @@ function useLiveChartSeriesController({
   formatTime = defaultFormatTime,
   yAxis = true,
   xAxis = true,
+  topLabel,
+  bottomLabel,
   referenceLines,
   gridStyle,
   palette: paletteOverride,
   metrics,
   scrub = true,
+  selectionDot,
   onScrub,
+  onGestureStart,
+  onGestureEnd,
   onSeriesToggle,
   dot: dotProp,
   legend: legendProp,
@@ -142,8 +150,11 @@ function useLiveChartSeriesController({
   const markersActive = markers != null;
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
+  const topLabelCfg = resolveAxisLabel(topLabel);
+  const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const scrubCfg = resolveScrub(scrub);
   const scrubEnabled = scrubCfg !== null;
+  const selectionDotCfg = resolveSelectionDot(selectionDot);
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
   // Outer footprint of a dot (the color-filled radius plus the halo ring).
@@ -307,6 +318,8 @@ function useLiveChartSeriesController({
     scrubEnabled,
     onScrub,
     scrubCfg?.panGestureDelay ?? 0,
+    onGestureStart,
+    onGestureEnd,
   );
 
   // `projected` is used internally by the hit-test gesture; the overlay
@@ -373,6 +386,12 @@ function useLiveChartSeriesController({
     rootGesture,
     markersActive,
     markersSV,
+    // selection dot: resolved config + fallback color (the leading series' color)
+    selectionDot: selectionDotCfg,
+    selectionColor: lineColors[0],
+    // RN axis edge labels (floated over the canvas as a sibling layer)
+    topLabelCfg,
+    bottomLabelCfg,
   };
 }
 
@@ -591,6 +610,11 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     palette,
     dotCfg,
     dotOuterRadius,
+    selectionDot,
+    selectionColor,
+    formatValue,
+    topLabelCfg,
+    bottomLabelCfg,
   } = model;
 
   // Extend the scrub dim past the plot's right edge to fully cover the series
@@ -647,6 +671,10 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 engine={engine}
                 padding={effectivePadding}
                 palette={palette}
+                selectionDot={selectionDot}
+                selectionY={crosshair.scrubDotY}
+                scrubActive={crosshair.scrubActive}
+                selectionColor={selectionColor}
                 dimOpacity={scrubCfg.dimOpacity}
                 liveDotExtent={liveDotExtent}
                 crosshairLineColor={scrubCfg.crosshairLineColor}
@@ -658,6 +686,18 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 clips them (they track each series' live value, not the scrub). */}
             <SeriesValueLabelLayer model={model} />
           </Canvas>
+
+          {/* RN labels floated over the canvas (sibling of <Canvas>, an RN
+              view). Inside the canvas wrapper so its top/bottom edges align
+              with the plot area, not the legend row. */}
+          <AxisLabelOverlay
+            topLabel={topLabelCfg}
+            bottomLabel={bottomLabelCfg}
+            engine={engine}
+            formatValue={formatValue}
+            defaultColor={palette.gridLabel}
+            padding={effectivePadding}
+          />
         </View>
       </GestureDetector>
       {legendCfg.position === "bottom" ? legend : null}

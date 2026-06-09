@@ -16,6 +16,7 @@ import type { CandlePoint, LiveChartPalette, ScrubPoint } from "../types";
 import {
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
+  computeScrubDotY,
   computeScrubTime,
   deriveCrosshairTooltipSingle,
   type CrosshairState,
@@ -57,9 +58,14 @@ export function useCrosshair(
   candleOpts?: CrosshairCandleOpts,
   /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
   panGestureDelay = 0,
+  onGestureStart?: () => void,
+  onGestureEnd?: () => void,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
+  // Tracks whether the active scrub phase actually began, so a tap that never
+  // activates doesn't emit a spurious onGestureEnd.
+  const gestureStarted = useSharedValue(false);
 
   const scrubTime = useDerivedValue(() =>
     computeScrubTime(
@@ -109,6 +115,19 @@ export function useCrosshair(
       scrubX.get(),
       engine.canvasWidth.get(),
       padding.right,
+    ),
+  );
+
+  // Y pixel of the scrub intersection — used by the selection dot. -1 when
+  // there's no value to mark.
+  const scrubDotY = useDerivedValue(() =>
+    computeScrubDotY(
+      scrubValue.get(),
+      engine.displayMin.get(),
+      engine.displayMax.get(),
+      engine.canvasHeight.get(),
+      padding.top,
+      padding.bottom,
     ),
   );
 
@@ -165,7 +184,19 @@ export function useCrosshair(
     onScrub?.(null);
   }
 
+  /* istanbul ignore next */
+  function handleGestureStart() {
+    onGestureStart?.();
+  }
+
+  /* istanbul ignore next */
+  function handleGestureEnd() {
+    onGestureEnd?.();
+  }
+
   const hasOnScrub = onScrub != null;
+  const hasOnGestureStart = onGestureStart != null;
+  const hasOnGestureEnd = onGestureEnd != null;
 
   useAnimatedReaction(
     () => {
@@ -178,13 +209,14 @@ export function useCrosshair(
       if (val === null || time < 0) return "__pending__";
       const chartW = engine.canvasWidth.get() - padding.left - padding.right;
       if (chartW <= 0) return "__pending__";
-      const h = engine.canvasHeight.get();
-      const chartH = h - padding.top - padding.bottom;
-      const valRange = engine.displayMax.get() - engine.displayMin.get();
-      const dotY =
-        valRange === 0
-          ? padding.top + chartH / 2
-          : padding.top + ((engine.displayMax.get() - val) / valRange) * chartH;
+      const dotY = computeScrubDotY(
+        val,
+        engine.displayMin.get(),
+        engine.displayMax.get(),
+        engine.canvasHeight.get(),
+        padding.top,
+        padding.bottom,
+      );
       let candleJson: string | null = null;
       if (isCandleMode) {
         const c = scrubCandle.get();
@@ -229,6 +261,8 @@ export function useCrosshair(
         if (!enabled) return;
         scrubX.set(e.x);
         scrubActive.set(true);
+        gestureStarted.set(true);
+        if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
       },
     )
     .onUpdate(
@@ -243,6 +277,10 @@ export function useCrosshair(
         "worklet";
         scrubActive.set(false);
         if (hasOnScrub) scheduleOnRN(handleScrubEnd);
+        if (gestureStarted.get()) {
+          gestureStarted.set(false);
+          if (hasOnGestureEnd) scheduleOnRN(handleGestureEnd);
+        }
       },
     );
 
@@ -258,6 +296,7 @@ export function useCrosshair(
     scrubValue,
     crosshairOpacity,
     tooltipLayout,
+    scrubDotY,
     gesture,
   };
 }

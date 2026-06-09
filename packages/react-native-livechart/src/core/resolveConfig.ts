@@ -1,4 +1,5 @@
 import type {
+  AxisLabelConfig,
   BadgeConfig,
   BadgeVariant,
   DegenOptions,
@@ -17,12 +18,16 @@ import type {
   PulseConfig,
   ReferenceLine,
   ScrubConfig,
+  SelectionDotConfig,
+  SelectionDotProps,
+  SelectionDotRingConfig,
   TradeEvent,
   ValueLineConfig,
   XAxisConfig,
   YAxisConfig,
 } from "../types";
 
+import type { ComponentType, ReactElement } from "react";
 import type { SharedValue } from "react-native-reanimated";
 import {
   BADGE_METRICS_DEFAULTS,
@@ -53,6 +58,16 @@ export interface ResolvedYAxisConfig {
   minGap: number;
 }
 
+export interface ResolvedAxisLabelConfig {
+  /** undefined → use the chart's `formatValue` at render time. */
+  format?: (v: number) => string;
+  /** undefined → use the muted default label color at render time. */
+  color?: string;
+  position: "left" | "right";
+  /** When set, the built-in value label is replaced by this custom element. */
+  render?: () => ReactElement | null;
+}
+
 export interface ResolvedXAxisConfig {
   minGap: number;
 }
@@ -80,6 +95,10 @@ export interface ResolvedGradientConfig {
   topOpacity: number | undefined;
   /** undefined → use palette.fillBottom (transparent) at render time */
   bottomOpacity: number | undefined;
+  /** Explicit color stops (top → bottom); overrides the opacity stops. */
+  colors: string[] | undefined;
+  /** Stop positions (0..1) matching `colors` length. */
+  positions: number[] | undefined;
 }
 
 export interface ResolvedPulseConfig {
@@ -217,6 +236,24 @@ export function resolveYAxis(
   return resolveToggle(prop, Y_AXIS_DEFAULTS, false);
 }
 
+const AXIS_LABEL_DEFAULTS: ResolvedAxisLabelConfig = {
+  format: undefined,
+  color: undefined,
+  position: "right",
+  render: undefined,
+};
+
+/**
+ * Resolves a `topLabel` / `bottomLabel` prop to a fully-typed config or null
+ * (no label). Opt-in, so `undefined`/`false` → null; `true` → the built-in
+ * value label with defaults; object → configured built-in (or a custom `render`).
+ */
+export function resolveAxisLabel(
+  prop: boolean | AxisLabelConfig | undefined,
+): ResolvedAxisLabelConfig | null {
+  return resolveToggle(prop, AXIS_LABEL_DEFAULTS, false);
+}
+
 const X_AXIS_DEFAULTS: ResolvedXAxisConfig = {
   minGap: 60,
 };
@@ -255,6 +292,8 @@ export function resolveScrub(
 const GRADIENT_DEFAULTS: ResolvedGradientConfig = {
   topOpacity: undefined,
   bottomOpacity: undefined,
+  colors: undefined,
+  positions: undefined,
 };
 
 /**
@@ -571,6 +610,65 @@ export function resolveMultiSeriesDot(
     pulse: resolvePulse(cfg?.pulse ?? true),
     valueLine: resolveValueLine(cfg?.valueLine),
     valueLabel: cfg?.valueLabel ?? true,
+  };
+}
+
+// ─── Selection dot ──────────────────────────────────────────────────────────
+
+/** Resolved selection-dot ring. `color: undefined` → use the dot color. */
+export interface ResolvedSelectionDotRingConfig {
+  color: string | undefined;
+  width: number;
+}
+
+const SELECTION_DOT_RING_DEFAULTS: ResolvedSelectionDotRingConfig = {
+  color: undefined,
+  width: 2,
+};
+
+/** `undefined`/`true` → ring defaults; `false` → null (no ring). */
+export function resolveSelectionDotRing(
+  prop: boolean | SelectionDotRingConfig | undefined,
+): ResolvedSelectionDotRingConfig | null {
+  return resolveToggle(prop, SELECTION_DOT_RING_DEFAULTS, true);
+}
+
+/** Fully-resolved selection-dot styling. */
+export interface ResolvedSelectionDotConfig {
+  size: number;
+  /** undefined → use the line / leading-series color at render time. */
+  color: string | undefined;
+  ring: ResolvedSelectionDotRingConfig | null;
+  /** When set, the built-in size/color/ring knobs are ignored. */
+  component?: ComponentType<SelectionDotProps>;
+}
+
+const SELECTION_DOT_SIZE_DEFAULT = 4;
+
+const SELECTION_DOT_DEFAULTS: ResolvedSelectionDotConfig = {
+  size: SELECTION_DOT_SIZE_DEFAULT,
+  color: undefined,
+  ring: SELECTION_DOT_RING_DEFAULTS,
+};
+
+/**
+ * Resolves the `selectionDot` prop to a fully-typed config or null (hidden).
+ * Defaults to ON, so `undefined`/`true` yield the built-in dot.
+ * - `false` → `null` (no dot)
+ * - `undefined`/`true` → built-in dot with defaults
+ * - object → configured built-in dot, or the custom `component` when set
+ *   (the size/color/ring knobs are still resolved but ignored by the slot)
+ */
+export function resolveSelectionDot(
+  prop: boolean | SelectionDotConfig | undefined,
+): ResolvedSelectionDotConfig | null {
+  if (prop === false) return null;
+  if (prop == null || prop === true) return SELECTION_DOT_DEFAULTS;
+  return {
+    size: prop.size ?? SELECTION_DOT_DEFAULTS.size,
+    color: prop.color,
+    ring: resolveSelectionDotRing(prop.ring),
+    component: prop.component,
   };
 }
 

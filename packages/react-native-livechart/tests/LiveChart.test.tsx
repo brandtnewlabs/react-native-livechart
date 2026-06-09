@@ -196,4 +196,26 @@ describe("LiveChart", () => {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
+
+  it("renders in static mode and lays out without throwing", () => {
+    const screen = render(
+      <Harness static timeWindow={30} nowOverride={1700000030} />,
+    );
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
+
+  it("static gates off pulse, scrub, and degen even when requested", () => {
+    // The controller forces these features off in static; exercising the gating
+    // branches with all three explicitly enabled must still render cleanly.
+    const screen = render(
+      <Harness static pulse scrub degen nowOverride={1700000030} />,
+    );
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
 });

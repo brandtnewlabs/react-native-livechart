@@ -19,6 +19,7 @@ import {
 
 import { DEFAULT_ACCENT_COLOR } from "../constants";
 import {
+  resolveAxisLabel,
   resolveBadge,
   resolveDegen,
   resolveDot,
@@ -28,6 +29,7 @@ import {
   resolveMetrics,
   resolvePulse,
   resolveScrub,
+  resolveSelectionDot,
   resolveTradeStream,
   resolveValueLine,
   resolveXAxis,
@@ -66,6 +68,7 @@ import {
   resolveTheme,
 } from "../theme";
 import type { LiveChartProps, Marker, TradeEvent } from "../types";
+import { AxisLabelOverlay } from "./AxisLabelOverlay";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
@@ -111,6 +114,8 @@ function useLiveChartController({
   timeWindow = 30,
   paused = false,
   loading = false,
+  // `static` is a reserved word — alias it so the destructure parses.
+  static: isStatic = false,
   smoothing = 0.08,
   exaggerate = false,
   nonNegative = false,
@@ -126,6 +131,8 @@ function useLiveChartController({
   // ── Overlays ────────────────────────────────────────────────────────────
   yAxis = true,
   xAxis = true,
+  topLabel,
+  bottomLabel,
   badge = true,
   momentum = true,
   pulse = true,
@@ -138,6 +145,7 @@ function useLiveChartController({
   palette: paletteOverride,
   metrics,
   scrub = true,
+  selectionDot,
   tradeStream,
   degen,
   markers,
@@ -147,6 +155,8 @@ function useLiveChartController({
 
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
+  onGestureStart,
+  onGestureEnd,
   onDegenShake,
 }: LiveChartProps) {
   const emptyTradeStream = useSharedValue<TradeEvent[]>([]);
@@ -158,16 +168,23 @@ function useLiveChartController({
   // ── Resolve feature configs ────────────────────────────────────────────
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
+  const topLabelCfg = resolveAxisLabel(topLabel);
+  const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const badgeCfg = resolveBadge(badge);
   const scrubCfg = resolveScrub(scrub);
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
   const valueLineCfg = resolveValueLine(valueLine);
-  const pulseCfg = resolvePulse(pulse);
+  // Static charts run zero loops: force the pulse off so its `withRepeat`-driven
+  // ring never starts (the DotOverlay reads `pulseCfg`, so null = no pulse).
+  const pulseCfg = isStatic ? null : resolvePulse(pulse);
   const dotCfg = resolveDot(dot);
+  const selectionDotCfg = resolveSelectionDot(selectionDot);
   // Outer footprint of the dot (color-filled radius plus the halo ring).
   const dotOuterRadius = dotCfg.radius + (dotCfg.ring?.width ?? 0);
   const gridStyleCfg = resolveGridStyle(gridStyle);
-  const degenCfg = resolveDegen(degen);
+  // Static charts run zero loops: force degen off so `useDegen`'s frame callback
+  // never starts (also passed `isStatic` below as a belt-and-braces autostart gate).
+  const degenCfg = isStatic ? null : resolveDegen(degen);
   const tradeStreamResolved = resolveTradeStream(tradeStream);
   const metricsCfg = resolveMetrics(metrics);
 
@@ -248,7 +265,7 @@ function useLiveChartController({
     candles,
   });
 
-  const reveal = useChartReveal(loading, hasData);
+  const reveal = useChartReveal(loading, hasData, isStatic);
 
   // After data clears, keep last snapshot until morphT finishes dropping (web parity).
   const { lineEngineData, candlesEngine, liveEngine } =
@@ -269,6 +286,7 @@ function useLiveChartController({
     value,
     timeWindow,
     paused,
+    static: isStatic,
     smoothing,
     adaptiveSpeedBoost: metricsCfg.motion.adaptiveSpeedBoost,
     exaggerate,
@@ -306,6 +324,7 @@ function useLiveChartController({
       candleWidth,
       isCandle,
       metricsCfg.candle,
+      !isStatic, // static: no candle-width lerp loop
     );
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
 
@@ -315,14 +334,15 @@ function useLiveChartController({
     engine,
     tradeStreamSV,
     effectivePadding,
-    tradeStreamResolved !== null,
+    !isStatic && tradeStreamResolved !== null,
+    !isStatic, // static: no trade-tape loop
   );
 
   const {
     pack: degenPack,
     packRevision: degenPackRevision,
     shakeTransform: degenShakeTransform,
-  } = useDegen(engine, dotX, dotY, momentumSV, degenCfg, onDegenShake);
+  } = useDegen(engine, dotX, dotY, momentumSV, degenCfg, onDegenShake, isStatic);
 
   // ── Overlay hooks ─────────────────────────────────────────────────────
   const { yAxisEntries } = useYAxis(
@@ -373,10 +393,13 @@ function useLiveChartController({
     formatValue,
     formatTime,
     skiaFont,
-    scrubCfg !== null,
+    // Static charts have an inert pan gesture — no scrub work on the UI thread.
+    !isStatic && scrubCfg !== null,
     onScrub,
     candleOpts,
     scrubCfg?.panGestureDelay ?? 0,
+    onGestureStart,
+    onGestureEnd,
   );
 
   const markersActive = markers != null;
@@ -386,11 +409,12 @@ function useLiveChartController({
     engine,
     effectivePadding,
     markersSV,
-    markersActive,
+    !isStatic && markersActive,
     markerHitRadius,
     onMarkerHover,
     undefined, // seriesSV — single-series has none
     engine.data, // anchor value-less markers to the line
+    !isStatic, // static: no marker-projection loop
   );
 
   const rootGesture = markersActive
@@ -403,6 +427,8 @@ function useLiveChartController({
     gradientEnd,
     gradientTopColor,
     gradientBottomColor,
+    gradientColors,
+    gradientPositions,
   } = useChartColors(
     palette,
     gradientCfg,
@@ -453,6 +479,8 @@ function useLiveChartController({
     gradientEnd,
     gradientTopColor,
     gradientBottomColor,
+    gradientColors,
+    gradientPositions,
     lineGroupOpacity,
     candleGroupOpacity,
     layoutWidth,
@@ -477,6 +505,12 @@ function useLiveChartController({
     rootGesture,
     markersActive,
     markersSV,
+    // selection dot: resolved config + fallback color (the chart line/accent color)
+    selectionDot: selectionDotCfg,
+    selectionColor: lineProp?.color ?? palette.line,
+    // RN axis edge labels (floated over the canvas as a sibling layer)
+    topLabelCfg,
+    bottomLabelCfg,
   };
 }
 
@@ -501,8 +535,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     gradientCfg,
     fillPath,
     gradientEnd,
-    gradientTopColor,
-    gradientBottomColor,
+    gradientColors,
+    gradientPositions,
     valueLineCfg,
     dotY,
     allRefLines,
@@ -557,7 +591,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
             <LinearGradient
               start={vec(0, effectivePadding.top)}
               end={vec(0, gradientEnd)}
-              colors={[gradientTopColor, gradientBottomColor]}
+              colors={gradientColors}
+              positions={gradientPositions}
             />
           </Path>
         </Group>
@@ -723,6 +758,8 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
     isCandle,
     pulseCfg,
     dotOuterRadius,
+    selectionDot,
+    selectionColor,
   } = model;
 
   if (!tradeStreamResolved && !scrubCfg) return null;
@@ -758,6 +795,10 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
           palette={palette}
           font={skiaFont}
           showTooltip={scrubCfg.tooltip}
+          selectionDot={selectionDot}
+          selectionY={crosshair.scrubDotY}
+          scrubActive={crosshair.scrubActive}
+          selectionColor={selectionColor}
           dimOpacity={scrubCfg.dimOpacity}
           liveDotExtent={liveDotExtent}
           crosshairLineColor={scrubCfg.crosshairLineColor}
@@ -844,6 +885,10 @@ export function LiveChart(props: LiveChartProps) {
     leftEdgeFadeCfg,
     effectivePadding,
     engine,
+    palette,
+    formatValue,
+    topLabelCfg,
+    bottomLabelCfg,
   } = model;
 
   return (
@@ -877,6 +922,17 @@ export function LiveChart(props: LiveChartProps) {
               its left edge (the badge tracks the live value, not the scrub). */}
           <ChartBadgeLayer model={model} />
         </Canvas>
+
+        {/* RN labels floated over the canvas (sibling of <Canvas>, an RN view).
+            Pinned to the plot's top/bottom edges via the resolved padding. */}
+        <AxisLabelOverlay
+          topLabel={topLabelCfg}
+          bottomLabel={bottomLabelCfg}
+          engine={engine}
+          formatValue={formatValue}
+          defaultColor={palette.gridLabel}
+          padding={effectivePadding}
+        />
       </View>
     </GestureDetector>
   );

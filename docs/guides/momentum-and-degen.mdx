@@ -72,6 +72,12 @@ Tune it with `DegenOptions`:
   bursts off **its own** dot, in that series' color, on its own upward momentum swing (per-outcome).
 </Note>
 
+<Tip>
+  Particle bursts render through a single batched Skia `drawAtlas` call: one white-circle sprite is
+  rasterized once, then every active particle is blitted with its own transform and color in that
+  one draw. So even dense bursts stay cheap. This is automatic — no API or config change.
+</Tip>
+
 ## Reacting to shake
 
 `onDegenShake` fires on the JS thread when a shake starts (unless `shake` is `false`) — useful

@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { LiveChart, LiveChartSeries } from "react-native-livechart";
+import { Text } from "react-native";
+import {
+  LiveChart,
+  LiveChartSeries,
+  type AxisLabelConfig,
+} from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
-import { ChipRow } from "../../demo-lib/ChipRow";
+import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
+import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
@@ -34,6 +40,8 @@ export default function AxesGridScreen() {
   const [vis, setVis] = useState<AxisVis>("both");
   const [gap, setGap] = useState<GapPreset>("default");
   const [which, setWhich] = useState<ChartKind>("single");
+  const [highLow, setHighLow] = useState(false);
+  const [customLabel, setCustomLabel] = useState(false);
 
   const yOn = vis !== "noY" && vis !== "none";
   const xOn = vis !== "noX" && vis !== "none";
@@ -51,11 +59,24 @@ export default function AxesGridScreen() {
     historyRange: "1m",
   });
 
+  // Built-in high/low labels: the chart floats its current top / bottom Y-axis
+  // bound at each edge, formatted and updated on the UI thread — no hand-rolled
+  // animated text needed. A `render` escape hatch demos a fully custom element.
+  const customTop: AxisLabelConfig = {
+    render: () => <Text style={[demoStyles.scrubReadout, { marginBottom: 0 }]}>HIGH</Text>,
+  };
+  const customBottom: AxisLabelConfig = {
+    render: () => <Text style={[demoStyles.scrubReadout, { marginBottom: 0 }]}>LOW</Text>,
+  };
+
+  const topLabel = customLabel ? customTop : highLow ? true : undefined;
+  const bottomLabel = customLabel ? customBottom : highLow ? true : undefined;
+
   return (
     <DemoScreen
       title="Axes & grid"
       docs="guides/theming"
-      description="Hide Y, X, or both; axis minGap. Toggle single vs multi chart."
+      description="Hide Y, X, or both; axis minGap. Toggle single vs multi chart, and Robinhood-style high/low edge labels (built-in or a custom render)."
       chart={
         which === "single" ? (
           <LiveChart
@@ -66,6 +87,8 @@ export default function AxesGridScreen() {
             yAxis={yAxis}
             xAxis={xAxis}
             scrub
+            topLabel={topLabel}
+            bottomLabel={bottomLabel}
           />
         ) : (
           <LiveChartSeries
@@ -75,6 +98,8 @@ export default function AxesGridScreen() {
             yAxis={yAxis}
             xAxis={xAxis}
             scrub
+            topLabel={topLabel}
+            bottomLabel={bottomLabel}
           />
         )
       }
@@ -97,6 +122,18 @@ export default function AxesGridScreen() {
         value={gap}
         onChange={setGap}
       />
+      <ControlRow label="Axis labels">
+        <ToggleChip
+          label="Built-in high / low"
+          value={highLow}
+          onChange={setHighLow}
+        />
+        <ToggleChip
+          label="Custom render"
+          value={customLabel}
+          onChange={setCustomLabel}
+        />
+      </ControlRow>
     </DemoScreen>
   );
 }

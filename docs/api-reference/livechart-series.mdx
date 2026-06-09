@@ -19,6 +19,23 @@ accepts all the shared theming, axis, range, layout, and text props from
   Array of series definitions. Read on the UI thread. See [`SeriesConfig`](/api-reference/types).
 </ParamField>
 
+## Axis labels
+
+Shared with [`LiveChart`](/api-reference/livechart#axes-grid-range). Both
+default off.
+
+<ParamField body="topLabel" type="boolean | AxisLabelConfig" default="false">
+  Edge label at the plot's top. `true` shows the built-in value label — the
+  chart's current top Y-axis bound, updated each frame. Pass
+  [`AxisLabelConfig`](/api-reference/types#axislabelconfig) (`format` / `color` /
+  `position`) or `{ render }` for a custom element.
+</ParamField>
+
+<ParamField body="bottomLabel" type="boolean | AxisLabelConfig" default="false">
+  Edge label at the plot's bottom (the current bottom Y-axis bound), with the
+  same options as `topLabel`.
+</ParamField>
+
 ## Legend
 
 <ParamField body="legend" type="boolean | LegendConfig" default="true">
@@ -46,9 +63,26 @@ accepts all the shared theming, axis, range, layout, and text props from
   defaulted to `false`); pass `scrub={false}` to disable.
 </ParamField>
 
+<ParamField body="selectionDot" type="boolean | SelectionDotConfig" default="true">
+  Dot drawn at the scrub intersection (anchored to the leading series) while
+  scrubbing. `false` hides it; pass a config to set `size` / `color` / `ring`, or
+  `{ component }` for a fully custom Skia dot. See
+  [Scrubbing](/guides/scrubbing#selection-dot).
+</ParamField>
+
 <ParamField body="onScrub" type="(point: ScrubPointMulti | null) => void">
   **Worklet** callback fired on the UI thread each frame while scrubbing; `null` when it ends.
   Includes a per-series value array. See [Scrubbing](/guides/scrubbing).
+</ParamField>
+
+<ParamField body="onGestureStart" type="() => void">
+  JS-thread callback fired once when the user starts scrubbing. Respects
+  `scrub.panGestureDelay` (it fires when the pan activates, not on first touch).
+</ParamField>
+
+<ParamField body="onGestureEnd" type="() => void">
+  JS-thread callback fired once when the user stops scrubbing. Fires only if a
+  scrub actually started — a tap that never activates emits neither callback.
 </ParamField>
 
 ## Degen

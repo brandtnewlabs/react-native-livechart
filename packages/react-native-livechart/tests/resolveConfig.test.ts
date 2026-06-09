@@ -1,4 +1,5 @@
 import {
+  resolveAxisLabel,
   resolveBadge,
   resolveDegen,
   resolveDot,
@@ -12,6 +13,8 @@ import {
   resolvePulse,
   resolveReferenceLineConfig,
   resolveScrub,
+  resolveSelectionDot,
+  resolveSelectionDotRing,
   resolveTradeStream,
   resolveValueLine,
   resolveXAxis,
@@ -125,6 +128,47 @@ describe("resolveYAxis", () => {
 
   it("merges partial config with defaults", () => {
     expect(resolveYAxis({ minGap: 48 })).toEqual({ minGap: 48 });
+  });
+});
+
+// ─── resolveAxisLabel ──────────────────────────────────────────────────────────
+
+describe("resolveAxisLabel", () => {
+  it("returns null for undefined (opt-in, default off)", () => {
+    expect(resolveAxisLabel(undefined)).toBeNull();
+  });
+
+  it("returns null for false", () => {
+    expect(resolveAxisLabel(false)).toBeNull();
+  });
+
+  it("returns the built-in defaults for true", () => {
+    expect(resolveAxisLabel(true)).toEqual({
+      format: undefined,
+      color: undefined,
+      position: "right",
+      render: undefined,
+    });
+  });
+
+  it("merges partial config (color / position) with defaults", () => {
+    expect(resolveAxisLabel({ color: "#abc", position: "left" })).toEqual({
+      format: undefined,
+      color: "#abc",
+      position: "left",
+      render: undefined,
+    });
+  });
+
+  it("carries through a custom format and render escape hatch", () => {
+    const format = (v: number) => `$${v}`;
+    const render = () => null;
+    expect(resolveAxisLabel({ format, render })).toEqual({
+      format,
+      color: undefined,
+      position: "right",
+      render,
+    });
   });
 });
 
@@ -266,6 +310,8 @@ describe("resolveGradient", () => {
     expect(resolveGradient(true)).toEqual({
       topOpacity: undefined,
       bottomOpacity: undefined,
+      colors: undefined,
+      positions: undefined,
     });
   });
 
@@ -273,6 +319,8 @@ describe("resolveGradient", () => {
     expect(resolveGradient({ topOpacity: 0.25 })).toEqual({
       topOpacity: 0.25,
       bottomOpacity: undefined,
+      colors: undefined,
+      positions: undefined,
     });
   });
 
@@ -280,6 +328,38 @@ describe("resolveGradient", () => {
     expect(resolveGradient({ topOpacity: 0.3, bottomOpacity: 0.05 })).toEqual({
       topOpacity: 0.3,
       bottomOpacity: 0.05,
+      colors: undefined,
+      positions: undefined,
+    });
+  });
+
+  it("preserves explicit color stops", () => {
+    const colors = ["rgba(0,0,0,0.4)", "rgba(0,0,0,0.1)", "rgba(0,0,0,0)"];
+    expect(resolveGradient({ colors })).toEqual({
+      topOpacity: undefined,
+      bottomOpacity: undefined,
+      colors,
+      positions: undefined,
+    });
+  });
+
+  it("preserves color stops with positions", () => {
+    const colors = ["#fff", "#000"];
+    const positions = [0, 1];
+    expect(resolveGradient({ colors, positions })).toEqual({
+      topOpacity: undefined,
+      bottomOpacity: undefined,
+      colors,
+      positions,
+    });
+  });
+
+  it("leaves colors/positions undefined for an opacity-only object", () => {
+    expect(resolveGradient({ topOpacity: 0.5 })).toEqual({
+      topOpacity: 0.5,
+      bottomOpacity: undefined,
+      colors: undefined,
+      positions: undefined,
     });
   });
 });
@@ -719,6 +799,77 @@ describe("resolveMultiSeriesDot", () => {
     expect(r.show).toBe(false);
     expect(r.radius).toBe(3.5);
     expect(r.valueLabel).toBe(true);
+  });
+});
+
+// ─── resolveSelectionDotRing ─────────────────────────────────────────────────
+
+describe("resolveSelectionDotRing", () => {
+  it("returns null when disabled", () => {
+    expect(resolveSelectionDotRing(false)).toBeNull();
+  });
+
+  it("returns defaults for true/undefined (ring on)", () => {
+    expect(resolveSelectionDotRing(true)).toEqual({ color: undefined, width: 2 });
+    expect(resolveSelectionDotRing(undefined)).toEqual({
+      color: undefined,
+      width: 2,
+    });
+  });
+
+  it("merges a partial ring config over the defaults", () => {
+    expect(resolveSelectionDotRing({ width: 3 })).toEqual({
+      color: undefined,
+      width: 3,
+    });
+    expect(resolveSelectionDotRing({ color: "#fbbf24" })).toEqual({
+      color: "#fbbf24",
+      width: 2,
+    });
+  });
+});
+
+// ─── resolveSelectionDot ─────────────────────────────────────────────────────
+
+describe("resolveSelectionDot", () => {
+  it("defaults to the built-in dot for undefined/true (default ON)", () => {
+    const expected = {
+      size: 4,
+      color: undefined,
+      ring: { color: undefined, width: 2 },
+    };
+    expect(resolveSelectionDot(undefined)).toEqual(expected);
+    expect(resolveSelectionDot(true)).toEqual(expected);
+  });
+
+  it("returns null when disabled (selectionDot={false})", () => {
+    expect(resolveSelectionDot(false)).toBeNull();
+  });
+
+  it("applies size/color/ring knobs from a config object", () => {
+    expect(
+      resolveSelectionDot({ size: 6, color: "#abcdef", ring: { width: 3 } }),
+    ).toEqual({
+      size: 6,
+      color: "#abcdef",
+      ring: { color: undefined, width: 3 },
+      component: undefined,
+    });
+  });
+
+  it("turns the ring off via ring:false", () => {
+    const r = resolveSelectionDot({ ring: false })!;
+    expect(r.ring).toBeNull();
+    expect(r.size).toBe(4);
+  });
+
+  it("carries a custom component through", () => {
+    const Custom = () => null;
+    const r = resolveSelectionDot({ component: Custom })!;
+    expect(r.component).toBe(Custom);
+    // size/color/ring still resolved (ignored by the slot when component set)
+    expect(r.size).toBe(4);
+    expect(r.ring).toEqual({ color: undefined, width: 2 });
   });
 });
 
