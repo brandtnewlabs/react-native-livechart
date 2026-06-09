@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-06-09
+
+### Added
+
+- **Gradient line strokes** — `LineConfig.colors?: string[]` applies two or more
+  CSS colors as a horizontal gradient along the chart line stroke (left → right),
+  e.g. `line={{ colors: ["#ff0000", "#0000ff"] }}`. The existing `color?: string`
+  is unchanged and still sets a solid stroke; `colors` takes precedence when both
+  are set. Single-series only. The fill-gradient analogue is `GradientConfig.colors`
+  (added in 3.0.0).
+
 ## [3.1.0] - 2026-06-09
 
 ### Added
@@ -169,6 +180,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[3.2.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.2.0
 [3.1.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.1.0
 [2.0.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v2.0.1
 [2.0.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v2.0.0
