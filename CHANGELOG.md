@@ -5,6 +5,28 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2026-06-09
+
+### Added
+
+- **Segments** — `segments?: ChartSegment[]` on `LiveChart` labels time ranges
+  (pre-market / regular / after-hours sessions, overnight windows) using a
+  Robinhood-style **scrub-focus** interaction. At rest the line is one uniform
+  color; while scrubbing — or when a segment is `active` — the focused segment
+  (under the scrub line, or the `active` one) keeps the base color and every other
+  segment is de-emphasized by recoloring the **line stroke itself** (an
+  alpha-reduced color fades the line; no overlay panel). New exported type:
+  `ChartSegment`. Single-series only.
+  - `mutedColor` / `mutedColors` — the de-emphasis color (solid, or a ≥2-stop
+    gradient) used when a segment is not the focused one.
+  - `active` — force-focus a segment without scrubbing.
+  - `recolorLine` (default `true`) — set `false` to opt a segment out of the
+    dimming entirely (it still draws its divider/label).
+  - `divider` + `label` (with `labelPosition` / `dividerColor`) — a dashed edge
+    marker and caption; the label shows only with the divider.
+  - All colors default to the chart palette, so a bare `{ from, to }` segment
+    works without setting any color.
+
 ## [3.2.0] - 2026-06-09
 
 ### Added
