@@ -281,7 +281,6 @@ export function useCrosshair(
       badgeMetrics.marginEdge,
       badgeMetrics.padX,
       badgeMetrics.padY,
-      monoCharWidth,
     );
   });
 

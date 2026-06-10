@@ -67,17 +67,17 @@ describe("snapPrice", () => {
 
 describe("computeActionBadgeLayout", () => {
   it("is hidden when not locked", () => {
-    const l = computeActionBadgeLayout(false, 100, "64.20", "+", 400, 360, font, 4, 10, 3, 7);
+    const l = computeActionBadgeLayout(false, 100, "64.20", "+", 400, 360, font, 4, 10, 3);
     expect(l.visible).toBe(false);
   });
 
   it("is hidden when the canvas is not laid out", () => {
-    const l = computeActionBadgeLayout(true, 100, "64.20", "+", 0, 0, font, 4, 10, 3, 7);
+    const l = computeActionBadgeLayout(true, 100, "64.20", "+", 0, 0, font, 4, 10, 3);
     expect(l.visible).toBe(false);
   });
 
   it("lays out a circular icon button + a right-anchored price pill, text centered", () => {
-    const l = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 320, font, 4, 10, 3, 7);
+    const l = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 320, font, 4, 10, 3);
     expect(l.visible).toBe(true);
     expect(l.hasIcon).toBe(true);
     expect(l.hasPrice).toBe(true);
@@ -100,7 +100,7 @@ describe("computeActionBadgeLayout", () => {
   });
 
   it("anchors an icon-only badge to the plot edge (attached to the line)", () => {
-    const l = computeActionBadgeLayout(true, 150, "", "+", 400, 320, font, 4, 10, 3, 7);
+    const l = computeActionBadgeLayout(true, 150, "", "+", 400, 320, font, 4, 10, 3);
     expect(l.visible).toBe(true);
     expect(l.hasIcon).toBe(true);
     expect(l.hasPrice).toBe(false);
@@ -113,12 +113,12 @@ describe("computeActionBadgeLayout", () => {
   });
 
   it("is hidden when both icon and price are empty", () => {
-    const l = computeActionBadgeLayout(true, 150, "", "", 400, 360, font, 4, 10, 3, 7);
+    const l = computeActionBadgeLayout(true, 150, "", "", 400, 360, font, 4, 10, 3);
     expect(l.visible).toBe(false);
   });
 
-  it("falls back to measureText sizing when monoCharWidth is 0", () => {
-    const l = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 360, font, 4, 10, 3, 0);
+  it("sizes the price pill from the text's measured width", () => {
+    const l = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 360, font, 4, 10, 3);
     expect(l.visible).toBe(true);
     expect(l.w).toBeGreaterThan(0);
   });

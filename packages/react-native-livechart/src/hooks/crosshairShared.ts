@@ -378,8 +378,9 @@ export function deriveScrubValueSingle(
  * (see {@link pointInRect}). When not locked / not laid out / both empty, returns
  * {@link HIDDEN_ACTION_BADGE}.
  *
- * Text widths are sized by character count × `monoCharWidth` (the chart font is
- * monospace), so this stays a cheap per-frame worklet with no `measureText`.
+ * The price text is sized to its actual visual bounds via `font.measureText`
+ * (run only while a reticle is shown) so the readout stays exactly centered —
+ * see the inline note on `priceTextX` below.
  */
 export interface ActionBadgeLayout {
   /** Union hit rect (icon button + price pill). */
@@ -445,8 +446,6 @@ export function computeActionBadgeLayout(
   marginEdge: number,
   padX: number,
   padY: number,
-  /** Monospace advance width; sizes text by length (see {@link computeTooltipLayout}). */
-  monoCharWidth = 0,
 ): ActionBadgeLayout {
   "worklet";
   if (!locked || canvasWidth <= 0) return HIDDEN_ACTION_BADGE;
@@ -475,8 +474,8 @@ export function computeActionBadgeLayout(
     // bearing; this lands the visual center exactly on the pill center.
     //
     // This measures the actual string each frame rather than estimating from a
-    // per-char width (`monoCharWidth`). A uniform width over-reserves for prices
-    // with narrow glyphs ("1", "."), which visibly de-centers the readout — and
+    // per-char monospace width. A uniform width over-reserves for prices with
+    // narrow glyphs ("1", "."), which visibly de-centers the readout — and
     // exact centering matters more here than shaving the per-frame `measureText`,
     // which profiling put at ~4% of one core on the simulator (transient, only
     // while a reticle is shown). See the price-pill centering tests.

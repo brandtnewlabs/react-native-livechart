@@ -70,13 +70,12 @@ describe("ScrubActionOverlay", () => {
       4,
       10,
       3,
-      7,
     );
     render(<Fixture active badge={badge} />);
   });
 
   it("renders the icon-less branch when icon is empty", () => {
-    const badge = computeActionBadgeLayout(true, 150, "64.20", "", 400, 360, font, 4, 10, 3, 7);
+    const badge = computeActionBadgeLayout(true, 150, "64.20", "", 400, 360, font, 4, 10, 3);
     render(
       <ScrubActionOverlay
         lockActive={{ value: true } as never}
@@ -97,7 +96,7 @@ describe("ScrubActionOverlay", () => {
   });
 
   it("renders the optional x-axis time badge when provided", () => {
-    const badge = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 360, font, 4, 10, 3, 7);
+    const badge = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 360, font, 4, 10, 3);
     const time = computeTimeBadgeLayout(true, 200, "13:00", 400, 291, font, 10, 3, 4);
     render(
       <ScrubActionOverlay
@@ -116,7 +115,7 @@ describe("ScrubActionOverlay", () => {
   });
 
   it("honors color overrides", () => {
-    const badge = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 360, font, 4, 10, 3, 7);
+    const badge = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 360, font, 4, 10, 3);
     render(
       <ScrubActionOverlay
         lockActive={{ value: true } as never}
