@@ -41,16 +41,19 @@ const ACTION_HIT_SLOP = 6;
 const RETICLE_HIT = 14;
 
 /**
- * Movement (px) that separates a scrub-action *tap* (place / press / dismiss)
- * from a *drag* (live-scrub, or fine-tune once a reticle is locked). Used as BOTH
- * the tap's `maxDistance` and the pan's `minDistance` so the two share one
- * boundary: under `Gesture.Exclusive(tap, pan)` the pan is held until the tap
- * fails, so the tap's `maxDistance` is what actually gates when the drag engages.
- * Matching them closes the dead band a larger pan `minDistance` would open (a
- * mismatch let small fine-tune drags fall through as taps that dismiss the
- * reticle). ~Touch slop, so a deliberate drag fine-tunes instead of dismissing.
+ * Movement (px) a scrub-action *tap* (place / press / dismiss) may travel before
+ * it's treated as a drag — the Tap's `maxDistance`. ~Touch slop, so a finger that
+ * jitters a few px still registers as a tap rather than failing.
  */
 const SCRUB_ACTION_TAP_SLOP = 10;
+
+/**
+ * Default press-hold (ms) before the live scrub / lock-adjust pan activates in
+ * scrub-action ("order ticket") mode. A quick tap places or acts on the reticle;
+ * the scrub crosshair only appears on a deliberate hold, so a tap never flashes
+ * it. Overridden by an explicit `scrub.panGestureDelay`.
+ */
+const SCRUB_ACTION_PRESS_HOLD_MS = 200;
 
 /** Clamp an X pixel to the plot's horizontal bounds. */
 /* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
@@ -435,20 +438,25 @@ export function useCrosshair(
     },
   );
 
+  // In scrub-action mode the live scrub / lock-adjust requires a deliberate
+  // press-hold: a quick tap (even a sloppy one that travels a few px) places or
+  // acts on the reticle, and must never flash the crosshair. The press-hold is
+  // what gates activation — and because movement during the hold *fails* the pan
+  // (RNGH), a tap can't trip the scrub by moving. Honor an explicit
+  // `scrub.panGestureDelay`, else default to the hold. Outside scrub-action the
+  // pan keeps its normal (no-hold) activation unless a delay was set.
+  const longPressMs =
+    hasScrubAction && panGestureDelay <= 0
+      ? SCRUB_ACTION_PRESS_HOLD_MS
+      : panGestureDelay;
+
   let gesture = Gesture.Pan()
-    // In scrub-action mode the pan must require deliberate movement before it
-    // scrubs/adjusts, so a tap-to-place (the order-ticket "press") doesn't flash
-    // the live crosshair — the Tap (place/dismiss/act) wins for small movements.
-    // Matched to the tap's maxDistance so the pan engages the instant the tap
-    // fails (no dead band where a small fine-tune drag is captured as a tap).
-    .minDistance(
-      hasScrubAction
-        ? SCRUB_ACTION_TAP_SLOP
-        : Platform.OS === "android"
-          ? 10
-          : 0,
-    )
-    .activateAfterLongPress(panGestureDelay)
+    // Scrub-action: minDistance 0 — the press-hold above is the sole activator
+    // (movement during the hold fails the pan), so the crosshair never appears
+    // from a tap's travel. The Tap (maxDistance SCRUB_ACTION_TAP_SLOP) owns quick
+    // gestures; only a held press becomes a scrub/adjust drag.
+    .minDistance(!hasScrubAction && Platform.OS === "android" ? 10 : 0)
+    .activateAfterLongPress(longPressMs)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
     // Start scrubbing on ACTIVE (onStart), not on touch-down (onBegin):
