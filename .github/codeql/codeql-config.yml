@@ -1,0 +1,10 @@
+name: CodeQL config
+
+# Reanimated/Skia worklets use a `"worklet"` directive prologue
+# (https://docs.swmansion.com/react-native-reanimated/). CodeQL's
+# js/unknown-directive query flags it as a misspelled directive, which is a
+# false positive here. Exclude that one query; keep the rest of
+# security-and-quality.
+query-filters:
+  - exclude:
+      id: js/unknown-directive
