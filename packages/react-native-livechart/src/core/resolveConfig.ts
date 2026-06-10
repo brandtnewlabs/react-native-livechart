@@ -17,6 +17,7 @@ import type {
   MultiSeriesDotConfig,
   PulseConfig,
   ReferenceLine,
+  ScrubActionConfig,
   ScrubConfig,
   SelectionDotConfig,
   SelectionDotProps,
@@ -88,6 +89,24 @@ export interface ResolvedScrubConfig {
   tooltipBorderColor: string | undefined;
   /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
   panGestureDelay: number;
+}
+
+export interface ResolvedScrubActionConfig {
+  /** Glyph drawn in the action badge. */
+  icon: string;
+  /** undefined → palette.badgeBg */
+  background: string | undefined;
+  /** undefined → palette.badgeText */
+  iconColor: string | undefined;
+  /** undefined → palette.crosshairLine */
+  lineColor: string | undefined;
+  /** Show the price readout pill; false → icon-only badge. */
+  text: boolean;
+  /** Show the date/time pill where the vertical line meets the x-axis. */
+  timeBadge: boolean;
+  /** undefined → no rounding */
+  snap: number | undefined;
+  dismissOnTapOutside: boolean;
 }
 
 export interface ResolvedGradientConfig {
@@ -287,6 +306,27 @@ export function resolveScrub(
   prop: boolean | ScrubConfig | undefined,
 ): ResolvedScrubConfig | null {
   return resolveToggle(prop, SCRUB_DEFAULTS, false);
+}
+
+const SCRUB_ACTION_DEFAULTS: ResolvedScrubActionConfig = {
+  icon: "+",
+  background: undefined,
+  iconColor: undefined,
+  lineColor: undefined,
+  text: true,
+  timeBadge: false,
+  snap: undefined,
+  dismissOnTapOutside: false,
+};
+
+/**
+ * Resolves `scrubAction` prop to a fully-typed config or null (disabled).
+ * Opt-in: `false`/`undefined` → null; `true` → defaults; object → merged.
+ */
+export function resolveScrubAction(
+  prop: boolean | ScrubActionConfig | undefined,
+): ResolvedScrubActionConfig | null {
+  return resolveToggle(prop, SCRUB_ACTION_DEFAULTS, false);
 }
 
 const GRADIENT_DEFAULTS: ResolvedGradientConfig = {

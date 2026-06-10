@@ -101,7 +101,24 @@ interface ReferenceLine {
   labelPosition?: "left" | "center" | "right";
   showValue?: boolean;
   excludeFromRange?: boolean;
+  // Pill badge for a Form-A line (working orders, alerts, targets) — pinned to an
+  // edge with a dashed connector; auto-pins with a chevron when off-screen:
+  badge?: boolean | ReferenceLineBadgeConfig;
+  badgeBackground?: string;  // fallback for badge.background; default theme tooltipBg
+  badgeBorderColor?: string; // fallback for badge.borderColor; default the line color
+  badgeRadius?: number;      // fallback for badge.radius; default 5
+  // Legacy off-axis badge (prefer `badge`, which also shows in-range + supports an icon):
   offAxisBadge?: boolean;
+  offAxisBadgeLabel?: string;
+}
+
+interface ReferenceLineBadgeConfig {
+  position?: "left" | "right"; // edge to pin to; default "left"
+  icon?: string;               // leading glyph (chart font), like Marker.icon
+  text?: boolean;              // show the label/value; default true. false → icon-only
+  background?: string;         // falls back to badgeBackground, then theme tooltipBg
+  borderColor?: string;        // falls back to badgeBorderColor, then the line color
+  radius?: number;             // corner radius; falls back to badgeRadius, then 5
 }
 
 interface ChartSegment {
@@ -139,6 +156,16 @@ interface ScrubPoint extends ScrubPointCore {
 interface ScrubPointMulti extends ScrubPointCore {
   seriesValues: { id: string; label?: string; value: number }[];
 }
+
+// Payload for onScrubAction (order-ticket mode). `price` is the value at the
+// reticle Y — a chosen level — not the line value at that time.
+interface ScrubActionPoint {
+  price: number;        // reticle-Y value, optionally snap-rounded
+  time: number;         // unix seconds at the reticle X
+  x: number;            // canvas X
+  y: number;            // canvas Y
+  candle?: CandlePoint; // candle mode only — OHLC under the reticle X (context)
+}
 ```
 
 ## Config objects
@@ -172,6 +199,17 @@ interface ScrubConfig {
   crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
   tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;
   panGestureDelay?: number; // press-and-hold ms before scrubbing activates; default 0
+}
+// Order-ticket mode (scrubAction). Opt-in — default off.
+interface ScrubActionConfig {
+  icon?: string;       // action-badge glyph; default "+"
+  background?: string; // action-badge background; default the accent / badge color
+  iconColor?: string;  // icon + price-text color; default the badge text color
+  lineColor?: string;  // horizontal level-line color; default palette.crosshairLine
+  text?: boolean;      // show the price readout; default true. false → icon-only pill
+  timeBadge?: boolean; // date/time pill where the line meets the x-axis; default false
+  snap?: number;       // round the reported price to this increment (e.g. 0.01, 0.5)
+  dismissOnTapOutside?: boolean; // empty-plot tap dismisses vs. re-places; default false
 }
 interface SelectionDotRingConfig {
   color?: string; // ring color, defaults to the dot color

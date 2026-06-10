@@ -4,7 +4,12 @@ import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { LiveChart } from "../src/components/LiveChart";
-import type { CandlePoint, LiveChartProps, TradeEvent } from "../src/types";
+import type {
+  CandlePoint,
+  LiveChartProps,
+  Marker,
+  TradeEvent,
+} from "../src/types";
 
 function Harness(props: Partial<LiveChartProps>) {
   const data = useSharedValue([{ time: 1700000000, value: 50 }]);
@@ -67,6 +72,42 @@ describe("LiveChart", () => {
         referenceLines={[{ value: 40 }]}
       />,
     );
+  });
+
+  it("supports scrubAction (order ticket) with onScrubAction", () => {
+    const onScrubAction = jest.fn();
+    const screen = render(
+      <Harness scrubAction onScrubAction={onScrubAction} />,
+    );
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+    // Fires only from the UI-thread tap worklet (istanbul-ignored under Jest).
+    expect(onScrubAction).not.toHaveBeenCalled();
+  });
+
+  it("supports scrubAction config alongside markers and plain scrub off", () => {
+    function MarkersScrubActionHarness() {
+      const data = useSharedValue([{ time: 1700000000, value: 50 }]);
+      const value = useSharedValue(50);
+      const markers = useSharedValue<Marker[]>([]);
+      return (
+        <LiveChart
+          data={data}
+          value={value}
+          scrub={false}
+          scrubAction={{ icon: "★", snap: 0.5, dismissOnTapOutside: true }}
+          markers={markers}
+          onScrubAction={jest.fn()}
+        />
+      );
+    }
+    render(<MarkersScrubActionHarness />);
+  });
+
+  it("supports scrubAction in candle mode", () => {
+    render(<CandleHarness scrubAction onScrubAction={jest.fn()} />);
   });
 
   it("accepts custom formatters", () => {

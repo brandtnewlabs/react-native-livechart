@@ -5,6 +5,7 @@ import { interpolateAtTime } from "../../src/math/interpolate";
 import { resolveTheme } from "../../src/theme";
 import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
+import { resolveScrubAction } from "../../src/core/resolveConfig";
 import { computeScrubDotY } from "../../src/hooks/crosshairShared";
 import {
   computeCandleTooltipLayout,
@@ -25,7 +26,7 @@ jest.mock("react-native-gesture-handler", () => {
     });
     return proxy;
   };
-  return { Gesture: { Pan: makeGesture } };
+  return { Gesture: { Pan: makeGesture, Tap: makeGesture } };
 });
 
 const palette = resolveTheme("#3b82f6", "dark");
@@ -559,6 +560,50 @@ describe("useCrosshair (hook)", () => {
       configurable: true,
       value: prev,
     });
+  });
+
+  it("does not build a tap gesture or lock state without scrubAction", () => {
+    const engine = makeEngine();
+    const { result } = renderHook(() =>
+      useCrosshair(engine, padding, palette, formatValue, formatTime, font, true),
+    );
+    // Lock SharedValues are still created (hooks are unconditional)...
+    expect(result.current.lockActive?.value).toBe(false);
+    expect(result.current.lockX?.value).toBe(-1);
+    expect(result.current.lockY?.value).toBe(-1);
+    // ...but no tap gesture is constructed in the plain-scrub path.
+    expect(result.current.tapGesture).toBeUndefined();
+  });
+
+  it("initialises lock state + a tap gesture in scrub-action mode", () => {
+    const onScrubAction = jest.fn();
+    const engine = makeEngine();
+    const { result } = renderHook(() =>
+      useCrosshair(
+        engine,
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+        undefined, // onScrub
+        undefined, // candleOpts
+        0, // panGestureDelay
+        undefined, // onGestureStart
+        undefined, // onGestureEnd
+        resolveScrubAction(true),
+        onScrubAction,
+      ),
+    );
+    expect(result.current.lockActive?.value).toBe(false);
+    expect(result.current.lockX?.value).toBe(-1);
+    expect(result.current.lockY?.value).toBe(-1);
+    expect(result.current.lockPrice?.value).toBeNull();
+    expect(result.current.actionBadge?.value.visible).toBe(false);
+    expect(result.current.tapGesture).toBeDefined();
+    // The callback fires only from the UI-thread tap worklet (istanbul-ignored).
+    expect(onScrubAction).not.toHaveBeenCalled();
   });
 });
 

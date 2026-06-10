@@ -102,9 +102,30 @@ interface TradeEvent {
 />
 ```
 
-Lines support labels, dashes (`intervals`), off-axis badges (`offAxisBadge`), and excluding
-their value from the axis range (`excludeFromRange`). See the [types reference](/api-reference/types)
-for every field.
+Lines support labels, dashes (`intervals`), and excluding their value from the axis range
+(`excludeFromRange`). See the [types reference](/api-reference/types) for every field.
+
+### Pill badges (working orders, alerts, targets)
+
+For a Form-A line, `badge` renders the value as a **pill** pinned to a plot edge with a dashed
+connector to the opposite side — instead of a plain gutter label that collides with the Y-axis
+ticks. When the value scrolls off-screen it auto-pins to the nearest edge with a directional
+chevron, so a working order or alert never disappears. It pairs naturally with the
+[order-ticket flow](/guides/scrubbing#order-ticket-scrubaction).
+
+```tsx
+referenceLines={[
+  // left-pinned tag with the value and a leading glyph
+  { value: 142.5, color: "#16a34a", showValue: true, badge: { icon: "▲" } },
+  // icon-only badge (text: false), pinned to the right edge
+  { value: 128.0, color: "#dc2626", badge: { position: "right", text: false, icon: "▼" } },
+]}
+```
+
+`badge: true` uses the defaults (left-pinned, the line's label/value); pass a
+[`ReferenceLineBadgeConfig`](/api-reference/types#annotations) for `position`, an `icon`,
+`text: false` (icon-only), and `background` / `borderColor` / `radius`. It supersedes the legacy
+`offAxisBadge` (still supported), which only appears once the value is off-screen and takes no icon.
 
 ## Segments
 

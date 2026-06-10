@@ -589,6 +589,37 @@ function SeriesValueLabelLayer({ model }: { model: LiveChartSeriesModel }) {
   );
 }
 
+/** Reference-line badges + labels, drawn ABOVE the left-edge fade so they stay
+ *  crisp (the lines/bands render in the base pass inside SeriesChartStack). */
+function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
+  const {
+    allRefLines,
+    engine,
+    effectivePadding,
+    palette,
+    formatValue,
+    skiaFont,
+    degenShakeTransform,
+  } = model;
+  if (allRefLines.length === 0) return null;
+  return (
+    <Group transform={degenShakeTransform}>
+      {allRefLines.map((rl) => (
+        <ReferenceLineOverlay
+          key={`badge-${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
+          engine={engine}
+          padding={effectivePadding}
+          line={rl}
+          palette={palette}
+          formatValue={formatValue}
+          font={skiaFont}
+          badgeLayer
+        />
+      ))}
+    </Group>
+  );
+}
+
 export function LiveChartSeries(props: LiveChartSeriesProps) {
   const model = useLiveChartSeriesController(props);
   const {
@@ -663,6 +694,9 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 engine={engine}
               />
             )}
+
+            {/* Reference-line badges + labels above the fade so they stay crisp. */}
+            <SeriesRefBadgeLayer model={model} />
 
             {scrubCfg && (
               <CrosshairLine

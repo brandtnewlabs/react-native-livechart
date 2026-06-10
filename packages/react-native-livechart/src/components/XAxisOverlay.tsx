@@ -1,5 +1,6 @@
 import { Group, Path, type SkFont } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
+import { X_AXIS_LABEL_OFFSET_Y } from "../constants";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import type { XAxisEntry } from "../hooks/useXAxis";
@@ -10,7 +11,7 @@ import { AnimatedLabel } from "./AnimatedLabel";
 
 const MAX_X_LABELS = 10;
 const TICK_HEIGHT = 5;
-const LABEL_OFFSET_Y = 19;
+const LABEL_OFFSET_Y = X_AXIS_LABEL_OFFSET_Y;
 
 export function XAxisOverlay({
   entries,

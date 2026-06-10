@@ -100,19 +100,59 @@ export interface ReferenceLine {
    */
   excludeFromRange?: boolean;
   /**
-   * When a Form-A `value` falls outside the visible plot, render a pinned edge
-   * badge with a directional chevron instead of culling the off-screen line.
+   * Render the Form-A value as a **pill badge** — an icon and/or text tag pinned
+   * to a plot edge at the line's value, with a dashed connector running to the
+   * opposite edge (instead of a plain gutter label that collides with the Y-axis
+   * ticks). Auto-pins to the nearest edge with a directional chevron once the
+   * value scrolls off-screen. Ideal for working orders, price alerts, and targets.
+   *
+   * `true` = defaults (left-pinned, the line's label/value), or a
+   * {@link ReferenceLineBadgeConfig} for an `icon`, `text` toggle (icon-only), and
+   * `position`. Supersedes the legacy `offAxisBadge`. Default off.
+   */
+  badge?: boolean | ReferenceLineBadgeConfig;
+  /**
+   * Legacy: when a Form-A `value` falls outside the visible plot, render a pinned
+   * edge badge with a directional chevron instead of culling the off-screen line.
+   * Prefer {@link badge} (which also shows the tag in-range and supports an icon).
    * Typically paired with `excludeFromRange`. Default `false`.
    */
   offAxisBadge?: boolean;
-  /** Localized word shown in the off-axis badge (e.g. "Target"). Falls back to `label`. */
+  /** Localized word shown in the legacy off-axis badge (e.g. "Target"). Falls back to `label`. */
   offAxisBadgeLabel?: string;
-  /** Off-axis badge pill background. Default: theme `tooltipBg`. */
+  /** Badge pill background. Default: theme `tooltipBg`. (Fallback for `badge.background`.) */
   badgeBackground?: string;
-  /** Off-axis badge pill border color. Default: the line `color`. */
+  /** Badge pill border color. Default: the line `color`. (Fallback for `badge.borderColor`.) */
   badgeBorderColor?: string;
-  /** Off-axis badge pill corner radius in pixels. Default `5`. */
+  /** Badge pill corner radius in pixels. Default `5`. (Fallback for `badge.radius`.) */
   badgeRadius?: number;
+}
+
+/**
+ * Pill-badge presentation for a Form-A {@link ReferenceLine} — a working order,
+ * price alert, or target tag. The badge sits at the line's value (pinned to
+ * `position`) with a dashed connector to the opposite edge, and pins to the
+ * nearest edge with a chevron once the value scrolls off-screen.
+ */
+export interface ReferenceLineBadgeConfig {
+  /** Which plot edge the badge pins to. Default `"left"`. */
+  position?: "left" | "right";
+  /**
+   * Leading glyph drawn in the badge — rendered with the chart font, so pass an
+   * emoji-capable font (via the chart `font` prop) for emoji. Like `Marker.icon`.
+   */
+  icon?: string;
+  /**
+   * Show the text label (the line's `label`, plus the value when `showValue`).
+   * Default `true`. Set `false` for an **icon-only** badge.
+   */
+  text?: boolean;
+  /** Pill background. Falls back to `badgeBackground`, then theme `tooltipBg`. */
+  background?: string;
+  /** Pill border color. Falls back to `badgeBorderColor`, then the line `color`. */
+  borderColor?: string;
+  /** Pill corner radius in pixels. Falls back to `badgeRadius`, then `5`. */
+  radius?: number;
 }
 
 /**
@@ -291,6 +331,71 @@ export interface ScrubConfig {
    * Default `0`.
    */
   panGestureDelay?: number;
+}
+
+/**
+ * Scrub-action ("order ticket") mode for the single-series `LiveChart` (line and
+ * candle). Tap to drop a locked crosshair, drag to fine-tune a **price level**,
+ * then press the right-gutter action badge to fire {@link LiveChartProps.onScrubAction}.
+ *
+ * The reported price is the value at the reticle's **Y position** (a free price
+ * level you choose — the inverse of the value→pixel mapping), NOT the line/candle
+ * value at the reticle's X. That matches how a limit price works (a horizontal
+ * level) and the crosshair badge in pro charting tools. Opt-in (default off).
+ */
+export interface ScrubActionConfig {
+  /** Glyph drawn in the action badge (rendered as chart text, like `Marker.icon`). Default `"+"`. */
+  icon?: string;
+  /** Action-badge background color. Defaults to the accent / badge color. */
+  background?: string;
+  /** Action-badge icon + price text color. Defaults to the badge text color. */
+  iconColor?: string;
+  /** Horizontal level-line color. Defaults to `palette.crosshairLine`. */
+  lineColor?: string;
+  /**
+   * Show the price readout inside the action badge. Default `true`. Set `false`
+   * for an **icon-only** pill (mirrors {@link ReferenceLineBadgeConfig.text}).
+   */
+  text?: boolean;
+  /**
+   * Show a date/time pill where the reticle's vertical line meets the x-axis,
+   * formatted by the chart's `formatTime`. Off by default — for order entry the
+   * reticle's X (time) is incidental to a price *level*; enable it when the time
+   * under the reticle is meaningful (annotations, time-relevant actions, or a full
+   * crosshair readout). Reuses `background` / `iconColor`. Default `false`.
+   */
+  timeBadge?: boolean;
+  /**
+   * Round the reported price to this increment (e.g. `0.01` for cents, `0.5` for
+   * a tick size) so the badge reads round numbers. Omit for the raw value.
+   */
+  snap?: number;
+  /**
+   * A tap on empty plot (outside the reticle + action badge) dismisses the lock
+   * instead of moving it. Default `false` (an empty-plot tap re-places the reticle).
+   */
+  dismissOnTapOutside?: boolean;
+}
+
+/**
+ * Payload for {@link LiveChartProps.onScrubAction} — the chosen price **level**
+ * (from the locked reticle's Y), not the line value at that time.
+ *
+ * The library asserts no buy/sell semantics: derive the side from `price` versus
+ * your own current price (`price < last` is the usual buy-below / sell-above
+ * convention, but stop orders invert it).
+ */
+export interface ScrubActionPoint {
+  /** Chosen price level — the value at the reticle Y, optionally `snap`-rounded. */
+  price: number;
+  /** Unix timestamp in seconds at the reticle X. */
+  time: number;
+  /** Canvas X coordinate of the reticle. */
+  x: number;
+  /** Canvas Y coordinate of the reticle. */
+  y: number;
+  /** In candle mode, the OHLC data of the candle under the reticle X (context only). */
+  candle?: CandlePoint;
 }
 
 /**
@@ -962,6 +1067,19 @@ export interface LiveChartProps extends LiveChartCoreProps {
   static?: boolean;
   /** Called when the user scrubs the crosshair. `null` when scrub ends. */
   onScrub?: (point: ScrubPoint | null) => void;
+  /**
+   * Scrub-action ("order ticket") mode: tap to drop a locked crosshair, drag to
+   * fine-tune a **price level**, then press the right-gutter action badge to fire
+   * {@link onScrubAction}. `true` = defaults, `false`/omitted = off, or pass
+   * {@link ScrubActionConfig}. Coexists with `scrub`/`onScrub`. Default off.
+   */
+  scrubAction?: boolean | ScrubActionConfig;
+  /**
+   * Called on the JS thread when the user presses the scrub-action badge. The
+   * payload's `price` is the value at the locked reticle's Y (a chosen price
+   * level), not the line value at that time. See {@link ScrubActionPoint}.
+   */
+  onScrubAction?: (point: ScrubActionPoint) => void;
   /**
    * Called on the JS thread when degen chart shake starts (momentum swing with shake enabled).
    * Not called when `degen` is off or `DegenOptions.shake` is `false`.

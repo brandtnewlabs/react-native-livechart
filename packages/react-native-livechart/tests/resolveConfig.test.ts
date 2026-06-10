@@ -13,6 +13,7 @@ import {
   resolvePulse,
   resolveReferenceLineConfig,
   resolveScrub,
+  resolveScrubAction,
   resolveSelectionDot,
   resolveSelectionDotRing,
   resolveTradeStream,
@@ -212,6 +213,62 @@ describe("resolveScrub", () => {
       tooltip: true,
       dimOpacity: 0.3,
       panGestureDelay: 300,
+    });
+  });
+});
+
+// ─── resolveScrubAction ───────────────────────────────────────────────────────
+
+describe("resolveScrubAction", () => {
+  const DEFAULTS = {
+    icon: "+",
+    background: undefined,
+    iconColor: undefined,
+    lineColor: undefined,
+    text: true,
+    timeBadge: false,
+    snap: undefined,
+    dismissOnTapOutside: false,
+  };
+
+  it("returns null for undefined (opt-in, off by default)", () => {
+    expect(resolveScrubAction(undefined)).toBeNull();
+  });
+
+  it("returns null for false", () => {
+    expect(resolveScrubAction(false)).toBeNull();
+  });
+
+  it("returns defaults for true", () => {
+    expect(resolveScrubAction(true)).toEqual(DEFAULTS);
+  });
+
+  it("merges a partial config with defaults", () => {
+    expect(
+      resolveScrubAction({ icon: "★", snap: 0.5, text: false, timeBadge: true }),
+    ).toEqual({
+      ...DEFAULTS,
+      icon: "★",
+      snap: 0.5,
+      text: false,
+      timeBadge: true,
+    });
+  });
+
+  it("carries color + dismiss overrides", () => {
+    expect(
+      resolveScrubAction({
+        background: "#16a34a",
+        iconColor: "#fff",
+        lineColor: "#999",
+        dismissOnTapOutside: true,
+      }),
+    ).toEqual({
+      ...DEFAULTS,
+      background: "#16a34a",
+      iconColor: "#fff",
+      lineColor: "#999",
+      dismissOnTapOutside: true,
     });
   });
 });
