@@ -410,6 +410,22 @@ function useLiveChartController({
       }
     : undefined;
 
+  const markersActive = markers != null;
+  // `projected` is used internally by the hit-test gesture; the overlay
+  // self-projects, so we only need the gesture + hit-test here. Built BEFORE
+  // `useCrosshair` so the scrub-action tap can defer to a marker under the finger.
+  const { tapGesture: markerTapGesture, hitTest: markerHitTest } = useMarkers(
+    engine,
+    effectivePadding,
+    markersSV,
+    !isStatic && markersActive,
+    markerHitRadius,
+    onMarkerHover,
+    undefined, // seriesSV — single-series has none
+    engine.data, // anchor value-less markers to the line
+    !isStatic, // static: no marker-projection loop
+  );
+
   const crosshair = useCrosshair(
     engine,
     effectivePadding,
@@ -428,21 +444,7 @@ function useLiveChartController({
     scrubActionCfg,
     onScrubAction,
     metricsCfg.badge,
-  );
-
-  const markersActive = markers != null;
-  // `projected` is used internally by the hit-test gesture; the overlay
-  // self-projects, so we only need the gesture here.
-  const { tapGesture: markerTapGesture } = useMarkers(
-    engine,
-    effectivePadding,
-    markersSV,
-    !isStatic && markersActive,
-    markerHitRadius,
-    onMarkerHover,
-    undefined, // seriesSV — single-series has none
-    engine.data, // anchor value-less markers to the line
-    !isStatic, // static: no marker-projection loop
+    markersActive ? markerHitTest : undefined,
   );
 
   // Scrub-action composes a Tap (place/move the reticle, press the badge, dismiss)
@@ -454,8 +456,15 @@ function useLiveChartController({
       ? Gesture.Exclusive(crosshair.tapGesture, crosshair.gesture)
       : crosshair.gesture;
 
+  // With markers + scrub-action, the action tap and the marker tap must BOTH see
+  // each tap (Simultaneous): the action tap defers to a marker under the finger
+  // (via `markerHitTest`) so the marker tap selects it, and places the reticle on
+  // an empty tap. `Race` would cancel the loser and silently drop one of them.
+  // Without scrub-action there's only the pan, so `Race` stays correct.
   const rootGesture = markersActive
-    ? Gesture.Race(baseGesture, markerTapGesture)
+    ? scrubActionCfg !== null
+      ? Gesture.Simultaneous(baseGesture, markerTapGesture)
+      : Gesture.Race(baseGesture, markerTapGesture)
     : baseGesture;
 
   // ── Derived render values ──────────────────────────────────────────────

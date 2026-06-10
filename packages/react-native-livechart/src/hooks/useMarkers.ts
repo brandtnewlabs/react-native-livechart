@@ -32,7 +32,12 @@ export function useMarkers(
   lineData?: SharedValue<LiveChartPoint[]>,
   /** Static charts run no loops: register without starting. Default `true`. */
   autostart = true,
-): { projected: SharedValue<ProjectedMarker[]>; tapGesture: ReturnType<typeof Gesture.Tap> } {
+): {
+  projected: SharedValue<ProjectedMarker[]>;
+  tapGesture: ReturnType<typeof Gesture.Tap>;
+  /** Worklet hit-test: true when (x, y) lands on a projected marker. */
+  hitTest: (x: number, y: number) => boolean;
+} {
   const projected = useSharedValue<ProjectedMarker[]>([]);
   const cacheRef = useRef<{
     a: ProjectedMarker[];
@@ -94,5 +99,16 @@ export function useMarkers(
     },
   );
 
-  return { projected, tapGesture };
+  // Lets a coexisting gesture (e.g. the scrub-action tap) defer to a marker
+  // under the finger instead of acting on it.
+  const hitTest =
+    /* istanbul ignore next -- worklet, runs on the UI thread, not in Jest */ (
+      x: number,
+      y: number,
+    ) => {
+      "worklet";
+      return nearestMarkerIndex(projected.get(), x, y, hitRadius) >= 0;
+    };
+
+  return { projected, tapGesture, hitTest };
 }
