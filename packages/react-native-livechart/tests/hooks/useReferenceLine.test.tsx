@@ -358,6 +358,35 @@ describe("useReferenceLine", () => {
     expect(l.labelX).toBe(-1);
   });
 
+  it("centers the icon ink in an icon-only pill (compensates the side-bearing)", () => {
+    // A font where every glyph carries a 3px left side-bearing. SkiaText draws
+    // from the pen origin, so the layout must pull `iconX` back by the bearing to
+    // keep the ink centered in the pill.
+    const bearing = 3;
+    const bearingFont = {
+      getSize: () => 12,
+      measureText: (s: string) => ({ x: bearing, y: 0, width: s.length * 7, height: 12 }),
+      getMetrics: () => ({ ascent: -9.6, descent: 2.4, leading: 0 }),
+    } as never;
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50, badge: { icon: "+", text: false } },
+        fmt,
+        bearingFont,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.icon).toBe("+");
+    const inkW = "+".length * 7;
+    const inkLeft = l.iconX + bearing; // SkiaText ink starts at origin + bearing
+    // Ink left lands at the pill's content edge (pillX + BADGE_PAD_X = 6)...
+    expect(inkLeft).toBeCloseTo(l.pillX + 6);
+    // ...so the ink is centered in the pill.
+    expect(inkLeft + inkW / 2).toBeCloseTo(l.pillX + l.pillW / 2);
+  });
+
   it("pins the badge to the edge with a chevron when off-screen", () => {
     const { result } = renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 150, badge: true }, fmt, font),

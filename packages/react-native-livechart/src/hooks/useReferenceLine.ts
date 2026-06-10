@@ -103,7 +103,13 @@ function badgeGeometry(
   font: SkFont,
 ): BadgeGeometry {
   "worklet";
-  const iconW = icon ? measureFontTextWidth(font, icon) : 0;
+  // Measure the icon's visual bounds (not just width): `SkiaText` draws from the
+  // pen origin, so the glyph's left side-bearing (`bounds.x`) must be subtracted
+  // to land the ink in its slot. Without this an asymmetric glyph (a ▼ triangle,
+  // a "+"/"−") sits off-center in an icon-only pill. Mirrors the action-badge
+  // price-pill centering in computeActionBadgeLayout.
+  const iconBounds = icon ? font.measureText(icon) : null;
+  const iconW = iconBounds ? iconBounds.width : 0;
   const textW = text ? measureFontTextWidth(font, text) : 0;
 
   let contentW = 0;
@@ -136,7 +142,9 @@ function badgeGeometry(
   }
   let iconX = -1;
   if (icon) {
-    iconX = cursor;
+    // Pen origin compensates the left side-bearing so the ink starts at `cursor`
+    // (and is centered in an icon-only pill, whose width is iconW + 2*padX).
+    iconX = cursor - (iconBounds ? iconBounds.x : 0);
     cursor += iconW + BADGE_GAP;
   }
   const textX = text ? cursor : -1;
