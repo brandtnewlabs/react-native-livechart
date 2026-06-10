@@ -32,6 +32,7 @@ High-performance **live** line and candlestick charts for React Native, built on
 - ⚡ **Momentum** detection and **degen** effects (particle bursts + shake on big swings)
 - 🏷️ **Trade markers** driven by a `SharedValue` trade stream
 - 🕔 **Segments** — label time ranges (after-hours, overnight, sessions) with scrub-focus: one color at rest, and scrubbing a segment keeps it full while the others de-emphasize
+- ⚖️ **Threshold split** — color the line green above / red below a live break-even, VWAP, or peg (always a `SharedValue`), with an optional profit/loss fill band and labelled marker line
 - 🎨 **Theming** with light/dark modes, an accent-driven `palette`, and `metrics` sizing/motion tokens
 - ⏳ **Loading** (breathing-line shell) and **paused** states out of the box
 - 🧵 **SharedValue-driven** rendering — history and live values stay on the UI thread

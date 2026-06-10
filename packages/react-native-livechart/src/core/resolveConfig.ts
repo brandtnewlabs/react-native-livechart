@@ -22,6 +22,8 @@ import type {
   SelectionDotConfig,
   SelectionDotProps,
   SelectionDotRingConfig,
+  ThresholdConfig,
+  ThresholdLineConfig,
   TradeEvent,
   ValueLineConfig,
   XAxisConfig,
@@ -222,6 +224,66 @@ export function resolveValueLine(
   prop: boolean | ValueLineConfig | undefined,
 ): ResolvedValueLineConfig | null {
   return resolveToggle(prop, VALUE_LINE_DEFAULTS, false);
+}
+
+export interface ResolvedThresholdLineConfig {
+  /** undefined → no label. */
+  label: string | undefined;
+  /** Label side; `"left"` sits inside the plot (clear of the y-axis gutter). */
+  labelPosition: "left" | "right";
+  /** undefined → use palette.refLine (line) / palette.refLabel (label) at render time. */
+  color: string | undefined;
+  intervals: [number, number];
+  strokeWidth: number;
+  showValue: boolean;
+}
+
+export interface ResolvedThresholdConfig {
+  /** The live split value (Y-axis units). Read on the UI thread each frame. */
+  value: SharedValue<number>;
+  /** undefined → use palette.candleUp (up-green) at render time. */
+  aboveColor: string | undefined;
+  /** undefined → use palette.candleDown (down-red) at render time. */
+  belowColor: string | undefined;
+  fill: boolean;
+  line: ResolvedThresholdLineConfig | null;
+}
+
+const THRESHOLD_LINE_DEFAULTS: ResolvedThresholdLineConfig = {
+  label: undefined,
+  labelPosition: "left",
+  color: undefined,
+  intervals: [4, 4],
+  strokeWidth: 1,
+  showValue: false,
+};
+
+/**
+ * Resolves the `threshold.line` sub-prop to a config or null (no marker line).
+ * `true` → dashed defaults, object → merged, falsy/undefined → null.
+ */
+export function resolveThresholdLine(
+  prop: boolean | ThresholdLineConfig | undefined,
+): ResolvedThresholdLineConfig | null {
+  return resolveToggle(prop, THRESHOLD_LINE_DEFAULTS, false);
+}
+
+/**
+ * Resolves the `threshold` prop to a fully-typed config or null (disabled).
+ * Presence-gated (like `referenceLines`/`markers`): the required `value`
+ * SharedValue means there is no boolean form — a config object enables it.
+ */
+export function resolveThreshold(
+  prop: ThresholdConfig | undefined,
+): ResolvedThresholdConfig | null {
+  if (!prop) return null;
+  return {
+    value: prop.value,
+    aboveColor: prop.aboveColor,
+    belowColor: prop.belowColor,
+    fill: prop.fill ?? false,
+    line: resolveThresholdLine(prop.line),
+  };
 }
 
 const BADGE_DEFAULTS: ResolvedBadgeConfig = {

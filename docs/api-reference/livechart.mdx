@@ -126,6 +126,17 @@ provided; everything else has a default.
   [`ChartSegment`](/api-reference/types#chartsegment). Single-series only.
 </ParamField>
 
+<ParamField body="threshold" type="ThresholdConfig">
+  Color the line above vs. below a live threshold value — green above, red below
+  by default. The `value` is **always** a `SharedValue`, so the split tracks a
+  live benchmark (break-even / average cost, VWAP, previous close, a peg) on the
+  UI thread without re-rendering. Optionally adds a tinted profit/loss `fill` band
+  and a dashed marker `line`. Supersedes `line.color`/`colors` and segment
+  recoloring for the main stroke while set. See
+  [`ThresholdConfig`](/api-reference/types#thresholdconfig). Single-series,
+  line mode only.
+</ParamField>
+
 ## Scrubbing
 
 <ParamField body="scrub" type="boolean | ScrubConfig" default="true">

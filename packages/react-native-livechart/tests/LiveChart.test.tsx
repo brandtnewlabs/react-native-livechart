@@ -8,6 +8,7 @@ import type {
   CandlePoint,
   LiveChartProps,
   Marker,
+  ThresholdConfig,
   TradeEvent,
 } from "../src/types";
 
@@ -49,6 +50,34 @@ function CandleHarness(props: Partial<LiveChartProps>) {
       {...props}
     />
   );
+}
+
+function ThresholdHarness({
+  thresholdValue = 0.5,
+  thresholdExtra,
+  ...props
+}: Partial<LiveChartProps> & {
+  thresholdValue?: number;
+  thresholdExtra?: Omit<ThresholdConfig, "value">;
+}) {
+  const data = useSharedValue([{ time: 1700000000, value: 50 }]);
+  const value = useSharedValue(50);
+  const thr = useSharedValue(thresholdValue);
+  return (
+    <LiveChart
+      data={data}
+      value={value}
+      threshold={{ value: thr, ...thresholdExtra }}
+      {...props}
+    />
+  );
+}
+
+function layoutFirst(screen: ReturnType<typeof render>) {
+  const views = screen.UNSAFE_getAllByType(View);
+  fireEvent(views[0], "layout", {
+    nativeEvent: { layout: { width: 400, height: 300 } },
+  });
 }
 
 describe("LiveChart", () => {
@@ -261,6 +290,46 @@ describe("LiveChart", () => {
       <Harness
         referenceLines={[{ value: 40, strokeWidth: 2, color: "#ff0000" }]}
       />,
+    );
+  });
+
+  it("colors the line above/below a threshold (palette defaults)", () => {
+    layoutFirst(render(<ThresholdHarness thresholdValue={0.5} />));
+  });
+
+  it("renders the threshold fill band + dashed labelled marker line", () => {
+    layoutFirst(
+      render(
+        <ThresholdHarness
+          thresholdValue={0.5}
+          gradient={false}
+          thresholdExtra={{
+            aboveColor: "#00ff00",
+            belowColor: "#ff0000",
+            fill: true,
+            line: { label: "Break-even", showValue: true, strokeWidth: 2 },
+          }}
+        />,
+      ),
+    );
+  });
+
+  it("accepts a bare dashed marker line (no label)", () => {
+    layoutFirst(
+      render(
+        <ThresholdHarness thresholdValue={0.5} thresholdExtra={{ line: true }} />,
+      ),
+    );
+  });
+
+  it("hides the marker line when the threshold is off-screen", () => {
+    layoutFirst(
+      render(
+        <ThresholdHarness
+          thresholdValue={50}
+          thresholdExtra={{ fill: true, line: { showValue: true } }}
+        />,
+      ),
     );
   });
 

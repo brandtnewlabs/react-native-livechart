@@ -77,6 +77,8 @@ export type {
   SelectionDotRingConfig,
   SeriesConfig,
   ThemeMode,
+  ThresholdConfig,
+  ThresholdLineConfig,
   TradeEvent,
   ValueLineConfig,
   XAxisConfig,

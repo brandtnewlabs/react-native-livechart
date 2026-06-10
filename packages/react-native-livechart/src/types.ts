@@ -241,6 +241,61 @@ export interface LineConfig {
   colors?: string[];
 }
 
+/**
+ * Color the line above vs. below a live threshold value — green above, red below
+ * by default. The threshold is **always** a `SharedValue` so it can track a live
+ * benchmark (break-even / average cost, VWAP, previous close, a peg) on the UI
+ * thread without re-rendering. Drives a hard-split line stroke and, optionally, a
+ * tinted profit/loss fill band and a dashed marker line at the threshold.
+ *
+ * The split stroke supersedes `LineConfig.color`/`colors` and segment recoloring
+ * for the main line while a threshold is set.
+ */
+export interface ThresholdConfig {
+  /**
+   * The split value, in Y-axis (price) units. A `SharedValue` — update it with
+   * `.set()` and the split tracks live on the UI thread (break-even, VWAP, the
+   * previous close, a peg, …).
+   */
+  value: SharedValue<number>;
+  /** Stroke color where the line is at/above `value`. Default: palette up-green (`candleUp`). */
+  aboveColor?: string;
+  /** Stroke color where the line is below `value`. Default: palette down-red (`candleDown`). */
+  belowColor?: string;
+  /**
+   * Tint the area between the line and `value` (the profit/loss band) toward the
+   * above/below colors. Independent of the baseline `gradient` fill — set
+   * `gradient={false}` for the threshold band alone. Default `false`.
+   */
+  fill?: boolean;
+  /**
+   * Dashed marker line + optional gutter label at the threshold. `true` → a dashed
+   * line in the palette reference color; object → styled; omit/`false` → none.
+   * Default off.
+   */
+  line?: boolean | ThresholdLineConfig;
+}
+
+/** Dashed marker line drawn at a {@link ThresholdConfig} value. */
+export interface ThresholdLineConfig {
+  /** Label text, e.g. `"Break-even"`. */
+  label?: string;
+  /**
+   * Label side. `"left"` sits just inside the plot at the line's left edge —
+   * clear of the y-axis labels and the live badge; `"right"` uses the right
+   * gutter like a legacy reference line (may overlap y-axis labels). Default `"left"`.
+   */
+  labelPosition?: "left" | "right";
+  /** Line + label color. Defaults to palette `refLine` / `refLabel`. */
+  color?: string;
+  /** Dash pattern `[dashLength, gapLength]` in pixels. Default `[4, 4]`. */
+  intervals?: [number, number];
+  /** Line thickness in pixels. Default `1`. */
+  strokeWidth?: number;
+  /** Append the formatted threshold value to the label. Default `false`. */
+  showValue?: boolean;
+}
+
 /** Area fill gradient beneath the chart line. */
 export interface GradientConfig {
   /** Opacity at the top of the gradient (near the line). Default `0.35`. */
@@ -1034,6 +1089,12 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * `mutedColors`). Optional dashed `divider` + `label` mark a segment's edge.
    */
   segments?: ChartSegment[];
+  /**
+   * Color the line above vs. below a live threshold value (break-even / average
+   * cost, VWAP, previous close, a peg). Always a `SharedValue` so the split tracks
+   * live on the UI thread. See {@link ThresholdConfig}.
+   */
+  threshold?: ThresholdConfig;
   /** Render the live value as a large text overlay in the top-left. Default `false`. */
   showValue?: boolean;
   /** Tint the `showValue` text by momentum (green up / red down). Default `false`. */
