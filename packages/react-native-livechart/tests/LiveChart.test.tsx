@@ -130,6 +130,40 @@ describe("LiveChart", () => {
     errorSpy.mockRestore();
   });
 
+  it("supports onReferenceLinePress on a badged reference line", () => {
+    const onReferenceLinePress = jest.fn();
+    render(
+      <Harness
+        referenceLines={[
+          { value: 50, label: "Limit buy", showValue: true, badge: { icon: "+" } },
+        ]}
+        onReferenceLinePress={onReferenceLinePress}
+      />,
+    );
+    // Fires only from the UI-thread tap worklet (istanbul-ignored under Jest).
+    expect(onReferenceLinePress).not.toHaveBeenCalled();
+  });
+
+  it("composes reference-line press with markers and scrubAction", () => {
+    function ComboHarness() {
+      const data = useSharedValue([{ time: 1700000000, value: 50 }]);
+      const value = useSharedValue(50);
+      const markers = useSharedValue<Marker[]>([]);
+      return (
+        <LiveChart
+          data={data}
+          value={value}
+          scrubAction
+          markers={markers}
+          referenceLines={[{ value: 50, badge: { icon: "+" } }]}
+          onReferenceLinePress={jest.fn()}
+          onScrubAction={jest.fn()}
+        />
+      );
+    }
+    render(<ComboHarness />);
+  });
+
   it("accepts custom formatters", () => {
     render(
       <Harness formatValue={(v) => v.toFixed(4)} formatTime={() => "x"} />,

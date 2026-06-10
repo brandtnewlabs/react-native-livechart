@@ -1,7 +1,10 @@
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { EngineState } from "../../src/core/useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
-import { useReferenceLine } from "../../src/hooks/useReferenceLine";
+import {
+  computeReferenceBadgeRect,
+  useReferenceLine,
+} from "../../src/hooks/useReferenceLine";
 
 const font = {
   getSize: () => 12,
@@ -396,5 +399,49 @@ describe("useReferenceLine", () => {
     expect(l.badge).toBe(true);
     expect(l.chevronUp).toBe(true);
     expect(l.chevronCx).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("computeReferenceBadgeRect", () => {
+  // PADDING top=12 bottom=28 → chartTop=12, chartH=260 (canvasHeight 300).
+  // pillH = descent - ascent + 2*3 = 2.4 + 9.6 + 6 = 18; pill centered on the line y.
+  const call = (line: Parameters<typeof useReferenceLine>[2]) =>
+    computeReferenceBadgeRect(line!, 400, 300, PADDING, 0, 100, font, fmt);
+
+  it("returns null for a line with no badge", () => {
+    expect(call({ value: 50 })).toBeNull();
+  });
+
+  it("returns null for a band (only Form-A value lines are pressable)", () => {
+    expect(call({ valueFrom: 20, valueTo: 60, badge: true })).toBeNull();
+    expect(call({ from: 10, to: 20, badge: true })).toBeNull();
+  });
+
+  it("returns null when the canvas is not laid out", () => {
+    expect(
+      computeReferenceBadgeRect({ value: 50, badge: true }, 0, 0, PADDING, 0, 100, font, fmt),
+    ).toBeNull();
+  });
+
+  it("returns null for a legacy off-axis badge while in range (no pill shown)", () => {
+    expect(call({ value: 50, offAxisBadge: true })).toBeNull();
+  });
+
+  it("returns the pill rect for an in-range badge, centered on the line y", () => {
+    const r = call({ value: 50, badge: true })!;
+    expect(r).not.toBeNull();
+    // y = 12 + ((100-50)/100)*260 = 142; pill (h=18) centered → top = 133.
+    expect(r.h).toBe(18);
+    expect(r.y).toBeCloseTo(133);
+    // Left-pinned pill at x1 + BADGE_EDGE_INSET = 14; width = "50.00"(35) + 2*pad(12).
+    expect(r.x).toBeCloseTo(14);
+    expect(r.w).toBeCloseTo(35 + 12);
+  });
+
+  it("pins the rect to the top edge for an off-screen (above) badge", () => {
+    const r = call({ value: 150, badge: true })!;
+    expect(r).not.toBeNull();
+    // Off-axis above → y = chartTop + 12 = 24; centered pill top = 15.
+    expect(r.y).toBeCloseTo(15);
   });
 });

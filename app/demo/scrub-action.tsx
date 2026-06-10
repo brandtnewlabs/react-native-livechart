@@ -48,6 +48,9 @@ export default function ScrubActionScreen() {
     side: "buy" | "sell";
     price: number;
   } | null>(null);
+  // The working order whose line was tapped (index into `orders`); opens the
+  // cancel sheet. null when no order is selected.
+  const [cancelIdx, setCancelIdx] = useState<number | null>(null);
 
   const emptyCandles = useSharedValue<CandlePoint[]>([]);
   const nullLive = useSharedValue<CandlePoint | null>(null);
@@ -75,6 +78,17 @@ export default function ScrubActionScreen() {
     if (pending) setOrders((prev) => [...prev, pending]);
     setPending(null);
   };
+
+  // onReferenceLinePress fires when a working-order badge is tapped. `index` is
+  // the order's position in `referenceLines` (= `orders`, same order), so it maps
+  // straight back to the order to cancel.
+  const cancelOrder = () => {
+    if (cancelIdx !== null) {
+      setOrders((prev) => prev.filter((_, i) => i !== cancelIdx));
+    }
+    setCancelIdx(null);
+  };
+  const cancelTarget = cancelIdx !== null ? orders[cancelIdx] : undefined;
 
   const referenceLines: ReferenceLine[] = orders.map((o) => {
     const color = o.side === "buy" ? "#16a34a" : "#dc2626";
@@ -105,7 +119,7 @@ export default function ScrubActionScreen() {
   return (
     <DemoScreen
       title="Order ticket"
-      description="scrubAction: tap to drop a price reticle, drag to adjust, press the + badge to place a limit order. Confirmed orders become working-order reference lines."
+      description="scrubAction: tap to drop a price reticle, drag to adjust, press the + badge to place a limit order. Confirmed orders become working-order lines — tap an order's badge to cancel it."
       chart={
         <LiveChart
           data={data}
@@ -128,6 +142,8 @@ export default function ScrubActionScreen() {
             timeBadge: showTime,
           }}
           onScrubAction={onScrubAction}
+          // Tap a working-order badge to manage it — here, open a cancel sheet.
+          onReferenceLinePress={(_line, index) => setCancelIdx(index)}
         />
       }
     >
@@ -195,6 +211,39 @@ export default function ScrubActionScreen() {
                 <Text style={styles.sheetConfirmText}>
                   Place {pending?.side === "buy" ? "buy" : "sell"}
                 </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Cancel sheet, opened by tapping a working-order badge (onReferenceLinePress). */}
+      <Modal
+        visible={cancelTarget !== undefined}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCancelIdx(null)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setCancelIdx(null)}>
+          <Pressable style={styles.sheet}>
+            <Text style={styles.sheetTitle}>
+              Cancel {cancelTarget?.side === "buy" ? "limit buy" : "limit sell"}?
+            </Text>
+            <Text style={styles.sheetPrice}>
+              @ ${cancelTarget?.price.toFixed(2)}
+            </Text>
+            <View style={styles.sheetRow}>
+              <Pressable
+                style={[styles.sheetButton, styles.sheetCancel]}
+                onPress={() => setCancelIdx(null)}
+              >
+                <Text style={styles.sheetCancelText}>Keep</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.sheetButton, { backgroundColor: "#dc2626" }]}
+                onPress={cancelOrder}
+              >
+                <Text style={styles.sheetConfirmText}>Cancel order</Text>
               </Pressable>
             </View>
           </Pressable>

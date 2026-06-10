@@ -120,11 +120,12 @@ export function useCrosshair(
   /** Badge geometry (gutter margins / pad) for the action pill. */
   badgeMetrics: BadgeMetrics = BADGE_METRICS_DEFAULTS,
   /**
-   * Worklet predicate: true when a tap at (x, y) lands on a marker. When markers
-   * coexist with scrub-action, the tap defers to the marker (no reticle placed)
-   * so the marker tap can select it. Omitted when there are no markers.
+   * Worklet predicate: true when a tap at (x, y) lands on another interactive
+   * overlay (a marker, or a pressable reference-line badge). The scrub-action tap
+   * defers to it (no reticle placed) so that overlay's tap handler can act.
+   * Omitted when nothing coexists.
    */
-  isMarkerHit?: (x: number, y: number) => boolean,
+  deferTapHit?: (x: number, y: number) => boolean,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -575,10 +576,10 @@ export function useCrosshair(
         return;
       }
     }
-    // 2.5. Defer to a marker under the tap: when markers coexist, the tap fires
-    //      both this handler and the marker tap (Simultaneous) — yield so the
-    //      marker is selected instead of dropping/moving a reticle on top of it.
-    if (isMarkerHit !== undefined && isMarkerHit(e.x, e.y)) return;
+    // 2.5. Defer to a marker / reference-line badge under the tap: when one
+    //      coexists, the tap fires both this handler and that overlay's tap
+    //      (Simultaneous) — yield so it acts instead of dropping a reticle on top.
+    if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
     // 3. Place / move the reticle. Clear any in-progress live-scrub so its
     //    crosshair never shows behind the placed reticle.
     scrubActive.set(false);

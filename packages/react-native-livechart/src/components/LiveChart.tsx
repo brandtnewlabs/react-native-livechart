@@ -52,6 +52,7 @@ import { useDegen } from "../hooks/useDegen";
 import { useLiveChartHasData } from "../hooks/useLiveChartHasData";
 import { useLiveDot } from "../hooks/useLiveDot";
 import { useMarkers } from "../hooks/useMarkers";
+import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
 import { useModeBlend } from "../hooks/useModeBlend";
 import { useMomentum } from "../hooks/useMomentum";
 import { useSegmentLineGradient } from "../hooks/useSegmentLineGradient";
@@ -163,6 +164,7 @@ function useLiveChartController({
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
   onScrubAction,
+  onReferenceLinePress,
   onGestureStart,
   onGestureEnd,
   onDegenShake,
@@ -426,6 +428,30 @@ function useLiveChartController({
     !isStatic, // static: no marker-projection loop
   );
 
+  // Pressable reference-line badges (working orders / alerts). Built before
+  // `useCrosshair` so the scrub-action tap can defer to a badge under the finger.
+  const refPressActive = onReferenceLinePress != null && allRefLines.length > 0;
+  const { tapGesture: refLineTapGesture, hitTest: refLineHitTest } =
+    useReferenceLinePress(
+      engine,
+      effectivePadding,
+      allRefLines,
+      skiaFont,
+      formatValue,
+      !isStatic && refPressActive,
+      markerHitRadius,
+      onReferenceLinePress,
+    );
+
+  // Combined "defer" hit-test for the scrub-action place-tap: yield to a marker or
+  // a pressable badge under the finger so the tap is routed there instead of
+  // dropping a reticle. (Both hit-tests return false when their feature is off.)
+  /* istanbul ignore next -- worklet runs on the UI thread, not in Jest */
+  const deferTapHit = (x: number, y: number): boolean => {
+    "worklet";
+    return markerHitTest(x, y) || refLineHitTest(x, y);
+  };
+
   const crosshair = useCrosshair(
     engine,
     effectivePadding,
@@ -444,7 +470,7 @@ function useLiveChartController({
     scrubActionCfg,
     onScrubAction,
     metricsCfg.badge,
-    markersActive ? markerHitTest : undefined,
+    markersActive || refPressActive ? deferTapHit : undefined,
   );
 
   // Scrub-action composes a Tap (place/move the reticle, press the badge, dismiss)
@@ -456,16 +482,29 @@ function useLiveChartController({
       ? Gesture.Exclusive(crosshair.tapGesture, crosshair.gesture)
       : crosshair.gesture;
 
-  // With markers + scrub-action, the action tap and the marker tap must BOTH see
-  // each tap (Simultaneous): the action tap defers to a marker under the finger
-  // (via `markerHitTest`) so the marker tap selects it, and places the reticle on
-  // an empty tap. `Race` would cancel the loser and silently drop one of them.
-  // Without scrub-action there's only the pan, so `Race` stays correct.
-  const rootGesture = markersActive
-    ? scrubActionCfg !== null
-      ? Gesture.Simultaneous(baseGesture, markerTapGesture)
-      : Gesture.Race(baseGesture, markerTapGesture)
-    : baseGesture;
+  // Overlay taps that hit-test discrete targets (marker dots, reference-line
+  // badges). They must all see each tap, so they're combined with `Simultaneous`
+  // (not `Race`, which cancels the loser and would drop one). The scrub-action
+  // action tap defers to them via `deferTapHit`, so a tap on an overlay is routed
+  // there instead of placing a reticle.
+  const overlayTaps = [
+    markersActive ? markerTapGesture : null,
+    refPressActive ? refLineTapGesture : null,
+  ].filter((g): g is NonNullable<typeof g> => g !== null);
+
+  let rootGesture = baseGesture;
+  if (overlayTaps.length > 0) {
+    const tapGroup =
+      overlayTaps.length === 1
+        ? overlayTaps[0]
+        : Gesture.Simultaneous(overlayTaps[0], overlayTaps[1]);
+    // With scrub-action the action tap shares the gesture space with the overlay
+    // taps (Simultaneous); without it the pan only needs to race the tap group.
+    rootGesture =
+      scrubActionCfg !== null
+        ? Gesture.Simultaneous(baseGesture, tapGroup)
+        : Gesture.Race(baseGesture, tapGroup);
+  }
 
   // ── Derived render values ──────────────────────────────────────────────
   const {
