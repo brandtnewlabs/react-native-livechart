@@ -16,6 +16,8 @@ import {
   resolveScrubAction,
   resolveSelectionDot,
   resolveSelectionDotRing,
+  resolveThreshold,
+  resolveThresholdLine,
   resolveTradeStream,
   resolveValueLine,
   resolveXAxis,
@@ -1001,5 +1003,110 @@ describe("resolveMetrics", () => {
       gapFadeWidth: 30,
     });
     expect(m.badge).toEqual(BADGE_METRICS_DEFAULTS);
+  });
+});
+
+// ─── resolveThreshold ─────────────────────────────────────────────────────────
+
+describe("resolveThresholdLine", () => {
+  it("returns null for undefined / false", () => {
+    expect(resolveThresholdLine(undefined)).toBeNull();
+    expect(resolveThresholdLine(false)).toBeNull();
+  });
+
+  it("returns dashed defaults for true (label on the left)", () => {
+    expect(resolveThresholdLine(true)).toEqual({
+      label: undefined,
+      labelPosition: "left",
+      color: undefined,
+      intervals: [4, 4],
+      strokeWidth: 1,
+      showValue: false,
+    });
+  });
+
+  it("merges an object over the defaults (incl. labelPosition)", () => {
+    expect(
+      resolveThresholdLine({
+        label: "Break-even",
+        labelPosition: "right",
+        color: "#0f0",
+        intervals: [6, 3],
+        strokeWidth: 2,
+        showValue: true,
+      }),
+    ).toEqual({
+      label: "Break-even",
+      labelPosition: "right",
+      color: "#0f0",
+      intervals: [6, 3],
+      strokeWidth: 2,
+      showValue: true,
+    });
+  });
+});
+
+describe("resolveThreshold", () => {
+  // resolveThreshold passes `value` through untouched — a sentinel is enough.
+  const value = {
+    sentinel: true,
+  } as unknown as import("react-native-reanimated").SharedValue<number>;
+
+  it("returns null when no threshold is set", () => {
+    expect(resolveThreshold(undefined)).toBeNull();
+  });
+
+  it("fills defaults (no colors, no fill, no line) for a bare value", () => {
+    const r = resolveThreshold({ value });
+    expect(r).toEqual({
+      value,
+      aboveColor: undefined,
+      belowColor: undefined,
+      fill: false,
+      line: null,
+    });
+    // Identity of the SharedValue must be preserved (read on the UI thread).
+    expect(r?.value).toBe(value);
+  });
+
+  it("passes through above/below colors and fill", () => {
+    expect(
+      resolveThreshold({
+        value,
+        aboveColor: "#0f0",
+        belowColor: "#f00",
+        fill: true,
+      }),
+    ).toEqual({
+      value,
+      aboveColor: "#0f0",
+      belowColor: "#f00",
+      fill: true,
+      line: null,
+    });
+  });
+
+  it("resolves the line sub-config (true → dashed defaults)", () => {
+    const r = resolveThreshold({ value, line: true });
+    expect(r?.line).toEqual({
+      label: undefined,
+      labelPosition: "left",
+      color: undefined,
+      intervals: [4, 4],
+      strokeWidth: 1,
+      showValue: false,
+    });
+  });
+
+  it("resolves a configured line + keeps line null when disabled", () => {
+    expect(resolveThreshold({ value, line: { label: "VWAP" } })?.line).toEqual({
+      label: "VWAP",
+      labelPosition: "left",
+      color: undefined,
+      intervals: [4, 4],
+      strokeWidth: 1,
+      showValue: false,
+    });
+    expect(resolveThreshold({ value, line: false })?.line).toBeNull();
   });
 });

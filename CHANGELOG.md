@@ -5,6 +5,34 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Threshold split** — `threshold?: ThresholdConfig` on `LiveChart` colors the
+  line **above vs. below a live value** (green above, red below by default). The
+  `value` is always a `SharedValue`, so the split tracks a moving benchmark on the
+  UI thread without re-rendering — break-even / average cost, VWAP, the previous
+  close, or a stablecoin peg. New exported types: `ThresholdConfig`,
+  `ThresholdLineConfig`. Single-series, line mode only.
+  - `aboveColor` / `belowColor` — stroke colors for the two halves (default the
+    palette's semantic up-green / down-red). The split is a vertical hard-stop
+    gradient on the line stroke; while set it supersedes `line.color` /
+    `line.colors` and segment recoloring for the main stroke.
+  - `fill` — tints the profit/loss band _between the line and the threshold_
+    toward the above/below colors. Independent of the baseline `gradient` fill, so
+    `gradient={false}` shows the band alone.
+  - `line` — a dashed marker line at the threshold. `true` draws the line only
+    (no text); a `ThresholdLineConfig` adds an opaque label **badge**, anchored
+    flush to the plot's left edge by default (`labelPosition`, or the right
+    gutter) and drawn on top of the line, with optional `showValue`.
+
+### Changed
+
+- The **left-edge fade** now softens only the background fills (grid, area
+  gradient, threshold band); the chart line and its overlays render above the fade
+  and stay crisp at the left edge instead of washing out.
+
 ## [3.4.0] - 2026-06-12
 
 ### Added

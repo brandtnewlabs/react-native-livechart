@@ -22,9 +22,13 @@ export function useChartPaths(
   engine: SingleEngineState,
   padding: ChartPadding,
   morphT?: SharedValue<number>,
+  /** When set, also build `thresholdFillPath` — the band between the line and this
+   *  pixel-Y, closed at the threshold instead of the chart baseline. */
+  thresholdY?: SharedValue<number>,
 ) {
   const lineBuilder = usePathBuilder();
   const fillBuilder = usePathBuilder();
+  const thresholdFillBuilder = usePathBuilder();
 
   const cacheRef = useRef<{
     emptyPath: SkPath;
@@ -105,5 +109,25 @@ export function useChartPaths(
     return b.detach();
   });
 
-  return { linePath, fillPath } as const;
+  // Threshold-anchored fill: the same spline, closed at `thresholdY` instead of the
+  // baseline, so the band lies between the line and the threshold (the profit/loss
+  // area). Painted with the hard-split vertical gradient, the part above the split
+  // shows the above-color and the part below shows the below-color.
+  const thresholdFillPath = useDerivedValue(() => {
+    const cache = cacheRef.current!;
+    if (!thresholdY) return cache.emptyPath;
+    const yT = thresholdY.get();
+    const pts = flatPts.get();
+    const n = pts.length >> 1;
+    if (n < 2 || !Number.isFinite(yT)) return cache.emptyPath;
+    const b = thresholdFillBuilder.value;
+    b.moveTo(pts[0], pts[1]);
+    drawSpline(b, pts, cache.scratch);
+    b.lineTo(pts[(n - 1) * 2], yT);
+    b.lineTo(pts[0], yT);
+    b.close();
+    return b.detach();
+  });
+
+  return { linePath, fillPath, thresholdFillPath } as const;
 }

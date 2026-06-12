@@ -182,6 +182,21 @@ interface GradientConfig {
   positions?: number[];   // optional stop positions (0..1, ascending), same
                           //   length as colors; ignored if the lengths differ
 }
+interface ThresholdConfig {
+  value: SharedValue<number>; // the split value (Y-axis units), always live
+  aboveColor?: string;        // stroke at/above value; default palette up-green
+  belowColor?: string;        // stroke below value;    default palette down-red
+  fill?: boolean;             // tint the line↔value band (profit/loss); default false
+  line?: boolean | ThresholdLineConfig; // dashed marker line at value; default off
+}
+interface ThresholdLineConfig {
+  label?: string;                    // label text, e.g. "Break-even"
+  labelPosition?: "left" | "right";  // "left" = inside plot (clear of y-axis); default "left"
+  color?: string;                    // line + label color; default palette refLine/refLabel
+  intervals?: [number, number];      // dash pattern; default [4, 4]
+  strokeWidth?: number;              // default 1
+  showValue?: boolean;               // append the formatted value to the label; default false
+}
 interface BadgeConfig {
   variant?: "default" | "minimal";
   tail?: boolean;

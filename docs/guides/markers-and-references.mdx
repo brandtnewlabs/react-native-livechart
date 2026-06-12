@@ -127,6 +127,59 @@ referenceLines={[
 `text: false` (icon-only), and `background` / `borderColor` / `radius`. It supersedes the legacy
 `offAxisBadge` (still supported), which only appears once the value is off-screen and takes no icon.
 
+## Threshold split
+
+Where a reference line is a *static* annotation, `threshold` colors the line itself
+**above vs. below a live value** — green above, red below by default. The threshold
+is **always** a `SharedValue`, so the split tracks a moving benchmark on the UI
+thread without re-rendering: break-even / average cost, VWAP, the previous close, or
+a stablecoin peg. Single-series `LiveChart`, line mode.
+
+```tsx
+import { useSharedValue } from "react-native-reanimated";
+import { LiveChart } from "react-native-livechart";
+
+const breakEven = useSharedValue(100); // move it live with breakEven.set(...)
+
+<LiveChart data={data} value={value} threshold={{ value: breakEven }} />;
+```
+
+A bare `{ value }` splits the **stroke** at the threshold (palette green above, red
+below; override with `aboveColor` / `belowColor`). Two opt-in extras share the same
+`SharedValue`:
+
+- **`fill`** — tints the area *between the line and the threshold* (the profit/loss
+  band) toward the above/below colors. It's independent of the baseline `gradient`
+  fill, so set `gradient={false}` for the band alone.
+- **`line`** — a dashed marker line at the threshold. `true` draws just the line;
+  pass a `ThresholdLineConfig` to add a label badge.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  gradient={false}
+  threshold={{
+    value: breakEven,
+    aboveColor: "#16a34a",
+    belowColor: "#dc2626",
+    fill: true,
+    // object → labelled badge; `line: true` → marker line only (no text/badge)
+    line: { label: "Break-even", showValue: true },
+  }}
+/>;
+```
+
+The label renders as an opaque **badge** anchored flush to the plot's left edge
+(`labelPosition: "left"`, the default — clear of the y-axis labels) or the right
+gutter, and is drawn on top of the line so it's never painted over. While a
+threshold is set it supersedes `line.color` / `line.colors` and segment recoloring
+for the main stroke.
+
+See [`ThresholdConfig`](/api-reference/types#thresholdconfig) for every field, and
+[`app/demo/threshold.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/threshold.tsx)
+for a live example.
+
 ## Segments
 
 `segments` labels time ranges of the line — pre-market / regular / after-hours

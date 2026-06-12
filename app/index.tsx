@@ -98,6 +98,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "referenceLines: lines, value/time bands, off-axis badge.",
       },
       {
+        href: "/demo/threshold",
+        title: "Threshold split",
+        blurb: "threshold: green above / red below a live break-even — split stroke, P/L fill band, marker line.",
+      },
+      {
         href: "/demo/segments",
         title: "Segments",
         blurb: "segments: after-hours / overnight sessions — scrub-focus line recolor, divider + label.",

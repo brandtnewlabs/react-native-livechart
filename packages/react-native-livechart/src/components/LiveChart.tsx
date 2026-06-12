@@ -31,11 +31,13 @@ import {
   resolveScrub,
   resolveScrubAction,
   resolveSelectionDot,
+  resolveThreshold,
   resolveTradeStream,
   resolveValueLine,
   resolveXAxis,
   resolveYAxis,
 } from "../core/resolveConfig";
+import type { ResolvedThresholdConfig } from "../core/resolveConfig";
 import { resolveSegment } from "../core/resolveSegment";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import { pulseRadialOutset } from "../draw/line";
@@ -57,6 +59,7 @@ import { useModeBlend } from "../hooks/useModeBlend";
 import { useMomentum } from "../hooks/useMomentum";
 import { useSegmentLineGradient } from "../hooks/useSegmentLineGradient";
 import { useSingleChartReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
+import { useThreshold } from "../hooks/useThreshold";
 import { useTradeStream } from "../hooks/useTradeStream";
 import { useXAxis } from "../hooks/useXAxis";
 import { useYAxis } from "../hooks/useYAxis";
@@ -69,9 +72,19 @@ import { collectReferenceValues } from "../math/referenceLines";
 import {
   applyPaletteOverride,
   leftEdgeFadeColorsFromBgRgb,
+  parseColorRgb,
   resolveTheme,
 } from "../theme";
-import type { LiveChartProps, Marker, TradeEvent } from "../types";
+import type {
+  LiveChartPalette,
+  LiveChartProps,
+  Marker,
+  TradeEvent,
+} from "../types";
+import {
+  ThresholdBadgeOverlay,
+  ThresholdLineOverlay,
+} from "./ThresholdLineOverlay";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
@@ -89,6 +102,32 @@ import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
+
+/** Translucent fill alpha for the threshold profit/loss band. */
+const THRESHOLD_FILL_OPACITY = 0.16;
+
+/**
+ * Color stops for the threshold's hard-split vertical gradient. Both arrays pair
+ * with the `[0, t, t, 1]` split positions: index 0–1 paint above the split,
+ * 2–3 below. `stroke` is full-strength; `fill` is the same hues at
+ * {@link THRESHOLD_FILL_OPACITY} for the band. Defaults to the palette's semantic
+ * up-green / down-red when colors are omitted.
+ */
+function thresholdStops(
+  cfg: ResolvedThresholdConfig,
+  palette: LiveChartPalette,
+): { stroke: string[]; fill: string[] } {
+  const above = cfg.aboveColor ?? palette.candleUp;
+  const below = cfg.belowColor ?? palette.candleDown;
+  const [ar, ag, ab] = parseColorRgb(above);
+  const [br, bg, bb] = parseColorRgb(below);
+  const aboveFill = `rgba(${ar}, ${ag}, ${ab}, ${THRESHOLD_FILL_OPACITY})`;
+  const belowFill = `rgba(${br}, ${bg}, ${bb}, ${THRESHOLD_FILL_OPACITY})`;
+  return {
+    stroke: [above, above, below, below],
+    fill: [aboveFill, aboveFill, belowFill, belowFill],
+  };
+}
 
 /**
  * Resolves props → configs → theme/layout → engine → per-frame derived values and
@@ -148,6 +187,7 @@ function useLiveChartController({
   valueMomentumColor = false,
   referenceLines,
   segments,
+  threshold,
   gridStyle,
   palette: paletteOverride,
   metrics,
@@ -173,6 +213,9 @@ function useLiveChartController({
   const tradeStreamSV = tradeStream ?? emptyTradeStream;
   const emptyMarkers = useSharedValue<Marker[]>([]);
   const markersSV = markers ?? emptyMarkers;
+  // Stand-in threshold value so `useThreshold` can be called unconditionally
+  // (hooks can't be); the geometry is ignored when no threshold is configured.
+  const emptyThresholdValue = useSharedValue(0);
   const isCandle = mode === "candle";
 
   // ── Resolve feature configs ────────────────────────────────────────────
@@ -185,6 +228,9 @@ function useLiveChartController({
   // Static charts run no gestures, so scrub-action (tap/drag to lock a price) is off.
   const scrubActionCfg = isStatic ? null : resolveScrubAction(scrubAction);
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
+  // Threshold split is a line-mode feature (candle bodies carry their own up/down
+  // colors), so it's inert in candle mode — same as the area gradient.
+  const thresholdCfg = isCandle ? null : resolveThreshold(threshold);
   const valueLineCfg = resolveValueLine(valueLine);
   // Static charts run zero loops: force the pulse off so its `withRepeat`-driven
   // ring never starts (the DotOverlay reads `pulseCfg`, so null = no pulse).
@@ -335,10 +381,23 @@ function useLiveChartController({
   // ── Per-frame derived values ───────────────────────────────────────────
   const { layoutWidth, layoutHeight, onLayout } = useCanvasLayout(engine);
 
-  const { linePath, fillPath } = useChartPaths(
+  // Threshold split geometry (shared by stroke gradient, fill band, marker line).
+  // Called unconditionally with a stand-in value when no threshold is set.
+  const thresholdGeom = useThreshold(
+    engine,
+    effectivePadding,
+    thresholdCfg?.value ?? emptyThresholdValue,
+  );
+  const thresholdStopColors = thresholdCfg
+    ? thresholdStops(thresholdCfg, palette)
+    : null;
+
+  const { linePath, fillPath, thresholdFillPath } = useChartPaths(
     engine,
     effectivePadding,
     reveal.morphT,
+    // Only build the band path when the fill is actually on.
+    thresholdCfg?.fill ? thresholdGeom.lineY : undefined,
   );
   const { upBodiesPath, downBodiesPath, upWicksPath, downWicksPath } =
     useCandlePaths(
@@ -576,6 +635,10 @@ function useLiveChartController({
     resolvedSegments,
     hasRecolorSegments,
     segmentGradient,
+    thresholdCfg,
+    thresholdGeom,
+    thresholdStrokeColors: thresholdStopColors?.stroke ?? null,
+    thresholdFillColors: thresholdStopColors?.fill ?? null,
     badgeUsesRightGutter,
     // theme / layout / fonts
     palette,
@@ -599,6 +662,7 @@ function useLiveChartController({
     onLayout,
     linePath,
     fillPath,
+    thresholdFillPath,
     upBodiesPath,
     downBodiesPath,
     upWicksPath,
@@ -629,10 +693,13 @@ function useLiveChartController({
 
 type LiveChartModel = ReturnType<typeof useLiveChartController>;
 
-/** Main shaken chart stack: grid, fill, line/candles, axes, badge, dot, degen,
- *  markers, and the loading/empty art. The live value text is a separate layer
- *  (ChartValueOverlay) so it sits above the left-edge fade. */
-function ChartStack({ model }: { model: LiveChartModel }) {
+/**
+ * Background fills drawn BENEATH the left-edge fade: the y-axis grid, the area
+ * gradient, and the threshold profit/loss band. Split out from `ChartStack` so
+ * the fade's `dstOut` only softens the fills — the line and everything above it
+ * (drawn in `ChartStack`, after the fade) stay crisp at the left edge.
+ */
+function ChartFillLayer({ model }: { model: LiveChartModel }) {
   const {
     degenShakeTransform,
     yAxisCfg,
@@ -645,41 +712,16 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     badgeUsesRightGutter,
     badgeCfg,
     gridStyleCfg,
+    metricsCfg,
     gradientCfg,
     fillPath,
     gradientEnd,
     gradientColors,
     gradientPositions,
-    valueLineCfg,
-    dotY,
-    allRefLines,
-    resolvedSegments,
-    hasRecolorSegments,
-    segmentGradient,
-    formatValue,
-    lineGroupOpacity,
-    linePath,
-    strokeWidth,
-    lineProp,
-    candleGroupOpacity,
-    upWicksPath,
-    downWicksPath,
-    upBodiesPath,
-    downBodiesPath,
-    xAxisCfg,
-    xAxisEntries,
-    dotX,
-    liveDotOpacity,
-    pulseCfg,
-    dotCfg,
-    degenCfg,
-    degenPack,
-    degenPackRevision,
-    markersActive,
-    markersSV,
-    emptyText,
-    metricsCfg,
-    layoutWidth,
+    thresholdCfg,
+    thresholdGeom,
+    thresholdFillPath,
+    thresholdFillColors,
   } = model;
 
   return (
@@ -715,6 +757,75 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         </Group>
       )}
 
+      {/* Threshold profit/loss band — the area between the line and the threshold,
+          hard-split at the threshold Y into the above/below colors. Independent of
+          the baseline area fill above (set `gradient={false}` for the band alone). */}
+      {thresholdCfg?.fill && thresholdFillColors && (
+        <Group opacity={reveal.fillOpacity}>
+          <Path path={thresholdFillPath} style="fill">
+            <LinearGradient
+              start={vec(0, 0)}
+              end={thresholdGeom.gradientEnd}
+              colors={thresholdFillColors}
+              positions={thresholdGeom.splitPositions}
+            />
+          </Path>
+        </Group>
+      )}
+    </Group>
+  );
+}
+
+/** Main shaken chart stack drawn ABOVE the left-edge fade so the line stays crisp:
+ *  segment dividers, value/reference lines, the line/candles, axes, dot, degen,
+ *  markers, and the loading/empty art. Background fills are in `ChartFillLayer`
+ *  (below the fade); the live value text is `ChartValueOverlay` (above the fade). */
+function ChartStack({ model }: { model: LiveChartModel }) {
+  const {
+    degenShakeTransform,
+    reveal,
+    engine,
+    effectivePadding,
+    palette,
+    skiaFont,
+    badgeCfg,
+    valueLineCfg,
+    dotY,
+    allRefLines,
+    resolvedSegments,
+    hasRecolorSegments,
+    segmentGradient,
+    thresholdCfg,
+    thresholdGeom,
+    thresholdStrokeColors,
+    formatValue,
+    lineGroupOpacity,
+    linePath,
+    strokeWidth,
+    lineProp,
+    candleGroupOpacity,
+    upWicksPath,
+    downWicksPath,
+    upBodiesPath,
+    downBodiesPath,
+    xAxisCfg,
+    xAxisEntries,
+    dotX,
+    liveDotOpacity,
+    pulseCfg,
+    dotCfg,
+    degenCfg,
+    degenPack,
+    degenPackRevision,
+    markersActive,
+    markersSV,
+    emptyText,
+    metricsCfg,
+    layoutWidth,
+  } = model;
+
+  return (
+    <Group transform={degenShakeTransform}>
       {/* Segment dividers + labels (behind the line). The scrub-focus emphasis is
           painted on the line stroke itself, below — this overlay draws no fill. */}
       {resolvedSegments.map((seg, i) => (
@@ -756,6 +867,21 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         />
       ))}
 
+      {/* Threshold marker line + label (behind the chart line). */}
+      {thresholdCfg?.line && (
+        <ThresholdLineOverlay
+          engine={engine}
+          padding={effectivePadding}
+          lineY={thresholdGeom.lineY}
+          visible={thresholdGeom.visible}
+          value={thresholdCfg.value}
+          cfg={thresholdCfg.line}
+          palette={palette}
+          font={skiaFont}
+          formatValue={formatValue}
+        />
+      )}
+
       {/* Chart line (fades out in candle mode). When segments recolor the line, a
           full-width gradient paints the base color outside segments and each
           segment's color within — so the line itself is recolored/faded (alpha in
@@ -769,7 +895,16 @@ function ChartStack({ model }: { model: LiveChartModel }) {
           strokeJoin="round"
           color={lineProp?.color ?? palette.line}
         >
-          {hasRecolorSegments ? (
+          {thresholdCfg && thresholdStrokeColors ? (
+            // Vertical hard split at the threshold Y — supersedes line.colors and
+            // segment recoloring for the stroke while a threshold is set.
+            <LinearGradient
+              start={vec(0, 0)}
+              end={thresholdGeom.gradientEnd}
+              colors={thresholdStrokeColors}
+              positions={thresholdGeom.splitPositions}
+            />
+          ) : hasRecolorSegments ? (
             <LinearGradient
               start={vec(0, 0)}
               end={segmentGradient.gradientEnd}
@@ -865,7 +1000,24 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         </Group>
       )}
 
-      {/* Loading / empty state — before left-edge fade so the squiggle/empty art fades like the chart */}
+      {/* Threshold label badge — on top of the line/dot/markers so it's never
+          painted over (the dashed marker line itself stays behind the line, above). */}
+      {thresholdCfg?.line && (
+        <ThresholdBadgeOverlay
+          engine={engine}
+          padding={effectivePadding}
+          lineY={thresholdGeom.lineY}
+          visible={thresholdGeom.visible}
+          value={thresholdCfg.value}
+          cfg={thresholdCfg.line}
+          palette={palette}
+          font={skiaFont}
+          formatValue={formatValue}
+        />
+      )}
+
+      {/* Loading / empty state — drawn with the line stack (above the fade) so the
+          squiggle/empty art stays crisp, consistent with the line. */}
       <LoadingOverlay
         engine={engine}
         padding={effectivePadding}
@@ -1111,8 +1263,10 @@ export function LiveChart(props: LiveChartProps) {
         accessibilityRole={accessibilityRole}
       >
         <Canvas style={{ flex: 1 }}>
-          {/* Shaken chart stack — left-edge fade is a sibling below so dstOut runs in canvas space */}
-          <ChartStack model={model} />
+          {/* Background fills first, then the left-edge fade (a canvas-space sibling
+              so dstOut blends correctly), then the line stack on top — so the fade
+              softens only the fills and the line stays crisp at the left edge. */}
+          <ChartFillLayer model={model} />
 
           {leftEdgeFadeCfg && (
             <LeftEdgeFade
@@ -1123,6 +1277,9 @@ export function LiveChart(props: LiveChartProps) {
               engine={engine}
             />
           )}
+
+          {/* Line stack above the fade so the line stays crisp at the left edge. */}
+          <ChartStack model={model} />
 
           {/* Reference-line badges + labels above the fade so they stay crisp. */}
           <ChartRefBadgeLayer model={model} />
