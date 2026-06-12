@@ -78,6 +78,8 @@ const BADGE_GAP = 4;
 const BADGE_CHEV_W = 8;
 /** Pill inset from the pinned plot edge, in px. */
 const BADGE_EDGE_INSET = 2;
+/** Vertical padding inside the pill (matches ReferenceLineOverlay's BADGE_PILL_PAD_Y). */
+const BADGE_PILL_PAD_Y = 3;
 
 interface BadgeGeometry {
   pillX: number;
@@ -166,6 +168,91 @@ function badgeGeometry(
   }
 
   return { pillX, pillW, iconX, textX, chevronCx, connStart, connEnd };
+}
+
+/** Resolved badge text for a Form-A line (in-range tag or off-axis pin). */
+function referenceBadgeText(
+  line: ReferenceLine,
+  badge: ReturnType<typeof resolveReferenceBadge> & object,
+  v: number,
+  formatValue: (value: number) => string,
+  offAxis: boolean,
+): string {
+  "worklet";
+  if (!badge.showText) return "";
+  if (offAxis && badge.legacyText) {
+    const word = line.offAxisBadgeLabel ?? line.label;
+    return word ? `${word}: ${formatValue(v)}` : formatValue(v);
+  }
+  if (line.showValue && line.label) return `${line.label} ${formatValue(v)}`;
+  return line.label ?? formatValue(v);
+}
+
+/** Axis-aligned screen rect of a reference-line badge pill (the press hit-target). */
+export interface ReferenceBadgeRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Screen-space pill rect for a Form-A reference line's **badge**, or `null` when
+ * the line has no pressable badge (no `badge`/`offAxisBadge`, not a value line, a
+ * legacy off-axis badge while in range, or the canvas isn't laid out / range is
+ * degenerate). Shares `badgeGeometry` + the edge classification with
+ * {@link useReferenceLine}, so the hit-target tracks the rendered pill exactly.
+ * Pure worklet — used by {@link useReferenceLinePress} for tap hit-testing.
+ */
+export function computeReferenceBadgeRect(
+  line: ReferenceLine,
+  canvasWidth: number,
+  canvasHeight: number,
+  padding: ChartPadding,
+  dMin: number,
+  dMax: number,
+  font: SkFont,
+  formatValue: (value: number) => string,
+): ReferenceBadgeRect | null {
+  "worklet";
+  const badge = resolveReferenceBadge(line);
+  if (!badge) return null;
+  if (referenceLineForm(line) !== "line" || line.value === undefined) return null;
+  if (canvasWidth === 0 || canvasHeight === 0) return null;
+
+  const chartTop = padding.top;
+  const chartBottom = canvasHeight - padding.bottom;
+  const chartH = chartBottom - chartTop;
+  const valRange = dMax - dMin;
+  if (chartH <= 0 || valRange <= 0) return null;
+
+  const x1 = padding.left;
+  const x2 = canvasWidth - padding.right;
+  const v = line.value;
+  const edge = classifyReferenceEdge(v, dMin, dMax);
+
+  let y: number;
+  let hasChevron: boolean;
+  if (edge !== "in") {
+    // Off-screen: pinned to the nearest edge with a chevron.
+    hasChevron = true;
+    y =
+      edge === "above"
+        ? chartTop + OFF_AXIS_EDGE_INSET
+        : chartBottom - OFF_AXIS_EDGE_INSET;
+  } else {
+    // In range: a legacy off-axis-only badge shows no pill here → not pressable.
+    if (!badge.inRange) return null;
+    hasChevron = false;
+    y = chartTop + ((dMax - v) / valRange) * chartH;
+  }
+
+  const text = referenceBadgeText(line, badge, v, formatValue, edge !== "in");
+  const g = badgeGeometry(badge.position, badge.icon, text, hasChevron, x1, x2, font);
+  const fm = font.getMetrics();
+  const pillH = fm.descent - fm.ascent + BADGE_PILL_PAD_Y * 2;
+  // The pill is vertically centered on the line's y (see ReferenceLineOverlay).
+  return { x: g.pillX, y: y - pillH / 2, w: g.pillW, h: pillH };
 }
 
 /**
@@ -293,18 +380,7 @@ export function useReferenceLine(
       const clampedY = above
         ? chartTop + OFF_AXIS_EDGE_INSET
         : chartBottom - OFF_AXIS_EDGE_INSET;
-      let text = "";
-      if (badge.showText) {
-        if (badge.legacyText) {
-          const word = line.offAxisBadgeLabel ?? line.label;
-          text = word ? `${word}: ${formatValue(v)}` : formatValue(v);
-        } else {
-          text = line.label ?? formatValue(v);
-          if (line.showValue && line.label) {
-            text = `${line.label} ${formatValue(v)}`;
-          }
-        }
-      }
+      const text = referenceBadgeText(line, badge, v, formatValue, true);
       const g = badgeGeometry(badge.position, badge.icon, text, true, x1, x2, font);
       return {
         ...INVISIBLE,
@@ -333,13 +409,7 @@ export function useReferenceLine(
 
     // In-range pill badge (the `badge` config, not the legacy off-axis-only flag).
     if (badge && badge.inRange) {
-      let text = "";
-      if (badge.showText) {
-        text = line.label ?? formatValue(v);
-        if (line.showValue && line.label) {
-          text = `${line.label} ${formatValue(v)}`;
-        }
-      }
+      const text = referenceBadgeText(line, badge, v, formatValue, false);
       const g = badgeGeometry(badge.position, badge.icon, text, false, x1, x2, font);
       return {
         ...INVISIBLE,

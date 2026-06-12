@@ -1081,6 +1081,16 @@ export interface LiveChartProps extends LiveChartCoreProps {
    */
   onScrubAction?: (point: ScrubActionPoint) => void;
   /**
+   * Called on the JS thread when the user taps a reference line's **badge** — the
+   * pill tag drawn for a working order / alert / target (a `ReferenceLine` with a
+   * {@link ReferenceLine.badge}). Receives the tapped line and its index in the
+   * `referenceLines` array, e.g. to open a cancel/edit sheet for that order. Only
+   * badge-tagged Form-A (value) lines are pressable — a plain line has no discrete
+   * hit target. Coexists with `scrub`/`scrubAction`/`markers` (a tap on a badge is
+   * routed here, not to reticle placement). Single-series only.
+   */
+  onReferenceLinePress?: (line: ReferenceLine, index: number) => void;
+  /**
    * Called on the JS thread when degen chart shake starts (momentum swing with shake enabled).
    * Not called when `degen` is off or `DegenOptions.shake` is `false`.
    */
