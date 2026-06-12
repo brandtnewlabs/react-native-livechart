@@ -202,9 +202,11 @@ tool: a limit order is a horizontal price *level*, so the locked reticle reads t
 crosshair, exactly like the crosshair badge in pro charting tools. It works the same in line and
 candle mode (price-from-Y is mode-agnostic); `LiveChartSeries` is not supported.
 
-`scrubAction` **coexists** with `scrub`/`onScrub`: with no reticle placed, a drag scrubs as usual;
-once a reticle is locked, dragging adjusts it. (Set `scrub={{ dimOpacity: 1 }}` to keep working-order
-lines un-dimmed while a reticle is down.)
+`scrubAction` **coexists** with `scrub`/`onScrub`, disambiguated by a **press-hold**: a quick tap
+places or acts on the reticle, while a deliberate press-and-hold starts a drag — live-scrub with no
+reticle placed, or fine-tune once one is locked. The hold means a tap never flashes the crosshair;
+tune it with `scrub.panGestureDelay` (defaults to a short hold in this mode). (Set
+`scrub={{ dimOpacity: 1 }}` to keep working-order lines un-dimmed while a reticle is down.)
 
 ### Reading the press (`onScrubAction`)
 
