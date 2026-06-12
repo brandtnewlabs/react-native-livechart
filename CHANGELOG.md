@@ -5,6 +5,41 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2026-06-12
+
+### Added
+
+- **Order ticket (`scrubAction`)** — `scrubAction?: boolean | ScrubActionConfig`
+  on `LiveChart`, paired with `onScrubAction?: (point: ScrubActionPoint) => void`,
+  turns a scrub into a price-entry interaction: tap the plot to drop a persistent
+  price reticle (a horizontal level line + right-gutter price badge), drag to
+  fine-tune, then press the badge's `+` to fire `onScrubAction` with the chosen
+  level. The `ScrubActionPoint` carries `price` (optionally `snap`-rounded),
+  `time`, the reticle's canvas `x`/`y`, and — in candle mode — the `candle` OHLC
+  under the reticle. It coexists with `scrub`: a press-hold drag still scrubs
+  (crosshair + readout); a tap drops the reticle. New exported types:
+  `ScrubActionConfig`, `ScrubActionPoint`.
+  - `snap` — round the reported price to an increment (e.g. `0.01`, `0.5`).
+  - `icon` (default `"+"`), `background`, `iconColor`, `lineColor` — badge/line styling.
+  - `text` (default `true`) — set `false` for an icon-only badge.
+  - `timeBadge` (default `false`) — also show a time pill where the reticle meets
+    the x-axis, formatted by the chart's `formatTime`.
+  - `dismissOnTapOutside` (default `false`) — a tap on empty plot clears the lock
+    instead of re-placing it.
+- **`onReferenceLinePress`** — `onReferenceLinePress?: (line: ReferenceLine, index:
+  number) => void` on `LiveChart` makes reference-line badges tappable. `index`
+  maps back to the `referenceLines` entry, so a working-order line can be managed
+  (e.g. tapped to cancel) straight from its badge.
+- **Reference-line badge config** — a reference line's `badge` is now the
+  documented, exported `ReferenceLineBadgeConfig`: `icon` (leading glyph,
+  font-rendered), `position` (`"left"` / `"right"` gutter), `text` (set `false`
+  for an icon-only pill), `background`, `borderColor`, and `radius`.
+
+### Fixed
+
+- Reference lines that share the same `value` no longer collapse into one — lines
+  and their badges are keyed by index, so duplicate-value entries each render.
+
 ## [3.3.0] - 2026-06-09
 
 ### Added
