@@ -135,6 +135,10 @@ is **always** a `SharedValue`, so the split tracks a moving benchmark on the UI
 thread without re-rendering: break-even / average cost, VWAP, the previous close, or
 a stablecoin peg. Single-series `LiveChart`, line mode.
 
+<Frame caption="Green above, red below a live break-even — with an optional P/L fill band">
+  <video autoPlay loop muted playsInline controls poster="/media/015-threshold-split.jpg" src="/media/015-threshold-split.mp4" />
+</Frame>
+
 ```tsx
 import { useSharedValue } from "react-native-reanimated";
 import { LiveChart } from "react-native-livechart";
@@ -190,6 +194,10 @@ base color and every other segment is **de-emphasized**. The recolor paints the
 line stroke itself via a horizontal gradient — an alpha-reduced `mutedColor`
 genuinely fades the line there, so there's no panel drawn on top. Single-series
 `LiveChart` only.
+
+<Frame caption="Scrub a session to focus it; the other segments de-emphasize">
+  <video autoPlay loop muted playsInline controls poster="/media/017-segments.jpg" src="/media/017-segments.mp4" />
+</Frame>
 
 ```tsx
 import { LiveChart, type ChartSegment } from "react-native-livechart";
