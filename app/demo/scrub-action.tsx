@@ -92,7 +92,7 @@ export default function ScrubActionScreen() {
       // Pill badge with a directional icon (and optional text). Left-pinned with a
       // connector to the right edge; gains a chevron once it scrolls off-screen.
       badge: {
-        icon: o.side === "buy" ? "▲" : "▼",
+        icon: o.side === "buy" ? "+" : "−",
         text: !orderIconOnly,
         background:
           o.side === "buy" ? "rgba(22,163,74,0.15)" : "rgba(220,38,38,0.15)",
