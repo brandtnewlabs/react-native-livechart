@@ -40,6 +40,18 @@ import {
 const ACTION_HIT_SLOP = 6;
 const RETICLE_HIT = 14;
 
+/**
+ * Movement (px) that separates a scrub-action *tap* (place / press / dismiss)
+ * from a *drag* (live-scrub, or fine-tune once a reticle is locked). Used as BOTH
+ * the tap's `maxDistance` and the pan's `minDistance` so the two share one
+ * boundary: under `Gesture.Exclusive(tap, pan)` the pan is held until the tap
+ * fails, so the tap's `maxDistance` is what actually gates when the drag engages.
+ * Matching them closes the dead band a larger pan `minDistance` would open (a
+ * mismatch let small fine-tune drags fall through as taps that dismiss the
+ * reticle). ~Touch slop, so a deliberate drag fine-tunes instead of dismissing.
+ */
+const SCRUB_ACTION_TAP_SLOP = 10;
+
 /** Clamp an X pixel to the plot's horizontal bounds. */
 /* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
 function clampPlotX(
@@ -408,7 +420,15 @@ export function useCrosshair(
     // In scrub-action mode the pan must require deliberate movement before it
     // scrubs/adjusts, so a tap-to-place (the order-ticket "press") doesn't flash
     // the live crosshair — the Tap (place/dismiss/act) wins for small movements.
-    .minDistance(hasScrubAction ? 12 : Platform.OS === "android" ? 10 : 0)
+    // Matched to the tap's maxDistance so the pan engages the instant the tap
+    // fails (no dead band where a small fine-tune drag is captured as a tap).
+    .minDistance(
+      hasScrubAction
+        ? SCRUB_ACTION_TAP_SLOP
+        : Platform.OS === "android"
+          ? 10
+          : 0,
+    )
     .activateAfterLongPress(panGestureDelay)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
@@ -534,7 +554,10 @@ export function useCrosshair(
   };
 
   const tapGesture = hasScrubAction
-    ? Gesture.Tap().maxDuration(250).maxDistance(14).onEnd(handleActionTap)
+    ? Gesture.Tap()
+        .maxDuration(250)
+        .maxDistance(SCRUB_ACTION_TAP_SLOP)
+        .onEnd(handleActionTap)
     : undefined;
 
   return {
