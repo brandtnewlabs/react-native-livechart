@@ -57,6 +57,11 @@ const SECTIONS: DemoSection[] = [
         title: "Sparklines",
         blurb: "Many static mini-charts in a list (no per-chart animation loop).",
       },
+      {
+        href: "/demo/coin-list",
+        title: "Coin list",
+        blurb: "Hundreds of coins in a LegendList — recycled rows, each a static sparkline.",
+      },
     ],
   },
   {
