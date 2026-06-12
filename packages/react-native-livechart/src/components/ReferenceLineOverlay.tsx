@@ -12,23 +12,21 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import { usePathBuilder } from "../hooks/usePathBuilder";
 import { useReferenceLine } from "../hooks/useReferenceLine";
-import { measureFontTextWidth } from "../lib/measureFontTextWidth";
-import { referenceLineForm } from "../math/referenceLines";
+import { referenceLineForm, resolveReferenceBadge } from "../math/referenceLines";
 import type { LiveChartPalette, ReferenceLine } from "../types";
 
 /** Translucent fill alpha for value / time bands. */
 const BAND_FILL_OPACITY = 0.16;
 
-/** Padding inside the off-axis badge pill, in px. */
-const OFF_AXIS_PILL_PAD_X = 6;
-const OFF_AXIS_PILL_PAD_Y = 3;
-const OFF_AXIS_PILL_RADIUS = 5;
+/** Vertical padding inside the badge pill, in px (kept in sync with the layout). */
+const BADGE_PILL_PAD_Y = 3;
+const BADGE_PILL_RADIUS = 5;
 
 /**
  * Renders one reference line or band into the chart canvas. Handles all three
  * `ReferenceLine` forms (horizontal line, horizontal value band, vertical time
- * band) plus the off-axis badge for an off-screen Form-A value. Self-contained
- * so callers can `.map()` over a variable-length `referenceLines` array.
+ * band) plus the Form-A pill badge (in-range tag + off-screen chevron pin).
+ * Self-contained so callers can `.map()` over a variable-length array.
  */
 export function ReferenceLineOverlay({
   engine,
@@ -37,6 +35,7 @@ export function ReferenceLineOverlay({
   palette,
   formatValue,
   font,
+  badgeLayer = false,
 }: {
   engine: ChartEngineLayout;
   padding: ChartPadding;
@@ -44,6 +43,13 @@ export function ReferenceLineOverlay({
   palette: LiveChartPalette;
   formatValue: (v: number) => string;
   font: SkFont;
+  /**
+   * Render only the badge + label (`true`) or only the lines / bands (`false`,
+   * default). The caller draws the base pass behind the chart content and the
+   * badge pass **above** the left-edge fade, so badges/labels stay crisp instead
+   * of being erased by the fade's `dstOut` blend.
+   */
+  badgeLayer?: boolean;
 }) {
   const form = referenceLineForm(line);
   const isBand = form === "value-band" || form === "time-band";
@@ -58,21 +64,24 @@ export function ReferenceLineOverlay({
   const bandFillOpacity = line.fillOpacity ?? BAND_FILL_OPACITY;
   const hasBandBorder = isBand && line.strokeWidth !== undefined;
 
-  // Off-axis target pill styling.
-  const badgeBackground = line.badgeBackground ?? palette.tooltipBg;
-  const badgeBorderColor = line.badgeBorderColor ?? color;
-  const badgeRadius = line.badgeRadius ?? OFF_AXIS_PILL_RADIUS;
+  // Resolved badge appearance (badge config → fallback flat fields → theme).
+  const badge = resolveReferenceBadge(line);
+  const badgeBackground = badge?.background ?? palette.tooltipBg;
+  const badgeBorderColor = badge?.borderColor ?? color;
+  const badgeRadius = badge?.radius ?? BADGE_PILL_RADIUS;
 
   const lineBuilder = usePathBuilder();
   const bandBuilder = usePathBuilder();
   const borderBuilder = usePathBuilder();
-  const offBuilder = usePathBuilder();
+  const connBuilder = usePathBuilder();
   const chevBuilder = usePathBuilder();
 
   const linePath = useDerivedValue(() => {
     const b = lineBuilder.value;
     const l = layout.get();
-    if (l.visible && !l.offAxis && !isBand) {
+    // A plain full-width line. A badge instead draws a pill + a connector to the
+    // opposite edge, below.
+    if (l.visible && !l.badge && !isBand) {
       b.moveTo(l.x1, l.y);
       b.lineTo(l.x2, l.y);
     }
@@ -113,19 +122,13 @@ export function ReferenceLineOverlay({
     return b.detach();
   });
 
-  const offLinePath = useDerivedValue(() => {
-    const b = offBuilder.value;
+  // Badge connector — the dashed line from the pill out to the opposite edge.
+  const connPath = useDerivedValue(() => {
+    const b = connBuilder.value;
     const l = layout.get();
-    if (l.visible && l.offAxis) {
-      // Start the connector just past the badge pill's right edge so the dashed
-      // line runs out to the chart edge rather than behind the badge.
-      const pillRight =
-        l.labelX + measureFontTextWidth(font, l.label) + OFF_AXIS_PILL_PAD_X;
-      const start = pillRight + 4;
-      if (start < l.x2) {
-        b.moveTo(start, l.y);
-        b.lineTo(l.x2, l.y);
-      }
+    if (l.visible && l.badge && l.connStart >= 0) {
+      b.moveTo(l.connStart, l.y);
+      b.lineTo(l.connEnd, l.y);
     }
     return b.detach();
   });
@@ -133,8 +136,8 @@ export function ReferenceLineOverlay({
   const chevronPath = useDerivedValue(() => {
     const b = chevBuilder.value;
     const l = layout.get();
-    if (l.visible && l.offAxis) {
-      const cx = l.x1 + 6;
+    if (l.visible && l.offAxis && l.chevronCx >= 0) {
+      const cx = l.chevronCx;
       const cy = l.y;
       const s = 4;
       if (l.chevronUp) {
@@ -150,55 +153,64 @@ export function ReferenceLineOverlay({
     return b.detach();
   });
 
-  const lineOpacity = useDerivedValue(() =>
-    layout.get().visible && !layout.get().offAxis && !isBand ? 1 : 0,
-  );
+  const lineOpacity = useDerivedValue(() => {
+    const l = layout.get();
+    return l.visible && !l.badge && !isBand ? 1 : 0;
+  });
   const bandOpacity = useDerivedValue(() =>
     layout.get().visible && isBand ? bandFillOpacity : 0,
   );
   const bandBorderOpacity = useDerivedValue(() =>
     layout.get().visible && hasBandBorder ? 1 : 0,
   );
-  const offOpacity = useDerivedValue(() =>
-    layout.get().visible && layout.get().offAxis ? 1 : 0,
-  );
-  const labelOpacity = useDerivedValue(() => (layout.get().visible ? 1 : 0));
+  const badgeOpacity = useDerivedValue(() => {
+    const l = layout.get();
+    return l.visible && l.badge ? 1 : 0;
+  });
+  // Text + icon ride in the badge pass too, so they stay crisp above the fade.
+  const labelOpacity = useDerivedValue(() => {
+    const l = layout.get();
+    return l.visible && l.label.length > 0 ? 1 : 0;
+  });
+  const iconOpacity = useDerivedValue(() => {
+    const l = layout.get();
+    return l.visible && l.icon.length > 0 ? 1 : 0;
+  });
 
   const labelX = useDerivedValue(() => layout.get().labelX);
   const labelY = useDerivedValue(() => layout.get().labelY);
   const labelText = useDerivedValue(() => layout.get().label);
+  const iconX = useDerivedValue(() => layout.get().iconX);
+  const iconText = useDerivedValue(() => layout.get().icon);
 
   // Font metrics depend only on the (stable) font, so read them once instead of
-  // on every frame inside the pill worklets (`getMetrics` allocates + crosses
-  // JSI). The off-axis pill's ascent offset and height are then plain constants.
+  // on every frame inside the pill worklet (`getMetrics` allocates + crosses JSI).
   const { ascent: fontAscent, height: pillH } = (() => {
     const fm = font.getMetrics();
     return {
       ascent: fm.ascent,
-      height: fm.descent - fm.ascent + OFF_AXIS_PILL_PAD_Y * 2,
+      height: fm.descent - fm.ascent + BADGE_PILL_PAD_Y * 2,
     };
   })();
 
-  // Off-axis badge pill — a rounded background behind the chevron + label.
-  const pillX = useDerivedValue(() => layout.get().x1 + 2);
+  // Pill rect — position/size from the layout; vertically centered on the line.
+  const pillX = useDerivedValue(() => layout.get().pillX);
+  const pillW = useDerivedValue(() => layout.get().pillW);
   const pillY = useDerivedValue(
-    () => layout.get().labelY + fontAscent - OFF_AXIS_PILL_PAD_Y,
+    () => layout.get().labelY + fontAscent - BADGE_PILL_PAD_Y,
   );
-  const pillW = useDerivedValue(() => {
-    const l = layout.get();
-    const textW = measureFontTextWidth(font, l.label);
-    return l.labelX + textW + OFF_AXIS_PILL_PAD_X - (l.x1 + 2);
-  });
 
   return (
     <Group>
-      {isBand && (
+      {/* Base pass — bands + lines, drawn behind the chart content (and faded at
+          the left edge like the rest of the content). */}
+      {!badgeLayer && isBand && (
         <Group opacity={bandOpacity}>
           <Path path={bandPath} style="fill" color={color} />
         </Group>
       )}
 
-      {hasBandBorder && (
+      {!badgeLayer && hasBandBorder && (
         <Group opacity={bandBorderOpacity}>
           <Path
             path={bandBorderPath}
@@ -211,7 +223,7 @@ export function ReferenceLineOverlay({
         </Group>
       )}
 
-      {!isBand && (
+      {!badgeLayer && !isBand && (
         <Group opacity={lineOpacity}>
           <Path
             path={linePath}
@@ -224,52 +236,67 @@ export function ReferenceLineOverlay({
         </Group>
       )}
 
-      <Group opacity={offOpacity}>
-        <Path
-          path={offLinePath}
-          style="stroke"
-          strokeWidth={strokeWidth}
-          color={color}
-        >
-          <DashPathEffect intervals={intervals} />
-        </Path>
-        <RoundedRect
-          x={pillX}
-          y={pillY}
-          width={pillW}
-          height={pillH}
-          r={badgeRadius}
-          color={badgeBackground}
-        />
-        <RoundedRect
-          x={pillX}
-          y={pillY}
-          width={pillW}
-          height={pillH}
-          r={badgeRadius}
-          color={badgeBorderColor}
-          style="stroke"
-          strokeWidth={1}
-        />
-        <Path
-          path={chevronPath}
-          style="stroke"
-          strokeWidth={1.5}
-          color={color}
-          strokeCap="round"
-          strokeJoin="round"
-        />
-      </Group>
+      {/* Badge pass — connector + pill + chevron + icon, above the left-edge fade. */}
+      {badgeLayer && (
+        <Group opacity={badgeOpacity}>
+          <Path
+            path={connPath}
+            style="stroke"
+            strokeWidth={strokeWidth}
+            color={color}
+          >
+            <DashPathEffect intervals={intervals} />
+          </Path>
+          <RoundedRect
+            x={pillX}
+            y={pillY}
+            width={pillW}
+            height={pillH}
+            r={badgeRadius}
+            color={badgeBackground}
+          />
+          <RoundedRect
+            x={pillX}
+            y={pillY}
+            width={pillW}
+            height={pillH}
+            r={badgeRadius}
+            color={badgeBorderColor}
+            style="stroke"
+            strokeWidth={1}
+          />
+          <Path
+            path={chevronPath}
+            style="stroke"
+            strokeWidth={1.5}
+            color={color}
+            strokeCap="round"
+            strokeJoin="round"
+          />
+          <Group opacity={iconOpacity}>
+            <SkiaText
+              x={iconX}
+              y={labelY}
+              text={iconText}
+              font={font}
+              color={labelColor}
+            />
+          </Group>
+        </Group>
+      )}
 
-      <Group opacity={labelOpacity}>
-        <SkiaText
-          x={labelX}
-          y={labelY}
-          text={labelText}
-          font={font}
-          color={labelColor}
-        />
-      </Group>
+      {/* Labels ride in the badge pass too, so they stay crisp above the fade. */}
+      {badgeLayer && (
+        <Group opacity={labelOpacity}>
+          <SkiaText
+            x={labelX}
+            y={labelY}
+            text={labelText}
+            font={font}
+            color={labelColor}
+          />
+        </Group>
+      )}
     </Group>
   );
 }

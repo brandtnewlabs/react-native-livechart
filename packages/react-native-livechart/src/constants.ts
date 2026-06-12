@@ -62,6 +62,11 @@ export const BADGE_MARGIN_RIGHT = BADGE_METRICS_DEFAULTS.marginEdge;
 /** Gap between the live dot and the badge tail tip. */
 export const BADGE_DOT_GAP = BADGE_METRICS_DEFAULTS.dotGap;
 
+/** Baseline offset (px) below the plot bottom where x-axis time labels sit.
+ *  Shared so overlays that align to the time-axis row (e.g. the scrub-action
+ *  time badge) match the {@link XAxisOverlay} labels. */
+export const X_AXIS_LABEL_OFFSET_Y = 19;
+
 /** Maximum simultaneous series rendered (paths/dots slots). */
 export const MAX_MULTI_SERIES = 12;
 

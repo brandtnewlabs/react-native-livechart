@@ -8,19 +8,61 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
+import { BADGE_METRICS_DEFAULTS, X_AXIS_LABEL_OFFSET_Y } from "../constants";
+import type { ResolvedScrubActionConfig } from "../core/resolveConfig";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { type ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
 import { pickCandleAtTime } from "../math/pickCandle";
-import type { CandlePoint, LiveChartPalette, ScrubPoint } from "../types";
+import type {
+  BadgeMetrics,
+  CandlePoint,
+  LiveChartPalette,
+  ScrubActionPoint,
+  ScrubPoint,
+} from "../types";
 import {
+  computeActionBadgeLayout,
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
   computeScrubDotY,
   computeScrubTime,
+  computeTimeBadgeLayout,
+  computeValueAtY,
   deriveCrosshairTooltipSingle,
+  HIDDEN_ACTION_BADGE,
+  HIDDEN_TIME_BADGE,
+  pointInRect,
+  snapPrice,
   type CrosshairState,
 } from "./crosshairShared";
+
+const ACTION_HIT_SLOP = 6;
+const RETICLE_HIT = 14;
+
+/** Clamp an X pixel to the plot's horizontal bounds. */
+/* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
+function clampPlotX(
+  x: number,
+  padLeft: number,
+  canvasWidth: number,
+  padRight: number,
+): number {
+  "worklet";
+  return Math.min(canvasWidth - padRight, Math.max(padLeft, x));
+}
+
+/** Clamp a Y pixel to the plot's vertical bounds. */
+/* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
+function clampPlotY(
+  y: number,
+  padTop: number,
+  canvasHeight: number,
+  padBottom: number,
+): number {
+  "worklet";
+  return Math.min(canvasHeight - padBottom, Math.max(padTop, y));
+}
 
 export type { CrosshairState, TooltipLayout } from "./crosshairShared";
 export type { ScrubPoint };
@@ -60,12 +102,30 @@ export function useCrosshair(
   panGestureDelay = 0,
   onGestureStart?: () => void,
   onGestureEnd?: () => void,
+  /** Scrub-action ("order ticket") config; `null`/omitted disables lock mode. */
+  scrubAction?: ResolvedScrubActionConfig | null,
+  onScrubAction?: (point: ScrubActionPoint) => void,
+  /** Badge geometry (gutter margins / pad) for the action pill. */
+  badgeMetrics: BadgeMetrics = BADGE_METRICS_DEFAULTS,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
   // Tracks whether the active scrub phase actually began, so a tap that never
   // activates doesn't emit a spurious onGestureEnd.
   const gestureStarted = useSharedValue(false);
+
+  // Scrub-action lock state. Created unconditionally (hooks must be), but the
+  // lock gestures are only wired by the controller when `scrubAction` is set.
+  const lockActive = useSharedValue(false);
+  const lockX = useSharedValue(-1);
+  const lockY = useSharedValue(-1);
+  const hasScrubAction = scrubAction != null;
+  const hasOnScrubAction = onScrubAction != null;
+  const dismissOnTapOutside = scrubAction?.dismissOnTapOutside ?? false;
+  const snapIncrement = scrubAction?.snap;
+  const actionIcon = scrubAction?.icon ?? "+";
+  const actionShowText = scrubAction?.text ?? true;
+  const hasTimeBadge = scrubAction?.timeBadge ?? false;
 
   const scrubTime = useDerivedValue(() =>
     computeScrubTime(
@@ -165,6 +225,99 @@ export function useCrosshair(
     );
   });
 
+  // ── Scrub-action lock derivations ──────────────────────────────────────────
+  // Chosen price = value at the locked reticle Y (a free level, NOT the line
+  // value at X), optionally snapped. Null until a reticle is placed.
+  /* istanbul ignore next -- worklet (locked branch only runs on the UI thread) */
+  const lockPrice = useDerivedValue(() => {
+    if (!lockActive.get()) return null;
+    const v = computeValueAtY(
+      lockY.get(),
+      engine.displayMin.get(),
+      engine.displayMax.get(),
+      engine.canvasHeight.get(),
+      padding.top,
+      padding.bottom,
+    );
+    return v === null ? null : snapPrice(v, snapIncrement);
+  });
+
+  const lockTime = useDerivedValue(() =>
+    computeScrubTime(
+      lockActive.get(),
+      lockX.get(),
+      padding,
+      engine.canvasWidth.get(),
+      engine.timestamp.get(),
+      engine.displayWindow.get(),
+    ),
+  );
+
+  /* istanbul ignore next -- worklet */
+  const lockCandle = useDerivedValue(() => {
+    if (!isCandleMode || !candlesSV || !lockActive.get() || lockTime.get() < 0)
+      return null;
+    return pickCandleAtTime(
+      candlesSV.get(),
+      liveCandleSV?.get() ?? null,
+      lockTime.get(),
+      candleWidthSecs,
+    );
+  });
+
+  // Right-gutter action-badge layout — also the tap hit rect. Hidden when not locked.
+  /* istanbul ignore next -- worklet (locked branch only runs on the UI thread) */
+  const actionBadge = useDerivedValue(() => {
+    const price = lockPrice.get();
+    if (price === null) return HIDDEN_ACTION_BADGE;
+    return computeActionBadgeLayout(
+      lockActive.get(),
+      lockY.get(),
+      actionShowText ? formatValue(price) : "",
+      actionIcon,
+      engine.canvasWidth.get(),
+      engine.canvasWidth.get() - padding.right,
+      font,
+      badgeMetrics.marginEdge,
+      badgeMetrics.padX,
+      badgeMetrics.padY,
+      monoCharWidth,
+    );
+  });
+
+  // X-axis time badge at the reticle (opt-in). Hidden unless enabled + locked.
+  /* istanbul ignore next -- worklet (locked branch only runs on the UI thread) */
+  const timeBadge = useDerivedValue(() => {
+    if (!hasTimeBadge || !lockActive.get()) return HIDDEN_TIME_BADGE;
+    const t = lockTime.get();
+    if (t < 0) return HIDDEN_TIME_BADGE;
+    return computeTimeBadgeLayout(
+      lockActive.get(),
+      lockX.get(),
+      formatTime(t),
+      engine.canvasWidth.get(),
+      engine.canvasHeight.get() - padding.bottom + X_AXIS_LABEL_OFFSET_Y,
+      font,
+      badgeMetrics.padX,
+      badgeMetrics.padY,
+      badgeMetrics.marginEdge,
+    );
+  });
+
+  /* istanbul ignore next -- invoked only via scheduleOnRN from UI-thread gesture */
+  function handleScrubAction(
+    price: number,
+    time: number,
+    x: number,
+    y: number,
+    candleJson: string | null,
+  ) {
+    const candle: CandlePoint | undefined = candleJson
+      ? (JSON.parse(candleJson) as CandlePoint)
+      : undefined;
+    onScrubAction?.({ price, time, x, y, candle });
+  }
+
   /* istanbul ignore next -- invoked only via scheduleOnRN from UI-thread gesture */
   function handleScrub(
     x: number,
@@ -247,7 +400,10 @@ export function useCrosshair(
   );
 
   let gesture = Gesture.Pan()
-    .minDistance(Platform.OS === "android" ? 10 : 0)
+    // In scrub-action mode the pan must require deliberate movement before it
+    // scrubs/adjusts, so a tap-to-place (the order-ticket "press") doesn't flash
+    // the live crosshair — the Tap (place/dismiss/act) wins for small movements.
+    .minDistance(hasScrubAction ? 12 : Platform.OS === "android" ? 10 : 0)
     .activateAfterLongPress(panGestureDelay)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
@@ -259,6 +415,18 @@ export function useCrosshair(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;
+        // Scrub-action: once a reticle is placed, drag adjusts it (2D — the Y is
+        // the price). The ephemeral live-scrub never engages, so scrubActive
+        // stays false and the live crosshair hides itself.
+        if (hasScrubAction && lockActive.get()) {
+          lockX.set(
+            clampPlotX(e.x, padding.left, engine.canvasWidth.get(), padding.right),
+          );
+          lockY.set(
+            clampPlotY(e.y, padding.top, engine.canvasHeight.get(), padding.bottom),
+          );
+          return;
+        }
         scrubX.set(e.x);
         scrubActive.set(true);
         gestureStarted.set(true);
@@ -269,14 +437,28 @@ export function useCrosshair(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;
+        if (hasScrubAction && lockActive.get()) {
+          lockX.set(
+            clampPlotX(e.x, padding.left, engine.canvasWidth.get(), padding.right),
+          );
+          lockY.set(
+            clampPlotY(e.y, padding.top, engine.canvasHeight.get(), padding.bottom),
+          );
+          return;
+        }
         scrubX.set(e.x);
       },
     )
     .onFinalize(
       /* istanbul ignore next */ () => {
         "worklet";
-        scrubActive.set(false);
-        if (hasOnScrub) scheduleOnRN(handleScrubEnd);
+        // A lock-adjust drag leaves the reticle in place (scrubActive was never
+        // set); a live-scrub clears its crosshair. Always clear scrubActive so a
+        // stray scrub can never linger behind a placed reticle.
+        if (scrubActive.get()) {
+          scrubActive.set(false);
+          if (hasOnScrub) scheduleOnRN(handleScrubEnd);
+        }
         if (gestureStarted.get()) {
           gestureStarted.set(false);
           if (hasOnGestureEnd) scheduleOnRN(handleGestureEnd);
@@ -285,9 +467,66 @@ export function useCrosshair(
     );
 
   /* istanbul ignore next -- Android-only gesture axis config */
-  if (Platform.OS === "android") {
+  if (Platform.OS === "android" && !hasScrubAction) {
+    // Lock mode needs free vertical drag (Y = price), so the failOffsetY clamp —
+    // which would kill a vertical adjust — is applied only outside scrub-action.
     gesture = gesture.activeOffsetX([-25, 25]).failOffsetY([-25, 25]);
   }
+
+  // Tap: place/move the reticle, press the action badge, or dismiss the lock.
+  // Composed ahead of the pan by the controller, so a tap is never swallowed.
+  // Built only in scrub-action mode (the plain-scrub path never constructs a Tap).
+  /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+  const handleActionTap = (e: { x: number; y: number }, success: boolean) => {
+    "worklet";
+    if (!enabled || !hasScrubAction || !success) return;
+    if (lockActive.get()) {
+      // 1. Action-badge press → fire onScrubAction with the chosen price.
+      const rect = actionBadge.get();
+      if (rect.visible && pointInRect(e.x, e.y, rect, ACTION_HIT_SLOP)) {
+        const price = lockPrice.get();
+        if (price !== null) {
+          let candleJson: string | null = null;
+          if (isCandleMode) {
+            const c = lockCandle.get();
+            if (c) candleJson = JSON.stringify(c);
+          }
+          if (hasOnScrubAction)
+            scheduleOnRN(
+              handleScrubAction,
+              price,
+              lockTime.get(),
+              lockX.get(),
+              lockY.get(),
+              candleJson,
+            );
+        }
+        return;
+      }
+      // 2. Dismiss: tap the reticle itself, or any empty tap when configured.
+      const onReticle =
+        Math.abs(e.x - lockX.get()) <= RETICLE_HIT &&
+        Math.abs(e.y - lockY.get()) <= RETICLE_HIT;
+      if (onReticle || dismissOnTapOutside) {
+        lockActive.set(false);
+        return;
+      }
+    }
+    // 3. Place / move the reticle. Clear any in-progress live-scrub so its
+    //    crosshair never shows behind the placed reticle.
+    scrubActive.set(false);
+    lockX.set(
+      clampPlotX(e.x, padding.left, engine.canvasWidth.get(), padding.right),
+    );
+    lockY.set(
+      clampPlotY(e.y, padding.top, engine.canvasHeight.get(), padding.bottom),
+    );
+    lockActive.set(true);
+  };
+
+  const tapGesture = hasScrubAction
+    ? Gesture.Tap().maxDuration(250).maxDistance(14).onEnd(handleActionTap)
+    : undefined;
 
   return {
     scrubX,
@@ -298,5 +537,12 @@ export function useCrosshair(
     tooltipLayout,
     scrubDotY,
     gesture,
+    lockActive,
+    lockX,
+    lockY,
+    lockPrice,
+    actionBadge,
+    timeBadge,
+    tapGesture,
   };
 }

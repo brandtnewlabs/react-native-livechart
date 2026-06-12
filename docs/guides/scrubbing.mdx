@@ -178,3 +178,144 @@ const scrubData = useSharedValue<ScrubPointMulti | null>(null);
 
 `point.seriesValues` is an array of `{ id, label, value }` for each visible series at the scrub
 time. See the [types reference](/api-reference/types) for the full payload shape.
+
+## Order ticket (`scrubAction`)
+
+Regular scrubbing is **ephemeral** — the crosshair follows your finger and vanishes on release.
+`scrubAction` turns it into a **placed** interaction: **tap to drop a locked reticle, drag to
+fine-tune a price, then press the action badge** to fire a callback. The driving use case is order
+entry — pick a limit price on the chart and open an order ticket.
+
+<Note>
+  **Live example:**
+  [`app/demo/scrub-action.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/scrub-action.tsx)
+  in the example app.
+</Note>
+
+```tsx
+<LiveChart data={data} value={value} scrubAction onScrubAction={openTicket} />
+```
+
+The badge reports the **price at the reticle's Y position** — a free level you choose, the inverse
+of the value→pixel mapping — **not** the line/candle value at that X. That's what makes it an order
+tool: a limit order is a horizontal price *level*, so the locked reticle reads the price under the
+crosshair, exactly like the crosshair badge in pro charting tools. It works the same in line and
+candle mode (price-from-Y is mode-agnostic); `LiveChartSeries` is not supported.
+
+`scrubAction` **coexists** with `scrub`/`onScrub`: with no reticle placed, a drag scrubs as usual;
+once a reticle is locked, dragging adjusts it. (Set `scrub={{ dimOpacity: 1 }}` to keep working-order
+lines un-dimmed while a reticle is down.)
+
+### Reading the press (`onScrubAction`)
+
+`onScrubAction` fires on the **JS thread** when the badge is pressed, with a `ScrubActionPoint`. The
+library asserts no buy/sell semantics — derive the side from `price` versus your own current price:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  scrubAction
+  onScrubAction={({ price, time, candle }) => {
+    const side = price < value.get() ? "buy" : "sell"; // buy-below / sell-above convention
+    openOrderTicket({ side, limitPrice: price });
+  }}
+/>
+```
+
+### Persisting the working order
+
+The mode is **callback-only** — it owns the transient reticle, not your order state. To keep a placed
+order on the chart, push a [reference line](/guides/markers-and-references#reference-lines-bands) with
+a [`badge`](/api-reference/types#annotations) from the callback — the same primitive used for price
+alerts and targets:
+
+```tsx
+const [orders, setOrders] = useState<ReferenceLine[]>([]);
+
+<LiveChart
+  data={data}
+  value={value}
+  scrubAction
+  referenceLines={orders}
+  onScrubAction={({ price }) => {
+    const buy = price < value.get();
+    setOrders((o) => [
+      ...o,
+      { value: price, color: buy ? "#16a34a" : "#dc2626", showValue: true,
+        badge: { icon: buy ? "▲" : "▼" } },
+    ]);
+  }}
+/>;
+```
+
+### Configuring the badge
+
+Pass a `ScrubActionConfig` to set the glyph, colors, price snapping, or dismissal behavior:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  scrubAction={{
+    icon: "✓",            // action glyph (chart font); default "+"
+    snap: 0.5,             // round the reported price to a 0.5 tick
+    background: "#3323E6", // badge fill; iconColor / lineColor also available
+    dismissOnTapOutside: true, // empty-plot tap clears the reticle instead of moving it
+  }}
+  onScrubAction={openTicket}
+/>
+```
+
+Set `text: false` for an **icon-only** badge — just the circular action button, attached to the level
+line with no price pill:
+
+```tsx
+<LiveChart data={data} value={value} scrubAction={{ text: false }} onScrubAction={openTicket} />
+```
+
+### Time badge (`timeBadge`)
+
+`timeBadge` adds a date/time pill where the reticle's vertical line meets the x-axis (formatted by the
+chart's `formatTime`). It's **off by default** — for order entry the reticle's X is incidental (a limit
+order is a horizontal *price* level, and the reported `price` comes from the reticle's Y, not its time).
+Turn it on when the time under the reticle is meaningful — annotations, time-relevant actions, or a full
+crosshair readout:
+
+```tsx
+<LiveChart data={data} value={value} scrubAction={{ timeBadge: true }} onScrubAction={openTicket} />
+```
+
+For an **exact date + time** (not just the clock), pass a `formatTime` that includes the date. The pill
+sizes itself to the string and stays centered on the reticle, clamping into the axis gutter near the
+edges — so a longer label just makes a wider pill (the same way the x-axis tick labels widen).
+
+<Warning>
+  `formatTime` runs on the **UI thread** (axis labels, tooltip, and the time badge all call it inside
+  worklets), so a custom formatter must be a **worklet** and use worklet-safe ops — `new Date` getters
+  with manual formatting, **not** `toLocaleString` / `Intl` (which aren't available on the UI runtime
+  and throw "tried to call a non-worklet function").
+</Warning>
+
+```tsx
+function formatDateTime(t: number) {
+  "worklet";
+  const d = new Date(t * 1000);
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${mo}/${da} ${hh}:${mi}`; // e.g. "06/10 16:34"
+}
+
+<LiveChart
+  data={data}
+  value={value}
+  scrubAction={{ timeBadge: true }}
+  formatTime={formatDateTime}
+  onScrubAction={openTicket}
+/>;
+```
+
+See [`ScrubActionConfig`](/api-reference/types#config-objects) and
+[`ScrubActionPoint`](/api-reference/types#scrub-payloads) for every field.

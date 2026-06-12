@@ -58,6 +58,23 @@ export interface CrosshairState {
    *  (inactive / no value / degenerate range). See {@link computeScrubDotY}. */
   scrubDotY: SharedValue<number>;
   gesture: ReturnType<typeof Gesture.Pan>;
+
+  // ── Scrub-action ("order ticket") lock state — single-series `useCrosshair`
+  //    only; undefined on the multi-series crosshair. ───────────────────────────
+  /** Whether a reticle is currently placed/locked. */
+  lockActive?: SharedValue<boolean>;
+  /** Locked reticle X in canvas px (-1 when none). */
+  lockX?: SharedValue<number>;
+  /** Locked reticle Y in canvas px (-1 when none). */
+  lockY?: SharedValue<number>;
+  /** Chosen price = value at the reticle Y (optionally snapped); null when none. */
+  lockPrice?: SharedValue<number | null>;
+  /** Right-gutter action-badge layout (also the tap hit rect). */
+  actionBadge?: SharedValue<ActionBadgeLayout>;
+  /** X-axis time-badge layout at the reticle (opt-in; hidden when off). */
+  timeBadge?: SharedValue<TimeBadgeLayout>;
+  /** Tap gesture that places/moves the reticle, presses the badge, or dismisses. */
+  tapGesture?: ReturnType<typeof Gesture.Tap>;
 }
 
 /**
@@ -81,6 +98,39 @@ export function computeScrubDotY(
   const valRange = displayMax - displayMin;
   if (valRange === 0) return padTop + chartH / 2;
   return padTop + ((displayMax - value) / valRange) * chartH;
+}
+
+/**
+ * Inverse of {@link computeScrubDotY}: maps a canvas Y pixel back to a value (a
+ * free price *level*, used by scrub-action mode where the reticle Y is the chosen
+ * price, not the line value at the reticle X). Returns null when the canvas isn't
+ * laid out. A degenerate (zero) range collapses to the single value; a Y dragged
+ * past the plot edges clamps to `displayMin` / `displayMax` rather than
+ * extrapolating to a nonsensical price.
+ */
+export function computeValueAtY(
+  y: number,
+  displayMin: number,
+  displayMax: number,
+  canvasHeight: number,
+  padTop: number,
+  padBottom: number,
+): number | null {
+  "worklet";
+  const chartH = canvasHeight - padTop - padBottom;
+  if (chartH <= 0) return null;
+  const valRange = displayMax - displayMin;
+  if (valRange === 0) return displayMin;
+  const clampedY = Math.min(padTop + chartH, Math.max(padTop, y));
+  const frac = (clampedY - padTop) / chartH; // 0 at top, 1 at bottom
+  return displayMax - frac * valRange; // top → displayMax, bottom → displayMin
+}
+
+/** Rounds `price` to the nearest `increment` (no-op when increment is falsy/≤0). */
+export function snapPrice(price: number, increment?: number): number {
+  "worklet";
+  if (!increment || increment <= 0) return price;
+  return Math.round(price / increment) * increment;
 }
 
 /**
@@ -311,6 +361,250 @@ export function deriveScrubValueSingle(
   "worklet";
   if (!scrubActive || scrubTime < 0) return null;
   return interpolateAtTime(data, scrubTime);
+}
+
+/**
+ * Right-gutter action-badge layout for scrub-action mode — two pills, vertically
+ * centered on the locked reticle Y and anchored to the canvas right edge:
+ *
+ * - a **circular** icon button (the action), and
+ * - a capsule **price pill** showing the formatted value,
+ *
+ * separated by {@link ACTION_BADGE_GAP}px (`[icon] [price]`). The price pill is
+ * right-anchored in the gutter with its text horizontally centered; a lone icon
+ * (icon-only) anchors to the plot's right edge, attached to the level line.
+ * Either element is omitted when its content is empty (icon-only, or no price).
+ * The union rect (`x/y/w/h`) is the single source of truth for the tap hit-test
+ * (see {@link pointInRect}). When not locked / not laid out / both empty, returns
+ * {@link HIDDEN_ACTION_BADGE}.
+ *
+ * Text widths are sized by character count × `monoCharWidth` (the chart font is
+ * monospace), so this stays a cheap per-frame worklet with no `measureText`.
+ */
+export interface ActionBadgeLayout {
+  /** Union hit rect (icon button + price pill). */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Whether the circular icon button is shown. */
+  hasIcon: boolean;
+  /** Icon button circle center + radius (the glyph is centered on this by the overlay). */
+  iconCx: number;
+  iconCy: number;
+  iconR: number;
+  /** Whether the price pill is shown. */
+  hasPrice: boolean;
+  /** Price pill rect. */
+  priceX: number;
+  priceY: number;
+  priceW: number;
+  priceH: number;
+  /** Price text left x. */
+  priceTextX: number;
+  /** Shared baseline y for the icon glyph + price text. */
+  textY: number;
+  /** Formatted price string drawn in the price pill. */
+  priceText: string;
+  /** Whether the badge is shown (locked + laid out + has content). */
+  visible: boolean;
+}
+
+export const HIDDEN_ACTION_BADGE: ActionBadgeLayout = {
+  x: -400,
+  y: 0,
+  w: 0,
+  h: 0,
+  hasIcon: false,
+  iconCx: -400,
+  iconCy: 0,
+  iconR: 0,
+  hasPrice: false,
+  priceX: -400,
+  priceY: 0,
+  priceW: 0,
+  priceH: 0,
+  priceTextX: -400,
+  textY: 0,
+  priceText: "",
+  visible: false,
+};
+
+/** Gap between the icon button and the price pill, in px. */
+const ACTION_BADGE_GAP = 2;
+
+export function computeActionBadgeLayout(
+  locked: boolean,
+  lockY: number,
+  priceText: string,
+  icon: string,
+  canvasWidth: number,
+  /** Plot's right edge (= canvasWidth - padding.right) — where the level line ends. */
+  plotRight: number,
+  font: SkFont,
+  marginEdge: number,
+  padX: number,
+  padY: number,
+  /** Monospace advance width; sizes text by length (see {@link computeTooltipLayout}). */
+  monoCharWidth = 0,
+): ActionBadgeLayout {
+  "worklet";
+  if (!locked || canvasWidth <= 0) return HIDDEN_ACTION_BADGE;
+
+  const hasIcon = icon.length > 0;
+  const hasPrice = priceText.length > 0;
+  if (!hasIcon && !hasPrice) return HIDDEN_ACTION_BADGE;
+
+  const pillH = font.getSize() + padY * 2;
+  const r = pillH / 2;
+  const top = lockY - pillH / 2;
+  const rightEdge = canvasWidth - marginEdge;
+
+  const fm = font.getMetrics();
+  const textY = lockY - (fm.ascent + fm.descent) / 2;
+
+  // Price pill (the readout) sits in the price-axis gutter, anchored to the edge.
+  let priceW = 0;
+  let priceX = rightEdge;
+  let priceTextX = rightEdge;
+  if (hasPrice) {
+    // Size the pill to the text's ACTUAL visual bounds (+ pad each side), then
+    // position the text origin so the *ink* — not the advance box — is centered:
+    // subtract the glyph's left side-bearing (`bounds.x`). `SkiaText` draws from
+    // the pen origin, so an origin at `padX` would leave the ink shifted by the
+    // bearing; this lands the visual center exactly on the pill center.
+    //
+    // This measures the actual string each frame rather than estimating from a
+    // per-char width (`monoCharWidth`). A uniform width over-reserves for prices
+    // with narrow glyphs ("1", "."), which visibly de-centers the readout — and
+    // exact centering matters more here than shaving the per-frame `measureText`,
+    // which profiling put at ~4% of one core on the simulator (transient, only
+    // while a reticle is shown). See the price-pill centering tests.
+    const bounds = font.measureText(priceText);
+    priceW = bounds.width + padX * 2;
+    priceX = rightEdge - priceW;
+    priceTextX = priceX + padX - bounds.x;
+  }
+
+  // Circular icon button: left of the price pill, or — when alone (icon-only) —
+  // anchored to the plot's right edge so it stays attached to the level line.
+  let iconCx = plotRight;
+  if (hasIcon && hasPrice) {
+    iconCx = priceX - ACTION_BADGE_GAP - r;
+  }
+
+  const unionLeft = hasIcon ? iconCx - r : priceX;
+  const unionRight = hasPrice ? rightEdge : iconCx + r;
+
+  return {
+    x: unionLeft,
+    y: top,
+    w: unionRight - unionLeft,
+    h: pillH,
+    hasIcon,
+    iconCx,
+    iconCy: lockY,
+    iconR: r,
+    hasPrice,
+    priceX,
+    priceY: top,
+    priceW,
+    priceH: pillH,
+    priceTextX,
+    textY,
+    priceText,
+    visible: true,
+  };
+}
+
+/**
+ * X-axis time-badge layout for scrub-action mode — a small capsule pinned where
+ * the reticle's vertical line meets the time axis (the bottom gutter), centered
+ * on the reticle X and clamped to stay within the canvas. Display-only (no
+ * hit-test): an opt-in readout of the date/time under the reticle, formatted by
+ * the chart's `formatTime`. Hidden when not locked / not laid out / empty text.
+ */
+export interface TimeBadgeLayout {
+  /** Pill rect. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Time text left x (visual-bounds centered) + shared baseline y. */
+  textX: number;
+  textY: number;
+  /** Formatted time string drawn in the pill. */
+  timeText: string;
+  /** Whether the badge is shown (locked + laid out + has text). */
+  visible: boolean;
+}
+
+export const HIDDEN_TIME_BADGE: TimeBadgeLayout = {
+  x: -400,
+  y: 0,
+  w: 0,
+  h: 0,
+  textX: -400,
+  textY: 0,
+  timeText: "",
+  visible: false,
+};
+
+export function computeTimeBadgeLayout(
+  locked: boolean,
+  lockX: number,
+  timeText: string,
+  canvasWidth: number,
+  /** Baseline y where the x-axis time labels sit (= canvasHeight - padding.bottom
+   *  + X_AXIS_LABEL_OFFSET_Y). The pill is vertically centered on this row so it
+   *  aligns with the axis values it overlays. */
+  labelBaselineY: number,
+  font: SkFont,
+  padX: number,
+  padY: number,
+  marginEdge: number,
+): TimeBadgeLayout {
+  "worklet";
+  if (!locked || canvasWidth <= 0 || timeText.length === 0)
+    return HIDDEN_TIME_BADGE;
+
+  const pillH = font.getSize() + padY * 2;
+  // Snug to the measured text + centered ink (subtract the left side-bearing), the
+  // same approach the price pill uses.
+  const bounds = font.measureText(timeText);
+  const w = bounds.width + padX * 2;
+
+  // Center the pill under the reticle X, clamped into the canvas gutter so it
+  // never spills past either edge.
+  const minX = marginEdge;
+  const maxX = Math.max(minX, canvasWidth - marginEdge - w);
+  const x = Math.min(maxX, Math.max(minX, lockX - w / 2));
+
+  // Sit the text on the axis-label baseline (so it lines up with the time values)
+  // and center the pill vertically around that text.
+  const fm = font.getMetrics();
+  const textY = labelBaselineY;
+  const cy = labelBaselineY + (fm.ascent + fm.descent) / 2;
+  const top = cy - pillH / 2;
+  const textX = x + padX - bounds.x;
+
+  return { x, y: top, w, h: pillH, textX, textY, timeText, visible: true };
+}
+
+/** Axis-aligned point-in-rect test with an optional touch-target inflation. */
+export function pointInRect(
+  px: number,
+  py: number,
+  rect: { x: number; y: number; w: number; h: number },
+  slop = 0,
+): boolean {
+  "worklet";
+  return (
+    px >= rect.x - slop &&
+    px <= rect.x + rect.w + slop &&
+    py >= rect.y - slop &&
+    py <= rect.y + rect.h + slop
+  );
 }
 
 /** Single-series crosshair tooltip — extracted for tests. */

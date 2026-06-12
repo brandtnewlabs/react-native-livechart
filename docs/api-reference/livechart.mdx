@@ -142,6 +142,23 @@ provided; everything else has a default.
   Fires while scrubbing; `null` when it ends.
 </ParamField>
 
+<ParamField body="scrubAction" type="boolean | ScrubActionConfig" default="false">
+  **Order-ticket** mode: tap to drop a locked crosshair, drag to fine-tune a
+  **price level**, then press the right-gutter action badge to fire `onScrubAction`.
+  The reported price is the value at the reticle's **Y** (a free level you choose),
+  not the line value at that time. Coexists with `scrub`. Pass a
+  [`ScrubActionConfig`](/api-reference/types#config-objects) for `icon`, colors,
+  `snap`, `text: false` (icon-only), or `timeBadge` (an x-axis date/time pill, off by
+  default). See [Scrubbing](/guides/scrubbing#order-ticket-scrubaction).
+  Single-series only.
+</ParamField>
+
+<ParamField body="onScrubAction" type="(point: ScrubActionPoint) => void">
+  JS-thread callback fired when the action badge is pressed. `point.price` is the
+  chosen price level (reticle Y, optionally `snap`-rounded). See
+  [`ScrubActionPoint`](/api-reference/types#scrub-payloads).
+</ParamField>
+
 <ParamField body="onGestureStart" type="() => void">
   JS-thread callback fired once when the user starts scrubbing. Respects
   `scrub.panGestureDelay` (it fires when the pan activates, not on first touch).

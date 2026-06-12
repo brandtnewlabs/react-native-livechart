@@ -40,6 +40,61 @@ export function collectReferenceValues(lines: ReferenceLine[]): number[] {
   return out;
 }
 
+/** Fully-resolved badge presentation for a Form-A reference line. */
+export interface ResolvedReferenceBadge {
+  position: "left" | "right";
+  /** Leading glyph, or "" for none. */
+  icon: string;
+  /** Whether the text label is shown. */
+  showText: boolean;
+  /** undefined → theme tooltipBg at render time. */
+  background: string | undefined;
+  /** undefined → the line color at render time. */
+  borderColor: string | undefined;
+  radius: number;
+  /** Show the pill at the value when in range (`badge`) vs only off-screen (legacy `offAxisBadge`). */
+  inRange: boolean;
+  /** Legacy `"word: value"` text format (off-axis badge) vs the `label`/value format. */
+  legacyText: boolean;
+}
+
+/**
+ * Resolves a Form-A reference line's badge presentation from the new `badge`
+ * config or the legacy `offAxisBadge` flag (the `badge` config wins). Returns
+ * null when neither is set. Pure — driven only by the line props.
+ */
+export function resolveReferenceBadge(
+  rl: ReferenceLine,
+): ResolvedReferenceBadge | null {
+  "worklet";
+  if (rl.badge) {
+    const cfg = rl.badge === true ? undefined : rl.badge;
+    return {
+      position: cfg?.position ?? "left",
+      icon: cfg?.icon ?? "",
+      showText: cfg?.text ?? true,
+      background: cfg?.background ?? rl.badgeBackground,
+      borderColor: cfg?.borderColor ?? rl.badgeBorderColor,
+      radius: cfg?.radius ?? rl.badgeRadius ?? 5,
+      inRange: true,
+      legacyText: false,
+    };
+  }
+  if (rl.offAxisBadge) {
+    return {
+      position: "left",
+      icon: "",
+      showText: true,
+      background: rl.badgeBackground,
+      borderColor: rl.badgeBorderColor,
+      radius: rl.badgeRadius ?? 5,
+      inRange: false,
+      legacyText: true,
+    };
+  }
+  return null;
+}
+
 /**
  * Where a Y value sits relative to the visible plot range:
  * `"in"` (within [min, max]), `"above"` (greater than max), or `"below"`.

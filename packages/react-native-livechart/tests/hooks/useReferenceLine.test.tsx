@@ -303,4 +303,69 @@ describe("useReferenceLine", () => {
     // center is left of the right-gutter default (x2 + 4 = 324)
     expect(result.current.value.labelX).toBeLessThan(324);
   });
+
+  it("renders an in-range value as a left-pinned pill badge", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { value: 50, badge: true }, fmt, font),
+    );
+    const l = result.current.value;
+    expect(l.badge).toBe(true);
+    expect(l.offAxis).toBe(false);
+    // Left-pinned: pill at x1 + 2 (= 14); text after the 6px pad (no icon/chevron).
+    expect(l.pillX).toBe(12 + 2);
+    expect(l.labelX).toBe(12 + 2 + 6);
+    expect(l.label).toBe("50.00");
+    // Connector runs from the pill's right edge to the plot right edge (x2 = 320).
+    expect(l.connStart).toBeGreaterThan(l.pillX + l.pillW);
+    expect(l.connEnd).toBe(320);
+  });
+
+  it("right-pins the badge and leaves room for an icon", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50, badge: { position: "right", icon: "▲" } },
+        fmt,
+        font,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.badge).toBe(true);
+    expect(l.icon).toBe("▲");
+    expect(l.iconX).toBeGreaterThanOrEqual(0);
+    // Right-pinned: the pill sits against the plot's right edge (x2 = 320).
+    expect(l.pillX + l.pillW).toBe(320 - 2);
+    // Connector runs from the left edge to the pill.
+    expect(l.connStart).toBe(12);
+    expect(l.connEnd).toBeLessThan(l.pillX);
+  });
+
+  it("hides the text for an icon-only badge", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50, label: "Buy", badge: { icon: "▲", text: false } },
+        fmt,
+        font,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.badge).toBe(true);
+    expect(l.icon).toBe("▲");
+    expect(l.label).toBe(""); // no text
+    expect(l.labelX).toBe(-1);
+  });
+
+  it("pins the badge to the edge with a chevron when off-screen", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { value: 150, badge: true }, fmt, font),
+    );
+    const l = result.current.value;
+    expect(l.offAxis).toBe(true);
+    expect(l.badge).toBe(true);
+    expect(l.chevronUp).toBe(true);
+    expect(l.chevronCx).toBeGreaterThanOrEqual(0);
+  });
 });

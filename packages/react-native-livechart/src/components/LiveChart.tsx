@@ -29,6 +29,7 @@ import {
   resolveMetrics,
   resolvePulse,
   resolveScrub,
+  resolveScrubAction,
   resolveSelectionDot,
   resolveTradeStream,
   resolveValueLine,
@@ -81,6 +82,7 @@ import { MarkerOverlay } from "./MarkerOverlay";
 import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
 import { ValueTextOverlay } from "./ValueTextOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
+import { ScrubActionOverlay } from "./ScrubActionOverlay";
 import { SegmentDividerOverlay } from "./SegmentDividerOverlay";
 import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
@@ -149,6 +151,7 @@ function useLiveChartController({
   palette: paletteOverride,
   metrics,
   scrub = true,
+  scrubAction,
   selectionDot,
   tradeStream,
   degen,
@@ -159,6 +162,7 @@ function useLiveChartController({
 
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
+  onScrubAction,
   onGestureStart,
   onGestureEnd,
   onDegenShake,
@@ -176,6 +180,8 @@ function useLiveChartController({
   const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const badgeCfg = resolveBadge(badge);
   const scrubCfg = resolveScrub(scrub);
+  // Static charts run no gestures, so scrub-action (tap/drag to lock a price) is off.
+  const scrubActionCfg = isStatic ? null : resolveScrubAction(scrubAction);
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
   const valueLineCfg = resolveValueLine(valueLine);
   // Static charts run zero loops: force the pulse off so its `withRepeat`-driven
@@ -412,12 +418,16 @@ function useLiveChartController({
     formatTime,
     skiaFont,
     // Static charts have an inert pan gesture — no scrub work on the UI thread.
-    !isStatic && scrubCfg !== null,
+    // Scrub-action also needs the gesture live even when plain scrub is off.
+    !isStatic && (scrubCfg !== null || scrubActionCfg !== null),
     onScrub,
     candleOpts,
     scrubCfg?.panGestureDelay ?? 0,
     onGestureStart,
     onGestureEnd,
+    scrubActionCfg,
+    onScrubAction,
+    metricsCfg.badge,
   );
 
   const markersActive = markers != null;
@@ -435,9 +445,18 @@ function useLiveChartController({
     !isStatic, // static: no marker-projection loop
   );
 
+  // Scrub-action composes a Tap (place/move the reticle, press the badge, dismiss)
+  // ahead of the pan via Exclusive, so a tap is tried first and only becomes a
+  // drag (live-scrub, or lock-adjust once placed) if the finger moves. `Exclusive`
+  // (not `Race`) prevents a jittery tap from being swallowed by the pan.
+  const baseGesture =
+    scrubActionCfg !== null && crosshair.tapGesture
+      ? Gesture.Exclusive(crosshair.tapGesture, crosshair.gesture)
+      : crosshair.gesture;
+
   const rootGesture = markersActive
-    ? Gesture.Race(crosshair.gesture, markerTapGesture)
-    : crosshair.gesture;
+    ? Gesture.Race(baseGesture, markerTapGesture)
+    : baseGesture;
 
   // ── Derived render values ──────────────────────────────────────────────
   const {
@@ -494,6 +513,7 @@ function useLiveChartController({
     xAxisCfg,
     badgeCfg,
     scrubCfg,
+    scrubActionCfg,
     gradientCfg,
     valueLineCfg,
     pulseCfg,
@@ -945,6 +965,73 @@ function ChartBadgeLayer({ model }: { model: LiveChartModel }) {
   );
 }
 
+/** Reference-line badges + labels, drawn ABOVE the left-edge fade so a
+ *  left-pinned badge (off-axis / `labelBadge`) and any label stay crisp instead
+ *  of being erased by the fade's dstOut. The lines/bands themselves render in the
+ *  base pass inside ChartStack (behind the chart content). */
+function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
+  const {
+    allRefLines,
+    engine,
+    effectivePadding,
+    palette,
+    formatValue,
+    skiaFont,
+    degenShakeTransform,
+  } = model;
+  if (allRefLines.length === 0) return null;
+  return (
+    <Group transform={degenShakeTransform}>
+      {allRefLines.map((rl) => (
+        <ReferenceLineOverlay
+          key={`badge-${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
+          engine={engine}
+          padding={effectivePadding}
+          line={rl}
+          palette={palette}
+          formatValue={formatValue}
+          font={skiaFont}
+          badgeLayer
+        />
+      ))}
+    </Group>
+  );
+}
+
+/** Scrub-action ("order ticket") reticle + action badge. Drawn OUTSIDE the degen
+ *  shake group so the rendered badge stays aligned with the untransformed tap
+ *  hit-test; it tracks the locked reticle, not the shaken stack. */
+function ChartScrubActionLayer({ model }: { model: LiveChartModel }) {
+  const { scrubActionCfg, crosshair, engine, effectivePadding, palette, skiaFont } =
+    model;
+  if (
+    !scrubActionCfg ||
+    !crosshair.lockActive ||
+    !crosshair.lockX ||
+    !crosshair.lockY ||
+    !crosshair.actionBadge
+  ) {
+    return null;
+  }
+  return (
+    <ScrubActionOverlay
+      lockActive={crosshair.lockActive}
+      lockX={crosshair.lockX}
+      lockY={crosshair.lockY}
+      actionBadge={crosshair.actionBadge}
+      timeBadge={crosshair.timeBadge}
+      engine={engine}
+      padding={effectivePadding}
+      palette={palette}
+      font={skiaFont}
+      icon={scrubActionCfg.icon}
+      lineColor={scrubActionCfg.lineColor}
+      background={scrubActionCfg.background}
+      iconColor={scrubActionCfg.iconColor}
+    />
+  );
+}
+
 export function LiveChart(props: LiveChartProps) {
   const model = useLiveChartController(props);
   const {
@@ -986,6 +1073,9 @@ export function LiveChart(props: LiveChartProps) {
             />
           )}
 
+          {/* Reference-line badges + labels above the fade so they stay crisp. */}
+          <ChartRefBadgeLayer model={model} />
+
           <ChartValueOverlay model={model} />
 
           <ChartScrubLayer model={model} />
@@ -993,6 +1083,9 @@ export function LiveChart(props: LiveChartProps) {
           {/* Live-price badge on top of the scrub dim so the dim never clips
               its left edge (the badge tracks the live value, not the scrub). */}
           <ChartBadgeLayer model={model} />
+
+          {/* Scrub-action reticle + action badge — top-most, no shake transform. */}
+          <ChartScrubActionLayer model={model} />
         </Canvas>
 
         {/* RN labels floated over the canvas (sibling of <Canvas>, an RN view).

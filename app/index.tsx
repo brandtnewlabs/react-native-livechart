@@ -67,6 +67,11 @@ const SECTIONS: DemoSection[] = [
         title: "Scrubbing",
         blurb: "Scrub modes, styled tooltip, onScrub readout, candle OHLC.",
       },
+      {
+        href: "/demo/scrub-action",
+        title: "Order ticket",
+        blurb: "scrubAction: tap to drop a price, drag to adjust, press + to place a limit order.",
+      },
     ],
   },
   {

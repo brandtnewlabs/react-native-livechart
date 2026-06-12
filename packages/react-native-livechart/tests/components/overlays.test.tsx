@@ -766,15 +766,27 @@ describe("ReferenceLineOverlay", () => {
 
   function renderLine(line: ReferenceLine) {
     function Fixture() {
+      // Both passes: base (lines/bands) + badge (pills/labels above the fade).
       return (
-        <ReferenceLineOverlay
-          engine={engine()}
-          padding={DEFAULT_PADDING}
-          line={line}
-          palette={palette}
-          formatValue={fmt}
-          font={font}
-        />
+        <>
+          <ReferenceLineOverlay
+            engine={engine()}
+            padding={DEFAULT_PADDING}
+            line={line}
+            palette={palette}
+            formatValue={fmt}
+            font={font}
+          />
+          <ReferenceLineOverlay
+            engine={engine()}
+            padding={DEFAULT_PADDING}
+            line={line}
+            palette={palette}
+            formatValue={fmt}
+            font={font}
+            badgeLayer
+          />
+        </>
       );
     }
     render(<Fixture />);
@@ -833,6 +845,28 @@ describe("ReferenceLineOverlay", () => {
 
   it("culls an off-screen line without offAxisBadge", () => {
     renderLine({ value: 99 });
+  });
+
+  it("renders an in-range pill badge with an icon", () => {
+    renderLine({
+      value: 5,
+      label: "Limit buy",
+      showValue: true,
+      badge: {
+        icon: "▲",
+        background: "rgba(22,163,74,0.15)",
+        borderColor: "#16a34a",
+        radius: 6,
+      },
+    });
+  });
+
+  it("renders a right-pinned, icon-only badge", () => {
+    renderLine({ value: 5, badge: { position: "right", icon: "▲", text: false } });
+  });
+
+  it("renders an off-screen badge (chevron) from the badge config", () => {
+    renderLine({ value: 99, badge: { icon: "▲" }, excludeFromRange: true });
   });
 });
 
