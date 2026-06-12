@@ -49,6 +49,24 @@ describe("computeValueAtY", () => {
     const y = computeScrubDotY(v, 0, 100, 300, 12, 28);
     expect(computeValueAtY(y, 0, 100, 300, 12, 28)).toBeCloseTo(v);
   });
+
+  it("price-stable lock: a frozen price keeps its value while its Y tracks the range", () => {
+    // Old (buggy) model derived the price from a FIXED pixel each frame, so the
+    // reported price drifted as the axis rescaled:
+    const pixelY = 150;
+    const drift1 = computeValueAtY(pixelY, 0, 100, 300, 12, 28);
+    const drift2 = computeValueAtY(pixelY, 20, 120, 300, 12, 28);
+    expect(drift2).not.toBeCloseTo(drift1 as number); // the drift the fix removes
+
+    // New model freezes the price once (the source of truth) and re-derives the
+    // line's Y from it: the value stays constant, the line moves to keep tracking
+    // that price as displayMin/Max shift.
+    const frozen = drift1 as number;
+    const yUnchanged = computeScrubDotY(frozen, 0, 100, 300, 12, 28);
+    const yShifted = computeScrubDotY(frozen, 20, 120, 300, 12, 28);
+    expect(yUnchanged).toBeCloseTo(pixelY); // same range → same pixel
+    expect(yShifted).not.toBeCloseTo(yUnchanged); // shifted range → line moves
+  });
 });
 
 describe("snapPrice", () => {

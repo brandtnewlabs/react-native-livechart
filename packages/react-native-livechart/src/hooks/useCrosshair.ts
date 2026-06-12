@@ -136,7 +136,10 @@ export function useCrosshair(
   // lock gestures are only wired by the controller when `scrubAction` is set.
   const lockActive = useSharedValue(false);
   const lockX = useSharedValue(-1);
-  const lockY = useSharedValue(-1);
+  // The chosen PRICE is the source of truth (frozen on place/drag); the reticle's
+  // screen Y is re-derived from it each frame (see `lockY` below) so the level
+  // tracks the price as the axis rescales instead of drifting under a fixed pixel.
+  const lockPriceValue = useSharedValue<number | null>(null);
   const hasScrubAction = scrubAction != null;
   const hasOnScrubAction = onScrubAction != null;
   const dismissOnTapOutside = scrubAction?.dismissOnTapOutside ?? false;
@@ -244,20 +247,35 @@ export function useCrosshair(
   });
 
   // ── Scrub-action lock derivations ──────────────────────────────────────────
-  // Chosen price = value at the locked reticle Y (a free level, NOT the line
-  // value at X), optionally snapped. Null until a reticle is placed.
+  // Reported price = the frozen chosen price, optionally snapped. Independent of
+  // the display range (the point of freezing it), so the badge readout and the
+  // onScrubAction payload stay stable while the chart auto-rescales. Null until a
+  // reticle is placed.
   /* istanbul ignore next -- worklet (locked branch only runs on the UI thread) */
   const lockPrice = useDerivedValue(() => {
     if (!lockActive.get()) return null;
-    const v = computeValueAtY(
-      lockY.get(),
+    const p = lockPriceValue.get();
+    return p === null ? null : snapPrice(p, snapIncrement);
+  });
+
+  // Screen Y of the locked level, DERIVED from the frozen price each frame so the
+  // line + badge track the chosen price as displayMin/Max move (rather than the
+  // price drifting under a pixel-fixed reticle). Pins to the plot edge when the
+  // price scrolls out of the visible range; -1 until placed / laid out.
+  /* istanbul ignore next -- worklet (locked branch only runs on the UI thread) */
+  const lockY = useDerivedValue(() => {
+    const p = lockPriceValue.get();
+    const ch = engine.canvasHeight.get();
+    if (p === null || ch - padding.top - padding.bottom <= 0) return -1;
+    const y = computeScrubDotY(
+      p,
       engine.displayMin.get(),
       engine.displayMax.get(),
-      engine.canvasHeight.get(),
+      ch,
       padding.top,
       padding.bottom,
     );
-    return v === null ? null : snapPrice(v, snapIncrement);
+    return clampPlotY(y, padding.top, ch, padding.bottom);
   });
 
   const lockTime = useDerivedValue(() =>
@@ -447,9 +465,19 @@ export function useCrosshair(
           lockX.set(
             clampPlotX(e.x, padding.left, engine.canvasWidth.get(), padding.right),
           );
-          lockY.set(
-            clampPlotY(e.y, padding.top, engine.canvasHeight.get(), padding.bottom),
-          );
+          // Freeze the chosen price (value at the pointer Y); the line's Y is
+          // re-derived from it so the level stays put in PRICE as the axis rescales.
+          {
+            const p = computeValueAtY(
+              e.y,
+              engine.displayMin.get(),
+              engine.displayMax.get(),
+              engine.canvasHeight.get(),
+              padding.top,
+              padding.bottom,
+            );
+            if (p !== null) lockPriceValue.set(p);
+          }
           return;
         }
         scrubX.set(e.x);
@@ -466,9 +494,19 @@ export function useCrosshair(
           lockX.set(
             clampPlotX(e.x, padding.left, engine.canvasWidth.get(), padding.right),
           );
-          lockY.set(
-            clampPlotY(e.y, padding.top, engine.canvasHeight.get(), padding.bottom),
-          );
+          // Freeze the chosen price (value at the pointer Y); the line's Y is
+          // re-derived from it so the level stays put in PRICE as the axis rescales.
+          {
+            const p = computeValueAtY(
+              e.y,
+              engine.displayMin.get(),
+              engine.displayMax.get(),
+              engine.canvasHeight.get(),
+              padding.top,
+              padding.bottom,
+            );
+            if (p !== null) lockPriceValue.set(p);
+          }
           return;
         }
         scrubX.set(e.x);
@@ -547,9 +585,18 @@ export function useCrosshair(
     lockX.set(
       clampPlotX(e.x, padding.left, engine.canvasWidth.get(), padding.right),
     );
-    lockY.set(
-      clampPlotY(e.y, padding.top, engine.canvasHeight.get(), padding.bottom),
+    // Freeze the chosen price at the tap Y; the line's Y derives from it (see
+    // `lockY`). No-op until the canvas is laid out (price === null).
+    const placedPrice = computeValueAtY(
+      e.y,
+      engine.displayMin.get(),
+      engine.displayMax.get(),
+      engine.canvasHeight.get(),
+      padding.top,
+      padding.bottom,
     );
+    if (placedPrice === null) return;
+    lockPriceValue.set(placedPrice);
     lockActive.set(true);
   };
 
