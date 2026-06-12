@@ -448,9 +448,12 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         </Group>
       )}
 
-      {allRefLines.map((rl) => (
+      {/* Index keys: reference lines are a positional array and two may share
+          value + label (e.g. duplicate working orders at the same price), which a
+          content-derived key would collapse to one. */}
+      {allRefLines.map((rl, i) => (
         <ReferenceLineOverlay
-          key={`${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
+          key={i}
           engine={engine}
           padding={effectivePadding}
           line={rl}
@@ -604,9 +607,9 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
   if (allRefLines.length === 0) return null;
   return (
     <Group transform={degenShakeTransform}>
-      {allRefLines.map((rl) => (
+      {allRefLines.map((rl, i) => (
         <ReferenceLineOverlay
-          key={`badge-${rl.value ?? ""}:${rl.valueFrom ?? ""}:${rl.valueTo ?? ""}:${rl.from ?? ""}:${rl.to ?? ""}:${rl.label ?? ""}`}
+          key={i}
           engine={engine}
           padding={effectivePadding}
           line={rl}

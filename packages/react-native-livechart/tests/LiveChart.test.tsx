@@ -110,6 +110,26 @@ describe("LiveChart", () => {
     render(<CandleHarness scrubAction onScrubAction={jest.fn()} />);
   });
 
+  it("does not collide React keys for duplicate-value reference lines", () => {
+    // Two working orders at the same price + label (reachable from the
+    // order-ticket flow) must each render — a content-derived key would
+    // collapse them and warn. Index keys keep them distinct.
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <Harness
+        referenceLines={[
+          { value: 50, label: "Limit buy", showValue: true, badge: { icon: "▲" } },
+          { value: 50, label: "Limit buy", showValue: true, badge: { icon: "▲" } },
+        ]}
+      />,
+    );
+    const keyWarning = errorSpy.mock.calls.some((args) =>
+      args.some((a) => typeof a === "string" && a.includes("same key")),
+    );
+    expect(keyWarning).toBe(false);
+    errorSpy.mockRestore();
+  });
+
   it("accepts custom formatters", () => {
     render(
       <Harness formatValue={(v) => v.toFixed(4)} formatTime={() => "x"} />,
