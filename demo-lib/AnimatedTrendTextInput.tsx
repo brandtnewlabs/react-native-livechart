@@ -127,5 +127,7 @@ const styles = StyleSheet.create({
   input: {
     padding: 0,
     margin: 0,
+    // Tabular figures so the live readout's digits don't shift width as it ticks.
+    fontVariant: ["tabular-nums"],
   },
 });
