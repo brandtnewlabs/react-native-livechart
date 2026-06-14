@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.1] - 2026-06-14
+
+### Fixed
+
+- **Sharp markers on retina screens** — marker glyphs (trade/winner/boost
+  shapes, icon/pill badges, and image stamps) are pre-rasterized into a Skia
+  atlas; that texture was built at logical-pixel resolution and then upscaled
+  ~3× when blitted onto a retina canvas, so markers looked blurry while text and
+  lines stayed crisp. The atlas is now rasterized at the device-pixel ratio and
+  scaled back down per frame, so markers render at full resolution. No API
+  changes. ([#118](https://github.com/brandtnewlabs/react-native-livechart/issues/118))
+
 ## [3.5.0] - 2026-06-12
 
 ### Added
@@ -265,6 +277,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[3.5.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.5.1
 [3.2.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.2.0
 [3.1.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.1.0
 [2.0.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v2.0.1
