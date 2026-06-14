@@ -74,7 +74,9 @@ export function markerAppearanceSig(m: Marker): string {
 
 /** One packed glyph in the atlas image: its source rect + box size. */
 export interface AtlasCell {
+  /** Source rect into the (hi-res) atlas texture, in **device** pixels. */
   rect: SkRect;
+  /** Logical (DPR-independent) cell width/height, used to center the blit. */
   w: number;
   h: number;
 }
@@ -84,9 +86,16 @@ export interface MarkerAtlas {
   image: SkImage | null;
   /** appearance-signature → cell. */
   cells: Record<string, AtlasCell>;
+  /**
+   * Device-pixel scale the texture was rasterized at. Cell `rect`s are in
+   * texture (device) pixels, while `w`/`h` stay in logical pixels — so the
+   * per-frame blit must apply an `RSXform` scale of `1 / scale` to map the
+   * hi-res cell back to its logical on-canvas size. See `buildMarkerAtlas`.
+   */
+  scale: number;
 }
 
-const EMPTY_ATLAS: MarkerAtlas = { image: null, cells: {} };
+const EMPTY_ATLAS: MarkerAtlas = { image: null, cells: {}, scale: 1 };
 
 function fillPaint(color: string): SkPaint {
   const p = Skia.Paint();
@@ -258,11 +267,18 @@ function cellSpec(m: Marker, palette: LiveChartPalette, font: SkFont): CellSpec 
  *
  * Connector kinds (see `isConnectorMarker`) are skipped — they render via a
  * self-projecting fallback component.
+ *
+ * The texture is rasterized at `scale` (the screen's device-pixel ratio) so the
+ * cells carry enough resolution to stay crisp when blitted onto a retina canvas
+ * — every glyph is recorded in logical coords then magnified by `scale`, and the
+ * per-frame `drawAtlas` shrinks it back with an `RSXform` scale of `1 / scale`.
+ * Without this the logical-sized texture is upscaled ~3× on iOS and looks blurry.
  */
 export function buildMarkerAtlas(
   markers: Marker[],
   palette: LiveChartPalette,
   font: SkFont,
+  scale = 1,
 ): MarkerAtlas {
   const seen = new Set<string>();
   const specs: { sig: string; spec: CellSpec }[] = [];
@@ -282,11 +298,16 @@ export function buildMarkerAtlas(
     totalW += specs[i].spec.w;
     if (specs[i].spec.h > maxH) maxH = specs[i].spec.h;
   }
+  // Logical packed size; the texture itself is `scale`× larger in each axis.
   const W = Math.max(1, Math.ceil(totalW));
   const H = Math.max(1, Math.ceil(maxH));
+  const texW = Math.max(1, Math.ceil(W * scale));
+  const texH = Math.max(1, Math.ceil(H * scale));
 
   const recorder = Skia.PictureRecorder();
-  const canvas = recorder.beginRecording(Skia.XYWHRect(0, 0, W, H));
+  const canvas = recorder.beginRecording(Skia.XYWHRect(0, 0, texW, texH));
+  // Magnify so glyphs drawn in logical coords fill the hi-res texture.
+  canvas.scale(scale, scale);
   const cells: Record<string, AtlasCell> = {};
   let x = 0;
   for (let i = 0; i < specs.length; i++) {
@@ -295,10 +316,15 @@ export function buildMarkerAtlas(
     canvas.translate(x, 0);
     spec.draw(canvas, spec.w / 2, H / 2);
     canvas.restore();
-    cells[sig] = { rect: Skia.XYWHRect(x, 0, spec.w, H), w: spec.w, h: H };
+    // Source rect indexes the device-pixel texture; w/h stay logical.
+    cells[sig] = {
+      rect: Skia.XYWHRect(x * scale, 0, spec.w * scale, texH),
+      w: spec.w,
+      h: H,
+    };
     x += spec.w;
   }
   const picture = recorder.finishRecordingAsPicture();
-  const image = drawAsImageFromPicture(picture, { width: W, height: H });
-  return { image, cells };
+  const image = drawAsImageFromPicture(picture, { width: texW, height: texH });
+  return { image, cells, scale };
 }
