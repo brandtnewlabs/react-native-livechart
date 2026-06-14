@@ -1,11 +1,13 @@
-import { Text, TextInput } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Circle, Group } from "@shopify/react-native-skia";
 import { useState } from "react";
 import {
   formatTime,
   LiveChart,
+  type ScrubConfig,
   type SelectionDotProps,
+  type TooltipRenderProps,
 } from "react-native-livechart";
 import Animated, {
   useAnimatedProps,
@@ -29,6 +31,23 @@ const SCRUB_OPTIONS: { value: ScrubMode; label: string }[] = [
   { value: "off", label: "Off" },
   { value: "on", label: "On + tooltip" },
   { value: "noTooltip", label: "On, no tooltip" },
+];
+
+type TooltipPlacement = NonNullable<ScrubConfig["tooltipPlacement"]>;
+
+// Placement applies to BOTH the built-in pill and a custom `renderTooltip` —
+// the chart positions either one on the UI thread per `tooltipPlacement`.
+const PLACEMENT_OPTIONS: { value: TooltipPlacement; label: string }[] = [
+  { value: "side", label: "Side" },
+  { value: "top", label: "Top" },
+  { value: "bottom", label: "Bottom" },
+];
+
+// Gap between the tooltip and the plot edge it's pinned to (`tooltipMargin`).
+const MARGIN_OPTIONS: { value: number; label: string }[] = [
+  { value: 8, label: "8" },
+  { value: 24, label: "24" },
+  { value: 48, label: "48" },
 ];
 
 type DisplayMode = "line" | "candle";
@@ -68,10 +87,39 @@ function RingSelectionDot({ x, y, opacity, size }: SelectionDotProps) {
   );
 }
 
+// A fully custom tooltip (`renderTooltip`): a brand-blue pill with white date
+// text. The chart floats it over the canvas and positions it on the UI thread;
+// the date is an animated TextInput bound to `timeStr`, so movement AND text
+// both update on the UI thread — no JS re-render while scrubbing. Works the same
+// under hold-to-scrub (the overlay is `pointerEvents="box-none"`, so the pan
+// gesture and its `panGestureDelay` are unaffected). Line mode only.
+function BlueTooltip({ timeStr }: TooltipRenderProps) {
+  const animatedProps = useAnimatedProps(() => {
+    const t = timeStr.get();
+    return { text: t, defaultValue: t };
+  });
+  return (
+    <View style={styles.blueTip}>
+      <AnimatedTextInput
+        editable={false}
+        underlineColorAndroid="transparent"
+        style={styles.blueTipText}
+        animatedProps={animatedProps}
+      />
+    </View>
+  );
+}
+
 export default function ScrubbingScreen() {
   const [scrubMode, setScrubMode] = useState<ScrubMode>("on");
   const [displayMode, setDisplayMode] = useState<DisplayMode>("line");
   const [styledTooltip, setStyledTooltip] = useState(false);
+  const [customTooltip, setCustomTooltip] = useState(false);
+  const [tooltipPlacement, setTooltipPlacement] =
+    useState<TooltipPlacement>("side");
+  const [tooltipMargin, setTooltipMargin] = useState(8);
+  const [dateOnly, setDateOnly] = useState(false);
+  const [roundedTip, setRoundedTip] = useState(false);
   const [dimOpacity, setDimOpacity] = useState(0.3);
   const [dotMode, setDotMode] = useState<DotMode>("default");
   const [holdToScrub, setHoldToScrub] = useState(false);
@@ -112,22 +160,29 @@ export default function ScrubbingScreen() {
     maxPoints: 6000,
   });
 
-  const scrub =
+  const scrub: ScrubConfig | boolean =
     scrubMode === "off"
       ? false
-      : scrubMode === "noTooltip"
-        ? { tooltip: false, dimOpacity, panGestureDelay }
-        : styledTooltip
-          ? {
-              tooltip: true,
-              dimOpacity,
-              panGestureDelay,
-              tooltipBackground: "#1e293b",
-              tooltipColor: "#fbbf24",
-              tooltipBorderColor: "#fbbf24",
-              crosshairLineColor: "#fbbf24",
-            }
-          : { tooltip: true, dimOpacity, panGestureDelay };
+      : {
+          tooltip: scrubMode !== "noTooltip",
+          dimOpacity,
+          panGestureDelay,
+          // Tooltip layout knobs — apply to the built-in pill and the custom
+          // render alike (placement + margin position either one).
+          tooltipPlacement,
+          tooltipMargin,
+          tooltipShowValue: !dateOnly,
+          tooltipBorderRadius: roundedTip ? 16 : 5,
+          // The "Styled" toggle recolors the built-in pill + crosshair line.
+          ...(styledTooltip
+            ? {
+                tooltipBackground: "#1e293b",
+                tooltipColor: "#fbbf24",
+                tooltipBorderColor: "#fbbf24",
+                crosshairLineColor: "#fbbf24",
+              }
+            : {}),
+        };
 
   // The `boolean | SelectionDotConfig` idiom: `true` = built-in dot, `false` =
   // hidden, a config tweaks size/color/ring, and `{ component }` swaps in a
@@ -158,6 +213,10 @@ export default function ScrubbingScreen() {
           theme={APP_THEME}
           timeWindow={windowSecs}
           scrub={scrub}
+          // Custom tooltip is line-mode only; candle keeps its OHLC stack.
+          renderTooltip={
+            customTooltip && displayMode === "line" ? BlueTooltip : undefined
+          }
           selectionDot={selectionDot}
           onGestureStart={() => setGestureState("scrubbing…")}
           onGestureEnd={() => setGestureState("idle")}
@@ -198,6 +257,38 @@ export default function ScrubbingScreen() {
         onChange={setScrubMode}
       />
       <ChipRow
+        label="Tooltip placement"
+        options={PLACEMENT_OPTIONS}
+        value={tooltipPlacement}
+        onChange={setTooltipPlacement}
+      />
+      <ChipRow
+        label="Tooltip margin (edge gap)"
+        options={MARGIN_OPTIONS}
+        value={tooltipMargin}
+        onChange={setTooltipMargin}
+      />
+      <ControlRow label="Tooltip">
+        {/* Date-only + rounded restyle the built-in pill; Custom render swaps in
+            a brand-blue RN pill. Placement/margin apply to the custom one too. */}
+        <ToggleChip label="Date only" value={dateOnly} onChange={setDateOnly} />
+        <ToggleChip
+          label="Rounded"
+          value={roundedTip}
+          onChange={setRoundedTip}
+        />
+        <ToggleChip
+          label="Styled"
+          value={styledTooltip}
+          onChange={setStyledTooltip}
+        />
+        <ToggleChip
+          label="Custom render"
+          value={customTooltip}
+          onChange={setCustomTooltip}
+        />
+      </ControlRow>
+      <ChipRow
         label="Trailing fade (dimOpacity)"
         options={DIM_OPTIONS}
         value={dimOpacity}
@@ -209,12 +300,7 @@ export default function ScrubbingScreen() {
         value={dotMode}
         onChange={setDotMode}
       />
-      <ControlRow>
-        <ToggleChip
-          label="Styled tooltip"
-          value={styledTooltip}
-          onChange={setStyledTooltip}
-        />
+      <ControlRow label="Gesture">
         <ToggleChip
           label="Hold to scrub (250ms)"
           value={holdToScrub}
@@ -231,3 +317,22 @@ export default function ScrubbingScreen() {
     </DemoScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  blueTip: {
+    borderRadius: 10,
+    backgroundColor: ACCENT,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  blueTipText: {
+    // Fixed width: the TextInput is measured once at mount; UI-thread text
+    // updates don't re-trigger a layout pass, so an auto-width pill would clip.
+    width: 72,
+    textAlign: "center",
+    color: "#fff",
+    fontSize: 13,
+    padding: 0,
+    fontFamily: "JetBrainsMono_400Regular",
+  },
+});

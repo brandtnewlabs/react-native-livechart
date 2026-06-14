@@ -129,6 +129,14 @@ export function useCrosshair(
    * Omitted when nothing coexists.
    */
   deferTapHit?: (x: number, y: number) => boolean,
+  /** Where the tooltip pill sits relative to the scrub line. Default `"side"`. */
+  tooltipPlacement: "side" | "top" | "bottom" = "side",
+  /** Render the value row in the default tooltip. Default `true`. */
+  tooltipShowValue = true,
+  /** Render the time row in the default tooltip. Default `true`. */
+  tooltipShowTime = true,
+  /** Gap (px) between the tooltip and the plot edge it's pinned to. Default `8`. */
+  tooltipMargin = 8,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -247,6 +255,11 @@ export function useCrosshair(
       formatTime,
       font,
       monoCharWidth,
+      tooltipPlacement,
+      tooltipShowValue,
+      tooltipShowTime,
+      engine.canvasHeight.get(),
+      tooltipMargin,
     );
   });
 

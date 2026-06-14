@@ -190,6 +190,11 @@ describe("resolveScrub", () => {
     expect(resolveScrub(true)).toEqual({
       tooltip: true,
       dimOpacity: 0.3,
+      tooltipBorderRadius: 5,
+      tooltipPlacement: "side",
+      tooltipMargin: 8,
+      tooltipShowValue: true,
+      tooltipShowTime: true,
       panGestureDelay: 0,
     });
   });
@@ -198,6 +203,11 @@ describe("resolveScrub", () => {
     expect(resolveScrub({ tooltip: false })).toEqual({
       tooltip: false,
       dimOpacity: 0.3,
+      tooltipBorderRadius: 5,
+      tooltipPlacement: "side",
+      tooltipMargin: 8,
+      tooltipShowValue: true,
+      tooltipShowTime: true,
       panGestureDelay: 0,
     });
   });
@@ -206,6 +216,11 @@ describe("resolveScrub", () => {
     expect(resolveScrub({ dimOpacity: 0.5 })).toEqual({
       tooltip: true,
       dimOpacity: 0.5,
+      tooltipBorderRadius: 5,
+      tooltipPlacement: "side",
+      tooltipMargin: 8,
+      tooltipShowValue: true,
+      tooltipShowTime: true,
       panGestureDelay: 0,
     });
   });
@@ -214,7 +229,40 @@ describe("resolveScrub", () => {
     expect(resolveScrub({ panGestureDelay: 300 })).toEqual({
       tooltip: true,
       dimOpacity: 0.3,
+      tooltipBorderRadius: 5,
+      tooltipPlacement: "side",
+      tooltipMargin: 8,
+      tooltipShowValue: true,
+      tooltipShowTime: true,
       panGestureDelay: 300,
+    });
+  });
+
+  it("carries a custom tooltipBorderRadius", () => {
+    expect(resolveScrub({ tooltipBorderRadius: 12 })).toMatchObject({
+      tooltipBorderRadius: 12,
+      tooltipPlacement: "side",
+    });
+  });
+
+  it("carries a tooltipPlacement override", () => {
+    expect(resolveScrub({ tooltipPlacement: "bottom" })).toMatchObject({
+      tooltipPlacement: "bottom",
+      tooltipBorderRadius: 5,
+    });
+  });
+
+  it("carries a custom tooltipMargin (edge gap)", () => {
+    expect(resolveScrub({ tooltipMargin: 24 })).toMatchObject({
+      tooltipMargin: 24,
+      tooltipPlacement: "side",
+    });
+  });
+
+  it("can drop the value row (date-only tooltip)", () => {
+    expect(resolveScrub({ tooltipShowValue: false })).toMatchObject({
+      tooltipShowValue: false,
+      tooltipShowTime: true,
     });
   });
 });

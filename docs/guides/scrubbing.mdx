@@ -31,6 +31,97 @@ Disable it with `scrub={false}`, or configure the crosshair and tooltip:
 />
 ```
 
+## Customizing the tooltip
+
+The default pill shows the value on the first row and the time on the second, offset to the side of
+the crosshair. Reshape it with `ScrubConfig` knobs — no custom rendering required:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  scrub={{
+    tooltipPlacement: "top",     // "side" (default) | "top" | "bottom"
+    tooltipShowValue: false,     // drop the value row → date-only pill
+    tooltipBorderRadius: 12,     // pill corner radius; default 5
+    tooltipBackground: "#1e293b",
+    tooltipColor: "#e2e8f0",
+    tooltipBorderColor: "#334155",
+  }}
+/>
+```
+
+- **`tooltipPlacement`** — `"side"` (default) offsets the pill to the right of the scrub line and
+  flips it left near the right edge. `"top"` / `"bottom"` center it horizontally over the line,
+  clamped into the plot and pinned to the plot's top or bottom.
+- **`tooltipMargin`** — the gap (px) between the pill and the plot edge it's pinned to (the top for
+  `"side"` / `"top"`, the bottom for `"bottom"`). Default `8`. Applies to a custom `renderTooltip` too.
+- **`tooltipShowValue` / `tooltipShowTime`** — both default `true`. Drop a row to show just the date
+  (`tooltipShowValue: false`) or just the value. Turning both off keeps the time row.
+- **`tooltipBorderRadius`**, **`tooltipBackground`**, **`tooltipColor`**, **`tooltipBorderColor`** —
+  the pill's shape and colors.
+
+## Custom tooltip (`renderTooltip`)
+
+For full control — your own layout, blur, or any non-Skia view — pass `renderTooltip`. It's the same
+idea as [`renderMarker`](/guides/markers-and-references#custom-marker-rendering): return a **React
+Native** element and the chart floats it over the canvas, positioning it on the UI thread (honoring
+`tooltipPlacement`). When set, it replaces the built-in pill entirely.
+
+The catch the JS-thread `onScrub` can't solve: the value/date change every frame while scrubbing, so
+rebuilding the tooltip in React lags. `renderTooltip` receives the live fields as
+[`SharedValue`s](/api-reference/types#tooltiprenderprops) — bind them to an animated `TextInput`
+(`useAnimatedProps`) and both the position **and** the text update on the UI thread, with no
+re-renders.
+
+```tsx
+import { View, TextInput, StyleSheet } from "react-native";
+import Animated, { useAnimatedProps } from "react-native-reanimated";
+import type { TooltipRenderProps } from "react-native-livechart";
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+function BlueTooltip({ timeStr }: TooltipRenderProps) {
+  // Animate the date text on the UI thread — no JS re-render while scrubbing.
+  const animatedProps = useAnimatedProps(() => {
+    const t = timeStr.get();
+    return { text: t, defaultValue: t };
+  });
+  return (
+    <View style={styles.pill}>
+      <AnimatedTextInput editable={false} style={styles.text} animatedProps={animatedProps} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  pill: {
+    borderRadius: 10,
+    backgroundColor: "#3323E6",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  // Fixed width: the TextInput is measured once at mount, and UI-thread text
+  // updates don't re-trigger a layout pass — an auto-width pill would clip.
+  // Use a monospace font (or `tabular-nums`) so every digit is the same width
+  // and the value never outgrows the fixed pill as it changes.
+  text: {
+    width: 72,
+    textAlign: "center",
+    color: "#fff",
+    fontSize: 13,
+    padding: 0,
+    fontVariant: ["tabular-nums"],
+  },
+});
+
+<LiveChart data={data} value={value} scrub renderTooltip={BlueTooltip} />;
+```
+
+`renderTooltip` is **line mode only** — candle charts keep their built-in OHLC stack. Return
+`null`/`undefined` to fall back to the default pill (e.g. only customize in certain states). The
+`tooltip*` style props above are ignored while a custom tooltip is active, since you own the chrome.
+
 ## Trailing fade (`dimOpacity`)
 
 While scrubbing, the chart content to the **right** of the crosshair (the "future") is faded so the

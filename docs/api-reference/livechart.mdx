@@ -123,6 +123,18 @@ provided; everything else has a default.
   [Custom marker rendering](/guides/markers-and-references#custom-marker-rendering).
 </ParamField>
 
+<ParamField body="renderTooltip" type="(ctx: TooltipRenderProps) => ReactElement | null">
+  Render a fully custom scrub tooltip as a **React Native** element instead of the
+  built-in pill — the same idea as `renderMarker`. The chart floats it over the
+  canvas and positions it on the UI thread (per `scrub.tooltipPlacement`); you own
+  the chrome (border radius/color, background are plain RN styles) and content. Bind
+  the [`TooltipRenderProps`](/api-reference/types#tooltiprenderprops) `SharedValue`s
+  to animated text so the value/date update on the UI thread too — smooth, unlike
+  rebuilding the tooltip from the JS-thread `onScrub`. Return `null`/`undefined` to
+  fall back to the built-in pill. **Line mode only** (candle keeps its OHLC stack).
+  See [Custom tooltip](/guides/scrubbing#custom-tooltip-rendertooltip).
+</ParamField>
+
 <ParamField body="referenceLines" type="ReferenceLine[]">
   Reference lines / bands (horizontal line, value band, or time band).
 </ParamField>

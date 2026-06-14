@@ -190,6 +190,18 @@ export function computeTooltipLayout(
    *  every frame, and `measureText` shapes text each call (a real cost,
    *  especially in the simulator). Falls back to `measureText` when 0. */
   monoCharWidth = 0,
+  /** Where the pill sits relative to the scrub line. `"side"` offsets it right
+   *  (flipping left near the edge); `"top"`/`"bottom"` center it over the line,
+   *  clamped into the plot and pinned to the plot's top/bottom. */
+  placement: "side" | "top" | "bottom" = "side",
+  /** Render the value row. */
+  showValue = true,
+  /** Render the time row. */
+  showTime = true,
+  /** Canvas height in px — needed to pin `"bottom"` placement. */
+  canvasHeight = 0,
+  /** Gap in px between the pill and the plot edge it's pinned to. */
+  margin = TOOLTIP_TOP_MARGIN,
 ): TooltipLayout {
   "worklet";
   if (!scrubActive || scrubValue === null) return HIDDEN_TOOLTIP;
@@ -199,9 +211,19 @@ export function computeTooltipLayout(
   const valueStr = formatValue(v);
   const timeStr = formatTime(t);
 
+  // Content toggles: pick which rows render. Guard both-off → keep the time row.
+  let sv = showValue;
+  let st = showTime;
+  let rowCount = (sv ? 1 : 0) + (st ? 1 : 0);
+  if (rowCount === 0) {
+    st = true;
+    rowCount = 1;
+  }
+
   const fm = font.getMetrics();
   const lineH = -fm.ascent + fm.descent;
-  const totalH = TOOLTIP_PAD_Y * 2 + lineH * 2 + TOOLTIP_LINE_GAP;
+  const totalH =
+    TOOLTIP_PAD_Y * 2 + lineH * rowCount + TOOLTIP_LINE_GAP * (rowCount - 1);
 
   const valueW =
     monoCharWidth > 0
@@ -211,19 +233,39 @@ export function computeTooltipLayout(
     monoCharWidth > 0
       ? timeStr.length * monoCharWidth
       : measureFontTextWidth(font, timeStr);
-  const contentW = Math.max(valueW, timeW);
+  // Only the visible rows contribute to the pill width.
+  const contentW = Math.max(sv ? valueW : 0, st ? timeW : 0);
   const pillW = contentW + TOOLTIP_PAD_X * 2;
 
   const rightEdge = canvasWidth - padding.right;
 
-  let pillX = scrubX + TOOLTIP_OFFSET_X;
-  if (pillX + pillW > rightEdge - TOOLTIP_EDGE_GAP) {
-    pillX = scrubX - pillW - TOOLTIP_OFFSET_X;
+  let pillX: number;
+  let pillY: number;
+  if (placement === "side") {
+    pillX = scrubX + TOOLTIP_OFFSET_X;
+    if (pillX + pillW > rightEdge - TOOLTIP_EDGE_GAP) {
+      pillX = scrubX - pillW - TOOLTIP_OFFSET_X;
+    }
+    pillY = padding.top + margin;
+  } else {
+    // Centered horizontally over the scrub line, clamped into the plot.
+    const leftBound = padding.left + TOOLTIP_EDGE_GAP;
+    const rightBound = rightEdge - TOOLTIP_EDGE_GAP - pillW;
+    pillX = Math.min(
+      Math.max(scrubX - pillW / 2, leftBound),
+      Math.max(leftBound, rightBound),
+    );
+    pillY =
+      placement === "top"
+        ? padding.top + margin
+        : canvasHeight - padding.bottom - margin - totalH;
   }
-  const pillY = padding.top + TOOLTIP_TOP_MARGIN;
 
-  const line1Y = pillY + TOOLTIP_PAD_Y - fm.ascent;
-  const line2Y = line1Y + lineH + TOOLTIP_LINE_GAP;
+  // line1Y = first rendered row's baseline; line2Y = second (when both shown).
+  // The overlay maps value→line1Y and time→(showValue ? line2Y : line1Y).
+  const firstBaseline = pillY + TOOLTIP_PAD_Y - fm.ascent;
+  const line1Y = firstBaseline;
+  const line2Y = firstBaseline + lineH + TOOLTIP_LINE_GAP;
 
   const valueTextX = pillX + TOOLTIP_PAD_X + (contentW - valueW) / 2;
   const timeTextX = pillX + TOOLTIP_PAD_X + (contentW - timeW) / 2;
@@ -618,6 +660,11 @@ export function deriveCrosshairTooltipSingle(
   formatTime: (t: number) => string,
   font: SkFont,
   monoCharWidth = 0,
+  placement: "side" | "top" | "bottom" = "side",
+  showValue = true,
+  showTime = true,
+  canvasHeight = 0,
+  margin = TOOLTIP_TOP_MARGIN,
 ): TooltipLayout {
   "worklet";
   if (!scrubActive || scrubTime < 0) return HIDDEN_TOOLTIP;
@@ -632,5 +679,10 @@ export function deriveCrosshairTooltipSingle(
     formatTime,
     font,
     monoCharWidth,
+    placement,
+    showValue,
+    showTime,
+    canvasHeight,
+    margin,
   );
 }

@@ -15,8 +15,6 @@ import type { ResolvedSelectionDotConfig } from "../core/resolveConfig";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import { SelectionDotSlot } from "./SelectionDot";
 
-const TOOLTIP_RADIUS = 5;
-
 export function CrosshairOverlay({
   scrubX,
   crosshairOpacity,
@@ -39,6 +37,9 @@ export function CrosshairOverlay({
   tooltipBackground,
   tooltipColor,
   tooltipBorderColor,
+  tooltipBorderRadius = 5,
+  tooltipShowValue = true,
+  tooltipShowTime = true,
 }: {
   scrubX: SharedValue<number>;
   crosshairOpacity: SharedValue<number>;
@@ -78,6 +79,12 @@ export function CrosshairOverlay({
   tooltipBackground?: string;
   tooltipColor?: string;
   tooltipBorderColor?: string;
+  /** Tooltip pill corner radius in px. Default 5. */
+  tooltipBorderRadius?: number;
+  /** Draw the value row of the default tooltip body. Default true. */
+  tooltipShowValue?: boolean;
+  /** Draw the time row of the default tooltip body. Default true. */
+  tooltipShowTime?: boolean;
 }) {
   // Explicit dependency arrays: with React Compiler enabled, Reanimated's
   // auto-detected worklet dependencies can change array size between renders
@@ -181,7 +188,7 @@ export function CrosshairOverlay({
             y={tipY}
             width={tipW}
             height={tipH}
-            r={TOOLTIP_RADIUS}
+            r={tooltipBorderRadius}
             color={tooltipBackground ?? palette.tooltipBg}
           />
 
@@ -190,7 +197,7 @@ export function CrosshairOverlay({
             y={tipY}
             width={tipW}
             height={tipH}
-            r={TOOLTIP_RADIUS}
+            r={tooltipBorderRadius}
             color={tooltipBorderColor ?? palette.tooltipBorder}
             style="stroke"
             strokeWidth={1}
@@ -199,20 +206,24 @@ export function CrosshairOverlay({
           {children ??
             renderTooltip?.() ?? (
               <Group>
-                <SkiaText
-                  x={valueTextX}
-                  y={line1Y}
-                  text={valueStr}
-                  font={font}
-                  color={tooltipColor ?? palette.tooltipText}
-                />
-                <SkiaText
-                  x={timeTextX}
-                  y={line2Y}
-                  text={timeStr}
-                  font={font}
-                  color={palette.gridLabel}
-                />
+                {tooltipShowValue && (
+                  <SkiaText
+                    x={valueTextX}
+                    y={line1Y}
+                    text={valueStr}
+                    font={font}
+                    color={tooltipColor ?? palette.tooltipText}
+                  />
+                )}
+                {tooltipShowTime && (
+                  <SkiaText
+                    x={timeTextX}
+                    y={tooltipShowValue ? line2Y : line1Y}
+                    text={timeStr}
+                    font={font}
+                    color={palette.gridLabel}
+                  />
+                )}
               </Group>
             )}
         </>

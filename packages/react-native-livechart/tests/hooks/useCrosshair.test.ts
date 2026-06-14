@@ -314,6 +314,183 @@ describe("computeTooltipLayout", () => {
     expect(layout.valueTextX).toBeGreaterThanOrEqual(layout.x);
     expect(layout.valueTextX).toBeLessThan(layout.x + layout.w);
   });
+
+  it("placement 'top' centers the pill over the scrub line and pins it to the top", () => {
+    const layout = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8, // mono advance → deterministic width
+      "top",
+    );
+    // Centered horizontally over scrubX (200), pinned to padding.top + 8 = 20.
+    expect(layout.x + layout.w / 2).toBeCloseTo(200);
+    expect(layout.y).toBe(padding.top + 8);
+  });
+
+  it("placement 'bottom' pins the pill to the plot's bottom", () => {
+    const canvasHeight = 300;
+    const layout = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "bottom",
+      true,
+      true,
+      canvasHeight,
+    );
+    // Bottom edge sits canvasHeight - padding.bottom - 8 from the top.
+    expect(layout.y + layout.h).toBe(canvasHeight - padding.bottom - 8);
+  });
+
+  it("honors a custom margin for the pinned edge gap", () => {
+    const top = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "top",
+      true,
+      true,
+      300,
+      24, // margin
+    );
+    expect(top.y).toBe(padding.top + 24);
+
+    const bottom = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "bottom",
+      true,
+      true,
+      300,
+      24,
+    );
+    expect(bottom.y + bottom.h).toBe(300 - padding.bottom - 24);
+  });
+
+  it("placement 'top'/'bottom' clamps the centered pill into the plot at the edges", () => {
+    const left = computeTooltipLayout(
+      true,
+      0,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "top",
+    );
+    expect(left.x).toBeGreaterThanOrEqual(padding.left + 4);
+
+    const right = computeTooltipLayout(
+      true,
+      400,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "bottom",
+      true,
+      true,
+      300,
+    );
+    expect(right.x + right.w).toBeLessThanOrEqual(400 - padding.right - 4);
+  });
+
+  it("drops the value row when showValue is false (date-only, single-row height)", () => {
+    const layout = computeTooltipLayout(
+      true,
+      50,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "side",
+      false, // showValue
+      true, // showTime
+    );
+    // Single row: height = PAD_Y*2 + lineH = 12 + 12 = 24; sized by the time row.
+    expect(layout.h).toBe(24);
+    expect(layout.w).toBe(layout.timeStr.length * 8 + 16);
+  });
+
+  it("drops the time row when showTime is false (single row sized by value)", () => {
+    const layout = computeTooltipLayout(
+      true,
+      50,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "side",
+      true,
+      false, // showTime
+    );
+    expect(layout.h).toBe(24);
+    expect(layout.w).toBe(layout.valueStr.length * 8 + 16);
+  });
+
+  it("falls back to the time row when both content rows are off", () => {
+    const layout = computeTooltipLayout(
+      true,
+      50,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "side",
+      false,
+      false,
+    );
+    expect(layout.h).toBe(24);
+    expect(layout.w).toBe(layout.timeStr.length * 8 + 16);
+  });
 });
 
 describe("computeTooltipLayoutMulti", () => {

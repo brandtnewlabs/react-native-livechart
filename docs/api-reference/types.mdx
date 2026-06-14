@@ -213,6 +213,10 @@ interface ScrubConfig {
   dimOpacity?: number; // opacity of content right of the crosshair; default 0.3 (1 = off)
   crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
   tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;
+  tooltipBorderRadius?: number; // pill corner radius; default 5
+  tooltipPlacement?: "side" | "top" | "bottom"; // default "side" (offset/flip); top/bottom center over the line
+  tooltipMargin?: number; // gap (px) to the pinned plot edge (top for side/top, bottom for bottom); default 8
+  tooltipShowValue?: boolean; tooltipShowTime?: boolean; // default both true; drop a row (e.g. date-only)
   panGestureDelay?: number; // press-and-hold ms before scrubbing activates; default 0
 }
 // Order-ticket mode (scrubAction). Opt-in — default off.
@@ -307,6 +311,25 @@ interface SelectionDotProps {
   opacity: SharedValue<number>; // crosshair fade opacity (0..1), already ramped
   color: string;                // resolved dot color (line / series accent)
   size: number;                 // suggested dot radius in px
+}
+```
+
+## TooltipRenderProps
+
+Context passed to a custom `renderTooltip` — the fully custom scrub tooltip. The element you
+return is a React Native view the chart floats over
+the canvas and positions on the UI thread (per `scrub.tooltipPlacement`). Every live field is a
+`SharedValue`, so bind them to animated text (e.g. an `Animated.createAnimatedComponent(TextInput)`
+driven by `useAnimatedProps`) and both movement **and** text stay on the UI thread — no JS
+re-render while scrubbing. See [Custom tooltip](/guides/scrubbing#custom-tooltip-rendertooltip).
+
+```ts
+interface TooltipRenderProps {
+  value: SharedValue<number | null>; // interpolated value under the crosshair
+  time: SharedValue<number>;         // window time (unix seconds) under the crosshair
+  valueStr: SharedValue<string>;     // value formatted with the chart's formatValue
+  timeStr: SharedValue<string>;      // time formatted with the chart's formatTime
+  active: SharedValue<boolean>;      // whether scrubbing is active
 }
 ```
 

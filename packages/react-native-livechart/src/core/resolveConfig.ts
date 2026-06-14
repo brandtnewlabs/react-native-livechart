@@ -89,6 +89,16 @@ export interface ResolvedScrubConfig {
   tooltipColor: string | undefined;
   /** undefined → palette.tooltipBorder */
   tooltipBorderColor: string | undefined;
+  /** Tooltip pill corner radius in px. */
+  tooltipBorderRadius: number;
+  /** Where the tooltip pill sits relative to the scrub line. */
+  tooltipPlacement: "side" | "top" | "bottom";
+  /** Gap (px) between the tooltip and the plot edge it's pinned to. */
+  tooltipMargin: number;
+  /** Show the value row in the default tooltip body. */
+  tooltipShowValue: boolean;
+  /** Show the time row in the default tooltip body. */
+  tooltipShowTime: boolean;
   /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
   panGestureDelay: number;
 }
@@ -357,6 +367,11 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltipBackground: undefined,
   tooltipColor: undefined,
   tooltipBorderColor: undefined,
+  tooltipBorderRadius: 5,
+  tooltipPlacement: "side",
+  tooltipMargin: 8,
+  tooltipShowValue: true,
+  tooltipShowTime: true,
   panGestureDelay: 0,
 };
 
