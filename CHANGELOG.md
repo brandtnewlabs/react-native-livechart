@@ -5,6 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2026-06-14
+
+### Added
+
+- **Customizable scrub tooltips** (single-series `LiveChart`) — two complementary
+  ways to reshape the tooltip pill, both UI-thread smooth.
+  ([#119](https://github.com/brandtnewlabs/react-native-livechart/issues/119))
+  - Adjustable `ScrubConfig` props: `tooltipPlacement` (`"side"` | `"top"` |
+    `"bottom"` — top/bottom center the pill over the scrub line), `tooltipMargin`
+    (gap to the pinned plot edge, default `8`), `tooltipShowValue` /
+    `tooltipShowTime` (drop a row — e.g. a date-only tooltip), and
+    `tooltipBorderRadius` (default `5`).
+  - `renderTooltip?: (ctx: TooltipRenderProps) => ReactElement | null` — render a
+    fully custom **React Native** tooltip, the same idea as `renderMarker`. The
+    chart floats it over the canvas and positions it on the UI thread (honoring
+    `tooltipPlacement` / `tooltipMargin`). It receives the live scrub state as
+    `SharedValue`s (`TooltipRenderProps`), so the value/date can be bound to
+    animated text and update on the UI thread — no JS-thread `onScrub` lag. Line
+    mode only (candle keeps its OHLC stack). `TooltipRenderProps` is exported.
+
 ## [3.6.0] - 2026-06-14
 
 ### Added
