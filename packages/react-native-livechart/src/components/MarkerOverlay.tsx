@@ -6,6 +6,7 @@ import {
   type SkFont,
 } from "@shopify/react-native-skia";
 import { useMemo, useRef, useState } from "react";
+import { PixelRatio } from "react-native";
 import {
   useDerivedValue,
   useAnimatedReaction,
@@ -189,13 +190,19 @@ export function MarkerOverlay({
   }, [snapshot]);
   // Cells bake in resolved colors; include the palette fields they depend on.
   const paletteKey = `${palette.bgRgb.join(",")}|${palette.line}|${palette.refLine}|${palette.dotUp}|${palette.refLabel}`;
+  // Rasterize at the screen's device-pixel ratio so sprites stay crisp on
+  // retina canvases instead of being upscaled from a logical-sized texture.
+  const dpr = PixelRatio.get();
   const atlas = useMemo(
-    () => buildMarkerAtlas(snapshot, palette, font),
+    () => buildMarkerAtlas(snapshot, palette, font, dpr),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- appearanceKey/paletteKey capture the inputs that change cell pixels
-    [appearanceKey, paletteKey, font],
+    [appearanceKey, paletteKey, font, dpr],
   );
   const cells: Record<string, AtlasCell> = atlas.cells;
   const atlasImage = atlas.image;
+  // Inverse of the texture's device-pixel scale; shrinks each hi-res cell back
+  // to its logical on-canvas size in the per-frame blit.
+  const invScale = 1 / atlas.scale;
 
   // One pooled, ping-ponged projection buffer reused every frame (no per-frame
   // array allocation for the projection itself).
@@ -240,15 +247,16 @@ export function MarkerOverlay({
         if (isConnectorMarker(m)) continue;
         const cell = cells[markerAppearanceSig(m)];
         if (!cell) continue;
-        // Center the cell on the projected point (RSXform: scale 1, no rotation).
+        // Center the cell on the projected point. The cell's source rect is in
+        // device pixels, so scale by 1/dpr to land it at its logical size.
         transforms.push(
-          Skia.RSXform(1, 0, pt.x - cell.w / 2, pt.y - cell.h / 2),
+          Skia.RSXform(invScale, 0, pt.x - cell.w / 2, pt.y - cell.h / 2),
         );
         sprites.push(cell.rect);
       }
       return { transforms, sprites };
     },
-    [cells, markers, engine, padding, series, lineData],
+    [cells, invScale, markers, engine, padding, series, lineData],
   );
   const transforms = useDerivedValue(() => atlasData.get().transforms, [atlasData]);
   const sprites = useDerivedValue(() => atlasData.get().sprites, [atlasData]);

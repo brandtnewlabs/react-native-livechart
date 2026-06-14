@@ -100,6 +100,26 @@ describe("buildMarkerAtlas", () => {
     );
     expect(Object.keys(atlas.cells)).toHaveLength(2);
   });
+
+  it("defaults to a 1x texture (logical-sized cells)", () => {
+    const marker = m({ id: "t", kind: "trade" });
+    const atlas = buildMarkerAtlas([marker], palette, font);
+    const cell = atlas.cells[markerAppearanceSig(marker)];
+    expect(atlas.scale).toBe(1);
+    // At 1x the source rect equals the logical cell box.
+    expect(cell.rect.width).toBe(cell.w);
+  });
+
+  it("rasterizes at the given device-pixel ratio for crisp retina sprites", () => {
+    const marker = m({ id: "t", kind: "trade" });
+    const atlas = buildMarkerAtlas([marker], palette, font, 3);
+    const cell = atlas.cells[markerAppearanceSig(marker)];
+    expect(atlas.scale).toBe(3);
+    // The source rect lives in device pixels (3x the logical box) while w/h
+    // stay logical, so the per-frame blit can shrink it back with 1/scale.
+    expect(cell.rect.width).toBeCloseTo(cell.w * 3);
+    expect(cell.rect.height).toBeCloseTo(cell.h * 3);
+  });
 });
 
 describe("defaultMarkerColor", () => {

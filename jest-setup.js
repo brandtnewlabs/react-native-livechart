@@ -105,6 +105,7 @@ jest.mock("@shopify/react-native-skia", () => {
     save: jest.fn(),
     restore: jest.fn(),
     translate: jest.fn(),
+    scale: jest.fn(),
     drawCircle: jest.fn(),
     drawText: jest.fn(),
     drawPath: jest.fn(),
