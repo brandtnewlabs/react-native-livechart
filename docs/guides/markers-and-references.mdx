@@ -56,6 +56,45 @@ single-series chart, omitting `value` anchors the marker to the line at `time` (
 `data`); in multi-series, set `seriesId` to anchor to that series' line. So for a marker that should
 always sit on the line, just give it a `time` and `kind`.
 
+### Custom marker rendering
+
+Built-in glyphs are drawn into the Skia canvas. When you need something the canvas **can't** draw —
+a native `BlurView` glass badge, a gradient pill, an animated component — pass `renderMarker`. Return
+a **React Native** element to float it, auto-centered, at the marker's live `(time, value)` position
+(tracked on the UI thread); return `null`/`undefined` to keep the built-in glyph for that marker.
+
+```tsx
+import { BlurView } from "expo-blur";
+
+<LiveChart
+  data={data}
+  value={value}
+  markers={markers}
+  renderMarker={(marker) => {
+    const side = (marker.data as { side?: "buy" | "sell" })?.side;
+    if (!side) return null; // fall back to the built-in glyph
+    return (
+      <BlurView intensity={28} tint="light" style={styles.glassBadge}>
+        <Text style={{ color: side === "buy" ? "#16a34a" : "#dc2626" }}>
+          {side === "buy" ? "BUY" : "SELL"}
+        </Text>
+      </BlurView>
+    );
+  }}
+/>;
+```
+
+Custom-rendered markers are floated as RN views over the canvas, so they render **crisp at native
+resolution** (and skip the marker atlas entirely — no glyph drawn behind them). Taps still fire
+`onMarkerHover` via the marker hit-test. `expo-blur` is the consumer's choice — `renderMarker`
+accepts any element, and the library takes no extra dependency.
+
+<Note>
+  Use `renderMarker` for a handful of special markers, not hundreds of high-frequency ones: each
+  custom marker is its own animated view + projection, whereas built-in glyphs batch into a single
+  draw call. Works the same on `LiveChart` and `LiveChartSeries`.
+</Note>
+
 ## Trade stream
 
 For trade-fill markers specifically, feed a `SharedValue<TradeEvent[]>`:

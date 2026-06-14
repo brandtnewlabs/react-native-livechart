@@ -114,6 +114,27 @@ describe("MarkerOverlay", () => {
     render(<Fixture />);
   });
 
+  it("excludes custom-rendered markers from the atlas (renderMarker)", () => {
+    function Fixture() {
+      const markers = useSharedValue<Marker[]>([
+        { id: "atlas", time: 999, kind: "trade", value: 50 },
+        { id: "custom", time: 998, kind: "winner", value: 55 },
+      ]);
+      return (
+        <MarkerOverlay
+          markers={markers}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          // Custom-render the winner; the trade still draws via the atlas.
+          renderMarker={(m) => (m.id === "custom" ? <></> : null)}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
   it("anchors a marker to a series by seriesId", () => {
     function Fixture() {
       const markers = useSharedValue<Marker[]>([

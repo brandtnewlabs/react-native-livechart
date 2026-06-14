@@ -148,6 +148,7 @@ export function MarkerOverlay({
   font,
   series,
   lineData,
+  renderMarker,
 }: {
   markers: SharedValue<Marker[]>;
   engine: ChartEngineLayout;
@@ -158,6 +159,12 @@ export function MarkerOverlay({
   series?: SharedValue<SeriesConfig[]>;
   /** Single-series line data; anchors markers that omit `value`. */
   lineData?: SharedValue<LiveChartPoint[]>;
+  /**
+   * When provided, markers it returns an element for are rendered as RN views by
+   * `CustomMarkerOverlay` instead — so they're excluded from the atlas here to
+   * avoid a (blurry) glyph drawn behind the custom element.
+   */
+  renderMarker?: (marker: Marker) => unknown;
 }) {
   // Seed from the current markers at mount; the reaction below keeps it in sync.
   const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
@@ -177,6 +184,24 @@ export function MarkerOverlay({
     [markers, pull],
   );
 
+  // Ids of markers the consumer renders as custom RN views (CustomMarkerOverlay).
+  // Stabilized via a string key so an inline `renderMarker` that returns the same
+  // set doesn't churn `customIds`' identity (which the per-frame worklet captures).
+  const customKey = useMemo(() => {
+    if (!renderMarker) return "";
+    let k = "";
+    for (let i = 0; i < snapshot.length; i++) {
+      const m = snapshot[i];
+      if (renderMarker(m) != null) k += `${m.id}\x1f`;
+    }
+    return k;
+  }, [snapshot, renderMarker]);
+  const customIds = useMemo<Record<string, true>>(() => {
+    const o: Record<string, true> = {};
+    for (const id of customKey.split("\x1f")) if (id) o[id] = true;
+    return o;
+  }, [customKey]);
+
   // Rebuild the atlas image only when the set of distinct appearances or the
   // theme/font changes — never per frame. `markersSignature` already drives the
   // snapshot, so this useMemo re-runs at most at the snapshot cadence.
@@ -184,17 +209,18 @@ export function MarkerOverlay({
     const sigs = new Set<string>();
     for (let i = 0; i < snapshot.length; i++) {
       const m = snapshot[i];
-      if (!isConnectorMarker(m)) sigs.add(markerAppearanceSig(m));
+      if (!isConnectorMarker(m) && !customIds[m.id])
+        sigs.add(markerAppearanceSig(m));
     }
     return Array.from(sigs).sort().join("\x1e");
-  }, [snapshot]);
+  }, [snapshot, customIds]);
   // Cells bake in resolved colors; include the palette fields they depend on.
   const paletteKey = `${palette.bgRgb.join(",")}|${palette.line}|${palette.refLine}|${palette.dotUp}|${palette.refLabel}`;
   // Rasterize at the screen's device-pixel ratio so sprites stay crisp on
   // retina canvases instead of being upscaled from a logical-sized texture.
   const dpr = PixelRatio.get();
   const atlas = useMemo(
-    () => buildMarkerAtlas(snapshot, palette, font, dpr),
+    () => buildMarkerAtlas(snapshot.filter((m) => !customIds[m.id]), palette, font, dpr),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- appearanceKey/paletteKey capture the inputs that change cell pixels
     [appearanceKey, paletteKey, font, dpr],
   );
@@ -245,6 +271,8 @@ export function MarkerOverlay({
         if (!pt.visible) continue;
         const m = ms[i];
         if (isConnectorMarker(m)) continue;
+        // Custom-rendered markers are floated as RN views, not drawn here.
+        if (customIds[m.id]) continue;
         const cell = cells[markerAppearanceSig(m)];
         if (!cell) continue;
         // Center the cell on the projected point. The cell's source rect is in
@@ -256,7 +284,7 @@ export function MarkerOverlay({
       }
       return { transforms, sprites };
     },
-    [cells, invScale, markers, engine, padding, series, lineData],
+    [cells, customIds, invScale, markers, engine, padding, series, lineData],
   );
   const transforms = useDerivedValue(() => atlasData.get().transforms, [atlasData]);
   const sprites = useDerivedValue(() => atlasData.get().sprites, [atlasData]);

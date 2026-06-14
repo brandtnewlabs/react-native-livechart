@@ -86,6 +86,7 @@ import {
   ThresholdLineOverlay,
 } from "./ThresholdLineOverlay";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
+import { CustomMarkerOverlay } from "./CustomMarkerOverlay";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
@@ -199,6 +200,7 @@ function useLiveChartController({
   markers,
   onMarkerHover,
   markerHitRadius = 16,
+  renderMarker,
   leftEdgeFade = true,
 
   // ── Callbacks ───────────────────────────────────────────────────────────
@@ -682,6 +684,7 @@ function useLiveChartController({
     rootGesture,
     markersActive,
     markersSV,
+    renderMarker,
     // selection dot: resolved config + fallback color (the chart line/accent color)
     selectionDot: selectionDotCfg,
     selectionColor: lineProp?.color ?? palette.line,
@@ -819,6 +822,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     degenPackRevision,
     markersActive,
     markersSV,
+    renderMarker,
     emptyText,
     metricsCfg,
     layoutWidth,
@@ -996,6 +1000,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
             palette={palette}
             font={skiaFont}
             lineData={engine.data}
+            renderMarker={renderMarker}
           />
         </Group>
       )}
@@ -1251,6 +1256,9 @@ export function LiveChart(props: LiveChartProps) {
     formatValue,
     topLabelCfg,
     bottomLabelCfg,
+    markersActive,
+    markersSV,
+    renderMarker,
   } = model;
 
   return (
@@ -1306,6 +1314,18 @@ export function LiveChart(props: LiveChartProps) {
           defaultColor={palette.gridLabel}
           padding={effectivePadding}
         />
+
+        {/* Custom-rendered markers — RN views floated over the canvas (non-Skia),
+            pinned to each marker's live position. Sibling of <Canvas>. */}
+        {markersActive && renderMarker && (
+          <CustomMarkerOverlay
+            markers={markersSV}
+            renderMarker={renderMarker}
+            engine={engine}
+            padding={effectivePadding}
+            lineData={engine.data}
+          />
+        )}
       </View>
     </GestureDetector>
   );
