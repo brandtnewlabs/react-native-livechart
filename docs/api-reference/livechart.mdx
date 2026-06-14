@@ -112,6 +112,17 @@ provided; everything else has a default.
   Tap hit-test radius in px.
 </ParamField>
 
+<ParamField body="renderMarker" type="(marker: Marker) => ReactElement | null">
+  Render a marker as a custom **React Native** element instead of a built-in Skia
+  glyph — e.g. an `expo-blur` glass badge or any non-Skia view. Return an element
+  to float it, auto-centered, at the marker's live `(time, value)` position
+  (tracked on the UI thread); return `null`/`undefined` to keep the built-in
+  glyph. Custom-rendered markers skip the atlas (no double-draw) and stay crisp at
+  native resolution. Use sparingly — each is its own animated view, whereas
+  built-in glyphs batch into one draw call. See
+  [Custom marker rendering](/guides/markers-and-references#custom-marker-rendering).
+</ParamField>
+
 <ParamField body="referenceLines" type="ReferenceLine[]">
   Reference lines / bands (horizontal line, value band, or time band).
 </ParamField>

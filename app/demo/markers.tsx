@@ -1,5 +1,6 @@
+import { BlurView } from "expo-blur";
 import { useEffect, useRef, useState } from "react";
-import { Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { LiveChart, type Marker } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
@@ -39,10 +40,33 @@ function makeMarker(id: string, time: number, side: Side): Marker {
   };
 }
 
+/**
+ * Custom-rendered marker: an iOS-style "glass" badge built from an `expo-blur`
+ * `<BlurView>` — a NON-Skia native view that the Skia canvas can't draw. This is
+ * exactly what `renderMarker` unlocks: the chart floats it over the canvas,
+ * pinned to the marker's live position, crisp at native resolution.
+ */
+function GlassMarker({ side }: { side: Side }) {
+  const color = side === "buy" ? BUY_COLOR : SELL_COLOR;
+  return (
+    <BlurView
+      intensity={28}
+      tint={APP_THEME === "dark" ? "dark" : "light"}
+      style={glass.badge}
+    >
+      <View style={[glass.dot, { backgroundColor: color }]} />
+      <Text style={[glass.text, { color }]}>
+        {side === "buy" ? "BUY" : "SELL"}
+      </Text>
+    </BlurView>
+  );
+}
+
 export default function MarkersScreen() {
   const [auto, setAuto] = useState(true);
   const [hover, setHover] = useState("Tap a marker");
   const [streamOn, setStreamOn] = useState(false);
+  const [custom, setCustom] = useState(false);
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("normal");
 
   const { data, value, tradeStream } = useSimulatedChartData({
@@ -106,6 +130,15 @@ export default function MarkersScreen() {
           timeWindow={WINDOW}
           markers={markers}
           markerHitRadius={22}
+          renderMarker={
+            custom
+              ? (m) => (
+                  <GlassMarker
+                    side={(m.data as { side?: Side })?.side ?? "buy"}
+                  />
+                )
+              : undefined
+          }
           tradeStream={streamOn ? tradeStream : undefined}
           onMarkerHover={(e) => {
             const side = (e?.marker.data as { side?: Side } | undefined)?.side;
@@ -137,6 +170,15 @@ export default function MarkersScreen() {
         line at its time.
       </Text>
 
+      <ControlRow label="Custom render">
+        <ToggleChip label="renderMarker" value={custom} onChange={setCustom} />
+      </ControlRow>
+      <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+        `renderMarker` floats your own RN element at each marker — here a real
+        expo-blur `BlurView` glass badge, the kind of non-Skia view the canvas
+        can&apos;t draw.
+      </Text>
+
       <ControlRow label="Trade stream">
         <ToggleChip label="tradeStream" value={streamOn} onChange={setStreamOn} />
       </ControlRow>
@@ -149,3 +191,24 @@ export default function MarkersScreen() {
     </DemoScreen>
   );
 }
+
+const glass = StyleSheet.create({
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    // Hairline rim sells the "glass" edge; overflow clips the blur to the pill.
+    borderColor: APP_THEME === "dark" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.12)",
+    overflow: "hidden",
+  },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  text: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+});

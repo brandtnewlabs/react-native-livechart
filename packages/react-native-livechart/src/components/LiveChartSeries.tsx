@@ -63,6 +63,7 @@ import {
 } from "../theme";
 import type { LiveChartSeriesProps, Marker, SeriesConfig } from "../types";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
+import { CustomMarkerOverlay } from "./CustomMarkerOverlay";
 import { CrosshairLine } from "./CrosshairLine";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
@@ -143,6 +144,7 @@ function useLiveChartSeriesController({
   markers,
   onMarkerHover,
   markerHitRadius = 16,
+  renderMarker,
   leftEdgeFade = true,
 }: LiveChartSeriesProps) {
   const emptyMarkers = useSharedValue<Marker[]>([]);
@@ -386,6 +388,7 @@ function useLiveChartSeriesController({
     rootGesture,
     markersActive,
     markersSV,
+    renderMarker,
     // selection dot: resolved config + fallback color (the leading series' color)
     selectionDot: selectionDotCfg,
     selectionColor: lineColors[0],
@@ -426,6 +429,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     degenPackRevision,
     markersActive,
     markersSV,
+    renderMarker,
     series,
     emptyText,
     metricsCfg,
@@ -541,6 +545,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
             palette={palette}
             font={skiaFont}
             series={series}
+            renderMarker={renderMarker}
           />
         </Group>
       )}
@@ -649,6 +654,9 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     formatValue,
     topLabelCfg,
     bottomLabelCfg,
+    markersActive,
+    markersSV,
+    renderMarker,
   } = model;
 
   // Extend the scrub dim past the plot's right edge to fully cover the series
@@ -735,6 +743,18 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
             defaultColor={palette.gridLabel}
             padding={effectivePadding}
           />
+
+          {/* Custom-rendered markers — RN views floated over the canvas
+              (non-Skia), pinned to each marker's live position. */}
+          {markersActive && renderMarker && (
+            <CustomMarkerOverlay
+              markers={markersSV}
+              renderMarker={renderMarker}
+              engine={engine}
+              padding={effectivePadding}
+              series={series}
+            />
+          )}
         </View>
       </GestureDetector>
       {legendCfg.position === "bottom" ? legend : null}

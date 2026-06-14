@@ -1012,6 +1012,20 @@ export interface LiveChartCoreProps {
   /** Tap hit-test radius in px. Default `16` (≈ 44px touch target with the glyph). */
   markerHitRadius?: number;
   /**
+   * Render a marker as a custom **React Native** element instead of a built-in
+   * Skia glyph — e.g. an `expo-blur` glass badge or any non-Skia view that the
+   * canvas can't draw. Return an element to float it, auto-centered, at the
+   * marker's live `(time, value)` position (tracked on the UI thread); return
+   * `null`/`undefined` to keep the built-in atlas glyph for that marker.
+   *
+   * The element is rendered as an RN view layered over the canvas, so it is
+   * crisp at native resolution. Use it sparingly (a handful of special markers):
+   * each custom marker is its own animated view + projection, whereas built-in
+   * glyphs batch into a single draw call. Custom-rendered markers skip the atlas
+   * glyph entirely (no double-draw).
+   */
+  renderMarker?: (marker: Marker) => ReactElement | null | undefined;
+  /**
    * Override individual resolved-palette keys on top of the palette derived from
    * `accentColor` + `theme`. Only the keys you set are replaced.
    */
