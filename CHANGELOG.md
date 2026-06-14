@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] - 2026-06-14
+
+### Added
+
+- **Custom marker rendering** — `renderMarker?: (marker: Marker) => ReactElement | null`
+  on `LiveChart` and `LiveChartSeries`. Return a **React Native** element to float
+  your own view at a marker's live `(time, value)` position (auto-centered, tracked
+  on the UI thread); return `null`/`undefined` to keep the built-in Skia glyph.
+  This lets you use non-Skia elements the canvas can't draw — e.g. an `expo-blur`
+  `BlurView` glass badge — rendered crisp at native resolution. Custom-rendered
+  markers skip the marker atlas (no glyph drawn behind them) and taps still fire
+  `onMarkerHover`. Use sparingly: each is its own animated view, whereas built-in
+  glyphs batch into one draw call. ([#118](https://github.com/brandtnewlabs/react-native-livechart/issues/118))
+
 ## [3.5.1] - 2026-06-14
 
 ### Fixed
@@ -277,6 +291,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[3.6.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.6.0
 [3.5.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.5.1
 [3.2.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.2.0
 [3.1.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.1.0
