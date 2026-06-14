@@ -6,7 +6,8 @@ description: >-
   including the first-ever publish — or asks how publishing works here. Covers
   the workspace-scoping gotcha (a bare `npm publish` targets the Expo example
   app, not the library), the `private: false` gate, the source-shipping/prepack
-  model, dry-run verification, and post-publish tagging. Trigger even if the
+  model, dry-run verification, and the required post-publish steps (push, tag,
+  and a GitHub Release). Trigger even if the
   user just says "push it to npm", "can we publish now", or "ship the package"
   without naming the skill. For deciding a version bump + CHANGELOG first, see
   the update-library skill.
@@ -90,16 +91,45 @@ npm publish -w react-native-livechart
   (including the registry handshake) without uploading — use it if you want one
   more confirmation beyond `npm pack --dry-run`.
 
-## Post-publish
+## Post-publish — ALL FOUR steps are required, do not stop early
 
-1. **Confirm it's live:** `npm view react-native-livechart version`.
-2. **Tag the release** (there are no tags yet, so this establishes the
-   convention):
+A release is **not done** until the GitHub Release exists. Shipping to npm + a git
+tag without the GitHub Release has bitten us before — the releases page silently
+fell behind. Run all four:
+
+1. **Confirm it's live.** ⚠️ `npm view react-native-livechart version` and
+   `... dist-tags` can lag the registry CDN by minutes and show the *previous*
+   version even when the publish succeeded — do **not** treat that as a failure.
+   Confirm the *specific* version instead, which is not cached the same way:
+   ```bash
+   npm view react-native-livechart@<X.Y.Z> version   # echoes <X.Y.Z> when live
+   ```
+2. **Push the release commit.** The `chore(release): vX.Y.Z` commit is usually
+   still local — push it before tagging so the tag has a pushed commit to point at:
+   ```bash
+   git push origin main
+   ```
+3. **Tag the release** (convention: `vX.Y.Z`, established across the repo):
    ```bash
    git tag v$(node -p "require('./packages/react-native-livechart/package.json').version")
-   git push --tags
+   git push origin "v$(node -p "require('./packages/react-native-livechart/package.json').version")"
    ```
-3. Optionally cut a GitHub release from that tag.
+4. **Cut the GitHub Release — REQUIRED, not optional.** Every version has one and
+   the root `CHANGELOG.md` links to `/releases/tag/vX.Y.Z`, so a missing release =
+   a dead link. Title convention is **`vX.Y.Z — <short feature name>`** (e.g.
+   "v3.6.0 — Custom markers", "v3.5.1 — Crisp markers", "v3.5.0 — Threshold
+   split"); body is that version's `CHANGELOG.md` section. Mark the newest the
+   latest:
+   ```bash
+   # Put the version's CHANGELOG section in /tmp/relnotes.md first, then:
+   gh release create v<X.Y.Z> --repo brandtnewlabs/react-native-livechart \
+     --title "v<X.Y.Z> — <feature>" --notes-file /tmp/relnotes.md --verify-tag --latest
+   ```
+   Then verify: `gh release list --repo brandtnewlabs/react-native-livechart` shows
+   the new version as `Latest`.
+
+If you publish to npm but get blocked (e.g. a safety prompt) before finishing
+2–4, the release is **incomplete** — come back and finish every remaining step.
 
 ## If something's wrong after publishing
 
