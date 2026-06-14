@@ -378,6 +378,27 @@ export interface ScrubConfig {
   tooltipColor?: string;
   /** Tooltip pill border color. Omit to use theme `tooltipBorder`. */
   tooltipBorderColor?: string;
+  /** Tooltip pill corner radius in px. Default `5`. */
+  tooltipBorderRadius?: number;
+  /**
+   * Where the tooltip pill sits relative to the vertical scrub line.
+   * `"side"` (default) offsets it to the right of the line and flips left near
+   * the right edge. `"top"` / `"bottom"` center it horizontally over the line,
+   * clamped into the plot and pinned to the plot's top or bottom. This also
+   * drives a custom {@link LiveChartProps.renderTooltip} so it gets the same
+   * placement for free.
+   */
+  tooltipPlacement?: "side" | "top" | "bottom";
+  /**
+   * Gap in px between the tooltip and the plot edge it's pinned to — the top for
+   * `"side"`/`"top"`, the bottom for `"bottom"`. Applies to the built-in pill and
+   * a custom {@link LiveChartProps.renderTooltip}. Default `8`.
+   */
+  tooltipMargin?: number;
+  /** Show the value row in the default tooltip body. Default `true`. */
+  tooltipShowValue?: boolean;
+  /** Show the time row in the default tooltip body. Default `true`. */
+  tooltipShowTime?: boolean;
   /**
    * Press-and-hold delay in milliseconds before scrubbing activates — think of
    * it as "press and hold to scrub." During the delay the pan is not captured,
@@ -471,6 +492,28 @@ export interface SelectionDotProps {
   color: string;
   /** Suggested dot radius in px. */
   size: number;
+}
+
+/**
+ * Context passed to a custom {@link LiveChartProps.renderTooltip}. The element
+ * you return is a React Native view that the chart floats over the canvas and
+ * positions on the UI thread (per `scrub.tooltipPlacement`) — so movement stays
+ * smooth without JS re-renders, unlike rebuilding the tooltip from the JS-thread
+ * `onScrub` callback. Bind the SharedValues here to animated text (e.g. an
+ * `Animated.createAnimatedComponent(TextInput)` driven by `useAnimatedProps`)
+ * for the value/date to update on the UI thread too.
+ */
+export interface TooltipRenderProps {
+  /** Interpolated value under the crosshair; `null` when none. */
+  value: SharedValue<number | null>;
+  /** Window time (unix seconds) under the crosshair. */
+  time: SharedValue<number>;
+  /** Value formatted with the chart's `formatValue` (computed UI-side). */
+  valueStr: SharedValue<string>;
+  /** Time formatted with the chart's `formatTime` (computed UI-side). */
+  timeStr: SharedValue<string>;
+  /** Whether scrubbing is currently active. */
+  active: SharedValue<boolean>;
 }
 
 /** Outer ring drawn around the built-in selection dot (the subtle halo). */
@@ -1025,6 +1068,20 @@ export interface LiveChartCoreProps {
    * glyph entirely (no double-draw).
    */
   renderMarker?: (marker: Marker) => ReactElement | null | undefined;
+  /**
+   * Render a fully custom scrub tooltip as a **React Native** element instead of
+   * the built-in pill — the same idea as `renderMarker`. The chart floats the
+   * returned element over the canvas and positions it on the UI thread per
+   * `scrub.tooltipPlacement` (so it stays smooth, unlike rebuilding the tooltip
+   * from the JS-thread `onScrub`). You own the chrome (border radius/color,
+   * background are plain RN styles) and content — bind the {@link
+   * TooltipRenderProps} SharedValues to animated text for the value/date.
+   *
+   * Return `null`/`undefined` to fall back to the built-in pill. Replaces the
+   * default pill entirely while active. Single-series **line mode only** —
+   * ignored in candle mode (the OHLC stack owns the tooltip there).
+   */
+  renderTooltip?: (ctx: TooltipRenderProps) => ReactElement | null | undefined;
   /**
    * Override individual resolved-palette keys on top of the palette derived from
    * `accentColor` + `theme`. Only the keys you set are replaced.

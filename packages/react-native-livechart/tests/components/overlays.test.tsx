@@ -405,6 +405,46 @@ describe("CrosshairOverlay", () => {
     render(<Fixture />);
   });
 
+  it("omits the value row when tooltipShowValue is false (date-only)", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const tooltipLayout = useSharedValue<TooltipLayout>({
+        x: 110,
+        y: 20,
+        w: 80,
+        h: 24,
+        valueStr: "42.00",
+        timeStr: "12:00:00",
+        valueTextX: 115,
+        timeTextX: 115,
+        line1Y: 30,
+        line2Y: 45,
+        stackedLines: undefined,
+      });
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          showTooltip
+          tooltipShowValue={false}
+          tooltipBorderRadius={9}
+        />
+      );
+    }
+    const { toJSON } = render(<Fixture />);
+    const tree = JSON.stringify(toJSON());
+    // Value row dropped, time row kept; custom radius applied to the pill.
+    expect(tree).not.toContain("42.00");
+    expect(tree).toContain("12:00:00");
+    expect(tree).toContain('"r":9');
+  });
+
   it("renders stacked multi-series tooltip lines", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);

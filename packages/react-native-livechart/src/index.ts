@@ -79,6 +79,7 @@ export type {
   ThemeMode,
   ThresholdConfig,
   ThresholdLineConfig,
+  TooltipRenderProps,
   TradeEvent,
   ValueLineConfig,
   XAxisConfig,

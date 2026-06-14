@@ -87,6 +87,7 @@ import {
 } from "./ThresholdLineOverlay";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
 import { CustomMarkerOverlay } from "./CustomMarkerOverlay";
+import { CustomTooltipOverlay } from "./CustomTooltipOverlay";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
@@ -201,6 +202,7 @@ function useLiveChartController({
   onMarkerHover,
   markerHitRadius = 16,
   renderMarker,
+  renderTooltip,
   leftEdgeFade = true,
 
   // ── Callbacks ───────────────────────────────────────────────────────────
@@ -532,6 +534,10 @@ function useLiveChartController({
     onScrubAction,
     metricsCfg.badge,
     markersActive || refPressActive ? deferTapHit : undefined,
+    scrubCfg?.tooltipPlacement ?? "side",
+    scrubCfg?.tooltipShowValue ?? true,
+    scrubCfg?.tooltipShowTime ?? true,
+    scrubCfg?.tooltipMargin ?? 8,
   );
 
   // Scrub-action composes a Tap (place/move the reticle, press the badge, dismiss)
@@ -685,6 +691,7 @@ function useLiveChartController({
     markersActive,
     markersSV,
     renderMarker,
+    renderTooltip,
     // selection dot: resolved config + fallback color (the chart line/accent color)
     selectionDot: selectionDotCfg,
     selectionColor: lineProp?.color ?? palette.line,
@@ -1060,7 +1067,13 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
     dotOuterRadius,
     selectionDot,
     selectionColor,
+    renderTooltip,
   } = model;
+
+  // A custom line-mode tooltip is an RN overlay (sibling of <Canvas>), so the
+  // default Skia pill is suppressed here while it's active. Candle keeps its
+  // built-in OHLC stack (renderTooltip is ignored in candle mode).
+  const customTooltipActive = !isCandle && renderTooltip != null;
 
   if (!tradeStreamResolved && !scrubCfg) return null;
 
@@ -1094,7 +1107,7 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
           padding={effectivePadding}
           palette={palette}
           font={skiaFont}
-          showTooltip={scrubCfg.tooltip}
+          showTooltip={scrubCfg.tooltip && !customTooltipActive}
           selectionDot={selectionDot}
           selectionY={crosshair.scrubDotY}
           scrubActive={crosshair.scrubActive}
@@ -1106,6 +1119,9 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
           tooltipBackground={scrubCfg.tooltipBackground}
           tooltipColor={scrubCfg.tooltipColor}
           tooltipBorderColor={scrubCfg.tooltipBorderColor}
+          tooltipBorderRadius={scrubCfg.tooltipBorderRadius}
+          tooltipShowValue={scrubCfg.tooltipShowValue}
+          tooltipShowTime={scrubCfg.tooltipShowTime}
         >
           {/* Candle charts render a multi-line OHLC tooltip; the line
               chart falls back to CrosshairOverlay's default value/time
@@ -1259,6 +1275,10 @@ export function LiveChart(props: LiveChartProps) {
     markersActive,
     markersSV,
     renderMarker,
+    renderTooltip,
+    scrubCfg,
+    crosshair,
+    isCandle,
   } = model;
 
   return (
@@ -1324,6 +1344,24 @@ export function LiveChart(props: LiveChartProps) {
             engine={engine}
             padding={effectivePadding}
             lineData={engine.data}
+          />
+        )}
+
+        {/* Custom scrub tooltip — an RN view floated over the canvas (non-Skia),
+            positioned on the UI thread. Sibling of <Canvas>. Line mode only. */}
+        {scrubCfg && renderTooltip && !isCandle && (
+          <CustomTooltipOverlay
+            renderTooltip={renderTooltip}
+            scrubX={crosshair.scrubX}
+            scrubValue={crosshair.scrubValue}
+            scrubTime={crosshair.scrubTime}
+            scrubActive={crosshair.scrubActive}
+            crosshairOpacity={crosshair.crosshairOpacity}
+            tooltipLayout={crosshair.tooltipLayout}
+            engine={engine}
+            padding={effectivePadding}
+            placement={scrubCfg.tooltipPlacement}
+            margin={scrubCfg.tooltipMargin}
           />
         )}
       </View>

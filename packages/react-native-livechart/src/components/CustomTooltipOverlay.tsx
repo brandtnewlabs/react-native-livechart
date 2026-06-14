@@ -1,0 +1,135 @@
+import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
+
+import type { ChartEngineLayout } from "../core/useLiveChartEngine";
+import type { ChartPadding } from "../draw/line";
+import type { TooltipLayout } from "../hooks/crosshairShared";
+import type { TooltipRenderProps } from "../types";
+
+// Mirror the Skia tooltip's offsets (see crosshairShared.ts) so a custom pill
+// lines up with where the built-in one would sit. The vertical edge gap is
+// configurable via `scrub.tooltipMargin` (passed as `margin`).
+const OFFSET_X = 12;
+const EDGE_GAP = 4;
+
+/**
+ * React Native overlay (NOT Skia) that floats a custom `renderTooltip` element
+ * over the Skia canvas while scrubbing. A sibling of `<Canvas>` — like
+ * {@link AxisLabelOverlay} and `CustomMarkerOverlay` — so the element can be any
+ * RN view (e.g. a glass `BlurView`) and stays crisp at native resolution.
+ *
+ * The element is positioned entirely on the UI thread: a `useAnimatedStyle`
+ * transform tracks `scrubX` + the resolved `tooltipPlacement`, measuring the
+ * element's own size via `onLayout` so it can flip/clamp/center correctly — so
+ * movement stays smooth without JS re-renders, unlike rebuilding the tooltip
+ * from the JS-thread `onScrub`. The consumer binds the {@link TooltipRenderProps}
+ * SharedValues to animated text for the value/date to update on the UI thread.
+ *
+ * `pointerEvents="box-none"` lets the scrub pan gesture pass through the empty
+ * area (and any non-interactive tooltip body) while still allowing an
+ * interactive leaf inside the custom element to be tapped.
+ */
+export function CustomTooltipOverlay({
+  renderTooltip,
+  scrubX,
+  scrubValue,
+  scrubTime,
+  scrubActive,
+  crosshairOpacity,
+  tooltipLayout,
+  engine,
+  padding,
+  placement,
+  margin = 8,
+}: {
+  renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
+  scrubX: SharedValue<number>;
+  scrubValue: SharedValue<number | null>;
+  scrubTime: SharedValue<number>;
+  scrubActive: SharedValue<boolean>;
+  crosshairOpacity: SharedValue<number>;
+  tooltipLayout: SharedValue<TooltipLayout>;
+  engine: ChartEngineLayout;
+  padding: ChartPadding;
+  placement: "side" | "top" | "bottom";
+  /** Gap (px) between the pill and the plot edge it's pinned to. Default 8. */
+  margin?: number;
+}) {
+  // Formatted strings come ready-made off the layout (formatted UI-side in
+  // computeTooltipLayout), so consumers don't need a worklet-safe formatter.
+  const valueStr = useDerivedValue(() => tooltipLayout.get().valueStr);
+  const timeStr = useDerivedValue(() => tooltipLayout.get().timeStr);
+
+  const ctx: TooltipRenderProps = {
+    value: scrubValue,
+    time: scrubTime,
+    valueStr,
+    timeStr,
+    active: scrubActive,
+  };
+  const element = renderTooltip(ctx);
+
+  // Measured element size, so the transform can flip/center/clamp the pill.
+  const size = useSharedValue({ width: 0, height: 0 });
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    size.value = { width, height };
+  };
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const active = scrubActive.get();
+    const sx = scrubX.get();
+    const cw = engine.canvasWidth.get();
+    const ch = engine.canvasHeight.get();
+    const s = size.get();
+    const rightEdge = cw - padding.right;
+
+    let x: number;
+    let y: number;
+    if (placement === "side") {
+      x = sx + OFFSET_X;
+      if (x + s.width > rightEdge - EDGE_GAP) x = sx - s.width - OFFSET_X;
+      y = padding.top + margin;
+    } else {
+      const leftBound = padding.left + EDGE_GAP;
+      const rightBound = rightEdge - EDGE_GAP - s.width;
+      x = Math.min(
+        Math.max(sx - s.width / 2, leftBound),
+        Math.max(leftBound, rightBound),
+      );
+      y =
+        placement === "top"
+          ? padding.top + margin
+          : ch - padding.bottom - margin - s.height;
+    }
+
+    return {
+      opacity: active ? crosshairOpacity.get() : 0,
+      transform: [{ translateX: x }, { translateY: y }],
+    };
+  });
+
+  if (element == null) return null;
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <Animated.View
+        pointerEvents="box-none"
+        onLayout={onLayout}
+        style={[styles.anchor, animatedStyle]}
+      >
+        {element}
+      </Animated.View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  // top/left 0 + transform so the measured element can be placed precisely.
+  anchor: { position: "absolute", top: 0, left: 0 },
+});
