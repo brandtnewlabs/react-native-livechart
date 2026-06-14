@@ -5,6 +5,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "react-native-livechart": [
+        "./packages/react-native-livechart/src/index.ts"
       ]
     }
   },
