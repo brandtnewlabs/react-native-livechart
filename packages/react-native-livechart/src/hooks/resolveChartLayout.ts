@@ -32,7 +32,10 @@ export interface ChartLayoutConfig {
   formatValue?: (v: number) => string;
   /** Current value read from SharedValue on JS thread — used to produce a sample label for measurement */
   currentValue?: number;
-  /** Live dot pulse (LiveChart); expands top/right/bottom insets so the ring is not clipped. */
+  /**
+   * Live dot pulse (LiveChart); floors top/right/bottom auto-padding so the ring
+   * is not clipped. An explicit `insetsOverride` on a side wins over this floor.
+   */
   pulse?: { maxRadius: number; strokeWidth: number } | null;
   /** When false and badge uses the right gutter, omit BADGE_TAIL_LEN from the right padding. */
   badgeShowTail?: boolean;
@@ -138,11 +141,18 @@ export function resolveChartLayout(
       config.pulse.maxRadius,
       config.pulse.strokeWidth,
     );
+    // The pulse ring needs this much room or it clips at the canvas edge, so it
+    // acts as a floor on the *auto* padding. An explicitly-provided inset always
+    // wins, though — the caller opts into any clipping that causes (issue #128).
+    // Every other auto-padding already respects an explicit inset (see the
+    // right/left branches and resolvePadding); this is the last place that didn't.
+    const ins = config.insetsOverride;
     padding = {
       ...padding,
-      right: Math.max(padding.right, outlet),
-      top: Math.max(padding.top, outlet),
-      bottom: Math.max(padding.bottom, outlet),
+      right: ins?.right != null ? padding.right : Math.max(padding.right, outlet),
+      top: ins?.top != null ? padding.top : Math.max(padding.top, outlet),
+      bottom:
+        ins?.bottom != null ? padding.bottom : Math.max(padding.bottom, outlet),
     };
   }
 
