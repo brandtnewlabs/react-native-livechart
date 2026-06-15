@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { LiveChart, type LiveChartPoint } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
@@ -88,9 +88,10 @@ function SparklineCell({ seed }: { seed: CellSeed }) {
 
 export default function SparklinesScreen() {
   // Build the 24 fixed datasets once. `nowOverride` is pinned per-cell so the
-  // most recent point sits exactly at the right edge.
+  // most recent point sits exactly at the right edge. The anchor time is read
+  // once at mount via a lazy initializer to keep render pure.
+  const [endTime] = useState(() => Date.now() / 1000);
   const seeds = useMemo<CellSeed[]>(() => {
-    const endTime = Date.now() / 1000;
     return Array.from({ length: CELL_COUNT }, (_, i) => {
       const points = seededWalk(i * 1000 + 7, POINTS_PER_CELL, endTime);
       return {
@@ -101,7 +102,7 @@ export default function SparklinesScreen() {
         color: ACCENT_PRESETS[i % ACCENT_PRESETS.length],
       };
     });
-  }, []);
+  }, [endTime]);
 
   // Featured larger sparkline shown in the fixed chart slot above the grid.
   const featuredData = useSharedValue<LiveChartPoint[]>(seeds[0].points);
