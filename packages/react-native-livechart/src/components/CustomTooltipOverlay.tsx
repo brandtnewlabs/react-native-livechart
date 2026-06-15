@@ -9,7 +9,7 @@ import Animated, {
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import type { TooltipLayout } from "../hooks/crosshairShared";
-import type { TooltipRenderProps } from "../types";
+import type { CandlePoint, TooltipRenderProps } from "../types";
 
 // Mirror the Skia tooltip's offsets (see crosshairShared.ts) so a custom pill
 // lines up with where the built-in one would sit. The vertical edge gap is
@@ -40,6 +40,7 @@ export function CustomTooltipOverlay({
   scrubValue,
   scrubTime,
   scrubActive,
+  scrubCandle,
   crosshairOpacity,
   tooltipLayout,
   engine,
@@ -52,6 +53,8 @@ export function CustomTooltipOverlay({
   scrubValue: SharedValue<number | null>;
   scrubTime: SharedValue<number>;
   scrubActive: SharedValue<boolean>;
+  /** OHLC candle under the crosshair (candle mode); omitted/`null` in line mode. */
+  scrubCandle?: SharedValue<CandlePoint | null>;
   crosshairOpacity: SharedValue<number>;
   tooltipLayout: SharedValue<TooltipLayout>;
   engine: ChartEngineLayout;
@@ -61,9 +64,13 @@ export function CustomTooltipOverlay({
   margin?: number;
 }) {
   // Formatted strings come ready-made off the layout (formatted UI-side in
-  // computeTooltipLayout), so consumers don't need a worklet-safe formatter.
+  // computeTooltipLayout / computeCandleTooltipLayout), so consumers don't need
+  // a worklet-safe formatter for the value/time.
   const valueStr = useDerivedValue(() => tooltipLayout.get().valueStr);
   const timeStr = useDerivedValue(() => tooltipLayout.get().timeStr);
+  // A stable `null` candle SharedValue for line mode so `ctx.candle` is always
+  // present (a SharedValue), regardless of mode.
+  const nullCandle = useSharedValue<CandlePoint | null>(null);
 
   const ctx: TooltipRenderProps = {
     value: scrubValue,
@@ -71,6 +78,7 @@ export function CustomTooltipOverlay({
     valueStr,
     timeStr,
     active: scrubActive,
+    candle: scrubCandle ?? nullCandle,
   };
   const element = renderTooltip(ctx);
 

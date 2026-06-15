@@ -5,6 +5,34 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0] - 2026-06-15
+
+### Added
+
+- **`topLabel` / `bottomLabel` can mark the extrema points** (`LiveChart` and
+  `LiveChartSeries`). Pass `position: "extrema"` to float the high / low readout
+  at the actual data point where it occurs — a dot + value tracked on the UI
+  thread as the chart scrolls and the Y-axis rescales — instead of pinning it to
+  a fixed edge. Works in line and candle mode (extrema track the highest high /
+  lowest low); a custom `render` is centered over the point. The label hides when
+  the window holds no data or the extremum scrolls off-plot. `"left"` / `"right"`
+  remain the default edge behavior, so existing labels are unchanged.
+  `position: "extrema-edge"` is a variant that keeps the value on the top / bottom
+  rail (x-aligned with the extremum) and joins it to a dot on the point with a
+  configurable `connector` line (a `LineStyleConfig`, dashed by default). The
+  built-in label is styleable without dropping to `render`: `AxisLabelConfig`
+  gains `fontSize` / `fontWeight` / `fontFamily` (edge + extrema text),
+  `dotColor` / `dotSize` / `dot` (the extrema marker), and `connector`.
+  ([#131](https://github.com/brandtnewlabs/react-native-livechart/issues/131))
+- **Custom `renderTooltip` now works in candlestick mode** (`LiveChart`). The
+  custom tooltip replaces the built-in OHLC stack, and `TooltipRenderProps` gains
+  a `candle: SharedValue<CandlePoint | null>` with the scrubbed bucket so you can
+  render your own OHLC readout (or a minimal pill when the active candle is shown
+  elsewhere in your UI). `value` / `valueStr` resolve to the candle's close and
+  `time` / `timeStr` to the bucket time, so a close-only tooltip needs no
+  candle-specific code. Line mode is unchanged.
+  ([#132](https://github.com/brandtnewlabs/react-native-livechart/issues/132))
+
 ## [3.9.0] - 2026-06-15
 
 ### Added

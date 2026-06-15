@@ -118,9 +118,40 @@ const styles = StyleSheet.create({
 <LiveChart data={data} value={value} scrub renderTooltip={BlueTooltip} />;
 ```
 
-`renderTooltip` is **line mode only** — candle charts keep their built-in OHLC stack. Return
-`null`/`undefined` to fall back to the default pill (e.g. only customize in certain states). The
-`tooltip*` style props above are ignored while a custom tooltip is active, since you own the chrome.
+Return `null`/`undefined` to fall back to the default pill (e.g. only customize in certain states).
+The `tooltip*` style props above are ignored while a custom tooltip is active, since you own the
+chrome.
+
+### Custom tooltip in candle mode
+
+`renderTooltip` works in **candle mode** too — it replaces the built-in OHLC stack. The context's
+[`candle`](/api-reference/types#tooltiprenderprops) field is a `SharedValue<CandlePoint | null>`
+holding the scrubbed bucket, so you can render your own OHLC readout. Bind it the same way — read it
+inside `useAnimatedProps` so the values update on the UI thread:
+
+```tsx
+function OhlcTooltip({ candle }: TooltipRenderProps) {
+  const animatedProps = useAnimatedProps(() => {
+    const c = candle.get();
+    const text = c
+      ? `O ${c.open.toFixed(2)}  H ${c.high.toFixed(2)}\nL ${c.low.toFixed(2)}  C ${c.close.toFixed(2)}`
+      : "";
+    return { text, defaultValue: text };
+  });
+  return (
+    <View style={styles.ohlcPill}>
+      <AnimatedTextInput editable={false} multiline style={styles.ohlcText} animatedProps={animatedProps} />
+    </View>
+  );
+}
+
+<LiveChart mode="candle" candles={candles} liveCandle={liveCandle} scrub renderTooltip={OhlcTooltip} />;
+```
+
+`candle` is always present (a `SharedValue`); it's `null` in line mode or when scrubbing is inactive.
+`value` / `valueStr` are the candle's close, and `time` / `timeStr` the bucket time — so a tooltip
+that only shows the close + date needs no candle-specific code at all. This is handy when the active
+candle is shown elsewhere in your UI and you want a minimal (or empty) in-chart tooltip.
 
 ## Trailing fade (`dimOpacity`)
 

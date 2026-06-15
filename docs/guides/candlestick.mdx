@@ -63,4 +63,12 @@ Bullish/bearish body and wick colors come from the palette derived from `accentC
 Override them precisely via the [`palette`](/guides/theming) prop (`candleUp`, `candleDown`,
 `wickUp`, `wickDown`).
 
+## Scrubbing & the OHLC tooltip
+
+Pass `scrub` to enable the crosshair: the built-in tooltip shows the scrubbed candle's O/H/L/C
+stacked with its time. For full control — a minimal pill, your own layout, or to mirror the active
+candle elsewhere in your UI — pass [`renderTooltip`](/guides/scrubbing#custom-tooltip-in-candle-mode),
+which receives the scrubbed bucket as `ctx.candle`. The JS-thread [`onScrub`](/guides/scrubbing)
+callback also includes `point.candle` for the OHLC under the crosshair.
+
 See the full prop list in the [`LiveChart` reference](/api-reference/livechart).

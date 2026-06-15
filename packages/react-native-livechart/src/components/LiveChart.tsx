@@ -1082,10 +1082,10 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
     renderTooltip,
   } = model;
 
-  // A custom line-mode tooltip is an RN overlay (sibling of <Canvas>), so the
-  // default Skia pill is suppressed here while it's active. Candle keeps its
-  // built-in OHLC stack (renderTooltip is ignored in candle mode).
-  const customTooltipActive = !isCandle && renderTooltip != null;
+  // A custom tooltip is an RN overlay (sibling of <Canvas>), so the built-in
+  // Skia tooltip is suppressed here while it's active — the line pill in line
+  // mode, and the OHLC stack in candle mode (see the stack gate below).
+  const customTooltipActive = renderTooltip != null;
 
   if (!tradeStreamResolved && !scrubCfg) return null;
 
@@ -1138,8 +1138,9 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
         >
           {/* Candle charts render a multi-line OHLC tooltip; the line
               chart falls back to CrosshairOverlay's default value/time
-              body. Composed as children rather than a JSX-valued prop. */}
-          {isCandle ? (
+              body. Composed as children rather than a JSX-valued prop.
+              Suppressed when a custom `renderTooltip` owns the readout. */}
+          {isCandle && !customTooltipActive ? (
             <MultiSeriesTooltipStack
               tooltipLayout={crosshair.tooltipLayout}
               font={skiaFont}
@@ -1375,14 +1376,16 @@ export function LiveChart(props: LiveChartProps) {
         )}
 
         {/* Custom scrub tooltip — an RN view floated over the canvas (non-Skia),
-            positioned on the UI thread. Sibling of <Canvas>. Line mode only. */}
-        {scrubCfg && renderTooltip && !isCandle && (
+            positioned on the UI thread. Sibling of <Canvas>. Works in line and
+            candle mode (candle exposes the OHLC via `scrubCandle`). */}
+        {scrubCfg && renderTooltip && (
           <CustomTooltipOverlay
             renderTooltip={renderTooltip}
             scrubX={crosshair.scrubX}
             scrubValue={crosshair.scrubValue}
             scrubTime={crosshair.scrubTime}
             scrubActive={crosshair.scrubActive}
+            scrubCandle={crosshair.scrubCandle}
             crosshairOpacity={crosshair.crosshairOpacity}
             tooltipLayout={crosshair.tooltipLayout}
             engine={engine}

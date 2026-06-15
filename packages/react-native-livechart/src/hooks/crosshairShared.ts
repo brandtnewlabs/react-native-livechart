@@ -4,6 +4,7 @@ import type { SharedValue } from "react-native-reanimated";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { type ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
+import type { CandlePoint } from "../types";
 
 const TOOLTIP_PAD_X = 8;
 const TOOLTIP_PAD_Y = 6;
@@ -57,6 +58,10 @@ export interface CrosshairState {
   /** Scrub intersection Y in canvas px; -1 when there's no dot to draw
    *  (inactive / no value / degenerate range). See {@link computeScrubDotY}. */
   scrubDotY: SharedValue<number>;
+  /** OHLC candle under the crosshair in candle mode (`null` in line mode or when
+   *  inactive) — single-series `useCrosshair` only; undefined on the multi-series
+   *  crosshair. Surfaced for a custom candle `renderTooltip`. */
+  scrubCandle?: SharedValue<CandlePoint | null>;
   gesture: ReturnType<typeof Gesture.Pan>;
 
   // ── Scrub-action ("order ticket") lock state — single-series `useCrosshair`
@@ -383,7 +388,7 @@ export function computeCandleTooltipLayout(
     { text: `C ${formatValue(candle.close)}`, dim: false },
     { text: formatTime(scrubTime), dim: true },
   ];
-  return computeTooltipLayoutMulti(
+  const layout = computeTooltipLayoutMulti(
     scrubActive,
     scrubX,
     lines,
@@ -392,6 +397,13 @@ export function computeCandleTooltipLayout(
     font,
     monoCharWidth,
   );
+  // Surface the close + time as the single-value strings too. The built-in
+  // OHLC stack renders `stackedLines`, but a custom `renderTooltip` reads
+  // `valueStr` / `timeStr` off the layout (same as line mode) — so a custom
+  // candle tooltip gets a ready-made close + time without its own formatter.
+  layout.valueStr = formatValue(candle.close);
+  layout.timeStr = formatTime(scrubTime);
+  return layout;
 }
 
 /** Single-series scrub value at window time — extracted for tests. */

@@ -649,6 +649,8 @@ describe("useCrosshair (hook)", () => {
     expect(result.current.crosshairOpacity.value).toBe(0);
     expect(result.current.scrubValue.value).toBeNull();
     expect(result.current.tooltipLayout.value.x).toBeLessThan(0);
+    // The candle SharedValue is exposed (null in line mode) for a custom tooltip.
+    expect(result.current.scrubCandle?.value).toBeNull();
   });
 
   it("exposes a gesture object", () => {
@@ -887,6 +889,24 @@ describe("computeCandleTooltipLayout", () => {
       font,
     );
     expect(layout.stackedLines![4].text).toBe(formatTime(1000));
+  });
+
+  it("surfaces the close + time as valueStr/timeStr (for a custom tooltip)", () => {
+    const layout = computeCandleTooltipLayout(
+      true,
+      100,
+      candle,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+    );
+    // A custom candle `renderTooltip` reads these off the layout (same as line
+    // mode); the close is the single "value".
+    expect(layout.valueStr).toBe(formatValue(candle.close));
+    expect(layout.timeStr).toBe(formatTime(1000));
   });
 
   it("pill dimensions are positive", () => {

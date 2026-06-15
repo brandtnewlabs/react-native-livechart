@@ -634,6 +634,7 @@ export function useCrosshair(
     scrubActive,
     scrubTime,
     scrubValue,
+    scrubCandle,
     crosshairOpacity,
     tooltipLayout,
     scrubDotY,

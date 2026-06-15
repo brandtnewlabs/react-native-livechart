@@ -7,7 +7,7 @@ import { CustomTooltipOverlay } from "../../src/components/CustomTooltipOverlay"
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { TooltipLayout } from "../../src/hooks/crosshairShared";
-import type { TooltipRenderProps } from "../../src/types";
+import type { CandlePoint, TooltipRenderProps } from "../../src/types";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 function engine(): ChartEngineLayout {
@@ -39,9 +39,11 @@ const LAYOUT: TooltipLayout = {
 function Fixture({
   renderTooltip,
   placement = "side",
+  candle,
 }: {
   renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
   placement?: "side" | "top" | "bottom";
+  candle?: CandlePoint | null;
 }) {
   const scrubX = useSharedValue(100);
   const scrubValue = useSharedValue<number | null>(42);
@@ -49,6 +51,7 @@ function Fixture({
   const scrubActive = useSharedValue(true);
   const crosshairOpacity = useSharedValue(1);
   const tooltipLayout = useSharedValue<TooltipLayout>(LAYOUT);
+  const scrubCandle = useSharedValue<CandlePoint | null>(candle ?? null);
   return (
     <CustomTooltipOverlay
       renderTooltip={renderTooltip}
@@ -56,6 +59,9 @@ function Fixture({
       scrubValue={scrubValue}
       scrubTime={scrubTime}
       scrubActive={scrubActive}
+      // Only wire scrubCandle when a candle is supplied, so the line-mode tests
+      // also exercise the `?? nullCandle` fallback (candle prop omitted).
+      scrubCandle={candle === undefined ? undefined : scrubCandle}
       crosshairOpacity={crosshairOpacity}
       tooltipLayout={tooltipLayout}
       engine={engine()}
@@ -105,6 +111,32 @@ describe("CustomTooltipOverlay", () => {
     expect(typeof captured!.timeStr.get).toBe("function");
     expect(captured!.valueStr.get()).toBe("42.00");
     expect(captured!.timeStr.get()).toBe("12:00:00");
+    // `candle` is always present (a SharedValue); null in line mode.
+    expect(typeof captured!.candle.get).toBe("function");
+    expect(captured!.candle.get()).toBeNull();
+  });
+
+  it("exposes the scrubbed OHLC candle in candle mode", () => {
+    const ohlc: CandlePoint = {
+      time: 985,
+      open: 100,
+      high: 120,
+      low: 90,
+      close: 110,
+    };
+    let captured: TooltipRenderProps | undefined;
+    const { getByTestId } = render(
+      <Fixture
+        candle={ohlc}
+        renderTooltip={(ctx) => {
+          captured = ctx;
+          const c = ctx.candle.get();
+          return <Text testID="ohlc">{c ? `C ${c.close}` : "—"}</Text>;
+        }}
+      />,
+    );
+    expect(getByTestId("ohlc")).toBeTruthy();
+    expect(captured!.candle.get()).toEqual(ohlc);
   });
 
   it("positions for top/bottom placement without error", () => {
