@@ -7,7 +7,6 @@
     "emitDeclarationOnly": true,
     "outDir": "dist",
     "rootDir": "src",
-    "moduleResolution": "node10",
     "module": "ESNext"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

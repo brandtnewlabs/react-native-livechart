@@ -31,18 +31,30 @@
       "groupName": "github actions"
     },
     {
-      "description": "Flag React Native ecosystem majors for extra review.",
+      "description": "Expo SDK governs these versions — bump them with `npx expo install --fix`, never Renovate. Renovate tracks npm `latest`, which runs ahead of the SDK's pinned, mutually-compatible set (e.g. it proposed react-native 0.86 / worklets 0.9.2 / jest 30 while SDK 56 pins 0.85.3 / 0.8.3 / jest 29). Renovate still owns non-SDK tooling (eslint, GitHub Actions, @testing-library, react-doctor, husky).",
       "matchPackageNames": [
         "expo",
+        "expo-*",
+        "@expo/vector-icons",
+        "jest-expo",
+        "babel-preset-expo",
+        "eslint-config-expo",
         "react",
+        "react-dom",
+        "react-test-renderer",
+        "@types/react",
+        "jest",
+        "@types/jest",
         "react-native",
-        "@shopify/react-native-skia",
+        "react-native-web",
         "react-native-reanimated",
+        "react-native-worklets",
         "react-native-gesture-handler",
-        "react-native-worklets"
+        "react-native-screens",
+        "react-native-safe-area-context",
+        "@shopify/react-native-skia"
       ],
-      "matchUpdateTypes": ["major"],
-      "addLabels": ["needs-attention"]
+      "enabled": false
     }
   ]
 }

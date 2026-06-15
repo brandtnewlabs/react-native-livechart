@@ -1,7 +1,9 @@
 "use strict";
 
 const path = require("path");
-const reactNativeResolver = require("react-native/jest/resolver");
+// RN 0.85 moved the default jest resolver out of `react-native/jest` into the
+// `@react-native/jest-preset` package (the preset references it the same way).
+const reactNativeResolver = require("@react-native/jest-preset/jest/resolver");
 
 const reanimatedLib = path.join(
   __dirname,
