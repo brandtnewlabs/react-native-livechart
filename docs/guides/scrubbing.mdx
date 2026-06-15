@@ -143,6 +143,22 @@ Default `0.3`.
 
 The same `dimOpacity` option works on `LiveChartSeries`.
 
+## Dashed crosshair (`crosshairDash`)
+
+The vertical crosshair line is solid by default. Set `crosshairDash` to draw it dashed — `true`
+applies a default `[4, 4]` dash, or pass explicit Skia dash intervals `[on, off, …]` in pixels for
+finer control. Omitting it (or `false`) keeps the solid line.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  scrub={{ crosshairLineColor: "#94a3b8", crosshairDash: [3, 4] }}
+/>
+```
+
+Pairs with `crosshairLineColor` for the stroke color, and works on `LiveChartSeries` too.
+
 ## Press-and-hold to scrub (`panGestureDelay`)
 
 By default scrubbing starts the moment the user drags. When the chart sits inside a horizontally

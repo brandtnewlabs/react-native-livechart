@@ -383,6 +383,12 @@ export interface ScrubConfig {
   /** Vertical crosshair line stroke. Omit to use theme `crosshairLine`. */
   crosshairLineColor?: string;
   /**
+   * Dash the vertical crosshair line. `true` → a default `[4, 4]` dash; an array
+   * sets explicit Skia dash intervals `[on, off, …]` in px. Omit / `false` → a
+   * solid line.
+   */
+  crosshairDash?: number[] | boolean;
+  /**
    * Legacy: fill the region right of the crosshair with this solid (usually
    * semi-transparent) color — a mask painted *over* the chart, so it only looks
    * right when it matches the background. Prefer `dimOpacity`. When set, it

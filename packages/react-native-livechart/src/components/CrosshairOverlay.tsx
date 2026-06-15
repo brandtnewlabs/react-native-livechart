@@ -1,4 +1,5 @@
 import {
+  DashPathEffect,
   Group,
   Line,
   Rect,
@@ -33,6 +34,7 @@ export function CrosshairOverlay({
   dimOpacity = 0.3,
   liveDotExtent = 0,
   crosshairLineColor,
+  crosshairDash,
   crosshairDimColor,
   tooltipBackground,
   tooltipColor,
@@ -75,6 +77,8 @@ export function CrosshairOverlay({
    *  reserves beyond it. Default 0. */
   liveDotExtent?: number;
   crosshairLineColor?: string;
+  /** Dash intervals `[on, off, …]` for the crosshair line; omit → solid. */
+  crosshairDash?: number[];
   crosshairDimColor?: string;
   tooltipBackground?: string;
   tooltipColor?: string;
@@ -168,7 +172,9 @@ export function CrosshairOverlay({
           p2={p2}
           color={crosshairLineColor ?? palette.crosshairLine}
           strokeWidth={1}
-        />
+        >
+          {crosshairDash ? <DashPathEffect intervals={crosshairDash} /> : null}
+        </Line>
 
         {/* Selection dot at the scrub intersection. `null` hides it; a custom
             component renders the consumer's dot; otherwise the built-in dot. */}

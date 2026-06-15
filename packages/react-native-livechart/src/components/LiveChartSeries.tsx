@@ -723,6 +723,7 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 dimOpacity={scrubCfg.dimOpacity}
                 liveDotExtent={liveDotExtent}
                 crosshairLineColor={scrubCfg.crosshairLineColor}
+                crosshairDash={scrubCfg.crosshairDash}
                 crosshairDimColor={scrubCfg.crosshairDimColor}
               />
             )}

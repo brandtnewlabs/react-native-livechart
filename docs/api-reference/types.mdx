@@ -222,6 +222,7 @@ interface ScrubConfig {
   tooltip?: boolean;
   dimOpacity?: number; // opacity of content right of the crosshair; default 0.3 (1 = off)
   crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
+  crosshairDash?: number[] | boolean; // dash the crosshair line; true = [4,4], or explicit [on, off, …] px
   tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;
   tooltipBorderRadius?: number; // pill corner radius; default 5
   tooltipPlacement?: "side" | "top" | "bottom"; // default "side" (offset/flip); top/bottom center over the line

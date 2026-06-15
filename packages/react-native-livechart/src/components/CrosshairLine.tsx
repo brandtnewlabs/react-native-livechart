@@ -1,4 +1,4 @@
-import { Group, Line, Rect } from "@shopify/react-native-skia";
+import { DashPathEffect, Group, Line, Rect } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { type ChartPadding } from "../draw/line";
 import type { LiveChartPalette } from "../types";
@@ -23,6 +23,7 @@ export function CrosshairLine({
   dimOpacity = 0.3,
   liveDotExtent = 0,
   crosshairLineColor,
+  crosshairDash,
   crosshairDimColor,
 }: {
   scrubX: SharedValue<number>;
@@ -48,6 +49,8 @@ export function CrosshairLine({
    *  the gutter reserves beyond them bright. Default 0. */
   liveDotExtent?: number;
   crosshairLineColor?: string;
+  /** Dash intervals `[on, off, …]` for the crosshair line; omit → solid. */
+  crosshairDash?: number[];
   crosshairDimColor?: string;
 }) {
   // Explicit dependency arrays: with React Compiler enabled, Reanimated's
@@ -119,7 +122,9 @@ export function CrosshairLine({
           p2={p2}
           color={crosshairLineColor ?? palette.crosshairLine}
           strokeWidth={1}
-        />
+        >
+          {crosshairDash ? <DashPathEffect intervals={crosshairDash} /> : null}
+        </Line>
 
         {/* Selection dot at the scrub intersection (leading series). `null`
             hides it; a custom component renders the consumer's dot. */}

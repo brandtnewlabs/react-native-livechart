@@ -1117,6 +1117,7 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
           dimOpacity={scrubCfg.dimOpacity}
           liveDotExtent={liveDotExtent}
           crosshairLineColor={scrubCfg.crosshairLineColor}
+          crosshairDash={scrubCfg.crosshairDash}
           crosshairDimColor={scrubCfg.crosshairDimColor}
           tooltipBackground={scrubCfg.tooltipBackground}
           tooltipColor={scrubCfg.tooltipColor}
