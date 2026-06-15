@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2026-06-15
+
+### Added
+
+- **Line shape controls** (single-series `LiveChart`) — new `LineConfig` fields for
+  angular, hard-edged lines:
+  - `curve?: "monotone" | "linear"` — `"monotone"` (default) keeps the smooth
+    cubic; `"linear"` draws straight segments between points. Applies to the area
+    fill too, so the gradient follows the same straight path.
+  - `join?: "round" | "miter" | "bevel"` — corner join between segments.
+    `"round"` (default) softens peaks; `"miter"` gives sharp, angular peaks;
+    `"bevel"` flattens them.
+  - `cap?: "round" | "butt" | "square"` — stroke cap at the line's start/end.
+  - Pair `curve: "linear"` + `join: "miter"` + `cap: "butt"` for a fully
+    hard-edged line (see the new `app/showcase/robinhood.tsx` tokenized-stock
+    showcase).
+
 ## [3.7.0] - 2026-06-14
 
 ### Added

@@ -53,10 +53,17 @@ export function drawSpline(
   path: SplinePathSink,
   pts: number[],
   scratch?: SplineScratch,
+  /** Straight polyline (`lineTo` per point) instead of the monotone cubic — an
+   *  angular, hard-edged line. The caller has already `moveTo`'d point 0. */
+  linear = false,
 ) {
   "worklet";
   const n = pts.length >> 1;
   if (n < 2) return;
+  if (linear) {
+    for (let i = 1; i < n; i++) path.lineTo(pts[i * 2], pts[i * 2 + 1]);
+    return;
+  }
   if (n === 2) {
     path.lineTo(pts[2], pts[3]);
     return;

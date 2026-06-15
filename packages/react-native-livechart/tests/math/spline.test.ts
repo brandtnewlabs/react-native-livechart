@@ -30,6 +30,14 @@ describe("drawSpline", () => {
     expect(path.cubicTo).toHaveBeenCalled();
   });
 
+  it("draws straight segments (lineTo per point) when linear", () => {
+    const path = makePath();
+    drawSpline(path as never, [0, 0, 5, 5, 10, 0], undefined, true);
+    expect(path.lineTo).toHaveBeenCalledWith(5, 5);
+    expect(path.lineTo).toHaveBeenCalledWith(10, 0);
+    expect(path.cubicTo).not.toHaveBeenCalled();
+  });
+
   it("handles zero delta x (flat vertical segment)", () => {
     const path = makePath();
     drawSpline(path as never, [0, 0, 0, 10, 10, 10]);

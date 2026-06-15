@@ -39,9 +39,10 @@ export const EXAMPLES: ExampleEntry[] = [
   {
     id: "robinhood",
     title: "Robinhood",
-    tagline: "Portfolio hero chart with timeframe scrubbing",
-    accent: "#00C805",
-    status: "soon",
+    tagline: "Tokenized-stock detail — edgy line + scrub dim-split",
+    accent: "#4FE05A",
+    href: "/showcase/robinhood",
+    status: "ready",
   },
   {
     id: "coinbase",

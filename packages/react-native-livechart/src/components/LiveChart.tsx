@@ -402,6 +402,8 @@ function useLiveChartController({
     reveal.morphT,
     // Only build the band path when the fill is actually on.
     thresholdCfg?.fill ? thresholdGeom.lineY : undefined,
+    // Straight polyline instead of the monotone cubic when line.curve === "linear".
+    lineProp?.curve === "linear",
   );
   const { upBodiesPath, downBodiesPath, upWicksPath, downWicksPath } =
     useCandlePaths(
@@ -902,8 +904,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
           path={linePath}
           style="stroke"
           strokeWidth={strokeWidth}
-          strokeCap="round"
-          strokeJoin="round"
+          strokeCap={lineProp?.cap ?? "round"}
+          strokeJoin={lineProp?.join ?? "round"}
           color={lineProp?.color ?? palette.line}
         >
           {thresholdCfg && thresholdStrokeColors ? (

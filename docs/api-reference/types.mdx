@@ -173,7 +173,17 @@ interface ScrubActionPoint {
 These are the option shapes accepted by the matching props.
 
 ```ts
-interface LineConfig { width?: number; color?: string; colors?: string[] }
+interface LineConfig {
+  width?: number;   // stroke width in px; default 2
+  color?: string;   // line color override; defaults to palette accent
+  colors?: string[];// per-point gradient stops (left → right); wins over color
+  curve?: "monotone" | "linear"; // point interpolation; default "monotone"
+                    //   (smooth cubic). "linear" = straight segments / hard-edged.
+  join?: "round" | "miter" | "bevel"; // corner join; default "round".
+                    //   "miter" = sharp/angular peaks, "bevel" = flattened.
+  cap?: "round" | "butt" | "square";  // start/end cap; default "round".
+                    //   pair "butt" + join "miter" for a fully hard-edged line.
+}
 interface GradientConfig {
   topOpacity?: number;    // accent-derived top fill opacity
   bottomOpacity?: number; // accent-derived bottom fill opacity
