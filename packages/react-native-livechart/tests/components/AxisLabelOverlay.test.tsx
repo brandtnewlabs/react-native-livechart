@@ -14,6 +14,7 @@ function makeEngine(max = 120, min = 80): ChartEngineLayout {
     displayMax: sv(max),
     displayMin: sv(min),
     displayWindow: sv(30),
+    timeWindow: sv(30),
     canvasWidth: sv(300),
     canvasHeight: sv(200),
     timestamp: sv(0),

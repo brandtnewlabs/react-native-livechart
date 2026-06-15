@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.1] - 2026-06-15
+
+### Fixed
+
+- **X-axis tick cadence no longer depends on the time window you came from**
+  (`LiveChart` and `LiveChartSeries`). Changing `timeWindow` between values —
+  e.g. `24h` → `1h` — could settle the axis on a coarser tick interval (one fewer
+  tick) than selecting that window directly, and switching from a much larger
+  window down to a small one could leave only a single tick. Tick selection read
+  the *animating* window, which eases asymptotically toward the target and settles
+  just above or below it, landing in the neighbouring interval bucket depending on
+  the direction of approach. Tick selection now reads the target `timeWindow`, so
+  the cadence is stable and independent of the prior window; labels still animate
+  smoothly via the easing window.
+  ([#126](https://github.com/brandtnewlabs/react-native-livechart/issues/126))
+
 ## [3.8.0] - 2026-06-15
 
 ### Added
