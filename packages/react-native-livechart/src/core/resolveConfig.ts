@@ -81,6 +81,8 @@ export interface ResolvedScrubConfig {
   dimOpacity: number;
   /** undefined → palette.crosshairLine */
   crosshairLineColor: string | undefined;
+  /** Dash intervals `[on, off, …]` for the crosshair line; undefined → solid. */
+  crosshairDash: number[] | undefined;
   /** undefined → palette.crosshairDim */
   crosshairDimColor: string | undefined;
   /** undefined → palette.tooltipBg */
@@ -363,6 +365,7 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltip: true,
   dimOpacity: 0.3,
   crosshairLineColor: undefined,
+  crosshairDash: undefined,
   crosshairDimColor: undefined,
   tooltipBackground: undefined,
   tooltipColor: undefined,
@@ -382,7 +385,14 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
 export function resolveScrub(
   prop: boolean | ScrubConfig | undefined,
 ): ResolvedScrubConfig | null {
-  return resolveToggle(prop, SCRUB_DEFAULTS, false);
+  const resolved = resolveToggle(prop, SCRUB_DEFAULTS, false);
+  if (resolved) {
+    // Normalize the dash shorthand: `true` → a default dash, an array passes
+    // through, anything falsy → solid (undefined).
+    const dash = typeof prop === "object" ? prop.crosshairDash : undefined;
+    resolved.crosshairDash = dash === true ? [4, 4] : dash || undefined;
+  }
+  return resolved;
 }
 
 const SCRUB_ACTION_DEFAULTS: ResolvedScrubActionConfig = {

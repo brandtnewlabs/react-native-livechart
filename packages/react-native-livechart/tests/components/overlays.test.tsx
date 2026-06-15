@@ -372,6 +372,27 @@ describe("CrosshairOverlay", () => {
     render(<Fixture />);
   });
 
+  it("renders a dashed crosshair line when crosshairDash is set", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          crosshairDash={[4, 4]}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
   it("renders tooltip pill when showTooltip=true", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
@@ -776,6 +797,29 @@ describe("CrosshairLine", () => {
           selectionY={selectionY}
           scrubActive={scrubActive}
           selectionColor="#abcdef"
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders a dashed crosshair line when crosshairDash is set", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      return (
+        <CrosshairLine
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          selectionDot={resolveSelectionDot(true)}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+          crosshairDash={[4, 4]}
         />
       );
     }

@@ -225,6 +225,16 @@ describe("resolveScrub", () => {
     });
   });
 
+  it("normalizes the crosshairDash shorthand", () => {
+    // `true` → a default dash, an array passes through, `false` → solid.
+    expect(resolveScrub(true)?.crosshairDash).toBeUndefined();
+    expect(resolveScrub({ crosshairDash: true })?.crosshairDash).toEqual([4, 4]);
+    expect(resolveScrub({ crosshairDash: [2, 6] })?.crosshairDash).toEqual([
+      2, 6,
+    ]);
+    expect(resolveScrub({ crosshairDash: false })?.crosshairDash).toBeUndefined();
+  });
+
   it("carries a custom panGestureDelay (press-and-hold to scrub)", () => {
     expect(resolveScrub({ panGestureDelay: 300 })).toEqual({
       tooltip: true,

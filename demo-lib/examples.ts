@@ -45,6 +45,14 @@ export const EXAMPLES: ExampleEntry[] = [
     status: "ready",
   },
   {
+    id: "backpack",
+    title: "Backpack",
+    tagline: "Token detail (light) — live-scrolling edgy line + scrub split",
+    accent: "#1FC85C",
+    href: "/showcase/backpack",
+    status: "ready",
+  },
+  {
     id: "coinbase",
     title: "Coinbase",
     tagline: "Asset detail page with candle + line modes",
