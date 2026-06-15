@@ -81,4 +81,20 @@ export default function App() {
 }
 ```
 
+## Supported platforms
+
+react-native-livechart targets **iOS and Android** via React Native (bare workflow or Expo).
+
+**React Native Web is not supported.** The chart relies on `@shopify/react-native-skia` and
+Reanimated worklets running on the native UI thread; the same code path doesn't run under
+`react-native-web`. If you ship to web, render a different chart (or a static fallback) when
+`Platform.OS === "web"`.
+
+## Supported chart types
+
+The library renders **line / area** charts and **candlestick** (OHLC) charts in a single
+component, with a smooth morph between the two modes. **Bar charts, pie charts, and other
+chart types are not included.** See the [Line & area](/guides/line-and-area) and
+[Candlestick](/guides/candlestick) guides for what each mode supports.
+
 Next: render your first chart in the [Quickstart](/quickstart).
