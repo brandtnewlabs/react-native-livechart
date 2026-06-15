@@ -47,7 +47,17 @@ export interface EngineConfig {
 export interface ChartEngineLayout {
   displayMin: SharedValue<number>;
   displayMax: SharedValue<number>;
+  /** Animating window (lerps toward {@link timeWindow}); use for positioning. */
   displayWindow: SharedValue<number>;
+  /**
+   * The target window from props — the exact value `displayWindow` eases toward.
+   * Tick *selection* (which X-axis labels exist) must read this, not
+   * `displayWindow`: the lerp is asymptotic and never reaches the target, so it
+   * settles just above or just below it depending on the prior window. Bucketing
+   * that off-by-epsilon value (e.g. via `niceTimeInterval`) would otherwise make
+   * the tick cadence depend on where you came from. See issue #126.
+   */
+  timeWindow: SharedValue<number>;
   canvasWidth: SharedValue<number>;
   canvasHeight: SharedValue<number>;
   timestamp: SharedValue<number>;
@@ -257,6 +267,7 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
     displayMin,
     displayMax,
     displayWindow,
+    timeWindow,
     canvasWidth,
     canvasHeight,
     timestamp,

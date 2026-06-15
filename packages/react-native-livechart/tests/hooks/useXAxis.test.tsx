@@ -15,7 +15,15 @@ const font = {
   }),
 } as never;
 
-function makeEngine(w: number, h: number, windowSecs: number): EngineState {
+function makeEngine(
+  w: number,
+  h: number,
+  windowSecs: number,
+  // The settled target window. Defaults to `windowSecs` so callers get a
+  // fully-settled engine; the regression test below passes a different
+  // `displayWindow` to simulate mid-animation / asymptotic-settle states.
+  targetSecs: number = windowSecs,
+): EngineState {
   return withSharedValueAccessors({
     data: { value: [] },
     value: { value: 1 },
@@ -23,10 +31,21 @@ function makeEngine(w: number, h: number, windowSecs: number): EngineState {
     displayMin: { value: 0 },
     displayMax: { value: 10 },
     displayWindow: { value: windowSecs },
+    timeWindow: { value: targetSecs },
     canvasWidth: { value: w },
     canvasHeight: { value: h },
     timestamp: { value: 1700000000 },
   }) as unknown as EngineState;
+}
+
+/** Sorted set of label texts currently rendered — the X-axis tick "cadence". */
+function tickLabels(eng: EngineState): string[] {
+  const { result } = renderHook(() =>
+    useXAxis(eng, DEFAULT_PADDING, (t) => `t${Math.round(t)}`, font),
+  );
+  return result.current.xAxisEntries.value
+    .map((e) => e.label)
+    .sort();
 }
 
 describe("useXAxis", () => {
@@ -60,6 +79,25 @@ describe("useXAxis", () => {
       ),
     );
     expect(result.current.xAxisEntries.value.length).toBeGreaterThan(0);
+  });
+
+  // Regression for #126: the tick cadence must depend on the *target* window,
+  // not the window we animated from. `displayWindow` is an asymptotic lerp that
+  // settles just above the target when coming from a larger window (e.g. 24h →
+  // 1h) and just below it from a smaller one (1m → 1h). Those off-by-epsilon
+  // values land on opposite sides of a `niceTimeInterval` bucket boundary (the
+  // round window values sit exactly on the boundaries), so the old code that
+  // bucketed `displayWindow` produced a different number of ticks per path.
+  it("tick cadence is independent of the window animated from (#126)", () => {
+    const direct = tickLabels(makeEngine(400, 200, 3600, 3600));
+    // Settled from above (came from 24h): displayWindow rests just over target.
+    const fromAbove = tickLabels(makeEngine(400, 200, 3600.001, 3600));
+    // Settled from below (came from 1m): displayWindow rests just under target.
+    const fromBelow = tickLabels(makeEngine(400, 200, 3599.999, 3600));
+
+    expect(fromAbove).toEqual(direct);
+    expect(fromBelow).toEqual(direct);
+    expect(direct.length).toBeGreaterThan(2);
   });
 
   it("widens interval until label spacing target met", () => {

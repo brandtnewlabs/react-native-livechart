@@ -88,8 +88,16 @@ export function useXAxis(
     if (w === 0 || h === 0) return [] as XAxisEntry[];
 
     const now = engine.timestamp.get();
+    // `displayWindow` animates toward `timeWindow`; it positions the labels so
+    // the zoom slides smoothly. `targetWindow` is the settled destination and
+    // decides *which* labels exist — see the note on ChartEngineLayout.timeWindow
+    // and issue #126. Reading the animating window for selection makes the tick
+    // cadence depend on the prior window (the asymptotic lerp lands just off the
+    // `niceTimeInterval` bucket boundary, which the round window values sit on).
     const windowSecs = engine.displayWindow.get();
+    const targetWindow = engine.timeWindow.get();
     const winStart = now - windowSecs;
+    const targetWinStart = now - targetWindow;
 
     const chartLeft = padding.left;
     const chartRight = w - padding.right;
@@ -99,15 +107,19 @@ export function useXAxis(
 
     const fadeZone = 50;
 
-    // Pick interval from window duration
-    const targetPxPerSec = chartW / windowSecs;
-    let interval = niceTimeInterval(windowSecs);
-    while (interval * targetPxPerSec < 60 && interval < windowSecs) {
+    // Pick interval from the *target* window duration so the cadence is stable
+    // and independent of the window we're animating from.
+    const targetPxPerSec = chartW / targetWindow;
+    let interval = niceTimeInterval(targetWindow);
+    while (interval * targetPxPerSec < 60 && interval < targetWindow) {
       interval *= 2;
     }
 
-    // Generate target label keys (plain array, no Set — worklet-safe)
-    const firstTime = Math.ceil((winStart - interval) / interval) * interval;
+    // Generate target label keys (plain array, no Set — worklet-safe). Anchored
+    // to the target window so the set is destination-stable; positioning below
+    // still uses the animating `winStart`/`windowSecs` for a smooth transition.
+    const firstTime =
+      Math.ceil((targetWinStart - interval) / interval) * interval;
     const targetKeys: number[] = [];
     for (
       let t = firstTime;

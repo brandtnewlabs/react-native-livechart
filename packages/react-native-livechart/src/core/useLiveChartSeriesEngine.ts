@@ -211,6 +211,7 @@ export function useLiveChartSeriesEngine(
     displayMin,
     displayMax,
     displayWindow,
+    timeWindow,
     canvasWidth,
     canvasHeight,
     timestamp,

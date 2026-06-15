@@ -48,6 +48,7 @@ function EngineHarness({
   const displayMinSV = useSharedValue(displayMin);
   const displayMaxSV = useSharedValue(displayMax);
   const displayWindowSV = useSharedValue(30);
+  const timeWindowSV = useSharedValue(30);
   const canvasWidthSV = useSharedValue(canvasWidth);
   const canvasHeightSV = useSharedValue(canvasHeight);
   const timestampSV = useSharedValue(1_700_000_000);
@@ -62,6 +63,7 @@ function EngineHarness({
     displayMin: displayMinSV,
     displayMax: displayMaxSV,
     displayWindow: displayWindowSV,
+    timeWindow: timeWindowSV,
     canvasWidth: canvasWidthSV,
     canvasHeight: canvasHeightSV,
     timestamp: timestampSV,
