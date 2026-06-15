@@ -40,6 +40,36 @@ Override the stroke with the `line` prop, and the area fill with `gradient`:
 
 Pass `gradient={false}` to remove the area fill entirely.
 
+### Curve & edges
+
+By default the line is a smooth monotone cubic with rounded joins and caps. For an
+angular, hard-edged look — think the Robinhood tokenized-stock style — switch the
+interpolation to `linear` and sharpen the corners:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  line={{
+    width: 1.4,
+    curve: "linear", // straight segments instead of the smooth spline
+    join: "miter",   // sharp, angular peaks (no corner rounding)
+    cap: "butt",     // flat line ends
+  }}
+/>
+```
+
+`curve` (`"monotone"` | `"linear"`), `join` (`"round"` | `"miter"` | `"bevel"`),
+and `cap` (`"round"` | `"butt"` | `"square"`) are independent — e.g. keep the
+smooth curve but flatten the ends with `cap: "butt"`. `curve: "linear"` applies to
+the area fill as well, so the gradient follows the same straight segments.
+
+<Note>
+  **Live example:**
+  [`app/showcase/robinhood.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/robinhood.tsx)
+  pairs all three for a fully hard-edged line.
+</Note>
+
 ## Badge, dot, and value line
 
 By default the chart draws a value badge at the tip, a pulsing live dot, and (optionally) a

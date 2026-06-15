@@ -42,7 +42,11 @@ provided; everything else has a default.
 ## Line, fill & tip
 
 <ParamField body="line" type="LineConfig">
-  Main line styling: `width`, `color`.
+  Main line styling: `width`, `color`, plus shape controls — `curve`
+  (`"monotone"` smooth default | `"linear"` straight segments), `join`
+  (`"round"` | `"miter"` | `"bevel"`), and `cap` (`"round"` | `"butt"` |
+  `"square"`). Pair `curve: "linear"` with `join: "miter"` + `cap: "butt"` for a
+  fully hard-edged ("edgy") line.
 </ParamField>
 
 <ParamField body="gradient" type="boolean | GradientConfig" default="true">
