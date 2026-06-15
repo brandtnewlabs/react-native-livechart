@@ -25,6 +25,8 @@ export function useChartPaths(
   /** When set, also build `thresholdFillPath` — the band between the line and this
    *  pixel-Y, closed at the threshold instead of the chart baseline. */
   thresholdY?: SharedValue<number>,
+  /** Draw the line/fill as a straight polyline instead of the monotone cubic. */
+  linear = false,
 ) {
   const lineBuilder = usePathBuilder();
   const fillBuilder = usePathBuilder();
@@ -90,7 +92,7 @@ export function useChartPaths(
     if (n < 2) return cache.emptyPath;
     const b = lineBuilder.value;
     b.moveTo(pts[0], pts[1]);
-    drawSpline(b, pts, cache.scratch);
+    drawSpline(b, pts, cache.scratch, linear);
     return b.detach();
   });
 
@@ -101,7 +103,7 @@ export function useChartPaths(
     if (n < 2) return cache.emptyPath;
     const b = fillBuilder.value;
     b.moveTo(pts[0], pts[1]);
-    drawSpline(b, pts, cache.scratch);
+    drawSpline(b, pts, cache.scratch, linear);
     const bottom = engine.canvasHeight.get() - padding.bottom;
     b.lineTo(pts[(n - 1) * 2], bottom);
     b.lineTo(pts[0], bottom);
@@ -122,7 +124,7 @@ export function useChartPaths(
     if (n < 2 || !Number.isFinite(yT)) return cache.emptyPath;
     const b = thresholdFillBuilder.value;
     b.moveTo(pts[0], pts[1]);
-    drawSpline(b, pts, cache.scratch);
+    drawSpline(b, pts, cache.scratch, linear);
     b.lineTo(pts[(n - 1) * 2], yT);
     b.lineTo(pts[0], yT);
     b.close();

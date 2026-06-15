@@ -232,6 +232,12 @@ export interface ValueLineConfig {
 export interface LineConfig {
   /** Stroke width of the main line in pixels. Default `2`. */
   width?: number;
+  /**
+   * Interpolation between points. `"monotone"` (default) draws a smooth monotone
+   * cubic; `"linear"` draws straight segments for an angular, hard-edged line —
+   * pair with `join: "miter"` + `cap: "butt"` for true sharp corners (no rounding).
+   */
+  curve?: "monotone" | "linear";
   /** Line color override. Defaults to palette-derived accent. */
   color?: string;
   /**
@@ -239,6 +245,17 @@ export interface LineConfig {
    * (left → right). Takes precedence over `color` when set.
    */
   colors?: string[];
+  /**
+   * Stroke line-join — how corners between segments render. `"round"` (default)
+   * softens every peak; `"miter"` gives sharp, angular ("edgy") peaks; `"bevel"`
+   * flattens them.
+   */
+  join?: "round" | "miter" | "bevel";
+  /**
+   * Stroke line-cap at the path's start/end. `"round"` (default) | `"butt"` |
+   * `"square"`. Pair `"butt"` with `join: "miter"` for a fully hard-edged line.
+   */
+  cap?: "round" | "butt" | "square";
 }
 
 /**
