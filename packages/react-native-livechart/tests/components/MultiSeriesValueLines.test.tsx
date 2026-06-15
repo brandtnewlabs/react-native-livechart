@@ -52,6 +52,10 @@ function EngineHarness({
   const canvasWidthSV = useSharedValue(canvasWidth);
   const canvasHeightSV = useSharedValue(canvasHeight);
   const timestampSV = useSharedValue(1_700_000_000);
+  const extremaMinValueSV = useSharedValue(NaN);
+  const extremaMaxValueSV = useSharedValue(NaN);
+  const extremaMinTimeSV = useSharedValue(NaN);
+  const extremaMaxTimeSV = useSharedValue(NaN);
 
   const engine: MultiEngineState = {
     data,
@@ -67,6 +71,10 @@ function EngineHarness({
     canvasWidth: canvasWidthSV,
     canvasHeight: canvasHeightSV,
     timestamp: timestampSV,
+    extremaMinValue: extremaMinValueSV,
+    extremaMaxValue: extremaMaxValueSV,
+    extremaMinTime: extremaMinTimeSV,
+    extremaMaxTime: extremaMaxTimeSV,
   };
 
   const lineColors = colors ?? series.map((s) => s.color ?? "#888888");

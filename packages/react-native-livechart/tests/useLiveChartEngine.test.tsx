@@ -22,14 +22,26 @@ describe("applyLiveChartEngineFrame", () => {
       smoothing: { value: 0.5 },
       exaggerateSV: { value: false },
       referenceValue: { value: undefined as number | undefined },
+      // Pin "now" to the point's time so it falls inside the live window
+      // (otherwise the real-clock default scrolls it out and extrema go NaN).
+      nowOverrideSV: { value: 1700000000 },
+      windowBufferSV: { value: 0 },
       pausedSV: { value: false },
       modeSV: { value: "line" as const },
+      extremaMinValue: { value: NaN },
+      extremaMaxValue: { value: NaN },
+      extremaMinTime: { value: NaN },
+      extremaMaxTime: { value: NaN },
     };
     applyLiveChartEngineFrame(
       { timeSincePreviousFrame: 16.67 },
       sv as unknown as EngineFrameRefs,
     );
     expect(sv.displayValue.value).not.toBe(0);
+    // The data point's value + time become the live extrema.
+    expect(sv.extremaMinValue.value).toBe(10);
+    expect(sv.extremaMaxValue.value).toBe(10);
+    expect(sv.extremaMinTime.value).toBe(1700000000);
   });
 });
 
@@ -114,6 +126,10 @@ describe("useLiveChartEngine", () => {
       windowBufferSV: { value: 0 },
       pausedSV: { value: false },
       modeSV: { value: "line" as const },
+      extremaMinValue: { value: NaN },
+      extremaMaxValue: { value: NaN },
+      extremaMinTime: { value: NaN },
+      extremaMaxTime: { value: NaN },
     };
     applyLiveChartEngineFrame(
       { timeSincePreviousFrame: 16.67 },
@@ -124,5 +140,9 @@ describe("useLiveChartEngine", () => {
     expect(sv.displayValue.value).toBe(30);
     expect(sv.displayMin.value).toBeLessThanOrEqual(10);
     expect(sv.displayMax.value).toBeGreaterThanOrEqual(30);
+    // Extrema snapshot the raw data low/high (10 @ first point, 30 @ last).
+    expect(sv.extremaMinValue.value).toBe(10);
+    expect(sv.extremaMaxValue.value).toBe(30);
+    expect(sv.extremaMaxTime.value).toBe(1700000030);
   });
 });

@@ -9,6 +9,17 @@ export interface EngineTickMutable {
   displayMax: number;
   displayWindow: number;
   timestamp: number;
+  /**
+   * Value + time of the lowest / highest data point in the visible window —
+   * the actual extrema, NOT the smoothed display bounds (which carry margin and
+   * fold in the live value / reference lines). `NaN` when the window holds no
+   * data. Used to float `topLabel` / `bottomLabel` at their occurrence point
+   * (see {@link AxisLabelConfig.position} `"extrema"`).
+   */
+  extremaMinValue: number;
+  extremaMaxValue: number;
+  extremaMinTime: number;
+  extremaMaxTime: number;
 }
 
 export interface EngineTickInput {
@@ -93,6 +104,12 @@ export function tickLiveChartEngineFrame(
 
   let tMin = Infinity;
   let tMax = -Infinity;
+  // Time of the running min / max — captured alongside the value so an extrema
+  // label can be pinned at the point's x. Holds the data extrema only (folded
+  // below with the live value / references for the Y range, but snapshotted
+  // before that into `extrema*` so the label tracks the real high/low).
+  let minTime = 0;
+  let maxTime = 0;
 
   if (input.mode === "candle") {
     const candles = input.candles;
@@ -107,17 +124,29 @@ export function tickLiveChartEngineFrame(
       for (let i = lo; i < candles.length; i++) {
         if (candles[i].time > state.timestamp) break;
         /* istanbul ignore next -- trivial min/max */
-        if (candles[i].low < tMin) tMin = candles[i].low;
+        if (candles[i].low < tMin) {
+          tMin = candles[i].low;
+          minTime = candles[i].time;
+        }
         /* istanbul ignore next -- trivial min/max */
-        if (candles[i].high > tMax) tMax = candles[i].high;
+        if (candles[i].high > tMax) {
+          tMax = candles[i].high;
+          maxTime = candles[i].time;
+        }
       }
     }
     const lc = input.liveCandle;
     if (lc) {
       /* istanbul ignore next -- trivial min/max */
-      if (lc.low < tMin) tMin = lc.low;
+      if (lc.low < tMin) {
+        tMin = lc.low;
+        minTime = lc.time;
+      }
       /* istanbul ignore next -- trivial min/max */
-      if (lc.high > tMax) tMax = lc.high;
+      if (lc.high > tMax) {
+        tMax = lc.high;
+        maxTime = lc.time;
+      }
     }
   } else {
     const points = input.points;
@@ -130,10 +159,26 @@ export function tickLiveChartEngineFrame(
     }
     for (let i = lo; i < points.length; i++) {
       const v = points[i].value;
-      if (v < tMin) tMin = v;
-      if (v > tMax) tMax = v;
+      if (v < tMin) {
+        tMin = v;
+        minTime = points[i].time;
+      }
+      if (v > tMax) {
+        tMax = v;
+        maxTime = points[i].time;
+      }
     }
   }
+
+  // Snapshot the raw data extrema (value + time) before the live value /
+  // reference values fold into tMin/tMax for the Y range. NaN when the window
+  // is empty so the extrema label hides rather than pinning to a fake point.
+  const hasMin = tMin !== Infinity;
+  const hasMax = tMax !== -Infinity;
+  state.extremaMinValue = hasMin ? tMin : NaN;
+  state.extremaMaxValue = hasMax ? tMax : NaN;
+  state.extremaMinTime = hasMin ? minTime : NaN;
+  state.extremaMaxTime = hasMax ? maxTime : NaN;
 
   const cv = state.displayValue;
   if (cv < tMin) tMin = cv;

@@ -63,13 +63,26 @@ export interface ChartEngineLayout {
   timestamp: SharedValue<number>;
 }
 
-export interface SingleEngineState extends ChartEngineLayout {
+/**
+ * Live extrema (value + time of the lowest / highest data point in the visible
+ * window) — the raw data high/low, not the smoothed display bounds. Each field
+ * is `NaN` when the window holds no data. Provided by both engines so an
+ * `"extrema"`-positioned `topLabel` / `bottomLabel` can be pinned at the point.
+ */
+export interface ChartEngineExtrema {
+  extremaMinValue: SharedValue<number>;
+  extremaMaxValue: SharedValue<number>;
+  extremaMinTime: SharedValue<number>;
+  extremaMaxTime: SharedValue<number>;
+}
+
+export interface SingleEngineState extends ChartEngineLayout, ChartEngineExtrema {
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   displayValue: SharedValue<number>;
 }
 
-export interface MultiEngineState extends ChartEngineLayout {
+export interface MultiEngineState extends ChartEngineLayout, ChartEngineExtrema {
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   displayValue: SharedValue<number>;
@@ -109,6 +122,10 @@ export interface EngineFrameRefs {
   modeSV: SharedValue<"line" | "candle">;
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
+  extremaMinValue: SharedValue<number>;
+  extremaMaxValue: SharedValue<number>;
+  extremaMinTime: SharedValue<number>;
+  extremaMaxTime: SharedValue<number>;
 }
 
 /**
@@ -127,6 +144,10 @@ export function applyLiveChartEngineFrame(
     displayMax: sv.displayMax.value,
     displayWindow: sv.displayWindow.value,
     timestamp: sv.timestamp.value,
+    extremaMinValue: sv.extremaMinValue.value,
+    extremaMaxValue: sv.extremaMaxValue.value,
+    extremaMinTime: sv.extremaMinTime.value,
+    extremaMaxTime: sv.extremaMaxTime.value,
   };
   tickLiveChartEngineFrame(state, {
     dt,
@@ -155,6 +176,10 @@ export function applyLiveChartEngineFrame(
   sv.displayMax.value = state.displayMax;
   sv.displayWindow.value = state.displayWindow;
   sv.timestamp.value = state.timestamp;
+  sv.extremaMinValue.value = state.extremaMinValue;
+  sv.extremaMaxValue.value = state.extremaMaxValue;
+  sv.extremaMinTime.value = state.extremaMinTime;
+  sv.extremaMaxTime.value = state.extremaMaxTime;
 }
 
 export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
@@ -186,6 +211,13 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
   // Seed once; overwritten by the frame callback on the first tick.
   const [initialTimestamp] = useState(() => Date.now() / 1000);
   const timestamp = useSharedValue(initialTimestamp);
+
+  // Live data extrema (value + time of the visible high / low). NaN until the
+  // first tick finds data — the extrema label stays hidden until then.
+  const extremaMinValue = useSharedValue(NaN);
+  const extremaMaxValue = useSharedValue(NaN);
+  const extremaMinTime = useSharedValue(NaN);
+  const extremaMaxTime = useSharedValue(NaN);
 
   // High-frequency data reads directly from the caller's shared values —
   // no useDerivedValue bridging, no closure serialization per tick.
@@ -221,6 +253,10 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
     modeSV,
     candles,
     liveCandle,
+    extremaMinValue,
+    extremaMaxValue,
+    extremaMinTime,
+    extremaMaxTime,
   };
 
   // `autostart=false` registers the frame callback without running it — the live
@@ -271,5 +307,9 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
     canvasWidth,
     canvasHeight,
     timestamp,
+    extremaMinValue,
+    extremaMaxValue,
+    extremaMinTime,
+    extremaMaxTime,
   };
 }

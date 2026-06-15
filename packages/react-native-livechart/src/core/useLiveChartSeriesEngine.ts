@@ -47,6 +47,10 @@ export interface MultiEngineFrameRefs {
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
+  extremaMinValue: SharedValue<number>;
+  extremaMaxValue: SharedValue<number>;
+  extremaMinTime: SharedValue<number>;
+  extremaMaxTime: SharedValue<number>;
 }
 
 /**
@@ -103,6 +107,10 @@ export function applyLiveChartSeriesEngineFrame(
     timestamp: sv.timestamp.value,
     displayValues,
     opacities,
+    extremaMinValue: sv.extremaMinValue.value,
+    extremaMaxValue: sv.extremaMaxValue.value,
+    extremaMinTime: sv.extremaMinTime.value,
+    extremaMaxTime: sv.extremaMaxTime.value,
   };
   tickLiveChartSeriesEngineFrame(state, {
     dt,
@@ -128,6 +136,10 @@ export function applyLiveChartSeriesEngineFrame(
   sv.timestamp.value = state.timestamp;
   sv.displaySeriesValues.value = state.displayValues;
   sv.seriesOpacities.value = state.opacities;
+  sv.extremaMinValue.value = state.extremaMinValue;
+  sv.extremaMaxValue.value = state.extremaMaxValue;
+  sv.extremaMinTime.value = state.extremaMinTime;
+  sv.extremaMaxTime.value = state.extremaMaxTime;
 }
 
 /**
@@ -160,6 +172,12 @@ export function useLiveChartSeriesEngine(
 
   const displaySeriesValues = useSharedValue<number[]>([]);
   const seriesOpacities = useSharedValue<number[]>([]);
+
+  // Live data extrema (value + time of the visible high / low across series).
+  const extremaMinValue = useSharedValue(NaN);
+  const extremaMaxValue = useSharedValue(NaN);
+  const extremaMinTime = useSharedValue(NaN);
+  const extremaMaxTime = useSharedValue(NaN);
 
   const data = useSharedValue<LiveChartPoint[]>([]);
   const value = useSharedValue(0);
@@ -199,6 +217,10 @@ export function useLiveChartSeriesEngine(
         nowOverrideSV,
         windowBufferSV,
         pausedSV,
+        extremaMinValue,
+        extremaMaxValue,
+        extremaMinTime,
+        extremaMaxTime,
       },
       scratch,
     );
@@ -218,5 +240,9 @@ export function useLiveChartSeriesEngine(
     series,
     displaySeriesValues,
     seriesOpacities,
+    extremaMinValue,
+    extremaMaxValue,
+    extremaMinTime,
+    extremaMaxTime,
   };
 }

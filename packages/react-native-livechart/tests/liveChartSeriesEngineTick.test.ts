@@ -8,6 +8,10 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     timestamp: number;
     displayValues: number[];
     opacities: number[];
+    extremaMinValue: number;
+    extremaMaxValue: number;
+    extremaMinTime: number;
+    extremaMaxTime: number;
   } {
     return {
       displayMin: 0,
@@ -16,6 +20,10 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       timestamp: 1000,
       displayValues: [],
       opacities: [],
+      extremaMinValue: NaN,
+      extremaMaxValue: NaN,
+      extremaMinTime: NaN,
+      extremaMaxTime: NaN,
     };
   }
 
@@ -522,5 +530,72 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       nowSeconds: 1000,
     });
     expect(s.displayMax).toBeGreaterThanOrEqual(500);
+  });
+
+  describe("extrema tracking", () => {
+    it("records the global low/high point + time across visible series", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.5,
+        exaggerate: false,
+        referenceValue: undefined,
+        series: [
+          {
+            id: "a",
+            data: [
+              { time: 980, value: 10 }, // global low
+              { time: 1000, value: 30 },
+            ],
+            value: 30,
+            color: "#00f",
+          },
+          {
+            id: "b",
+            data: [
+              { time: 985, value: 90 }, // global high
+              { time: 1000, value: 70 },
+            ],
+            value: 70,
+            color: "#f00",
+          },
+        ],
+        nowSeconds: 1000,
+      });
+      expect(s.extremaMinValue).toBe(10);
+      expect(s.extremaMinTime).toBe(980);
+      expect(s.extremaMaxValue).toBe(90);
+      expect(s.extremaMaxTime).toBe(985);
+    });
+
+    it("skips hidden series and reports NaN when no visible series has data", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.5,
+        exaggerate: false,
+        referenceValue: undefined,
+        series: [
+          {
+            id: "a",
+            data: [{ time: 980, value: 5 }],
+            value: 5,
+            color: "#00f",
+            visible: false,
+          },
+        ],
+        nowSeconds: 1000,
+      });
+      expect(s.extremaMinValue).toBeNaN();
+      expect(s.extremaMaxValue).toBeNaN();
+      expect(s.extremaMinTime).toBeNaN();
+      expect(s.extremaMaxTime).toBeNaN();
+    });
   });
 });

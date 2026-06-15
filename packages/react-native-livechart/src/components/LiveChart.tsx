@@ -86,6 +86,10 @@ import {
   ThresholdLineOverlay,
 } from "./ThresholdLineOverlay";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
+import {
+  ExtremaConnectorOverlay,
+  labelConnector,
+} from "./ExtremaConnectorOverlay";
 import { CustomMarkerOverlay } from "./CustomMarkerOverlay";
 import { CustomTooltipOverlay } from "./CustomTooltipOverlay";
 import { BadgeOverlay } from "./BadgeOverlay";
@@ -625,6 +629,9 @@ function useLiveChartController({
     lineProp,
     formatValue,
     isCandle,
+    // Half a candle width (seconds) so an "extrema" axis label's dot lands on the
+    // candle's drawn center, not its bucket-start (left) edge. 0 in line mode.
+    extremaTimeOffset: isCandle ? candleWidth / 2 : 0,
     // configs
     yAxisCfg,
     xAxisCfg,
@@ -700,6 +707,9 @@ function useLiveChartController({
     // RN axis edge labels (floated over the canvas as a sibling layer)
     topLabelCfg,
     bottomLabelCfg,
+    // Skia connector lines for "extrema-edge" labels (dot → edge readout).
+    topConnector: labelConnector(topLabelCfg, palette.gridLabel),
+    bottomConnector: labelConnector(bottomLabelCfg, palette.gridLabel),
   };
 }
 
@@ -1282,6 +1292,9 @@ export function LiveChart(props: LiveChartProps) {
     scrubCfg,
     crosshair,
     isCandle,
+    extremaTimeOffset,
+    topConnector,
+    bottomConnector,
   } = model;
 
   return (
@@ -1312,6 +1325,16 @@ export function LiveChart(props: LiveChartProps) {
           {/* Line stack above the fade so the line stays crisp at the left edge. */}
           <ChartStack model={model} />
 
+          {/* "extrema-edge" connector lines (dot → edge readout), above the chart
+              content so the dashed guide reads over the line / candles. */}
+          <ExtremaConnectorOverlay
+            engine={engine}
+            padding={effectivePadding}
+            extremaTimeOffset={extremaTimeOffset}
+            top={topConnector}
+            bottom={bottomConnector}
+          />
+
           {/* Reference-line badges + labels above the fade so they stay crisp. */}
           <ChartRefBadgeLayer model={model} />
 
@@ -1336,6 +1359,7 @@ export function LiveChart(props: LiveChartProps) {
           formatValue={formatValue}
           defaultColor={palette.gridLabel}
           padding={effectivePadding}
+          extremaTimeOffset={extremaTimeOffset}
         />
 
         {/* Custom-rendered markers — RN views floated over the canvas (non-Skia),

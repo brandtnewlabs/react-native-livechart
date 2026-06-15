@@ -9,6 +9,16 @@ export interface MultiEngineTickMutable {
   timestamp: number;
   displayValues: number[];
   opacities: number[];
+  /**
+   * Value + time of the lowest / highest point across the visible series — the
+   * actual extrema, NOT the smoothed display bounds. `NaN` when no visible
+   * series has data in the window. Used to float `topLabel` / `bottomLabel` at
+   * their occurrence point (see {@link AxisLabelConfig.position} `"extrema"`).
+   */
+  extremaMinValue: number;
+  extremaMaxValue: number;
+  extremaMinTime: number;
+  extremaMaxTime: number;
 }
 
 export interface MultiEngineTickInput {
@@ -95,6 +105,13 @@ export function tickLiveChartSeriesEngineFrame(
 
   let tMin = Infinity;
   let tMax = -Infinity;
+  // Time of the running global min / max data point — captured so an extrema
+  // label can be pinned at its x (data extrema only; the live tips folded below
+  // into the Y range are snapshotted out before that).
+  let minTime = 0;
+  let maxTime = 0;
+  let dataMin = Infinity;
+  let dataMax = -Infinity;
 
   for (let i = 0; i < n; i++) {
     if (series[i].visible === false) continue;
@@ -112,11 +129,28 @@ export function tickLiveChartSeriesEngineFrame(
       if (v < tMin) tMin = v;
       /* istanbul ignore next -- trivial min/max */
       if (v > tMax) tMax = v;
+      if (v < dataMin) {
+        dataMin = v;
+        minTime = points[j].time;
+      }
+      if (v > dataMax) {
+        dataMax = v;
+        maxTime = points[j].time;
+      }
     }
     const cv = state.displayValues[i];
     if (cv < tMin) tMin = cv;
     if (cv > tMax) tMax = cv;
   }
+
+  // Snapshot the raw data extrema before the references fold in. NaN when no
+  // visible series has data in the window so the extrema label hides.
+  const hasMin = dataMin !== Infinity;
+  const hasMax = dataMax !== -Infinity;
+  state.extremaMinValue = hasMin ? dataMin : NaN;
+  state.extremaMaxValue = hasMax ? dataMax : NaN;
+  state.extremaMinTime = hasMin ? minTime : NaN;
+  state.extremaMaxTime = hasMax ? maxTime : NaN;
 
   const ref = input.referenceValue;
   if (ref !== undefined) {

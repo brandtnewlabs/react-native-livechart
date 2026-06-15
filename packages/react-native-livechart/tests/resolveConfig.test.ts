@@ -145,11 +145,13 @@ describe("resolveAxisLabel", () => {
     expect(resolveAxisLabel(false)).toBeNull();
   });
 
-  it("returns the built-in defaults for true", () => {
+  it("returns the built-in defaults for true (dot on, no connector)", () => {
     expect(resolveAxisLabel(true)).toEqual({
       format: undefined,
       color: undefined,
       position: "right",
+      dot: true,
+      connector: null,
       render: undefined,
     });
   });
@@ -159,6 +161,8 @@ describe("resolveAxisLabel", () => {
       format: undefined,
       color: "#abc",
       position: "left",
+      dot: true,
+      connector: null,
       render: undefined,
     });
   });
@@ -170,8 +174,82 @@ describe("resolveAxisLabel", () => {
       format,
       color: undefined,
       position: "right",
+      dot: true,
+      connector: null,
       render,
     });
+  });
+
+  it('carries through the "extrema" position mode (no connector)', () => {
+    expect(resolveAxisLabel({ position: "extrema" })).toEqual({
+      format: undefined,
+      color: undefined,
+      position: "extrema",
+      dot: true,
+      connector: null,
+      render: undefined,
+    });
+  });
+
+  it("carries through the font + dot styling knobs", () => {
+    expect(
+      resolveAxisLabel({
+        position: "extrema",
+        fontSize: 16,
+        fontWeight: "700",
+        fontFamily: "JetBrainsMono",
+        dotColor: "#f0f",
+        dotSize: 12,
+        dot: false,
+      }),
+    ).toEqual({
+      format: undefined,
+      color: undefined,
+      position: "extrema",
+      fontSize: 16,
+      fontWeight: "700",
+      fontFamily: "JetBrainsMono",
+      dotColor: "#f0f",
+      dotSize: 12,
+      dot: false,
+      connector: null,
+      render: undefined,
+    });
+  });
+
+  it('defaults the connector to dashed in "extrema-edge" mode', () => {
+    const resolved = resolveAxisLabel({ position: "extrema-edge" });
+    expect(resolved?.position).toBe("extrema-edge");
+    expect(resolved?.connector).toEqual({
+      color: undefined,
+      strokeWidth: 1,
+      intervals: [2, 3],
+    });
+  });
+
+  it('"extrema-edge" with connector: false disables the connector', () => {
+    expect(
+      resolveAxisLabel({ position: "extrema-edge", connector: false })
+        ?.connector,
+    ).toBeNull();
+  });
+
+  it("resolves a custom connector line style", () => {
+    expect(
+      resolveAxisLabel({
+        position: "extrema-edge",
+        connector: { color: "#abc", strokeWidth: 2, intervals: [5, 5] },
+      })?.connector,
+    ).toEqual({ color: "#abc", strokeWidth: 2, intervals: [5, 5] });
+  });
+
+  it("a solid connector omits intervals", () => {
+    expect(
+      resolveAxisLabel({
+        position: "extrema-edge",
+        connector: { color: "#abc" },
+      })?.connector,
+    ).toEqual({ color: "#abc", strokeWidth: 1, intervals: undefined });
   });
 });
 

@@ -7,6 +7,10 @@ function baseState() {
     displayMax: 1,
     displayWindow: 30,
     timestamp: 1000,
+    extremaMinValue: NaN,
+    extremaMaxValue: NaN,
+    extremaMinTime: NaN,
+    extremaMaxTime: NaN,
   };
 }
 
@@ -197,11 +201,10 @@ describe("tickLiveChartEngineFrame", () => {
 
   it("snaps displayMin down when tMin is below", () => {
     const s = {
+      ...baseState(),
       displayValue: 50,
       displayMin: 40,
       displayMax: 60,
-      displayWindow: 30,
-      timestamp: 1000,
     };
     tickLiveChartEngineFrame(s, {
       dt: 16.67,
@@ -223,11 +226,10 @@ describe("tickLiveChartEngineFrame", () => {
 
   it("snaps displayMax up when tMax is above", () => {
     const s = {
+      ...baseState(),
       displayValue: 50,
       displayMin: 40,
       displayMax: 55,
-      displayWindow: 30,
-      timestamp: 1000,
     };
     tickLiveChartEngineFrame(s, {
       dt: 16.67,
@@ -365,11 +367,10 @@ describe("tickLiveChartEngineFrame", () => {
 
   it("handles reference line below computed range", () => {
     const s = {
+      ...baseState(),
       displayValue: 10,
       displayMin: 0,
       displayMax: 20,
-      displayWindow: 30,
-      timestamp: 1000,
     };
     tickLiveChartEngineFrame(s, {
       dt: 16.67,
@@ -499,6 +500,100 @@ describe("tickLiveChartEngineFrame", () => {
     });
     expect(s.displayWindow).toBeGreaterThan(30);
     expect(s.displayWindow).toBeLessThan(60);
+  });
+
+  // ── Extrema tracking (for "extrema"-positioned axis labels) ──────────────
+  describe("extrema tracking", () => {
+    it("records the value + time of the lowest and highest point (line mode)", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.2,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 30,
+        points: [
+          { time: 980, value: 30 },
+          { time: 985, value: 10 }, // the low
+          { time: 990, value: 55 }, // the high
+          { time: 995, value: 40 },
+        ],
+        nowSeconds: 1000,
+      });
+      expect(s.extremaMinValue).toBe(10);
+      expect(s.extremaMinTime).toBe(985);
+      expect(s.extremaMaxValue).toBe(55);
+      expect(s.extremaMaxTime).toBe(990);
+    });
+
+    it("ignores the live value / reference when picking extrema", () => {
+      const s = { ...baseState(), displayValue: 999 };
+      tickLiveChartEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.2,
+        exaggerate: false,
+        referenceValue: -999,
+        targetValue: 50,
+        points: [{ time: 990, value: 42 }],
+        nowSeconds: 1000,
+      });
+      // The display value (999) and reference (-999) widen the Y range but are
+      // NOT data points, so the extrema stay on the single real point.
+      expect(s.extremaMinValue).toBe(42);
+      expect(s.extremaMaxValue).toBe(42);
+      expect(s.extremaMinTime).toBe(990);
+      expect(s.extremaMaxTime).toBe(990);
+    });
+
+    it("reports NaN extrema when the window holds no points (line mode)", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.2,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 1,
+        points: [],
+        nowSeconds: 1000,
+      });
+      expect(s.extremaMinValue).toBeNaN();
+      expect(s.extremaMaxValue).toBeNaN();
+      expect(s.extremaMinTime).toBeNaN();
+      expect(s.extremaMaxTime).toBeNaN();
+    });
+
+    it("tracks extrema from candle low/high + the live candle (candle mode)", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 105,
+        points: [],
+        nowSeconds: 1000,
+        mode: "candle",
+        candles: [{ time: 980, open: 100, high: 120, low: 80, close: 110 }],
+        liveCandle: { time: 995, open: 110, high: 130, low: 70, close: 125 },
+      });
+      // Lowest low (70) is on the live candle; highest high (130) too.
+      expect(s.extremaMinValue).toBe(70);
+      expect(s.extremaMinTime).toBe(995);
+      expect(s.extremaMaxValue).toBe(130);
+      expect(s.extremaMaxTime).toBe(995);
+    });
   });
 
   // ── Candle mode ────────────────────────────────────────────────────────
@@ -640,6 +735,10 @@ describe("tickLiveChartEngineFrame adaptiveSpeedBoost", () => {
       displayMax: 10,
       displayWindow: 30,
       timestamp: 1000,
+      extremaMinValue: NaN,
+      extremaMaxValue: NaN,
+      extremaMinTime: NaN,
+      extremaMaxTime: NaN,
     };
     tickLiveChartEngineFrame(s, {
       dt: 16.67,

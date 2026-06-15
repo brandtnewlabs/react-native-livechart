@@ -127,6 +127,11 @@ const SECTIONS: DemoSection[] = [
         title: "Axes & grid",
         blurb: "Hide X/Y, minGap, insets; LiveChart vs LiveChartSeries.",
       },
+      {
+        href: "/demo/extrema-labels",
+        title: "Extrema labels",
+        blurb: 'topLabel / bottomLabel at the actual high / low point (position="extrema").',
+      },
     ],
   },
   {

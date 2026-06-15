@@ -32,13 +32,24 @@ describe("applyLiveChartSeriesEngineFrame", () => {
       smoothing: { value: 0.5 },
       exaggerateSV: { value: false },
       referenceValue: { value: undefined as number | undefined },
+      // Pin "now" to the point's time so it falls inside the live window.
+      nowOverrideSV: { value: 1000 },
+      windowBufferSV: { value: 0 },
       pausedSV: { value: false },
+      extremaMinValue: { value: NaN },
+      extremaMaxValue: { value: NaN },
+      extremaMinTime: { value: NaN },
+      extremaMaxTime: { value: NaN },
     };
     applyLiveChartSeriesEngineFrame(
       { timeSincePreviousFrame: 16.67 },
       sv as unknown as MultiEngineFrameRefs,
     );
     expect(sv.displaySeriesValues.value.length).toBe(1);
+    // The single series' lone point becomes the live extrema.
+    expect(sv.extremaMinValue.value).toBe(10);
+    expect(sv.extremaMaxValue.value).toBe(10);
+    expect(sv.extremaMinTime.value).toBe(1000);
   });
 });
 
