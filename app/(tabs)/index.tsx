@@ -12,8 +12,8 @@ import {
   APP_FONT_FAMILY,
   APP_FONT_FAMILY_MEDIUM,
   APP_FONT_FAMILY_SEMIBOLD,
-} from "../demo-lib/fonts";
-import { colors } from "../demo-lib/theme";
+} from "../../demo-lib/fonts";
+import { colors } from "../../demo-lib/theme";
 
 type Demo = { href: Href; title: string; blurb: string };
 type DemoSection = { title: string; data: Demo[] };
@@ -201,6 +201,7 @@ export default function Index() {
       <SectionList
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="automatic"
         sections={SECTIONS}
         keyExtractor={(d) => d.title}
         renderItem={renderDemoItem}
@@ -232,7 +233,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 24 },
   sectionHeader: {
     color: colors.textFaint,
     fontSize: 11,

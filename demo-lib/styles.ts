@@ -113,5 +113,7 @@ export const demoStyles = StyleSheet.create({
     fontFamily: APP_FONT_FAMILY,
     paddingHorizontal: 16,
     marginBottom: 8,
+    // Tabular figures so the scrub value/time readout doesn't jitter as it updates.
+    fontVariant: ["tabular-nums"],
   },
 });
