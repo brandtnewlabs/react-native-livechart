@@ -42,12 +42,18 @@ export default function AxesGridScreen() {
   const [which, setWhich] = useState<ChartKind>("single");
   const [highLow, setHighLow] = useState(false);
   const [customLabel, setCustomLabel] = useState(false);
+  const [flushBottom, setFlushBottom] = useState(false);
 
   const yOn = vis !== "noY" && vis !== "none";
   const xOn = vis !== "noX" && vis !== "none";
 
   const yAxis = !yOn ? false : gap === "wide" ? { minGap: 72 } : true;
   const xAxis = !xOn ? false : gap === "wide" ? { minGap: 100 } : true;
+
+  // An explicit inset overrides the auto-padding — including the live-dot pulse's
+  // reserved room — so the plot fills to the edge (the pulse ring may clip there).
+  // Pair with "Hide X" to see the bottom space fully reclaimed (#128).
+  const insets = flushBottom ? { bottom: 0 } : undefined;
 
   const { data, value, series } = useSimulatedChartData({
     multiSeries: which === "multi",
@@ -76,7 +82,7 @@ export default function AxesGridScreen() {
     <DemoScreen
       title="Axes & grid"
       docs="guides/theming"
-      description="Hide Y, X, or both; axis minGap. Toggle single vs multi chart, and Robinhood-style high/low edge labels (built-in or a custom render)."
+      description="Hide Y, X, or both; axis minGap; explicit insets (bottom 0 fills the plot to the edge). Toggle single vs multi chart, and Robinhood-style high/low edge labels (built-in or a custom render)."
       chart={
         which === "single" ? (
           <LiveChart
@@ -86,6 +92,7 @@ export default function AxesGridScreen() {
             theme={APP_THEME}
             yAxis={yAxis}
             xAxis={xAxis}
+            insets={insets}
             scrub
             topLabel={topLabel}
             bottomLabel={bottomLabel}
@@ -97,6 +104,7 @@ export default function AxesGridScreen() {
             theme={APP_THEME}
             yAxis={yAxis}
             xAxis={xAxis}
+            insets={insets}
             scrub
             topLabel={topLabel}
             bottomLabel={bottomLabel}
@@ -132,6 +140,13 @@ export default function AxesGridScreen() {
           label="Custom render"
           value={customLabel}
           onChange={setCustomLabel}
+        />
+      </ControlRow>
+      <ControlRow label="Insets">
+        <ToggleChip
+          label="Bottom inset 0"
+          value={flushBottom}
+          onChange={setFlushBottom}
         />
       </ControlRow>
     </DemoScreen>
