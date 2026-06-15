@@ -145,7 +145,9 @@ describe("resolveChartLayout", () => {
     expect(padding.left).toBe(12);
   });
 
-  it("does not shrink insets below pulse outlet when right inset override is tight", () => {
+  it("lets an explicit inset win over the pulse outlet floor, even when tighter (#128)", () => {
+    // The caller opts into clipping the ring in exchange for full control of the
+    // padding. Every side is set, so none gets floored up to the outlet.
     const { padding } = resolveChartLayout({
       palette,
       yAxis: false,
@@ -153,11 +155,33 @@ describe("resolveChartLayout", () => {
       insetsOverride: { right: 6, top: 6, bottom: 6, left: 6 },
       pulse: { maxRadius: 20, strokeWidth: 2 },
     });
-    const outlet = pulseRadialOutset(20, 2);
-    expect(padding.right).toBe(outlet);
-    expect(padding.top).toBe(outlet);
-    expect(padding.bottom).toBe(outlet);
-    expect(padding.left).toBe(6);
+    expect(padding).toEqual({ right: 6, top: 6, bottom: 6, left: 6 });
+  });
+
+  it("reclaims bottom space when x-axis is hidden and bottom inset is 0 with pulse on (#128)", () => {
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      xAxis: false,
+      insetsOverride: { bottom: 0 },
+      pulse: { maxRadius: 21, strokeWidth: 1.5 },
+    });
+    expect(padding.bottom).toBe(0);
+  });
+
+  it("still floors only the sides without an explicit inset (per-side, #128)", () => {
+    const outlet = pulseRadialOutset(21, 1.5);
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      insetsOverride: { bottom: 0 }, // only bottom is explicit
+      pulse: { maxRadius: 21, strokeWidth: 1.5 },
+    });
+    expect(padding.bottom).toBe(0); // explicit → wins
+    expect(padding.top).toBe(outlet); // unset → still floored to the ring
+    expect(padding.right).toBe(outlet); // unset → still floored to the ring
   });
 
   it("auto-sizes right padding from formatted value width (badge)", () => {
