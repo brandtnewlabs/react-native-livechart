@@ -1,4 +1,5 @@
 import {
+  resolveAreaDots,
   resolveAxisLabel,
   resolveBadge,
   resolveDegen,
@@ -555,6 +556,42 @@ describe("resolveGradient", () => {
       bottomOpacity: undefined,
       colors: undefined,
       positions: undefined,
+    });
+  });
+});
+
+// ─── resolveAreaDots ──────────────────────────────────────────────────────────
+
+describe("resolveAreaDots", () => {
+  const DEFAULTS = { spacing: 12, size: 1.6, color: undefined, opacity: 1 };
+
+  it("returns null for undefined (default off)", () => {
+    expect(resolveAreaDots(undefined)).toBeNull();
+  });
+
+  it("returns null for false", () => {
+    expect(resolveAreaDots(false)).toBeNull();
+  });
+
+  it("returns defaults for true (color undefined = palette-derived tint)", () => {
+    expect(resolveAreaDots(true)).toEqual(DEFAULTS);
+  });
+
+  it("merges a partial override over the defaults", () => {
+    expect(resolveAreaDots({ spacing: 16 })).toEqual({
+      ...DEFAULTS,
+      spacing: 16,
+    });
+  });
+
+  it("preserves an explicit color and opacity", () => {
+    expect(
+      resolveAreaDots({ color: "rgba(247,147,26,0.3)", size: 2, opacity: 0.8 }),
+    ).toEqual({
+      spacing: 12,
+      size: 2,
+      color: "rgba(247,147,26,0.3)",
+      opacity: 0.8,
     });
   });
 });

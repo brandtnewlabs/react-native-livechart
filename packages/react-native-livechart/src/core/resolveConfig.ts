@@ -1,4 +1,5 @@
 import type {
+  AreaDotsConfig,
   AxisLabelConfig,
   BadgeConfig,
   BadgeVariant,
@@ -156,6 +157,14 @@ export interface ResolvedGradientConfig {
   colors: string[] | undefined;
   /** Stop positions (0..1) matching `colors` length. */
   positions: number[] | undefined;
+}
+
+export interface ResolvedAreaDotsConfig {
+  spacing: number;
+  size: number;
+  /** undefined → derive a faint tint from the line/accent color at render time. */
+  color: string | undefined;
+  opacity: number;
 }
 
 export interface ResolvedPulseConfig {
@@ -502,6 +511,24 @@ export function resolveGradient(
   prop: boolean | GradientConfig | undefined,
 ): ResolvedGradientConfig | null {
   return resolveToggle(prop, GRADIENT_DEFAULTS, false);
+}
+
+const AREA_DOTS_DEFAULTS: ResolvedAreaDotsConfig = {
+  spacing: 12,
+  size: 1.6,
+  color: undefined,
+  opacity: 1,
+};
+
+/**
+ * Resolves `areaDots` prop to a fully-typed config or null (disabled).
+ * `true` → defaults (palette-derived color), object → merged with defaults,
+ * falsy/omitted → null. Default OFF (unlike `gradient`).
+ */
+export function resolveAreaDots(
+  prop: boolean | AreaDotsConfig | undefined,
+): ResolvedAreaDotsConfig | null {
+  return resolveToggle(prop, AREA_DOTS_DEFAULTS, false);
 }
 
 /** Fallback when no theme background is passed (e.g. unit tests). */

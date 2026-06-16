@@ -53,6 +53,14 @@ export const EXAMPLES: ExampleEntry[] = [
     status: "ready",
   },
   {
+    id: "kraken",
+    title: "Kraken",
+    tagline: "BTC/USD detail (light) — thin line + dot-lattice area fill",
+    accent: "#7132F5",
+    href: "/showcase/kraken",
+    status: "ready",
+  },
+  {
     id: "coinbase",
     title: "Coinbase",
     tagline: "Asset detail page with candle + line modes",

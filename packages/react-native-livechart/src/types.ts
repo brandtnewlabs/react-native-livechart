@@ -340,6 +340,22 @@ export interface GradientConfig {
   positions?: number[];
 }
 
+/**
+ * Dot-lattice fill of the area beneath the line — a screen-fixed grid of dots
+ * clipped to the region between the line and the baseline. Composes with
+ * `gradient` (both paint), or use it alone with `gradient={false}`.
+ */
+export interface AreaDotsConfig {
+  /** Lattice pitch (px) between dots, both axes. Default `12`. */
+  spacing?: number;
+  /** Dot diameter (px). Default `1.6`. */
+  size?: number;
+  /** Dot color. Omit to derive a faint tint from the line/accent color. */
+  color?: string;
+  /** Overall opacity (0..1) applied to the whole field. Default `1`. */
+  opacity?: number;
+}
+
 /** Value badge pill configuration. */
 export interface BadgeConfig {
   /** Visual style of the badge pill. Default `"default"`. */
@@ -1232,6 +1248,12 @@ export interface LiveChartCoreProps {
 export interface LiveChartProps extends LiveChartCoreProps {
   /** Area gradient fill under the line. `true` = defaults, or pass `GradientConfig`. Default `true`. */
   gradient?: boolean | GradientConfig;
+  /**
+   * Dot-lattice fill of the area beneath the line (clipped to the under-line
+   * region). `true` = defaults, or pass `AreaDotsConfig`. Composes with
+   * `gradient`. Default `false` (off). Inert in candle mode.
+   */
+  areaDots?: boolean | AreaDotsConfig;
   /** Value badge pill at the chart tip. `true` = defaults, or pass `BadgeConfig`. Default `true`. */
   badge?: boolean | BadgeConfig;
   /**

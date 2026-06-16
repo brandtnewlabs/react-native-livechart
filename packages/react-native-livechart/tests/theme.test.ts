@@ -3,6 +3,7 @@ import {
   applyPaletteOverride,
   leftEdgeFadeColorsFromBgRgb,
   parseColorRgb,
+  parseColorRgba,
   resolveSeriesPalettes,
   resolveTheme,
 } from "../src/theme";
@@ -44,6 +45,20 @@ describe("parseColorRgb", () => {
 
   it("falls back for unknown strings", () => {
     expect(parseColorRgb("not-a-color")).toEqual([128, 128, 128]);
+  });
+});
+
+describe("parseColorRgba", () => {
+  it("extracts the alpha from rgba()", () => {
+    expect(parseColorRgba("rgba(10, 20, 30, 0.5)")).toEqual([10, 20, 30, 0.5]);
+  });
+
+  it("defaults alpha to 1 for rgb()", () => {
+    expect(parseColorRgba("rgb(1, 2, 3)")).toEqual([1, 2, 3, 1]);
+  });
+
+  it("defaults alpha to 1 for hex", () => {
+    expect(parseColorRgba("#3b82f6")).toEqual([59, 130, 246, 1]);
   });
 });
 

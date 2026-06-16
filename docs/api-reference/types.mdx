@@ -192,6 +192,12 @@ interface GradientConfig {
   positions?: number[];   // optional stop positions (0..1, ascending), same
                           //   length as colors; ignored if the lengths differ
 }
+interface AreaDotsConfig {  // dot-lattice fill of the area beneath the line
+  spacing?: number; // lattice pitch (px) between dots, both axes; default 12
+  size?: number;    // dot diameter (px); default 1.6
+  color?: string;   // dot color; omit to derive a faint tint from the line color
+  opacity?: number; // overall field opacity (0..1); default 1
+}
 interface ThresholdConfig {
   value: SharedValue<number>; // the split value (Y-axis units), always live
   aboveColor?: string;        // stroke at/above value; default palette up-green
