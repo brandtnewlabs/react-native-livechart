@@ -228,6 +228,20 @@ export interface ValueLineConfig {
   color?: string;
 }
 
+/**
+ * Shared styling for a simple straight line — color, thickness, and an optional
+ * dash. The common shape behind the chart's secondary lines (the `valueLine`,
+ * the extrema-label `connector`, etc.), so they configure the same way.
+ */
+export interface LineStyleConfig {
+  /** Line color. Defaults per usage (e.g. the connector uses the label color). */
+  color?: string;
+  /** Line thickness in pixels. Default `1`. */
+  strokeWidth?: number;
+  /** Dash pattern as `[dashLength, gapLength]` in pixels. Omit for a solid line. */
+  intervals?: [number, number];
+}
+
 /** Main chart line styling. */
 export interface LineConfig {
   /** Stroke width of the main line in pixels. Default `2`. */
@@ -356,9 +370,52 @@ export interface AxisLabelConfig {
   format?: (v: number) => string;
   /** Text color. Defaults to a muted label color (`palette.gridLabel`). */
   color?: string;
-  /** Horizontal alignment within the plot width. Default `"right"`. */
-  position?: "left" | "right";
-  /** Full custom element, floated at the edge. Overrides the built-in value label. */
+  /**
+   * Where the label sits.
+   * - `"left"` / `"right"` (default `"right"`) — pin to that edge of the plot,
+   *   horizontally aligned.
+   * - `"extrema"` — float at the **actual data point** where the value occurs
+   *   (`topLabel` tracks the highest point, `bottomLabel` the lowest), anchored
+   *   over the point with a marker dot, so you can see *when* the high / low
+   *   happened. The dot and label track the point on the UI thread.
+   * - `"extrema-edge"` — like `"extrema"`, but the value label is pinned to the
+   *   **top / bottom edge**, horizontally aligned with the extremum (not floated
+   *   over the point). The marker dot still sits on the data point, joined to the
+   *   edge label by a {@link AxisLabelConfig.connector} line. Keeps the readout on
+   *   a clean rail while still showing where the extremum is.
+   */
+  position?: "left" | "right" | "extrema" | "extrema-edge";
+  /** Built-in value text size in px. Default `11`. */
+  fontSize?: number;
+  /** Built-in value text weight. Default the platform `<Text>` default. */
+  fontWeight?: FontWeight;
+  /** Built-in value text font family (e.g. a loaded monospace face). */
+  fontFamily?: string;
+  /**
+   * Extrema modes only — color of the marker dot at the data point. Defaults to
+   * `color`. Lets the dot and the value text differ.
+   */
+  dotColor?: string;
+  /** Extrema modes only — marker dot diameter in px. Default `7`. */
+  dotSize?: number;
+  /**
+   * Extrema modes only — draw the marker dot at the data point. Default `true`.
+   * Set `false` for a value label with no dot.
+   */
+  dot?: boolean;
+  /**
+   * `"extrema-edge"` only — the line joining the marker dot (on the data point)
+   * to the edge value label. `true` = a dashed default, `false` = none, or pass a
+   * {@link LineStyleConfig} to style it (`color` defaults to the label `color`).
+   * Default on (dashed) in `"extrema-edge"` mode.
+   */
+  connector?: boolean | LineStyleConfig;
+  /**
+   * Full custom element, floated at the edge (or, in an extrema mode, centered
+   * over the extremum point). Overrides the built-in value label (and the
+   * `fontSize` / `fontWeight` / `fontFamily` / `dot*` knobs above — you own the
+   * styling).
+   */
   render?: () => ReactElement | null;
 }
 

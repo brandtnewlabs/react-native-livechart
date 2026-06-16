@@ -126,13 +126,14 @@ its current top (`topLabel`) and bottom (`bottomLabel`) Y-axis bound, formatted 
 ```
 
 Both default off. Pass an [`AxisLabelConfig`](/api-reference/types#axislabelconfig) to tune the
-built-in label — `format`, `color`, and `position` (`"left"` | `"right"`, default `"right"`):
+built-in label — `format`, `color`, `position` (`"left"` | `"right"`, default `"right"`), and the
+text `fontSize` / `fontWeight` / `fontFamily`:
 
 ```tsx
 <LiveChart
   data={data}
   value={value}
-  topLabel={{ color: "#22d3ee", position: "left" }}
+  topLabel={{ color: "#22d3ee", position: "left", fontSize: 14, fontWeight: "600" }}
   bottomLabel={{ format: (v) => `$${v.toFixed(2)}` }}
 />
 ```
@@ -148,9 +149,79 @@ built-in value):
 />
 ```
 
+### Marking the extrema points
+
+`position: "extrema"` floats the label at the **actual data point** where the value occurs instead
+of pinning it to an edge — `topLabel` tracks the highest point, `bottomLabel` the lowest. The chart
+projects the extremum's `(time, value)` to a canvas pixel each frame and positions a small dot +
+the value there on the UI thread, so it tracks the point as the chart scrolls and the Y-axis
+rescales. It's the easiest way to show **when** the high / low happened, not just what it was.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  topLabel={{ position: "extrema", color: "#34d399" }}
+  bottomLabel={{ position: "extrema", color: "#f87171" }}
+/>
+```
+
+The label hides itself when the window holds no data, or when the extremum scrolls off the plot
+(the engine re-picks the visible high / low every frame). It works in **candle mode** too — the
+extrema track the highest high / lowest low.
+
+**`"extrema-edge"`** is a variant that keeps the readout on a clean rail: the value label pins to the
+top / bottom **edge** (still horizontally aligned with the extremum), and a dot marks the actual
+point, joined by a **connector** line. Good when a point-anchored label would crowd the live dot or
+sit awkwardly mid-candle.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  topLabel={{ position: "extrema-edge", color: "#34d399" }}
+  // The connector is a LineStyleConfig (color, strokeWidth, intervals) — the same
+  // shape as `valueLine`. Defaults to a dashed line in the label color.
+  bottomLabel={{ position: "extrema-edge", connector: { color: "#475569", intervals: [4, 4] } }}
+/>
+```
+
+The connector defaults on (dashed) in `"extrema-edge"` mode; pass `connector: false` to drop it
+(value at the edge + dot on the point, no line), or a [`LineStyleConfig`](/api-reference/types#linestyleconfig)
+to style it. `dot: false` removes the dot.
+
+Style the built-in label without dropping to a custom render — `fontSize`, `fontWeight`,
+`fontFamily` size the value text, and `dotColor`, `dotSize`, and `dot: false` control the marker:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  topLabel={{
+    position: "extrema",
+    color: "#34d399",
+    fontSize: 14,
+    fontWeight: "700",
+    dotSize: 10,        // or dotColor: "#fff", or dot: false for a dotless label
+  }}
+/>
+```
+
+(`fontSize` / `fontWeight` / `fontFamily` style the edge `"left"` / `"right"` labels too; the
+`dot*` knobs are `"extrema"`-only.) For anything beyond that, a custom `render` is centered over the
+point instead of the built-in dot + value — you own the chrome:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  topLabel={{ position: "extrema", render: () => <PeakTag /> }}
+/>
+```
+
 The same props work on [`LiveChartSeries`](/api-reference/livechart-series#axis-labels), where the
-bounds track the combined range of the visible series. The labels are display-only
-(`pointerEvents="none"`), so they never block scrubbing.
+bounds track the combined range of the visible series (and `"extrema"` marks the global high / low
+across them). The labels are display-only (`pointerEvents="none"`), so they never block scrubbing.
 
 ## Fonts
 

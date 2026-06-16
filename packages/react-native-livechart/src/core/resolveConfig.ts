@@ -10,6 +10,7 @@ import type {
   LeftEdgeFadeConfig,
   LegendConfig,
   LegendStyle,
+  LineStyleConfig,
   LiveChartMetrics,
   LiveChartMetricsOverride,
   DotConfig,
@@ -61,12 +62,35 @@ export interface ResolvedYAxisConfig {
   minGap: number;
 }
 
+/** Resolved straight-line styling (connector, etc.). `color: undefined` → caller default. */
+export interface ResolvedLineStyleConfig {
+  color: string | undefined;
+  strokeWidth: number;
+  /** undefined → solid (no dash). */
+  intervals: [number, number] | undefined;
+}
+
 export interface ResolvedAxisLabelConfig {
   /** undefined → use the chart's `formatValue` at render time. */
   format?: (v: number) => string;
   /** undefined → use the muted default label color at render time. */
   color?: string;
-  position: "left" | "right";
+  /** `"left"`/`"right"` pin to that edge; `"extrema"`(-`edge`) tracks the data point. */
+  position: "left" | "right" | "extrema" | "extrema-edge";
+  /** undefined → the built-in default text size (11). */
+  fontSize?: number;
+  /** undefined → the platform `<Text>` default weight. */
+  fontWeight?: FontWeight;
+  /** undefined → the platform `<Text>` default family. */
+  fontFamily?: string;
+  /** Extrema dot color; undefined → use `color`. */
+  dotColor?: string;
+  /** Extrema dot diameter (px); undefined → the built-in default (7). */
+  dotSize?: number;
+  /** Extrema — whether to draw the marker dot. */
+  dot: boolean;
+  /** `"extrema-edge"` connector line (dot → edge label); null → none. */
+  connector: ResolvedLineStyleConfig | null;
   /** When set, the built-in value label is replaced by this custom element. */
   render?: () => ReactElement | null;
 }
@@ -333,18 +357,65 @@ const AXIS_LABEL_DEFAULTS: ResolvedAxisLabelConfig = {
   format: undefined,
   color: undefined,
   position: "right",
+  fontSize: undefined,
+  fontWeight: undefined,
+  fontFamily: undefined,
+  dotColor: undefined,
+  dotSize: undefined,
+  dot: true,
+  // Always overwritten by resolveAxisLabel (per-position default-on); placeholder.
+  connector: null,
   render: undefined,
 };
+
+/** Dashed by default — a subtle guide tying the extrema dot to its edge label. */
+const CONNECTOR_DEFAULTS: ResolvedLineStyleConfig = {
+  color: undefined,
+  strokeWidth: 1,
+  intervals: [2, 3],
+};
+
+/**
+ * Resolves the extrema-label `connector` sub-prop to a line style or null.
+ * `defaultOn` (true in `"extrema-edge"` mode) means an unset connector draws the
+ * dashed default; `false` → null; an object → merged; a `LineStyleConfig` is
+ * normalized (its `intervals` may be omitted for a solid line).
+ */
+export function resolveConnector(
+  prop: boolean | LineStyleConfig | undefined,
+  defaultOn: boolean,
+): ResolvedLineStyleConfig | null {
+  if (prop === false) return null;
+  if (prop == null) return defaultOn ? CONNECTOR_DEFAULTS : null;
+  if (prop === true) return CONNECTOR_DEFAULTS;
+  return {
+    color: prop.color,
+    strokeWidth: prop.strokeWidth ?? CONNECTOR_DEFAULTS.strokeWidth,
+    // An explicit object opts into its own dash (or solid when omitted).
+    intervals: prop.intervals,
+  };
+}
 
 /**
  * Resolves a `topLabel` / `bottomLabel` prop to a fully-typed config or null
  * (no label). Opt-in, so `undefined`/`false` → null; `true` → the built-in
  * value label with defaults; object → configured built-in (or a custom `render`).
+ * The `connector` defaults on (dashed) in `"extrema-edge"` mode, else off.
  */
 export function resolveAxisLabel(
   prop: boolean | AxisLabelConfig | undefined,
 ): ResolvedAxisLabelConfig | null {
-  return resolveToggle(prop, AXIS_LABEL_DEFAULTS, false);
+  const resolved = resolveToggle(prop, AXIS_LABEL_DEFAULTS, false);
+  if (!resolved) return null;
+  const connectorProp =
+    typeof prop === "object" ? prop.connector : undefined;
+  return {
+    ...resolved,
+    connector: resolveConnector(
+      connectorProp,
+      resolved.position === "extrema-edge",
+    ),
+  };
 }
 
 const X_AXIS_DEFAULTS: ResolvedXAxisConfig = {

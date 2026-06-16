@@ -63,6 +63,10 @@ import {
 } from "../theme";
 import type { LiveChartSeriesProps, Marker, SeriesConfig } from "../types";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
+import {
+  ExtremaConnectorOverlay,
+  labelConnector,
+} from "./ExtremaConnectorOverlay";
 import { CustomMarkerOverlay } from "./CustomMarkerOverlay";
 import { CrosshairLine } from "./CrosshairLine";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
@@ -395,6 +399,9 @@ function useLiveChartSeriesController({
     // RN axis edge labels (floated over the canvas as a sibling layer)
     topLabelCfg,
     bottomLabelCfg,
+    // Skia connector lines for "extrema-edge" labels (dot → edge readout).
+    topConnector: labelConnector(topLabelCfg, palette.gridLabel),
+    bottomConnector: labelConnector(bottomLabelCfg, palette.gridLabel),
   };
 }
 
@@ -654,6 +661,8 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     formatValue,
     topLabelCfg,
     bottomLabelCfg,
+    topConnector,
+    bottomConnector,
     markersActive,
     markersSV,
     renderMarker,
@@ -695,6 +704,15 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
         <View style={{ flex: 1 }} onLayout={onLayout}>
           <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
             <SeriesChartStack model={model} />
+
+            {/* "extrema-edge" connector lines (dot → edge readout). Outside the
+                stack's degen-shake group so they track the (unshaken) RN dot. */}
+            <ExtremaConnectorOverlay
+              engine={engine}
+              padding={effectivePadding}
+              top={topConnector}
+              bottom={bottomConnector}
+            />
 
             {leftEdgeFadeCfg && (
               <LeftEdgeFade
