@@ -67,9 +67,11 @@ const FONT_BOLD = "PlusJakartaSans_700Bold";
 const FONT_SEMIBOLD = "PlusJakartaSans_600SemiBold";
 const FONT_MEDIUM = "PlusJakartaSans_500Medium";
 
-// Seed/start price. The change % is measured against the live window-open value
-// (computed in BackpackShowcase) so it stays realistic as the feed runs.
-const START_PRICE = 0.45059;
+// Seed/start price (SPCX ~ mid-$200s, like recent SpaceX secondary marks). The
+// change % is measured against the live window-open value (computed in
+// BackpackShowcase) so it stays realistic as the feed runs. The sim walks
+// proportionally (steps scale with the price), so the line stays just as lively.
+const START_PRICE = 248.73;
 
 // Chart geometry. A short ~90s "LIVE" window so the chart visibly scrolls (the
 // dot pushes in at the right and the line drifts left), framed as the "1H" tab.
@@ -80,13 +82,13 @@ const WINDOW_SECS = 90;
 const CHANGE_LABEL = "1h"; // the period the % readout covers (the selected tab)
 const CHART_HEIGHT = 248;
 
-// Built once (constructing Intl.NumberFormat per render is slow). 5 dp currency
-// renders the sub-dollar price as "$0.45059".
+// Built once (constructing Intl.NumberFormat per render is slow). 2 dp currency
+// renders the price as "$248.73".
 const PRICE_FMT = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  minimumFractionDigits: 5,
-  maximumFractionDigits: 5,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 // "9:12:07.531 PM" — 12-hour clock, no leading zero on the hour, down to the
@@ -152,6 +154,24 @@ function Sk({
         style,
       ]}
     />
+  );
+}
+
+/**
+ * SPCX token mark — a black badge with a white rocket. The only real logo on the
+ * otherwise-skeleton page (alongside the ticker + name), so a screen recording
+ * reads unmistakably as the SpaceX (SPCX) listing.
+ */
+function SpcxLogo({ size = 30 }: { size?: number }) {
+  return (
+    <View
+      style={[
+        styles.logo,
+        { width: size, height: size, borderRadius: size / 2 },
+      ]}
+    >
+      <Ionicons name="rocket" size={size * 0.54} color="#FFFFFF" />
+    </View>
   );
 }
 
@@ -344,10 +364,10 @@ export default function BackpackShowcase() {
         >
           <Ionicons name="chevron-back" size={26} color={C.text} />
         </Pressable>
-        <Sk w={30} h={30} r={15} />
+        <SpcxLogo size={30} />
         <View style={styles.headerTitle}>
-          <Sk w={42} h={13} strong />
-          <Sk w={72} h={10} style={{ marginTop: 5 }} />
+          <Text style={styles.hdrTicker}>SPCX</Text>
+          <Sk w={72} h={10} style={{ marginTop: 6 }} />
         </View>
         <View style={styles.headerIcons}>
           <Sk w={24} h={24} r={12} />
@@ -355,9 +375,9 @@ export default function BackpackShowcase() {
         </View>
       </View>
 
-      {/* ── Token name (grey) */}
+      {/* ── Token name */}
       <View style={styles.nameBlock}>
-        <Sk w={150} h={24} strong />
+        <Text style={styles.tokenName}>SpaceX</Text>
       </View>
 
       {/* ── Price + change (the live readout) */}
@@ -376,9 +396,10 @@ export default function BackpackShowcase() {
           style={styles.chartCanvas}
           theme="light"
           accentColor={trendColor}
-          // Bold + hard-edged: `curve: "linear"` draws straight segments (no
-          // spline smoothing) and `join: "miter"` keeps peaks as sharp points.
-          line={{ color: trendColor, width: 3.5, curve: "linear", join: "miter" }}
+          // Bold + smooth: `curve: "monotone"` draws a smooth monotone cubic
+          // through the points and `join: "round"` softens the corners — a
+          // flowing line rather than the angular, hard-edged look.
+          line={{ color: trendColor, width: 3.5, curve: "monotone", join: "round" }}
           dot={{ radius: 4.5 }}
           // Soft halo that grows out from the dot and fades — reads as the
           // "live" pulse at the leading edge.
@@ -402,10 +423,12 @@ export default function BackpackShowcase() {
             crosshairLineColor: C.crosshair,
             // Dashed vertical line, like Backpack's scrub crosshair.
             crosshairDash: [3, 4],
-            // Negative margin lifts the time label up into the top inset so it
-            // sits ABOVE the crosshair line (which starts at the plot top),
-            // rather than the line running behind the text.
-            tooltipMargin: -26,
+            // Top-pinned label sits `tooltipMargin` px below the canvas top edge
+            // (v3.10.0+), inside the reserved `insets.top` band and above the
+            // data. The crosshair line auto-stops at the label's bottom edge, so a
+            // small positive margin keeps the time readout clear of the
+            // price/change UI above the chart (a negative value would overlap it).
+            tooltipMargin: 10,
             dimOpacity: 0.28,
           }}
           onScrub={(point: ScrubPoint | null) => {
@@ -484,6 +507,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
   },
+  logo: {
+    backgroundColor: C.text,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  hdrTicker: {
+    fontSize: 15,
+    fontFamily: FONT_BOLD,
+    color: C.text,
+    letterSpacing: 0.2,
+  },
   headerIcons: {
     flexDirection: "row",
     alignItems: "center",
@@ -492,6 +526,12 @@ const styles = StyleSheet.create({
   nameBlock: {
     paddingHorizontal: 20,
     marginTop: 10,
+  },
+  tokenName: {
+    fontSize: 24,
+    fontFamily: FONT_BOLD,
+    color: C.text,
+    letterSpacing: -0.3,
   },
   priceBlock: {
     paddingHorizontal: 20,
