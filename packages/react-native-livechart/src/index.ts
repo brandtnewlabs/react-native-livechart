@@ -28,6 +28,7 @@ export { useTradeStream } from "./hooks/useTradeStream";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type {
+  AreaDotsConfig,
   AxisLabelConfig,
   BadgeConfig,
   BadgeMetrics,

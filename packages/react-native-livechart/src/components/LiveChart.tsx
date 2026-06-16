@@ -19,6 +19,7 @@ import {
 
 import { DEFAULT_ACCENT_COLOR } from "../constants";
 import {
+  resolveAreaDots,
   resolveAxisLabel,
   resolveBadge,
   resolveDegen,
@@ -73,6 +74,7 @@ import {
   applyPaletteOverride,
   leftEdgeFadeColorsFromBgRgb,
   parseColorRgb,
+  parseColorRgba,
   resolveTheme,
 } from "../theme";
 import type {
@@ -85,6 +87,7 @@ import {
   ThresholdBadgeOverlay,
   ThresholdLineOverlay,
 } from "./ThresholdLineOverlay";
+import { AreaDotsOverlay } from "./AreaDotsOverlay";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
 import {
   ExtremaConnectorOverlay,
@@ -150,6 +153,7 @@ function useLiveChartController({
   theme = "dark",
   accentColor = DEFAULT_ACCENT_COLOR,
   gradient = true,
+  areaDots,
   line: lineProp,
   font: fontProp,
   insets,
@@ -236,6 +240,9 @@ function useLiveChartController({
   // Static charts run no gestures, so scrub-action (tap/drag to lock a price) is off.
   const scrubActionCfg = isStatic ? null : resolveScrubAction(scrubAction);
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
+  // Dot-lattice area fill (clipped to the under-line region). Inert in candle
+  // mode, same as the gradient fill.
+  const areaDotsCfg = isCandle ? null : resolveAreaDots(areaDots);
   // Threshold split is a line-mode feature (candle bodies carry their own up/down
   // colors), so it's inert in candle mode — same as the area gradient.
   const thresholdCfg = isCandle ? null : resolveThreshold(threshold);
@@ -409,6 +416,22 @@ function useLiveChartController({
     // Straight polyline instead of the monotone cubic when line.curve === "linear".
     lineProp?.curve === "linear",
   );
+
+  // Area-dots fill shader color as a vec4 (channels 0..1), with the config
+  // `opacity` folded into the alpha. Defaults to a faint tint of the line/accent
+  // color (theme-aware) so out-of-the-box dots read as a subtle field.
+  const areaDotRgb = parseColorRgb(lineProp?.color ?? palette.line);
+  const [adR, adG, adB, adA] = parseColorRgba(
+    areaDotsCfg?.color ??
+      `rgba(${areaDotRgb[0]}, ${areaDotRgb[1]}, ${areaDotRgb[2]}, 0.22)`,
+  );
+  const areaDotColorVec = [
+    adR / 255,
+    adG / 255,
+    adB / 255,
+    adA * (areaDotsCfg?.opacity ?? 1),
+  ];
+
   const { upBodiesPath, downBodiesPath, upWicksPath, downWicksPath } =
     useCandlePaths(
       engine,
@@ -639,6 +662,8 @@ function useLiveChartController({
     scrubCfg,
     scrubActionCfg,
     gradientCfg,
+    areaDotsCfg,
+    areaDotColorVec,
     valueLineCfg,
     pulseCfg,
     dotCfg,
@@ -736,6 +761,8 @@ function ChartFillLayer({ model }: { model: LiveChartModel }) {
     gridStyleCfg,
     metricsCfg,
     gradientCfg,
+    areaDotsCfg,
+    areaDotColorVec,
     fillPath,
     gradientEnd,
     gradientColors,
@@ -761,6 +788,20 @@ function ChartFillLayer({ model }: { model: LiveChartModel }) {
             badgeTail={badgeCfg?.tail ?? true}
             badgeMetrics={metricsCfg.badge}
             gridStyle={gridStyleCfg}
+          />
+        </Group>
+      )}
+
+      {/* Dot-lattice area fill (the under-line `fillPath` painted with a dot
+          shader). Drawn before the gradient so a gradient (if also enabled)
+          composites on top. */}
+      {areaDotsCfg && (
+        <Group opacity={reveal.fillOpacity}>
+          <AreaDotsOverlay
+            fillPath={fillPath}
+            color={areaDotColorVec}
+            spacing={areaDotsCfg.spacing}
+            size={areaDotsCfg.size}
           />
         </Group>
       )}

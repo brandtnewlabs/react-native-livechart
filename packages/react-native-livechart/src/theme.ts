@@ -99,6 +99,20 @@ function rgba(r: number, g: number, b: number, a: number): string {
 }
 
 /**
+ * Parse a color into `[r, g, b, a]` — RGB channels 0–255, alpha 0–1. Extends
+ * {@link parseColorRgb} with the alpha channel of an `rgba(...)` string;
+ * `rgb(...)` and `#hex` (which carry no alpha) default to `a = 1`. Used to feed
+ * the area-dots shader a vec4 color uniform.
+ */
+export function parseColorRgba(
+  color: string,
+): [number, number, number, number] {
+  const [r, g, b] = parseColorRgb(color);
+  const rgba = color.match(/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/);
+  return [r, g, b, rgba ? +rgba[1] : 1];
+}
+
+/**
  * Default left-edge fade gradient stops for `dstOut` blending: same RGB as the chart
  * background (`palette.bgRgb`), opacity 1 → 0. Matches the container `backgroundColor`.
  */

@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.0] - 2026-06-16
+
+### Added
+
+- **`areaDots` — dot-lattice area fill** (`LiveChart`). A new `areaDots` prop
+  (`boolean | AreaDotsConfig`) fills the area **beneath the line** with a
+  screen-fixed dot lattice clipped to the under-line region (the line scrolls
+  over the dots; nothing is drawn above it). It composes with `gradient` or
+  replaces it (`gradient={false}`), and `AreaDotsConfig` tunes `spacing`, `size`,
+  `color` (defaults to a faint tint of the line color), and `opacity`. Inert in
+  candle mode, like the gradient fill. See the new `app/showcase/kraken.tsx`
+  example.
+
 ## [3.10.0] - 2026-06-16
 
 ### Added

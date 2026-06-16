@@ -55,6 +55,14 @@ provided; everything else has a default.
   accent color.
 </ParamField>
 
+<ParamField body="areaDots" type="boolean | AreaDotsConfig" default="false">
+  Dot-lattice fill of the area beneath the line — a screen-fixed grid of dots
+  clipped to the region between the line and the baseline. Composes with
+  `gradient` (both paint) or replaces it (`gradient={false}`). Pass an
+  `AreaDotsConfig` to tune `spacing`, `size`, `color`, and `opacity`; the color
+  defaults to a faint tint of the line/accent color. Inert in candle mode.
+</ParamField>
+
 <ParamField body="badge" type="boolean | BadgeConfig" default="true">
   Value badge pill at the tip.
 </ParamField>

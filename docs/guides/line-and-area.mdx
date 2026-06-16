@@ -40,6 +40,32 @@ Override the stroke with the `line` prop, and the area fill with `gradient`:
 
 Pass `gradient={false}` to remove the area fill entirely.
 
+### Dotted area fill
+
+For a textured fill, `areaDots` paints a screen-fixed dot lattice clipped to the
+area **beneath the line** (the line scrolls over the dots; nothing is drawn above
+it). It composes with `gradient`, or use it alone with `gradient={false}`:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  line={{ width: 2, color: "#F7931A" }}
+  areaDots={{ spacing: 12, size: 1.6 }} // color defaults to a faint line tint
+  gradient={false}
+/>
+```
+
+Tune `spacing` (lattice pitch), `size` (dot diameter), `color`, and `opacity`.
+Like `gradient`, it's a line-mode feature (inert in candle mode).
+
+<Note>
+  **Live example:**
+  [`app/showcase/kraken.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/kraken.tsx)
+  pairs the dotted area fill with a thin line, Y-axis labels, and a dashed scrub
+  crosshair.
+</Note>
+
 ### Curve & edges
 
 By default the line is a smooth monotone cubic with rounded joins and caps. For an

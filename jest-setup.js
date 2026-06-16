@@ -145,6 +145,8 @@ jest.mock("@shopify/react-native-skia", () => {
     Text: View,
     Path: ({ children, ...props }) =>
       React.createElement(View, props, children),
+    Points: View,
+    Shader: View,
     DashPathEffect: View,
     Blur: View,
     Image: View,
@@ -177,6 +179,9 @@ jest.mock("@shopify/react-native-skia", () => {
       XYWHRect: jest.fn((x, y, width, height) => ({ x, y, width, height })),
       Color: jest.fn((c) => c),
       Paint: jest.fn(() => createMockPaint()),
+      RuntimeEffect: {
+        Make: jest.fn(() => ({ source: jest.fn() })),
+      },
     },
   };
 });

@@ -93,6 +93,28 @@ describe("LiveChart", () => {
     render(<Harness gradient={false} yAxis={false} badge={false} />);
   });
 
+  it("renders areaDots (dot-lattice area fill) with default palette tint", () => {
+    // Layout must fire so the lattice is non-empty and AreaDotsOverlay mounts.
+    const screen = render(<Harness areaDots />);
+    layoutFirst(screen);
+  });
+
+  it("renders an areaDots config alongside gradient off (dots-only fill)", () => {
+    const screen = render(
+      <Harness
+        gradient={false}
+        areaDots={{
+          spacing: 16,
+          size: 2,
+          color: "rgba(247,147,26,0.3)",
+          opacity: 0.9,
+        }}
+        line={{ color: "#F7931A", width: 2 }}
+      />,
+    );
+    layoutFirst(screen);
+  });
+
   it("uses custom insets and referenceLines", () => {
     render(
       <Harness
