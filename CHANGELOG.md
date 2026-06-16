@@ -5,6 +5,49 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0] - 2026-06-16
+
+### Added
+
+- **`topLabel` / `bottomLabel` can mark the extrema points** (`LiveChart` and
+  `LiveChartSeries`). Pass `position: "extrema"` to float the high / low readout
+  at the actual data point where it occurs — a dot + value tracked on the UI
+  thread as the chart scrolls and the Y-axis rescales — instead of pinning it to
+  a fixed edge. Works in line and candle mode (extrema track the highest high /
+  lowest low); a custom `render` is centered over the point. The label hides when
+  the window holds no data or the extremum scrolls off-plot. `"left"` / `"right"`
+  remain the default edge behavior, so existing labels are unchanged.
+  `position: "extrema-edge"` is a variant that keeps the value on the top / bottom
+  rail (x-aligned with the extremum) and joins it to a dot on the point with a
+  configurable `connector` line (a `LineStyleConfig`, dashed by default). The
+  built-in label is styleable without dropping to `render`: `AxisLabelConfig`
+  gains `fontSize` / `fontWeight` / `fontFamily` (edge + extrema text),
+  `dotColor` / `dotSize` / `dot` (the extrema marker), and `connector`.
+  ([#131](https://github.com/brandtnewlabs/react-native-livechart/issues/131))
+- **Custom `renderTooltip` now works in candlestick mode** (`LiveChart`). The
+  custom tooltip replaces the built-in OHLC stack, and `TooltipRenderProps` gains
+  a `candle: SharedValue<CandlePoint | null>` with the scrubbed bucket so you can
+  render your own OHLC readout (or a minimal pill when the active candle is shown
+  elsewhere in your UI). `value` / `valueStr` resolve to the candle's close and
+  `time` / `timeStr` to the bucket time, so a close-only tooltip needs no
+  candle-specific code. See the new **Candle scrub** demo
+  (`app/demo/candle-scrub.tsx`) for a brokerage-style composition — OHLC in a
+  header above the chart, the time pinned to the top edge.
+  ([#132](https://github.com/brandtnewlabs/react-native-livechart/issues/132))
+
+### Changed
+
+- **Top/bottom-placed custom tooltips now pin to the canvas edge.** A custom
+  `renderTooltip` with `scrub.tooltipPlacement: "top"` now sits at the **canvas
+  top edge** (previously `insets.top + margin`) and the crosshair line **stops at
+  the label** instead of running up through it; `"top"` / `"bottom"` tooltips also
+  clamp to the canvas edges (so they can extend into the axis gutters) rather than
+  the inner plot bounds. This affects **existing line-mode** top-pinned tooltips,
+  not just candle mode — reserve `insets.top` for the label band so the data
+  clears it (mirrors the extrema-label treatment). The default (`"side"`)
+  placement is unchanged.
+  ([#132](https://github.com/brandtnewlabs/react-native-livechart/issues/132))
+
 ## [3.9.0] - 2026-06-15
 
 ### Added
@@ -366,10 +409,21 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[3.10.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.10.0
+[3.9.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.9.0
+[3.8.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.8.2
+[3.8.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.8.1
+[3.8.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.8.0
+[3.7.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.7.0
 [3.6.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.6.0
 [3.5.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.5.1
+[3.5.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.5.0
+[3.4.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.4.0
+[3.3.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.3.0
 [3.2.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.2.0
 [3.1.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.1.0
+[3.0.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.0.0
 [2.0.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v2.0.1
 [2.0.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v2.0.0
+[1.1.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v1.1.0
 [1.0.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v1.0.0

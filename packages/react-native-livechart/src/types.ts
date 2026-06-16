@@ -584,16 +584,30 @@ export interface SelectionDotProps {
  * for the value/date to update on the UI thread too.
  */
 export interface TooltipRenderProps {
-  /** Interpolated value under the crosshair; `null` when none. */
+  /**
+   * Value under the crosshair; `null` when none. In line mode this is the
+   * interpolated value at the scrub time; in candle mode it's the scrubbed
+   * candle's close (use {@link TooltipRenderProps.candle} for full OHLC).
+   */
   value: SharedValue<number | null>;
   /** Window time (unix seconds) under the crosshair. */
   time: SharedValue<number>;
-  /** Value formatted with the chart's `formatValue` (computed UI-side). */
+  /**
+   * Value formatted with the chart's `formatValue` (computed UI-side). In candle
+   * mode this is the formatted close.
+   */
   valueStr: SharedValue<string>;
   /** Time formatted with the chart's `formatTime` (computed UI-side). */
   timeStr: SharedValue<string>;
   /** Whether scrubbing is currently active. */
   active: SharedValue<boolean>;
+  /**
+   * In candle mode, the OHLC candle under the crosshair (`null` when none or
+   * while inactive). Always `null` in line mode — bind it to render OHLC in a
+   * custom candlestick tooltip. Format the individual prices with your own
+   * worklet-safe formatter (e.g. the chart's `formatValue`).
+   */
+  candle: SharedValue<CandlePoint | null>;
 }
 
 /** Outer ring drawn around the built-in selection dot (the subtle halo). */
@@ -1157,9 +1171,13 @@ export interface LiveChartCoreProps {
    * background are plain RN styles) and content — bind the {@link
    * TooltipRenderProps} SharedValues to animated text for the value/date.
    *
-   * Return `null`/`undefined` to fall back to the built-in pill. Replaces the
-   * default pill entirely while active. Single-series **line mode only** —
-   * ignored in candle mode (the OHLC stack owns the tooltip there).
+   * Supplying `renderTooltip` replaces the built-in tooltip entirely while
+   * scrubbing (the line pill in line mode, the OHLC stack in candle mode).
+   * Returning `null`/`undefined` from a frame renders nothing for that frame
+   * (e.g. to hide the tooltip in certain states) — it does *not* restore the
+   * built-in pill. Works in **both line and candle mode**: in candle mode the
+   * scrubbed candle is available as {@link TooltipRenderProps.candle} for
+   * rendering your own OHLC readout.
    */
   renderTooltip?: (ctx: TooltipRenderProps) => ReactElement | null | undefined;
   /**

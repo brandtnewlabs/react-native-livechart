@@ -9,7 +9,7 @@ import Animated, {
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import type { TooltipLayout } from "../hooks/crosshairShared";
-import type { TooltipRenderProps } from "../types";
+import type { CandlePoint, TooltipRenderProps } from "../types";
 
 // Mirror the Skia tooltip's offsets (see crosshairShared.ts) so a custom pill
 // lines up with where the built-in one would sit. The vertical edge gap is
@@ -40,18 +40,22 @@ export function CustomTooltipOverlay({
   scrubValue,
   scrubTime,
   scrubActive,
+  scrubCandle,
   crosshairOpacity,
   tooltipLayout,
   engine,
   padding,
   placement,
   margin = 8,
+  lineTop,
 }: {
   renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
   scrubX: SharedValue<number>;
   scrubValue: SharedValue<number | null>;
   scrubTime: SharedValue<number>;
   scrubActive: SharedValue<boolean>;
+  /** OHLC candle under the crosshair (candle mode); omitted/`null` in line mode. */
+  scrubCandle?: SharedValue<CandlePoint | null>;
   crosshairOpacity: SharedValue<number>;
   tooltipLayout: SharedValue<TooltipLayout>;
   engine: ChartEngineLayout;
@@ -59,11 +63,19 @@ export function CustomTooltipOverlay({
   placement: "side" | "top" | "bottom";
   /** Gap (px) between the pill and the plot edge it's pinned to. Default 8. */
   margin?: number;
+  /** When `placement` is `"top"`, the overlay publishes the label's bottom edge
+   *  (canvas Y) here so {@link CrosshairOverlay} can stop the crosshair line at
+   *  the label instead of running through it; -1 when not top-pinned/active. */
+  lineTop?: SharedValue<number>;
 }) {
   // Formatted strings come ready-made off the layout (formatted UI-side in
-  // computeTooltipLayout), so consumers don't need a worklet-safe formatter.
+  // computeTooltipLayout / computeCandleTooltipLayout), so consumers don't need
+  // a worklet-safe formatter for the value/time.
   const valueStr = useDerivedValue(() => tooltipLayout.get().valueStr);
   const timeStr = useDerivedValue(() => tooltipLayout.get().timeStr);
+  // A stable `null` candle SharedValue for line mode so `ctx.candle` is always
+  // present (a SharedValue), regardless of mode.
+  const nullCandle = useSharedValue<CandlePoint | null>(null);
 
   const ctx: TooltipRenderProps = {
     value: scrubValue,
@@ -71,6 +83,7 @@ export function CustomTooltipOverlay({
     valueStr,
     timeStr,
     active: scrubActive,
+    candle: scrubCandle ?? nullCandle,
   };
   const element = renderTooltip(ctx);
 
@@ -79,6 +92,12 @@ export function CustomTooltipOverlay({
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     size.value = { width, height };
+    // Publish the label's bottom edge (canvas Y) for a top-pinned tooltip so
+    // CrosshairOverlay stops the crosshair line at the label instead of running
+    // up through it; -1 for side/bottom → the line keeps its default start. The
+    // value when idle is irrelevant (the crosshair is hidden), so reacting to the
+    // measured height alone — no scrub-active dependency — is enough.
+    lineTop?.set(placement === "top" ? margin + height : -1);
   };
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -96,15 +115,21 @@ export function CustomTooltipOverlay({
       if (x + s.width > rightEdge - EDGE_GAP) x = sx - s.width - OFFSET_X;
       y = padding.top + margin;
     } else {
-      const leftBound = padding.left + EDGE_GAP;
-      const rightBound = rightEdge - EDGE_GAP - s.width;
+      // Center on the crosshair, clamped to the *canvas* edges (not the plot's
+      // inner bounds) so a top/bottom-pinned label follows the crosshair all the
+      // way into the left/right gutters — e.g. past the wide Y-axis gutter on the
+      // right — instead of stopping short of the edge.
+      const leftBound = EDGE_GAP;
+      const rightBound = cw - EDGE_GAP - s.width;
       x = Math.min(
         Math.max(sx - s.width / 2, leftBound),
         Math.max(leftBound, rightBound),
       );
       y =
         placement === "top"
-          ? padding.top + margin
+          ? // Pin to the canvas top edge (not the plot's inner top), so the label
+            // sits above the data and the crosshair line can stop at it.
+            margin
           : ch - padding.bottom - margin - s.height;
     }
 

@@ -353,11 +353,13 @@ re-render while scrubbing. See [Custom tooltip](/guides/scrubbing#custom-tooltip
 
 ```ts
 interface TooltipRenderProps {
-  value: SharedValue<number | null>; // interpolated value under the crosshair
+  value: SharedValue<number | null>; // value under the crosshair (candle mode: the close)
   time: SharedValue<number>;         // window time (unix seconds) under the crosshair
   valueStr: SharedValue<string>;     // value formatted with the chart's formatValue
   timeStr: SharedValue<string>;      // time formatted with the chart's formatTime
   active: SharedValue<boolean>;      // whether scrubbing is active
+  // Candle mode: the OHLC bucket under the crosshair (null in line mode / inactive).
+  candle: SharedValue<CandlePoint | null>;
 }
 ```
 

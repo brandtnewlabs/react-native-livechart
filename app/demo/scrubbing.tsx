@@ -54,7 +54,7 @@ type DisplayMode = "line" | "candle";
 
 const DISPLAY_OPTIONS: { value: DisplayMode; label: string }[] = [
   { value: "line", label: "Line" },
-  { value: "candle", label: "Candle (OHLC in readout)" },
+  { value: "candle", label: "Candle (OHLC readout)" },
 ];
 
 // Opacity of the chart content to the right of the crosshair while scrubbing.
@@ -92,7 +92,7 @@ function RingSelectionDot({ x, y, opacity, size }: SelectionDotProps) {
 // the date is an animated TextInput bound to `timeStr`, so movement AND text
 // both update on the UI thread — no JS re-render while scrubbing. Works the same
 // under hold-to-scrub (the overlay is `pointerEvents="box-none"`, so the pan
-// gesture and its `panGestureDelay` are unaffected). Line mode only.
+// gesture and its `panGestureDelay` are unaffected). Used here in line mode.
 function BlueTooltip({ timeStr }: TooltipRenderProps) {
   const animatedProps = useAnimatedProps(() => {
     const t = timeStr.get();
@@ -104,6 +104,33 @@ function BlueTooltip({ timeStr }: TooltipRenderProps) {
         editable={false}
         underlineColorAndroid="transparent"
         style={styles.blueTipText}
+        animatedProps={animatedProps}
+      />
+    </View>
+  );
+}
+
+// A custom CANDLE tooltip: it binds `ctx.candle` (the scrubbed OHLC bucket) to
+// an animated TextInput, so the O/H/L/C readout updates on the UI thread as you
+// scrub — replacing the built-in OHLC stack. A monospace font + fixed width keep
+// the four values aligned and clip-free as the digits change.
+function OhlcTooltip({ candle }: TooltipRenderProps) {
+  const animatedProps = useAnimatedProps(() => {
+    const c = candle.get();
+    const text = c
+      ? `O ${c.open.toFixed(2)}  H ${c.high.toFixed(2)}\nL ${c.low.toFixed(2)}  C ${c.close.toFixed(2)}`
+      : "";
+    return { text, defaultValue: text };
+  });
+  return (
+    <View style={styles.ohlcTip}>
+      <AnimatedTextInput
+        editable={false}
+        multiline
+        numberOfLines={2}
+        scrollEnabled={false}
+        underlineColorAndroid="transparent"
+        style={styles.ohlcTipText}
         animatedProps={animatedProps}
       />
     </View>
@@ -200,7 +227,7 @@ export default function ScrubbingScreen() {
     <DemoScreen
       title="Scrubbing"
       docs="guides/scrubbing"
-      description="Scrub modes; candle mode shows ScrubPoint.candle in readout"
+      description="Scrub modes + tooltips. Custom render works in line AND candle mode (toggle both on to see the OHLC pill)."
       chart={
         <LiveChart
           data={data}
@@ -213,9 +240,14 @@ export default function ScrubbingScreen() {
           theme={APP_THEME}
           timeWindow={windowSecs}
           scrub={scrub}
-          // Custom tooltip is line-mode only; candle keeps its OHLC stack.
+          // A custom tooltip works in both modes: the blue date pill in line
+          // mode, a bespoke OHLC pill (reading `ctx.candle`) in candle mode.
           renderTooltip={
-            customTooltip && displayMode === "line" ? BlueTooltip : undefined
+            customTooltip
+              ? displayMode === "candle"
+                ? OhlcTooltip
+                : BlueTooltip
+              : undefined
           }
           selectionDot={selectionDot}
           onGestureStart={() => setGestureState("scrubbing…")}
@@ -332,6 +364,25 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#fff",
     fontSize: 13,
+    padding: 0,
+    fontFamily: "JetBrainsMono_400Regular",
+  },
+  ohlcTip: {
+    borderRadius: 8,
+    backgroundColor: "#0f172a",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#334155",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  ohlcTipText: {
+    // Fixed box (UI-thread text doesn't re-layout) + monospace so the four
+    // values stay column-aligned and never outgrow the pill as digits change.
+    width: 150,
+    height: 32,
+    color: "#e2e8f0",
+    fontSize: 11,
+    lineHeight: 14,
     padding: 0,
     fontFamily: "JetBrainsMono_400Regular",
   },

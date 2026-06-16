@@ -1,13 +1,13 @@
 import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import { Text } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { CustomTooltipOverlay } from "../../src/components/CustomTooltipOverlay";
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { TooltipLayout } from "../../src/hooks/crosshairShared";
-import type { TooltipRenderProps } from "../../src/types";
+import type { CandlePoint, TooltipRenderProps } from "../../src/types";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 function engine(): ChartEngineLayout {
@@ -39,9 +39,13 @@ const LAYOUT: TooltipLayout = {
 function Fixture({
   renderTooltip,
   placement = "side",
+  candle,
+  captureLineTop,
 }: {
   renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
   placement?: "side" | "top" | "bottom";
+  candle?: CandlePoint | null;
+  captureLineTop?: (lineTop: SharedValue<number>) => void;
 }) {
   const scrubX = useSharedValue(100);
   const scrubValue = useSharedValue<number | null>(42);
@@ -49,6 +53,9 @@ function Fixture({
   const scrubActive = useSharedValue(true);
   const crosshairOpacity = useSharedValue(1);
   const tooltipLayout = useSharedValue<TooltipLayout>(LAYOUT);
+  const scrubCandle = useSharedValue<CandlePoint | null>(candle ?? null);
+  const lineTop = useSharedValue(-1);
+  captureLineTop?.(lineTop);
   return (
     <CustomTooltipOverlay
       renderTooltip={renderTooltip}
@@ -56,11 +63,15 @@ function Fixture({
       scrubValue={scrubValue}
       scrubTime={scrubTime}
       scrubActive={scrubActive}
+      // Only wire scrubCandle when a candle is supplied, so the line-mode tests
+      // also exercise the `?? nullCandle` fallback (candle prop omitted).
+      scrubCandle={candle === undefined ? undefined : scrubCandle}
       crosshairOpacity={crosshairOpacity}
       tooltipLayout={tooltipLayout}
       engine={engine()}
       padding={DEFAULT_PADDING}
       placement={placement}
+      lineTop={lineTop}
     />
   );
 }
@@ -105,6 +116,69 @@ describe("CustomTooltipOverlay", () => {
     expect(typeof captured!.timeStr.get).toBe("function");
     expect(captured!.valueStr.get()).toBe("42.00");
     expect(captured!.timeStr.get()).toBe("12:00:00");
+    // `candle` is always present (a SharedValue); null in line mode.
+    expect(typeof captured!.candle.get).toBe("function");
+    expect(captured!.candle.get()).toBeNull();
+  });
+
+  it("exposes the scrubbed OHLC candle in candle mode", () => {
+    const ohlc: CandlePoint = {
+      time: 985,
+      open: 100,
+      high: 120,
+      low: 90,
+      close: 110,
+    };
+    let captured: TooltipRenderProps | undefined;
+    const { getByTestId } = render(
+      <Fixture
+        candle={ohlc}
+        renderTooltip={(ctx) => {
+          captured = ctx;
+          const c = ctx.candle.get();
+          return <Text testID="ohlc">{c ? `C ${c.close}` : "—"}</Text>;
+        }}
+      />,
+    );
+    expect(getByTestId("ohlc")).toBeTruthy();
+    expect(captured!.candle.get()).toEqual(ohlc);
+  });
+
+  it("publishes the top-pinned label's bottom edge as the crosshair line-stop", () => {
+    let lineTop: SharedValue<number> | undefined;
+    const { getByTestId } = render(
+      <Fixture
+        placement="top"
+        captureLineTop={(sv) => {
+          lineTop = sv;
+        }}
+        renderTooltip={() => <Text testID="tip-top">tip</Text>}
+      />,
+    );
+    // Before layout the line keeps its default start.
+    expect(lineTop!.value).toBe(-1);
+    fireEvent(getByTestId("tip-top").parent!, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
+    });
+    // Label bottom = margin (default 8) + measured height (40).
+    expect(lineTop!.value).toBe(48);
+  });
+
+  it("leaves the line-stop unset (-1) for non-top placement", () => {
+    let lineTop: SharedValue<number> | undefined;
+    const { getByTestId } = render(
+      <Fixture
+        placement="bottom"
+        captureLineTop={(sv) => {
+          lineTop = sv;
+        }}
+        renderTooltip={() => <Text testID="tip-bottom">tip</Text>}
+      />,
+    );
+    fireEvent(getByTestId("tip-bottom").parent!, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
+    });
+    expect(lineTop!.value).toBe(-1);
   });
 
   it("positions for top/bottom placement without error", () => {

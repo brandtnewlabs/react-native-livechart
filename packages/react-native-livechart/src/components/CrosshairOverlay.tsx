@@ -27,6 +27,7 @@ export function CrosshairOverlay({
   showTooltip = true,
   children,
   renderTooltip,
+  lineTop,
   selectionDot,
   selectionY,
   scrubActive,
@@ -58,6 +59,10 @@ export function CrosshairOverlay({
   /** Public custom-tooltip hook for line mode: when provided (and no `children`
    *  are passed), its result replaces the default value/time tooltip body. */
   renderTooltip?: () => ReactNode;
+  /** Canvas-Y at which the crosshair line should start, so it stops just below a
+   *  top-pinned custom tooltip instead of running up through it. -1 (or omitted)
+   *  → start at `padding.top`. Fed by {@link CustomTooltipOverlay}. */
+  lineTop?: SharedValue<number>;
   /** Resolved selection-dot config; `null` hides it, a `component` renders the
    *  consumer's dot, otherwise the built-in dot. */
   selectionDot?: ResolvedSelectionDotConfig | null;
@@ -97,11 +102,16 @@ export function CrosshairOverlay({
   // captured plain values keeps the dependency array a constant size. SharedValue
   // reads stay reactive regardless of this list.
   const p1 = useDerivedValue(
-    () => ({
-      x: scrubX.value,
-      y: padding.top,
-    }),
-    [scrubX, padding.top],
+    () => {
+      // A top-pinned custom tooltip pushes the line's start down to its measured
+      // bottom (lineTop) so the line stops at the label; -1 → no top tooltip.
+      const lt = lineTop?.value ?? -1;
+      return {
+        x: scrubX.value,
+        y: lt >= 0 ? lt : padding.top,
+      };
+    },
+    [scrubX, padding.top, lineTop],
   );
   const p2 = useDerivedValue(
     () => ({
