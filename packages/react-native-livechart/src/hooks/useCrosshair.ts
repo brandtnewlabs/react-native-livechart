@@ -143,6 +143,10 @@ export function useCrosshair(
   // Tracks whether the active scrub phase actually began, so a tap that never
   // activates doesn't emit a spurious onGestureEnd.
   const gestureStarted = useSharedValue(false);
+  // Where the crosshair line should start (canvas Y) so it stops at a top-pinned
+  // custom tooltip instead of running through it. -1 = no top tooltip → the line
+  // starts at padding.top. Written by CustomTooltipOverlay, read by CrosshairOverlay.
+  const tooltipLineTop = useSharedValue(-1);
 
   // Scrub-action lock state. Created unconditionally (hooks must be), but the
   // lock gestures are only wired by the controller when `scrubAction` is set.
@@ -638,6 +642,7 @@ export function useCrosshair(
     crosshairOpacity,
     tooltipLayout,
     scrubDotY,
+    tooltipLineTop,
     gesture,
     lockActive,
     lockX,

@@ -1,7 +1,7 @@
 import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import { Text } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { CustomTooltipOverlay } from "../../src/components/CustomTooltipOverlay";
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
@@ -40,10 +40,12 @@ function Fixture({
   renderTooltip,
   placement = "side",
   candle,
+  captureLineTop,
 }: {
   renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
   placement?: "side" | "top" | "bottom";
   candle?: CandlePoint | null;
+  captureLineTop?: (lineTop: SharedValue<number>) => void;
 }) {
   const scrubX = useSharedValue(100);
   const scrubValue = useSharedValue<number | null>(42);
@@ -52,6 +54,8 @@ function Fixture({
   const crosshairOpacity = useSharedValue(1);
   const tooltipLayout = useSharedValue<TooltipLayout>(LAYOUT);
   const scrubCandle = useSharedValue<CandlePoint | null>(candle ?? null);
+  const lineTop = useSharedValue(-1);
+  captureLineTop?.(lineTop);
   return (
     <CustomTooltipOverlay
       renderTooltip={renderTooltip}
@@ -67,6 +71,7 @@ function Fixture({
       engine={engine()}
       padding={DEFAULT_PADDING}
       placement={placement}
+      lineTop={lineTop}
     />
   );
 }
@@ -137,6 +142,43 @@ describe("CustomTooltipOverlay", () => {
     );
     expect(getByTestId("ohlc")).toBeTruthy();
     expect(captured!.candle.get()).toEqual(ohlc);
+  });
+
+  it("publishes the top-pinned label's bottom edge as the crosshair line-stop", () => {
+    let lineTop: SharedValue<number> | undefined;
+    const { getByTestId } = render(
+      <Fixture
+        placement="top"
+        captureLineTop={(sv) => {
+          lineTop = sv;
+        }}
+        renderTooltip={() => <Text testID="tip-top">tip</Text>}
+      />,
+    );
+    // Before layout the line keeps its default start.
+    expect(lineTop!.value).toBe(-1);
+    fireEvent(getByTestId("tip-top").parent!, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
+    });
+    // Label bottom = margin (default 8) + measured height (40).
+    expect(lineTop!.value).toBe(48);
+  });
+
+  it("leaves the line-stop unset (-1) for non-top placement", () => {
+    let lineTop: SharedValue<number> | undefined;
+    const { getByTestId } = render(
+      <Fixture
+        placement="bottom"
+        captureLineTop={(sv) => {
+          lineTop = sv;
+        }}
+        renderTooltip={() => <Text testID="tip-bottom">tip</Text>}
+      />,
+    );
+    fireEvent(getByTestId("tip-bottom").parent!, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
+    });
+    expect(lineTop!.value).toBe(-1);
   });
 
   it("positions for top/bottom placement without error", () => {

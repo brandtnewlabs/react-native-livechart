@@ -1120,6 +1120,7 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
           palette={palette}
           font={skiaFont}
           showTooltip={scrubCfg.tooltip && !customTooltipActive}
+          lineTop={crosshair.tooltipLineTop}
           selectionDot={selectionDot}
           selectionY={crosshair.scrubDotY}
           scrubActive={crosshair.scrubActive}
@@ -1392,6 +1393,7 @@ export function LiveChart(props: LiveChartProps) {
             padding={effectivePadding}
             placement={scrubCfg.tooltipPlacement}
             margin={scrubCfg.tooltipMargin}
+            lineTop={crosshair.tooltipLineTop}
           />
         )}
       </View>

@@ -62,6 +62,13 @@ export interface CrosshairState {
    *  inactive) — single-series `useCrosshair` only; undefined on the multi-series
    *  crosshair. Surfaced for a custom candle `renderTooltip`. */
   scrubCandle?: SharedValue<CandlePoint | null>;
+  /** Canvas-Y where the crosshair line should start so it stops at a top-pinned
+   *  custom tooltip's bottom edge instead of running up through it. Written by
+   *  {@link CustomTooltipOverlay} (the label's measured bottom) when
+   *  `tooltipPlacement: "top"` is active, read by {@link CrosshairOverlay}; -1
+   *  means "no top tooltip" → the line starts at `padding.top` as before.
+   *  Single-series `useCrosshair` only; undefined on the multi-series crosshair. */
+  tooltipLineTop?: SharedValue<number>;
   gesture: ReturnType<typeof Gesture.Pan>;
 
   // ── Scrub-action ("order ticket") lock state — single-series `useCrosshair`

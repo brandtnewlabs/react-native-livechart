@@ -1171,11 +1171,13 @@ export interface LiveChartCoreProps {
    * background are plain RN styles) and content — bind the {@link
    * TooltipRenderProps} SharedValues to animated text for the value/date.
    *
-   * Return `null`/`undefined` to fall back to the built-in pill. Replaces the
-   * default pill entirely while active. Works in **both line and candle mode**:
-   * in candle mode the built-in OHLC stack is replaced and the scrubbed candle
-   * is available as {@link TooltipRenderProps.candle} for rendering your own
-   * OHLC readout.
+   * Supplying `renderTooltip` replaces the built-in tooltip entirely while
+   * scrubbing (the line pill in line mode, the OHLC stack in candle mode).
+   * Returning `null`/`undefined` from a frame renders nothing for that frame
+   * (e.g. to hide the tooltip in certain states) — it does *not* restore the
+   * built-in pill. Works in **both line and candle mode**: in candle mode the
+   * scrubbed candle is available as {@link TooltipRenderProps.candle} for
+   * rendering your own OHLC readout.
    */
   renderTooltip?: (ctx: TooltipRenderProps) => ReactElement | null | undefined;
   /**

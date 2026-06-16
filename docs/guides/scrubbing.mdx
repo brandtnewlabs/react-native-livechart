@@ -118,9 +118,10 @@ const styles = StyleSheet.create({
 <LiveChart data={data} value={value} scrub renderTooltip={BlueTooltip} />;
 ```
 
-Return `null`/`undefined` to fall back to the default pill (e.g. only customize in certain states).
-The `tooltip*` style props above are ignored while a custom tooltip is active, since you own the
-chrome.
+Supplying `renderTooltip` replaces the built-in pill entirely while scrubbing. Returning
+`null`/`undefined` from a frame renders nothing for that frame (handy to hide the tooltip in
+certain states) — it does not restore the built-in pill. The `tooltip*` style props above are
+ignored while a custom tooltip is active, since you own the chrome.
 
 ### Custom tooltip in candle mode
 
