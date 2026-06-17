@@ -79,11 +79,11 @@ export function ReferenceLineOverlay({
   const linePath = useDerivedValue(() => {
     const b = lineBuilder.value;
     const l = layout.get();
-    // A plain full-width line. A badge instead draws a pill + a connector to the
-    // opposite edge, below.
-    if (l.visible && !l.badge && !isBand) {
-      b.moveTo(l.x1, l.y);
-      b.lineTo(l.x2, l.y);
+    // A plain horizontal line, drawn at the line extent (full-width when opted in).
+    // A non-full-width badge instead draws a pill + connector to the edge, below.
+    if (l.visible && l.drawLine && !isBand) {
+      b.moveTo(l.lineX1, l.y);
+      b.lineTo(l.lineX2, l.y);
     }
     return b.detach();
   });
@@ -92,10 +92,10 @@ export function ReferenceLineOverlay({
     const b = bandBuilder.value;
     const l = layout.get();
     if (l.visible && isBand) {
-      b.moveTo(l.x1, l.y);
-      b.lineTo(l.x2, l.y);
-      b.lineTo(l.x2, l.yBottom);
-      b.lineTo(l.x1, l.yBottom);
+      b.moveTo(l.lineX1, l.y);
+      b.lineTo(l.lineX2, l.y);
+      b.lineTo(l.lineX2, l.yBottom);
+      b.lineTo(l.lineX1, l.yBottom);
       b.close();
     }
     return b.detach();
@@ -107,16 +107,16 @@ export function ReferenceLineOverlay({
     if (l.visible && hasBandBorder) {
       if (form === "time-band") {
         // Vertical edges at the band's left / right.
-        b.moveTo(l.x1, l.y);
-        b.lineTo(l.x1, l.yBottom);
-        b.moveTo(l.x2, l.y);
-        b.lineTo(l.x2, l.yBottom);
+        b.moveTo(l.lineX1, l.y);
+        b.lineTo(l.lineX1, l.yBottom);
+        b.moveTo(l.lineX2, l.y);
+        b.lineTo(l.lineX2, l.yBottom);
       } else {
         // Horizontal edges at the band's top / bottom.
-        b.moveTo(l.x1, l.y);
-        b.lineTo(l.x2, l.y);
-        b.moveTo(l.x1, l.yBottom);
-        b.lineTo(l.x2, l.yBottom);
+        b.moveTo(l.lineX1, l.y);
+        b.lineTo(l.lineX2, l.y);
+        b.moveTo(l.lineX1, l.yBottom);
+        b.lineTo(l.lineX2, l.yBottom);
       }
     }
     return b.detach();
@@ -155,7 +155,7 @@ export function ReferenceLineOverlay({
 
   const lineOpacity = useDerivedValue(() => {
     const l = layout.get();
-    return l.visible && !l.badge && !isBand ? 1 : 0;
+    return l.visible && l.drawLine && !isBand ? 1 : 0;
   });
   const bandOpacity = useDerivedValue(() =>
     layout.get().visible && isBand ? bandFillOpacity : 0,

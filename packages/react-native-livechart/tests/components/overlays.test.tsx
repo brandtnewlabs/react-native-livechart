@@ -880,8 +880,26 @@ describe("ReferenceLineOverlay", () => {
     renderLine({ value: 5, label: "mid" });
   });
 
+  it("renders a full-width Form-A line (edge to edge through the gutter)", () => {
+    renderLine({ value: 5, label: "mid", fullWidth: true });
+  });
+
+  it("renders a full-width badged line (line drawn + connector dropped)", () => {
+    renderLine({ value: 5, badge: true, fullWidth: true });
+  });
+
   it("renders a horizontal value band (Form B)", () => {
     renderLine({ valueFrom: 2, valueTo: 8, color: "#fbbf24", label: "band" });
+  });
+
+  it("renders a full-width value band", () => {
+    renderLine({
+      valueFrom: 2,
+      valueTo: 8,
+      color: "#fbbf24",
+      strokeWidth: 1,
+      fullWidth: true,
+    });
   });
 
   it("renders a vertical time band (Form C)", () => {
