@@ -76,6 +76,13 @@ const AXIS_OPTIONS: { value: "both" | "noY" | "noX" | "none"; label: string }[] 
     { value: "none", label: "None" },
   ];
 
+// Per-series interpolation. "linear" draws straight segments between samples
+// instead of the default monotone cubic.
+const CURVE_OPTIONS: { value: "monotone" | "linear"; label: string }[] = [
+  { value: "monotone", label: "Monotone" },
+  { value: "linear", label: "Linear" },
+];
+
 export default function MultiSeriesScreen() {
   const seriesVisibilityRef = useRef<Record<string, boolean>>({});
   const emptySeries = useSharedValue<SeriesConfig[]>([]);
@@ -83,7 +90,7 @@ export default function MultiSeriesScreen() {
   const [empty, setEmpty] = useState(false);
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [windowSecs, setWindowSecs] = useState(60);
+  const [windowSecs, setWindowSecs] = useState(30);
   const [smoothing, setSmoothing] = useState(0.12);
   const [exaggerate, setExaggerate] = useState(false);
   const [degen, setDegen] = useState(false);
@@ -112,12 +119,16 @@ export default function MultiSeriesScreen() {
   const [legendPosition, setLegendPosition] = useState<"top" | "bottom">("top");
   const [styled, setStyled] = useState(false);
   const [legendStyled, setLegendStyled] = useState(false);
+  const [curve, setCurve] = useState<"monotone" | "linear">("monotone");
 
   const sim = useSimulatedChartData({
     multiSeries: !empty,
     candleAggregation: false,
     tradeStream: false,
     paused,
+    // Sparse stream (≈1 point / 1.4s) so the per-series `curve` toggle is
+    // actually visible — on a dense feed linear vs. monotone is sub-pixel.
+    tradesPerSecond: 0.7,
     seriesVisibilityRef: empty ? undefined : seriesVisibilityRef,
   });
 
@@ -133,6 +144,7 @@ export default function MultiSeriesScreen() {
     sim.series.modify((arr) => {
       "worklet";
       for (let i = 0; i < arr.length; i++) {
+        arr[i].curve = curve;
         if (styled) {
           arr[i].style = i % 2 === 1 ? "dashed" : "solid";
           arr[i].glow = i === 0;
@@ -145,7 +157,7 @@ export default function MultiSeriesScreen() {
       }
       return arr;
     });
-  }, [styled, empty, sim.series]);
+  }, [styled, curve, empty, sim.series]);
 
   const dotConfig: MultiSeriesDotConfig = {
     radius: dotRadius,
@@ -283,6 +295,13 @@ export default function MultiSeriesScreen() {
           onChange={setLegendStyled}
         />
       </ControlRow>
+
+      <ChipRow
+        label="Curve (per-series interpolation)"
+        options={CURVE_OPTIONS}
+        value={curve}
+        onChange={setCurve}
+      />
 
       <ChipRow
         label="Time window"

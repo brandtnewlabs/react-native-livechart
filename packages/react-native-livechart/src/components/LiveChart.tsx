@@ -407,14 +407,18 @@ function useLiveChartController({
     ? thresholdStops(thresholdCfg, palette)
     : null;
 
+  // Straight polyline instead of the monotone cubic when line.curve === "linear".
+  // Shared by the path builders and the marker anchoring so glyphs sit on the
+  // rendered line rather than the phantom spline.
+  const lineIsLinear = lineProp?.curve === "linear";
+
   const { linePath, fillPath, thresholdFillPath } = useChartPaths(
     engine,
     effectivePadding,
     reveal.morphT,
     // Only build the band path when the fill is actually on.
     thresholdCfg?.fill ? thresholdGeom.lineY : undefined,
-    // Straight polyline instead of the monotone cubic when line.curve === "linear".
-    lineProp?.curve === "linear",
+    lineIsLinear,
   );
 
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config
@@ -518,6 +522,7 @@ function useLiveChartController({
     undefined, // seriesSV — single-series has none
     engine.data, // anchor value-less markers to the line
     !isStatic, // static: no marker-projection loop
+    lineIsLinear, // match marker anchoring to the rendered curve
   );
 
   // Pressable reference-line badges (working orders / alerts). Built before
@@ -705,6 +710,7 @@ function useLiveChartController({
     linePath,
     fillPath,
     thresholdFillPath,
+    lineIsLinear,
     upBodiesPath,
     downBodiesPath,
     upWicksPath,
@@ -864,6 +870,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     formatValue,
     lineGroupOpacity,
     linePath,
+    lineIsLinear,
     strokeWidth,
     lineProp,
     candleGroupOpacity,
@@ -1060,6 +1067,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
             palette={palette}
             font={skiaFont}
             lineData={engine.data}
+            lineLinear={lineIsLinear}
             renderMarker={renderMarker}
           />
         </Group>
@@ -1338,6 +1346,7 @@ export function LiveChart(props: LiveChartProps) {
     extremaTimeOffset,
     topConnector,
     bottomConnector,
+    lineIsLinear,
   } = model;
 
   return (
@@ -1414,6 +1423,7 @@ export function LiveChart(props: LiveChartProps) {
             engine={engine}
             padding={effectivePadding}
             lineData={engine.data}
+            lineLinear={lineIsLinear}
           />
         )}
 

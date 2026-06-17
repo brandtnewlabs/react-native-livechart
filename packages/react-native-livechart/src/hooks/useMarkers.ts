@@ -32,6 +32,9 @@ export function useMarkers(
   lineData?: SharedValue<LiveChartPoint[]>,
   /** Static charts run no loops: register without starting. Default `true`. */
   autostart = true,
+  /** Single-series line is drawn linear (`line.curve === "linear"`) — anchor
+   *  `lineData` markers on the straight chord rather than the spline. */
+  lineLinear = false,
 ): {
   projected: SharedValue<ProjectedMarker[]>;
   tapGesture: ReturnType<typeof Gesture.Tap>;
@@ -77,6 +80,7 @@ export function useMarkers(
         displayMax: engine.displayMax.get(),
         series: seriesSV?.get(),
         lineData: lineData?.get(),
+        lineLinear,
       });
       projected.set(buf);
     },

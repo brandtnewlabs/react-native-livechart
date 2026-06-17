@@ -1,4 +1,5 @@
 import type { LiveChartPoint, Marker, SeriesConfig } from "../types";
+import { interpolateAtTime } from "./interpolate";
 import { splineValueAtTime } from "./spline";
 
 /** Screen-space position for one marker, index-aligned with the marker array. */
@@ -23,6 +24,11 @@ export interface ProjectMarkersOpts {
   series?: SeriesConfig[];
   /** Single-series line data; anchors markers that omit `value` (and `seriesId`). */
   lineData?: LiveChartPoint[];
+  /** When the single-series line is drawn with `line.curve === "linear"`, anchor
+   *  `lineData` markers on the straight chord (linear interpolation) instead of the
+   *  monotone spline so the glyph sits exactly on the rendered line. Multi-series
+   *  markers read their curve per-series from {@link SeriesConfig.curve}. */
+  lineLinear?: boolean;
 }
 
 /** How far off-chart (px) a marker may sit before it is culled. */
@@ -66,16 +72,23 @@ function projectInto(
   } else if (seriesId !== undefined && opts.series) {
     for (let j = 0; j < opts.series.length; j++) {
       if (opts.series[j].id === seriesId) {
-        // Evaluate the rendered spline (not the linear chord) so the glyph sits
-        // exactly on the curve between data points.
-        v = splineValueAtTime(opts.series[j].data, time);
+        // Anchor on the same interpolation the series is rendered with, so the
+        // glyph sits exactly on the line: the linear chord for `curve: "linear"`,
+        // the monotone spline otherwise.
+        v =
+          opts.series[j].curve === "linear"
+            ? interpolateAtTime(opts.series[j].data, time)
+            : splineValueAtTime(opts.series[j].data, time);
         break;
       }
     }
   } else if (opts.lineData) {
-    // Single-series anchor: omit `value` to pin the marker to the line at `time`
-    // (on the rendered spline curve, not the linear chord between points).
-    v = splineValueAtTime(opts.lineData, time);
+    // Single-series anchor: omit `value` to pin the marker to the line at `time`.
+    // Match the rendered curve — straight chord when `line.curve === "linear"`,
+    // the monotone spline otherwise.
+    v = opts.lineLinear
+      ? interpolateAtTime(opts.lineData, time)
+      : splineValueAtTime(opts.lineData, time);
   }
   if (v === null) {
     target.visible = false;
