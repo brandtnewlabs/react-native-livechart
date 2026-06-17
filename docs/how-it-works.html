@@ -246,6 +246,11 @@
 
   .fade-up { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
   .fade-up.in { opacity: 1; transform: none; }
+
+  .magic-group {
+    margin: 32px 0 14px; color: var(--muted); font-size: 13px; font-weight: 650;
+    text-transform: uppercase; letter-spacing: 0.10em;
+  }
 </style>
 </head>
 <body>
@@ -265,6 +270,7 @@
       <a href="#pipeline">Pipeline</a>
       <a href="#engine">Frame engine</a>
       <a href="#draw">Drawing</a>
+      <a href="#magic">60&nbsp;fps</a>
       <a href="#playground">Playground</a>
       <a href="#components">Components</a>
       <a href="#map">Architecture</a>
@@ -459,6 +465,106 @@ displayValue += (target - displayValue) * factor;</pre>
       </div>
       <p class="muted" style="font-size:13px;margin-bottom:0;margin-top:12px" id="spline-note">
         The monotone curve hugs the points without inventing peaks that aren't in the data.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= MAGIC SAUCE ======================= -->
+<section id="magic" class="fade-up">
+  <span class="section-tag">The magic sauce</span>
+  <h2>How it holds <span class="grad-text">60&nbsp;fps</span>, frame after frame</h2>
+  <p class="lead">
+    There's no single trick — it's one architectural decision plus a handful of "do less work per frame"
+    optimizations stacked on top. The decision: <b style="color:var(--text)">the whole render loop lives on the
+    UI thread, and React is kept out of the hot path entirely.</b>
+  </p>
+
+  <div class="callout" style="border-left-color:var(--accent-2);background:rgba(0,224,255,0.06);margin-top:20px">
+    <b style="color:var(--accent-2)">The property that matters when you embed it in a busy app:</b>
+    after mount, the JS thread is essentially idle. The chart keeps animating at 60&nbsp;fps <i>even while JS is
+    busy</i> — navigation transitions, data fetches, list rendering, your own business logic. The animation never
+    competes with that work, because the two don't run on the same thread.
+  </div>
+
+  <h3 class="magic-group">Architecture — keep JS off the frame path</h3>
+  <div class="three-col">
+    <div class="panel">
+      <h3>🔄 One loop, UI thread only</h3>
+      <p class="muted" style="font-size:14px;margin:0">
+        A single <code>useFrameCallback</code> tick reads the data <code>SharedValue</code>, advances display
+        state, and writes it back — all on the UI thread. New data mutates a SharedValue, never <code>setState</code>,
+        so React re-renders roughly <b>once at mount</b>, not 60 times a second. <span class="chip">useFrameCallback</span>
+      </p>
+    </div>
+    <div class="panel">
+      <h3>🚫 Zero bridge crossings</h3>
+      <p class="muted" style="font-size:14px;margin:0">
+        Everything a frame needs — points, live value, scrub position — already lives in SharedValues on the
+        UI thread. Nothing is serialized across the JS↔native bridge per frame, which is the usual source of
+        React Native chart jank.
+      </p>
+    </div>
+    <div class="panel">
+      <h3>🧪 Pure tick = no surprises</h3>
+      <p class="muted" style="font-size:14px;margin:0">
+        The per-frame logic is a pure function (mutable state in, <code>void</code> out) — no hooks, no
+        Reanimated. That keeps it allocation-free and predictable, and unit-tested to 95% lines without a
+        device. <span class="chip">liveChartEngineTick.ts</span>
+      </p>
+    </div>
+  </div>
+
+  <h3 class="magic-group">Per frame — do less work, allocate nothing</h3>
+  <div class="three-col">
+    <div class="panel">
+      <h3>♻️ Paths built in place</h3>
+      <p class="muted" style="font-size:14px;margin:0">
+        One <code>Skia.PathBuilder</code> per curve is reused every frame; <code>detach()</code> hands back a
+        fresh immutable <code>SkPath</code>, and the flat point buffers ping-pong (A/B). No new arrays or paths
+        per frame means <b>no GC stalls</b> mid-animation. <span class="chip">useChartPaths.ts</span>
+      </p>
+    </div>
+    <div class="panel">
+      <h3>📉 Draw fewer vertices</h3>
+      <p class="muted" style="font-size:14px;margin:0">
+        <code>buildLinePoints</code> decimates to pixel resolution — at most the lowest + highest sample per
+        pixel column. 1k points or 10k, the vertex count is bounded by <b>canvas width</b>, and every spike's
+        envelope still survives. <span class="chip">draw/line.ts</span>
+      </p>
+    </div>
+    <div class="panel">
+      <h3>🎯 Batch the overlays</h3>
+      <p class="muted" style="font-size:14px;margin:0">
+        Markers, trade pills, and degen particles render through a single <code>drawAtlas</code> call instead of
+        one draw per glyph — measured to roughly halve CPU on a dense scene. <span class="chip">markerAtlas.ts</span>
+      </p>
+    </div>
+  </div>
+
+  <div class="three-col" style="margin-top:16px">
+    <div class="panel">
+      <h3>🌫️ Shade, don't clip</h3>
+      <p class="muted" style="font-size:14px;margin:0">
+        The area-dot fill is a procedural Skia shader (<code>RuntimeEffect</code>), not a per-frame path clip.
+        A clip would force a <code>saveLayer</code> every frame and <b>halve the frame rate to 30</b> — the
+        shader keeps it free. <span class="chip">AreaDotsOverlay</span>
+      </p>
+    </div>
+    <div class="panel">
+      <h3>📐 Measure text once</h3>
+      <p class="muted" style="font-size:14px;margin:0">
+        Tooltip and label widths come from a precomputed monospace char-width table, not Skia's
+        <code>measureText</code> — which reshapes glyphs on every call. Scrubbing re-runs that math each frame,
+        so it's a real win. <span class="chip">crosshairShared.ts</span>
+      </p>
+    </div>
+    <div class="panel">
+      <h3>🧵 Overlays read, never push</h3>
+      <p class="muted" style="font-size:14px;margin:0">
+        Each overlay is a small component subscribed to SharedValues through <code>useDerivedValue</code>. They
+        recompute on the UI thread only when their own inputs change — no parent re-render fanning out across
+        the tree.
       </p>
     </div>
   </div>
