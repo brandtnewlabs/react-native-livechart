@@ -626,6 +626,92 @@ export interface TooltipRenderProps {
   candle: SharedValue<CandlePoint | null>;
 }
 
+/** Inner plot rectangle in canvas pixels (a snapshot field of {@link ChartScale}). */
+export interface ChartPlotRect {
+  /** Inner plot left edge (`padding.left`). */
+  left: number;
+  /** Inner plot top edge (`padding.top`). */
+  top: number;
+  /** Inner plot right edge (`canvasWidth - padding.right`). */
+  right: number;
+  /** Inner plot bottom edge (`canvasHeight - padding.bottom`). */
+  bottom: number;
+  /** Full canvas width. */
+  width: number;
+  /** Full canvas height. */
+  height: number;
+}
+
+/**
+ * A snapshot of the chart's live scale — the value range, time window, and plot
+ * rect at one frame. Carried by {@link ChartOverlayContext.scale} (a `SharedValue`
+ * recomputed each frame) and consumed by the pure mapping functions. Reading
+ * `scale.get()` inside your worklet is what subscribes the overlay to per-frame
+ * updates, so it tracks the chart as it scrolls and rescales.
+ */
+export interface ChartScale {
+  /** Live Y-axis lower bound (price at the plot bottom). */
+  min: number;
+  /** Live Y-axis upper bound (price at the plot top). */
+  max: number;
+  /** Visible time window in seconds. */
+  window: number;
+  /** Right-edge timestamp (unix seconds) — "now". */
+  now: number;
+  /** Inner plot rectangle in canvas px. */
+  plot: ChartPlotRect;
+}
+
+/**
+ * The price↔pixel / time↔pixel bridge handed to a custom
+ * {@link LiveChartProps.renderOverlay}.
+ *
+ * **Easiest path — the `usePriceY` / `useTimeX` hooks.** They project a price / time
+ * to a `SharedValue<number>` that tracks the live axis for you; just read it in
+ * your `useAnimatedStyle` like any SharedValue:
+ *
+ * ```tsx
+ * function PriceLevel({ ctx, price }) {
+ *   const y = usePriceY(ctx, price); // reactive — tracks the rescaling axis
+ *   const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
+ *   return <Animated.View style={style} />;
+ * }
+ * ```
+ *
+ * **Manual path — {@link scale} + the pure mappings.** For one-off math (e.g. a
+ * gesture handler) or when you want everything in one worklet, read `scale.get()`
+ * inside your worklet — that read subscribes it to the per-frame scale — then pass
+ * the snapshot to the pure mappings (`priceToY` / `yToPrice` / `timeToX` /
+ * `xToTime`). The mappings do **not** read `scale` themselves, so they only reflect
+ * the chart live when you feed them `scale.get()`:
+ *
+ * ```tsx
+ * const style = useAnimatedStyle(() => {
+ *   const s = scale.get();          // subscribe to the live scale
+ *   const y = priceToY(142.5, s);   // project a price to its pixel
+ *   return { transform: [{ translateY: y }] };
+ * });
+ * ```
+ */
+export interface ChartOverlayContext {
+  /**
+   * The live {@link ChartScale} snapshot, recomputed each frame. Read `.get()`
+   * inside your worklet to subscribe it to chart updates.
+   */
+  scale: SharedValue<ChartScale>;
+  /** Maps a price (Y-axis value) → canvas Y px for a {@link ChartScale}. Worklet. -1 when not laid out. */
+  priceToY: (price: number, scale: ChartScale) => number;
+  /**
+   * Inverse of {@link priceToY}: canvas Y px → price. Worklet. Clamps to the
+   * visible range; `null` when not laid out.
+   */
+  yToPrice: (y: number, scale: ChartScale) => number | null;
+  /** Maps a unix-seconds timestamp → canvas X px for a {@link ChartScale}. Worklet. -1 when not laid out. */
+  timeToX: (time: number, scale: ChartScale) => number;
+  /** Inverse of {@link timeToX}: canvas X px → unix-seconds timestamp. Worklet. */
+  xToTime: (x: number, scale: ChartScale) => number;
+}
+
 /** Outer ring drawn around the built-in selection dot (the subtle halo). */
 export interface SelectionDotRingConfig {
   /** Ring color. Defaults to the dot color. */
@@ -1324,6 +1410,19 @@ export interface LiveChartProps extends LiveChartCoreProps {
    *  in a list. Pulse/scrub/degen and the entry animation are disabled. Frame the data
    *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
   static?: boolean;
+  /**
+   * Render a custom overlay floated over the chart canvas, handed a price↔pixel /
+   * time↔pixel {@link ChartOverlayContext} so it can track the auto-rescaling axis
+   * on the UI thread. Return any React Native view tree (e.g. order / avg-entry /
+   * liquidation price tags) and position its pieces with the context's worklet
+   * mappings inside `useAnimatedStyle`; return `null`/`undefined` for no overlay.
+   *
+   * The returned tree is mounted as an RN sibling of the `<Canvas>` (like
+   * `renderMarker` / `renderTooltip`), full-bleed with `pointerEvents="box-none"`
+   * so empty areas still scrub while an interactive leaf can receive touches.
+   * Single-series only.
+   */
+  renderOverlay?: (ctx: ChartOverlayContext) => ReactElement | null | undefined;
   /** Called when the user scrubs the crosshair. `null` when scrub ends. */
   onScrub?: (point: ScrubPoint | null) => void;
   /**

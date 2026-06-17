@@ -47,6 +47,7 @@ import { useBadge } from "../hooks/useBadge";
 import { useCandlePaths } from "../hooks/useCandlePaths";
 import { useCanvasLayout } from "../hooks/useCanvasLayout";
 import { useChartColors } from "../hooks/useChartColors";
+import { useChartOverlayContext } from "../hooks/useChartOverlayContext";
 import { useChartPaths } from "../hooks/useChartPaths";
 import { useChartReveal } from "../hooks/useChartReveal";
 import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
@@ -96,6 +97,7 @@ import {
 import { CustomMarkerOverlay } from "./CustomMarkerOverlay";
 import { CustomTooltipOverlay } from "./CustomTooltipOverlay";
 import { BadgeOverlay } from "./BadgeOverlay";
+import { ChartOverlayLayer } from "./ChartOverlayLayer";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
 import { DotOverlay } from "./DotOverlay";
@@ -211,6 +213,7 @@ function useLiveChartController({
   markerHitRadius = 16,
   renderMarker,
   renderTooltip,
+  renderOverlay,
   leftEdgeFade = true,
 
   // ── Callbacks ───────────────────────────────────────────────────────────
@@ -449,6 +452,10 @@ function useLiveChartController({
       !isStatic, // static: no candle-width lerp loop
     );
   const { dotX, dotY } = useLiveDot(engine, effectivePadding);
+
+  // Price↔pixel / time↔pixel bridge for a custom `renderOverlay`. Built
+  // unconditionally (hooks rule); only mounted when `renderOverlay` is provided.
+  const overlayContext = useChartOverlayContext(engine, effectivePadding);
 
   const momentumSV = useMomentum(engine, momentum);
 
@@ -732,6 +739,8 @@ function useLiveChartController({
     markersSV,
     renderMarker,
     renderTooltip,
+    renderOverlay,
+    overlayContext,
     // selection dot: resolved config + fallback color (the chart line/accent color)
     selectionDot: selectionDotCfg,
     selectionColor: lineProp?.color ?? palette.line,
@@ -1340,6 +1349,8 @@ export function LiveChart(props: LiveChartProps) {
     markersSV,
     renderMarker,
     renderTooltip,
+    renderOverlay,
+    overlayContext,
     scrubCfg,
     crosshair,
     isCandle,
@@ -1446,6 +1457,13 @@ export function LiveChart(props: LiveChartProps) {
             margin={scrubCfg.tooltipMargin}
             lineTop={crosshair.tooltipLineTop}
           />
+        )}
+
+        {/* Custom consumer overlay — an RN view tree floated over the canvas with
+            the price↔pixel / time↔pixel bridge, for order / avg-entry / liquidation
+            tags etc. Topmost RN sibling; `box-none` so empty areas still scrub. */}
+        {renderOverlay && (
+          <ChartOverlayLayer render={renderOverlay} context={overlayContext} />
         )}
       </View>
     </GestureDetector>

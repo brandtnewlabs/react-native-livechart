@@ -147,6 +147,23 @@ provided; everything else has a default.
   See [Custom tooltip](/guides/scrubbing#custom-tooltip-rendertooltip).
 </ParamField>
 
+<ParamField body="renderOverlay" type="(ctx: ChartOverlayContext) => ReactElement | null">
+  Render a custom overlay floated over the canvas, handed the price↔pixel /
+  time↔pixel bridge so it can track the **auto-rescaling** axis on the UI thread —
+  the same idea as `renderMarker`. The
+  [`ChartOverlayContext`](/api-reference/types#chartoverlaycontext) gives you a
+  per-frame `scale` `SharedValue` plus pure `priceToY` / `yToPrice` / `timeToX` /
+  `xToTime` mapping worklets. Easiest: render a component per level and call
+  [`usePriceY(ctx, price)`](/api-reference/types#chartoverlaycontext) /
+  `useTimeX(ctx, time)` — each returns a `SharedValue<number>` that tracks the axis,
+  which you read in `useAnimatedStyle`. (Or take the manual path: read `scale.get()`
+  in the worklet, then feed the snapshot to the mappings.) Return any RN view tree
+  (order / avg-entry / liquidation price tags, custom level lines); return
+  `null`/`undefined` for no overlay. The tree mounts full-bleed with
+  `pointerEvents="box-none"` so empty areas still scrub. **Single-series only.** See
+  [Overlay bridge](/guides/markers-and-references#overlay-bridge-renderoverlay).
+</ParamField>
+
 <ParamField body="referenceLines" type="ReferenceLine[]">
   Reference lines / bands (horizontal line, value band, or time band).
 </ParamField>
