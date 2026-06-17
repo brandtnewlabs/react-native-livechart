@@ -33,6 +33,7 @@ function CustomMarkerView({
   padding,
   seriesSV,
   lineDataSV,
+  lineLinear,
 }: {
   marker: Marker;
   element: React.ReactElement;
@@ -40,6 +41,7 @@ function CustomMarkerView({
   padding: ChartPadding;
   seriesSV?: SharedValue<SeriesConfig[]>;
   lineDataSV?: SharedValue<LiveChartPoint[]>;
+  lineLinear?: boolean;
 }) {
   const time = marker.time;
   const value = marker.value;
@@ -59,6 +61,7 @@ function CustomMarkerView({
       displayMax: engine.displayMax.get(),
       series: seriesSV?.get(),
       lineData: lineDataSV?.get(),
+      lineLinear,
     }),
   );
 
@@ -111,6 +114,7 @@ export function CustomMarkerOverlay({
   padding,
   series,
   lineData,
+  lineLinear,
 }: {
   markers: SharedValue<Marker[]>;
   renderMarker: (marker: Marker) => React.ReactElement | null | undefined;
@@ -120,6 +124,8 @@ export function CustomMarkerOverlay({
   series?: SharedValue<SeriesConfig[]>;
   /** Single-series line data; anchors markers that omit `value`. */
   lineData?: SharedValue<LiveChartPoint[]>;
+  /** Single-series line is drawn linear — anchor `lineData` markers on the chord. */
+  lineLinear?: boolean;
 }) {
   const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
 
@@ -156,6 +162,7 @@ export function CustomMarkerOverlay({
           padding={padding}
           seriesSV={series}
           lineDataSV={lineData}
+          lineLinear={lineLinear}
         />
       ))}
     </View>

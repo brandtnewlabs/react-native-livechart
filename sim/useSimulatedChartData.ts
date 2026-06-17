@@ -182,6 +182,7 @@ function computeSeed(params: {
   multiSeries: boolean;
   candleAggregation: boolean;
   tradeStreamEnabled: boolean;
+  tradesPerSecond: number;
   tokenSymbol?: string;
   rng: () => number;
 }): SeedResult {
@@ -195,6 +196,7 @@ function computeSeed(params: {
     multiSeries,
     candleAggregation,
     tradeStreamEnabled,
+    tradesPerSecond,
     tokenSymbol,
     rng,
   } = params;
@@ -213,12 +215,18 @@ function computeSeed(params: {
     ? seedTradeTapeFromMid(lastMid, INITIAL_TAPE_EVENTS, vol, rng, tokenSymbol)
     : [];
 
+  // Match the seed cadence to the live stream (≈1 point / `1/tradesPerSecond`s)
+  // over a fixed ~30s span, so the seeded history and the incoming trades share a
+  // point density — no dense-history-meets-sparse-live seam. At the default high
+  // TPS this resolves to the previous 150 points @ 0.2s.
+  const seedInterval = tradesPerSecond > 0 ? 1 / tradesPerSecond : 0.2;
   const initialSeries = multiSeries
     ? generateMultiSeries({
         ids: ["yes", "no", "maybe"],
         colors: ["#3b82f6", "#ef4444", "#f59e0b"],
         labels: ["Yes", "No", "Maybe"],
-        count: 150,
+        interval: seedInterval,
+        count: Math.max(2, Math.round(30 / seedInterval)),
         sumToHundred: true,
       })
     : [];
@@ -305,6 +313,7 @@ export function useSimulatedChartData(
       multiSeries,
       candleAggregation,
       tradeStreamEnabled,
+      tradesPerSecond,
       tokenSymbol,
       rng: random01Ref.current,
     });
@@ -335,6 +344,7 @@ export function useSimulatedChartData(
     multiSeries,
     candleAggregation,
     tradeStreamEnabled,
+    tradesPerSecond,
     tokenSymbol,
     resetNonce,
     data,

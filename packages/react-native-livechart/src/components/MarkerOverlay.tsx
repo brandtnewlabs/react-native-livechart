@@ -51,6 +51,7 @@ function ConnectorGlyph({
   padding,
   seriesSV,
   lineDataSV,
+  lineLinear,
   axisY,
 }: {
   marker: Marker;
@@ -59,6 +60,7 @@ function ConnectorGlyph({
   padding: ChartPadding;
   seriesSV?: SharedValue<SeriesConfig[]>;
   lineDataSV?: SharedValue<LiveChartPoint[]>;
+  lineLinear?: boolean;
   axisY: SharedValue<number>;
 }) {
   const { kind } = marker;
@@ -80,6 +82,7 @@ function ConnectorGlyph({
       displayMax: engine.displayMax.get(),
       series: seriesSV?.get(),
       lineData: lineDataSV?.get(),
+      lineLinear,
     }),
   );
 
@@ -148,6 +151,7 @@ export function MarkerOverlay({
   font,
   series,
   lineData,
+  lineLinear,
   renderMarker,
 }: {
   markers: SharedValue<Marker[]>;
@@ -159,6 +163,8 @@ export function MarkerOverlay({
   series?: SharedValue<SeriesConfig[]>;
   /** Single-series line data; anchors markers that omit `value`. */
   lineData?: SharedValue<LiveChartPoint[]>;
+  /** Single-series line is drawn linear — anchor `lineData` markers on the chord. */
+  lineLinear?: boolean;
   /**
    * When provided, markers it returns an element for are rendered as RN views by
    * `CustomMarkerOverlay` instead — so they're excluded from the atlas here to
@@ -263,6 +269,7 @@ export function MarkerOverlay({
         displayMax: engine.displayMax.get(),
         series: series?.get(),
         lineData: lineData?.get(),
+        lineLinear,
       });
       const transforms = [];
       const sprites = [];
@@ -284,7 +291,7 @@ export function MarkerOverlay({
       }
       return { transforms, sprites };
     },
-    [cells, customIds, invScale, markers, engine, padding, series, lineData],
+    [cells, customIds, invScale, markers, engine, padding, series, lineData, lineLinear],
   );
   const transforms = useDerivedValue(() => atlasData.get().transforms, [atlasData]);
   const sprites = useDerivedValue(() => atlasData.get().sprites, [atlasData]);
@@ -309,6 +316,7 @@ export function MarkerOverlay({
           padding={padding}
           seriesSV={series}
           lineDataSV={lineData}
+          lineLinear={lineLinear}
           axisY={axisY}
         />
       ))}

@@ -935,6 +935,13 @@ export interface SeriesConfig {
   style?: "solid" | "dashed";
   /** Dash pattern as `[dashLength, gapLength]` when `style` is `"dashed"`. Default `[6, 4]`. */
   intervals?: [number, number];
+  /**
+   * Interpolation for this series' line, mirroring {@link LineConfig.curve}.
+   * - `"monotone"` (default): Fritsch-Carlson monotone cubic spline.
+   * - `"linear"`: straight segments between samples (sharp vertices). Markers
+   *   anchored to this series snap to the straight chord to match.
+   */
+  curve?: "monotone" | "linear";
   /** Per-series stroke width override (px). Falls back to the chart line width. */
   strokeWidth?: number;
   /** Render a soft glow behind this series' line. Default `false`. */

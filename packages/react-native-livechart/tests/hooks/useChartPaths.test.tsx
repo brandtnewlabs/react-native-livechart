@@ -48,6 +48,30 @@ describe("useChartPaths", () => {
     expect(result.current.linePath.value).toBeDefined();
   });
 
+  it("builds straight-polyline paths when linear, incl. the threshold band", () => {
+    const { result } = renderHook(() => {
+      const thresholdY = useSharedValue(60);
+      return useChartPaths(
+        makeEngine({
+          data: {
+            value: [
+              { time: 980, value: 1 },
+              { time: 990, value: 1.5 },
+              { time: 1000, value: 2 },
+            ],
+          },
+        } as unknown as Partial<SingleEngineState>),
+        DEFAULT_PADDING,
+        undefined,
+        thresholdY,
+        true, // linear
+      );
+    });
+    expect(result.current.linePath.value).toBeDefined();
+    expect(result.current.fillPath.value).toBeDefined();
+    expect(result.current.thresholdFillPath.value).toBeDefined();
+  });
+
   it("blends toward squiggly when morphT < 1", () => {
     const { result } = renderHook(() => {
       const morphT = useSharedValue(0.5);

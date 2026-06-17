@@ -27,25 +27,42 @@ const LINE_OPTIONS: { value: LineMode; label: string }[] = [
   { value: "custom", label: "Custom" },
 ];
 
+type CurveMode = "monotone" | "linear";
+
+const CURVE_OPTIONS: { value: CurveMode; label: string }[] = [
+  { value: "monotone", label: "Monotone" },
+  { value: "linear", label: "Linear" },
+];
+
 function resolveLine(
   mode: LineMode,
   customColors: string[],
+  curve: CurveMode,
 ): LineConfig | undefined {
+  let base: LineConfig | undefined;
   switch (mode) {
     case "solid":
-      return { color: "#ff6b6b" };
+      base = { color: "#ff6b6b" };
+      break;
     case "gradient":
-      return { colors: ["#ff6b6b", "#6b6bff"] };
+      base = { colors: ["#ff6b6b", "#6b6bff"] };
+      break;
     case "tricolor":
-      return { colors: ["#ff6b6b", "#6bff6b", "#6b6bff"] };
+      base = { colors: ["#ff6b6b", "#6bff6b", "#6b6bff"] };
+      break;
     case "custom": {
       const valid = customColors.filter((c) => c.trim().length > 0);
-      if (valid.length < 2) return undefined;
-      return { colors: valid };
+      base = valid.length < 2 ? undefined : { colors: valid };
+      break;
     }
     default:
-      return undefined;
+      base = undefined;
   }
+  // "linear" draws straight segments (+ miter join / butt cap for true sharp
+  // vertices); "monotone" is the default smooth spline, so leave `base` as-is.
+  return curve === "linear"
+    ? { ...(base ?? {}), curve: "linear", join: "miter", cap: "butt" }
+    : base;
 }
 
 function resolveBadge(mode: BadgeMode): boolean | BadgeConfig {
@@ -94,6 +111,7 @@ export default function LineScreen() {
   const [badgeMode, setBadgeMode] = useState<BadgeMode>("on");
   const [pulseMode, setPulseMode] = useState<PulseMode>("on");
   const [lineMode, setLineMode] = useState<LineMode>("default");
+  const [curve, setCurve] = useState<CurveMode>("monotone");
   const [customColors, setCustomColors] = useState(["#ff6b6b", "#6bff6b"]);
   const [valueLine, setValueLine] = useState(true);
   const [showValue, setShowValue] = useState(false);
@@ -122,7 +140,7 @@ export default function LineScreen() {
           value={value}
           accentColor={ACCENT}
           theme={APP_THEME}
-          line={resolveLine(lineMode, customColors)}
+          line={resolveLine(lineMode, customColors, curve)}
           badge={resolveBadge(badgeMode)}
           pulse={resolvePulse(pulseMode)}
           dot={{ show: dots, ring }}
@@ -144,6 +162,12 @@ export default function LineScreen() {
         options={LINE_OPTIONS}
         value={lineMode}
         onChange={setLineMode}
+      />
+      <ChipRow
+        label="Curve"
+        options={CURVE_OPTIONS}
+        value={curve}
+        onChange={setCurve}
       />
       {lineMode === "custom" && (
         <ControlRow label="Gradient colors">

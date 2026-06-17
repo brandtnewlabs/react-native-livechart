@@ -68,6 +68,44 @@ describe("projectMarkers", () => {
     expect(out[0].y).toBeCloseTo(194);
   });
 
+  // Triangle peak so the monotone spline bows off the straight chord: at the
+  // midpoint of the rising segment (t=985) the linear chord is v=30 (y≈194) but
+  // the monotone cubic is v=37.5 (y≈174.5). These let us tell which interpolant
+  // each anchoring path used.
+  const PEAK = [
+    { time: 980, value: 0 },
+    { time: 990, value: 60 },
+    { time: 1000, value: 0 },
+  ];
+
+  it("anchors lineData markers on the monotone spline by default", () => {
+    const markers: Marker[] = [{ id: "a", time: 985, kind: "trade" }];
+    const out: ProjectedMarker[] = [];
+    projectMarkers(markers, out, { ...BASE, lineData: PEAK });
+    expect(out[0].y).toBeCloseTo(174.5); // spline v=37.5
+  });
+
+  it("anchors lineData markers on the straight chord when lineLinear", () => {
+    const markers: Marker[] = [{ id: "a", time: 985, kind: "trade" }];
+    const out: ProjectedMarker[] = [];
+    projectMarkers(markers, out, { ...BASE, lineData: PEAK, lineLinear: true });
+    expect(out[0].y).toBeCloseTo(194); // linear v=30
+  });
+
+  it("anchors seriesId markers on the straight chord when the series is linear", () => {
+    const spline: SeriesConfig[] = [{ id: "s1", value: 0, data: PEAK }];
+    const linear: SeriesConfig[] = [
+      { id: "s1", value: 0, data: PEAK, curve: "linear" },
+    ];
+    const markers: Marker[] = [{ id: "a", time: 985, kind: "winner", seriesId: "s1" }];
+    const splineOut: ProjectedMarker[] = [];
+    const linearOut: ProjectedMarker[] = [];
+    projectMarkers(markers, splineOut, { ...BASE, series: spline });
+    projectMarkers(markers, linearOut, { ...BASE, series: linear });
+    expect(splineOut[0].y).toBeCloseTo(174.5); // monotone default
+    expect(linearOut[0].y).toBeCloseTo(194); // curve: "linear"
+  });
+
   it("marks invisible when neither value nor a matching series resolves", () => {
     const out: ProjectedMarker[] = [];
     projectMarkers(

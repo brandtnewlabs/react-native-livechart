@@ -38,6 +38,7 @@ interface SeriesConfig {
   visible?: boolean;        // default true
   style?: "solid" | "dashed";
   intervals?: [number, number];
+  curve?: "monotone" | "linear"; // interpolation; default "monotone"
   strokeWidth?: number;
   glow?: boolean;
   kind?: "outcome" | "derived";

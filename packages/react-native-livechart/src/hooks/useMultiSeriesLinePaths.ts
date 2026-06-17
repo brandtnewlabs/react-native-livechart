@@ -63,7 +63,8 @@ export function useMultiSeriesLinePaths(
       if (n >= 2) {
         const b = slots[i];
         b.moveTo(pts[0], pts[1]);
-        drawSpline(b, pts, pool.scratch);
+        // Straight polyline when this series opts into `curve: "linear"`.
+        drawSpline(b, pts, pool.scratch, s[i].curve === "linear");
         out.push(b.detach());
       } else {
         out.push(pool.empty);
