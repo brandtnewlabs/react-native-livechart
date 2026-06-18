@@ -1,4 +1,5 @@
 import {
+  axisBandTop,
   flingVelocity,
   nextViewEnd,
   panLowerBound,
@@ -45,5 +46,16 @@ describe("flingVelocity", () => {
 
   it("maps a leftward fling toward the live edge (positive)", () => {
     expect(flingVelocity(-100, 200, 30)).toBe(15);
+  });
+});
+
+describe("axisBandTop", () => {
+  it("widens a thin axis padding to the minimum touch target", () => {
+    // padBottom 28 < 44 ⇒ band height clamps to 44 ⇒ top at 300 - 44.
+    expect(axisBandTop(300, 28)).toBe(256);
+  });
+
+  it("uses the axis padding when it already exceeds the minimum", () => {
+    expect(axisBandTop(300, 60)).toBe(240);
   });
 });

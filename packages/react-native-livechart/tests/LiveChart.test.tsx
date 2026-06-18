@@ -453,4 +453,14 @@ describe("LiveChart", () => {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
+
+  it("composes the axis-drag pan-scroll gesture via the config form", () => {
+    const screen = render(
+      <CandleHarness timeScroll={{ gesture: "axisDrag" }} scrub />,
+    );
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
 });

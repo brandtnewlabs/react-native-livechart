@@ -1091,6 +1091,21 @@ export interface LiveChartMetricsOverride {
 
 // ── Component Props ──────────────────────────────────────────────────────────
 
+/**
+ * Time-scroll activation (see {@link LiveChartCoreProps.timeScroll}).
+ *
+ * @experimental Prototype — gesture model and API may change.
+ */
+export interface TimeScrollConfig {
+  /**
+   * Which gesture pans the timeline:
+   *  - `"twoFinger"` (default) — a two-finger drag anywhere on the chart.
+   *  - `"axisDrag"` — a one-finger drag starting in the bottom X-axis band
+   *    ("grab the time ruler").
+   */
+  gesture?: "twoFinger" | "axisDrag";
+}
+
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
@@ -1227,14 +1242,17 @@ export interface LiveChartCoreProps {
    */
   nowOverride?: number;
   /**
-   * Enable two-finger horizontal time-scrolling: drag with two fingers (or fling)
-   * to pan back through history. The chart stops auto-scrolling while panned and
-   * resumes once you reach the live edge again. One-finger scrub is unchanged.
-   * Requires retained history in `data` / `candles` to scroll into. Default `false`.
+   * Enable horizontal time-scrolling: drag (or fling) to pan back through history.
+   * The chart stops auto-scrolling while panned and resumes once you reach the
+   * live edge again. One-finger plot-area scrub is unchanged. Requires retained
+   * history in `data` / `candles` to scroll into.
+   *
+   * `true` uses the two-finger gesture; pass a {@link TimeScrollConfig} to pick
+   * the activation (`"twoFinger"` or `"axisDrag"`). Default `false`.
    *
    * @experimental Prototype — gesture model and API may change.
    */
-  timeScroll?: boolean;
+  timeScroll?: boolean | TimeScrollConfig;
   /** Accessibility label for the chart container. */
   accessibilityLabel?: string;
   /** Accessibility role for the chart container. Default `"image"`. */

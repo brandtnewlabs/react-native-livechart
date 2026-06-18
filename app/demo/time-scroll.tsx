@@ -22,9 +22,15 @@ const MODE_OPTIONS: { value: "candle" | "line"; label: string }[] = [
   { value: "line", label: "Line" },
 ];
 
+const GESTURE_OPTIONS: { value: "twoFinger" | "axisDrag"; label: string }[] = [
+  { value: "twoFinger", label: "Two-finger" },
+  { value: "axisDrag", label: "Drag axis" },
+];
+
 export default function TimeScrollScreen() {
   const [mode, setMode] = useState<"candle" | "line">("candle");
-  const [timeScroll, setTimeScroll] = useState(true);
+  const [gesture, setGesture] = useState<"twoFinger" | "axisDrag">("twoFinger");
+  const [enabled, setEnabled] = useState(true);
   const [scrub, setScrub] = useState(true);
 
   // candleAggregation gives us both the line `data` and `candles`; the toggle
@@ -43,11 +49,15 @@ export default function TimeScrollScreen() {
   });
 
   const isCandle = mode === "candle";
+  const hint =
+    gesture === "axisDrag"
+      ? "Drag the bottom time-axis strip with ONE finger to pan back through history."
+      : "Drag with TWO fingers to pan back through history.";
 
   return (
     <DemoScreen
       title="Time scroll"
-      description="Drag with TWO fingers to pan back through history — the chart stops auto-scrolling. Release (or fling) back to the live edge to resume. Works for both line and candle; one-finger scrub is unchanged."
+      description={`${hint} The chart stops auto-scrolling while panned; release (or fling) back to the live edge to resume. Works for line and candle; one-finger plot scrub is unchanged.`}
       chart={
         <LiveChart
           data={data}
@@ -59,7 +69,7 @@ export default function TimeScrollScreen() {
           accentColor={ACCENT}
           theme={APP_THEME}
           timeWindow={WINDOW_SECS}
-          timeScroll={timeScroll}
+          timeScroll={enabled ? { gesture } : false}
           scrub={scrub ? { tooltip: true } : false}
         />
       }
@@ -71,12 +81,15 @@ export default function TimeScrollScreen() {
         onChange={setMode}
       />
 
-      <ControlRow label="Two-finger pan">
-        <ToggleChip
-          label="timeScroll"
-          value={timeScroll}
-          onChange={setTimeScroll}
-        />
+      <ChipRow
+        label="Scroll gesture (A/B)"
+        options={GESTURE_OPTIONS}
+        value={gesture}
+        onChange={setGesture}
+      />
+
+      <ControlRow label="Pan to scroll">
+        <ToggleChip label="timeScroll" value={enabled} onChange={setEnabled} />
       </ControlRow>
 
       <ControlRow label="One-finger scrub">

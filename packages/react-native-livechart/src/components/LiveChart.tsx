@@ -584,12 +584,15 @@ function useLiveChartController({
     const src = isCandle ? candlesEngine.get() : lineEngineData.get();
     return src.length > 0 ? src[0].time : engine.liveEdge.get();
   });
-  const timeScrollEnabled = timeScroll && !isStatic;
+  const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
+  const scrollGestureMode =
+    typeof timeScroll === "object" ? (timeScroll.gesture ?? "twoFinger") : "twoFinger";
   const panScrollGesture = usePanScroll({
     engine,
     padding: effectivePadding,
     minTime: scrollMinTime,
     enabled: timeScrollEnabled,
+    mode: scrollGestureMode,
     // Clear any live crosshair when a scroll drag takes over.
     onScrollStart: () => {
       "worklet";
@@ -630,10 +633,14 @@ function useLiveChartController({
         : Gesture.Race(baseGesture, tapGroup);
   }
 
-  // Two-finger pan-scroll races the scrub/tap gestures. The pointer-count split
-  // (2 = scroll, 1 = scrub) keeps them from fighting; Race cancels the loser.
+  // Compose the pan-scroll gesture. Two-finger races the scrub/tap gestures
+  // (pointer count keeps them apart). Axis-drag goes first via Exclusive: it
+  // fails instantly outside the axis band, so scrub runs everywhere else.
   if (timeScrollEnabled) {
-    rootGesture = Gesture.Race(panScrollGesture, rootGesture);
+    rootGesture =
+      scrollGestureMode === "axisDrag"
+        ? Gesture.Exclusive(panScrollGesture, rootGesture)
+        : Gesture.Race(panScrollGesture, rootGesture);
   }
 
   // ── Derived render values ──────────────────────────────────────────────
