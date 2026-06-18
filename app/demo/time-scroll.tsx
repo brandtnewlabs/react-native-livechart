@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { LiveChart } from "react-native-livechart";
+import { Alert } from "react-native";
+import { LiveChart, type ScrubActionPoint } from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
@@ -48,6 +49,7 @@ export default function TimeScrollScreen() {
   const [holdMs, setHoldMs] = useState(500);
   const [enabled, setEnabled] = useState(true);
   const [scrub, setScrub] = useState(true);
+  const [orderTicket, setOrderTicket] = useState(true);
 
   // candleAggregation gives us both the line `data` and `candles`; the toggle
   // just switches which the chart renders. Time-scroll is mode-agnostic — it
@@ -67,6 +69,13 @@ export default function TimeScrollScreen() {
   const isCandle = mode === "candle";
   const hint = GESTURE_HINT[gesture];
 
+  // Default "order ticket" (scrubAction): tap to drop a price reticle, drag to
+  // adjust, press the gutter badge to fire this. Here it just echoes the chosen
+  // price — enough to confirm the reticle/badge coexist with time-scroll + scrub.
+  const onScrubAction = (point: ScrubActionPoint) => {
+    Alert.alert("Order ticket", `Price level: ${point.price.toFixed(2)}`);
+  };
+
   return (
     <DemoScreen
       title="Time scroll"
@@ -84,6 +93,8 @@ export default function TimeScrollScreen() {
           timeWindow={WINDOW_SECS}
           timeScroll={enabled ? { gesture, scrubHoldMs: holdMs } : false}
           scrub={scrub ? { tooltip: true } : false}
+          scrubAction={orderTicket}
+          onScrubAction={onScrubAction}
         />
       }
     >
@@ -116,6 +127,14 @@ export default function TimeScrollScreen() {
 
       <ControlRow label="One-finger scrub">
         <ToggleChip label="scrub" value={scrub} onChange={setScrub} />
+      </ControlRow>
+
+      <ControlRow label="Order ticket">
+        <ToggleChip
+          label="scrubAction"
+          value={orderTicket}
+          onChange={setOrderTicket}
+        />
       </ControlRow>
     </DemoScreen>
   );
