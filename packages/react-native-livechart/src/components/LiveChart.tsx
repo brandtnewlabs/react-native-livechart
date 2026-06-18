@@ -564,11 +564,13 @@ function useLiveChartController({
     typeof timeScroll === "object"
       ? (timeScroll.gesture ?? "twoFinger")
       : "twoFinger";
+  // In holdToScrub the scrub MUST require a hold so a quick drag scrolls instead.
+  // The resolved scrub config defaults panGestureDelay to 0 (not undefined), so
+  // use `||` to fall back to the hold default when the caller didn't set one.
   const scrubHoldMs =
-    scrubCfg?.panGestureDelay ??
-    (timeScrollEnabled && scrollGestureMode === "holdToScrub"
-      ? HOLD_TO_SCRUB_MS
-      : 0);
+    timeScrollEnabled && scrollGestureMode === "holdToScrub"
+      ? scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS
+      : (scrubCfg?.panGestureDelay ?? 0);
 
   const crosshair = useCrosshair(
     engine,
