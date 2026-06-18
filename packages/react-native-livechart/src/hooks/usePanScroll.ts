@@ -10,11 +10,13 @@ import type { ChartPadding } from "../draw/line";
 
 /** Minimum height (px) of the bottom "grab the time ruler" band in axis-drag mode. */
 const AXIS_GRAB_MIN_PX = 44;
-/** Horizontal travel (px) before an axis-drag commits to scrolling vs. falling through. */
+/** Horizontal travel (px) before a one-finger drag commits to scrolling vs. falling through. */
 const AXIS_ACTIVATE_PX = 6;
+/** Vertical travel (px) that fails the one-finger scroll so a parent vertical scroll wins. */
+const HOLD_SCRUB_FAIL_Y_PX = 12;
 
 /** Which gesture activates a time-scroll. */
-export type PanScrollGestureMode = "twoFinger" | "axisDrag";
+export type PanScrollGestureMode = "twoFinger" | "axisDrag" | "holdToScrub";
 
 /** Engine SharedValues the pan-scroll gesture reads/writes (subset of the engine state). */
 export interface PanScrollEngineRefs {
@@ -42,9 +44,14 @@ export interface UsePanScrollOptions {
   /** Master switch. When false the gesture is disabled and the chart follows live. */
   enabled: boolean;
   /**
-   * Activation model. `"twoFinger"` (default): a two-finger drag anywhere.
-   * `"axisDrag"`: a one-finger drag starting in the bottom X-axis band ("grab
-   * the time ruler"). One-finger scrub in the plot area is untouched either way.
+   * Activation model:
+   *  - `"twoFinger"` (default): a two-finger drag anywhere; one-finger scrub
+   *    untouched.
+   *  - `"axisDrag"`: a one-finger drag starting in the bottom X-axis band ("grab
+   *    the time ruler"); one-finger scrub untouched.
+   *  - `"holdToScrub"`: a one-finger drag anywhere scrolls; scrub moves to
+   *    press-and-hold (Rainbow-style). The caller must give the scrub gesture a
+   *    long-press delay so a quick drag falls through to this one.
    */
   mode?: PanScrollGestureMode;
   /**
@@ -109,13 +116,16 @@ export function axisBandTop(canvasHeight: number, padBottom: number): number {
 }
 
 /**
- * Horizontal pan that scrolls the chart back through time. One-finger plot-area
- * scrub is left untouched; pick the activation with `mode`:
+ * Horizontal pan that scrolls the chart back through time. Pick the activation
+ * with `mode`:
  *  - `"twoFinger"` — a two-finger drag anywhere (compose with `Gesture.Race`;
  *    pointer count disambiguates it from the one-finger scrub).
  *  - `"axisDrag"` — a one-finger drag starting in the bottom X-axis band, gated
  *    via `manualActivation` (compose with `Gesture.Exclusive`, this gesture
  *    first: outside the band it fails instantly so scrub runs).
+ *  - `"holdToScrub"` — a one-finger drag anywhere (activates on horizontal
+ *    travel; vertical falls through). Scrub must be press-and-hold so a quick
+ *    drag races past it (compose with `Gesture.Race`).
  *
  * Writes `engine.viewEnd`: a number freezes the window at that absolute right
  * edge; `null` means "follow live". Dragging (or flinging) back to the live edge
@@ -227,6 +237,21 @@ export function usePanScroll({
           }
         },
       )
+      .onStart(onStart)
+      .onChange(onChange)
+      .onEnd(onEnd);
+  }
+
+  if (mode === "holdToScrub") {
+    return Gesture.Pan()
+      .enabled(enabled)
+      .maxPointers(1)
+      // Activate on horizontal travel so a quick one-finger drag scrolls; a
+      // still press-hold crosses no offset and falls through to the scrub
+      // gesture (which owns the long-press). Vertical travel fails it so a
+      // parent vertical scroll wins.
+      .activeOffsetX([-AXIS_ACTIVATE_PX, AXIS_ACTIVATE_PX])
+      .failOffsetY([-HOLD_SCRUB_FAIL_Y_PX, HOLD_SCRUB_FAIL_Y_PX])
       .onStart(onStart)
       .onChange(onChange)
       .onEnd(onEnd);

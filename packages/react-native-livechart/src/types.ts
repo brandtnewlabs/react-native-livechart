@@ -1102,8 +1102,11 @@ export interface TimeScrollConfig {
    *  - `"twoFinger"` (default) — a two-finger drag anywhere on the chart.
    *  - `"axisDrag"` — a one-finger drag starting in the bottom X-axis band
    *    ("grab the time ruler").
+   *  - `"holdToScrub"` — a one-finger drag anywhere scrolls; scrub moves to
+   *    press-and-hold (Rainbow-style). Scrub engages after ~220ms unless you set
+   *    your own `scrub.panGestureDelay`.
    */
-  gesture?: "twoFinger" | "axisDrag";
+  gesture?: "twoFinger" | "axisDrag" | "holdToScrub";
 }
 
 /** Props shared between `LiveChart` and `LiveChartSeries`. */

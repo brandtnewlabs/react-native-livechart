@@ -145,6 +145,11 @@ function thresholdStops(
  * here so the rendered pieces (`ChartStack`, `ChartScrubLayer`, `LiveChart`) stay
  * small and presentational.
  */
+/** Press-and-hold (ms) before scrub engages in the `holdToScrub` time-scroll
+ *  mode, so a quick one-finger drag scrolls instead. Overridden by an explicit
+ *  `scrub.panGestureDelay`. */
+const HOLD_TO_SCRUB_MS = 220;
+
 function useLiveChartController({
   // ── Data ────────────────────────────────────────────────────────────────
   data,
@@ -551,6 +556,20 @@ function useLiveChartController({
     return markerHitTest(x, y) || refLineHitTest(x, y);
   };
 
+  // Time-scroll activation. `holdToScrub`: a quick one-finger drag scrolls while
+  // scrub engages on press-and-hold — so the scrub gesture needs a long-press
+  // delay (unless the caller set its own `panGestureDelay`).
+  const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
+  const scrollGestureMode =
+    typeof timeScroll === "object"
+      ? (timeScroll.gesture ?? "twoFinger")
+      : "twoFinger";
+  const scrubHoldMs =
+    scrubCfg?.panGestureDelay ??
+    (timeScrollEnabled && scrollGestureMode === "holdToScrub"
+      ? HOLD_TO_SCRUB_MS
+      : 0);
+
   const crosshair = useCrosshair(
     engine,
     effectivePadding,
@@ -563,7 +582,7 @@ function useLiveChartController({
     !isStatic && (scrubCfg !== null || scrubActionCfg !== null),
     onScrub,
     candleOpts,
-    scrubCfg?.panGestureDelay ?? 0,
+    scrubHoldMs,
     onGestureStart,
     onGestureEnd,
     scrubActionCfg,
@@ -584,9 +603,6 @@ function useLiveChartController({
     const src = isCandle ? candlesEngine.get() : lineEngineData.get();
     return src.length > 0 ? src[0].time : engine.liveEdge.get();
   });
-  const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
-  const scrollGestureMode =
-    typeof timeScroll === "object" ? (timeScroll.gesture ?? "twoFinger") : "twoFinger";
   const panScrollGesture = usePanScroll({
     engine,
     padding: effectivePadding,

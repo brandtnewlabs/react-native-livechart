@@ -22,14 +22,25 @@ const MODE_OPTIONS: { value: "candle" | "line"; label: string }[] = [
   { value: "line", label: "Line" },
 ];
 
-const GESTURE_OPTIONS: { value: "twoFinger" | "axisDrag"; label: string }[] = [
+type Gesture = "twoFinger" | "axisDrag" | "holdToScrub";
+
+const GESTURE_OPTIONS: { value: Gesture; label: string }[] = [
+  { value: "holdToScrub", label: "Drag / hold" },
   { value: "twoFinger", label: "Two-finger" },
   { value: "axisDrag", label: "Drag axis" },
 ];
 
+const GESTURE_HINT: Record<Gesture, string> = {
+  holdToScrub:
+    "Drag with ONE finger to pan back through history; press and hold to scrub.",
+  twoFinger: "Drag with TWO fingers to pan back through history.",
+  axisDrag:
+    "Drag the bottom time-axis strip with ONE finger to pan back through history.",
+};
+
 export default function TimeScrollScreen() {
   const [mode, setMode] = useState<"candle" | "line">("candle");
-  const [gesture, setGesture] = useState<"twoFinger" | "axisDrag">("twoFinger");
+  const [gesture, setGesture] = useState<Gesture>("holdToScrub");
   const [enabled, setEnabled] = useState(true);
   const [scrub, setScrub] = useState(true);
 
@@ -49,10 +60,7 @@ export default function TimeScrollScreen() {
   });
 
   const isCandle = mode === "candle";
-  const hint =
-    gesture === "axisDrag"
-      ? "Drag the bottom time-axis strip with ONE finger to pan back through history."
-      : "Drag with TWO fingers to pan back through history.";
+  const hint = GESTURE_HINT[gesture];
 
   return (
     <DemoScreen
