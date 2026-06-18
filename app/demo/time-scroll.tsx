@@ -38,9 +38,16 @@ const GESTURE_HINT: Record<Gesture, string> = {
     "Drag the bottom time-axis strip with ONE finger to pan back through history.",
 };
 
+const HOLD_OPTIONS: { value: number; label: string }[] = [
+  { value: 350, label: "350ms" },
+  { value: 500, label: "500ms" },
+  { value: 750, label: "750ms" },
+];
+
 export default function TimeScrollScreen() {
   const [mode, setMode] = useState<"candle" | "line">("candle");
   const [gesture, setGesture] = useState<Gesture>("holdToScrub");
+  const [holdMs, setHoldMs] = useState(500);
   const [enabled, setEnabled] = useState(true);
   const [scrub, setScrub] = useState(true);
 
@@ -77,7 +84,7 @@ export default function TimeScrollScreen() {
           accentColor={ACCENT}
           theme={APP_THEME}
           timeWindow={WINDOW_SECS}
-          timeScroll={enabled ? { gesture } : false}
+          timeScroll={enabled ? { gesture, scrubHoldMs: holdMs } : false}
           scrub={scrub ? { tooltip: true } : false}
         />
       }
@@ -95,6 +102,15 @@ export default function TimeScrollScreen() {
         value={gesture}
         onChange={setGesture}
       />
+
+      {gesture === "holdToScrub" ? (
+        <ChipRow
+          label="Hold to scrub"
+          options={HOLD_OPTIONS}
+          value={holdMs}
+          onChange={setHoldMs}
+        />
+      ) : null}
 
       <ControlRow label="Pan to scroll">
         <ToggleChip label="timeScroll" value={enabled} onChange={setEnabled} />

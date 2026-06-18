@@ -465,12 +465,16 @@ describe("LiveChart", () => {
   });
 
   it("composes the hold-to-scrub (one-finger drag) gesture", () => {
-    const screen = render(
-      <CandleHarness timeScroll={{ gesture: "holdToScrub" }} scrub />,
-    );
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
-      nativeEvent: { layout: { width: 400, height: 200 } },
-    });
+    // Default hold (no scrubHoldMs) and an explicit override both render cleanly.
+    for (const ts of [
+      { gesture: "holdToScrub" } as const,
+      { gesture: "holdToScrub", scrubHoldMs: 600 } as const,
+    ]) {
+      const screen = render(<CandleHarness timeScroll={ts} scrub />);
+      const views = screen.UNSAFE_getAllByType(View);
+      fireEvent(views[0], "layout", {
+        nativeEvent: { layout: { width: 400, height: 200 } },
+      });
+    }
   });
 });

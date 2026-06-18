@@ -145,10 +145,10 @@ function thresholdStops(
  * here so the rendered pieces (`ChartStack`, `ChartScrubLayer`, `LiveChart`) stay
  * small and presentational.
  */
-/** Press-and-hold (ms) before scrub engages in the `holdToScrub` time-scroll
- *  mode, so a quick one-finger drag scrolls instead. Overridden by an explicit
- *  `scrub.panGestureDelay`. */
-const HOLD_TO_SCRUB_MS = 220;
+/** Default press-and-hold (ms) before scrub engages in the `holdToScrub`
+ *  time-scroll mode, so a quick one-finger drag scrolls instead. Overridden by
+ *  `timeScroll.scrubHoldMs`, then `scrub.panGestureDelay`. */
+const HOLD_TO_SCRUB_MS = 500;
 
 function useLiveChartController({
   // ── Data ────────────────────────────────────────────────────────────────
@@ -565,11 +565,13 @@ function useLiveChartController({
       ? (timeScroll.gesture ?? "twoFinger")
       : "twoFinger";
   // In holdToScrub the scrub MUST require a hold so a quick drag scrolls instead.
-  // The resolved scrub config defaults panGestureDelay to 0 (not undefined), so
-  // use `||` to fall back to the hold default when the caller didn't set one.
+  // Precedence: explicit timeScroll.scrubHoldMs, then scrub.panGestureDelay, then
+  // the default. `||` (not `??`) skips the resolved panGestureDelay's 0 default.
+  const timeScrollHoldMs =
+    typeof timeScroll === "object" ? timeScroll.scrubHoldMs : undefined;
   const scrubHoldMs =
     timeScrollEnabled && scrollGestureMode === "holdToScrub"
-      ? scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS
+      ? (timeScrollHoldMs ?? (scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS))
       : (scrubCfg?.panGestureDelay ?? 0);
 
   const crosshair = useCrosshair(
