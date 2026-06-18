@@ -438,7 +438,7 @@ describe("LiveChart", () => {
     });
   });
 
-  it("composes the two-finger pan-scroll gesture when timeScroll is on (line)", () => {
+  it("composes the default drag-to-scroll gesture when timeScroll is on (line)", () => {
     const screen = render(<Harness timeScroll scrub />);
     const views = screen.UNSAFE_getAllByType(View);
     fireEvent(views[0], "layout", {

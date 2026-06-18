@@ -16,7 +16,7 @@ const AXIS_ACTIVATE_PX = 6;
 const HOLD_SCRUB_FAIL_Y_PX = 12;
 
 /** Which gesture activates a time-scroll. */
-export type PanScrollGestureMode = "twoFinger" | "axisDrag" | "holdToScrub";
+export type PanScrollGestureMode = "holdToScrub" | "axisDrag";
 
 /** Engine SharedValues the pan-scroll gesture reads/writes (subset of the engine state). */
 export interface PanScrollEngineRefs {
@@ -45,13 +45,11 @@ export interface UsePanScrollOptions {
   enabled: boolean;
   /**
    * Activation model:
-   *  - `"twoFinger"` (default): a two-finger drag anywhere; one-finger scrub
-   *    untouched.
+   *  - `"holdToScrub"` (default): a one-finger drag anywhere scrolls; scrub moves
+   *    to press-and-hold (Rainbow-style). The caller must give the scrub gesture
+   *    a long-press delay so a quick drag falls through to this one.
    *  - `"axisDrag"`: a one-finger drag starting in the bottom X-axis band ("grab
-   *    the time ruler"); one-finger scrub untouched.
-   *  - `"holdToScrub"`: a one-finger drag anywhere scrolls; scrub moves to
-   *    press-and-hold (Rainbow-style). The caller must give the scrub gesture a
-   *    long-press delay so a quick drag falls through to this one.
+   *    the time ruler"); one-finger plot scrub untouched.
    */
   mode?: PanScrollGestureMode;
   /**
@@ -118,14 +116,12 @@ export function axisBandTop(canvasHeight: number, padBottom: number): number {
 /**
  * Horizontal pan that scrolls the chart back through time. Pick the activation
  * with `mode`:
- *  - `"twoFinger"` — a two-finger drag anywhere (compose with `Gesture.Race`;
- *    pointer count disambiguates it from the one-finger scrub).
- *  - `"axisDrag"` — a one-finger drag starting in the bottom X-axis band, gated
- *    via `manualActivation` (compose with `Gesture.Exclusive`, this gesture
- *    first: outside the band it fails instantly so scrub runs).
  *  - `"holdToScrub"` — a one-finger drag anywhere (activates on horizontal
  *    travel; vertical falls through). Scrub must be press-and-hold so a quick
  *    drag races past it (compose with `Gesture.Race`).
+ *  - `"axisDrag"` — a one-finger drag starting in the bottom X-axis band, gated
+ *    via `manualActivation` (compose with `Gesture.Exclusive`, this gesture
+ *    first: outside the band it fails instantly so scrub runs).
  *
  * Writes `engine.viewEnd`: a number freezes the window at that absolute right
  * edge; `null` means "follow live". Dragging (or flinging) back to the live edge
@@ -136,7 +132,7 @@ export function usePanScroll({
   padding,
   minTime,
   enabled,
-  mode = "twoFinger",
+  mode = "holdToScrub",
   onScrollStart,
 }: UsePanScrollOptions): ReturnType<typeof Gesture.Pan> {
   const { viewEnd, liveEdge, displayWindow, canvasWidth, canvasHeight } = engine;
@@ -145,7 +141,7 @@ export function usePanScroll({
   const padBottom = padding.bottom;
 
   // Axis-drag activation tracking (manualActivation). Created unconditionally so
-  // the hook order is stable; unused in two-finger mode.
+  // the hook order is stable; unused in hold-to-scrub mode.
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const armed = useSharedValue(false);
@@ -242,27 +238,15 @@ export function usePanScroll({
       .onEnd(onEnd);
   }
 
-  if (mode === "holdToScrub") {
-    return Gesture.Pan()
-      .enabled(enabled)
-      .maxPointers(1)
-      // Activate on horizontal travel so a quick one-finger drag scrolls; a
-      // still press-hold crosses no offset and falls through to the scrub
-      // gesture (which owns the long-press). Vertical travel fails it so a
-      // parent vertical scroll wins.
-      .activeOffsetX([-AXIS_ACTIVATE_PX, AXIS_ACTIVATE_PX])
-      .failOffsetY([-HOLD_SCRUB_FAIL_Y_PX, HOLD_SCRUB_FAIL_Y_PX])
-      .onStart(onStart)
-      .onChange(onChange)
-      .onEnd(onEnd);
-  }
-
+  // holdToScrub (default): a one-finger drag anywhere scrolls. Activate on
+  // horizontal travel so a quick one-finger drag scrolls; a still press-hold
+  // crosses no offset and falls through to the scrub gesture (which owns the
+  // long-press). Vertical travel fails it so a parent vertical scroll wins.
   return Gesture.Pan()
     .enabled(enabled)
-    // Two fingers only — leaves the one-finger scrub gesture alone.
-    .minPointers(2)
-    .maxPointers(2)
-    .averageTouches(true)
+    .maxPointers(1)
+    .activeOffsetX([-AXIS_ACTIVATE_PX, AXIS_ACTIVATE_PX])
+    .failOffsetY([-HOLD_SCRUB_FAIL_Y_PX, HOLD_SCRUB_FAIL_Y_PX])
     .onStart(onStart)
     .onChange(onChange)
     .onEnd(onEnd);

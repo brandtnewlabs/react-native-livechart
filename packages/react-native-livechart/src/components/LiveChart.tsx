@@ -562,8 +562,8 @@ function useLiveChartController({
   const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
   const scrollGestureMode =
     typeof timeScroll === "object"
-      ? (timeScroll.gesture ?? "twoFinger")
-      : "twoFinger";
+      ? (timeScroll.gesture ?? "holdToScrub")
+      : "holdToScrub";
   // In holdToScrub the scrub MUST require a hold so a quick drag scrolls instead.
   // Precedence: explicit timeScroll.scrubHoldMs, then scrub.panGestureDelay, then
   // the default. `||` (not `??`) skips the resolved panGestureDelay's 0 default.
@@ -599,10 +599,10 @@ function useLiveChartController({
     scrubCfg?.tooltipMargin ?? 8,
   );
 
-  // ── Time-scroll (two-finger pan back through history) ─────────────────────
-  // Experimental: a two-finger pan freezes the window at an absolute time and
-  // resumes following once dragged back to the live edge. One-finger scrub is
-  // untouched. Pan is clamped to the earliest retained point (line or candle).
+  // ── Time-scroll (drag back through history) ───────────────────────────────
+  // Experimental: a pan freezes the window at an absolute time and resumes
+  // following once dragged back to the live edge. Pan is clamped to the earliest
+  // retained point (line or candle). See `timeScroll` for the gesture model.
   const scrollMinTime = useDerivedValue(() => {
     const src = isCandle ? candlesEngine.get() : lineEngineData.get();
     return src.length > 0 ? src[0].time : engine.liveEdge.get();
@@ -653,9 +653,10 @@ function useLiveChartController({
         : Gesture.Race(baseGesture, tapGroup);
   }
 
-  // Compose the pan-scroll gesture. Two-finger races the scrub/tap gestures
-  // (pointer count keeps them apart). Axis-drag goes first via Exclusive: it
-  // fails instantly outside the axis band, so scrub runs everywhere else.
+  // Compose the pan-scroll gesture. holdToScrub races the scrub/tap gestures (a
+  // quick drag scrolls; a still press-hold falls through to scrub). Axis-drag
+  // goes first via Exclusive: it fails instantly outside the axis band, so scrub
+  // runs everywhere else.
   if (timeScrollEnabled) {
     rootGesture =
       scrollGestureMode === "axisDrag"

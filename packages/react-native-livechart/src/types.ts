@@ -1099,13 +1099,13 @@ export interface LiveChartMetricsOverride {
 export interface TimeScrollConfig {
   /**
    * Which gesture pans the timeline:
-   *  - `"twoFinger"` (default) — a two-finger drag anywhere on the chart.
+   *  - `"holdToScrub"` (default) — a one-finger drag anywhere scrolls; scrub
+   *    moves to press-and-hold (Rainbow-style). See {@link scrubHoldMs} for the
+   *    hold duration.
    *  - `"axisDrag"` — a one-finger drag starting in the bottom X-axis band
-   *    ("grab the time ruler").
-   *  - `"holdToScrub"` — a one-finger drag anywhere scrolls; scrub moves to
-   *    press-and-hold (Rainbow-style). See {@link scrubHoldMs} for the hold.
+   *    ("grab the time ruler"); the plot area stays free for one-finger scrub.
    */
-  gesture?: "twoFinger" | "axisDrag" | "holdToScrub";
+  gesture?: "holdToScrub" | "axisDrag";
   /**
    * `holdToScrub` only: press-and-hold duration (ms) before scrub engages, so a
    * quicker one-finger drag scrolls instead. Higher = more deliberate scrub and
@@ -1256,8 +1256,9 @@ export interface LiveChartCoreProps {
    * live edge again. One-finger plot-area scrub is unchanged. Requires retained
    * history in `data` / `candles` to scroll into.
    *
-   * `true` uses the two-finger gesture; pass a {@link TimeScrollConfig} to pick
-   * the activation (`"twoFinger"` or `"axisDrag"`). Default `false`.
+   * `true` uses the default drag-to-scroll gesture (`"holdToScrub"`); pass a
+   * {@link TimeScrollConfig} to pick the activation (`"holdToScrub"` or
+   * `"axisDrag"`). Default `false`.
    *
    * @experimental Prototype — gesture model and API may change.
    */
