@@ -22,6 +22,8 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
 const MAX_Y_LABELS = 15;
+/** Right margin (px) for floating labels — keeps them just off the canvas edge. */
+const FLOAT_LABEL_RIGHT_MARGIN = 6;
 
 export function YAxisOverlay({
   entries,
@@ -34,6 +36,8 @@ export function YAxisOverlay({
   badgeMetrics = BADGE_METRICS_DEFAULTS,
   seriesLabelInset = 0,
   gridStyle,
+  variant = "all",
+  float = false,
 }: {
   entries: SharedValue<YAxisEntry[]>;
   engine: ChartEngineLayout;
@@ -50,6 +54,17 @@ export function YAxisOverlay({
   seriesLabelInset?: number;
   /** Grid-line styling overrides. Omit for the legacy solid 1px line. */
   gridStyle?: ResolvedGridStyleConfig;
+  /**
+   * Which parts to draw. `"all"` (default) renders grid lines + labels together.
+   * `"grid"` / `"labels"` split them so a chart can draw the grid behind the data
+   * and the labels (over a soft fade) on top — see {@link YAxisEdgeFade}.
+   */
+  variant?: "all" | "grid" | "labels";
+  /**
+   * Floating-axis mode: right-align labels at the canvas edge (over a full-width
+   * plot) instead of centering them in a reserved gutter. See {@link YAxisConfig.float}.
+   */
+  float?: boolean;
 }) {
   const gridColor = gridStyle?.color ?? palette.gridLine;
   const gridWidth = gridStyle?.strokeWidth ?? 1;
@@ -59,6 +74,7 @@ export function YAxisOverlay({
 
   const gridLinesPath = useDerivedValue(() => {
     const b = gridBuilder.value;
+    if (variant === "labels") return b.detach();
     const items = entries.get();
     const w = engine.canvasWidth.get();
     for (let i = 0; i < items.length; i++) {
@@ -72,6 +88,7 @@ export function YAxisOverlay({
     badgeMetrics.dotGap + badgeTailAndCap(font.getSize(), badgeTail, badgeMetrics);
 
   const labelEntries = useDerivedValue(() => {
+    if (variant === "grid") return [];
     const items = entries.get();
     const w = engine.canvasWidth.get();
     const fm = font.getMetrics();
@@ -80,11 +97,13 @@ export function YAxisOverlay({
     for (let i = 0; i < items.length; i++) {
       const e = items[i];
       const textW = measureFontTextWidth(font, e.label);
-      const x = badge
-        ? pillTextLeftX(w, padding.right, leftInset, textW, badgeMetrics)
-        : seriesLabelInset > 0
-          ? gutterRightAlignedTextLeftX(w, textW)
-          : gutterCenteredTextLeftX(w, padding.right, textW);
+      const x = float
+        ? gutterRightAlignedTextLeftX(w, textW, FLOAT_LABEL_RIGHT_MARGIN)
+        : badge
+          ? pillTextLeftX(w, padding.right, leftInset, textW, badgeMetrics)
+          : seriesLabelInset > 0
+            ? gutterRightAlignedTextLeftX(w, textW)
+            : gutterCenteredTextLeftX(w, padding.right, textW);
       result.push({
         x,
         y: e.y - baselineOffset,
@@ -97,27 +116,30 @@ export function YAxisOverlay({
 
   return (
     <Group>
-      <Group opacity={gridOpacity}>
-        <Path
-          path={gridLinesPath}
-          style="stroke"
-          strokeWidth={gridWidth}
-          color={gridColor}
-        >
-          {gridIntervals.length > 0 && (
-            <DashPathEffect intervals={gridIntervals} />
-          )}
-        </Path>
-      </Group>
-      {Array.from({ length: MAX_Y_LABELS }, (_, i) => (
-        <AnimatedLabel
-          key={i}
-          entries={labelEntries}
-          index={i}
-          font={font}
-          color={palette.gridLabel}
-        />
-      ))}
+      {variant !== "labels" && (
+        <Group opacity={gridOpacity}>
+          <Path
+            path={gridLinesPath}
+            style="stroke"
+            strokeWidth={gridWidth}
+            color={gridColor}
+          >
+            {gridIntervals.length > 0 && (
+              <DashPathEffect intervals={gridIntervals} />
+            )}
+          </Path>
+        </Group>
+      )}
+      {variant !== "grid" &&
+        Array.from({ length: MAX_Y_LABELS }, (_, i) => (
+          <AnimatedLabel
+            key={i}
+            entries={labelEntries}
+            index={i}
+            font={font}
+            color={palette.gridLabel}
+          />
+        ))}
     </Group>
   );
 }

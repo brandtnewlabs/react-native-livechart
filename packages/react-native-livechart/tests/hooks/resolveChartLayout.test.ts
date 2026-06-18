@@ -55,6 +55,49 @@ describe("resolveChartLayout", () => {
     expect(padding).toEqual({ top: 12, right: 12, bottom: 28, left: 12 });
   });
 
+  it("collapses the right gutter to a thin inset when the y-axis floats", () => {
+    // Pulse is on (the default) — its padding reservation must NOT undo float.
+    const base = {
+      palette,
+      yAxis: true,
+      badge: false,
+      pulse: { maxRadius: 20, strokeWidth: 2 },
+      font: mockFont(),
+      formatValue: fmt,
+      currentValue: 1234.5,
+    } as const;
+    // Normally the y-axis (+ pulse) reserves a wide gutter on the right.
+    const gutter = resolveChartLayout(base).padding.right;
+    // Floating drops that reservation so the plot runs full-width to the edge.
+    const floated = resolveChartLayout({
+      ...base,
+      yAxisFloat: true,
+    }).padding.right;
+    expect(gutter).toBeGreaterThan(floated);
+    expect(floated).toBe(6); // FLOAT_AXIS_RIGHT_INSET — wins over pulse/label padding
+  });
+
+  it("collapses the gutter even with a badge present (the badge floats too)", () => {
+    const base = {
+      palette,
+      yAxis: true,
+      badge: true,
+      badgeUsesRightGutter: true,
+      font: mockFont(),
+      formatValue: fmt,
+      currentValue: 1234.5,
+    } as const;
+    // Badge normally reserves a wide right gutter.
+    const gutter = resolveChartLayout(base).padding.right;
+    // Float wins anyway — the badge floats over the edge instead (useBadge float).
+    const floated = resolveChartLayout({
+      ...base,
+      yAxisFloat: true,
+    }).padding.right;
+    expect(gutter).toBeGreaterThan(floated);
+    expect(floated).toBe(6);
+  });
+
   it("expands right padding for grid (static fallback)", () => {
     const { padding } = resolveChartLayout({
       palette,

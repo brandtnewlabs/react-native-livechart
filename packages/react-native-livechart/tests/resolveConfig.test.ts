@@ -86,6 +86,7 @@ describe("resolveBadge", () => {
       tail: true,
       position: "right",
       background: undefined,
+      followViewEdge: false,
     });
   });
 
@@ -95,6 +96,7 @@ describe("resolveBadge", () => {
       tail: true,
       position: "right",
       background: undefined,
+      followViewEdge: false,
     });
   });
 
@@ -105,12 +107,14 @@ describe("resolveBadge", () => {
         tail: false,
         position: "left",
         background: "#f00",
+        followViewEdge: true,
       }),
     ).toEqual({
       variant: "minimal",
       tail: false,
       position: "left",
       background: "#f00",
+      followViewEdge: true,
     });
   });
 });
@@ -127,11 +131,15 @@ describe("resolveYAxis", () => {
   });
 
   it("returns defaults for true", () => {
-    expect(resolveYAxis(true)).toEqual({ minGap: 36 });
+    expect(resolveYAxis(true)).toEqual({ minGap: 36, float: false });
   });
 
   it("merges partial config with defaults", () => {
-    expect(resolveYAxis({ minGap: 48 })).toEqual({ minGap: 48 });
+    expect(resolveYAxis({ minGap: 48 })).toEqual({ minGap: 48, float: false });
+  });
+
+  it("carries through the float flag", () => {
+    expect(resolveYAxis({ float: true })).toEqual({ minGap: 36, float: true });
   });
 });
 

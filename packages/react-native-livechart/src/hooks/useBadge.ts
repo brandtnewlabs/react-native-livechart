@@ -39,6 +39,19 @@ export function useBadge(
   background?: string,
   badgeMetrics: BadgeMetrics = BADGE_METRICS_DEFAULTS,
   badgeColorSpeed: number = MOTION_METRICS_DEFAULTS.badgeColorSpeed,
+  /**
+   * Floating-axis mode: render a tail-less pill right-aligned at the canvas edge
+   * (over a full-width plot) instead of inside a reserved right gutter. See
+   * {@link YAxisConfig.float}.
+   */
+  float = false,
+  /**
+   * Smoothed value at the visible window's right edge (engine `edgeValue`). When
+   * {@link followViewEdge} is set, the badge tracks this instead of the live value.
+   */
+  edgeValue?: SharedValue<number>,
+  /** Track the visible window's right-edge price while scrolled back. */
+  followViewEdge = false,
 ) {
   const colorR = useSharedValue(0);
   const colorG = useSharedValue(0);
@@ -71,13 +84,17 @@ export function useBadge(
     const dMin = engine.displayMin.get();
     const dMax = engine.displayMax.get();
     const valRange = dMax - dMin;
+    // Follow the visible window's right-edge price while scrolled back, else the
+    // live value (badge.followViewEdge). engine `edgeValue` already collapses to
+    // the live value when not scrolled, so the live badge is unchanged.
+    const liveVal =
+      followViewEdge && edgeValue ? edgeValue.get() : engine.displayValue.get();
     const dotY =
       valRange === 0
         ? padding.top + chartH / 2
-        : padding.top +
-          ((dMax - engine.displayValue.get()) / valRange) * chartH;
+        : padding.top + ((dMax - liveVal) / valRange) * chartH;
 
-    const text = formatValue(engine.displayValue.get());
+    const text = formatValue(liveVal);
     const textW = measureFontTextWidth(font, text);
 
     const pillH = font.getSize() + badgeMetrics.padY * 2;
@@ -85,7 +102,20 @@ export function useBadge(
     const badgeY = dotY - pillH / 2;
     let textX: number;
 
-    if (position === "left") {
+    if (float) {
+      // Floating price tag: a tail-less pill right-aligned at the canvas edge,
+      // floating over the full-width plot (no reserved gutter). Its pill bg keeps
+      // the live value readable over the candles.
+      const pillW = 2 * badgeMetrics.padX + textW;
+      const bodyRight = w - badgeMetrics.marginEdge;
+      const bodyLeft = bodyRight - pillW;
+      textX = (bodyLeft + bodyRight - textW) / 2;
+      b.addRRect({
+        rect: { x: bodyLeft, y: badgeY, width: pillW, height: pillH },
+        rx: r,
+        ry: r,
+      });
+    } else if (position === "left") {
       // Pill to the left of the live dot; no tail (`showTail` applies to right gutter only).
       const dotXPos = w - padding.right;
       const pillW = 2 * badgeMetrics.padX + textW;

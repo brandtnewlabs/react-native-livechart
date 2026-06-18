@@ -338,11 +338,13 @@ function useLiveChartController({
     setValueLayoutSample(value.get());
   }, [value]);
 
+  const yAxisFloat = yAxisCfg?.float ?? false;
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
+    yAxisFloat,
     badge: badgeCfg !== null,
     badgeMetrics: metricsCfg.badge,
     badgeUsesRightGutter,
@@ -458,7 +460,12 @@ function useLiveChartController({
       metricsCfg.candle,
       !isStatic, // static: no candle-width lerp loop
     );
-  const { dotX, dotY } = useLiveDot(engine, effectivePadding);
+  const { dotX, dotY } = useLiveDot(
+    engine,
+    effectivePadding,
+    engine.edgeValue,
+    badgeCfg?.followViewEdge ?? false,
+  );
 
   // Price↔pixel / time↔pixel bridge for a custom `renderOverlay`. Built
   // unconditionally (hooks rule); only mounted when `renderOverlay` is provided.
@@ -510,6 +517,9 @@ function useLiveChartController({
     badgeCfg?.background,
     metricsCfg.badge,
     metricsCfg.motion.badgeColorSpeed,
+    yAxisFloat,
+    engine.edgeValue,
+    badgeCfg?.followViewEdge ?? false,
   );
 
   // Scrub/crosshair must see the same stash-backed candles as the engine.
@@ -731,6 +741,7 @@ function useLiveChartController({
     extremaTimeOffset: isCandle ? candleWidth / 2 : 0,
     // configs
     yAxisCfg,
+    yAxisFloat,
     xAxisCfg,
     badgeCfg,
     scrubCfg,
@@ -827,6 +838,7 @@ function ChartFillLayer({ model }: { model: LiveChartModel }) {
   const {
     degenShakeTransform,
     yAxisCfg,
+    yAxisFloat,
     reveal,
     yAxisEntries,
     engine,
@@ -852,10 +864,13 @@ function ChartFillLayer({ model }: { model: LiveChartModel }) {
 
   return (
     <Group transform={degenShakeTransform}>
-      {/* Y-axis grid */}
+      {/* Y-axis. Default: grid + labels here (in a reserved gutter). Floating
+          mode: grid only — the labels + a soft edge fade draw above the candles
+          in ChartStack so the plot runs full-width and candles dim under them. */}
       {yAxisCfg && (
         <Group opacity={reveal.yAxisOpacity}>
           <YAxisOverlay
+            variant={yAxisFloat ? "grid" : "all"}
             entries={yAxisEntries}
             engine={engine}
             padding={effectivePadding}
@@ -964,6 +979,11 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     emptyText,
     metricsCfg,
     layoutWidth,
+    yAxisCfg,
+    yAxisFloat,
+    yAxisEntries,
+    badgeUsesRightGutter,
+    gridStyleCfg,
   } = model;
 
   return (
@@ -1084,6 +1104,27 @@ function ChartStack({ model }: { model: LiveChartModel }) {
           color={palette.candleDown}
         />
       </Group>
+
+      {/* Floating axis: the labels float ABOVE the candles (right-aligned at the
+          edge) so the plot runs full-width and candles stay fully visible behind
+          them. (Default non-floating axis draws grid + labels in ChartFillLayer.) */}
+      {yAxisCfg && yAxisFloat && (
+        <Group opacity={reveal.yAxisOpacity}>
+          <YAxisOverlay
+            variant="labels"
+            float
+            entries={yAxisEntries}
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            font={skiaFont}
+            badge={badgeUsesRightGutter}
+            badgeTail={badgeCfg?.tail ?? true}
+            badgeMetrics={metricsCfg.badge}
+            gridStyle={gridStyleCfg}
+          />
+        </Group>
+      )}
 
       {/* X-axis time labels */}
       {xAxisCfg && (

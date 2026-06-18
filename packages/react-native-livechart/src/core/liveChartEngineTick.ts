@@ -18,6 +18,12 @@ export interface EngineTickMutable {
    */
   liveEdge: number;
   /**
+   * Smoothed value at the visible window's right edge: the live value while
+   * following, or the price at `viewEnd` while scrolled back. Lets a badge track
+   * the last visible price as you pan (see `badge.followViewEdge`).
+   */
+  edgeValue: number;
+  /**
    * Value + time of the lowest / highest data point in the visible window —
    * the actual extrema, NOT the smoothed display bounds (which carry margin and
    * fold in the live value / reference lines). `NaN` when the window holds no
@@ -255,5 +261,42 @@ export function tickLiveChartEngineFrame(
     } else {
       state.displayMax = lerp(state.displayMax, tMax, speed, input.dt);
     }
+  }
+
+  // Edge value: the price at the visible window's right edge. Following live →
+  // track the live value (badge unchanged). Scrolled back → track the last
+  // visible point/candle close, lerped so a `followViewEdge` badge glides to the
+  // last price as you pan.
+  const scrolledBack = viewEnd != null && viewEnd < liveEdge;
+  if (!scrolledBack) {
+    state.edgeValue = state.displayValue;
+  } else {
+    let edgeTarget = state.displayValue;
+    if (input.mode === "candle") {
+      const cs = input.candles;
+      if (cs && cs.length > 0) {
+        let elo = 0;
+        let ehi = cs.length;
+        while (elo < ehi) {
+          const m = (elo + ehi) >> 1;
+          if (cs[m].time <= state.timestamp) elo = m + 1;
+          else ehi = m;
+        }
+        if (elo > 0) edgeTarget = cs[elo - 1].close;
+      }
+      const lc = input.liveCandle;
+      if (lc && lc.time <= state.timestamp) edgeTarget = lc.close;
+    } else {
+      const pts = input.points;
+      let elo = 0;
+      let ehi = pts.length;
+      while (elo < ehi) {
+        const m = (elo + ehi) >> 1;
+        if (pts[m].time <= state.timestamp) elo = m + 1;
+        else ehi = m;
+      }
+      if (elo > 0) edgeTarget = pts[elo - 1].value;
+    }
+    state.edgeValue = lerp(state.edgeValue, edgeTarget, speed, input.dt);
   }
 }

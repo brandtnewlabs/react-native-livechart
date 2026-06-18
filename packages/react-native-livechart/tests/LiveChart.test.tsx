@@ -483,6 +483,15 @@ describe("LiveChart", () => {
     }
   });
 
+  it("renders the floating y-axis + floating badge (full-width plot)", () => {
+    // Float composes with the badge — the badge floats over the right edge.
+    const screen = render(<CandleHarness yAxis={{ float: true }} badge />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
+
   it("composes the hold-to-scrub (one-finger drag) gesture", () => {
     // Default hold (no scrubHoldMs) and an explicit override both render cleanly.
     for (const ts of [

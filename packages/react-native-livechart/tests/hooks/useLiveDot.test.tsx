@@ -1,6 +1,7 @@
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
+import type { SharedValue } from "react-native-reanimated";
 import { useLiveDot } from "../../src/hooks/useLiveDot";
 
 function engine(
@@ -53,5 +54,20 @@ describe("useLiveDot", () => {
     );
     expect(result.current.dotX.value).toBeGreaterThan(0);
     expect(result.current.dotY.value).toBeGreaterThan(0);
+  });
+
+  it("tracks the edge value when followViewEdge is set", () => {
+    const edgeValue = { value: 9 } as unknown as SharedValue<number>;
+    const { result } = renderHook(() =>
+      useLiveDot(
+        engine({ displayValue: 5, displayMin: 0, displayMax: 10 }),
+        DEFAULT_PADDING,
+        edgeValue,
+        true,
+      ),
+    );
+    // dotY tracks edgeValue (9) — high in [0,10] → near the top, not the live
+    // value (5) which would sit mid-range. chartH = 100-12-28 = 60.
+    expect(result.current.dotY.value).toBeCloseTo(12 + ((10 - 9) / 10) * 60);
   });
 });
