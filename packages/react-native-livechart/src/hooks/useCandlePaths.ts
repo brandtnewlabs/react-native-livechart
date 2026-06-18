@@ -76,11 +76,20 @@ export function useCandlePaths(
   const upBodiesPath = useDerivedValue(() => {
     const b = upBodiesBuilder.value;
     const { bodies } = geometry.value;
+    const radius = candleMetrics.bodyRadius;
     for (let i = 0; i < bodies.length; i++) {
       if (bodies[i].up) {
-        b.addRect(
-          Skia.XYWHRect(bodies[i].x, bodies[i].y, bodies[i].w, bodies[i].h),
-        );
+        const bd = bodies[i];
+        const rr = radius > 0 ? Math.min(radius, bd.w / 2, bd.h / 2) : 0;
+        if (rr > 0) {
+          b.addRRect({
+            rect: { x: bd.x, y: bd.y, width: bd.w, height: bd.h },
+            rx: rr,
+            ry: rr,
+          });
+        } else {
+          b.addRect(Skia.XYWHRect(bd.x, bd.y, bd.w, bd.h));
+        }
       }
     }
     return b.detach();
@@ -90,11 +99,20 @@ export function useCandlePaths(
   const downBodiesPath = useDerivedValue(() => {
     const b = downBodiesBuilder.value;
     const { bodies } = geometry.value;
+    const radius = candleMetrics.bodyRadius;
     for (let i = 0; i < bodies.length; i++) {
       if (!bodies[i].up) {
-        b.addRect(
-          Skia.XYWHRect(bodies[i].x, bodies[i].y, bodies[i].w, bodies[i].h),
-        );
+        const bd = bodies[i];
+        const rr = radius > 0 ? Math.min(radius, bd.w / 2, bd.h / 2) : 0;
+        if (rr > 0) {
+          b.addRRect({
+            rect: { x: bd.x, y: bd.y, width: bd.w, height: bd.h },
+            rx: rr,
+            ry: rr,
+          });
+        } else {
+          b.addRect(Skia.XYWHRect(bd.x, bd.y, bd.w, bd.h));
+        }
       }
     }
     return b.detach();

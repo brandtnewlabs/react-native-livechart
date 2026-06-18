@@ -1140,6 +1140,8 @@ describe("resolveMetrics", () => {
       minBodyPx: 1,
       maxBodyPx: 40,
       bodyWidthRatio: 0.8,
+      bodyRadius: 0,
+      wickWidth: 1,
     });
     expect(m.grid).toEqual({ fadeInSpeed: 0.18, fadeOutSpeed: 0.12 });
     expect(m.motion).toEqual({
@@ -1175,7 +1177,13 @@ describe("resolveMetrics", () => {
       motion: { adaptiveSpeedBoost: 0 },
       emptyState: { labelOpacity: 1 },
     });
-    expect(m.candle).toEqual({ minBodyPx: 1, maxBodyPx: 12, bodyWidthRatio: 0.8 });
+    expect(m.candle).toEqual({
+      minBodyPx: 1,
+      maxBodyPx: 12,
+      bodyWidthRatio: 0.8,
+      bodyRadius: 0,
+      wickWidth: 1,
+    });
     expect(m.grid).toEqual({ fadeInSpeed: 0.5, fadeOutSpeed: 0.12 });
     expect(m.motion).toEqual({ badgeColorSpeed: 0.08, adaptiveSpeedBoost: 0 });
     expect(m.emptyState).toEqual({
