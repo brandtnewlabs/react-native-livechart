@@ -464,6 +464,25 @@ describe("LiveChart", () => {
     });
   });
 
+  it("composes the order ticket (scrubAction) with time-scroll", () => {
+    // axisDrag carves the bottom band out of the scrub + tap hit area (so a drag
+    // there scrolls, not scrubs); holdToScrub keeps the whole plot live. Both
+    // compose with scrubAction without crashing.
+    for (const gesture of ["axisDrag", "holdToScrub"] as const) {
+      const screen = render(
+        <CandleHarness
+          timeScroll={{ gesture }}
+          scrubAction
+          onScrubAction={jest.fn()}
+        />,
+      );
+      const views = screen.UNSAFE_getAllByType(View);
+      fireEvent(views[0], "layout", {
+        nativeEvent: { layout: { width: 400, height: 200 } },
+      });
+    }
+  });
+
   it("composes the hold-to-scrub (one-finger drag) gesture", () => {
     // Default hold (no scrubHoldMs) and an explicit override both render cleanly.
     for (const ts of [

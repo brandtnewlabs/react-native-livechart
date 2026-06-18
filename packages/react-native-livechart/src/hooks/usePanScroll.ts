@@ -9,7 +9,7 @@ import {
 import type { ChartPadding } from "../draw/line";
 
 /** Minimum height (px) of the bottom "grab the time ruler" band in axis-drag mode. */
-const AXIS_GRAB_MIN_PX = 44;
+export const AXIS_GRAB_MIN_PX = 44;
 /** Horizontal travel (px) before a one-finger drag commits to scrolling vs. falling through. */
 const AXIS_ACTIVATE_PX = 6;
 /** Vertical travel (px) that fails the one-finger scroll so a parent vertical scroll wins. */

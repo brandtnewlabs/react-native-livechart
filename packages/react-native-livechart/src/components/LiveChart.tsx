@@ -58,7 +58,7 @@ import { useMarkers } from "../hooks/useMarkers";
 import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
 import { useModeBlend } from "../hooks/useModeBlend";
 import { useMomentum } from "../hooks/useMomentum";
-import { usePanScroll } from "../hooks/usePanScroll";
+import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { useSegmentLineGradient } from "../hooks/useSegmentLineGradient";
 import { useSingleChartReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import { useThreshold } from "../hooks/useThreshold";
@@ -597,6 +597,11 @@ function useLiveChartController({
     scrubCfg?.tooltipShowValue ?? true,
     scrubCfg?.tooltipShowTime ?? true,
     scrubCfg?.tooltipMargin ?? 8,
+    // Axis-drag time-scroll: keep the bottom "time ruler" band scroll-only so a
+    // drag there never trips the scrub crosshair.
+    timeScrollEnabled && scrollGestureMode === "axisDrag"
+      ? Math.max(effectivePadding.bottom, AXIS_GRAB_MIN_PX)
+      : 0,
   );
 
   // ── Time-scroll (drag back through history) ───────────────────────────────
