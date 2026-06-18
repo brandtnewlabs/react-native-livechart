@@ -437,4 +437,20 @@ describe("LiveChart", () => {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
+
+  it("composes the two-finger pan-scroll gesture when timeScroll is on (line)", () => {
+    const screen = render(<Harness timeScroll scrub />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
+
+  it("enables time-scroll in candle mode", () => {
+    const screen = render(<CandleHarness timeScroll />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
 });

@@ -82,6 +82,11 @@ const SECTIONS: DemoSection[] = [
         title: "Order ticket",
         blurb: "scrubAction: tap to drop a price, drag to adjust, press + to place a limit order.",
       },
+      {
+        href: "/demo/time-scroll",
+        title: "Time scroll",
+        blurb: "timeScroll: two-finger drag to pan back through candle history; release at the live edge to resume.",
+      },
     ],
   },
   {

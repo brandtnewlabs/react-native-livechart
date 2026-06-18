@@ -1226,6 +1226,15 @@ export interface LiveChartCoreProps {
    * and `timeWindow = maxT - minT` to fill the canvas edge-to-edge with historical data.
    */
   nowOverride?: number;
+  /**
+   * Enable two-finger horizontal time-scrolling: drag with two fingers (or fling)
+   * to pan back through history. The chart stops auto-scrolling while panned and
+   * resumes once you reach the live edge again. One-finger scrub is unchanged.
+   * Requires retained history in `data` / `candles` to scroll into. Default `false`.
+   *
+   * @experimental Prototype — gesture model and API may change.
+   */
+  timeScroll?: boolean;
   /** Accessibility label for the chart container. */
   accessibilityLabel?: string;
   /** Accessibility role for the chart container. Default `"image"`. */

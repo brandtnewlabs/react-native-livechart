@@ -58,6 +58,7 @@ import { useMarkers } from "../hooks/useMarkers";
 import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
 import { useModeBlend } from "../hooks/useModeBlend";
 import { useMomentum } from "../hooks/useMomentum";
+import { usePanScroll } from "../hooks/usePanScroll";
 import { useSegmentLineGradient } from "../hooks/useSegmentLineGradient";
 import { useSingleChartReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import { useThreshold } from "../hooks/useThreshold";
@@ -177,6 +178,7 @@ function useLiveChartController({
   maxValue,
   windowBuffer = 0,
   nowOverride,
+  timeScroll = false,
   accessibilityLabel,
   accessibilityRole = "image",
   emptyText = "No data",
@@ -574,6 +576,27 @@ function useLiveChartController({
     scrubCfg?.tooltipMargin ?? 8,
   );
 
+  // ── Time-scroll (two-finger pan back through history) ─────────────────────
+  // Experimental: a two-finger pan freezes the window at an absolute time and
+  // resumes following once dragged back to the live edge. One-finger scrub is
+  // untouched. Pan is clamped to the earliest retained point (line or candle).
+  const scrollMinTime = useDerivedValue(() => {
+    const src = isCandle ? candlesEngine.get() : lineEngineData.get();
+    return src.length > 0 ? src[0].time : engine.liveEdge.get();
+  });
+  const timeScrollEnabled = timeScroll && !isStatic;
+  const panScrollGesture = usePanScroll({
+    engine,
+    padding: effectivePadding,
+    minTime: scrollMinTime,
+    enabled: timeScrollEnabled,
+    // Clear any live crosshair when a scroll drag takes over.
+    onScrollStart: () => {
+      "worklet";
+      crosshair.scrubActive.set(false);
+    },
+  });
+
   // Scrub-action composes a Tap (place/move the reticle, press the badge, dismiss)
   // ahead of the pan via Exclusive, so a tap is tried first and only becomes a
   // drag (live-scrub, or lock-adjust once placed) if the finger moves. `Exclusive`
@@ -605,6 +628,12 @@ function useLiveChartController({
       scrubActionCfg !== null
         ? Gesture.Simultaneous(baseGesture, tapGroup)
         : Gesture.Race(baseGesture, tapGroup);
+  }
+
+  // Two-finger pan-scroll races the scrub/tap gestures. The pointer-count split
+  // (2 = scroll, 1 = scrub) keeps them from fighting; Race cancels the loser.
+  if (timeScrollEnabled) {
+    rootGesture = Gesture.Race(panScrollGesture, rootGesture);
   }
 
   // ── Derived render values ──────────────────────────────────────────────

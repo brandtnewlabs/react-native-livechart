@@ -8,7 +8,7 @@ import {
 import { MS_PER_FRAME_60FPS } from "../constants";
 import type { LiveChartPoint, SeriesConfig } from "../types";
 import { tickLiveChartSeriesEngineFrame } from "./liveChartSeriesEngineTick";
-import type { MultiEngineState } from "./useLiveChartEngine";
+import type { ChartEngineScroll, MultiEngineState } from "./useLiveChartEngine";
 
 export interface MultiSeriesEngineConfig {
   series: SharedValue<SeriesConfig[]>;
@@ -47,6 +47,10 @@ export interface MultiEngineFrameRefs {
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
+  /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
+  viewEndSV?: SharedValue<number | null>;
+  /** Receives the computed live edge each frame. Optional for callers/tests. */
+  liveEdgeSV?: SharedValue<number>;
   extremaMinValue: SharedValue<number>;
   extremaMaxValue: SharedValue<number>;
   extremaMinTime: SharedValue<number>;
@@ -105,6 +109,7 @@ export function applyLiveChartSeriesEngineFrame(
     displayMax: sv.displayMax.value,
     displayWindow: sv.displayWindow.value,
     timestamp: sv.timestamp.value,
+    liveEdge: sv.liveEdgeSV?.value ?? 0,
     displayValues,
     opacities,
     extremaMinValue: sv.extremaMinValue.value,
@@ -129,11 +134,13 @@ export function applyLiveChartSeriesEngineFrame(
     series: seriesSnap,
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
+    viewEnd: sv.viewEndSV?.value,
   });
   sv.displayMin.value = state.displayMin;
   sv.displayMax.value = state.displayMax;
   sv.displayWindow.value = state.displayWindow;
   sv.timestamp.value = state.timestamp;
+  if (sv.liveEdgeSV) sv.liveEdgeSV.value = state.liveEdge;
   sv.displaySeriesValues.value = state.displayValues;
   sv.seriesOpacities.value = state.opacities;
   sv.extremaMinValue.value = state.extremaMinValue;
@@ -148,7 +155,7 @@ export function applyLiveChartSeriesEngineFrame(
  */
 export function useLiveChartSeriesEngine(
   config: MultiSeriesEngineConfig,
-): MultiEngineState {
+): MultiEngineState & ChartEngineScroll {
   const timeWindow = useDerivedValue(() => config.timeWindow);
   const smoothing = useDerivedValue(() => config.smoothing);
   const adaptiveSpeedBoostSV = useDerivedValue(() => config.adaptiveSpeedBoost);
@@ -169,6 +176,10 @@ export function useLiveChartSeriesEngine(
   // Seed once; overwritten by the frame callback on the first tick.
   const [initialTimestamp] = useState(() => Date.now() / 1000);
   const timestamp = useSharedValue(initialTimestamp);
+
+  // Pan-scroll state (see useLiveChartEngine). Defaults to following live.
+  const viewEnd = useSharedValue<number | null>(null);
+  const liveEdge = useSharedValue(initialTimestamp);
 
   const displaySeriesValues = useSharedValue<number[]>([]);
   const seriesOpacities = useSharedValue<number[]>([]);
@@ -217,6 +228,8 @@ export function useLiveChartSeriesEngine(
         nowOverrideSV,
         windowBufferSV,
         pausedSV,
+        viewEndSV: viewEnd,
+        liveEdgeSV: liveEdge,
         extremaMinValue,
         extremaMaxValue,
         extremaMinTime,
@@ -237,6 +250,8 @@ export function useLiveChartSeriesEngine(
     canvasWidth,
     canvasHeight,
     timestamp,
+    viewEnd,
+    liveEdge,
     series,
     displaySeriesValues,
     seriesOpacities,

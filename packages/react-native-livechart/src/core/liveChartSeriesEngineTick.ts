@@ -7,6 +7,12 @@ export interface MultiEngineTickMutable {
   displayMax: number;
   displayWindow: number;
   timestamp: number;
+  /**
+   * The right-edge time the engine would use if following live (`now (+ buffer)`).
+   * Equals {@link timestamp} while following; keeps advancing while `timestamp`
+   * stays frozen when scrolled back (see {@link MultiEngineTickInput.viewEnd}).
+   */
+  liveEdge: number;
   displayValues: number[];
   opacities: number[];
   /**
@@ -44,6 +50,12 @@ export interface MultiEngineTickInput {
   /** Right-edge buffer as a fraction of the time window. */
   windowBuffer?: number;
   paused?: boolean;
+  /**
+   * Absolute right-edge time (unix seconds) to freeze the window at, or
+   * `null`/`undefined` to follow the live edge. Drives pan-scroll; takes
+   * precedence over {@link paused}.
+   */
+  viewEnd?: number | null;
 }
 
 /**
@@ -57,9 +69,17 @@ export function tickLiveChartSeriesEngineFrame(
 ): void {
   "worklet";
   const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
-  if (!input.paused) {
-    state.timestamp = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
+  const liveEdge = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
+  state.liveEdge = liveEdge;
+  const viewEnd = input.viewEnd;
+  if (viewEnd != null && viewEnd < liveEdge) {
+    // Scrolled back in time: freeze the right edge (see usePanScroll).
+    state.timestamp = viewEnd;
+  } else if (!input.paused) {
+    // Following the live edge — viewEnd is null/undefined or has caught back up.
+    state.timestamp = liveEdge;
   }
+  // else: paused with no active pan → leave the frozen timestamp untouched.
 
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
 

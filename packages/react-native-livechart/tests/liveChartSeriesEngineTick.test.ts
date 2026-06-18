@@ -6,6 +6,7 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     displayMax: number;
     displayWindow: number;
     timestamp: number;
+    liveEdge: number;
     displayValues: number[];
     opacities: number[];
     extremaMinValue: number;
@@ -18,6 +19,7 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       displayMax: 100,
       displayWindow: 30,
       timestamp: 1000,
+      liveEdge: 0,
       displayValues: [],
       opacities: [],
       extremaMinValue: NaN,
@@ -596,6 +598,51 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       expect(s.extremaMaxValue).toBeNaN();
       expect(s.extremaMinTime).toBeNaN();
       expect(s.extremaMaxTime).toBeNaN();
+    });
+  });
+
+  describe("time-scroll", () => {
+    function input(
+      extra: Partial<Parameters<typeof tickLiveChartSeriesEngineFrame>[1]>,
+    ) {
+      return {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.08,
+        exaggerate: false,
+        referenceValue: undefined,
+        series: [],
+        nowSeconds: 1000,
+        ...extra,
+      };
+    }
+
+    it("exposes the live edge and follows it by default", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, input({ windowBuffer: 0.1 }));
+      expect(s.liveEdge).toBe(1003);
+      expect(s.timestamp).toBe(1003);
+    });
+
+    it("freezes the right edge at viewEnd when scrolled back", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, input({ viewEnd: 950 }));
+      expect(s.timestamp).toBe(950);
+      expect(s.liveEdge).toBe(1000);
+    });
+
+    it("follows the live edge once viewEnd catches up", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, input({ viewEnd: 1200 }));
+      expect(s.timestamp).toBe(1000);
+    });
+
+    it("lets viewEnd override paused", () => {
+      const s = { ...baseMulti(), timestamp: 999 };
+      tickLiveChartSeriesEngineFrame(s, input({ viewEnd: 950, paused: true }));
+      expect(s.timestamp).toBe(950);
     });
   });
 });
