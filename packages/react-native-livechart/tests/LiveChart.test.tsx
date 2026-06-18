@@ -492,6 +492,19 @@ describe("LiveChart", () => {
     });
   });
 
+  it("reserves the float gutter at rest when timeScroll is on", () => {
+    // float + timeScroll: at the live edge (not scrolled) the chart keeps its
+    // right gutter so the plot doesn't sit under the floating axis/badge. The
+    // float collapses only once scrolled back (driven on the UI thread).
+    const screen = render(
+      <CandleHarness yAxis={{ float: true }} timeScroll badge />,
+    );
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
+
   it("composes the hold-to-scrub (one-finger drag) gesture", () => {
     // Default hold (no scrubHoldMs) and an explicit override both render cleanly.
     for (const ts of [

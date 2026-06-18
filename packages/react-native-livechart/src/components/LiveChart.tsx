@@ -1,7 +1,12 @@
 import { useLayoutEffect, useState } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { useDerivedValue, useSharedValue } from "react-native-reanimated";
+import {
+  useAnimatedReaction,
+  useDerivedValue,
+  useSharedValue,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
 /**
  * Single-series live chart. UX and prop vocabulary parallel Benji Taylor’s
@@ -338,13 +343,24 @@ function useLiveChartController({
     setValueLayoutSample(value.get());
   }, [value]);
 
+  // `scrolledBack` mirrors the UI-thread scroll state (engine.viewEnd != null)
+  // onto the JS thread (set by the reaction below, after the engine exists).
+  const [scrolledBack, setScrolledBack] = useState(false);
+  const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
+
   const yAxisFloat = yAxisCfg?.float ?? false;
+  // With timeScroll, the floating full-width plot engages only while scrolled
+  // back; at the live edge the chart keeps a normal right gutter so the
+  // line/candles don't sit under the floating y-axis labels + badge. Without
+  // timeScroll, float behaves as before (always full-width).
+  const effectiveYAxisFloat =
+    yAxisFloat && (!timeScrollEnabled || scrolledBack);
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
-    yAxisFloat,
+    yAxisFloat: effectiveYAxisFloat,
     badge: badgeCfg !== null,
     badgeMetrics: metricsCfg.badge,
     badgeUsesRightGutter,
@@ -398,6 +414,19 @@ function useLiveChartController({
     candles: isCandle ? candlesEngine : candles,
     liveCandle: isCandle ? liveEngine : liveCandle,
   });
+
+  // Mirror the UI-thread scroll state to React so the floating y-axis can keep
+  // a right gutter at the live edge and collapse it only while scrolled back.
+  // Fires once per null↔frozen transition, and only matters for float+timeScroll.
+  useAnimatedReaction(
+    () => engine.viewEnd.value != null,
+    /* istanbul ignore next -- Reanimated reaction; state mirrored on the JS thread, not exercised under Jest */
+    (isScrolled, prev) => {
+      if (isScrolled !== prev && yAxisFloat && timeScrollEnabled) {
+        scheduleOnRN(setScrolledBack, isScrolled);
+      }
+    },
+  );
 
   // ── Mode crossfade (line ↔ candle) ──────────────────────────────────
   const { lineGroupOpacity, candleGroupOpacity } = useModeBlend(
@@ -517,7 +546,7 @@ function useLiveChartController({
     badgeCfg?.background,
     metricsCfg.badge,
     metricsCfg.motion.badgeColorSpeed,
-    yAxisFloat,
+    effectiveYAxisFloat,
     engine.edgeValue,
     badgeCfg?.followViewEdge ?? false,
   );
@@ -575,8 +604,8 @@ function useLiveChartController({
 
   // Time-scroll activation. `holdToScrub`: a quick one-finger drag scrolls while
   // scrub engages on press-and-hold — so the scrub gesture needs a long-press
-  // delay (unless the caller set its own `panGestureDelay`).
-  const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
+  // delay (unless the caller set its own `panGestureDelay`). `timeScrollEnabled`
+  // is computed earlier (it gates the float gutter).
   const scrollGestureMode =
     typeof timeScroll === "object"
       ? (timeScroll.gesture ?? "holdToScrub")
@@ -741,7 +770,7 @@ function useLiveChartController({
     extremaTimeOffset: isCandle ? candleWidth / 2 : 0,
     // configs
     yAxisCfg,
-    yAxisFloat,
+    yAxisFloat: effectiveYAxisFloat,
     xAxisCfg,
     badgeCfg,
     scrubCfg,
