@@ -28,6 +28,7 @@ import type {
   ThresholdLineConfig,
   TradeEvent,
   ValueLineConfig,
+  VolumeConfig,
   XAxisConfig,
   YAxisConfig,
 } from "../types";
@@ -65,6 +66,19 @@ export interface ResolvedYAxisConfig {
   minGap: number;
   /** Float the axis over a full-width plot (no reserved right gutter). */
   float: boolean;
+}
+
+export interface ResolvedVolumeConfig {
+  /** undefined → use palette.candleUp at render time. */
+  upColor: string | undefined;
+  /** undefined → use palette.candleDown at render time. */
+  downColor: string | undefined;
+  /** Reserved band height (px) — the tallest a bar can be. */
+  maxHeight: number;
+  /** Corner radius (px) of bar tops. */
+  radius: number;
+  /** Opacity (0..1) applied to the whole band. */
+  opacity: number;
 }
 
 /** Resolved straight-line styling (connector, etc.). `color: undefined` → caller default. */
@@ -366,6 +380,25 @@ export function resolveYAxis(
   prop: boolean | YAxisConfig | undefined,
 ): ResolvedYAxisConfig | null {
   return resolveToggle(prop, Y_AXIS_DEFAULTS, false);
+}
+
+const VOLUME_DEFAULTS: ResolvedVolumeConfig = {
+  upColor: undefined,
+  downColor: undefined,
+  maxHeight: 48,
+  radius: 2,
+  opacity: 0.6,
+};
+
+/**
+ * Resolves the `volume` prop to a fully-typed config or null (disabled).
+ * `true` → defaults, object → merged with defaults, falsy → null. Colors left
+ * `undefined` fall back to the candle palette at render time.
+ */
+export function resolveVolume(
+  prop: boolean | VolumeConfig | undefined,
+): ResolvedVolumeConfig | null {
+  return resolveToggle(prop, VOLUME_DEFAULTS, false);
 }
 
 const AXIS_LABEL_DEFAULTS: ResolvedAxisLabelConfig = {

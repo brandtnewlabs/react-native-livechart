@@ -19,12 +19,19 @@ export function XAxisOverlay({
   padding,
   palette,
   font,
+  volumeBandHeight = 0,
 }: {
   entries: SharedValue<XAxisEntry[]>;
   engine: ChartEngineLayout;
   padding: ChartPadding;
   palette: LiveChartPalette;
   font: SkFont;
+  /**
+   * Reserved volume-band height (px) folded into `padding.bottom`. The axis line
+   * + labels shift back down by this so they stay at the very bottom, below the
+   * band, while the price plot above shrinks. `0` = no band (default).
+   */
+  volumeBandHeight?: number;
 }) {
   const axisBuilder = usePathBuilder();
 
@@ -33,7 +40,7 @@ export function XAxisOverlay({
     const b = axisBuilder.value;
     const w = engine.canvasWidth.get();
     const h = engine.canvasHeight.get();
-    const lineY = h - padding.bottom;
+    const lineY = h - padding.bottom + volumeBandHeight;
 
     // Bottom axis line
     b.moveTo(padding.left, lineY);
@@ -53,7 +60,7 @@ export function XAxisOverlay({
     "worklet";
     const items = entries.get();
     const h = engine.canvasHeight.get();
-    const y = h - padding.bottom + LABEL_OFFSET_Y;
+    const y = h - padding.bottom + volumeBandHeight + LABEL_OFFSET_Y;
     const n = items.length;
     const out: { x: number; y: number; label: string; alpha: number }[] = [];
     for (let i = 0; i < n; i++) {

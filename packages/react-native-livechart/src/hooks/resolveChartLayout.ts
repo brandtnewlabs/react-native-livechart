@@ -28,6 +28,13 @@ export interface ChartLayoutConfig {
   badgeUsesRightGutter?: boolean;
   /** When false, bottom inset shrinks (no x-axis labels). Default true. */
   xAxis?: boolean;
+  /**
+   * Reserved volume-bar band height (px) below the candles. Added to the bottom
+   * padding so the candle/price plot shrinks by this much; the x-axis offsets
+   * back down by it so its labels stay pinned to the bottom (see XAxisOverlay).
+   * `0`/omitted = no band. An explicit `insetsOverride.bottom` suppresses it.
+   */
+  volumeBandHeight?: number;
   /** Skia font for measuring label width. When provided with formatValue + currentValue, padding auto-sizes. */
   font?: SkFont;
   /** Worklet formatter — called on JS thread here to measure label width */
@@ -167,6 +174,19 @@ export function resolveChartLayout(
   // wins. (The live-dot pulse may clip at the right edge in this mode.)
   if (config.yAxisFloat && config.insetsOverride?.right == null) {
     padding = { ...padding, right: FLOAT_AXIS_RIGHT_INSET };
+  }
+
+  // Volume band: reserve extra space at the bottom by ADDING the band height to
+  // the (already finalized) bottom padding, so every price Y-projection shrinks
+  // for free. The x-axis is shifted back down by the same amount (XAxisOverlay)
+  // so its labels stay at the very bottom, below the band. An explicit bottom
+  // inset opts out (the caller owns the full bottom space).
+  if (
+    config.volumeBandHeight &&
+    config.volumeBandHeight > 0 &&
+    config.insetsOverride?.bottom == null
+  ) {
+    padding = { ...padding, bottom: padding.bottom + config.volumeBandHeight };
   }
 
   return {

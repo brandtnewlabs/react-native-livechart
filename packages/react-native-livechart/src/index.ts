@@ -90,6 +90,7 @@ export type {
   TooltipRenderProps,
   TradeEvent,
   ValueLineConfig,
+  VolumeConfig,
   XAxisConfig,
   YAxisConfig,
 } from "./types";
