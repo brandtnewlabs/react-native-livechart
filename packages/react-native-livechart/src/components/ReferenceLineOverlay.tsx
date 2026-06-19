@@ -10,10 +10,12 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
+import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
 import { usePathBuilder } from "../hooks/usePathBuilder";
 import { useReferenceLine } from "../hooks/useReferenceLine";
+import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
 import { referenceLineForm, resolveReferenceBadge } from "../math/referenceLines";
-import type { LiveChartPalette, ReferenceLine } from "../types";
+import type { FontConfig, LiveChartPalette, ReferenceLine } from "../types";
 
 /** Translucent fill alpha for value / time bands. */
 const BAND_FILL_OPACITY = 0.16;
@@ -35,6 +37,7 @@ export function ReferenceLineOverlay({
   palette,
   formatValue,
   font,
+  fontProp,
   badgeLayer = false,
   suppressTag = false,
   groupHidden,
@@ -47,6 +50,12 @@ export function ReferenceLineOverlay({
   palette: LiveChartPalette;
   formatValue: (v: number) => string;
   font: SkFont;
+  /**
+   * The chart's raw font config — used to build a per-badge font when the line's
+   * {@link ReferenceLineBadgeConfig} sets `fontSize` / `fontFamily` / `fontWeight`.
+   * When no badge font knob is set, the resolved `font` is used as-is.
+   */
+  fontProp?: FontConfig;
   /**
    * Render only the badge + label (`true`) or only the lines / bands (`false`,
    * default). The caller draws the base pass behind the chart content and the
@@ -73,18 +82,46 @@ export function ReferenceLineOverlay({
 }) {
   const form = referenceLineForm(line);
   const isBand = form === "value-band" || form === "time-band";
+
+  const color = line.color ?? palette.refLine;
+
+  // Resolved badge appearance (badge config → fallback flat fields → theme).
+  const badge = resolveReferenceBadge(line);
+
+  // Per-badge font (size/family/weight) override; reuses the chart `font` when no
+  // badge font knob is set, so plain lines and gutter labels are unchanged. The
+  // built font drives pill measurement (via useReferenceLine) and the badge text.
+  const badgeHasFontOverride =
+    badge != null &&
+    (badge.fontSize != null ||
+      badge.fontFamily != null ||
+      badge.fontWeight != null);
+  const badgeFontOverride = useChartSkiaFont(
+    badgeHasFontOverride
+      ? {
+          ...fontProp,
+          fontFamily: badge?.fontFamily ?? fontProp?.fontFamily,
+          fontSize: badge?.fontSize ?? fontProp?.fontSize,
+          fontWeight: badge?.fontWeight ?? fontProp?.fontWeight,
+        }
+      : fontProp,
+    MONO_FONT_FAMILY,
+    palette.labelFontSize,
+  );
+  const badgeFont = badgeHasFontOverride ? badgeFontOverride : font;
+
   const layout = useReferenceLine(
     engine,
     padding,
     line,
     formatValue,
-    font,
+    badgeFont,
     dragValues,
     index,
   );
 
-  const color = line.color ?? palette.refLine;
-  const labelColor = line.labelColor ?? line.color ?? palette.refLabel;
+  const labelColor =
+    badge?.textColor ?? line.labelColor ?? line.color ?? palette.refLabel;
   const strokeWidth = line.strokeWidth ?? 1;
   const intervals = line.intervals ?? [4, 4];
 
@@ -92,11 +129,17 @@ export function ReferenceLineOverlay({
   const bandFillOpacity = line.fillOpacity ?? BAND_FILL_OPACITY;
   const hasBandBorder = isBand && line.strokeWidth !== undefined;
 
-  // Resolved badge appearance (badge config → fallback flat fields → theme).
-  const badge = resolveReferenceBadge(line);
   const badgeBackground = badge?.background ?? palette.tooltipBg;
   const badgeBorderColor = badge?.borderColor ?? color;
+  const badgeBorderWidth = badge?.borderWidth ?? 1;
   const badgeRadius = badge?.radius ?? BADGE_PILL_RADIUS;
+  // Nudge the whole badge (connector + pill + chevron + icon + label) off its anchor.
+  const badgeOffsetX = badge?.offsetX ?? 0;
+  const badgeOffsetY = badge?.offsetY ?? 0;
+  const badgeTransform =
+    badgeOffsetX !== 0 || badgeOffsetY !== 0
+      ? [{ translateX: badgeOffsetX }, { translateY: badgeOffsetY }]
+      : undefined;
 
   const lineBuilder = usePathBuilder();
   const bandBuilder = usePathBuilder();
@@ -216,7 +259,7 @@ export function ReferenceLineOverlay({
   // Font metrics depend only on the (stable) font, so read them once instead of
   // on every frame inside the pill worklet (`getMetrics` allocates + crosses JSI).
   const { ascent: fontAscent, height: pillH } = (() => {
-    const fm = font.getMetrics();
+    const fm = badgeFont.getMetrics();
     return {
       ascent: fm.ascent,
       height: fm.descent - fm.ascent + BADGE_PILL_PAD_Y * 2,
@@ -268,7 +311,7 @@ export function ReferenceLineOverlay({
 
       {/* Badge pass — connector + pill + chevron + icon, above the left-edge fade. */}
       {badgeLayer && (
-        <Group opacity={badgeOpacity}>
+        <Group opacity={badgeOpacity} transform={badgeTransform}>
           <Path
             path={connPath}
             style="stroke"
@@ -293,7 +336,7 @@ export function ReferenceLineOverlay({
             r={badgeRadius}
             color={badgeBorderColor}
             style="stroke"
-            strokeWidth={1}
+            strokeWidth={badgeBorderWidth}
           />
           <Path
             path={chevronPath}
@@ -308,7 +351,7 @@ export function ReferenceLineOverlay({
               x={iconX}
               y={labelY}
               text={iconText}
-              font={font}
+              font={badgeFont}
               color={labelColor}
             />
           </Group>
@@ -317,12 +360,12 @@ export function ReferenceLineOverlay({
 
       {/* Labels ride in the badge pass too, so they stay crisp above the fade. */}
       {badgeLayer && (
-        <Group opacity={labelOpacity}>
+        <Group opacity={labelOpacity} transform={badgeTransform}>
           <SkiaText
             x={labelX}
             y={labelY}
             text={labelText}
-            font={font}
+            font={badgeFont}
             color={labelColor}
           />
         </Group>

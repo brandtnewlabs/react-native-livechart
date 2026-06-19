@@ -1,4 +1,8 @@
-import type { ReferenceLine } from "../types";
+import type {
+  FontWeight,
+  ReferenceLine,
+  ReferenceLineBadgeConfig,
+} from "../types";
 
 /** Which of the three reference-line forms a `ReferenceLine` resolves to. */
 export type ReferenceLineForm = "line" | "value-band" | "time-band" | "none";
@@ -40,22 +44,84 @@ export function collectReferenceValues(lines: ReferenceLine[]): number[] {
   return out;
 }
 
-/** Fully-resolved badge presentation for a Form-A reference line. */
-export interface ResolvedReferenceBadge {
+/**
+ * Fully-resolved badge **style/shape** + anchor — the resolved counterpart of
+ * {@link BadgeStyleConfig} (`position` / `icon` / `showText` plus the style knobs).
+ * Shared by the reference-line badge ({@link ResolvedReferenceBadge}) and the
+ * grouping count pill ({@link ResolvedReferenceGroupBadge}). Unset colors stay
+ * `undefined` so the overlay applies the appropriate theme default at render time.
+ */
+export interface ResolvedReferenceBadgeStyle {
   position: "left" | "center" | "right";
   /** Leading glyph, or "" for none. */
   icon: string;
-  /** Whether the text label is shown. */
+  /** Whether the text label is shown (false → icon-only). */
   showText: boolean;
-  /** undefined → theme tooltipBg at render time. */
   background: string | undefined;
-  /** undefined → the line color at render time. */
   borderColor: string | undefined;
+  /** Border stroke width in px. Default `1`. */
+  borderWidth: number;
   radius: number;
+  textColor: string | undefined;
+  /** Per-badge font knobs; undefined → the chart font. */
+  fontSize: number | undefined;
+  fontFamily: string | undefined;
+  fontWeight: FontWeight | undefined;
+  /** Nudge the whole badge from its anchor, in px. Default `0`. */
+  offsetX: number;
+  offsetY: number;
+}
+
+/** Fully-resolved presentation for a Form-A reference-line badge — the shared
+ *  style/shape plus the in-range / legacy-text flags. */
+export interface ResolvedReferenceBadge extends ResolvedReferenceBadgeStyle {
   /** Show the pill at the value when in range (`badge`) vs only off-screen (legacy `offAxisBadge`). */
   inRange: boolean;
   /** Legacy `"word: value"` text format (off-axis badge) vs the `label`/value format. */
   legacyText: boolean;
+}
+
+/** Fully-resolved styling for the grouping **count pill** — exactly the shared
+ *  badge style/shape (no in-range / legacy concepts). */
+export type ResolvedReferenceGroupBadge = ResolvedReferenceBadgeStyle;
+
+/**
+ * Resolves the shared style/shape + anchor of a {@link BadgeStyleConfig}-shaped
+ * badge config. `flat` supplies a reference line's flat `badge*` fallbacks
+ * (`badgeBackground` / `badgeBorderColor` / `badgeRadius`); omit it for the group
+ * pill. Theme defaults for the unset colors are applied at render time. Worklet —
+ * also called from the {@link resolveReferenceBadge} worklet.
+ */
+function resolveReferenceBadgeStyle(
+  cfg: ReferenceLineBadgeConfig | undefined,
+  flat?: ReferenceLine,
+): ResolvedReferenceBadgeStyle {
+  "worklet";
+  return {
+    position: cfg?.position ?? "left",
+    icon: cfg?.icon ?? "",
+    showText: cfg?.text ?? true,
+    background: cfg?.background ?? flat?.badgeBackground,
+    borderColor: cfg?.borderColor ?? flat?.badgeBorderColor,
+    borderWidth: cfg?.borderWidth ?? 1,
+    radius: cfg?.radius ?? flat?.badgeRadius ?? 5,
+    textColor: cfg?.textColor,
+    fontSize: cfg?.fontSize,
+    fontFamily: cfg?.fontFamily,
+    fontWeight: cfg?.fontWeight,
+    offsetX: cfg?.offsetX ?? 0,
+    offsetY: cfg?.offsetY ?? 0,
+  };
+}
+
+/**
+ * Resolves the grouping count-pill styling from a {@link ReferenceLineBadgeConfig}
+ * (the same shape a per-line badge uses). Pure — driven only by the config.
+ */
+export function resolveReferenceGroupBadge(
+  badge?: ReferenceLineBadgeConfig,
+): ResolvedReferenceGroupBadge {
+  return resolveReferenceBadgeStyle(badge);
 }
 
 /**
@@ -70,24 +136,15 @@ export function resolveReferenceBadge(
   if (rl.badge) {
     const cfg = rl.badge === true ? undefined : rl.badge;
     return {
-      position: cfg?.position ?? "left",
-      icon: cfg?.icon ?? "",
-      showText: cfg?.text ?? true,
-      background: cfg?.background ?? rl.badgeBackground,
-      borderColor: cfg?.borderColor ?? rl.badgeBorderColor,
-      radius: cfg?.radius ?? rl.badgeRadius ?? 5,
+      ...resolveReferenceBadgeStyle(cfg, rl),
       inRange: true,
       legacyText: false,
     };
   }
   if (rl.offAxisBadge) {
+    // Legacy off-axis badge: no config object, but the flat `badge*` fallbacks apply.
     return {
-      position: "left",
-      icon: "",
-      showText: true,
-      background: rl.badgeBackground,
-      borderColor: rl.badgeBorderColor,
-      radius: rl.badgeRadius ?? 5,
+      ...resolveReferenceBadgeStyle(undefined, rl),
       inRange: false,
       legacyText: true,
     };

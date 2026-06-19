@@ -86,6 +86,7 @@ import {
 import {
   collectReferenceValues,
   referenceLineForm,
+  resolveReferenceGroupBadge,
 } from "../math/referenceLines";
 import {
   applyPaletteOverride,
@@ -368,11 +369,17 @@ function useLiveChartController({
 
   // Reference-line grouping (collapse near-value handles). Resolved once; the
   // per-frame clustering runs on the UI thread (see ReferenceLineGroupOverlay).
+  const refGroupingCfg =
+    typeof referenceLineGrouping === "object"
+      ? referenceLineGrouping
+      : undefined;
   const refGroupingRadius = referenceLineGrouping
-    ? typeof referenceLineGrouping === "object"
-      ? (referenceLineGrouping.radius ?? 18)
-      : 18
+    ? (refGroupingCfg?.radius ?? 18)
     : null;
+  // Count-pill styling (same style/shape config as a per-line badge) + count
+  // formatter. Resolved once; theme color defaults are applied in the overlay.
+  const refGroupBadge = resolveReferenceGroupBadge(refGroupingCfg?.badge);
+  const refGroupFormat = refGroupingCfg?.format;
 
   const badgeUsesRightGutter =
     badgeCfg !== null && (badgeCfg.position ?? "right") === "right";
@@ -434,6 +441,27 @@ function useLiveChartController({
     palette.labelFontSize,
   );
   const badgeFont = badgeHasFontOverride ? badgeFontOverride : skiaFont;
+
+  // Per-badge font for the grouping count pill (same override pattern as above).
+  const refGroupBadgeHasFont =
+    refGroupBadge.fontSize != null ||
+    refGroupBadge.fontFamily != null ||
+    refGroupBadge.fontWeight != null;
+  const refGroupBadgeFontOverride = useChartSkiaFont(
+    refGroupBadgeHasFont
+      ? {
+          ...fontProp,
+          fontFamily: refGroupBadge.fontFamily ?? fontProp?.fontFamily,
+          fontSize: refGroupBadge.fontSize ?? fontProp?.fontSize,
+          fontWeight: refGroupBadge.fontWeight ?? fontProp?.fontWeight,
+        }
+      : fontProp,
+    MONO_FONT_FAMILY,
+    palette.labelFontSize,
+  );
+  const refGroupBadgeFont = refGroupBadgeHasFont
+    ? refGroupBadgeFontOverride
+    : skiaFont;
 
   const pulseConfig = pulseCfg
     ? {
@@ -985,6 +1013,9 @@ function useLiveChartController({
     refGroupingActive: refGroupingRadius != null,
     refGroupResult,
     groupHidden,
+    refGroupBadge,
+    refGroupBadgeFont,
+    refGroupFormat,
     resolvedSegments,
     hasRecolorSegments,
     segmentGradient,
@@ -996,6 +1027,7 @@ function useLiveChartController({
     // theme / layout / fonts
     palette,
     skiaFont,
+    fontProp,
     valueFont,
     badgeFont,
     strokeWidth,
@@ -1179,6 +1211,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     effectivePadding,
     palette,
     skiaFont,
+    fontProp,
     badgeCfg,
     valueLineCfg,
     dotY,
@@ -1270,6 +1303,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
           palette={palette}
           formatValue={formatValue}
           font={skiaFont}
+          fontProp={fontProp}
           dragValues={dragValues}
           index={i}
         />
@@ -1645,11 +1679,15 @@ function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
     groupHidden,
     refGroupResult,
     refGroupingActive,
+    refGroupBadge,
+    refGroupBadgeFont,
+    refGroupFormat,
     engine,
     effectivePadding,
     palette,
     formatValue,
     skiaFont,
+    fontProp,
     degenShakeTransform,
   } = model;
   if (allRefLines.length === 0) return null;
@@ -1664,6 +1702,7 @@ function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
           palette={palette}
           formatValue={formatValue}
           font={skiaFont}
+          fontProp={fontProp}
           badgeLayer
           dragValues={dragValues}
           index={i}
@@ -1676,8 +1715,11 @@ function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
         <ReferenceLineGroupOverlay
           grouping={refGroupResult}
           padding={effectivePadding}
+          canvasWidth={engine.canvasWidth}
           palette={palette}
-          font={skiaFont}
+          font={refGroupBadgeFont}
+          badge={refGroupBadge}
+          format={refGroupFormat}
         />
       )}
     </Group>

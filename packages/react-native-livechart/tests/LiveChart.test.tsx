@@ -307,6 +307,47 @@ describe("LiveChart", () => {
     );
   });
 
+  it("renders styled reference-line badges and a styled group count pill", () => {
+    render(
+      <Harness
+        referenceLines={[
+          {
+            value: 50,
+            label: "Target",
+            badge: {
+              position: "center",
+              background: "#111",
+              borderColor: "#fff",
+              borderWidth: 2,
+              radius: 8,
+              textColor: "#0f0",
+              fontSize: 16,
+              fontFamily: "Menlo",
+              fontWeight: "700",
+              offsetX: 4,
+              offsetY: -2,
+            },
+          },
+          { value: 60, badge: true }, // near-value alerts → group
+          { value: 60.4, badge: true },
+        ]}
+        referenceLineGrouping={{
+          radius: 60,
+          badge: {
+            position: "center",
+            icon: "⚠",
+            borderWidth: 2,
+            radius: 9,
+            textColor: "#fbbf24",
+            fontSize: 14,
+            offsetX: 2,
+          },
+          format: (n) => `×${n}`,
+        }}
+      />,
+    );
+  });
+
   it("accepts custom formatters", () => {
     render(
       <Harness formatValue={(v) => v.toFixed(4)} formatTime={() => "x"} />,

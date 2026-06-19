@@ -120,8 +120,19 @@ export default function WorkingOrdersScreen() {
       badge: { position: "right" },
       ...handlers("SELL", setSell),
     },
-    // Center badge placement (non-draggable).
-    { value: START, label: "VWAP", color: "#fbbf24", badge: { position: "center" } },
+    // Center badge with style/shape knobs (border, text color, radius, weight).
+    {
+      value: START,
+      label: "VWAP",
+      color: "#fbbf24",
+      badge: {
+        position: "center",
+        borderColor: "#fbbf24",
+        textColor: "#fbbf24",
+        radius: 10,
+        fontWeight: "700",
+      },
+    },
     // Badge-less line: plain gutter label when custom is off, PlainTag when on.
     { value: START * 1.04, label: "Stop", color: "#94a3b8" },
     // A tight stack of alerts → collapses into one count handle when grouping is on.
@@ -148,7 +159,24 @@ export default function WorkingOrdersScreen() {
           accentColor={ACCENT}
           theme={APP_THEME}
           referenceLines={referenceLines}
-          referenceLineGrouping={grouping ? { radius: 26 } : false}
+          referenceLineGrouping={
+            grouping
+              ? {
+                  radius: 26,
+                  // Count pill takes the same style/shape config as a line badge.
+                  badge: {
+                    icon: "⚠",
+                    borderColor: "#a855f7",
+                    textColor: "#a855f7",
+                    fontWeight: "700",
+                  },
+                  format: (n) => {
+                    "worklet";
+                    return `${n} alerts`;
+                  },
+                }
+              : false
+          }
           renderReferenceLine={custom ? renderReferenceLine : undefined}
           scrub={false}
         />

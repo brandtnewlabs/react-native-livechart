@@ -187,12 +187,49 @@ export interface ReferenceLine {
 }
 
 /**
+ * Shared **style & shape** knobs for every badge pill — the value `badge`
+ * ({@link BadgeConfig}), reference-line badges ({@link ReferenceLineBadgeConfig}),
+ * and the grouping count pill. Each badge interface extends this and adds its own
+ * anchor (`position`) / content fields. Unset values fall back to that badge's own
+ * defaults (documented on each interface). One source of truth so every badge is
+ * configured identically.
+ */
+export interface BadgeStyleConfig {
+  /** Pill background color. */
+  background?: string;
+  /** Pill border color. */
+  borderColor?: string;
+  /** Border stroke width in pixels. Default `1`. */
+  borderWidth?: number;
+  /** Pill corner radius in pixels. */
+  radius?: number;
+  /** Label / icon text color override. */
+  textColor?: string;
+  /** Badge font size in pixels. Falls back to the chart `font`. */
+  fontSize?: number;
+  /** Badge font family. Falls back to the chart `font`. */
+  fontFamily?: string;
+  /** Badge font weight. Falls back to the chart `font`. */
+  fontWeight?: FontWeight;
+  /** Nudge the whole badge horizontally from its anchor, in pixels. Default `0`. */
+  offsetX?: number;
+  /** Nudge the whole badge vertically from its anchor, in pixels. Default `0`. */
+  offsetY?: number;
+}
+
+/**
  * Pill-badge presentation for a Form-A {@link ReferenceLine} — a working order,
  * price alert, or target tag. The badge sits at the line's value (pinned to
  * `position`) with a dashed connector to the opposite edge, and pins to the
  * nearest edge with a chevron once the value scrolls off-screen.
+ *
+ * Extends {@link BadgeStyleConfig} for the style/shape knobs. Their reference-line
+ * fallbacks: `background` → `badgeBackground` → theme `tooltipBg`; `borderColor` →
+ * `badgeBorderColor` → the line `color`; `radius` → `badgeRadius` → `5`; `textColor`
+ * → `labelColor` → the line `color` → theme `refLabel`; the `font*` knobs → the
+ * chart `font`.
  */
-export interface ReferenceLineBadgeConfig {
+export interface ReferenceLineBadgeConfig extends BadgeStyleConfig {
   /**
    * Where the badge pins horizontally. `"left"` / `"right"` pin to that plot edge
    * with a dashed connector running to the opposite edge; `"center"` floats the
@@ -209,12 +246,6 @@ export interface ReferenceLineBadgeConfig {
    * Default `true`. Set `false` for an **icon-only** badge.
    */
   text?: boolean;
-  /** Pill background. Falls back to `badgeBackground`, then theme `tooltipBg`. */
-  background?: string;
-  /** Pill border color. Falls back to `badgeBorderColor`, then the line `color`. */
-  borderColor?: string;
-  /** Pill corner radius in pixels. Falls back to `badgeRadius`, then `5`. */
-  radius?: number;
 }
 
 /**
@@ -263,6 +294,23 @@ export interface ReferenceLineGroupingConfig {
    * Default `18`.
    */
   radius?: number;
+  /**
+   * Styling for the collapsed **count pill** — the same style/shape config as a
+   * reference-line badge ({@link ReferenceLineBadgeConfig}): `position`
+   * (`"left"` / `"center"` / `"right"`), `icon` (a leading glyph before the count),
+   * `background`, `borderColor`, `borderWidth`, `radius` (corner radius),
+   * `textColor`, `fontSize` / `fontFamily` / `fontWeight`, and `offsetX` / `offsetY`.
+   * Omit for the theme defaults (left-pinned, `tooltipBg` fill, `refLine` border,
+   * `refLabel` text). The badge's `text: false` hides the count for an icon-only pill.
+   */
+  badge?: ReferenceLineBadgeConfig;
+  /**
+   * Format the collapsed count for the pill label, e.g. `n => \`×${n}\`` or
+   * `n => \`${n} orders\``. Default `String(n)` (the bare count). **Must be a
+   * worklet** (add the `"worklet"` directive) — it runs on the UI thread each
+   * frame, like the chart's `formatValue`. A plain JS closure throws.
+   */
+  format?: (count: number) => string;
 }
 
 /**
@@ -466,45 +514,20 @@ export interface AreaDotsConfig {
   opacity?: number;
 }
 
-/** Value badge pill configuration. */
-export interface BadgeConfig {
+/**
+ * Value badge pill configuration. Extends {@link BadgeStyleConfig} for the
+ * style/shape knobs (`background`, `borderColor` / `borderWidth`, `radius`,
+ * `textColor`, `font*`, `offsetX/Y`). Value-badge specifics: `radius` defaults to a
+ * full capsule (clamped to `[0, pillHeight / 2]`); `borderColor` unset → no border;
+ * `textColor` unset → the `variant` / theme rule.
+ */
+export interface BadgeConfig extends BadgeStyleConfig {
   /** Visual style of the badge pill. Default `"default"`. */
   variant?: BadgeVariant;
   /** Show the pointed tail toward the live dot. Default `true`. */
   tail?: boolean;
-  /** Badge background color override. */
-  background?: string;
   /** Which side of the chart the badge appears on. Default `"right"`. */
   position?: "right" | "left";
-  /**
-   * Pill corner radius in pixels. Default: half the pill height (a full
-   * capsule). Clamped to `[0, pillHeight / 2]`, so the maximum is always the
-   * capsule. `0` gives square corners.
-   */
-  radius?: number;
-  /** Pill border color. When unset, the badge has no border. */
-  borderColor?: string;
-  /** Border stroke width in pixels — only drawn when `borderColor` is set. Default `1`. */
-  borderWidth?: number;
-  /**
-   * Label text color override. Mirrors `background`; when unset the text color
-   * follows the `variant` / theme rule.
-   */
-  textColor?: string;
-  /**
-   * Badge font size in pixels. Falls back to the chart `font`. Note: a size
-   * larger than the chart font can crowd the reserved right gutter — pair with
-   * `position: "left"` or `yAxis.float` if it overflows.
-   */
-  fontSize?: number;
-  /** Badge font family. Falls back to the chart `font`. */
-  fontFamily?: string;
-  /** Badge font weight. Falls back to the chart `font`. */
-  fontWeight?: FontWeight;
-  /** Nudge the whole badge horizontally from its anchor, in pixels. Default `0`. */
-  offsetX?: number;
-  /** Nudge the whole badge vertically from its anchor, in pixels. Default `0`. */
-  offsetY?: number;
   /**
    * When the chart is scrolled back (see `timeScroll`), move the live-price
    * indicators — the badge, the value line, and the live dot — to the price at

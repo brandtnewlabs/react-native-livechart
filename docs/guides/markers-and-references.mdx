@@ -178,8 +178,11 @@ referenceLines={[
 `badge: true` uses the defaults (left-pinned, the line's label/value); pass a
 [`ReferenceLineBadgeConfig`](/api-reference/types#annotations) for `position` (`"left"` /
 `"center"` / `"right"` — `"center"` floats the pill at the value with no connector), an `icon`,
-`text: false` (icon-only), and `background` / `borderColor` / `radius`. It supersedes the legacy
-`offAxisBadge` (still supported), which only appears once the value is off-screen and takes no icon.
+`text: false` (icon-only), and the full style/shape config — `background`, `borderColor` /
+`borderWidth`, `radius`, `textColor`, `fontSize` / `fontFamily` / `fontWeight`, and
+`offsetX` / `offsetY` (the same knobs as the value [`badge`](/api-reference/types#annotations)).
+It supersedes the legacy `offAxisBadge` (still supported), which only appears once the value is
+off-screen and takes no icon.
 
 ### Draggable lines (`draggable`)
 
@@ -239,13 +242,21 @@ When a stack of orders or alerts sits near the same price, their tags pile up il
 into a single count handle:
 
 ```tsx
-referenceLineGrouping={{ radius: 18 }}   // or `true` for the default
+referenceLineGrouping={{
+  radius: 18,                       // proximity that collapses into one pill
+  // `format` runs on the UI thread — it MUST be a worklet (like `formatValue`).
+  format: (n) => { "worklet"; return `×${n}`; }, // label the count (default: the bare number)
+  badge: { position: "left", textColor: "#a855f7" }, // same style/shape config as a line badge
+}}
+// or `true` for the defaults
 ```
 
 The clustered lines' individual tags are suppressed and replaced by one "count" pill at the
 cluster's center; the lines themselves still draw. Lines you render with `renderReferenceLine`
 are excluded from grouping (their custom tag draws itself), so the count reflects only collapsed
-built-in tags.
+built-in tags. The count pill takes the same style/shape config as a per-line badge
+([`ReferenceLineBadgeConfig`](/api-reference/types#annotations)) via `badge`, plus a `format` fn
+for the count label.
 
 ## Overlay bridge (`renderOverlay`)
 
