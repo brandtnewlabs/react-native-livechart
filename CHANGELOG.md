@@ -7,8 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-06-19
+
+A large feature release — pinch-to-zoom, two-finger time-scroll, a price↔pixel
+overlay bridge, draggable/groupable reference lines, marker stacking & grouping,
+volume bars, and badge styling — plus one breaking rename. See **Breaking** for
+the one-line migration.
+
+### Breaking
+
+- **`onMarkerHover` → `onMarkerPress`** (event type **`MarkerHoverEvent` →
+  `MarkerPressEvent`**). The marker tap callback and its event type were renamed
+  to match what they always were — a tap, not a hover (there is no hover on
+  touch). Rename the prop and the type at your call sites; the payload is
+  otherwise unchanged, and now *also* carries `index`, `isGrouped`, and the tapped
+  cluster's `members`.
+  ([#155](https://github.com/brandtnewlabs/react-native-livechart/issues/155))
+
 ### Added
 
+- **Time-scroll (`timeScroll`)** on `LiveChart`. A new `timeScroll` prop
+  (`boolean`) enables a **two-finger** horizontal pan (with fling/decay inertia)
+  to scroll back through retained history; the chart stops auto-following while
+  panned and snaps back to live at the right edge. Works in both line and candle
+  mode, and one-finger scrub is unchanged. **@experimental.**
+- **`renderOverlay` price↔pixel bridge** (`LiveChart`). `renderOverlay(ctx)`
+  mounts a `box-none` RN sibling of the canvas and hands you a
+  `ChartOverlayContext`: a per-frame `scale` SharedValue plus pure
+  `priceToY` / `yToPrice` / `timeToX` / `xToTime` worklets, so you can float your
+  own views (order tickets, price tags) glued to the rescaling axis. Two new hooks
+  `usePriceY` / `useTimeX` return a `SharedValue<number>` that tracks a given
+  price/time — the library owns the scale subscription so reactivity can't be
+  forgotten. Exports `ChartOverlayContext`, `ChartScale`, `ChartPlotRect`,
+  `usePriceY`, `useTimeX`.
+- **Full-width reference lines** — `ReferenceLine.fullWidth?: boolean` (default
+  off) runs a Form-A line or value band edge-to-edge **through the Y-axis
+  gutter**, connecting it visually to its value on the axis. Labels and badges
+  stay anchored inside the plot.
+- **Marker stacking, grouping & side anchoring** (`LiveChart`). A new
+  `markerCluster?: "anchored" | "stacked" | MarkerClusterConfig` prop handles
+  collisions: `"anchored"` (default) is the unchanged, zero-per-frame-cost
+  behavior; `"stacked"` fans co-located markers horizontally and collapses a dense
+  run into a single count badge once it exceeds `maxBeforeGroup` (default 5),
+  recomputed per frame so a cluster fans back out as you zoom in. A per-marker
+  `side?: "above" | "below" | "center"` lifts the glyph off the line (e.g. buys
+  below, sells above), and `renderMarker(marker, ctx)` now receives
+  `{ index, isGrouped, groupCount, side }`. Exports `MarkerClusterConfig`,
+  `MarkerSide`, `MarkerRenderContext`.
+- **Badge style & shape config** (`LiveChart`). `BadgeConfig` gains Skia-native
+  style knobs that cost nothing extra per frame: `radius` (corner radius; `0` =
+  sharp), `borderColor` / `borderWidth`, `textColor`, `fontSize` / `fontFamily` /
+  `fontWeight` (per-badge font), and `offsetX` / `offsetY`. Exports the shared
+  `BadgeStyleConfig`.
+  ([#139](https://github.com/brandtnewlabs/react-native-livechart/issues/139))
+- **Volume bars (`volume`)** on `LiveChart` candle mode. An opt-in
+  `volume?: boolean | VolumeConfig` (`{ upColor, downColor, maxHeight, radius,
+  opacity }`) renders volume bars in a reserved band below the candles; the price
+  plot shrinks so candles are never clipped and the x-axis stays pinned to the
+  bottom. `CandlePoint` gains an optional `volume`. Exports `VolumeConfig`.
+- **Candle styling** — `metrics.candle.bodyRadius` rounds candle-body corners
+  (clamped so thin candles and dojis stay clean; `0` = sharp, the default) and
+  `metrics.candle.wickWidth` sets the high–low wick stroke width (default `1`).
+  When time-scrolled, candle bodies poking past the plot edge now slide **behind**
+  the Y-axis labels instead of drawing over them.
+- **Scrub "point" tooltip placement** — `scrub.tooltipPlacement` accepts a fourth
+  value `"point"`, deriving the tooltip's Y from the scrub dot so the pill floats
+  just above the dot (flipping below when there's no room and clamping into the
+  plot) instead of pinning to a plot edge. Single-series line mode.
 - **Interactive reference lines** (`LiveChart`). Form-A `ReferenceLine`s gain a full
   interaction model for working orders, alerts, and targets:
   - **Draggable** — `draggable` lets you grab a line and drag it along the Y-axis,
@@ -54,6 +119,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   following }`, throttled to ~1 Hz); `onReachStart()` fires once when the left
   edge nears the earliest retained data — the cue to lazily page in older
   history. `VisibleRange` is exported. **@experimental.**
+
+### Fixed
+
+- **Marker / reference-line taps on iOS.** `onMarkerPress` and
+  `onReferenceLinePress` never fired in the plain-scrub path on iOS — the
+  `minDistance(0)` scrub pan won the gesture race and cancelled the tap. The root
+  gesture is now always `Gesture.Simultaneous`, and scrub defers to a marker or
+  badge sitting under the finger.
+  ([#155](https://github.com/brandtnewlabs/react-native-livechart/issues/155))
+- **Y-axis grid guard.** The Y-axis grid loop is guarded against a non-terminating
+  step, so a zero or non-finite tick step can no longer hang the grid build.
+  ([#151](https://github.com/brandtnewlabs/react-native-livechart/issues/151))
 
 ## [3.12.0] - 2026-06-17
 
