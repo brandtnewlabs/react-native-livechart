@@ -1161,6 +1161,10 @@ export interface CandleMetrics {
   maxBodyPx: number;
   /** Body width as a fraction of the per-candle slot width (0–1). Default `0.8`. */
   bodyWidthRatio: number;
+  /** Corner radius (px) of candle bodies. `0` = sharp corners. Default `0`. */
+  bodyRadius: number;
+  /** Wick (high–low line) stroke width in px. Default `1`. */
+  wickWidth: number;
 }
 
 /** Grid-line and axis-label fade animation speeds. */

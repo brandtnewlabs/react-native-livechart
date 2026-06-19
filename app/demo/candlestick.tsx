@@ -48,10 +48,24 @@ const CUSTOM_CANDLE_PALETTE = {
   wickDown: "#ea580c",
 };
 
+const ROUNDING_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: "Sharp" },
+  { value: 3, label: "3px" },
+  { value: 6, label: "6px" },
+];
+
+const WICK_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: "1px" },
+  { value: 2, label: "2px" },
+  { value: 3, label: "3px" },
+];
+
 export default function CandlestickScreen() {
   const [tfLabel, setTfLabel] = useState<TimeframeLabel>("15m · 1m");
   const [stripCandles, setStripCandles] = useState(false);
   const [customColors, setCustomColors] = useState(false);
+  const [rounding, setRounding] = useState(3);
+  const [wickWidth, setWickWidth] = useState(1);
 
   const tf = TIMEFRAMES.find((t) => t.label === tfLabel) ?? TIMEFRAMES[1];
   const candleWidthSecs = tf.candleWidthSecs;
@@ -94,6 +108,7 @@ export default function CandlestickScreen() {
           theme={APP_THEME}
           timeWindow={tf.windowSecs}
           palette={customColors ? CUSTOM_CANDLE_PALETTE : undefined}
+          metrics={{ candle: { bodyRadius: rounding, wickWidth } }}
           scrub={{ tooltip: true }}
         />
       }
@@ -103,6 +118,20 @@ export default function CandlestickScreen() {
         options={TIMEFRAME_OPTIONS}
         value={tfLabel}
         onChange={setTfLabel}
+      />
+
+      <ChipRow
+        label="Body radius"
+        options={ROUNDING_OPTIONS}
+        value={rounding}
+        onChange={setRounding}
+      />
+
+      <ChipRow
+        label="Wick width"
+        options={WICK_OPTIONS}
+        value={wickWidth}
+        onChange={setWickWidth}
       />
 
       <ControlRow label="Candle colors">

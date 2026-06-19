@@ -1122,13 +1122,13 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         <Path
           path={upWicksPath}
           style="stroke"
-          strokeWidth={1}
+          strokeWidth={metricsCfg.candle.wickWidth}
           color={palette.wickUp}
         />
         <Path
           path={downWicksPath}
           style="stroke"
-          strokeWidth={1}
+          strokeWidth={metricsCfg.candle.wickWidth}
           color={palette.wickDown}
         />
         <Path path={upBodiesPath} style="fill" color={palette.candleUp} />

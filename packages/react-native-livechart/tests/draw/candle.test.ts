@@ -214,6 +214,8 @@ describe("candle geometry metrics overrides", () => {
       minBodyPx: 1,
       maxBodyPx: 20,
       bodyWidthRatio: 0.8,
+      bodyRadius: 0,
+      wickWidth: 1,
     });
     expect(narrow.bodies[0].w).toBe(20);
   });
@@ -226,6 +228,8 @@ describe("candle geometry metrics overrides", () => {
       minBodyPx: 1,
       maxBodyPx: 40,
       bodyWidthRatio: 0.5,
+      bodyRadius: 0,
+      wickWidth: 1,
     });
     expect(thin.bodies[0].w).toBe(20); // 40 * 0.5
   });
@@ -238,6 +242,8 @@ describe("candle geometry metrics overrides", () => {
       minBodyPx: 6,
       maxBodyPx: 40,
       bodyWidthRatio: 0.8,
+      bodyRadius: 0,
+      wickWidth: 1,
     });
     expect(tall.bodies[0].h).toBe(6);
   });
