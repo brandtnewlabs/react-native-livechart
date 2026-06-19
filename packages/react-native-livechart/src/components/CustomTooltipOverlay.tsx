@@ -48,6 +48,7 @@ export function CustomTooltipOverlay({
   placement,
   margin = 8,
   lineTop,
+  scrubDotY,
 }: {
   renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
   scrubX: SharedValue<number>;
@@ -60,13 +61,16 @@ export function CustomTooltipOverlay({
   tooltipLayout: SharedValue<TooltipLayout>;
   engine: ChartEngineLayout;
   padding: ChartPadding;
-  placement: "side" | "top" | "bottom";
+  placement: "side" | "top" | "bottom" | "point";
   /** Gap (px) between the pill and the plot edge it's pinned to. Default 8. */
   margin?: number;
   /** When `placement` is `"top"`, the overlay publishes the label's bottom edge
    *  (canvas Y) here so {@link CrosshairOverlay} can stop the crosshair line at
    *  the label instead of running through it; -1 when not top-pinned/active. */
   lineTop?: SharedValue<number>;
+  /** Scrub intersection Y in canvas px (the value the dot marks) — the anchor
+   *  for `"point"` placement. Omitted / -1 falls back to a top pin. */
+  scrubDotY?: SharedValue<number>;
 }) {
   // Formatted strings come ready-made off the layout (formatted UI-side in
   // computeTooltipLayout / computeCandleTooltipLayout), so consumers don't need
@@ -125,12 +129,28 @@ export function CustomTooltipOverlay({
         Math.max(sx - s.width / 2, leftBound),
         Math.max(leftBound, rightBound),
       );
-      y =
-        placement === "top"
-          ? // Pin to the canvas top edge (not the plot's inner top), so the label
-            // sits above the data and the crosshair line can stop at it.
-            margin
-          : ch - padding.bottom - margin - s.height;
+      if (placement === "point") {
+        // Float just above the scrub dot, flipping below when there's no room
+        // above; clamp into the plot. Mirrors computeTooltipLayout's "point".
+        const dotY = scrubDotY?.get() ?? -1;
+        if (dotY < 0) {
+          y = padding.top + margin;
+        } else {
+          const topLimit = padding.top + EDGE_GAP;
+          const bottomLimit = ch - padding.bottom - EDGE_GAP - s.height;
+          const aboveY = dotY - margin - s.height;
+          const belowY = dotY + margin;
+          y = aboveY >= topLimit ? aboveY : belowY;
+          y = Math.min(Math.max(y, topLimit), Math.max(topLimit, bottomLimit));
+        }
+      } else {
+        y =
+          placement === "top"
+            ? // Pin to the canvas top edge (not the plot's inner top), so the
+              // label sits above the data and the crosshair line can stop at it.
+              margin
+            : ch - padding.bottom - margin - s.height;
+      }
     }
 
     return {

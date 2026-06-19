@@ -41,7 +41,7 @@ the crosshair. Reshape it with `ScrubConfig` knobs — no custom rendering requi
   data={data}
   value={value}
   scrub={{
-    tooltipPlacement: "top",     // "side" (default) | "top" | "bottom"
+    tooltipPlacement: "top",     // "side" (default) | "top" | "bottom" | "point"
     tooltipShowValue: false,     // drop the value row → date-only pill
     tooltipBorderRadius: 12,     // pill corner radius; default 5
     tooltipBackground: "#1e293b",
@@ -53,9 +53,12 @@ the crosshair. Reshape it with `ScrubConfig` knobs — no custom rendering requi
 
 - **`tooltipPlacement`** — `"side"` (default) offsets the pill to the right of the scrub line and
   flips it left near the right edge. `"top"` / `"bottom"` center it horizontally over the line,
-  clamped into the plot and pinned to the plot's top or bottom.
+  clamped into the plot and pinned to the plot's top or bottom. `"point"` centers it over the line
+  and floats it just above the scrub dot, flipping below when there isn't room above (single-series
+  line mode; candle mode keeps its top-pinned OHLC stack).
 - **`tooltipMargin`** — the gap (px) between the pill and the plot edge it's pinned to (the top for
-  `"side"` / `"top"`, the bottom for `"bottom"`). Default `8`. Applies to a custom `renderTooltip` too.
+  `"side"` / `"top"`, the bottom for `"bottom"`) — or, for `"point"`, the gap between the scrub dot
+  and the pill. Default `8`. Applies to a custom `renderTooltip` too.
 - **`tooltipShowValue` / `tooltipShowTime`** — both default `true`. Drop a row to show just the date
   (`tooltipShowValue: false`) or just the value. Turning both off keeps the time row.
 - **`tooltipBorderRadius`**, **`tooltipBackground`**, **`tooltipColor`**, **`tooltipBorderColor`** —

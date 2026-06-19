@@ -683,11 +683,13 @@ export interface ScrubConfig {
    * Where the tooltip pill sits relative to the vertical scrub line.
    * `"side"` (default) offsets it to the right of the line and flips left near
    * the right edge. `"top"` / `"bottom"` center it horizontally over the line,
-   * clamped into the plot and pinned to the plot's top or bottom. This also
-   * drives a custom {@link LiveChartProps.renderTooltip} so it gets the same
-   * placement for free.
+   * clamped into the plot and pinned to the plot's top or bottom. `"point"`
+   * centers it over the line and floats it just above the scrub dot, flipping
+   * below the dot when there isn't room above (single-series line mode; candle
+   * mode keeps its top-pinned OHLC stack). This also drives a custom
+   * {@link LiveChartProps.renderTooltip} so it gets the same placement for free.
    */
-  tooltipPlacement?: "side" | "top" | "bottom";
+  tooltipPlacement?: "side" | "top" | "bottom" | "point";
   /**
    * Gap in px between the tooltip and the plot edge it's pinned to — the top for
    * `"side"`/`"top"`, the bottom for `"bottom"`. Applies to the built-in pill and

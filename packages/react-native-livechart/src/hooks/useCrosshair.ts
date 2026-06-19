@@ -130,7 +130,7 @@ export function useCrosshair(
    */
   deferTapHit?: (x: number, y: number) => boolean,
   /** Where the tooltip pill sits relative to the scrub line. Default `"side"`. */
-  tooltipPlacement: "side" | "top" | "bottom" = "side",
+  tooltipPlacement: "side" | "top" | "bottom" | "point" = "side",
   /** Render the value row in the default tooltip. Default `true`. */
   tooltipShowValue = true,
   /** Render the time row in the default tooltip. Default `true`. */
@@ -271,6 +271,7 @@ export function useCrosshair(
       tooltipShowTime,
       engine.canvasHeight.get(),
       tooltipMargin,
+      scrubDotY.get(),
     );
   });
 

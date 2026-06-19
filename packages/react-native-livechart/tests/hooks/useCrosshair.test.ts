@@ -431,6 +431,99 @@ describe("computeTooltipLayout", () => {
     expect(right.x + right.w).toBeLessThanOrEqual(400 - padding.right - 4);
   });
 
+  it("placement 'point' floats the pill just above the scrub dot", () => {
+    const layout = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8, // mono advance → deterministic width
+      "point",
+      true,
+      true,
+      300, // canvasHeight
+      8, // margin
+      150, // scrubDotY
+    );
+    // Centered horizontally over scrubX (200)…
+    expect(layout.x + layout.w / 2).toBeCloseTo(200);
+    // …with the pill bottom sitting `margin` above the dot (room above → no flip).
+    expect(layout.y + layout.h).toBe(150 - 8);
+  });
+
+  it("placement 'point' flips below the dot when there's no room above", () => {
+    const layout = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "point",
+      true,
+      true,
+      300,
+      8,
+      20, // scrubDotY near the top → the pill won't fit above it
+    );
+    // Top edge sits `margin` below the dot.
+    expect(layout.y).toBe(20 + 8);
+  });
+
+  it("placement 'point' clamps the pill into the plot near the bottom edge", () => {
+    const layout = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "point",
+      true,
+      true,
+      300,
+      8,
+      295, // scrubDotY near the bottom edge
+    );
+    // Clamped so the pill bottom never crosses the plot's bottom inset.
+    expect(layout.y + layout.h).toBe(300 - padding.bottom - 4);
+  });
+
+  it("placement 'point' falls back to a top pin when the dot Y is unknown (-1)", () => {
+    const layout = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      8,
+      "point",
+      true,
+      true,
+      300,
+      8,
+      -1, // no dot (canvas not laid out / degenerate range)
+    );
+    expect(layout.y).toBe(padding.top + 8);
+  });
+
   it("drops the value row when showValue is false (date-only, single-row height)", () => {
     const layout = computeTooltipLayout(
       true,
