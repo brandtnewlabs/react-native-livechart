@@ -326,6 +326,26 @@ function useLiveChartController({
     palette.valueFontSize * 2,
   );
 
+  // Per-badge font (size/family/weight) override; reuses the chart font when
+  // none of the badge font knobs are set, so the gutter sizing is unchanged.
+  const badgeHasFontOverride =
+    badgeCfg?.fontSize != null ||
+    badgeCfg?.fontFamily != null ||
+    badgeCfg?.fontWeight != null;
+  const badgeFontOverride = useChartSkiaFont(
+    badgeHasFontOverride
+      ? {
+          ...fontProp,
+          fontFamily: badgeCfg?.fontFamily ?? fontProp?.fontFamily,
+          fontSize: badgeCfg?.fontSize ?? fontProp?.fontSize,
+          fontWeight: badgeCfg?.fontWeight ?? fontProp?.fontWeight,
+        }
+      : fontProp,
+    MONO_FONT_FAMILY,
+    palette.labelFontSize,
+  );
+  const badgeFont = badgeHasFontOverride ? badgeFontOverride : skiaFont;
+
   const pulseConfig = pulseCfg
     ? {
         maxRadius: pulseCfg.maxRadius,
@@ -558,7 +578,7 @@ function useLiveChartController({
     effectivePadding,
     palette,
     formatValue,
-    skiaFont,
+    badgeFont,
     badgeCfg?.variant ?? "default",
     badgeCfg?.tail ?? true,
     momentumSV,
@@ -569,6 +589,8 @@ function useLiveChartController({
     effectiveYAxisFloat,
     engine.edgeValue,
     badgeCfg?.followViewEdge ?? false,
+    badgeCfg?.radius,
+    badgeCfg?.textColor,
   );
 
   // Scrub/crosshair must see the same stash-backed candles as the engine.
@@ -820,6 +842,7 @@ function useLiveChartController({
     palette,
     skiaFont,
     valueFont,
+    badgeFont,
     strokeWidth,
     effectivePadding,
     // engine + reveal
@@ -1434,12 +1457,19 @@ function ChartValueOverlay({ model }: { model: LiveChartModel }) {
 /** Live-price badge, drawn above the scrub dim so the dim never clips its left
  *  edge. Shares the degen shake transform so it tracks the shaken stack. */
 function ChartBadgeLayer({ model }: { model: LiveChartModel }) {
-  const { badgeCfg, badgeData, skiaFont, reveal, degenShakeTransform } = model;
+  const { badgeCfg, badgeData, badgeFont, reveal, degenShakeTransform } = model;
   if (!badgeCfg) return null;
   return (
     <Group transform={degenShakeTransform}>
       <Group opacity={reveal.badgeOpacity}>
-        <BadgeOverlay badge={badgeData} font={skiaFont} />
+        <BadgeOverlay
+          badge={badgeData}
+          font={badgeFont}
+          borderColor={badgeCfg.borderColor}
+          borderWidth={badgeCfg.borderWidth}
+          offsetX={badgeCfg.offsetX}
+          offsetY={badgeCfg.offsetY}
+        />
       </Group>
     </Group>
   );

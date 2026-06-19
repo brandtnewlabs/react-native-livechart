@@ -138,6 +138,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "Theme, accent, gradient, line, font, grid, palette.",
       },
       {
+        href: "/demo/badge-styling",
+        title: "Badge styling",
+        blurb: "BadgeConfig shape knobs: radius, background, border, text color, font, offset.",
+      },
+      {
         href: "/demo/axes-grid",
         title: "Axes & grid",
         blurb: "Hide X/Y, minGap, insets; LiveChart vs LiveChartSeries.",

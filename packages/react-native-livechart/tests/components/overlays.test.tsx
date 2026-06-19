@@ -81,6 +81,30 @@ describe("BadgeOverlay", () => {
     }
     render(<Fixture />);
   });
+
+  it("renders a bordered, offset badge (stroke path + transform branch)", () => {
+    function Fixture() {
+      const badge = useSharedValue({
+        path: Skia.Path.Make(),
+        textX: 10,
+        textY: 20,
+        text: "9.99",
+        bgColor: "#000",
+        textColor: "#fff",
+      });
+      return (
+        <BadgeOverlay
+          badge={badge}
+          font={font}
+          borderColor="#ff00ff"
+          borderWidth={2}
+          offsetX={-4}
+          offsetY={6}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
 });
 
 describe("YAxisOverlay", () => {

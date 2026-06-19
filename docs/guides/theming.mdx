@@ -99,6 +99,41 @@ The five namespaces:
 `metrics` is available on both `LiveChart` and `LiveChartSeries`. See the
 [types reference](/api-reference/types) for the full `LiveChartMetrics` shape and every default.
 
+## Customizing the badge
+
+The value badge at the live edge is drawn in Skia, so its shape and style are
+**config knobs on `badge`** rather than a custom React element — they cost
+nothing per frame. Pass a `BadgeConfig` to reshape it:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  badge={{
+    radius: 6, // square off the capsule into a rounded rect (0 = sharp corners)
+    borderColor: "#ffffff",
+    borderWidth: 1,
+    textColor: "#0f172a",
+    fontSize: 13,
+    fontWeight: "700",
+    offsetX: -2, // nudge off the live-dot / y-axis anchor
+    offsetY: 0,
+  }}
+/>
+```
+
+`radius` is clamped to the capsule (`pillHeight / 2`), which stays the maximum;
+`0` gives sharp corners. `textColor` mirrors `background` (set either or both).
+The font knobs fall back to the chart [`font`](#fonts) when omitted.
+
+<Note>
+  A badge `fontSize` larger than the chart font can crowd the reserved right
+  gutter (the badge text and y-axis labels share that space and are aligned to
+  the chart font). If a bigger badge font overflows, pair it with
+  `badge={{ position: "left" }}` or `yAxis={{ float: true }}`, which don't use
+  the gutter.
+</Note>
+
 ## Grid & axes
 
 ```tsx

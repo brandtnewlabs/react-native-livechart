@@ -73,7 +73,12 @@ provided; everything else has a default.
 </ParamField>
 
 <ParamField body="badge" type="boolean | BadgeConfig" default="true">
-  Value badge pill at the tip.
+  Value badge pill at the tip. Pass a [`BadgeConfig`](/api-reference/types) to
+  shape it — `radius` (escape the capsule), `borderColor` / `borderWidth`,
+  `textColor`, per-badge `fontSize` / `fontFamily` / `fontWeight`, and
+  `offsetX` / `offsetY`. All are Skia-native and drawn in the batched canvas
+  pass, so there's no per-frame view cost. See [Theming → Customizing the
+  badge](/guides/theming#customizing-the-badge).
 </ParamField>
 
 <ParamField body="pulse" type="boolean | PulseConfig" default="true">

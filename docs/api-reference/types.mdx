@@ -222,6 +222,16 @@ interface BadgeConfig {
   tail?: boolean;
   background?: string;
   position?: "right" | "left";
+  // Shape / style — all Skia-native, drawn in the batched canvas pass (no perf cost):
+  radius?: number;          // corner radius (px); default capsule (pillHeight/2), clamped to that max
+  borderColor?: string;     // pill border color; default none
+  borderWidth?: number;     // border stroke width (px), only drawn with borderColor; default 1
+  textColor?: string;       // label text color override; default variant/theme rule
+  fontSize?: number;        // badge font size (px); falls back to the chart `font`
+  fontFamily?: string;      // badge font family; falls back to the chart `font`
+  fontWeight?: FontWeight;  // badge font weight; falls back to the chart `font`
+  offsetX?: number;         // nudge the whole badge horizontally (px); default 0
+  offsetY?: number;         // nudge the whole badge vertically (px); default 0
   followViewEdge?: boolean; // while time-scrolled, track the price at the visible
                             // window's right edge (badge + value line + dot); default false
 }

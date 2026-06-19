@@ -87,6 +87,15 @@ describe("resolveBadge", () => {
       tail: true,
       position: "right",
       background: undefined,
+      radius: undefined,
+      borderColor: undefined,
+      borderWidth: 1,
+      textColor: undefined,
+      fontSize: undefined,
+      fontFamily: undefined,
+      fontWeight: undefined,
+      offsetX: 0,
+      offsetY: 0,
       followViewEdge: false,
     });
   });
@@ -97,6 +106,15 @@ describe("resolveBadge", () => {
       tail: true,
       position: "right",
       background: undefined,
+      radius: undefined,
+      borderColor: undefined,
+      borderWidth: 1,
+      textColor: undefined,
+      fontSize: undefined,
+      fontFamily: undefined,
+      fontWeight: undefined,
+      offsetX: 0,
+      offsetY: 0,
       followViewEdge: false,
     });
   });
@@ -115,7 +133,47 @@ describe("resolveBadge", () => {
       tail: false,
       position: "left",
       background: "#f00",
+      radius: undefined,
+      borderColor: undefined,
+      borderWidth: 1,
+      textColor: undefined,
+      fontSize: undefined,
+      fontFamily: undefined,
+      fontWeight: undefined,
+      offsetX: 0,
+      offsetY: 0,
       followViewEdge: true,
+    });
+  });
+
+  it("merges the shape/style knobs (radius, border, textColor, font, offset)", () => {
+    expect(
+      resolveBadge({
+        radius: 8,
+        borderColor: "#fff",
+        borderWidth: 2,
+        textColor: "#0f0",
+        fontSize: 14,
+        fontFamily: "Inter",
+        fontWeight: "700",
+        offsetX: -4,
+        offsetY: 6,
+      }),
+    ).toEqual({
+      variant: "default",
+      tail: true,
+      position: "right",
+      background: undefined,
+      radius: 8,
+      borderColor: "#fff",
+      borderWidth: 2,
+      textColor: "#0f0",
+      fontSize: 14,
+      fontFamily: "Inter",
+      fontWeight: "700",
+      offsetX: -4,
+      offsetY: 6,
+      followViewEdge: false,
     });
   });
 });
