@@ -124,6 +124,75 @@ describe("useReferenceLine", () => {
     expect(layout.x2).toBe(400 - PADDING.right);
   });
 
+  it("draws a plain line at the plot edges by default (not full-width)", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { value: 50 }, fmt, font),
+    );
+    const l = result.current.value;
+    expect(l.drawLine).toBe(true);
+    expect(l.lineX1).toBe(PADDING.left);
+    expect(l.lineX2).toBe(400 - PADDING.right);
+  });
+
+  it("extends the line edge-to-edge through the gutter when fullWidth", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { value: 50, fullWidth: true }, fmt, font),
+    );
+    const l = result.current.value;
+    expect(l.drawLine).toBe(true);
+    expect(l.lineX1).toBe(0);
+    expect(l.lineX2).toBe(400);
+    // badge / label anchor stays at the plot edges.
+    expect(l.x1).toBe(PADDING.left);
+    expect(l.x2).toBe(400 - PADDING.right);
+  });
+
+  it("extends a value band edge-to-edge when fullWidth (label stays in plot)", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { valueFrom: 20, valueTo: 60, fullWidth: true },
+        fmt,
+        font,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.lineX1).toBe(0);
+    expect(l.lineX2).toBe(400);
+    expect(l.x1).toBe(PADDING.left);
+  });
+
+  it("full-width badged line draws the line and drops the connector", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50, badge: true, fullWidth: true },
+        fmt,
+        font,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.badge).toBe(true);
+    expect(l.drawLine).toBe(true);
+    expect(l.lineX1).toBe(0);
+    expect(l.lineX2).toBe(400);
+    expect(l.connStart).toBe(-1);
+    expect(l.connEnd).toBe(-1);
+    // pill still anchored inside the plot.
+    expect(l.pillX).toBeGreaterThanOrEqual(PADDING.left);
+  });
+
+  it("a default badged line keeps the connector and draws no plain line", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(engine(), PADDING, { value: 50, badge: true }, fmt, font),
+    );
+    const l = result.current.value;
+    expect(l.drawLine).toBe(false);
+    expect(l.connStart).toBeGreaterThanOrEqual(0);
+  });
+
   it("uses the explicit label when provided", () => {
     const { result } = renderHook(() =>
       useReferenceLine(

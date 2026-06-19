@@ -18,10 +18,20 @@ export interface ReferenceLineLayout {
   y: number;
   /** Band bottom-edge y (value/time band); equals `y` for a plain line. */
   yBottom: number;
-  /** Left x extent. */
+  /** Left x extent of the plot (badge / label / connector anchor). */
   x1: number;
-  /** Right x extent. */
+  /** Right x extent of the plot (badge / label / connector anchor). */
   x2: number;
+  /**
+   * Left x of the **drawn** line / band. Equals {@link x1} normally, or `0`
+   * (canvas edge) when the line is full-width. Decoupled from {@link x1} so the
+   * line can run through the gutter while the badge/label stays in the plot.
+   */
+  lineX1: number;
+  /** Right x of the drawn line / band: {@link x2} normally, or the canvas width when full-width. */
+  lineX2: number;
+  /** Stroke the plain horizontal line (true for a plain Form-A line, or a full-width badged line). */
+  drawLine: boolean;
   /** Resolved label text (with appended value when `showValue`); "" when hidden. */
   label: string;
   labelX: number;
@@ -54,6 +64,9 @@ const INVISIBLE: ReferenceLineLayout = {
   yBottom: -1,
   x1: 0,
   x2: 0,
+  lineX1: 0,
+  lineX2: 0,
+  drawLine: false,
   label: "",
   labelX: 0,
   labelY: -1,
@@ -284,6 +297,11 @@ export function useReferenceLine(
     const chartH = chartBottom - chartTop;
     const x1 = padding.left;
     const x2 = w - padding.right;
+    // Full-width lines/bands run edge-to-edge through the gutters (0..canvas);
+    // the badge/label anchor (x1/x2) stays at the plot edges either way.
+    const fullWidth = line.fullWidth ?? false;
+    const lineX1 = fullWidth ? 0 : x1;
+    const lineX2 = fullWidth ? w : x2;
 
     const fm = font.getMetrics();
     const baselineOffset = (fm.ascent + fm.descent) / 2;
@@ -320,6 +338,9 @@ export function useReferenceLine(
         yBottom: chartBottom,
         x1: bx1,
         x2: bx2,
+        // Time band is vertical and time-bounded — full-width does not apply.
+        lineX1: bx1,
+        lineX2: bx2,
         label,
         labelX,
         labelY: chartTop - fm.ascent + 2,
@@ -361,6 +382,8 @@ export function useReferenceLine(
         yBottom: yBot,
         x1,
         x2,
+        lineX1,
+        lineX2,
         label,
         labelX,
         labelY: yTop - fm.ascent + 2,
@@ -418,6 +441,10 @@ export function useReferenceLine(
         yBottom: y,
         x1,
         x2,
+        lineX1,
+        lineX2,
+        // Full-width: the edge-to-edge line replaces the dashed connector.
+        drawLine: fullWidth,
         label: text,
         labelX: g.textX,
         labelY: y - baselineOffset,
@@ -426,8 +453,8 @@ export function useReferenceLine(
         pillW: g.pillW,
         iconX: g.iconX,
         icon: badge.icon,
-        connStart: g.connStart,
-        connEnd: g.connEnd,
+        connStart: fullWidth ? -1 : g.connStart,
+        connEnd: fullWidth ? -1 : g.connEnd,
       };
     }
 
@@ -449,6 +476,9 @@ export function useReferenceLine(
       yBottom: y,
       x1,
       x2,
+      lineX1,
+      lineX2,
+      drawLine: true,
       label,
       labelX,
       labelY: y - baselineOffset,

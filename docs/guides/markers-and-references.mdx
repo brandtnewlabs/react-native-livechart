@@ -144,6 +144,20 @@ interface TradeEvent {
 Lines support labels, dashes (`intervals`), and excluding their value from the axis range
 (`excludeFromRange`). See the [types reference](/api-reference/types) for every field.
 
+### Full-width lines (`fullWidth`)
+
+By default a line/band stops at the plot's right edge. Set `fullWidth: true` to span it
+**edge to edge through the Y-axis gutter**, so it connects visually to its value on the axis
+(like a price tag). Only the line/band extends — any `label` or `badge` stays anchored inside
+the plot. For a Form-A line with a `badge`, the full-width line replaces the dashed connector.
+
+```tsx
+referenceLines={[
+  { value: 142.5, label: "Avg entry", fullWidth: true }, // runs through the gutter
+  { value: 150.0 },                                      // stops at the plot edge (default)
+]}
+```
+
 ### Pill badges (working orders, alerts, targets)
 
 For a Form-A line, `badge` renders the value as a **pill** pinned to a plot edge with a dashed

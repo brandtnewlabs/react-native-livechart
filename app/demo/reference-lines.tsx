@@ -17,6 +17,8 @@ export default function ReferenceLinesScreen() {
   const [timeBand, setTimeBand] = useState(false);
   const [offAxis, setOffAxis] = useState(false);
   const [valueLine, setValueLine] = useState(true);
+  // Span lines/bands edge-to-edge through the Y-axis gutter (vs stop at the plot).
+  const [fullWidth, setFullWidth] = useState(false);
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -49,13 +51,19 @@ export default function ReferenceLinesScreen() {
 
   const referenceLines: ReferenceLine[] = [];
   if (lines) {
-    referenceLines.push({ value: START * 1.05, label: "+5%", color: "#34d399" });
+    referenceLines.push({
+      value: START * 1.05,
+      label: "+5%",
+      color: "#34d399",
+      fullWidth,
+    });
     referenceLines.push({
       value: START * 0.95,
       label: "-5%",
       color: "#f87171",
       strokeWidth: 2,
       intervals: [6, 4],
+      fullWidth,
     });
   }
   if (valueBand) {
@@ -68,6 +76,7 @@ export default function ReferenceLinesScreen() {
       strokeWidth: 1,
       intervals: [4, 3],
       fillOpacity: 0.18,
+      fullWidth,
     });
   }
   if (timeBand && timeWindow) {
@@ -130,6 +139,11 @@ export default function ReferenceLinesScreen() {
           label="Value line"
           value={valueLine}
           onChange={setValueLine}
+        />
+        <ToggleChip
+          label="Full width"
+          value={fullWidth}
+          onChange={setFullWidth}
         />
       </ControlRow>
     </DemoScreen>

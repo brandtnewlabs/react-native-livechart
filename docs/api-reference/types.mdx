@@ -98,6 +98,8 @@ interface ReferenceLine {
   intervals?: [number, number];
   color?: string;
   fillOpacity?: number;          // default 0.16
+  fullWidth?: boolean;           // span edge-to-edge through the Y-axis gutter (Form A/B);
+                                 //   label/badge stay in the plot. default false
   labelColor?: string;
   labelPosition?: "left" | "center" | "right";
   showValue?: boolean;

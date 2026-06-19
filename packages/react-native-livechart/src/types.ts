@@ -79,6 +79,15 @@ export interface ReferenceLine {
   strokeWidth?: number;
   /** Dash pattern as `[dashLength, gapLength]` in pixels (line stroke + band border). */
   intervals?: [number, number];
+  /**
+   * Span the **full chart width** — edge to edge through the Y-axis gutter, not
+   * clipped at the plot's right edge — so the line/band visually connects to its
+   * value on the axis (like a price tag). Only the line/band extends; any
+   * `label`/`badge` stays anchored inside the plot. For a Form-A line with a
+   * `badge`, the full-width line replaces the dashed connector. No effect on a
+   * vertical time band. Default `false` (stops at the plot edge). Form A / B.
+   */
+  fullWidth?: boolean;
   /** Line / band color override. Defaults to palette `refLine`. */
   color?: string;
   /** Fill opacity for a value / time band (0–1). Default `0.16`. */
