@@ -8,6 +8,7 @@ import {
 import { CANDLE_METRICS_DEFAULTS, MS_PER_FRAME_60FPS } from "../constants";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { buildCandleGeometry } from "../draw/candle";
+import { buildVolumeGeometry } from "../draw/volume";
 import type { ChartPadding } from "../draw/line";
 import { lerp } from "../math/lerp";
 import type { CandleMetrics, CandlePoint } from "../types";
@@ -29,6 +30,10 @@ export function useCandlePaths(
   candleWidthSecs: number,
   active: boolean,
   candleMetrics: CandleMetrics = CANDLE_METRICS_DEFAULTS,
+  /** Reserved volume-band height (px). `0` = no volume bars. */
+  volumeBandHeight = 0,
+  /** Corner radius (px) of the volume bars. */
+  volumeRadius = 0,
   /** Static charts run no loops: register without starting. Default `true`. */
   autostart = true,
 ) {
@@ -39,6 +44,8 @@ export function useCandlePaths(
   const downBodiesBuilder = usePathBuilder();
   const upWicksBuilder = usePathBuilder();
   const downWicksBuilder = usePathBuilder();
+  const upBarsBuilder = usePathBuilder();
+  const downBarsBuilder = usePathBuilder();
 
   useFrameCallback((frameInfo) => {
     "worklet";
@@ -144,5 +151,77 @@ export function useCandlePaths(
     return b.detach();
   });
 
-  return { upBodiesPath, downBodiesPath, upWicksPath, downWicksPath } as const;
+  // Volume bars share the candle window + (lerped) candle width so each bar sits
+  // directly under its candle body. Empty unless a volume band is reserved.
+  /* istanbul ignore next -- worklet */
+  const volumeGeometry = useDerivedValue(() => {
+    if (!active || !candles || volumeBandHeight <= 0) return { bars: [] };
+    return buildVolumeGeometry(
+      candles.value,
+      liveCandle?.value ?? null,
+      padding,
+      engine.canvasWidth.value,
+      engine.canvasHeight.value,
+      engine.timestamp.value - engine.displayWindow.value,
+      engine.displayWindow.value,
+      volumeBandHeight,
+      displayCandleWidth.get(),
+      candleMetrics,
+    );
+  });
+
+  /* istanbul ignore next -- worklet */
+  const upBarsPath = useDerivedValue(() => {
+    const b = upBarsBuilder.value;
+    const { bars } = volumeGeometry.value;
+    for (let i = 0; i < bars.length; i++) {
+      if (bars[i].up) {
+        const bar = bars[i];
+        const rr =
+          volumeRadius > 0 ? Math.min(volumeRadius, bar.w / 2, bar.h / 2) : 0;
+        if (rr > 0) {
+          b.addRRect({
+            rect: { x: bar.x, y: bar.y, width: bar.w, height: bar.h },
+            rx: rr,
+            ry: rr,
+          });
+        } else {
+          b.addRect(Skia.XYWHRect(bar.x, bar.y, bar.w, bar.h));
+        }
+      }
+    }
+    return b.detach();
+  });
+
+  /* istanbul ignore next -- worklet */
+  const downBarsPath = useDerivedValue(() => {
+    const b = downBarsBuilder.value;
+    const { bars } = volumeGeometry.value;
+    for (let i = 0; i < bars.length; i++) {
+      if (!bars[i].up) {
+        const bar = bars[i];
+        const rr =
+          volumeRadius > 0 ? Math.min(volumeRadius, bar.w / 2, bar.h / 2) : 0;
+        if (rr > 0) {
+          b.addRRect({
+            rect: { x: bar.x, y: bar.y, width: bar.w, height: bar.h },
+            rx: rr,
+            ry: rr,
+          });
+        } else {
+          b.addRect(Skia.XYWHRect(bar.x, bar.y, bar.w, bar.h));
+        }
+      }
+    }
+    return b.detach();
+  });
+
+  return {
+    upBodiesPath,
+    downBodiesPath,
+    upWicksPath,
+    downWicksPath,
+    upBarsPath,
+    downBarsPath,
+  } as const;
 }

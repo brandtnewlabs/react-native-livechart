@@ -96,13 +96,20 @@ export function aggregateCandles(
 
   const buckets = new Map<number, CandlePoint>();
 
+  // Synthetic volume: each tick contributes a small base plus the size of its
+  // price move (carried across buckets), so busier / more volatile buckets read
+  // as higher volume. The volume overlay normalizes to the largest visible bar,
+  // so only relative magnitude matters here.
+  let prev: number | null = null;
   for (const tick of ticks) {
     const bucketTime = Math.floor(tick.time / candleWidth) * candleWidth;
+    const contrib = 0.2 + (prev === null ? 0 : Math.abs(tick.value - prev));
     const existing = buckets.get(bucketTime);
     if (existing) {
       if (tick.value > existing.high) existing.high = tick.value;
       if (tick.value < existing.low) existing.low = tick.value;
       existing.close = tick.value;
+      existing.volume = (existing.volume ?? 0) + contrib;
     } else {
       buckets.set(bucketTime, {
         time: bucketTime,
@@ -110,8 +117,10 @@ export function aggregateCandles(
         high: tick.value,
         low: tick.value,
         close: tick.value,
+        volume: contrib,
       });
     }
+    prev = tick.value;
   }
 
   const sorted = Array.from(buckets.values()).sort((a, b) => a.time - b.time);

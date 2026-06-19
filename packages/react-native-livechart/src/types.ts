@@ -386,6 +386,29 @@ export interface BadgeConfig {
   followViewEdge?: boolean;
 }
 
+/**
+ * Volume-bar configuration (candle mode only — see {@link LiveChartProps.volume}).
+ * Bars are drawn in a reserved band below the candles; the candle/price plot
+ * shrinks by {@link maxHeight} to make room (the x-axis stays at the bottom).
+ * Each bar's height is its candle's `volume` normalized to the largest visible
+ * volume, so the tallest visible bar fills the band.
+ */
+export interface VolumeConfig {
+  /** Bar color for up (close ≥ open) candles. Default: `palette.candleUp`. */
+  upColor?: string;
+  /** Bar color for down (close < open) candles. Default: `palette.candleDown`. */
+  downColor?: string;
+  /**
+   * Height (px) of the reserved band — the tallest a bar can be. Reserved out of
+   * the plot below the candles. Default `48`.
+   */
+  maxHeight?: number;
+  /** Corner radius (px) of bar tops. `0` = sharp. Default `2`. */
+  radius?: number;
+  /** Opacity (0..1) applied to the whole band. Default `0.6`. */
+  opacity?: number;
+}
+
 /** Y-axis grid configuration. */
 export interface YAxisConfig {
   /** Minimum pixel gap between grid lines. Default `36`. */
@@ -1114,6 +1137,13 @@ export interface CandlePoint {
   low: number;
   /** Closing price. */
   close: number;
+  /**
+   * Traded volume in the bucket. Drives the optional volume bars
+   * (see {@link LiveChartProps.volume}); bar heights are normalized to the
+   * largest visible volume, so only relative values matter. Omitted candles
+   * contribute no bar. Ignored when `volume` is off or in line mode.
+   */
+  volume?: number;
 }
 
 // ── Metrics (sizing & motion tokens) ─────────────────────────────────────────
@@ -1516,6 +1546,14 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * routed here, not to reticle placement). Single-series only.
    */
   onReferenceLinePress?: (line: ReferenceLine, index: number) => void;
+  /**
+   * Volume bars below the candles (candle mode only). `true` = defaults,
+   * `false`/omitted = off, or pass a {@link VolumeConfig} for colors, band
+   * height, rounding, and opacity. The candle/price plot shrinks by the band
+   * height to make room; the x-axis stays pinned to the bottom. Reads each
+   * candle's `CandlePoint.volume`. Ignored in line mode. Default off.
+   */
+  volume?: boolean | VolumeConfig;
   /**
    * Called on the JS thread when degen chart shake starts (momentum swing with shake enabled).
    * Not called when `degen` is off or `DegenOptions.shake` is `false`.

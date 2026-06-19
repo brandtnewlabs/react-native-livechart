@@ -107,6 +107,41 @@ describe("resolveChartLayout", () => {
     expect(padding.right).toBe(44);
   });
 
+  // ─── volume band ─────────────────────────────────────────────────
+
+  it("reserves a volume band by inflating the bottom padding", () => {
+    const base = resolveChartLayout({ palette, yAxis: false, badge: false });
+    const withBand = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      volumeBandHeight: 40,
+    });
+    expect(withBand.padding.bottom).toBe(base.padding.bottom + 40);
+  });
+
+  it("does not inflate the bottom when the band height is 0", () => {
+    const base = resolveChartLayout({ palette, yAxis: false, badge: false });
+    const zero = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      volumeBandHeight: 0,
+    });
+    expect(zero.padding.bottom).toBe(base.padding.bottom);
+  });
+
+  it("lets an explicit bottom inset suppress the volume band", () => {
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      insetsOverride: { bottom: 12 },
+      volumeBandHeight: 40,
+    });
+    expect(padding.bottom).toBe(12);
+  });
+
   it("expands right padding for badge (static fallback)", () => {
     const { padding } = resolveChartLayout({
       palette,

@@ -40,6 +40,7 @@ import {
   resolveThreshold,
   resolveTradeStream,
   resolveValueLine,
+  resolveVolume,
   resolveXAxis,
   resolveYAxis,
 } from "../core/resolveConfig";
@@ -177,6 +178,7 @@ function useLiveChartController({
   candles,
   candleWidth = 60,
   liveCandle,
+  volume,
 
   // ── Behaviour ───────────────────────────────────────────────────────────
   timeWindow = 30,
@@ -254,6 +256,10 @@ function useLiveChartController({
   const scrubCfg = resolveScrub(scrub);
   // Static charts run no gestures, so scrub-action (tap/drag to lock a price) is off.
   const scrubActionCfg = isStatic ? null : resolveScrubAction(scrubAction);
+  // Volume bars sit below the candles — a candle-mode-only feature (inert in
+  // line mode, like the candle paths themselves).
+  const volumeCfg = isCandle ? resolveVolume(volume) : null;
+  const volumeBandHeight = volumeCfg?.maxHeight ?? 0;
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
   // Dot-lattice area fill (clipped to the under-line region). Inert in candle
   // mode, same as the gradient fill.
@@ -370,6 +376,7 @@ function useLiveChartController({
     formatValue,
     currentValue: valueLayoutSample,
     pulse: pulseConfig,
+    volumeBandHeight,
   });
 
   // ── Reveal state ────────────────────────────────────────────
@@ -482,18 +489,26 @@ function useLiveChartController({
     adA * (areaDotsCfg?.opacity ?? 1),
   ];
 
-  const { upBodiesPath, downBodiesPath, upWicksPath, downWicksPath } =
-    useCandlePaths(
-      engine,
-      effectivePadding,
-      // Match engine: stashed candles while reverse-morphing in candle mode.
-      isCandle ? candlesEngine : candles,
-      isCandle ? liveEngine : liveCandle,
-      candleWidth,
-      isCandle,
-      metricsCfg.candle,
-      !isStatic, // static: no candle-width lerp loop
-    );
+  const {
+    upBodiesPath,
+    downBodiesPath,
+    upWicksPath,
+    downWicksPath,
+    upBarsPath,
+    downBarsPath,
+  } = useCandlePaths(
+    engine,
+    effectivePadding,
+    // Match engine: stashed candles while reverse-morphing in candle mode.
+    isCandle ? candlesEngine : candles,
+    isCandle ? liveEngine : liveCandle,
+    candleWidth,
+    isCandle,
+    metricsCfg.candle,
+    volumeBandHeight,
+    volumeCfg?.radius ?? 0,
+    !isStatic, // static: no candle-width lerp loop
+  );
   const { dotX, dotY } = useLiveDot(
     engine,
     effectivePadding,
@@ -829,6 +844,15 @@ function useLiveChartController({
     downBodiesPath,
     upWicksPath,
     downWicksPath,
+    upBarsPath,
+    downBarsPath,
+    // Volume bars: active flag, fade-in opacity, and resolved colors (default to
+    // the candle palette). The reserved band height is read by the x-axis.
+    volumeActive: volumeCfg !== null,
+    volumeBandHeight,
+    volumeOpacity: volumeCfg?.opacity ?? 1,
+    volumeUpColor: volumeCfg?.upColor ?? palette.candleUp,
+    volumeDownColor: volumeCfg?.downColor ?? palette.candleDown,
     dotX,
     dotY,
     liveDotOpacity,
@@ -998,6 +1022,13 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     downWicksPath,
     upBodiesPath,
     downBodiesPath,
+    upBarsPath,
+    downBarsPath,
+    volumeActive,
+    volumeBandHeight,
+    volumeOpacity,
+    volumeUpColor,
+    volumeDownColor,
     xAxisCfg,
     xAxisEntries,
     dotX,
@@ -1139,6 +1170,18 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         />
       </Group>
 
+      {/* Volume bars in the reserved band below the candles. Fades in with the
+          candle group (outer opacity); the config opacity dims the whole band
+          (inner). Up/down bars carry their own colors (default candle palette). */}
+      {volumeActive && (
+        <Group opacity={candleGroupOpacity}>
+          <Group opacity={volumeOpacity}>
+            <Path path={upBarsPath} style="fill" color={volumeUpColor} />
+            <Path path={downBarsPath} style="fill" color={volumeDownColor} />
+          </Group>
+        </Group>
+      )}
+
       {/* Floating axis: the labels float ABOVE the candles (right-aligned at the
           edge) so the plot runs full-width and candles stay fully visible behind
           them. (Default non-floating axis draws grid + labels in ChartFillLayer.) */}
@@ -1160,7 +1203,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         </Group>
       )}
 
-      {/* X-axis time labels */}
+      {/* X-axis time labels. With a volume band the bottom padding is inflated by
+          the band height; pass it so the axis shifts back to the very bottom. */}
       {xAxisCfg && (
         <XAxisOverlay
           entries={xAxisEntries}
@@ -1168,6 +1212,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
           padding={effectivePadding}
           palette={palette}
           font={skiaFont}
+          volumeBandHeight={volumeBandHeight}
         />
       )}
 

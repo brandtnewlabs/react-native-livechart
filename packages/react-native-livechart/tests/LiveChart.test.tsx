@@ -52,6 +52,36 @@ function CandleHarness(props: Partial<LiveChartProps>) {
   );
 }
 
+function VolumeCandleHarness(props: Partial<LiveChartProps>) {
+  const data = useSharedValue([{ time: 1700000000, value: 50 }]);
+  const value = useSharedValue(50);
+  const candles = useSharedValue<CandlePoint[]>([
+    { time: 1700000000, open: 48, high: 52, low: 47, close: 50, volume: 12 },
+    { time: 1700000060, open: 50, high: 55, low: 49, close: 53, volume: 30 },
+    { time: 1700000120, open: 53, high: 54, low: 48, close: 49, volume: 8 },
+  ]);
+  const liveCandle = useSharedValue<CandlePoint | null>({
+    time: 1700000180,
+    open: 49,
+    high: 51,
+    low: 48,
+    close: 50,
+    volume: 18,
+  });
+  return (
+    <LiveChart
+      data={data}
+      value={value}
+      mode="candle"
+      candles={candles}
+      liveCandle={liveCandle}
+      candleWidth={60}
+      timeWindow={300}
+      {...props}
+    />
+  );
+}
+
 function ThresholdHarness({
   thresholdValue = 0.5,
   thresholdExtra,
@@ -159,6 +189,31 @@ describe("LiveChart", () => {
 
   it("supports scrubAction in candle mode", () => {
     render(<CandleHarness scrubAction onScrubAction={jest.fn()} />);
+  });
+
+  it("renders volume bars below the candles", () => {
+    const screen = render(<VolumeCandleHarness volume />);
+    layoutFirst(screen);
+  });
+
+  it("renders volume bars with a custom config", () => {
+    const screen = render(
+      <VolumeCandleHarness
+        volume={{
+          maxHeight: 64,
+          radius: 0,
+          upColor: "#0f0",
+          downColor: "#f00",
+          opacity: 0.5,
+        }}
+      />,
+    );
+    layoutFirst(screen);
+  });
+
+  it("ignores the volume prop in line mode", () => {
+    const screen = render(<Harness volume />);
+    layoutFirst(screen);
   });
 
   it("does not collide React keys for duplicate-value reference lines", () => {

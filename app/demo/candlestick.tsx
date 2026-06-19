@@ -60,12 +60,31 @@ const WICK_OPTIONS: { value: number; label: string }[] = [
   { value: 3, label: "3px" },
 ];
 
+const VOLUME_HEIGHT_OPTIONS: { value: number; label: string }[] = [
+  { value: 32, label: "32px" },
+  { value: 48, label: "48px" },
+  { value: 72, label: "72px" },
+];
+
+const VOLUME_ROUND_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: "Sharp" },
+  { value: 2, label: "2px" },
+  { value: 6, label: "6px" },
+];
+
+/** Distinct violet bars so the volume color override reads as a feature. */
+const CUSTOM_VOLUME_COLORS = { upColor: "#8b5cf6", downColor: "#4c1d95" };
+
 export default function CandlestickScreen() {
   const [tfLabel, setTfLabel] = useState<TimeframeLabel>("15m · 1m");
   const [stripCandles, setStripCandles] = useState(false);
   const [customColors, setCustomColors] = useState(false);
   const [rounding, setRounding] = useState(3);
   const [wickWidth, setWickWidth] = useState(1);
+  const [volume, setVolume] = useState(true);
+  const [volumeHeight, setVolumeHeight] = useState(48);
+  const [volumeRound, setVolumeRound] = useState(2);
+  const [customVolumeColors, setCustomVolumeColors] = useState(false);
 
   const tf = TIMEFRAMES.find((t) => t.label === tfLabel) ?? TIMEFRAMES[1];
   const candleWidthSecs = tf.candleWidthSecs;
@@ -109,6 +128,15 @@ export default function CandlestickScreen() {
           timeWindow={tf.windowSecs}
           palette={customColors ? CUSTOM_CANDLE_PALETTE : undefined}
           metrics={{ candle: { bodyRadius: rounding, wickWidth } }}
+          volume={
+            volume
+              ? {
+                  maxHeight: volumeHeight,
+                  radius: volumeRound,
+                  ...(customVolumeColors ? CUSTOM_VOLUME_COLORS : {}),
+                }
+              : false
+          }
           scrub={{ tooltip: true }}
         />
       }
@@ -141,6 +169,36 @@ export default function CandlestickScreen() {
           onChange={setCustomColors}
         />
       </ControlRow>
+
+      <ControlRow label="Volume bars">
+        <ToggleChip label="Show volume" value={volume} onChange={setVolume} />
+      </ControlRow>
+
+      {volume && (
+        <>
+          <ChipRow
+            label="Volume height"
+            options={VOLUME_HEIGHT_OPTIONS}
+            value={volumeHeight}
+            onChange={setVolumeHeight}
+          />
+
+          <ChipRow
+            label="Volume rounding"
+            options={VOLUME_ROUND_OPTIONS}
+            value={volumeRound}
+            onChange={setVolumeRound}
+          />
+
+          <ControlRow label="Volume colors">
+            <ToggleChip
+              label="Violet bars"
+              value={customVolumeColors}
+              onChange={setCustomVolumeColors}
+            />
+          </ControlRow>
+        </>
+      )}
 
       <ControlRow label="Empty state">
         <ToggleChip

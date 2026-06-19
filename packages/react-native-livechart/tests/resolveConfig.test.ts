@@ -21,6 +21,7 @@ import {
   resolveThresholdLine,
   resolveTradeStream,
   resolveValueLine,
+  resolveVolume,
   resolveXAxis,
   resolveYAxis,
 } from "../src/core/resolveConfig";
@@ -140,6 +141,49 @@ describe("resolveYAxis", () => {
 
   it("carries through the float flag", () => {
     expect(resolveYAxis({ float: true })).toEqual({ minGap: 36, float: true });
+  });
+});
+
+// ─── resolveVolume ─────────────────────────────────────────────────────────────
+
+describe("resolveVolume", () => {
+  const defaults = {
+    upColor: undefined,
+    downColor: undefined,
+    maxHeight: 48,
+    radius: 2,
+    opacity: 0.6,
+  };
+
+  it("returns null for undefined", () => {
+    expect(resolveVolume(undefined)).toBeNull();
+  });
+
+  it("returns null for false", () => {
+    expect(resolveVolume(false)).toBeNull();
+  });
+
+  it("returns defaults for true", () => {
+    expect(resolveVolume(true)).toEqual(defaults);
+  });
+
+  it("merges a partial config with defaults", () => {
+    expect(resolveVolume({ maxHeight: 64, radius: 4 })).toEqual({
+      ...defaults,
+      maxHeight: 64,
+      radius: 4,
+    });
+  });
+
+  it("carries through color overrides", () => {
+    expect(
+      resolveVolume({ upColor: "#0f0", downColor: "#f00", opacity: 0.4 }),
+    ).toEqual({
+      ...defaults,
+      upColor: "#0f0",
+      downColor: "#f00",
+      opacity: 0.4,
+    });
   });
 });
 
