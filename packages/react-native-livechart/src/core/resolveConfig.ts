@@ -57,10 +57,14 @@ export interface ResolvedBadgeConfig {
   tail: boolean;
   position: "right" | "left";
   background: string | undefined;
+  /** Track the visible window's right-edge price while scrolled back. */
+  followViewEdge: boolean;
 }
 
 export interface ResolvedYAxisConfig {
   minGap: number;
+  /** Float the axis over a full-width plot (no reserved right gutter). */
+  float: boolean;
 }
 
 /** Resolved straight-line styling (connector, etc.). `color: undefined` → caller default. */
@@ -336,6 +340,7 @@ const BADGE_DEFAULTS: ResolvedBadgeConfig = {
   tail: true,
   position: "right",
   background: undefined,
+  followViewEdge: false,
 };
 
 /**
@@ -350,6 +355,7 @@ export function resolveBadge(
 
 const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
   minGap: 36,
+  float: false,
 };
 
 /**

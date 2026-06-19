@@ -16,6 +16,8 @@ export interface ChartLayoutConfig {
   lineWidthOverride?: number;
   insetsOverride?: ChartInsets;
   yAxis: boolean;
+  /** Float the y-axis over a full-width plot (no reserved right gutter). */
+  yAxisFloat?: boolean;
   badge: boolean;
   /** Badge pill geometry tokens. Omit for built-in defaults. */
   badgeMetrics?: BadgeMetrics;
@@ -51,6 +53,9 @@ export interface ChartLayoutResult {
   strokeWidth: number;
   padding: ChartPadding;
 }
+
+/** Right inset (px) for a floating y-axis — just keeps the plot off the edge. */
+const FLOAT_AXIS_RIGHT_INSET = 6;
 
 export function resolveChartLayout(
   config: ChartLayoutConfig,
@@ -154,6 +159,14 @@ export function resolveChartLayout(
       bottom:
         ins?.bottom != null ? padding.bottom : Math.max(padding.bottom, outlet),
     };
+  }
+
+  // Floating axis: collapse the right gutter LAST so it wins over the label,
+  // pulse, and badge reservations above — the plot runs full-width with the price
+  // axis (and the live-value badge) floating on top. An explicit right inset still
+  // wins. (The live-dot pulse may clip at the right edge in this mode.)
+  if (config.yAxisFloat && config.insetsOverride?.right == null) {
+    padding = { ...padding, right: FLOAT_AXIS_RIGHT_INSET };
   }
 
   return {

@@ -50,6 +50,7 @@ export default function TimeScrollScreen() {
   const [enabled, setEnabled] = useState(true);
   const [scrub, setScrub] = useState(true);
   const [orderTicket, setOrderTicket] = useState(true);
+  const [floatAxis, setFloatAxis] = useState(true);
 
   // candleAggregation gives us both the line `data` and `candles`; the toggle
   // just switches which the chart renders. Time-scroll is mode-agnostic — it
@@ -91,6 +92,9 @@ export default function TimeScrollScreen() {
           accentColor={ACCENT}
           theme={APP_THEME}
           timeWindow={WINDOW_SECS}
+          yAxis={{ float: floatAxis }}
+          // Pill tracks the last visible price as you scroll back.
+          badge={{ followViewEdge: true }}
           timeScroll={enabled ? { gesture, scrubHoldMs: holdMs } : false}
           scrub={scrub ? { tooltip: true } : false}
           scrubAction={orderTicket}
@@ -134,6 +138,14 @@ export default function TimeScrollScreen() {
           label="scrubAction"
           value={orderTicket}
           onChange={setOrderTicket}
+        />
+      </ControlRow>
+
+      <ControlRow label="Full-width plot">
+        <ToggleChip
+          label="yAxis.float"
+          value={floatAxis}
+          onChange={setFloatAxis}
         />
       </ControlRow>
     </DemoScreen>

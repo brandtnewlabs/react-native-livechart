@@ -27,6 +27,14 @@ export function useChartPaths(
   thresholdY?: SharedValue<number>,
   /** Draw the line/fill as a straight polyline instead of the monotone cubic. */
   linear = false,
+  /**
+   * Value at the visible window's right edge (engine `edgeValue`). With
+   * `followViewEdge`, the line's right-edge tip uses this instead of the live
+   * `displayValue` — so while time-scrolled the line ends at the last visible
+   * price rather than dropping to the (off-screen) live value.
+   */
+  edgeValue?: SharedValue<number>,
+  followViewEdge = false,
 ) {
   const lineBuilder = usePathBuilder();
   const fillBuilder = usePathBuilder();
@@ -53,9 +61,14 @@ export function useChartPaths(
     const cache = cacheRef.current!;
     cache.ptsTick = !cache.ptsTick;
     const buf = cache.ptsTick ? cache.ptsA : cache.ptsB;
+    // While scrolled back with `followViewEdge`, tip the line at the view-edge
+    // price (engine `edgeValue`) instead of the live value — otherwise the line
+    // drops from the last visible point to the off-screen live value at the edge.
+    const tipValue =
+      followViewEdge && edgeValue ? edgeValue.get() : engine.displayValue.get();
     const realPts = buildLinePoints(
       engine.data.get(),
-      engine.displayValue.get(),
+      tipValue,
       engine.timestamp.get(),
       engine.displayWindow.get(),
       engine.displayMin.get(),

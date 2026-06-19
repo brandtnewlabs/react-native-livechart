@@ -95,6 +95,15 @@ export interface ChartEngineScroll {
   liveEdge: SharedValue<number>;
 }
 
+/** Single-series only: smoothed price at the visible window's right edge. */
+export interface ChartEngineEdge {
+  /**
+   * Smoothed value at the window's right edge — the live value while following,
+   * the price at `viewEnd` while scrolled back. For a `followViewEdge` badge.
+   */
+  edgeValue: SharedValue<number>;
+}
+
 export interface SingleEngineState extends ChartEngineLayout, ChartEngineExtrema {
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
@@ -142,6 +151,8 @@ export interface EngineFrameRefs {
   viewEndSV?: SharedValue<number | null>;
   /** Receives the computed live edge each frame. Optional for callers/tests. */
   liveEdgeSV?: SharedValue<number>;
+  /** Receives the smoothed right-edge value each frame. Optional for callers/tests. */
+  edgeValueSV?: SharedValue<number>;
   modeSV: SharedValue<"line" | "candle">;
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
@@ -168,6 +179,7 @@ export function applyLiveChartEngineFrame(
     displayWindow: sv.displayWindow.value,
     timestamp: sv.timestamp.value,
     liveEdge: sv.liveEdgeSV?.value ?? 0,
+    edgeValue: sv.edgeValueSV?.value ?? 0,
     extremaMinValue: sv.extremaMinValue.value,
     extremaMaxValue: sv.extremaMaxValue.value,
     extremaMinTime: sv.extremaMinTime.value,
@@ -202,6 +214,7 @@ export function applyLiveChartEngineFrame(
   sv.displayWindow.value = state.displayWindow;
   sv.timestamp.value = state.timestamp;
   if (sv.liveEdgeSV) sv.liveEdgeSV.value = state.liveEdge;
+  if (sv.edgeValueSV) sv.edgeValueSV.value = state.edgeValue;
   sv.extremaMinValue.value = state.extremaMinValue;
   sv.extremaMaxValue.value = state.extremaMaxValue;
   sv.extremaMinTime.value = state.extremaMinTime;
@@ -210,7 +223,7 @@ export function applyLiveChartEngineFrame(
 
 export function useLiveChartEngine(
   config: EngineConfig,
-): SingleEngineState & ChartEngineScroll {
+): SingleEngineState & ChartEngineScroll & ChartEngineEdge {
   // Low-frequency config → UI thread via useDerivedValue
   const timeWindow = useDerivedValue(() => config.timeWindow);
   // Static charts snap to their target in one tick (smoothing=1), so the single
@@ -246,6 +259,7 @@ export function useLiveChartEngine(
   // "following" so charts without `timeScroll` behave exactly as before.
   const viewEnd = useSharedValue<number | null>(null);
   const liveEdge = useSharedValue(initialTimestamp);
+  const edgeValue = useSharedValue(0);
 
   // Live data extrema (value + time of the visible high / low). NaN until the
   // first tick finds data — the extrema label stays hidden until then.
@@ -287,6 +301,7 @@ export function useLiveChartEngine(
     pausedSV,
     viewEndSV: viewEnd,
     liveEdgeSV: liveEdge,
+    edgeValueSV: edgeValue,
     modeSV,
     candles,
     liveCandle,
@@ -346,6 +361,7 @@ export function useLiveChartEngine(
     timestamp,
     viewEnd,
     liveEdge,
+    edgeValue,
     extremaMinValue,
     extremaMaxValue,
     extremaMinTime,

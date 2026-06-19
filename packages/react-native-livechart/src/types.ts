@@ -375,12 +375,30 @@ export interface BadgeConfig {
   background?: string;
   /** Which side of the chart the badge appears on. Default `"right"`. */
   position?: "right" | "left";
+  /**
+   * When the chart is scrolled back (see `timeScroll`), move the live-price
+   * indicators — the badge, the value line, and the live dot — to the price at
+   * the visible window's right edge instead of the live price, so they track the
+   * last visible price as you pan. Default `false`.
+   *
+   * @experimental
+   */
+  followViewEdge?: boolean;
 }
 
 /** Y-axis grid configuration. */
 export interface YAxisConfig {
   /** Minimum pixel gap between grid lines. Default `36`. */
   minGap?: number;
+  /**
+   * Float the price axis over a full-width plot instead of reserving a right
+   * gutter for it. The line/candles run all the way to the right edge, and the
+   * price labels (and the live-value badge) float on top — so the chart isn't
+   * cut off short of the edge, especially while time-scrolling. Default `false`.
+   *
+   * @experimental
+   */
+  float?: boolean;
 }
 
 /**

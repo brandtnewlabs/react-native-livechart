@@ -8,6 +8,7 @@ function baseState() {
     displayWindow: 30,
     timestamp: 1000,
     liveEdge: 0,
+    edgeValue: 0,
     extremaMinValue: NaN,
     extremaMaxValue: NaN,
     extremaMinTime: NaN,
@@ -556,6 +557,56 @@ describe("tickLiveChartEngineFrame", () => {
       tickLiveChartEngineFrame(s, input({ viewEnd: 950, paused: true }));
       expect(s.timestamp).toBe(950);
     });
+
+    // edgeValue — the price at the window's right edge (for a followViewEdge badge).
+    it("edgeValue tracks the live value while following", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({
+          targetValue: 50,
+          points: [{ time: 1000, value: 50 }],
+          smoothing: 0.5,
+        }),
+      );
+      expect(s.edgeValue).toBe(s.displayValue);
+    });
+
+    it("edgeValue tracks the last visible point when scrolled back (line)", () => {
+      const s = { ...baseState(), edgeValue: 0, displayValue: 999 };
+      tickLiveChartEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          smoothing: 1,
+          points: [
+            { time: 940, value: 42 }, // last visible (<= viewEnd 950)
+            { time: 1010, value: 777 }, // future — excluded from the edge
+          ],
+        }),
+      );
+      expect(s.edgeValue).toBeGreaterThan(0);
+      expect(s.edgeValue).toBeLessThanOrEqual(42); // toward 42, not 999 / 777
+    });
+
+    it("edgeValue tracks the last visible candle close when scrolled back", () => {
+      const s = { ...baseState(), edgeValue: 0, displayValue: 999 };
+      tickLiveChartEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          smoothing: 1,
+          mode: "candle",
+          candles: [
+            { time: 940, open: 40, high: 45, low: 38, close: 42 },
+            { time: 1010, open: 700, high: 800, low: 600, close: 777 },
+          ],
+          liveCandle: null,
+        }),
+      );
+      expect(s.edgeValue).toBeGreaterThan(0);
+      expect(s.edgeValue).toBeLessThanOrEqual(42);
+    });
   });
 
   // ── Extrema tracking (for "extrema"-positioned axis labels) ──────────────
@@ -792,6 +843,7 @@ describe("tickLiveChartEngineFrame adaptiveSpeedBoost", () => {
       displayWindow: 30,
       timestamp: 1000,
       liveEdge: 0,
+      edgeValue: 0,
       extremaMinValue: NaN,
       extremaMaxValue: NaN,
       extremaMinTime: NaN,
