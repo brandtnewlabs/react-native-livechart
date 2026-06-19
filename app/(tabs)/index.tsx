@@ -108,6 +108,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "referenceLines: lines, value/time bands, off-axis badge.",
       },
       {
+        href: "/demo/overlay-bridge",
+        title: "Overlay bridge",
+        blurb: "renderOverlay: hand-rolled RN order overlay via the priceToY / yToPrice / timeToX bridge.",
+      },
+      {
         href: "/demo/threshold",
         title: "Threshold split",
         blurb: "threshold: green above / red below a live break-even — split stroke, P/L fill band, marker line.",

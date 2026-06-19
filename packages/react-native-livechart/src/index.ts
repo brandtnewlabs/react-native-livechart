@@ -25,6 +25,10 @@ export { MONO_FONT_FAMILY } from "./lib/monoFontFamily";
 export { useDegen } from "./hooks/useDegen";
 export { useTradeStream } from "./hooks/useTradeStream";
 
+// ── renderOverlay bridge hooks (reactive price→Y / time→X for custom overlays) ──
+
+export { usePriceY, useTimeX } from "./hooks/useChartOverlayContext";
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type {
@@ -36,6 +40,9 @@ export type {
   CandleMetrics,
   CandlePoint,
   ChartInsets,
+  ChartOverlayContext,
+  ChartPlotRect,
+  ChartScale,
   ChartSegment,
   DegenOptions,
   DegenShakePayload,

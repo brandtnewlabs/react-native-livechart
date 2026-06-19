@@ -370,6 +370,64 @@ interface TooltipRenderProps {
 }
 ```
 
+## ChartOverlayContext
+
+The price↔pixel / time↔pixel bridge passed to a custom
+[`renderOverlay`](/api-reference/livechart#renderoverlay). It hands you a single
+per-frame `scale` `SharedValue` plus pure mapping worklets.
+
+```ts
+interface ChartOverlayContext {
+  scale: SharedValue<ChartScale>;                               // live scale, recomputed each frame
+  priceToY: (price: number, scale: ChartScale) => number;       // price → canvas Y px (-1 before layout)
+  yToPrice: (y: number, scale: ChartScale) => number | null;    // canvas Y px → price (clamped; null before layout)
+  timeToX: (time: number, scale: ChartScale) => number;         // unix seconds → canvas X px
+  xToTime: (x: number, scale: ChartScale) => number;            // canvas X px → unix seconds
+}
+
+interface ChartScale {
+  min: number;        // live Y-axis lower bound (price at the plot bottom)
+  max: number;        // live Y-axis upper bound (price at the plot top)
+  window: number;     // visible time window in seconds
+  now: number;        // right-edge timestamp (unix seconds)
+  plot: ChartPlotRect;
+}
+
+interface ChartPlotRect {
+  left: number;    // padding.left
+  top: number;     // padding.top
+  right: number;   // canvasWidth - padding.right
+  bottom: number;  // canvasHeight - padding.bottom
+  width: number;   // full canvas width
+  height: number;  // full canvas height
+}
+```
+
+**Easiest path — the `usePriceY` / `useTimeX` hooks.** They project a price / time to
+a `SharedValue<number>` that tracks the live axis for you. Render one component per
+level and read the value in your `useAnimatedStyle`:
+
+```tsx
+function PriceLevel({ ctx, price }) {
+  const y = usePriceY(ctx, price); // reactive — tracks the rescaling axis
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
+  return <Animated.View style={style} />;
+}
+```
+
+**Manual path.** Read `scale.get()` inside your worklet — that read subscribes it to
+the live scale — then feed the snapshot to the pure mappings. (Reanimated only
+observes SharedValues read directly in a worklet's closure, so the mappings take the
+snapshot as an argument rather than reading it themselves.)
+
+```tsx
+const style = useAnimatedStyle(() => {
+  const s = scale.get();          // subscribe to the live scale
+  const y = priceToY(142.5, s);   // project a price level to its pixel
+  return { transform: [{ translateY: y }] };
+});
+```
+
 ## DegenOptions
 
 The most-used fields (see the source for the full tuning surface):
