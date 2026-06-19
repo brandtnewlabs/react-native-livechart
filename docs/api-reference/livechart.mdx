@@ -39,6 +39,15 @@ provided; everything else has a default.
   In-progress candle, updated each tick; `null` between buckets.
 </ParamField>
 
+<ParamField body="volume" type="boolean | VolumeConfig" default="false">
+  Volume bars in a reserved band below the candles (candle mode only). The
+  candle plot shrinks by the band height so candles are never cut off; the x-axis
+  stays pinned to the bottom. Reads each [`CandlePoint.volume`](/api-reference/types#data);
+  bars normalize to the largest visible volume. Pass a
+  [`VolumeConfig`](/api-reference/types#config-objects) for `upColor` / `downColor`,
+  `maxHeight`, `radius`, `opacity`. See [Candlestick](/guides/candlestick#volume-bars).
+</ParamField>
+
 ## Line, fill & tip
 
 <ParamField body="line" type="LineConfig">
@@ -230,6 +239,15 @@ provided; everything else has a default.
 <ParamField body="onGestureEnd" type="() => void">
   JS-thread callback fired once when the user stops scrubbing. Fires only if a
   scrub actually started — a tap that never activates emits neither callback.
+</ParamField>
+
+<ParamField body="timeScroll" type="boolean | TimeScrollConfig" default="false">
+  Pan back through history: drag (or fling) to scroll, and the chart stops
+  auto-following until you return to the live edge. `true` uses the default
+  drag-to-scroll gesture (`"holdToScrub"` — drag scrolls, press-and-hold scrubs);
+  pass a [`TimeScrollConfig`](/api-reference/types#config-objects) to pick
+  `"axisDrag"` (drag the x-axis strip) or set `scrubHoldMs`. Single-series only.
+  **@experimental.** See [Time-scroll](/guides/time-scroll).
 </ParamField>
 
 ## Axes, grid & range
