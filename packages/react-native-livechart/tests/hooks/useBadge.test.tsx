@@ -277,4 +277,105 @@ describe("useBadge", () => {
     );
     expect(result.current.value.bgColor).toBe("#ff0000");
   });
+
+  // pillH = font size (12) + padY*2 (6) = 18, so the capsule radius (midY) is 9.
+  it("applies a small custom corner radius in tail mode (rounded-corner branch)", () => {
+    const { result } = renderHook(() =>
+      useBadge(
+        makeEngine(400, 300),
+        DEFAULT_PADDING,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+        undefined,
+        "right",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        3, // radius < midY → square body with rounded right corners
+      ),
+    );
+    expect(result.current.value.text).toBe("50.00");
+    expect(result.current.value.path).toBeDefined();
+  });
+
+  it("clamps a large radius back to the capsule (semicircle branch)", () => {
+    const { result } = renderHook(() =>
+      useBadge(
+        makeEngine(400, 300),
+        DEFAULT_PADDING,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+        undefined,
+        "right",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        999, // radius > midY → clamped to the capsule cap
+      ),
+    );
+    expect(result.current.value.text).toBe("50.00");
+    expect(result.current.value.path).toBeDefined();
+  });
+
+  it("clamps a negative radius to square corners on the no-tail pill", () => {
+    const { result } = renderHook(() =>
+      useBadge(
+        makeEngine(400, 300),
+        { ...DEFAULT_PADDING, right: 76 },
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        false, // no tail → addRRect with the clamped radius
+        undefined,
+        "right",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        -5, // clamped to 0 (square corners)
+      ),
+    );
+    expect(result.current.value.text).toBe("50.00");
+    expect(result.current.value.path).toBeDefined();
+  });
+
+  it("uses the text color override when provided", () => {
+    const { result } = renderHook(() =>
+      useBadge(
+        makeEngine(400, 300),
+        DEFAULT_PADDING,
+        palette,
+        (v) => v.toFixed(2),
+        font,
+        "default",
+        true,
+        undefined,
+        "right",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "#00ff00", // textColor override
+      ),
+    );
+    expect(result.current.value.textColor).toBe("#00ff00");
+  });
 });

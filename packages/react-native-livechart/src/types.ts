@@ -376,6 +376,35 @@ export interface BadgeConfig {
   /** Which side of the chart the badge appears on. Default `"right"`. */
   position?: "right" | "left";
   /**
+   * Pill corner radius in pixels. Default: half the pill height (a full
+   * capsule). Clamped to `[0, pillHeight / 2]`, so the maximum is always the
+   * capsule. `0` gives square corners.
+   */
+  radius?: number;
+  /** Pill border color. When unset, the badge has no border. */
+  borderColor?: string;
+  /** Border stroke width in pixels — only drawn when `borderColor` is set. Default `1`. */
+  borderWidth?: number;
+  /**
+   * Label text color override. Mirrors `background`; when unset the text color
+   * follows the `variant` / theme rule.
+   */
+  textColor?: string;
+  /**
+   * Badge font size in pixels. Falls back to the chart `font`. Note: a size
+   * larger than the chart font can crowd the reserved right gutter — pair with
+   * `position: "left"` or `yAxis.float` if it overflows.
+   */
+  fontSize?: number;
+  /** Badge font family. Falls back to the chart `font`. */
+  fontFamily?: string;
+  /** Badge font weight. Falls back to the chart `font`. */
+  fontWeight?: FontWeight;
+  /** Nudge the whole badge horizontally from its anchor, in pixels. Default `0`. */
+  offsetX?: number;
+  /** Nudge the whole badge vertically from its anchor, in pixels. Default `0`. */
+  offsetY?: number;
+  /**
    * When the chart is scrolled back (see `timeScroll`), move the live-price
    * indicators — the badge, the value line, and the live dot — to the price at
    * the visible window's right edge instead of the live price, so they track the

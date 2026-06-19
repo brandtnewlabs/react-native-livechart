@@ -58,6 +58,18 @@ export interface ResolvedBadgeConfig {
   tail: boolean;
   position: "right" | "left";
   background: string | undefined;
+  /** undefined → capsule (pillHeight / 2) at render time */
+  radius: number | undefined;
+  /** undefined → no border */
+  borderColor: string | undefined;
+  borderWidth: number;
+  /** undefined → variant/theme text color at render time */
+  textColor: string | undefined;
+  fontSize: number | undefined;
+  fontFamily: string | undefined;
+  fontWeight: FontWeight | undefined;
+  offsetX: number;
+  offsetY: number;
   /** Track the visible window's right-edge price while scrolled back. */
   followViewEdge: boolean;
 }
@@ -354,6 +366,15 @@ const BADGE_DEFAULTS: ResolvedBadgeConfig = {
   tail: true,
   position: "right",
   background: undefined,
+  radius: undefined,
+  borderColor: undefined,
+  borderWidth: 1,
+  textColor: undefined,
+  fontSize: undefined,
+  fontFamily: undefined,
+  fontWeight: undefined,
+  offsetX: 0,
+  offsetY: 0,
   followViewEdge: false,
 };
 
