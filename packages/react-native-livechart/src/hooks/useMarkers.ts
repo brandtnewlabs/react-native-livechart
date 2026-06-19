@@ -10,16 +10,30 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import { projectMarkers, type ProjectedMarker } from "../math/markers";
 import { nearestMarkerIndex } from "../math/markers";
+import {
+  clusterMarkers,
+  clusterMembers,
+  type ResolvedMarkerCluster,
+} from "../math/markerCluster";
 import type {
   LiveChartPoint,
   Marker,
-  MarkerHoverEvent,
+  MarkerPressEvent,
   SeriesConfig,
 } from "../types";
 
+const ANCHORED_CLUSTER: ResolvedMarkerCluster = {
+  mode: "anchored",
+  overlap: 0.75,
+  gap: 2,
+  maxBeforeGroup: 5,
+};
+
 /**
  * Projects markers to screen positions each frame and builds a tap gesture that
- * hit-tests against them, firing `onMarkerHover` (or `null` on a miss).
+ * hit-tests against them, firing `onMarkerPress` (or `null` on a miss). Applies
+ * the {@link clusterMarkers} collision pass each frame so hit-testing matches the
+ * drawn (stacked / collapsed) positions.
  */
 export function useMarkers(
   engine: ChartEngineLayout,
@@ -27,7 +41,7 @@ export function useMarkers(
   markers: SharedValue<Marker[]>,
   active: boolean,
   hitRadius: number,
-  onMarkerHover?: (event: MarkerHoverEvent | null) => void,
+  onMarkerPress?: (event: MarkerPressEvent | null) => void,
   seriesSV?: SharedValue<SeriesConfig[]>,
   lineData?: SharedValue<LiveChartPoint[]>,
   /** Static charts run no loops: register without starting. Default `true`. */
@@ -35,6 +49,8 @@ export function useMarkers(
   /** Single-series line is drawn linear (`line.curve === "linear"`) — anchor
    *  `lineData` markers on the straight chord rather than the spline. */
   lineLinear = false,
+  /** Collision config; default `"anchored"` (no stacking). */
+  cluster: ResolvedMarkerCluster = ANCHORED_CLUSTER,
 ): {
   projected: SharedValue<ProjectedMarker[]>;
   tapGesture: ReturnType<typeof Gesture.Tap>;
@@ -51,10 +67,10 @@ export function useMarkers(
     cacheRef.current = { a: [] as ProjectedMarker[], b: [] as ProjectedMarker[], tick: false };
   }
 
-  const emitHover =
+  const emitPress =
     /* istanbul ignore next -- invoked only from the UI-thread tap worklet */
-    (event: MarkerHoverEvent | null) => {
-      onMarkerHover?.(event);
+    (event: MarkerPressEvent | null) => {
+      onMarkerPress?.(event);
     };
 
   useFrameCallback(
@@ -82,6 +98,7 @@ export function useMarkers(
         lineData: lineData?.get(),
         lineLinear,
       });
+      clusterMarkers(markers.get(), buf, { config: cluster });
       projected.set(buf);
     },
     autostart,
@@ -92,14 +109,25 @@ export function useMarkers(
       e,
     ) => {
       "worklet";
-      const idx = nearestMarkerIndex(projected.get(), e.x, e.y, hitRadius);
+      const proj = projected.get();
+      const idx = nearestMarkerIndex(proj, e.x, e.y, hitRadius);
       if (idx < 0) {
-        runOnJS(emitHover)(null);
+        runOnJS(emitPress)(null);
         return;
       }
-      const m = markers.get()[idx];
-      const p = projected.get()[idx];
-      runOnJS(emitHover)({ marker: m, point: { x: p.x, y: p.y } });
+      const ms = markers.get();
+      const m = ms[idx];
+      const p = proj[idx];
+      const isGrouped = p.isGrouped;
+      // Collapsed cluster: surface the whole bucket so the consumer can list it.
+      const members = isGrouped ? clusterMembers(ms, proj, idx) : undefined;
+      runOnJS(emitPress)({
+        marker: m,
+        point: { x: p.x, y: p.y },
+        index: idx,
+        isGrouped,
+        members,
+      });
     },
   );
 

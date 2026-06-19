@@ -20,6 +20,15 @@ const BASE = {
   displayMax: 100,
 };
 
+function pm(
+  x: number,
+  y: number,
+  visible: boolean,
+  hidden = false,
+): ProjectedMarker {
+  return { x, y, visible, hidden, isGrouped: false, groupCount: 0, groupRep: -1 };
+}
+
 describe("projectMarkers", () => {
   it("projects an absolute-value marker into the chart area", () => {
     const markers: Marker[] = [
@@ -132,10 +141,7 @@ describe("projectMarkers", () => {
   });
 
   it("reuses the out buffer and trims it to the marker count", () => {
-    const out: ProjectedMarker[] = [
-      { x: 1, y: 1, visible: true },
-      { x: 2, y: 2, visible: true },
-    ];
+    const out: ProjectedMarker[] = [pm(1, 1, true), pm(2, 2, true)];
     projectMarkers([{ id: "a", time: 990, kind: "trade", value: 50 }], out, BASE);
     expect(out.length).toBe(1);
   });
@@ -197,9 +203,9 @@ describe("markersSignature", () => {
 
 describe("nearestMarkerIndex", () => {
   const positions: ProjectedMarker[] = [
-    { x: 10, y: 10, visible: true },
-    { x: 100, y: 100, visible: true },
-    { x: 12, y: 12, visible: false },
+    pm(10, 10, true),
+    pm(100, 100, true),
+    pm(12, 12, false),
   ];
 
   it("returns the nearest visible marker within radius", () => {
@@ -216,10 +222,15 @@ describe("nearestMarkerIndex", () => {
   });
 
   it("breaks ties toward the later index", () => {
-    const tied: ProjectedMarker[] = [
-      { x: 50, y: 50, visible: true },
-      { x: 50, y: 50, visible: true },
-    ];
+    const tied: ProjectedMarker[] = [pm(50, 50, true), pm(50, 50, true)];
     expect(nearestMarkerIndex(tied, 50, 50, 8)).toBe(1);
+  });
+
+  it("skips hidden (collapsed-cluster member) markers", () => {
+    const withHidden: ProjectedMarker[] = [
+      pm(50, 50, true, true), // hidden member, right under the tap
+      pm(60, 60, true), // the visible representative nearby
+    ];
+    expect(nearestMarkerIndex(withHidden, 50, 50, 16)).toBe(1);
   });
 });

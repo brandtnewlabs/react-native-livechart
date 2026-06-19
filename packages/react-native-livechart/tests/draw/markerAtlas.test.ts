@@ -1,6 +1,9 @@
 import {
   buildMarkerAtlas,
   defaultMarkerColor,
+  groupBgSig,
+  groupCountText,
+  groupGlyphSig,
   isConnectorMarker,
   markerAppearanceSig,
 } from "../../src/draw/markerAtlas";
@@ -127,5 +130,32 @@ describe("defaultMarkerColor", () => {
     for (const kind of ["trade", "boost", "graduation", "winner", "clawback"] as const) {
       expect(typeof defaultMarkerColor(kind, palette)).toBe("string");
     }
+  });
+});
+
+describe("count-badge cells (withGroups)", () => {
+  it("omits group cells by default and bakes them when requested", () => {
+    const marker = m({ id: "t", kind: "trade", color: "#16a34a" });
+    const plain = buildMarkerAtlas([marker], palette, font, 1);
+    expect(plain.digitWidths).toEqual({});
+    expect(plain.cells[groupGlyphSig("3")]).toBeUndefined();
+
+    const withGroups = buildMarkerAtlas([marker], palette, font, 1, true);
+    expect(withGroups.digitWidths["1"]).toBeGreaterThan(0);
+    // 10 uniform white digit cells, shared across colors.
+    expect(withGroups.cells[groupGlyphSig("0")]).toBeDefined();
+    expect(withGroups.cells[groupGlyphSig("9")]).toBeDefined();
+    // One fixed round background per cluster color (square cell box).
+    const bg = withGroups.cells[groupBgSig("#16a34a")];
+    expect(bg).toBeDefined();
+    expect(bg.w).toBe(bg.h); // round → square cell
+  });
+});
+
+describe("groupCountText", () => {
+  it("shows the exact count, capping at 99 so it fits the round badge", () => {
+    expect(groupCountText(2)).toBe("2");
+    expect(groupCountText(42)).toBe("42");
+    expect(groupCountText(100)).toBe("99");
   });
 });

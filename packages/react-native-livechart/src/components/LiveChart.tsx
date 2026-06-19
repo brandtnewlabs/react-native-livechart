@@ -32,6 +32,7 @@ import {
   resolveGradient,
   resolveGridStyle,
   resolveLeftEdgeFade,
+  resolveMarkerCluster,
   resolveMetrics,
   resolvePulse,
   resolveScrub,
@@ -223,8 +224,9 @@ function useLiveChartController({
   tradeStream,
   degen,
   markers,
-  onMarkerHover,
+  onMarkerPress,
   markerHitRadius = 16,
+  markerCluster,
   renderMarker,
   renderTooltip,
   renderOverlay,
@@ -604,6 +606,7 @@ function useLiveChartController({
     : undefined;
 
   const markersActive = markers != null;
+  const markerClusterCfg = resolveMarkerCluster(markerCluster);
   // `projected` is used internally by the hit-test gesture; the overlay
   // self-projects, so we only need the gesture + hit-test here. Built BEFORE
   // `useCrosshair` so the scrub-action tap can defer to a marker under the finger.
@@ -613,11 +616,12 @@ function useLiveChartController({
     markersSV,
     !isStatic && markersActive,
     markerHitRadius,
-    onMarkerHover,
+    onMarkerPress,
     undefined, // seriesSV — single-series has none
     engine.data, // anchor value-less markers to the line
     !isStatic, // static: no marker-projection loop
     lineIsLinear, // match marker anchoring to the rendered curve
+    markerClusterCfg, // co-located marker stacking / collapse
   );
 
   // Pressable reference-line badges (working orders / alerts). Built before
@@ -738,12 +742,13 @@ function useLiveChartController({
       overlayTaps.length === 1
         ? overlayTaps[0]
         : Gesture.Simultaneous(overlayTaps[0], overlayTaps[1]);
-    // With scrub-action the action tap shares the gesture space with the overlay
-    // taps (Simultaneous); without it the pan only needs to race the tap group.
-    rootGesture =
-      scrubActionCfg !== null
-        ? Gesture.Simultaneous(baseGesture, tapGroup)
-        : Gesture.Race(baseGesture, tapGroup);
+    // Always `Simultaneous`, never `Race`: on iOS the scrub pan uses
+    // `minDistance(0)`, so in a `Race` it activates on touch-down and cancels the
+    // overlay tap before it can recognize — `onMarkerPress`/`onReferenceLinePress`
+    // would never fire. Sharing the gesture space lets the tap recognize; the pan
+    // defers to a marker/badge under the finger via `deferTapHit` (see
+    // `useCrosshair`'s scrub `onStart`) so no stray crosshair is dropped there.
+    rootGesture = Gesture.Simultaneous(baseGesture, tapGroup);
   }
 
   // Compose the pan-scroll gesture. holdToScrub races the scrub/tap gestures (a
@@ -891,6 +896,7 @@ function useLiveChartController({
     rootGesture,
     markersActive,
     markersSV,
+    markerClusterCfg,
     renderMarker,
     renderTooltip,
     renderOverlay,
@@ -1063,6 +1069,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     degenPackRevision,
     markersActive,
     markersSV,
+    markerClusterCfg,
     renderMarker,
     emptyText,
     metricsCfg,
@@ -1284,6 +1291,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
             lineData={engine.data}
             lineLinear={lineIsLinear}
             renderMarker={renderMarker}
+            cluster={markerClusterCfg}
           />
         </Group>
       )}
@@ -1560,6 +1568,7 @@ export function LiveChart(props: LiveChartProps) {
     bottomLabelCfg,
     markersActive,
     markersSV,
+    markerClusterCfg,
     renderMarker,
     renderTooltip,
     renderOverlay,
@@ -1648,6 +1657,7 @@ export function LiveChart(props: LiveChartProps) {
             padding={effectivePadding}
             lineData={engine.data}
             lineLinear={lineIsLinear}
+            cluster={markerClusterCfg}
           />
         )}
 

@@ -17,8 +17,12 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import { usePathBuilder } from "../hooks/usePathBuilder";
 import {
+  BADGE_TEXT_SCALE,
   buildMarkerAtlas,
   defaultMarkerColor,
+  groupBgSig,
+  groupCountText,
+  groupGlyphSig,
   isConnectorMarker,
   markerAppearanceSig,
   type AtlasCell,
@@ -29,10 +33,15 @@ import {
   projectPoint,
   type ProjectedMarker,
 } from "../math/markers";
+import {
+  clusterMarkers,
+  type ResolvedMarkerCluster,
+} from "../math/markerCluster";
 import type {
   LiveChartPalette,
   LiveChartPoint,
   Marker,
+  MarkerRenderContext,
   SeriesConfig,
 } from "../types";
 
@@ -153,6 +162,7 @@ export function MarkerOverlay({
   lineData,
   lineLinear,
   renderMarker,
+  cluster,
 }: {
   markers: SharedValue<Marker[]>;
   engine: ChartEngineLayout;
@@ -170,7 +180,9 @@ export function MarkerOverlay({
    * `CustomMarkerOverlay` instead — so they're excluded from the atlas here to
    * avoid a (blurry) glyph drawn behind the custom element.
    */
-  renderMarker?: (marker: Marker) => unknown;
+  renderMarker?: (marker: Marker, ctx: MarkerRenderContext) => unknown;
+  /** Collision config; `"stacked"` fans/collapses co-located markers. */
+  cluster: ResolvedMarkerCluster;
 }) {
   // Seed from the current markers at mount; the reaction below keeps it in sync.
   const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
@@ -198,7 +210,15 @@ export function MarkerOverlay({
     let k = "";
     for (let i = 0; i < snapshot.length; i++) {
       const m = snapshot[i];
-      if (renderMarker(m) != null) k += `${m.id}\x1f`;
+      // Detection ctx (an element-vs-null result must not depend on cluster
+      // state — see CustomMarkerOverlay); the live ctx is applied there.
+      const ctx: MarkerRenderContext = {
+        index: i,
+        isGrouped: false,
+        groupCount: 0,
+        side: m.side ?? "center",
+      };
+      if (renderMarker(m, ctx) != null) k += `${m.id}\x1f`;
     }
     return k;
   }, [snapshot, renderMarker]);
@@ -225,13 +245,22 @@ export function MarkerOverlay({
   // Rasterize at the screen's device-pixel ratio so sprites stay crisp on
   // retina canvases instead of being upscaled from a logical-sized texture.
   const dpr = PixelRatio.get();
+  const clusterStacked = cluster.mode === "stacked";
   const atlas = useMemo(
-    () => buildMarkerAtlas(snapshot.filter((m) => !customIds[m.id]), palette, font, dpr),
+    () =>
+      buildMarkerAtlas(
+        snapshot.filter((m) => !customIds[m.id]),
+        palette,
+        font,
+        dpr,
+        clusterStacked,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- appearanceKey/paletteKey capture the inputs that change cell pixels
-    [appearanceKey, paletteKey, font, dpr],
+    [appearanceKey, paletteKey, font, dpr, clusterStacked],
   );
   const cells: Record<string, AtlasCell> = atlas.cells;
   const atlasImage = atlas.image;
+  const digitWidths = atlas.digitWidths;
   // Inverse of the texture's device-pixel scale; shrinks each hi-res cell back
   // to its logical on-canvas size in the per-frame blit.
   const invScale = 1 / atlas.scale;
@@ -271,15 +300,59 @@ export function MarkerOverlay({
         lineData: lineData?.get(),
         lineLinear,
       });
+      clusterMarkers(ms, buf, { config: cluster });
       const transforms = [];
       const sprites = [];
       for (let i = 0; i < ms.length; i++) {
         const pt = buf[i];
-        if (!pt.visible) continue;
+        // Collapsed-cluster members fold into their representative's badge.
+        if (!pt.visible || pt.hidden) continue;
         const m = ms[i];
         if (isConnectorMarker(m)) continue;
         // Custom-rendered markers are floated as RN views, not drawn here.
         if (customIds[m.id]) continue;
+        // Collapsed cluster: draw a count badge (bg stadium + composed digits)
+        // instead of the marker's own glyph, all within this one `drawAtlas`.
+        if (pt.isGrouped) {
+          const repColor = m.color ?? defaultMarkerColor(m.kind, palette);
+          const text = groupCountText(pt.groupCount);
+          const bg = cells[groupBgSig(repColor)];
+          if (bg) {
+            transforms.push(
+              Skia.RSXform(invScale, 0, pt.x - bg.w / 2, pt.y - bg.h / 2),
+            );
+            sprites.push(bg.rect);
+          }
+          // Lay the digits out proportionally (each by its own ink width), scaled
+          // down to fit the small round badge, and center the whole number. A
+          // negative kern (fraction of a digit) closes the font's side-bearing gap
+          // so "12" reads tight, not "1 2".
+          const S = BADGE_TEXT_SCALE;
+          let maxDW = 1;
+          for (let d = 0; d < 10; d++) {
+            const dw = digitWidths["" + d] ?? 0;
+            if (dw > maxDW) maxDW = dw;
+          }
+          const kern = -maxDW * S * 0.42;
+          let totalW = 0;
+          for (let c = 0; c < text.length; c++) {
+            totalW += (digitWidths[text[c]] ?? 0) * S + (c > 0 ? kern : 0);
+          }
+          let dx = pt.x - totalW / 2;
+          for (let c = 0; c < text.length; c++) {
+            const w = (digitWidths[text[c]] ?? 0) * S;
+            const gc = cells[groupGlyphSig(text[c])];
+            if (gc) {
+              const cx = dx + w / 2;
+              transforms.push(
+                Skia.RSXform(invScale * S, 0, cx - (gc.w * S) / 2, pt.y - (gc.h * S) / 2),
+              );
+              sprites.push(gc.rect);
+            }
+            dx += w + kern;
+          }
+          continue;
+        }
         const cell = cells[markerAppearanceSig(m)];
         if (!cell) continue;
         // Center the cell on the projected point. The cell's source rect is in
@@ -291,7 +364,20 @@ export function MarkerOverlay({
       }
       return { transforms, sprites };
     },
-    [cells, customIds, invScale, markers, engine, padding, series, lineData, lineLinear],
+    [
+      cells,
+      customIds,
+      invScale,
+      digitWidths,
+      markers,
+      engine,
+      padding,
+      palette,
+      series,
+      lineData,
+      lineLinear,
+      cluster,
+    ],
   );
   const transforms = useDerivedValue(() => atlasData.get().transforms, [atlasData]);
   const sprites = useDerivedValue(() => atlasData.get().sprites, [atlasData]);

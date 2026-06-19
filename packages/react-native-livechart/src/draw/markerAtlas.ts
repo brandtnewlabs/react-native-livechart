@@ -21,11 +21,42 @@ const PILL_TEXT_COLOR = "#ffffff";
 /** Anti-alias breathing room baked around every cell so sprites don't clip. */
 const CELL_MARGIN = 2;
 
-/** Default glyph color per kind when `marker.color` is unset. */
+/** Glyphs composed into a collapsed-cluster count badge (digits only; capped "99"). */
+const GROUP_CHARS = "0123456789";
+/** Padding (px) between the digits and the inner circle edge. */
+const BADGE_PAD = 2;
+/** Background-colored halo ring around the badge — matches the icon-pill border. */
+const BADGE_BORDER = 2;
+/** Count-badge digits render at this fraction of the chart font, so two digits fit
+ *  a small round badge. Shared with the overlay's per-frame digit layout. */
+export const BADGE_TEXT_SCALE = 0.75;
+
+/** Atlas cell sig for one count-badge glyph (`0`-`9`), drawn white. */
+export function groupGlyphSig(ch: string): string {
+  "worklet";
+  return `gd\x1f${ch}`;
+}
+
+/** Atlas cell sig for the round count-badge background (one fixed circle per color). */
+export function groupBgSig(color: string): string {
+  "worklet";
+  return `gbg\x1f${color}`;
+}
+
+/** Text shown in a collapsed-cluster count badge — exact up to `"99"`, capped there
+ *  so it always fits the fixed round badge (≤ 2 digits). */
+export function groupCountText(count: number): string {
+  "worklet";
+  return count > 99 ? "99" : `${count}`;
+}
+
+/** Default glyph color per kind when `marker.color` is unset. Worklet-safe so the
+ *  per-frame overlay worklet can resolve a collapsed cluster's badge color. */
 export function defaultMarkerColor(
   kind: MarkerKind,
   palette: LiveChartPalette,
 ): string {
+  "worklet";
   switch (kind) {
     case "trade":
       return palette.line;
@@ -93,9 +124,13 @@ export interface MarkerAtlas {
    * hi-res cell back to its logical on-canvas size. See `buildMarkerAtlas`.
    */
   scale: number;
+  /** Logical ink width (px) of each count-badge digit `"0"`–`"9"`, for laying them
+   *  out proportionally (so narrow digits like `1` don't leave gaps). Empty when
+   *  the atlas carries no group cells (clustering off). */
+  digitWidths: Record<string, number>;
 }
 
-const EMPTY_ATLAS: MarkerAtlas = { image: null, cells: {}, scale: 1 };
+const EMPTY_ATLAS: MarkerAtlas = { image: null, cells: {}, scale: 1, digitWidths: {} };
 
 function fillPaint(color: string): SkPaint {
   const p = Skia.Paint();
@@ -260,6 +295,51 @@ function cellSpec(m: Marker, palette: LiveChartPalette, font: SkFont): CellSpec 
   };
 }
 
+/** One count-badge glyph (`0`-`9` / `+`) in white, on a uniform-width box so the
+ *  digits lay out tabular. `uw`/`gh` are the shared logical glyph metrics. */
+function groupGlyphCellSpec(
+  ch: string,
+  uw: number,
+  gh: number,
+  font: SkFont,
+): CellSpec {
+  const b = font.measureText(ch);
+  const dx = b.x + b.width / 2;
+  const dy = b.y + b.height / 2;
+  const m2 = CELL_MARGIN * 2;
+  return {
+    w: uw + m2,
+    h: gh + m2,
+    draw: (canvas, cx, cy) =>
+      canvas.drawText(ch, cx - dx, cy - dy, fillPaint(PILL_TEXT_COLOR), font),
+  };
+}
+
+/** Round count-badge background — a single fixed-size circle (independent of digit
+ *  count) with a background-colored halo ring like the icon pills. Sized to fit the
+ *  scaled two-digit text, so the badge stays small, round, and never changes size.
+ *  `uw`/`gh` are the shared (full-size) glyph metrics; the text is drawn scaled. */
+function groupBgCellSpec(
+  color: string,
+  bgColor: string,
+  uw: number,
+  gh: number,
+): CellSpec {
+  const m2 = CELL_MARGIN * 2;
+  // Inner circle fits a centered two-digit string at BADGE_TEXT_SCALE plus padding.
+  const innerR = Math.ceil(Math.max(2 * uw, gh) * BADGE_TEXT_SCALE) / 2 + BADGE_PAD;
+  const outerR = innerR + BADGE_BORDER;
+  const diameter = 2 * outerR;
+  return {
+    w: diameter + m2,
+    h: diameter + m2,
+    draw: (canvas, cx, cy) => {
+      canvas.drawCircle(cx, cy, outerR, fillPaint(bgColor)); // halo ring
+      canvas.drawCircle(cx, cy, innerR, fillPaint(color)); // colored badge
+    },
+  };
+}
+
 /**
  * Rasterize every distinct marker appearance into a single packed atlas image,
  * once per appearance-set change (NOT per frame). The per-frame worklet then
@@ -279,6 +359,9 @@ export function buildMarkerAtlas(
   palette: LiveChartPalette,
   font: SkFont,
   scale = 1,
+  /** Also bake count-badge cells (digits + per-color backgrounds) for
+   *  `markerCluster: "stacked"` collapse. Off by default — no atlas bloat. */
+  withGroups = false,
 ): MarkerAtlas {
   const seen = new Set<string>();
   const specs: { sig: string; spec: CellSpec }[] = [];
@@ -290,6 +373,37 @@ export function buildMarkerAtlas(
     seen.add(sig);
     specs.push({ sig, spec: cellSpec(m, palette, font) });
   }
+
+  // Count-badge cells: 10 uniform white digit cells shared across colors, plus one
+  // fixed round background per cluster color. A collapsed group composes its number
+  // (centered, ≤ 2 digits) over the circle in the same `drawAtlas`.
+  const digitWidths: Record<string, number> = {};
+  if (withGroups && specs.length > 0) {
+    let uw = 1;
+    let gh = 1;
+    for (const ch of GROUP_CHARS) {
+      const b = font.measureText(ch);
+      digitWidths[ch] = Math.max(1, Math.ceil(b.width));
+      if (b.width > uw) uw = b.width;
+      if (b.height > gh) gh = b.height;
+    }
+    uw = Math.ceil(uw);
+    gh = Math.ceil(gh);
+    for (const ch of GROUP_CHARS) {
+      specs.push({ sig: groupGlyphSig(ch), spec: groupGlyphCellSpec(ch, uw, gh, font) });
+    }
+    const bgColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
+    const colors = new Set<string>();
+    for (let i = 0; i < markers.length; i++) {
+      const m = markers[i];
+      if (isConnectorMarker(m)) continue;
+      colors.add(m.color ?? defaultMarkerColor(m.kind, palette));
+    }
+    for (const color of colors) {
+      specs.push({ sig: groupBgSig(color), spec: groupBgCellSpec(color, bgColor, uw, gh) });
+    }
+  }
+
   if (specs.length === 0) return EMPTY_ATLAS;
 
   let totalW = 0;
@@ -326,5 +440,5 @@ export function buildMarkerAtlas(
   }
   const picture = recorder.finishRecordingAsPicture();
   const image = drawAsImageFromPicture(picture, { width: texW, height: texH });
-  return { image, cells, scale };
+  return { image, cells, scale, digitWidths };
 }
