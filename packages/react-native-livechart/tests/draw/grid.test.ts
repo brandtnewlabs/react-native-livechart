@@ -139,6 +139,27 @@ describe("computeGridEntries", () => {
     computeGridEntries(0, 10, 400, 12, 28, 0, alphas, fmt, 16.67);
     expect(alphas).toBeDefined();
   });
+
+  it("terminates on a near-flat range where the step is below value resolution", () => {
+    // Range ~1 ULP at this magnitude: `fine` falls below ulp(val), so the old
+    // `val += fine` never advanced and the worklet hung the UI thread (issue #146).
+    const v = 1234.56;
+    const alphas: Record<number, number> = {};
+    const r = computeGridEntries(v - 3e-13, v, 250, 0, 0, 0, alphas, fmt, 16.67);
+    // No resolvable grid lines for a degenerate range — it just returns cleanly.
+    expect(r.entries).toEqual([]);
+  });
+
+  it("caps the grid loop at MAX_GRID_LINES as a hard backstop", () => {
+    // Force a huge line count while the step still resolves: an outsized canvas
+    // plus a tiny in-band prevInterval keeps `fine` small enough to exceed 1000
+    // lines, exercising the iteration cap.
+    const alphas: Record<number, number> = {};
+    const r = computeGridEntries(0, 100, 20000, 0, 0, 0.1, alphas, fmt, 16.67);
+    expect(r.entries.length).toBeGreaterThan(0);
+    // Phase-1 stops emitting targets past the cap (would be ~2000 uncapped).
+    expect(Object.keys(alphas).length).toBeLessThanOrEqual(1000);
+  });
 });
 
 describe("computeGridEntries grid-fade metrics", () => {
