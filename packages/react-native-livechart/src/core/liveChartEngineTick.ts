@@ -10,6 +10,14 @@ export interface EngineTickMutable {
   displayWindow: number;
   timestamp: number;
   /**
+   * The right-edge time the engine would use if it were following live —
+   * `now (+ windowBuffer)`. Equals {@link timestamp} while following; when
+   * scrolled back in time (see {@link EngineTickInput.viewEnd}) it keeps
+   * advancing while `timestamp` stays frozen. Exposed so the pan-scroll gesture
+   * can clamp against the live edge and detect catch-up.
+   */
+  liveEdge: number;
+  /**
    * Value + time of the lowest / highest data point in the visible window —
    * the actual extrema, NOT the smoothed display bounds (which carry margin and
    * fold in the live value / reference lines). `NaN` when the window holds no
@@ -48,6 +56,13 @@ export interface EngineTickInput {
   windowBuffer?: number;
   /** When true, freeze the viewport timestamp and skip displayWindow lerp */
   paused?: boolean;
+  /**
+   * Absolute right-edge time (unix seconds) to freeze the window at, or
+   * `null`/`undefined` to follow the live edge. Set by the pan-scroll gesture
+   * to scroll back in time; once it reaches (or passes) the live edge the engine
+   * resumes following. Takes precedence over {@link paused}.
+   */
+  viewEnd?: number | null;
   /** Chart mode — `"candle"` uses OHLC bars for Y range instead of line points. */
   mode?: "line" | "candle";
   /** Committed OHLC bars (sorted by time). Used when mode is `"candle"`. */
@@ -66,9 +81,18 @@ export function tickLiveChartEngineFrame(
 ): void {
   "worklet";
   const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
-  if (!input.paused) {
-    state.timestamp = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
+  const liveEdge = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
+  state.liveEdge = liveEdge;
+  const viewEnd = input.viewEnd;
+  if (viewEnd != null && viewEnd < liveEdge) {
+    // Scrolled back in time: freeze the right edge at an absolute timestamp so
+    // the window stops tracking "now" (see usePanScroll / the `timeScroll` prop).
+    state.timestamp = viewEnd;
+  } else if (!input.paused) {
+    // Following the live edge — viewEnd is null/undefined or has caught back up.
+    state.timestamp = liveEdge;
   }
+  // else: paused with no active pan → leave the frozen timestamp untouched.
 
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
 

@@ -7,6 +7,7 @@ function baseState() {
     displayMax: 1,
     displayWindow: 30,
     timestamp: 1000,
+    liveEdge: 0,
     extremaMinValue: NaN,
     extremaMaxValue: NaN,
     extremaMinTime: NaN,
@@ -502,6 +503,61 @@ describe("tickLiveChartEngineFrame", () => {
     expect(s.displayWindow).toBeLessThan(60);
   });
 
+  // ── Time-scroll (viewEnd / liveEdge) ─────────────────────────────────────
+  describe("time-scroll", () => {
+    function input(extra: Partial<Parameters<typeof tickLiveChartEngineFrame>[1]>) {
+      return {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.08,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 1,
+        points: [],
+        nowSeconds: 1000,
+        ...extra,
+      };
+    }
+
+    it("exposes the live edge (now + windowBuffer*timeWindow) each frame", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, input({ windowBuffer: 0.1 }));
+      // liveEdge = 1000 + 0.1 * 30 = 1003; following ⇒ timestamp tracks it.
+      expect(s.liveEdge).toBe(1003);
+      expect(s.timestamp).toBe(1003);
+    });
+
+    it("freezes the right edge at viewEnd when scrolled back in time", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, input({ viewEnd: 950 }));
+      expect(s.timestamp).toBe(950); // frozen at the requested absolute time
+      expect(s.liveEdge).toBe(1000); // live edge keeps tracking "now"
+    });
+
+    it("follows the live edge once viewEnd catches up to it", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, input({ viewEnd: 1000 })); // == liveEdge
+      expect(s.timestamp).toBe(1000);
+      const s2 = baseState();
+      tickLiveChartEngineFrame(s2, input({ viewEnd: 1100 })); // past liveEdge
+      expect(s2.timestamp).toBe(1000);
+    });
+
+    it("treats viewEnd null as following", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, input({ viewEnd: null }));
+      expect(s.timestamp).toBe(1000);
+    });
+
+    it("lets viewEnd override paused (pan wins over freeze)", () => {
+      const s = { ...baseState(), timestamp: 999 };
+      tickLiveChartEngineFrame(s, input({ viewEnd: 950, paused: true }));
+      expect(s.timestamp).toBe(950);
+    });
+  });
+
   // ── Extrema tracking (for "extrema"-positioned axis labels) ──────────────
   describe("extrema tracking", () => {
     it("records the value + time of the lowest and highest point (line mode)", () => {
@@ -735,6 +791,7 @@ describe("tickLiveChartEngineFrame adaptiveSpeedBoost", () => {
       displayMax: 10,
       displayWindow: 30,
       timestamp: 1000,
+      liveEdge: 0,
       extremaMinValue: NaN,
       extremaMaxValue: NaN,
       extremaMinTime: NaN,

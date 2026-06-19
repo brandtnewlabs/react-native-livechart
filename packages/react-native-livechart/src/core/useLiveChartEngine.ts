@@ -76,6 +76,25 @@ export interface ChartEngineExtrema {
   extremaMaxTime: SharedValue<number>;
 }
 
+/**
+ * Time-scroll state: lets a pan gesture freeze the window at an absolute time
+ * and resume following the live edge. Returned by both engines (intersected onto
+ * the state) but kept off {@link ChartEngineLayout} so overlay components — which
+ * only read the layout — don't have to carry it.
+ */
+export interface ChartEngineScroll {
+  /**
+   * Absolute right-edge time (unix seconds) to freeze at, or `null` to follow
+   * the live edge. Written by the pan-scroll gesture; read by the engine tick.
+   */
+  viewEnd: SharedValue<number | null>;
+  /**
+   * The right-edge time the engine would use if following live — advances each
+   * frame even while {@link ChartEngineLayout.timestamp} is frozen by a pan.
+   */
+  liveEdge: SharedValue<number>;
+}
+
 export interface SingleEngineState extends ChartEngineLayout, ChartEngineExtrema {
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
@@ -119,6 +138,10 @@ export interface EngineFrameRefs {
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
+  /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
+  viewEndSV?: SharedValue<number | null>;
+  /** Receives the computed live edge each frame. Optional for callers/tests. */
+  liveEdgeSV?: SharedValue<number>;
   modeSV: SharedValue<"line" | "candle">;
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
@@ -144,6 +167,7 @@ export function applyLiveChartEngineFrame(
     displayMax: sv.displayMax.value,
     displayWindow: sv.displayWindow.value,
     timestamp: sv.timestamp.value,
+    liveEdge: sv.liveEdgeSV?.value ?? 0,
     extremaMinValue: sv.extremaMinValue.value,
     extremaMaxValue: sv.extremaMaxValue.value,
     extremaMinTime: sv.extremaMinTime.value,
@@ -167,6 +191,7 @@ export function applyLiveChartEngineFrame(
     points: sv.data.value,
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
+    viewEnd: sv.viewEndSV?.value,
     mode: sv.modeSV.value,
     candles: sv.candles?.value,
     liveCandle: sv.liveCandle?.value,
@@ -176,13 +201,16 @@ export function applyLiveChartEngineFrame(
   sv.displayMax.value = state.displayMax;
   sv.displayWindow.value = state.displayWindow;
   sv.timestamp.value = state.timestamp;
+  if (sv.liveEdgeSV) sv.liveEdgeSV.value = state.liveEdge;
   sv.extremaMinValue.value = state.extremaMinValue;
   sv.extremaMaxValue.value = state.extremaMaxValue;
   sv.extremaMinTime.value = state.extremaMinTime;
   sv.extremaMaxTime.value = state.extremaMaxTime;
 }
 
-export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
+export function useLiveChartEngine(
+  config: EngineConfig,
+): SingleEngineState & ChartEngineScroll {
   // Low-frequency config → UI thread via useDerivedValue
   const timeWindow = useDerivedValue(() => config.timeWindow);
   // Static charts snap to their target in one tick (smoothing=1), so the single
@@ -211,6 +239,13 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
   // Seed once; overwritten by the frame callback on the first tick.
   const [initialTimestamp] = useState(() => Date.now() / 1000);
   const timestamp = useSharedValue(initialTimestamp);
+
+  // Pan-scroll state. `viewEnd` null = follow live; a number freezes the right
+  // edge at that absolute time. `liveEdge` mirrors the would-be-live timestamp
+  // each frame so the gesture can clamp / detect catch-up. Both default to
+  // "following" so charts without `timeScroll` behave exactly as before.
+  const viewEnd = useSharedValue<number | null>(null);
+  const liveEdge = useSharedValue(initialTimestamp);
 
   // Live data extrema (value + time of the visible high / low). NaN until the
   // first tick finds data — the extrema label stays hidden until then.
@@ -250,6 +285,8 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
     nowOverrideSV,
     windowBufferSV,
     pausedSV,
+    viewEndSV: viewEnd,
+    liveEdgeSV: liveEdge,
     modeSV,
     candles,
     liveCandle,
@@ -307,6 +344,8 @@ export function useLiveChartEngine(config: EngineConfig): SingleEngineState {
     canvasWidth,
     canvasHeight,
     timestamp,
+    viewEnd,
+    liveEdge,
     extremaMinValue,
     extremaMaxValue,
     extremaMinTime,

@@ -59,6 +59,7 @@ import { useMarkers } from "../hooks/useMarkers";
 import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
 import { useModeBlend } from "../hooks/useModeBlend";
 import { useMomentum } from "../hooks/useMomentum";
+import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { useSegmentLineGradient } from "../hooks/useSegmentLineGradient";
 import { useSingleChartReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import { useThreshold } from "../hooks/useThreshold";
@@ -146,6 +147,11 @@ function thresholdStops(
  * here so the rendered pieces (`ChartStack`, `ChartScrubLayer`, `LiveChart`) stay
  * small and presentational.
  */
+/** Default press-and-hold (ms) before scrub engages in the `holdToScrub`
+ *  time-scroll mode, so a quick one-finger drag scrolls instead. Overridden by
+ *  `timeScroll.scrubHoldMs`, then `scrub.panGestureDelay`. */
+const HOLD_TO_SCRUB_MS = 500;
+
 function useLiveChartController({
   // ── Data ────────────────────────────────────────────────────────────────
   data,
@@ -179,6 +185,7 @@ function useLiveChartController({
   maxValue,
   windowBuffer = 0,
   nowOverride,
+  timeScroll = false,
   accessibilityLabel,
   accessibilityRole = "image",
   emptyText = "No data",
@@ -556,6 +563,24 @@ function useLiveChartController({
     return markerHitTest(x, y) || refLineHitTest(x, y);
   };
 
+  // Time-scroll activation. `holdToScrub`: a quick one-finger drag scrolls while
+  // scrub engages on press-and-hold — so the scrub gesture needs a long-press
+  // delay (unless the caller set its own `panGestureDelay`).
+  const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
+  const scrollGestureMode =
+    typeof timeScroll === "object"
+      ? (timeScroll.gesture ?? "holdToScrub")
+      : "holdToScrub";
+  // In holdToScrub the scrub MUST require a hold so a quick drag scrolls instead.
+  // Precedence: explicit timeScroll.scrubHoldMs, then scrub.panGestureDelay, then
+  // the default. `||` (not `??`) skips the resolved panGestureDelay's 0 default.
+  const timeScrollHoldMs =
+    typeof timeScroll === "object" ? timeScroll.scrubHoldMs : undefined;
+  const scrubHoldMs =
+    timeScrollEnabled && scrollGestureMode === "holdToScrub"
+      ? (timeScrollHoldMs ?? (scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS))
+      : (scrubCfg?.panGestureDelay ?? 0);
+
   const crosshair = useCrosshair(
     engine,
     effectivePadding,
@@ -568,7 +593,7 @@ function useLiveChartController({
     !isStatic && (scrubCfg !== null || scrubActionCfg !== null),
     onScrub,
     candleOpts,
-    scrubCfg?.panGestureDelay ?? 0,
+    scrubHoldMs,
     onGestureStart,
     onGestureEnd,
     scrubActionCfg,
@@ -579,7 +604,33 @@ function useLiveChartController({
     scrubCfg?.tooltipShowValue ?? true,
     scrubCfg?.tooltipShowTime ?? true,
     scrubCfg?.tooltipMargin ?? 8,
+    // Axis-drag time-scroll: keep the bottom "time ruler" band scroll-only so a
+    // drag there never trips the scrub crosshair.
+    timeScrollEnabled && scrollGestureMode === "axisDrag"
+      ? Math.max(effectivePadding.bottom, AXIS_GRAB_MIN_PX)
+      : 0,
   );
+
+  // ── Time-scroll (drag back through history) ───────────────────────────────
+  // Experimental: a pan freezes the window at an absolute time and resumes
+  // following once dragged back to the live edge. Pan is clamped to the earliest
+  // retained point (line or candle). See `timeScroll` for the gesture model.
+  const scrollMinTime = useDerivedValue(() => {
+    const src = isCandle ? candlesEngine.get() : lineEngineData.get();
+    return src.length > 0 ? src[0].time : engine.liveEdge.get();
+  });
+  const panScrollGesture = usePanScroll({
+    engine,
+    padding: effectivePadding,
+    minTime: scrollMinTime,
+    enabled: timeScrollEnabled,
+    mode: scrollGestureMode,
+    // Clear any live crosshair when a scroll drag takes over.
+    onScrollStart: () => {
+      "worklet";
+      crosshair.scrubActive.set(false);
+    },
+  });
 
   // Scrub-action composes a Tap (place/move the reticle, press the badge, dismiss)
   // ahead of the pan via Exclusive, so a tap is tried first and only becomes a
@@ -612,6 +663,17 @@ function useLiveChartController({
       scrubActionCfg !== null
         ? Gesture.Simultaneous(baseGesture, tapGroup)
         : Gesture.Race(baseGesture, tapGroup);
+  }
+
+  // Compose the pan-scroll gesture. holdToScrub races the scrub/tap gestures (a
+  // quick drag scrolls; a still press-hold falls through to scrub). Axis-drag
+  // goes first via Exclusive: it fails instantly outside the axis band, so scrub
+  // runs everywhere else.
+  if (timeScrollEnabled) {
+    rootGesture =
+      scrollGestureMode === "axisDrag"
+        ? Gesture.Exclusive(panScrollGesture, rootGesture)
+        : Gesture.Race(panScrollGesture, rootGesture);
   }
 
   // ── Derived render values ──────────────────────────────────────────────

@@ -1186,6 +1186,30 @@ export interface LiveChartMetricsOverride {
 
 // ── Component Props ──────────────────────────────────────────────────────────
 
+/**
+ * Time-scroll activation (see {@link LiveChartCoreProps.timeScroll}).
+ *
+ * @experimental Prototype — gesture model and API may change.
+ */
+export interface TimeScrollConfig {
+  /**
+   * Which gesture pans the timeline:
+   *  - `"holdToScrub"` (default) — a one-finger drag anywhere scrolls; scrub
+   *    moves to press-and-hold (Rainbow-style). See {@link scrubHoldMs} for the
+   *    hold duration.
+   *  - `"axisDrag"` — a one-finger drag starting in the bottom X-axis band
+   *    ("grab the time ruler"); the plot area stays free for one-finger scrub.
+   */
+  gesture?: "holdToScrub" | "axisDrag";
+  /**
+   * `holdToScrub` only: press-and-hold duration (ms) before scrub engages, so a
+   * quicker one-finger drag scrolls instead. Higher = more deliberate scrub and
+   * fewer accidental scrubs while scrolling. Falls back to `scrub.panGestureDelay`
+   * if set, otherwise `500`.
+   */
+  scrubHoldMs?: number;
+}
+
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
@@ -1321,6 +1345,19 @@ export interface LiveChartCoreProps {
    * and `timeWindow = maxT - minT` to fill the canvas edge-to-edge with historical data.
    */
   nowOverride?: number;
+  /**
+   * Enable horizontal time-scrolling: drag (or fling) to pan back through history.
+   * The chart stops auto-scrolling while panned and resumes once you reach the
+   * live edge again. One-finger plot-area scrub is unchanged. Requires retained
+   * history in `data` / `candles` to scroll into.
+   *
+   * `true` uses the default drag-to-scroll gesture (`"holdToScrub"`); pass a
+   * {@link TimeScrollConfig} to pick the activation (`"holdToScrub"` or
+   * `"axisDrag"`). Default `false`.
+   *
+   * @experimental Prototype — gesture model and API may change.
+   */
+  timeScroll?: boolean | TimeScrollConfig;
   /** Accessibility label for the chart container. */
   accessibilityLabel?: string;
   /** Accessibility role for the chart container. Default `"image"`. */

@@ -137,6 +137,13 @@ export function useCrosshair(
   tooltipShowTime = true,
   /** Gap (px) between the tooltip and the plot edge it's pinned to. Default `8`. */
   tooltipMargin = 8,
+  /**
+   * Height (px) of a bottom band to exclude from scrub recognition — the
+   * axis-drag "grab the time ruler" strip, so a drag there scrolls instead of
+   * scrubbing (and a vertical drag falls through to the parent). `0` = no
+   * exclusion (the default; scrub covers the whole plot).
+   */
+  scrubBottomExclude = 0,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -562,6 +569,14 @@ export function useCrosshair(
     gesture = gesture.activeOffsetX([-25, 25]).failOffsetY([-25, 25]);
   }
 
+  // Axis-drag time-scroll: carve the bottom "time ruler" band out of the scrub's
+  // hit area so a drag starting there scrolls (the pan-scroll gesture owns it)
+  // and never trips the crosshair. `shouldCancelWhenOutside(false)` above keeps a
+  // scrub that *started* in the plot tracking on into the band.
+  if (scrubBottomExclude > 0) {
+    gesture = gesture.hitSlop({ bottom: -scrubBottomExclude });
+  }
+
   // Tap: place/move the reticle, press the action badge, or dismiss the lock.
   // Composed ahead of the pan by the controller, so a tap is never swallowed.
   // Built only in scrub-action mode (the plain-scrub path never constructs a Tap).
@@ -626,12 +641,17 @@ export function useCrosshair(
     lockActive.set(true);
   };
 
-  const tapGesture = hasScrubAction
+  let tapGesture = hasScrubAction
     ? Gesture.Tap()
         .maxDuration(250)
         .maxDistance(SCRUB_ACTION_TAP_SLOP)
         .onEnd(handleActionTap)
     : undefined;
+  // Keep the axis-drag band scroll-only for taps too — a tap there shouldn't
+  // drop an order-ticket reticle.
+  if (tapGesture && scrubBottomExclude > 0) {
+    tapGesture = tapGesture.hitSlop({ bottom: -scrubBottomExclude });
+  }
 
   return {
     scrubX,

@@ -437,4 +437,63 @@ describe("LiveChart", () => {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
+
+  it("composes the default drag-to-scroll gesture when timeScroll is on (line)", () => {
+    const screen = render(<Harness timeScroll scrub />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
+
+  it("enables time-scroll in candle mode", () => {
+    const screen = render(<CandleHarness timeScroll />);
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
+
+  it("composes the axis-drag pan-scroll gesture via the config form", () => {
+    const screen = render(
+      <CandleHarness timeScroll={{ gesture: "axisDrag" }} scrub />,
+    );
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 200 } },
+    });
+  });
+
+  it("composes the order ticket (scrubAction) with time-scroll", () => {
+    // axisDrag carves the bottom band out of the scrub + tap hit area (so a drag
+    // there scrolls, not scrubs); holdToScrub keeps the whole plot live. Both
+    // compose with scrubAction without crashing.
+    for (const gesture of ["axisDrag", "holdToScrub"] as const) {
+      const screen = render(
+        <CandleHarness
+          timeScroll={{ gesture }}
+          scrubAction
+          onScrubAction={jest.fn()}
+        />,
+      );
+      const views = screen.UNSAFE_getAllByType(View);
+      fireEvent(views[0], "layout", {
+        nativeEvent: { layout: { width: 400, height: 200 } },
+      });
+    }
+  });
+
+  it("composes the hold-to-scrub (one-finger drag) gesture", () => {
+    // Default hold (no scrubHoldMs) and an explicit override both render cleanly.
+    for (const ts of [
+      { gesture: "holdToScrub" } as const,
+      { gesture: "holdToScrub", scrubHoldMs: 600 } as const,
+    ]) {
+      const screen = render(<CandleHarness timeScroll={ts} scrub />);
+      const views = screen.UNSAFE_getAllByType(View);
+      fireEvent(views[0], "layout", {
+        nativeEvent: { layout: { width: 400, height: 200 } },
+      });
+    }
+  });
 });
