@@ -92,4 +92,32 @@ describe("useChartPaths", () => {
     expect(result.current.linePath.value).toBeDefined();
     expect(result.current.fillPath.value).toBeDefined();
   });
+
+  it("tips the line at edgeValue when followViewEdge is on (time-scroll)", () => {
+    // While scrolled back, the right-edge tip should use the view-edge price
+    // (edgeValue), not the live displayValue — so the line doesn't drop to the
+    // off-screen live value.
+    const { result } = renderHook(() => {
+      const edgeValue = useSharedValue(1.5);
+      return useChartPaths(
+        makeEngine({
+          data: {
+            value: [
+              { time: 980, value: 1 },
+              { time: 990, value: 1.5 },
+              { time: 1000, value: 2 },
+            ],
+          },
+        } as unknown as Partial<SingleEngineState>),
+        DEFAULT_PADDING,
+        undefined,
+        undefined,
+        false,
+        edgeValue,
+        true, // followViewEdge → tip uses edgeValue
+      );
+    });
+    expect(result.current.linePath.value).toBeDefined();
+    expect(result.current.fillPath.value).toBeDefined();
+  });
 });

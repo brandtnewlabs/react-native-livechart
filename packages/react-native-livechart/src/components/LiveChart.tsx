@@ -460,6 +460,11 @@ function useLiveChartController({
     // Only build the band path when the fill is actually on.
     thresholdCfg?.fill ? thresholdGeom.lineY : undefined,
     lineIsLinear,
+    // Tip the line at the view-edge price (not the live value) while scrolled,
+    // matching the live dot — so the right edge doesn't drop to the off-screen
+    // live value when `followViewEdge` tracks the scrolled-back window.
+    engine.edgeValue,
+    badgeCfg?.followViewEdge ?? false,
   );
 
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config
@@ -1180,6 +1185,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
             radius={dotCfg.radius}
             ring={dotCfg.ring}
             color={dotCfg.color}
+            viewEnd={engine.viewEnd}
           />
         </Group>
       )}

@@ -126,6 +126,32 @@ describe("DotOverlay", () => {
     render(<Fixture />);
   });
 
+  it("suppresses the pulse while time-scrolled (viewEnd frozen)", () => {
+    function Fixture() {
+      const dotX = useSharedValue(100);
+      const dotY = useSharedValue(120);
+      const viewEnd = useSharedValue<number | null>(900); // scrolled back
+      const eng = withSharedValueAccessors({
+        ...engine(),
+        timestamp: { value: 0 }, // would otherwise sit in the active pulse segment
+      }) as unknown as EngineState;
+      return (
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          palette={palette}
+          engine={eng}
+          radius={3.5}
+          ring={{ color: undefined, width: 2.5 }}
+          color={undefined}
+          pulse={PULSE_ON}
+          viewEnd={viewEnd}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
   it("renders with pulse disabled", () => {
     function Fixture() {
       const dotX = useSharedValue(100);

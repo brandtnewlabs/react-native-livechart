@@ -24,6 +24,7 @@ export function DotOverlay({
   radius,
   ring,
   color,
+  viewEnd,
 }: {
   dotX: SharedValue<number>;
   dotY: SharedValue<number>;
@@ -36,11 +37,18 @@ export function DotOverlay({
   ring: ResolvedDotRingConfig | null;
   /** Dot (and pulse) fill color; falls back to the chart line color. */
   color: string | undefined;
+  /**
+   * Time-scroll right edge (`null` = following live). While scrolled back the
+   * pulse is suppressed — it's driven by the (now frozen) view timestamp, so it
+   * would stick or flicker, and a "live" heartbeat on a historical point is wrong.
+   */
+  viewEnd?: SharedValue<number | null>;
 }) {
   const dotColor = color ?? palette.line;
 
   const pulseRadius = useDerivedValue(() => {
     if (!pulse) return 0;
+    if (viewEnd?.value != null) return 0; // scrolled back — no live pulse
     const nowMs = engine.timestamp.value * 1000;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
@@ -49,6 +57,7 @@ export function DotOverlay({
 
   const pulseOpacity = useDerivedValue(() => {
     if (!pulse) return 0;
+    if (viewEnd?.value != null) return 0; // scrolled back — no live pulse
     const nowMs = engine.timestamp.value * 1000;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
