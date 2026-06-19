@@ -114,7 +114,19 @@ export function computeGridEntries(
   // Phase 1: compute target alpha for every grid line
   const targets: Record<number, number> = {};
   const first = Math.ceil(displayMin / fine) * fine;
-  for (let val = first; val <= displayMax; val += fine) {
+  // Guard against a non-advancing loop. On a near-flat (but not bit-identical)
+  // range, `fine` can drop below ulp(val), so `val += fine === val` and the loop
+  // never terminates — freezing the UI thread, since this runs in a worklet every
+  // frame. `stepResolves` skips the degenerate range (also catches fine === 0);
+  // MAX_GRID_LINES is a hard backstop in case the step stalls mid-loop (real
+  // grids only have a handful of lines, so it never bites normal data).
+  const stepResolves = first + fine !== first;
+  const MAX_GRID_LINES = 1000;
+  for (
+    let val = first, lineCount = 0;
+    stepResolves && val <= displayMax && lineCount < MAX_GRID_LINES;
+    val += fine, lineCount++
+  ) {
     const y = gridValueToY(val, displayMax, valRange, padTop, chartH);
     /* istanbul ignore next -- y stays in chart band for v in [first, displayMax] with consistent toY */
     if (y < padTop - 2 || y > canvasHeight - padBottom + 2) continue;
