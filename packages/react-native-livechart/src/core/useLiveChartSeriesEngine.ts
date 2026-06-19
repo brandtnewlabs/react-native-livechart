@@ -49,6 +49,8 @@ export interface MultiEngineFrameRefs {
   pausedSV: SharedValue<boolean>;
   /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
   viewEndSV?: SharedValue<number | null>;
+  /** Pinch-zoom window-width override (null = follow timeWindow). Optional for callers/tests. */
+  viewWindowSV?: SharedValue<number | null>;
   /** Receives the computed live edge each frame. Optional for callers/tests. */
   liveEdgeSV?: SharedValue<number>;
   extremaMinValue: SharedValue<number>;
@@ -135,6 +137,7 @@ export function applyLiveChartSeriesEngineFrame(
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
     viewEnd: sv.viewEndSV?.value,
+    viewWindow: sv.viewWindowSV?.value,
   });
   sv.displayMin.value = state.displayMin;
   sv.displayMax.value = state.displayMax;
@@ -156,7 +159,10 @@ export function applyLiveChartSeriesEngineFrame(
 export function useLiveChartSeriesEngine(
   config: MultiSeriesEngineConfig,
 ): MultiEngineState & ChartEngineScroll {
-  const timeWindow = useDerivedValue(() => config.timeWindow);
+  // Pinch-zoom window-width override (null = follow the configured window).
+  // Declared first so `timeWindow` folds it in — see useLiveChartEngine.
+  const viewWindow = useSharedValue<number | null>(null);
+  const timeWindow = useDerivedValue(() => viewWindow.value ?? config.timeWindow);
   const smoothing = useDerivedValue(() => config.smoothing);
   const adaptiveSpeedBoostSV = useDerivedValue(() => config.adaptiveSpeedBoost);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
@@ -229,6 +235,7 @@ export function useLiveChartSeriesEngine(
         windowBufferSV,
         pausedSV,
         viewEndSV: viewEnd,
+        viewWindowSV: viewWindow,
         liveEdgeSV: liveEdge,
         extremaMinValue,
         extremaMaxValue,
@@ -251,6 +258,7 @@ export function useLiveChartSeriesEngine(
     canvasHeight,
     timestamp,
     viewEnd,
+    viewWindow,
     liveEdge,
     series,
     displaySeriesValues,

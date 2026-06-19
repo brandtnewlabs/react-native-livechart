@@ -361,6 +361,17 @@ interface TimeScrollConfig {
   gesture?: "holdToScrub" | "axisDrag"; // activation; default "holdToScrub"
   scrubHoldMs?: number; // holdToScrub: press-hold (ms) before scrub engages; default 500
 }
+// Pinch-to-zoom the visible time window (two-finger, focal-anchored). @experimental
+interface ZoomConfig {
+  minTimeWindow?: number; // tightest window in seconds (max zoom-in); default timeWindow / 8
+  maxTimeWindow?: number; // widest window in seconds (max zoom-out); default the full data span
+}
+// Visible window reported by onVisibleRangeChange (unix seconds). @experimental
+interface VisibleRange {
+  startSec: number;   // left-edge time of the visible window
+  endSec: number;     // right-edge time of the visible window
+  following: boolean; // true when at the live edge (not scrolled back / paused)
+}
 // Edge label (topLabel / bottomLabel). Default off — both opt-in.
 interface AxisLabelConfig {
   format?: (v: number) => string; // built-in value formatter; defaults to formatValue

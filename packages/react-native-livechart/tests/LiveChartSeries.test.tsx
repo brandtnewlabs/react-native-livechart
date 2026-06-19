@@ -29,6 +29,35 @@ describe("LiveChartSeries", () => {
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
   });
 
+  it("renders with timeScroll + zoom + paging callbacks wired", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return (
+        <LiveChartSeries
+          series={series}
+          timeScroll={{ gesture: "holdToScrub", scrubHoldMs: 400 }}
+          zoom={{ minTimeWindow: 5 }}
+          onVisibleRangeChange={jest.fn()}
+          onReachStart={jest.fn()}
+        />
+      );
+    }
+    const screen = render(<H />);
+    await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
+  });
+
   it("renders with scrub, reference line, and compact chips", async () => {
     const initial: SeriesConfig[] = [
       {

@@ -22,7 +22,7 @@ import {
   vec,
 } from "@shopify/react-native-skia";
 
-import { DEFAULT_ACCENT_COLOR } from "../constants";
+import { DEFAULT_ACCENT_COLOR, HOLD_TO_SCRUB_MS } from "../constants";
 import {
   resolveAreaDots,
   resolveAxisLabel,
@@ -42,6 +42,7 @@ import {
   resolveTradeStream,
   resolveValueLine,
   resolveVolume,
+  resolveZoom,
   resolveXAxis,
   resolveYAxis,
 } from "../core/resolveConfig";
@@ -68,6 +69,8 @@ import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
 import { useModeBlend } from "../hooks/useModeBlend";
 import { useMomentum } from "../hooks/useMomentum";
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
+import { usePinchZoom } from "../hooks/usePinchZoom";
+import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useSegmentLineGradient } from "../hooks/useSegmentLineGradient";
 import { useSingleChartReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import { useThreshold } from "../hooks/useThreshold";
@@ -177,10 +180,6 @@ function thresholdStops(
  * here so the rendered pieces (`ChartStack`, `ChartScrubLayer`, `LiveChart`) stay
  * small and presentational.
  */
-/** Default press-and-hold (ms) before scrub engages in the `holdToScrub`
- *  time-scroll mode, so a quick one-finger drag scrolls instead. Overridden by
- *  `timeScroll.scrubHoldMs`, then `scrub.panGestureDelay`. */
-const HOLD_TO_SCRUB_MS = 500;
 
 function useLiveChartController({
   // ── Data ────────────────────────────────────────────────────────────────
@@ -217,6 +216,7 @@ function useLiveChartController({
   windowBuffer = 0,
   nowOverride,
   timeScroll = false,
+  zoom = false,
   accessibilityLabel,
   accessibilityRole = "image",
   emptyText = "No data",
@@ -263,6 +263,8 @@ function useLiveChartController({
   onReferenceLinePress,
   onGestureStart,
   onGestureEnd,
+  onVisibleRangeChange,
+  onReachStart,
   onDegenShake,
 }: LiveChartProps) {
   const emptyTradeStream = useSharedValue<TradeEvent[]>([]);
@@ -492,6 +494,8 @@ function useLiveChartController({
   // onto the JS thread (set by the reaction below, after the engine exists).
   const [scrolledBack, setScrolledBack] = useState(false);
   const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
+  const zoomCfg = resolveZoom(zoom);
+  const zoomEnabled = zoomCfg !== null && !isStatic;
 
   const yAxisFloat = yAxisCfg?.float ?? false;
   // With timeScroll, the floating full-width plot engages only while scrolled
@@ -886,6 +890,32 @@ function useLiveChartController({
     !isStatic,
   );
 
+  // Pinch-to-zoom the visible window (two-finger). Anchors at the focal point and
+  // writes viewWindow + viewEnd; composes via Simultaneous (it's two-finger, so
+  // disjoint from the one-finger pan/scrub). See `zoom`.
+  const pinchZoomGesture = usePinchZoom({
+    engine,
+    padding: effectivePadding,
+    minTime: scrollMinTime,
+    timeWindow,
+    enabled: zoomEnabled,
+    minTimeWindow: zoomCfg?.minTimeWindow,
+    maxTimeWindow: zoomCfg?.maxTimeWindow,
+    onZoomStart: () => {
+      "worklet";
+      crosshair.scrubActive.set(false);
+    },
+  });
+
+  // Paging callbacks: report the visible range / proximity to the oldest data so
+  // a host can lazily load history. Inert unless a callback is supplied.
+  useVisibleRange({
+    engine,
+    minTime: scrollMinTime,
+    onVisibleRangeChange,
+    onReachStart,
+  });
+
   // Scrub-action composes a Tap (place/move the reticle, press the badge, dismiss)
   // ahead of the pan via Exclusive, so a tap is tried first and only becomes a
   // drag (live-scrub, or lock-adjust once placed) if the finger moves. `Exclusive`
@@ -936,6 +966,12 @@ function useLiveChartController({
   // Exclusive falls through to scrub / scroll everywhere else.
   if (refDragEnabled) {
     rootGesture = Gesture.Exclusive(refDragGesture, rootGesture);
+  }
+
+  // Pinch runs alongside everything else (two-finger, so it never competes with
+  // the one-finger pan/scrub/tap gestures for the same touch).
+  if (zoomEnabled) {
+    rootGesture = Gesture.Simultaneous(rootGesture, pinchZoomGesture);
   }
 
   // ── Derived render values ──────────────────────────────────────────────

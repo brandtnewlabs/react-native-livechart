@@ -504,6 +504,59 @@ describe("tickLiveChartEngineFrame", () => {
     expect(s.displayWindow).toBeLessThan(60);
   });
 
+  // ── Pinch-zoom (viewWindow) ──────────────────────────────────────────────
+  describe("pinch-zoom", () => {
+    function zinput(
+      extra: Partial<Parameters<typeof tickLiveChartEngineFrame>[1]>,
+    ) {
+      return {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.5,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 1,
+        points: [],
+        nowSeconds: 1000,
+        ...extra,
+      };
+    }
+
+    it("eases displayWindow toward viewWindow when set (zoom in)", () => {
+      const s = { ...baseState(), displayWindow: 30 };
+      tickLiveChartEngineFrame(s, zinput({ viewWindow: 10 }));
+      // lerps from 30 toward 10 ⇒ between the two, below the configured 30.
+      expect(s.displayWindow).toBeLessThan(30);
+      expect(s.displayWindow).toBeGreaterThan(10);
+    });
+
+    it("eases displayWindow toward viewWindow when set (zoom out)", () => {
+      const s = { ...baseState(), displayWindow: 30 };
+      tickLiveChartEngineFrame(s, zinput({ viewWindow: 90 }));
+      expect(s.displayWindow).toBeGreaterThan(30);
+      expect(s.displayWindow).toBeLessThan(90);
+    });
+
+    it("follows the configured timeWindow when viewWindow is null/undefined", () => {
+      const sNull = { ...baseState(), displayWindow: 10 };
+      tickLiveChartEngineFrame(sNull, zinput({ viewWindow: null }));
+      expect(sNull.displayWindow).toBeGreaterThan(10); // toward 30
+
+      const sUndef = { ...baseState(), displayWindow: 10 };
+      tickLiveChartEngineFrame(sUndef, zinput({}));
+      expect(sUndef.displayWindow).toBe(sNull.displayWindow);
+    });
+
+    it("zoom and pan compose: freezes the right edge AND narrows the window", () => {
+      const s = { ...baseState(), displayWindow: 30 };
+      tickLiveChartEngineFrame(s, zinput({ viewEnd: 950, viewWindow: 10 }));
+      expect(s.timestamp).toBe(950); // right edge frozen by the pan
+      expect(s.displayWindow).toBeLessThan(30); // window narrowed by the zoom
+    });
+  });
+
   // ── Time-scroll (viewEnd / liveEdge) ─────────────────────────────────────
   describe("time-scroll", () => {
     function input(extra: Partial<Parameters<typeof tickLiveChartEngineFrame>[1]>) {

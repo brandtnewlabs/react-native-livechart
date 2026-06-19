@@ -89,6 +89,7 @@ export default function MultiSeriesScreen() {
 
   const [empty, setEmpty] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [panZoom, setPanZoom] = useState(true);
   const [loading, setLoading] = useState(false);
   const [windowSecs, setWindowSecs] = useState(30);
   const [smoothing, setSmoothing] = useState(0.12);
@@ -216,6 +217,8 @@ export default function MultiSeriesScreen() {
             }
             yAxis={yOn}
             xAxis={xOn}
+            timeScroll={panZoom}
+            zoom={panZoom}
             emptyText="No series"
             dot={dotConfig}
             legend={legendConfig}
@@ -353,6 +356,11 @@ export default function MultiSeriesScreen() {
           label="Ref line"
           value={showRef}
           onChange={() => setShowRef((r) => !r)}
+        />
+        <ToggleChip
+          label="Pan + zoom"
+          value={panZoom}
+          onChange={() => setPanZoom((p) => !p)}
         />
       </ControlRow>
       <ChipRow options={THEME_OPTIONS} value={theme} onChange={setTheme} />

@@ -48,9 +48,11 @@ export default function TimeScrollScreen() {
   const [gesture, setGesture] = useState<Gesture>("holdToScrub");
   const [holdMs, setHoldMs] = useState(500);
   const [enabled, setEnabled] = useState(true);
+  const [zoomOn, setZoomOn] = useState(true);
   const [scrub, setScrub] = useState(true);
   const [orderTicket, setOrderTicket] = useState(true);
   const [floatAxis, setFloatAxis] = useState(true);
+  const [reachedStart, setReachedStart] = useState(false);
 
   // candleAggregation gives us both the line `data` and `candles`; the toggle
   // just switches which the chart renders. Time-scroll is mode-agnostic — it
@@ -80,7 +82,7 @@ export default function TimeScrollScreen() {
   return (
     <DemoScreen
       title="Time scroll"
-      description={`${hint} The chart stops auto-scrolling while panned; release (or fling) back to the live edge to resume. Works for line and candle; one-finger plot scrub is unchanged.`}
+      description={`${hint} Pinch with two fingers to zoom the window in/out (anchored at your fingers). The chart stops auto-scrolling while panned; release (or fling) back to the live edge to resume. Works for line and candle; one-finger plot scrub is unchanged.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
       chart={
         <LiveChart
           data={data}
@@ -96,6 +98,19 @@ export default function TimeScrollScreen() {
           // Pill tracks the last visible price as you scroll back.
           badge={{ followViewEdge: true }}
           timeScroll={enabled ? { gesture, scrubHoldMs: holdMs } : false}
+          zoom={zoomOn}
+          // Paging callbacks (Phase 3): log the visible range (~1 Hz) and show an
+          // indicator while the left edge is near the oldest seeded candle. The
+          // indicator persists until you scroll back to the live edge (clears on
+          // `following`), rather than flashing — `onReachStart` is a one-shot
+          // edge trigger (it fires once to cue a page-in, then re-arms).
+          onVisibleRangeChange={(r) => {
+            console.log(
+              `visible range: ${r.startSec.toFixed(0)}–${r.endSec.toFixed(0)} following=${r.following}`,
+            );
+            if (r.following) setReachedStart(false);
+          }}
+          onReachStart={() => setReachedStart(true)}
           scrub={scrub ? { tooltip: true } : false}
           scrubAction={orderTicket}
           onScrubAction={onScrubAction}
@@ -127,6 +142,10 @@ export default function TimeScrollScreen() {
 
       <ControlRow label="Pan to scroll">
         <ToggleChip label="timeScroll" value={enabled} onChange={setEnabled} />
+      </ControlRow>
+
+      <ControlRow label="Pinch to zoom">
+        <ToggleChip label="zoom" value={zoomOn} onChange={setZoomOn} />
       </ControlRow>
 
       <ControlRow label="One-finger scrub">

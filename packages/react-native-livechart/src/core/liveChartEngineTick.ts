@@ -69,6 +69,14 @@ export interface EngineTickInput {
    * resumes following. Takes precedence over {@link paused}.
    */
   viewEnd?: number | null;
+  /**
+   * Absolute visible-window width (seconds) to freeze at, or `null`/`undefined`
+   * to follow the configured {@link timeWindow}. Set by the pinch-zoom gesture
+   * (see `usePinchZoom` / the `zoom` prop). The symmetric counterpart of
+   * {@link viewEnd}: `viewEnd` overrides the window's right edge, `viewWindow`
+   * overrides its width. `displayWindow` eases toward this when set.
+   */
+  viewWindow?: number | null;
   /** Chart mode — `"candle"` uses OHLC bars for Y range instead of line points. */
   mode?: "line" | "candle";
   /** Committed OHLC bars (sorted by time). Used when mode is `"candle"`. */
@@ -123,12 +131,10 @@ export function tickLiveChartEngineFrame(
     input.dt,
   );
 
-  state.displayWindow = lerp(
-    state.displayWindow,
-    input.timeWindow,
-    speed,
-    input.dt,
-  );
+  // Pinch-zoom: ease toward the zoom override when set, else the configured
+  // window. Mirrors the viewEnd freeze above (width vs. right edge).
+  const targetWindow = input.viewWindow ?? input.timeWindow;
+  state.displayWindow = lerp(state.displayWindow, targetWindow, speed, input.dt);
 
   const winStart = state.timestamp - state.displayWindow;
 

@@ -601,6 +601,43 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     });
   });
 
+  describe("pinch-zoom", () => {
+    it("eases displayWindow toward viewWindow when set", () => {
+      const s = { ...baseMulti(), displayWindow: 30 };
+      tickLiveChartSeriesEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.5,
+        exaggerate: false,
+        referenceValue: undefined,
+        series: [],
+        nowSeconds: 1000,
+        viewWindow: 10,
+      });
+      expect(s.displayWindow).toBeLessThan(30);
+      expect(s.displayWindow).toBeGreaterThan(10);
+    });
+
+    it("follows the configured window when viewWindow is null", () => {
+      const s = { ...baseMulti(), displayWindow: 10 };
+      tickLiveChartSeriesEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.5,
+        exaggerate: false,
+        referenceValue: undefined,
+        series: [],
+        nowSeconds: 1000,
+        viewWindow: null,
+      });
+      expect(s.displayWindow).toBeGreaterThan(10); // toward 30
+    });
+  });
+
   describe("time-scroll", () => {
     function input(
       extra: Partial<Parameters<typeof tickLiveChartSeriesEngineFrame>[1]>,
@@ -643,6 +680,39 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       const s = { ...baseMulti(), timestamp: 999 };
       tickLiveChartSeriesEngineFrame(s, input({ viewEnd: 950, paused: true }));
       expect(s.timestamp).toBe(950);
+    });
+
+    // Regression: while scrolled back, each series' tip/dot must track its value
+    // AT the visible right edge, not the live value — otherwise the dot floats at
+    // the current price while the line ends in the past.
+    it("tracks each series' value at the right edge while scrolled back", () => {
+      const seriesWithData = [
+        {
+          id: "a",
+          color: "#00f",
+          value: 99, // live value (latest)
+          data: [
+            { time: 970, value: 10 },
+            { time: 990, value: 50 },
+          ],
+        },
+      ];
+      // viewEnd 985 < liveEdge 1000 ⇒ frozen at 985; last point ≤ 985 is value 10.
+      const scrolled = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        scrolled,
+        input({ series: seriesWithData, viewEnd: 985, smoothing: 0.5 }),
+      );
+      // Display value eases from the live 99 toward the edge value 10, not 99.
+      expect(scrolled.displayValues[0]).toBeLessThan(99);
+
+      // Following live (viewEnd null) ⇒ tracks the live value 99 (stays put).
+      const live = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        live,
+        input({ series: seriesWithData, viewEnd: null, smoothing: 0.5 }),
+      );
+      expect(live.displayValues[0]).toBe(99);
     });
   });
 });

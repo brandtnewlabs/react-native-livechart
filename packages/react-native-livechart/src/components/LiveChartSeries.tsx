@@ -15,7 +15,11 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
-import { DEFAULT_ACCENT_COLOR, MAX_MULTI_SERIES } from "../constants";
+import {
+  DEFAULT_ACCENT_COLOR,
+  HOLD_TO_SCRUB_MS,
+  MAX_MULTI_SERIES,
+} from "../constants";
 import {
   lineColorsSignatureFromArray,
   lineStyleSignatureFromArray,
@@ -36,6 +40,7 @@ import {
   resolveSelectionDot,
   resolveXAxis,
   resolveYAxis,
+  resolveZoom,
 } from "../core/resolveConfig";
 import { useLiveChartSeriesEngine } from "../core/useLiveChartSeriesEngine";
 import { pulseRadialOutset } from "../draw/line";
@@ -47,7 +52,10 @@ import { useCrosshairSeries } from "../hooks/useCrosshairSeries";
 import { useMarkers } from "../hooks/useMarkers";
 import { useMultiSeriesDegen } from "../hooks/useMultiSeriesDegen";
 import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
+import { usePanScroll } from "../hooks/usePanScroll";
+import { usePinchZoom } from "../hooks/usePinchZoom";
 import { useMultiSeriesReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
+import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useXAxis } from "../hooks/useXAxis";
 import { useYAxis } from "../hooks/useYAxis";
 import {
@@ -138,9 +146,13 @@ function useLiveChartSeriesController({
   metrics,
   scrub = true,
   selectionDot,
+  timeScroll = false,
+  zoom = false,
   onScrub,
   onGestureStart,
   onGestureEnd,
+  onVisibleRangeChange,
+  onReachStart,
   onSeriesToggle,
   dot: dotProp,
   legend: legendProp,
@@ -163,6 +175,27 @@ function useLiveChartSeriesController({
   const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const scrubCfg = resolveScrub(scrub);
   const scrubEnabled = scrubCfg !== null;
+
+  // Time-scroll + pinch-zoom (mirrors LiveChart). LiveChartSeries has no static
+  // mode, so these gate on the props alone. `holdToScrub` requires the scrub
+  // gesture to wait for a press-and-hold so a quick drag scrolls instead — the
+  // hold delay is threaded into `useCrosshairSeries` below.
+  const timeScrollEnabled = Boolean(timeScroll);
+  const zoomCfg = resolveZoom(zoom);
+  const zoomEnabled = zoomCfg !== null;
+  const scrollGestureMode =
+    typeof timeScroll === "object"
+      ? (timeScroll.gesture ?? "holdToScrub")
+      : "holdToScrub";
+  const timeScrollHoldMs =
+    typeof timeScroll === "object" ? timeScroll.scrubHoldMs : undefined;
+  // Precedence: explicit scrubHoldMs, then scrub.panGestureDelay, then default.
+  // `||` (not `??`) skips the resolved panGestureDelay's 0 default.
+  const scrubHoldMs =
+    timeScrollEnabled && scrollGestureMode === "holdToScrub"
+      ? (timeScrollHoldMs ?? (scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS))
+      : (scrubCfg?.panGestureDelay ?? 0);
+
   const selectionDotCfg = resolveSelectionDot(selectionDot);
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
@@ -326,7 +359,7 @@ function useLiveChartSeriesController({
     effectivePadding,
     scrubEnabled,
     onScrub,
-    scrubCfg?.panGestureDelay ?? 0,
+    scrubHoldMs,
     onGestureStart,
     onGestureEnd,
   );
@@ -347,9 +380,68 @@ function useLiveChartSeriesController({
     markerClusterCfg,
   );
 
-  const rootGesture = markersActive
+  // Earliest retained time across all series — clamps how far the window pans
+  // back, and the `onReachStart` reference. Falls back to the live edge (no
+  // scrollable history) so panning is a no-op.
+  const scrollMinTime = useDerivedValue(() => {
+    const s = engine.series.get();
+    let min = Infinity;
+    for (let i = 0; i < s.length; i++) {
+      const d = s[i].data;
+      if (d.length > 0 && d[0].time < min) min = d[0].time;
+    }
+    return min === Infinity ? engine.liveEdge.get() : min;
+  });
+
+  const panScrollGesture = usePanScroll({
+    engine,
+    padding: effectivePadding,
+    minTime: scrollMinTime,
+    enabled: timeScrollEnabled,
+    mode: scrollGestureMode,
+    onScrollStart: () => {
+      "worklet";
+      crosshair.scrubActive.set(false);
+    },
+  });
+
+  const pinchZoomGesture = usePinchZoom({
+    engine,
+    padding: effectivePadding,
+    minTime: scrollMinTime,
+    timeWindow,
+    enabled: zoomEnabled,
+    minTimeWindow: zoomCfg?.minTimeWindow,
+    maxTimeWindow: zoomCfg?.maxTimeWindow,
+    onZoomStart: () => {
+      "worklet";
+      crosshair.scrubActive.set(false);
+    },
+  });
+
+  useVisibleRange({
+    engine,
+    minTime: scrollMinTime,
+    onVisibleRangeChange,
+    onReachStart,
+  });
+
+  let rootGesture = markersActive
     ? Gesture.Race(crosshair.gesture, markerTapGesture)
     : crosshair.gesture;
+
+  // holdToScrub races the scrub (quick drag scrolls; press-hold scrubs);
+  // axisDrag goes first via Exclusive (fails fast outside the bottom band).
+  if (timeScrollEnabled) {
+    rootGesture =
+      scrollGestureMode === "axisDrag"
+        ? Gesture.Exclusive(panScrollGesture, rootGesture)
+        : Gesture.Race(panScrollGesture, rootGesture);
+  }
+  // Pinch runs alongside (two-finger, disjoint from the one-finger gestures).
+  if (zoomEnabled) {
+    rootGesture = Gesture.Simultaneous(rootGesture, pinchZoomGesture);
+  }
 
   const backgroundColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
 
@@ -529,6 +621,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
             ringColor={palette.badgeOuterBg}
             color={dotCfg.color}
             pulse={dotCfg.pulse}
+            viewEnd={engine.viewEnd}
           />
         </Group>
       )}

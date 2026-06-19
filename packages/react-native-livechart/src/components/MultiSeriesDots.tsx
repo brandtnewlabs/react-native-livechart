@@ -1,6 +1,6 @@
 import { Circle, Group } from "@shopify/react-native-skia";
 
-import { useDerivedValue } from "react-native-reanimated";
+import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";
 import type { ChartPadding } from "../draw/line";
 import type {
@@ -21,6 +21,7 @@ function SeriesDotAtIndex({
   ring,
   ringColor,
   pulse,
+  viewEnd,
 }: {
   index: number;
   engine: MultiEngineState;
@@ -32,6 +33,8 @@ function SeriesDotAtIndex({
   /** Fallback ring color when `ring.color` is unset (theme `badgeOuterBg`). */
   ringColor: string;
   pulse: ResolvedPulseConfig | null;
+  /** Pan/zoom right-edge override — pulse is frozen-out while scrolled back. */
+  viewEnd?: SharedValue<number | null>;
 }) {
   const dotX = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
@@ -62,7 +65,9 @@ function SeriesDotAtIndex({
   });
 
   const pulseRadius = useDerivedValue(() => {
-    if (!pulse) return 0;
+    // A live heartbeat on a frozen historical point is wrong (and `timestamp` is
+    // frozen, so it wouldn't animate) — suppress the pulse while scrolled back.
+    if (!pulse || viewEnd?.value != null) return 0;
     const nowMs = engine.timestamp.value * 1000 + index * PULSE_STAGGER_MS;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
@@ -70,7 +75,7 @@ function SeriesDotAtIndex({
   });
 
   const pulseOpacity = useDerivedValue(() => {
-    if (!pulse) return 0;
+    if (!pulse || viewEnd?.value != null) return 0;
     const nowMs = engine.timestamp.value * 1000 + index * PULSE_STAGGER_MS;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
@@ -112,6 +117,7 @@ export function MultiSeriesDots({
   ringColor,
   color,
   pulse,
+  viewEnd,
 }: {
   engine: MultiEngineState;
   padding: ChartPadding;
@@ -124,6 +130,8 @@ export function MultiSeriesDots({
   /** Fill color override; falls back to each series' line color. */
   color: string | undefined;
   pulse: ResolvedPulseConfig | null;
+  /** Pan/zoom right-edge override — pulse is frozen-out while scrolled back. */
+  viewEnd?: SharedValue<number | null>;
 }) {
   return (
     <Group>
@@ -138,6 +146,7 @@ export function MultiSeriesDots({
           ring={ring}
           ringColor={ringColor}
           pulse={pulse}
+          viewEnd={viewEnd}
         />
       ))}
     </Group>

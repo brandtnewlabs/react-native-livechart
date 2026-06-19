@@ -32,6 +32,7 @@ import type {
   VolumeConfig,
   XAxisConfig,
   YAxisConfig,
+  ZoomConfig,
 } from "../types";
 
 import type { ComponentType, ReactElement } from "react";
@@ -422,6 +423,28 @@ export function resolveVolume(
   prop: boolean | VolumeConfig | undefined,
 ): ResolvedVolumeConfig | null {
   return resolveToggle(prop, VOLUME_DEFAULTS, false);
+}
+
+export interface ResolvedZoomConfig {
+  /** Tightest window (max zoom-in), seconds. `undefined` → `timeWindow / 8`. */
+  minTimeWindow: number | undefined;
+  /** Widest window (max zoom-out), seconds. `undefined` → full data span. */
+  maxTimeWindow: number | undefined;
+}
+
+const ZOOM_DEFAULTS: ResolvedZoomConfig = {
+  minTimeWindow: undefined,
+  maxTimeWindow: undefined,
+};
+
+/**
+ * Resolves the `zoom` prop to a config or null (disabled). `true` → defaults
+ * (bounds derived at gesture time), object → merged, falsy → null.
+ */
+export function resolveZoom(
+  prop: boolean | ZoomConfig | undefined,
+): ResolvedZoomConfig | null {
+  return resolveToggle(prop, ZOOM_DEFAULTS, false);
 }
 
 const AXIS_LABEL_DEFAULTS: ResolvedAxisLabelConfig = {

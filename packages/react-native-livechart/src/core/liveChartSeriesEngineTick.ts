@@ -56,6 +56,12 @@ export interface MultiEngineTickInput {
    * precedence over {@link paused}.
    */
   viewEnd?: number | null;
+  /**
+   * Absolute visible-window width (seconds) to freeze at, or `null`/`undefined`
+   * to follow {@link timeWindow}. Drives pinch-zoom (see `usePinchZoom`); the
+   * symmetric counterpart of {@link viewEnd}.
+   */
+  viewWindow?: number | null;
 }
 
 /**
@@ -97,18 +103,33 @@ export function tickLiveChartSeriesEngineFrame(
     state.opacities.length = n;
   }
 
-  state.displayWindow = lerp(
-    state.displayWindow,
-    input.timeWindow,
-    speed,
-    input.dt,
-  );
+  // Pinch-zoom: ease toward the zoom override when set, else the configured
+  // window (mirrors the single-series tick).
+  const targetWindow = input.viewWindow ?? input.timeWindow;
+  state.displayWindow = lerp(state.displayWindow, targetWindow, speed, input.dt);
 
   const winStart = state.timestamp - state.displayWindow;
   const range = state.displayMax - state.displayMin;
 
+  // Scrolled back in time (pan/zoom): the per-series tips/dots sit at the
+  // window's right edge, so they must track each series' value AT that edge
+  // (`timestamp`), not the live value — otherwise the dot floats at the current
+  // price while the line ends in the past. Mirrors single-series `edgeValue`.
+  const scrolledBack = viewEnd != null && viewEnd < liveEdge;
+
   for (let i = 0; i < n; i++) {
-    const target = series[i].value;
+    let target = series[i].value;
+    if (scrolledBack) {
+      const pts = series[i].data;
+      let elo = 0;
+      let ehi = pts.length;
+      while (elo < ehi) {
+        const m = (elo + ehi) >> 1;
+        if (pts[m].time <= state.timestamp) elo = m + 1;
+        else ehi = m;
+      }
+      if (elo > 0) target = pts[elo - 1].value;
+    }
     const cur = state.displayValues[i];
     const gapRatio =
       range > 0 ? Math.min(Math.abs(target - cur) / range, 1) : 0;

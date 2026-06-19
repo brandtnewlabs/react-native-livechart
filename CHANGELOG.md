@@ -35,6 +35,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fontFamily` / `fontWeight`, and `offsetX` / `offsetY` (on top of the existing
   `position` / `background` / `borderColor` / `radius`). The grouping config also
   gains a `format` fn for the count label (e.g. `n => \`×${n}\``).
+- **Pinch-to-zoom (`zoom`)** on `LiveChart` and `LiveChartSeries`. A new `zoom`
+  prop (`boolean | ZoomConfig`) enables two-finger pinch-to-zoom of the visible
+  time window, anchored at the focal point between your fingers (the time under
+  your fingers stays put). It composes with `timeScroll` — zoom level and scroll
+  position are independent — and is two-finger, so it never competes with the
+  one-finger pan/scrub. `ZoomConfig` tunes `minTimeWindow` (max zoom-in, default
+  `timeWindow / 8`) and `maxTimeWindow` (max zoom-out, default the full data
+  span). The Y-range auto-fits the visible window and candle bars re-flow as you
+  zoom. **@experimental.**
+- **`timeScroll` + `zoom` on `LiveChartSeries`.** Pan-back-through-history and
+  pinch-zoom now work in multi-series too (previously single-series only). While
+  scrolled back, each series' dot and value label track its value at the visible
+  window's right edge — the dot rides the end of each line instead of the live
+  price.
+- **Paging callbacks** `onVisibleRangeChange` and `onReachStart` (both charts).
+  `onVisibleRangeChange(range)` reports the visible window (`{ startSec, endSec,
+  following }`, throttled to ~1 Hz); `onReachStart()` fires once when the left
+  edge nears the earliest retained data — the cue to lazily page in older
+  history. `VisibleRange` is exported. **@experimental.**
 
 ## [3.12.0] - 2026-06-17
 

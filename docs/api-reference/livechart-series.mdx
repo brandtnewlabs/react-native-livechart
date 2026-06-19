@@ -85,6 +85,29 @@ default off.
   scrub actually started — a tap that never activates emits neither callback.
 </ParamField>
 
+<ParamField body="timeScroll" type="boolean | TimeScrollConfig" default="false">
+  Pan back through history (same as `LiveChart`). Drag (or fling) to scroll; the
+  chart stops auto-following until you return to the live edge. Per-series dots /
+  value labels track each series' value at the visible right edge while scrolled.
+  **@experimental.** See [Time-scroll](/guides/time-scroll).
+</ParamField>
+
+<ParamField body="zoom" type="boolean | ZoomConfig" default="false">
+  Pinch-to-zoom the visible window (same as `LiveChart`), anchored at the focal
+  point. Composes with `timeScroll`. **@experimental.** See
+  [Time-scroll](/guides/time-scroll#pinch-to-zoom-zoom).
+</ParamField>
+
+<ParamField body="onVisibleRangeChange" type="(range: VisibleRange) => void">
+  Called as the visible window changes (~1 Hz) with `{ startSec, endSec,
+  following }`. **@experimental.**
+</ParamField>
+
+<ParamField body="onReachStart" type="() => void">
+  Called once when the left edge nears the earliest retained data — the cue to
+  page in older history. **@experimental.**
+</ParamField>
+
 ## Degen
 
 <ParamField body="degen" type="boolean | DegenOptions">
