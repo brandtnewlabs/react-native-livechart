@@ -149,7 +149,7 @@ export interface ResolvedScrubConfig {
   /** Tooltip pill corner radius in px. */
   tooltipBorderRadius: number;
   /** Where the tooltip pill sits relative to the scrub line. */
-  tooltipPlacement: "side" | "top" | "bottom";
+  tooltipPlacement: "side" | "top" | "bottom" | "point";
   /** Gap (px) between the tooltip and the plot edge it's pinned to. */
   tooltipMargin: number;
   /** Show the value row in the default tooltip body. */

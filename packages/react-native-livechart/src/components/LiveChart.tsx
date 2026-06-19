@@ -1669,6 +1669,7 @@ export function LiveChart(props: LiveChartProps) {
             placement={scrubCfg.tooltipPlacement}
             margin={scrubCfg.tooltipMargin}
             lineTop={crosshair.tooltipLineTop}
+            scrubDotY={crosshair.scrubDotY}
           />
         )}
 

@@ -37,10 +37,12 @@ type TooltipPlacement = NonNullable<ScrubConfig["tooltipPlacement"]>;
 
 // Placement applies to BOTH the built-in pill and a custom `renderTooltip` —
 // the chart positions either one on the UI thread per `tooltipPlacement`.
+// `"point"` follows the scrub dot (floats above it, flipping below near the top).
 const PLACEMENT_OPTIONS: { value: TooltipPlacement; label: string }[] = [
   { value: "side", label: "Side" },
   { value: "top", label: "Top" },
   { value: "bottom", label: "Bottom" },
+  { value: "point", label: "Point" },
 ];
 
 // Gap between the tooltip and the plot edge it's pinned to (`tooltipMargin`).

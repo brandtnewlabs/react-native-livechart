@@ -41,11 +41,13 @@ function Fixture({
   placement = "side",
   candle,
   captureLineTop,
+  scrubDotY,
 }: {
   renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
-  placement?: "side" | "top" | "bottom";
+  placement?: "side" | "top" | "bottom" | "point";
   candle?: CandlePoint | null;
   captureLineTop?: (lineTop: SharedValue<number>) => void;
+  scrubDotY?: number;
 }) {
   const scrubX = useSharedValue(100);
   const scrubValue = useSharedValue<number | null>(42);
@@ -55,6 +57,7 @@ function Fixture({
   const tooltipLayout = useSharedValue<TooltipLayout>(LAYOUT);
   const scrubCandle = useSharedValue<CandlePoint | null>(candle ?? null);
   const lineTop = useSharedValue(-1);
+  const scrubDotYSV = useSharedValue(scrubDotY ?? -1);
   captureLineTop?.(lineTop);
   return (
     <CustomTooltipOverlay
@@ -72,6 +75,7 @@ function Fixture({
       padding={DEFAULT_PADDING}
       placement={placement}
       lineTop={lineTop}
+      scrubDotY={scrubDotYSV}
     />
   );
 }
@@ -197,5 +201,60 @@ describe("CustomTooltipOverlay", () => {
       />,
     );
     expect(bottom.getByTestId("tip-bottom")).toBeTruthy();
+  });
+
+  it("positions for 'point' placement (anchored above the dot) without error", () => {
+    const { getByTestId } = render(
+      <Fixture
+        placement="point"
+        scrubDotY={150}
+        renderTooltip={() => <Text testID="tip-point">tip</Text>}
+      />,
+    );
+    fireEvent(getByTestId("tip-point").parent!, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
+    });
+    expect(getByTestId("tip-point")).toBeTruthy();
+  });
+
+  it("leaves the crosshair line-stop unset (-1) for 'point' placement", () => {
+    let lineTop: SharedValue<number> | undefined;
+    const { getByTestId } = render(
+      <Fixture
+        placement="point"
+        scrubDotY={150}
+        captureLineTop={(sv) => {
+          lineTop = sv;
+        }}
+        renderTooltip={() => <Text testID="tip-point">tip</Text>}
+      />,
+    );
+    fireEvent(getByTestId("tip-point").parent!, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
+    });
+    // The pill floats over the line (not above it), so the line runs full height.
+    expect(lineTop!.value).toBe(-1);
+  });
+
+  it("'point' placement flips below / falls back at edge dot positions without error", () => {
+    // Dot near the top → the pill flips below it.
+    const flip = render(
+      <Fixture
+        placement="point"
+        scrubDotY={4}
+        renderTooltip={() => <Text testID="tip-flip">tip</Text>}
+      />,
+    );
+    expect(flip.getByTestId("tip-flip")).toBeTruthy();
+
+    // Unknown dot Y (-1) → top-pin fallback.
+    const fallback = render(
+      <Fixture
+        placement="point"
+        scrubDotY={-1}
+        renderTooltip={() => <Text testID="tip-fallback">tip</Text>}
+      />,
+    );
+    expect(fallback.getByTestId("tip-fallback")).toBeTruthy();
   });
 });

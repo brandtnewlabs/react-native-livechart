@@ -204,16 +204,22 @@ export function computeTooltipLayout(
   monoCharWidth = 0,
   /** Where the pill sits relative to the scrub line. `"side"` offsets it right
    *  (flipping left near the edge); `"top"`/`"bottom"` center it over the line,
-   *  clamped into the plot and pinned to the plot's top/bottom. */
-  placement: "side" | "top" | "bottom" = "side",
+   *  clamped into the plot and pinned to the plot's top/bottom; `"point"`
+   *  centers it over the line and floats it just above the scrub dot (flipping
+   *  below when there's no room), deriving its Y from `scrubDotY`. */
+  placement: "side" | "top" | "bottom" | "point" = "side",
   /** Render the value row. */
   showValue = true,
   /** Render the time row. */
   showTime = true,
-  /** Canvas height in px — needed to pin `"bottom"` placement. */
+  /** Canvas height in px — needed to pin `"bottom"`/`"point"` placement. */
   canvasHeight = 0,
-  /** Gap in px between the pill and the plot edge it's pinned to. */
+  /** Gap in px between the pill and the plot edge it's pinned to — and, for
+   *  `"point"`, between the scrub dot's center and the pill's nearest edge. */
   margin = TOOLTIP_TOP_MARGIN,
+  /** Scrub intersection Y in canvas px (see {@link computeScrubDotY}) — the
+   *  anchor for `"point"` placement. -1 (default) falls back to a top pin. */
+  scrubDotY = -1,
 ): TooltipLayout {
   "worklet";
   if (!scrubActive || scrubValue === null) return HIDDEN_TOOLTIP;
@@ -267,10 +273,30 @@ export function computeTooltipLayout(
       Math.max(scrubX - pillW / 2, leftBound),
       Math.max(leftBound, rightBound),
     );
-    pillY =
-      placement === "top"
-        ? padding.top + margin
-        : canvasHeight - padding.bottom - margin - totalH;
+    if (placement === "point") {
+      // Float just above the scrub dot, flipping below when there's no room
+      // above; clamp into the plot so the pill never spills past the top/bottom.
+      // A missing dot Y (canvas not laid out) falls back to a top pin.
+      if (scrubDotY < 0) {
+        pillY = padding.top + margin;
+      } else {
+        const topLimit = padding.top + TOOLTIP_EDGE_GAP;
+        const bottomLimit =
+          canvasHeight - padding.bottom - TOOLTIP_EDGE_GAP - totalH;
+        const aboveY = scrubDotY - margin - totalH;
+        const belowY = scrubDotY + margin;
+        pillY = aboveY >= topLimit ? aboveY : belowY;
+        pillY = Math.min(
+          Math.max(pillY, topLimit),
+          Math.max(topLimit, bottomLimit),
+        );
+      }
+    } else {
+      pillY =
+        placement === "top"
+          ? padding.top + margin
+          : canvasHeight - padding.bottom - margin - totalH;
+    }
   }
 
   // line1Y = first rendered row's baseline; line2Y = second (when both shown).
@@ -679,11 +705,12 @@ export function deriveCrosshairTooltipSingle(
   formatTime: (t: number) => string,
   font: SkFont,
   monoCharWidth = 0,
-  placement: "side" | "top" | "bottom" = "side",
+  placement: "side" | "top" | "bottom" | "point" = "side",
   showValue = true,
   showTime = true,
   canvasHeight = 0,
   margin = TOOLTIP_TOP_MARGIN,
+  scrubDotY = -1,
 ): TooltipLayout {
   "worklet";
   if (!scrubActive || scrubTime < 0) return HIDDEN_TOOLTIP;
@@ -703,5 +730,6 @@ export function deriveCrosshairTooltipSingle(
     showTime,
     canvasHeight,
     margin,
+    scrubDotY,
   );
 }

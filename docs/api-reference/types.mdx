@@ -249,7 +249,7 @@ interface ScrubConfig {
   crosshairDash?: number[] | boolean; // dash the crosshair line; true = [4,4], or explicit [on, off, …] px
   tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;
   tooltipBorderRadius?: number; // pill corner radius; default 5
-  tooltipPlacement?: "side" | "top" | "bottom"; // default "side" (offset/flip); top/bottom center over the line
+  tooltipPlacement?: "side" | "top" | "bottom" | "point"; // default "side" (offset/flip); top/bottom center over the line; point floats above the scrub dot
   tooltipMargin?: number; // gap (px) to the pinned plot edge (top for side/top, bottom for bottom); default 8
   tooltipShowValue?: boolean; tooltipShowTime?: boolean; // default both true; drop a row (e.g. date-only)
   panGestureDelay?: number; // press-and-hold ms before scrubbing activates; default 0
