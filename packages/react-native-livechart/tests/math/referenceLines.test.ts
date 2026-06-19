@@ -3,6 +3,7 @@ import {
   collectReferenceValues,
   referenceLineForm,
   resolveReferenceBadge,
+  resolveReferenceGroupBadge,
 } from "../../src/math/referenceLines";
 
 describe("resolveReferenceBadge", () => {
@@ -17,7 +18,14 @@ describe("resolveReferenceBadge", () => {
       showText: true,
       background: undefined,
       borderColor: undefined,
+      borderWidth: 1,
       radius: 5,
+      textColor: undefined,
+      fontSize: undefined,
+      fontFamily: undefined,
+      fontWeight: undefined,
+      offsetX: 0,
+      offsetY: 0,
       inRange: true,
       legacyText: false,
     });
@@ -42,9 +50,41 @@ describe("resolveReferenceBadge", () => {
       showText: false,
       background: "#111",
       borderColor: "#fff",
+      borderWidth: 1,
       radius: 8,
+      textColor: undefined,
+      fontSize: undefined,
+      fontFamily: undefined,
+      fontWeight: undefined,
+      offsetX: 0,
+      offsetY: 0,
       inRange: true,
       legacyText: false,
+    });
+  });
+
+  it("resolves the new style/shape knobs (border width, text color, font, offset)", () => {
+    const r = resolveReferenceBadge({
+      value: 5,
+      badge: {
+        borderColor: "#fff",
+        borderWidth: 3,
+        textColor: "#0f0",
+        fontSize: 16,
+        fontFamily: "Menlo",
+        fontWeight: "700",
+        offsetX: 4,
+        offsetY: -2,
+      },
+    });
+    expect(r).toMatchObject({
+      borderWidth: 3,
+      textColor: "#0f0",
+      fontSize: 16,
+      fontFamily: "Menlo",
+      fontWeight: "700",
+      offsetX: 4,
+      offsetY: -2,
     });
   });
 
@@ -68,7 +108,14 @@ describe("resolveReferenceBadge", () => {
       showText: true,
       background: undefined,
       borderColor: undefined,
+      borderWidth: 1,
       radius: 5,
+      textColor: undefined,
+      fontSize: undefined,
+      fontFamily: undefined,
+      fontWeight: undefined,
+      offsetX: 0,
+      offsetY: 0,
       inRange: false,
       legacyText: true,
     });
@@ -78,6 +125,56 @@ describe("resolveReferenceBadge", () => {
     const r = resolveReferenceBadge({ value: 5, badge: true, offAxisBadge: true });
     expect(r?.inRange).toBe(true);
     expect(r?.legacyText).toBe(false);
+  });
+});
+
+describe("resolveReferenceGroupBadge", () => {
+  it("returns left-pinned theme defaults when no config is given", () => {
+    expect(resolveReferenceGroupBadge()).toEqual({
+      position: "left",
+      icon: "",
+      showText: true,
+      background: undefined,
+      borderColor: undefined,
+      borderWidth: 1,
+      radius: 5,
+      textColor: undefined,
+      fontSize: undefined,
+      fontFamily: undefined,
+      fontWeight: undefined,
+      offsetX: 0,
+      offsetY: 0,
+    });
+  });
+
+  it("passes through the style/shape config", () => {
+    expect(
+      resolveReferenceGroupBadge({
+        position: "center",
+        icon: "★",
+        text: false,
+        background: "#222",
+        borderColor: "#abc",
+        borderWidth: 2,
+        radius: 10,
+        textColor: "#eee",
+        fontSize: 14,
+        offsetX: -5,
+        offsetY: 6,
+      }),
+    ).toMatchObject({
+      position: "center",
+      icon: "★",
+      showText: false,
+      background: "#222",
+      borderColor: "#abc",
+      borderWidth: 2,
+      radius: 10,
+      textColor: "#eee",
+      fontSize: 14,
+      offsetX: -5,
+      offsetY: 6,
+    });
   });
 });
 

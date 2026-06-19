@@ -131,7 +131,14 @@ interface ReferenceLineBadgeConfig {
   text?: boolean;              // show the label/value; default true. false → icon-only
   background?: string;         // falls back to badgeBackground, then theme tooltipBg
   borderColor?: string;        // falls back to badgeBorderColor, then the line color
+  borderWidth?: number;        // border stroke width; default 1
   radius?: number;             // corner radius; falls back to badgeRadius, then 5
+  textColor?: string;          // label/icon color; falls back to labelColor, then theme
+  fontSize?: number;           // badge font size; falls back to the chart font
+  fontFamily?: string;         // badge font family; falls back to the chart font
+  fontWeight?: FontWeight;     // badge font weight; falls back to the chart font
+  offsetX?: number;            // nudge the whole badge from its anchor; default 0
+  offsetY?: number;            // nudge the whole badge from its anchor; default 0
 }
 
 interface ReferenceLineRenderProps {
@@ -147,6 +154,10 @@ interface ReferenceLineRenderProps {
 
 interface ReferenceLineGroupingConfig {
   radius?: number;             // collapse lines whose value-Y are within this many px; default 18
+  badge?: ReferenceLineBadgeConfig;   // count-pill styling (same style/shape config as a
+                                      //   per-line badge: position, icon, colors, radius,
+                                      //   border, textColor, font, offset)
+  format?: (count: number) => string; // label the count, e.g. n => `×${n}`; default String(n)
 }
 
 interface ChartSegment {

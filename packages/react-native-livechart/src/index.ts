@@ -36,6 +36,7 @@ export type {
   AxisLabelConfig,
   BadgeConfig,
   BadgeMetrics,
+  BadgeStyleConfig,
   BadgeVariant,
   CandleMetrics,
   CandlePoint,

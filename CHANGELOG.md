@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Grouping** — `referenceLineGrouping` collapses lines whose handles sit near
     the same value into a single count handle. Custom-rendered lines are excluded
     (the count reflects only collapsed built-in tags).
+- **Badge style/shape parity** for reference-line and group badges. Both
+  `ReferenceLineBadgeConfig` and the grouping count pill
+  (`ReferenceLineGroupingConfig.badge`) now take the same style/shape config as the
+  value `badge` (added in #152): `borderWidth`, `textColor`, `fontSize` /
+  `fontFamily` / `fontWeight`, and `offsetX` / `offsetY` (on top of the existing
+  `position` / `background` / `borderColor` / `radius`). The grouping config also
+  gains a `format` fn for the count label (e.g. `n => \`×${n}\``).
 
 ## [3.12.0] - 2026-06-17
 
