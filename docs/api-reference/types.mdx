@@ -114,15 +114,39 @@ interface ReferenceLine {
   // Legacy off-axis badge (prefer `badge`, which also shows in-range + supports an icon):
   offAxisBadge?: boolean;
   offAxisBadgeLabel?: string;
+  // Draggable (Form A only) — grab the line and drag it along the Y-axis:
+  draggable?: boolean;             // default false
+  snap?: number;                   // round the dragged value to this increment
+  bounds?: [number, number];       // hard-clamp the draggable value
+  onChange?: (value: number) => void;  // during drag (de-duped to value changes)
+  onCommit?: (value: number) => void;  // on release — pair with a controlled `value`
+  onDragIn?: (value: number) => void;  // value entered the visible range / bounds
+  onDragOut?: (value: number) => void; // value left the visible range / hit a bound
 }
 
 interface ReferenceLineBadgeConfig {
-  position?: "left" | "right"; // edge to pin to; default "left"
+  position?: "left" | "center" | "right"; // edge to pin to ("center" floats at the
+                                          //   value, no connector); default "left"
   icon?: string;               // leading glyph (chart font), like Marker.icon
   text?: boolean;              // show the label/value; default true. false → icon-only
   background?: string;         // falls back to badgeBackground, then theme tooltipBg
   borderColor?: string;        // falls back to badgeBorderColor, then the line color
   radius?: number;             // corner radius; falls back to badgeRadius, then 5
+}
+
+interface ReferenceLineRenderProps {
+  line: ReferenceLine;            // the line being rendered
+  index: number;                  // its index in `referenceLines`
+  value: SharedValue<number>;     // live Y-axis value (tracks dragging)
+  valueStr: SharedValue<string>;  // value formatted with the chart's formatValue
+  y: SharedValue<number>;         // canvas Y px of the line (-1 when not laid out)
+  inRange: SharedValue<boolean>;  // whether the value is within the visible range
+  edge: SharedValue<"above" | "in" | "below">; // for a directional off-axis chevron
+  dragging: SharedValue<boolean>; // whether this line is currently being dragged
+}
+
+interface ReferenceLineGroupingConfig {
+  radius?: number;             // collapse lines whose value-Y are within this many px; default 18
 }
 
 interface ChartSegment {

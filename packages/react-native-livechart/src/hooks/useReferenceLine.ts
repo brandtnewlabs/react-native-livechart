@@ -109,7 +109,7 @@ interface BadgeGeometry {
  * inside the pill, with a dashed connector running to the opposite edge.
  */
 function badgeGeometry(
-  position: "left" | "right",
+  position: "left" | "center" | "right",
   icon: string,
   text: string,
   hasChevron: boolean,
@@ -147,7 +147,9 @@ function badgeGeometry(
   const pillX =
     position === "right"
       ? x2 - BADGE_EDGE_INSET - pillW
-      : x1 + BADGE_EDGE_INSET;
+      : position === "center"
+        ? (x1 + x2) / 2 - pillW / 2
+        : x1 + BADGE_EDGE_INSET;
 
   let cursor = pillX + BADGE_PAD_X;
   let chevronCx = -1;
@@ -172,13 +174,14 @@ function badgeGeometry(
       connStart = x1;
       connEnd = end;
     }
-  } else {
+  } else if (position === "left") {
     const start = pillX + pillW + 4;
     if (start < x2) {
       connStart = start;
       connEnd = x2;
     }
   }
+  // "center" floats the pill at the value with no connector.
 
   return { pillX, pillW, iconX, textX, chevronCx, connStart, connEnd };
 }
@@ -226,6 +229,8 @@ export function computeReferenceBadgeRect(
   dMax: number,
   font: SkFont,
   formatValue: (value: number) => string,
+  /** Live value override (e.g. a dragged value), defaulting to `line.value`. */
+  valueOverride?: number,
 ): ReferenceBadgeRect | null {
   "worklet";
   const badge = resolveReferenceBadge(line);
@@ -241,7 +246,7 @@ export function computeReferenceBadgeRect(
 
   const x1 = padding.left;
   const x2 = canvasWidth - padding.right;
-  const v = line.value;
+  const v = valueOverride ?? line.value;
   const edge = classifyReferenceEdge(v, dMin, dMax);
 
   let y: number;
@@ -280,6 +285,14 @@ export function useReferenceLine(
   line: ReferenceLine | undefined,
   formatValue: (v: number) => string,
   font: SkFont,
+  /**
+   * Per-line live value overrides (e.g. dragged values), index-aligned with the
+   * chart's `referenceLines`. When provided and the slot at {@link index} holds a
+   * number, the Form-A line tracks that value instead of the static `line.value`,
+   * so a drag updates the rendered line/badge on the UI thread. Omit for static lines.
+   */
+  dragValues?: SharedValue<number[]>,
+  index = 0,
 ): SharedValue<ReferenceLineLayout> {
   const form = line ? referenceLineForm(line) : "none";
   // Badge presentation depends only on the (stable) line props — resolve once.
@@ -392,7 +405,11 @@ export function useReferenceLine(
 
     // ── Form A — horizontal line (with optional pill badge) ──────────────────
     if (line.value === undefined) return INVISIBLE;
-    const v = line.value;
+    // Effective value: a live drag override (if present) else the static prop.
+    const v =
+      dragValues && dragValues.value[index] != null
+        ? dragValues.value[index]
+        : line.value;
     const edge = classifyReferenceEdge(v, dMin, dMax);
 
     // Off-screen: pin the badge to the nearest edge with a chevron (when a badge

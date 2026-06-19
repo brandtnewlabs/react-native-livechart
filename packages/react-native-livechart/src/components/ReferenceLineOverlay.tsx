@@ -6,7 +6,7 @@ import {
   Text as SkiaText,
   type SkFont,
 } from "@shopify/react-native-skia";
-import { useDerivedValue } from "react-native-reanimated";
+import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
@@ -36,6 +36,10 @@ export function ReferenceLineOverlay({
   formatValue,
   font,
   badgeLayer = false,
+  suppressTag = false,
+  groupHidden,
+  dragValues,
+  index = 0,
 }: {
   engine: ChartEngineLayout;
   padding: ChartPadding;
@@ -50,10 +54,34 @@ export function ReferenceLineOverlay({
    * of being erased by the fade's `dstOut` blend.
    */
   badgeLayer?: boolean;
+  /**
+   * Suppress the built-in tag (badge pill + connector + chevron + icon + gutter
+   * label) for this line — used when a custom `renderReferenceLine` element owns
+   * the tag. The line / band stroke still draws. No effect on the base pass.
+   */
+  suppressTag?: boolean;
+  /**
+   * Per-frame grouping flags (index-aligned): when this line's slot is `true` it's
+   * collapsed into a group count handle, so its tag is suppressed (the line / band
+   * stroke still draws).
+   */
+  groupHidden?: SharedValue<boolean[]>;
+  /** Per-line live value overrides (dragged values), index-aligned with `referenceLines`. */
+  dragValues?: SharedValue<number[]>;
+  /** This line's index into {@link dragValues}. */
+  index?: number;
 }) {
   const form = referenceLineForm(line);
   const isBand = form === "value-band" || form === "time-band";
-  const layout = useReferenceLine(engine, padding, line, formatValue, font);
+  const layout = useReferenceLine(
+    engine,
+    padding,
+    line,
+    formatValue,
+    font,
+    dragValues,
+    index,
+  );
 
   const color = line.color ?? palette.refLine;
   const labelColor = line.labelColor ?? line.color ?? palette.refLabel;
@@ -165,12 +193,14 @@ export function ReferenceLineOverlay({
   );
   const badgeOpacity = useDerivedValue(() => {
     const l = layout.get();
-    return l.visible && l.badge ? 1 : 0;
+    const grouped = groupHidden ? groupHidden.get()[index] === true : false;
+    return !suppressTag && !grouped && l.visible && l.badge ? 1 : 0;
   });
   // Text + icon ride in the badge pass too, so they stay crisp above the fade.
   const labelOpacity = useDerivedValue(() => {
     const l = layout.get();
-    return l.visible && l.label.length > 0 ? 1 : 0;
+    const grouped = groupHidden ? groupHidden.get()[index] === true : false;
+    return !suppressTag && !grouped && l.visible && l.label.length > 0 ? 1 : 0;
   });
   const iconOpacity = useDerivedValue(() => {
     const l = layout.get();

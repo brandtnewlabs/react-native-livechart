@@ -5,6 +5,30 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Interactive reference lines** (`LiveChart`). Form-A `ReferenceLine`s gain a full
+  interaction model for working orders, alerts, and targets:
+  - **Draggable** — `draggable` lets you grab a line and drag it along the Y-axis,
+    with `snap` (round to a tick), `bounds` (hard clamp), and per-line callbacks
+    `onChange` (during), `onCommit` (on release), and `onDragIn` / `onDragOut`
+    (value crossing the visible range or a bound, from a drag or the axis
+    rescaling). Uncontrolled by default; pair `onCommit` with `value` for a
+    controlled line. Dragging a line toward the edge expands the Y-axis so it
+    follows the finger in one motion (no release-and-re-grab).
+  - **Custom tags** — `renderReferenceLine` floats any React Native view at a line's
+    value (the `renderMarker` / `renderTooltip` model), tracking the axis and any
+    drag on the UI thread via the `ReferenceLineRenderProps` SharedValues. Replaces
+    the built-in pill / gutter label (return `null` to keep the built-in; works with
+    `badge: false`).
+  - **Center badge** — `ReferenceLineBadgeConfig.position` accepts `"center"`,
+    floating the pill at the value with no connector.
+  - **Grouping** — `referenceLineGrouping` collapses lines whose handles sit near
+    the same value into a single count handle. Custom-rendered lines are excluded
+    (the count reflects only collapsed built-in tags).
+
 ## [3.12.0] - 2026-06-17
 
 ### Added

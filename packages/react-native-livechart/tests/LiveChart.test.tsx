@@ -270,6 +270,43 @@ describe("LiveChart", () => {
     render(<ComboHarness />);
   });
 
+  it("renders draggable, custom-rendered, and grouped reference lines", () => {
+    const screen = render(
+      <Harness
+        referenceLines={[
+          {
+            value: 50,
+            draggable: true,
+            snap: 0.5,
+            bounds: [0, 100],
+            onChange: jest.fn(),
+            onCommit: jest.fn(),
+            onDragIn: jest.fn(),
+            onDragOut: jest.fn(),
+          },
+          { value: 51 }, // near 50 → collapses into a group
+          { value: 52, badge: true }, // custom-rendered tag
+        ]}
+        renderReferenceLine={({ line }) =>
+          line.value === 52 ? <View testID="custom-ref" /> : null
+        }
+        referenceLineGrouping={{ radius: 40 }}
+      />,
+    );
+    // The custom-rendered tag is floated as an RN view (built-in tag suppressed).
+    expect(screen.queryByTestId("custom-ref")).toBeTruthy();
+  });
+
+  it("accepts a boolean referenceLineGrouping and a non-draggable custom line", () => {
+    render(
+      <Harness
+        referenceLines={[{ value: 50 }, { value: 50.2 }]}
+        referenceLineGrouping
+        renderReferenceLine={() => <View testID="rl" />}
+      />,
+    );
+  });
+
   it("accepts custom formatters", () => {
     render(
       <Harness formatValue={(v) => v.toFixed(4)} formatTime={() => "x"} />,
