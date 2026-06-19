@@ -27,6 +27,13 @@ export interface EngineConfig {
   exaggerate?: boolean;
   referenceValue?: number;
   referenceValues?: number[];
+  /**
+   * Live, per-frame Y values to fold into the axis-range fit on top of the static
+   * {@link referenceValues} — used so a *dragging* reference line expands the range
+   * and the axis follows the finger smoothly (the committed values already sit in
+   * `referenceValues`). Read on the UI thread each frame; omit for non-draggable charts.
+   */
+  liveReferenceValues?: SharedValue<number[]>;
   nonNegative?: boolean;
   maxValue?: number;
   nowOverride?: number;
@@ -234,7 +241,15 @@ export function useLiveChartEngine(
   const adaptiveSpeedBoostSV = useDerivedValue(() => config.adaptiveSpeedBoost);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
-  const referenceValues = useDerivedValue(() => config.referenceValues);
+  // Captured directly (not via `config.`) so Reanimated tracks the SharedValue and
+  // the merge re-runs each frame while a line is dragged; stable when idle.
+  const liveReferenceValuesSV = config.liveReferenceValues;
+  const referenceValues = useDerivedValue(() => {
+    const base = config.referenceValues;
+    const live = liveReferenceValuesSV?.value;
+    if (!live || live.length === 0) return base;
+    return base && base.length > 0 ? base.concat(live) : live;
+  });
   const nonNegativeSV = useDerivedValue(() => config.nonNegative ?? false);
   const maxValueSV = useDerivedValue(() => config.maxValue);
   const nowOverrideSV = useDerivedValue(() => config.nowOverride);

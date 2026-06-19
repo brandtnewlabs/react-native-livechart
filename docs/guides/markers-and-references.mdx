@@ -176,9 +176,76 @@ referenceLines={[
 ```
 
 `badge: true` uses the defaults (left-pinned, the line's label/value); pass a
-[`ReferenceLineBadgeConfig`](/api-reference/types#annotations) for `position`, an `icon`,
+[`ReferenceLineBadgeConfig`](/api-reference/types#annotations) for `position` (`"left"` /
+`"center"` / `"right"` — `"center"` floats the pill at the value with no connector), an `icon`,
 `text: false` (icon-only), and `background` / `borderColor` / `radius`. It supersedes the legacy
 `offAxisBadge` (still supported), which only appears once the value is off-screen and takes no icon.
+
+### Draggable lines (`draggable`)
+
+Make a Form-A line draggable along the Y-axis — grab it near its value and drag to set a new price
+(a working order, alert level, or target). The line tracks the finger on the UI thread; per-line
+callbacks report the value to JS:
+
+```tsx
+referenceLines={[
+  {
+    value: limitPrice,            // controlled: write `onCommit` back into this
+    label: "Limit buy",
+    draggable: true,
+    snap: 0.05,                   // round drops to a tick size
+    bounds: [0, lastPrice],       // hard-clamp the drag range
+    onChange: (v) => {},          // during drag (de-duped to value changes)
+    onCommit: setLimitPrice,      // on release — persist the move
+    onDragIn: (v) => {},          // value (re-)entered the visible range / bounds
+    onDragOut: (v) => {},         // value left the visible range / hit a bound
+  },
+]}
+```
+
+The line is **uncontrolled** by default (it stays where you drop it); pair `onCommit` with writing
+the value back into `value` to make it controlled. `onDragIn` / `onDragOut` are edge-triggered and
+also fire when the axis rescales under a fixed value (e.g. an order scrolling off the top), so
+they're a clean "is my order still on screen" signal even without dragging.
+
+### Custom tags (`renderReferenceLine`)
+
+Replace a line's built-in pill / gutter label with any **React Native** view — the same model as
+`renderMarker` / `renderTooltip`. The chart floats your element over the canvas and pins it to the
+line's value (vertically centered, horizontally at the badge / label position), tracking the
+rescaling axis and any drag without JS re-renders. Called per Form-A line; return `null` to keep
+that line's built-in tag (works with `badge: false` too). Bind the `ctx.value` / `ctx.valueStr`
+SharedValues to animated text for a live readout:
+
+```tsx
+renderReferenceLine={(ctx) =>
+  ctx.line.draggable ? (
+    <View style={styles.tag}>
+      <Text>{ctx.line.label}</Text>
+      {/* live price, updated on the UI thread while dragging */}
+      <AnimatedTrendTextInput sharedValue={ctx.value} maximumFractionDigits={2} />
+    </View>
+  ) : null
+}
+```
+
+`ctx` ([`ReferenceLineRenderProps`](/api-reference/types#annotations)) also carries `y`, `inRange`,
+`edge` (`"above"` / `"in"` / `"below"`, for a directional chevron), and `dragging` as SharedValues.
+
+### Grouping near-value lines (`referenceLineGrouping`)
+
+When a stack of orders or alerts sits near the same price, their tags pile up illegibly. Pass
+`referenceLineGrouping` to collapse Form-A lines whose handles fall within `radius` px of each other
+into a single count handle:
+
+```tsx
+referenceLineGrouping={{ radius: 18 }}   // or `true` for the default
+```
+
+The clustered lines' individual tags are suppressed and replaced by one "count" pill at the
+cluster's center; the lines themselves still draw. Lines you render with `renderReferenceLine`
+are excluded from grouping (their custom tag draws itself), so the count reflects only collapsed
+built-in tags.
 
 ## Overlay bridge (`renderOverlay`)
 

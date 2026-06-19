@@ -179,7 +179,27 @@ provided; everything else has a default.
 </ParamField>
 
 <ParamField body="referenceLines" type="ReferenceLine[]">
-  Reference lines / bands (horizontal line, value band, or time band).
+  Reference lines / bands (horizontal line, value band, or time band). Form-A lines
+  can be `draggable` (drag to set a price, with `snap` / `bounds` and `onChange` /
+  `onCommit` / `onDragIn` / `onDragOut` callbacks). See
+  [Reference lines](/guides/markers-and-references#reference-lines--bands).
+</ParamField>
+
+<ParamField body="renderReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
+  Render a reference line's tag as a custom **React Native** element instead of the
+  built-in Skia pill / gutter label — the same model as `renderMarker` /
+  `renderTooltip`. The chart floats it over the canvas and pins it to the line's
+  value on the UI thread (see
+  [`ReferenceLineRenderProps`](/api-reference/types#annotations)), so it tracks the
+  rescaling axis and any drag without JS re-renders. Called per Form-A line; return
+  `null` to keep that line's built-in tag (works with `badge: false` too).
+  Single-series only.
+</ParamField>
+
+<ParamField body="referenceLineGrouping" type="boolean | ReferenceLineGroupingConfig" default="false">
+  Collapse Form-A lines whose handles sit near the same value into a single count
+  handle — a stack of working orders at adjacent prices reads as one tag. Pass an
+  object to tune the proximity `radius` (px). Single-series only.
 </ParamField>
 
 <ParamField body="segments" type="ChartSegment[]">

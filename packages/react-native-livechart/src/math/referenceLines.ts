@@ -42,7 +42,7 @@ export function collectReferenceValues(lines: ReferenceLine[]): number[] {
 
 /** Fully-resolved badge presentation for a Form-A reference line. */
 export interface ResolvedReferenceBadge {
-  position: "left" | "right";
+  position: "left" | "center" | "right";
   /** Leading glyph, or "" for none. */
   icon: string;
   /** Whether the text label is shown. */

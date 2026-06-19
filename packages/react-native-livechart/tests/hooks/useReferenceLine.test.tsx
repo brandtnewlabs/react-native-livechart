@@ -469,6 +469,45 @@ describe("useReferenceLine", () => {
     expect(l.chevronUp).toBe(true);
     expect(l.chevronCx).toBeGreaterThanOrEqual(0);
   });
+
+  it("center-floats the pill at the value with no connector", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50, badge: { position: "center" } },
+        fmt,
+        font,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.badge).toBe(true);
+    // Pill centered between the plot edges (x1=12, x2=320 → mid 166).
+    const plotMid = (12 + 320) / 2;
+    expect(l.pillX + l.pillW / 2).toBeCloseTo(plotMid);
+    // No connector for a center badge.
+    expect(l.connStart).toBe(-1);
+    expect(l.connEnd).toBe(-1);
+    // Not a plain line (badge owns the rendering).
+    expect(l.drawLine).toBe(false);
+  });
+
+  it("center-floats an off-screen badge centered at the pinned edge", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 150, badge: { position: "center" } },
+        fmt,
+        font,
+      ),
+    );
+    const l = result.current.value;
+    expect(l.offAxis).toBe(true);
+    expect(l.badge).toBe(true);
+    expect(l.pillX + l.pillW / 2).toBeCloseTo((12 + 320) / 2);
+    expect(l.connStart).toBe(-1);
+  });
 });
 
 describe("computeReferenceBadgeRect", () => {
@@ -512,5 +551,12 @@ describe("computeReferenceBadgeRect", () => {
     expect(r).not.toBeNull();
     // Off-axis above → y = chartTop + 12 = 24; centered pill top = 15.
     expect(r.y).toBeCloseTo(15);
+  });
+
+  it("centers the hit rect for a center-positioned badge", () => {
+    const r = call({ value: 50, badge: { position: "center" } })!;
+    expect(r).not.toBeNull();
+    // Centered between plot edges (x1=12, x2=320).
+    expect(r.x + r.w / 2).toBeCloseTo((12 + 320) / 2);
   });
 });

@@ -1,6 +1,6 @@
 import type { SkFont } from "@shopify/react-native-skia";
 import { Gesture } from "react-native-gesture-handler";
-import { useDerivedValue } from "react-native-reanimated";
+import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
@@ -33,6 +33,9 @@ export function useReferenceLinePress(
   /** Touch-target inflation around each pill, in px. */
   hitSlop: number,
   onPress?: (line: ReferenceLine, index: number) => void,
+  /** Per-line live value overrides (dragged values) so a draggable line's hit-rect
+   *  tracks the drag, index-aligned with `lines`. */
+  dragValues?: SharedValue<number[]>,
 ): {
   tapGesture: ReturnType<typeof Gesture.Tap>;
   hitTest: (x: number, y: number) => boolean;
@@ -47,9 +50,20 @@ export function useReferenceLinePress(
     const dMin = engine.displayMin.value;
     const dMax = engine.displayMax.value;
     const out: (ReferenceBadgeRect | null)[] = [];
+    const dv = dragValues?.value;
     for (let i = 0; i < lines.length; i++) {
       out.push(
-        computeReferenceBadgeRect(lines[i], w, h, padding, dMin, dMax, font, formatValue),
+        computeReferenceBadgeRect(
+          lines[i],
+          w,
+          h,
+          padding,
+          dMin,
+          dMax,
+          font,
+          formatValue,
+          dv ? dv[i] : undefined,
+        ),
       );
     }
     return out;

@@ -113,6 +113,12 @@ const SECTIONS: DemoSection[] = [
         blurb: "referenceLines: lines, value/time bands, off-axis badge.",
       },
       {
+        href: "/demo/working-orders",
+        title: "Working orders",
+        blurb:
+          "Draggable order lines (snap + bounds + onCommit), custom RN tags via renderReferenceLine, center badge, near-value grouping.",
+      },
+      {
         href: "/demo/overlay-bridge",
         title: "Overlay bridge",
         blurb: "renderOverlay: hand-rolled RN order overlay via the priceToY / yToPrice / timeToX bridge.",

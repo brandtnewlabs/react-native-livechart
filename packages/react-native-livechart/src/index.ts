@@ -73,6 +73,8 @@ export type {
   PulseConfig,
   ReferenceLine,
   ReferenceLineBadgeConfig,
+  ReferenceLineGroupingConfig,
+  ReferenceLineRenderProps,
   ScrubActionConfig,
   ScrubActionPoint,
   ScrubConfig,

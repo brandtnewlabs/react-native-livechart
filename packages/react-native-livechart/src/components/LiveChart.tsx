@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
@@ -62,6 +62,7 @@ import { useDegen } from "../hooks/useDegen";
 import { useLiveChartHasData } from "../hooks/useLiveChartHasData";
 import { useLiveDot } from "../hooks/useLiveDot";
 import { useMarkers } from "../hooks/useMarkers";
+import { useReferenceDrag } from "../hooks/useReferenceDrag";
 import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
 import { useModeBlend } from "../hooks/useModeBlend";
 import { useMomentum } from "../hooks/useMomentum";
@@ -77,7 +78,15 @@ import {
   formatValue as defaultFormatValue,
 } from "../lib/format";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
-import { collectReferenceValues } from "../math/referenceLines";
+import { computeScrubDotY } from "../hooks/crosshairShared";
+import {
+  groupReferenceLines,
+  type ReferenceGrouping,
+} from "../math/referenceGroup";
+import {
+  collectReferenceValues,
+  referenceLineForm,
+} from "../math/referenceLines";
 import {
   applyPaletteOverride,
   leftEdgeFadeColorsFromBgRgb,
@@ -102,6 +111,10 @@ import {
   labelConnector,
 } from "./ExtremaConnectorOverlay";
 import { CustomMarkerOverlay } from "./CustomMarkerOverlay";
+import {
+  CustomReferenceLineOverlay,
+  customReferenceLineFlags,
+} from "./CustomReferenceLineOverlay";
 import { CustomTooltipOverlay } from "./CustomTooltipOverlay";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { ChartOverlayLayer } from "./ChartOverlayLayer";
@@ -113,6 +126,7 @@ import { LoadingOverlay } from "./LoadingOverlay";
 import { MarkerOverlay } from "./MarkerOverlay";
 import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
 import { ValueTextOverlay } from "./ValueTextOverlay";
+import { ReferenceLineGroupOverlay } from "./ReferenceLineGroupOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
 import { ScrubActionOverlay } from "./ScrubActionOverlay";
 import { SegmentDividerOverlay } from "./SegmentDividerOverlay";
@@ -123,6 +137,14 @@ import { YAxisOverlay } from "./YAxisOverlay";
 
 /** Translucent fill alpha for the threshold profit/loss band. */
 const THRESHOLD_FILL_OPACITY = 0.16;
+
+/** Stable empty grouping result (identity-stable so downstream worklets don't
+ *  re-run) used when reference-line grouping is off. */
+const EMPTY_GROUPING: ReferenceGrouping = { hidden: [], groups: [] };
+
+/** Stable empty number array so the live-reference-values worklet stays
+ *  referentially stable (no engine re-fit) when no line is draggable. */
+const EMPTY_NUMS: number[] = [];
 
 /**
  * Color stops for the threshold's hard-split vertical gradient. Both arrays pair
@@ -228,6 +250,8 @@ function useLiveChartController({
   renderMarker,
   renderTooltip,
   renderOverlay,
+  renderReferenceLine,
+  referenceLineGrouping,
   leftEdgeFade = true,
 
   // ── Callbacks ───────────────────────────────────────────────────────────
@@ -284,6 +308,71 @@ function useLiveChartController({
 
   const allRefLines = referenceLines ?? [];
   const refValues = collectReferenceValues(allRefLines);
+
+  // Per-line live value overrides + drag flags for draggable lines and the custom
+  // `renderReferenceLine` slot. One array SharedValue each (the line count varies,
+  // so a single SharedValue beats N hooks). Seeded from each line's static `value`;
+  // the drag gesture overwrites a slot, and the effect re-seeds slots not being
+  // dragged when the props change (so a controlled `value` flows back in).
+  const dragValues = useSharedValue<number[]>([]);
+  const dragActive = useSharedValue<boolean[]>([]);
+  // Last `value` props used to seed each slot, so reconciliation can tell a
+  // controlled prop change (adopt it) from an unchanged prop (keep the dragged
+  // value — uncontrolled persistence) without resetting a drop on every re-render.
+  const seededRef = useRef<(number | undefined)[]>([]);
+  const refValueSig = allRefLines.map((l) => l.value ?? "_").join(",");
+  useEffect(() => {
+    const active = dragActive.value;
+    const cur = dragValues.value;
+    const seeded = seededRef.current;
+    dragValues.value = allRefLines.map((l, i) => {
+      const prop = l.value ?? 0;
+      if (active[i]) return cur[i] ?? prop; // mid-drag → keep the dragged value
+      if (l.value !== seeded[i]) return prop; // prop changed → adopt (controlled)
+      return cur[i] ?? prop; // unchanged → keep current (uncontrolled persist)
+    });
+    seededRef.current = allRefLines.map((l) => l.value);
+    if (dragActive.value.length !== allRefLines.length) {
+      dragActive.value = allRefLines.map((_, i) => active[i] ?? false);
+    }
+    // allRefLines is rebuilt every render; key off the value signature + length.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refValueSig, allRefLines.length]);
+
+  // Form-A lines a custom `renderReferenceLine` owns → suppress their built-in tag
+  // (no double-draw). Probed on the JS thread, index-aligned with `allRefLines`.
+  const refLineCustom = customReferenceLineFlags(allRefLines, renderReferenceLine);
+
+  // Live Y values of the *draggable* Form-A lines, folded into the engine's
+  // axis-range fit so dragging a line toward / past the visible edge expands the
+  // range and the axis follows the finger in one motion (the committed values are
+  // already in `refValues`). `excludeFromRange` lines opt out, matching the static
+  // fit. Identity-stable (no re-fit) when nothing is draggable.
+  const draggableRefIdx = allRefLines
+    .map((l, i) =>
+      l.draggable && !l.excludeFromRange && referenceLineForm(l) === "line"
+        ? i
+        : -1,
+    )
+    .filter((i) => i >= 0);
+  const liveRefValues = useDerivedValue<number[]>(() => {
+    if (draggableRefIdx.length === 0) return EMPTY_NUMS;
+    const dv = dragValues.get();
+    const out: number[] = [];
+    for (let k = 0; k < draggableRefIdx.length; k++) {
+      const v = dv[draggableRefIdx[k]];
+      if (v != null) out.push(v);
+    }
+    return out;
+  });
+
+  // Reference-line grouping (collapse near-value handles). Resolved once; the
+  // per-frame clustering runs on the UI thread (see ReferenceLineGroupOverlay).
+  const refGroupingRadius = referenceLineGrouping
+    ? typeof referenceLineGrouping === "object"
+      ? (referenceLineGrouping.radius ?? 18)
+      : 18
+    : null;
 
   const badgeUsesRightGutter =
     badgeCfg !== null && (badgeCfg.position ?? "right") === "right";
@@ -433,6 +522,7 @@ function useLiveChartController({
     adaptiveSpeedBoost: metricsCfg.motion.adaptiveSpeedBoost,
     exaggerate,
     referenceValues: refValues,
+    liveReferenceValues: liveRefValues,
     nonNegative,
     maxValue,
     windowBuffer,
@@ -463,6 +553,41 @@ function useLiveChartController({
 
   // ── Per-frame derived values ───────────────────────────────────────────
   const { layoutWidth, layoutHeight, onLayout } = useCanvasLayout(engine);
+
+  // Reference-line grouping: cluster Form-A lines by their per-frame value-Y so a
+  // stack of nearby orders collapses into one count handle. `groupHidden` suppresses
+  // the clustered lines' individual tags; the count pills read `refGroupResult`.
+  // Identity-stable (no work) when grouping is off.
+  const refGroupResult = useDerivedValue<ReferenceGrouping>(() => {
+    if (refGroupingRadius == null) return EMPTY_GROUPING;
+    const ch = engine.canvasHeight.get();
+    const dMin = engine.displayMin.get();
+    const dMax = engine.displayMax.get();
+    const top = effectivePadding.top;
+    const bottom = ch - effectivePadding.bottom;
+    const ys: number[] = [];
+    for (let i = 0; i < allRefLines.length; i++) {
+      const l = allRefLines[i];
+      // Skip bands and lines a custom `renderReferenceLine` owns — a custom tag
+      // draws itself and isn't suppressed by grouping, so folding it into a
+      // built-in count pill would double-count it (counted *and* still shown).
+      if (
+        referenceLineForm(l) !== "line" ||
+        l.value === undefined ||
+        refLineCustom[i]
+      ) {
+        ys.push(-1);
+        continue;
+      }
+      const v = dragValues.get()[i] ?? l.value;
+      const y = computeScrubDotY(v, dMin, dMax, ch, top, effectivePadding.bottom);
+      ys.push(y < 0 ? -1 : Math.min(bottom, Math.max(top, y)));
+    }
+    return groupReferenceLines(ys, refGroupingRadius);
+  });
+  const groupHidden = useDerivedValue<boolean[]>(
+    () => refGroupResult.get().hidden,
+  );
 
   // Threshold split geometry (shared by stroke gradient, fill band, marker line).
   // Called unconditionally with a stand-in value when no threshold is set.
@@ -633,6 +758,7 @@ function useLiveChartController({
       !isStatic && refPressActive,
       markerHitRadius,
       onReferenceLinePress,
+      dragValues,
     );
 
   // Combined "defer" hit-test for the scrub-action place-tap: yield to a marker or
@@ -713,6 +839,21 @@ function useLiveChartController({
     },
   });
 
+  // Draggable reference lines: a per-line vertical pan that grabs a line near its
+  // value and drags it along the Y-axis (with snap / bounds / callbacks). Built
+  // unconditionally for stable hook order; the gesture self-disables when no line
+  // opts in, and it's only composed into the root when `refDragEnabled`.
+  const refDragEnabled =
+    !isStatic && allRefLines.some((l) => l.draggable === true);
+  const refDragGesture = useReferenceDrag(
+    engine,
+    effectivePadding,
+    allRefLines,
+    dragValues,
+    dragActive,
+    !isStatic,
+  );
+
   // Scrub-action composes a Tap (place/move the reticle, press the badge, dismiss)
   // ahead of the pan via Exclusive, so a tap is tried first and only becomes a
   // drag (live-scrub, or lock-adjust once placed) if the finger moves. `Exclusive`
@@ -755,6 +896,13 @@ function useLiveChartController({
       scrollGestureMode === "axisDrag"
         ? Gesture.Exclusive(panScrollGesture, rootGesture)
         : Gesture.Race(panScrollGesture, rootGesture);
+  }
+
+  // Draggable reference lines take priority: a vertical grab on a line drags it.
+  // The manual-activation pan fails fast off any line (or on horizontal intent), so
+  // Exclusive falls through to scrub / scroll everywhere else.
+  if (refDragEnabled) {
+    rootGesture = Gesture.Exclusive(refDragGesture, rootGesture);
   }
 
   // ── Derived render values ──────────────────────────────────────────────
@@ -830,6 +978,13 @@ function useLiveChartController({
     leftEdgeFadeCfg,
     metricsCfg,
     allRefLines,
+    refLineCustom,
+    dragValues,
+    dragActive,
+    renderReferenceLine,
+    refGroupingActive: refGroupingRadius != null,
+    refGroupResult,
+    groupHidden,
     resolvedSegments,
     hasRecolorSegments,
     segmentGradient,
@@ -1028,6 +1183,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     valueLineCfg,
     dotY,
     allRefLines,
+    dragValues,
     resolvedSegments,
     hasRecolorSegments,
     segmentGradient,
@@ -1114,6 +1270,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
           palette={palette}
           formatValue={formatValue}
           font={skiaFont}
+          dragValues={dragValues}
+          index={i}
         />
       ))}
 
@@ -1482,6 +1640,11 @@ function ChartBadgeLayer({ model }: { model: LiveChartModel }) {
 function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
   const {
     allRefLines,
+    refLineCustom,
+    dragValues,
+    groupHidden,
+    refGroupResult,
+    refGroupingActive,
     engine,
     effectivePadding,
     palette,
@@ -1502,8 +1665,21 @@ function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
           formatValue={formatValue}
           font={skiaFont}
           badgeLayer
+          dragValues={dragValues}
+          index={i}
+          suppressTag={refLineCustom[i]}
+          groupHidden={refGroupingActive ? groupHidden : undefined}
         />
       ))}
+      {/* Collapsed count handles for grouped (near-value) lines. */}
+      {refGroupingActive && (
+        <ReferenceLineGroupOverlay
+          grouping={refGroupResult}
+          padding={effectivePadding}
+          palette={palette}
+          font={skiaFont}
+        />
+      )}
     </Group>
   );
 }
@@ -1563,6 +1739,11 @@ export function LiveChart(props: LiveChartProps) {
     renderMarker,
     renderTooltip,
     renderOverlay,
+    renderReferenceLine,
+    allRefLines,
+    refLineCustom,
+    dragValues,
+    dragActive,
     overlayContext,
     scrubCfg,
     crosshair,
@@ -1648,6 +1829,22 @@ export function LiveChart(props: LiveChartProps) {
             padding={effectivePadding}
             lineData={engine.data}
             lineLinear={lineIsLinear}
+          />
+        )}
+
+        {/* Custom-rendered reference-line tags — RN views floated over the canvas
+            (non-Skia), pinned to each Form-A line's value. Sibling of <Canvas>.
+            Built-in Skia tags for these lines are suppressed (no double-draw). */}
+        {renderReferenceLine && allRefLines.length > 0 && (
+          <CustomReferenceLineOverlay
+            lines={allRefLines}
+            renderReferenceLine={renderReferenceLine}
+            custom={refLineCustom}
+            engine={engine}
+            padding={effectivePadding}
+            formatValue={formatValue}
+            dragValues={dragValues}
+            dragActive={dragActive}
           />
         )}
 

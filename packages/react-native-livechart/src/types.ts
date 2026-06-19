@@ -135,6 +135,55 @@ export interface ReferenceLine {
   badgeBorderColor?: string;
   /** Badge pill corner radius in pixels. Default `5`. (Fallback for `badge.radius`.) */
   badgeRadius?: number;
+
+  // ── Draggable (Form A only) ───────────────────────────────────────────────
+  /**
+   * Make this Form-A line **draggable** along the Y-axis — grab its handle / badge
+   * and drag to set a new value (a working-order price, alert level, or target).
+   * The line tracks the finger on the UI thread; {@link onChange} / {@link onCommit}
+   * report the value to JS. The line is *uncontrolled* by default (it stays where
+   * you drop it); pair `onCommit` with writing the value back into `value` to make
+   * it controlled. No effect on bands / time bands. Default `false`.
+   */
+  draggable?: boolean;
+  /**
+   * Snap the dragged value to this increment (e.g. `0.01` for cents, `0.5` for a
+   * tick size) so drops land on round levels. Omit for free dragging. Applies only
+   * while {@link draggable}.
+   */
+  snap?: number;
+  /**
+   * Hard-clamp the draggable value to `[min, max]` in Y-axis units — the line
+   * can't be dragged past either end. Omit for unbounded (clamped only to the
+   * visible range). Reaching a bound fires {@link onDragOut}. Applies only while
+   * {@link draggable}.
+   */
+  bounds?: [number, number];
+  /**
+   * Fired on the JS thread *while* dragging, each time the (snapped, clamped)
+   * value changes. De-duplicated to value changes — not every frame. Form-A
+   * draggable only.
+   */
+  onChange?: (value: number) => void;
+  /**
+   * Fired once on the JS thread when the drag ends (finger up), with the final
+   * (snapped, clamped) value. Pair with a controlled `value` to persist the move.
+   * Form-A draggable only.
+   */
+  onCommit?: (value: number) => void;
+  /**
+   * Fired on the JS thread when the line's value crosses **into** its watched
+   * interval — the visible Y-range, or {@link bounds} when set. Triggers from
+   * dragging *or* the axis rescaling under a fixed value (e.g. a target scrolling
+   * back into view). Edge-triggered: once per crossing. Form-A only.
+   */
+  onDragIn?: (value: number) => void;
+  /**
+   * Fired on the JS thread when the line's value crosses **out of** its watched
+   * interval (the visible Y-range, or {@link bounds}) — dragged/scrolled off-screen
+   * or pinned at a bound. Edge-triggered: once per crossing. Form-A only.
+   */
+  onDragOut?: (value: number) => void;
 }
 
 /**
@@ -144,8 +193,12 @@ export interface ReferenceLine {
  * nearest edge with a chevron once the value scrolls off-screen.
  */
 export interface ReferenceLineBadgeConfig {
-  /** Which plot edge the badge pins to. Default `"left"`. */
-  position?: "left" | "right";
+  /**
+   * Where the badge pins horizontally. `"left"` / `"right"` pin to that plot edge
+   * with a dashed connector running to the opposite edge; `"center"` floats the
+   * pill centered in the plot at the line's value (no connector). Default `"left"`.
+   */
+  position?: "left" | "center" | "right";
   /**
    * Leading glyph drawn in the badge — rendered with the chart font, so pass an
    * emoji-capable font (via the chart `font` prop) for emoji. Like `Marker.icon`.
@@ -161,6 +214,54 @@ export interface ReferenceLineBadgeConfig {
   /** Pill border color. Falls back to `badgeBorderColor`, then the line `color`. */
   borderColor?: string;
   /** Pill corner radius in pixels. Falls back to `badgeRadius`, then `5`. */
+  radius?: number;
+}
+
+/**
+ * Context passed to a custom {@link LiveChartProps.renderReferenceLine}. The chart
+ * floats the element you return over the canvas and pins it to the line's value on
+ * the UI thread (vertically centered on the line, horizontally at the badge /
+ * label position) — so it tracks the rescaling axis and any drag smoothly without
+ * JS re-renders, just like {@link TooltipRenderProps}. Replaces the built-in pill
+ * badge / gutter label for that line; return `null`/`undefined` to keep the
+ * built-in. Bind the SharedValues to animated text (e.g. an animated `TextInput`)
+ * for the value to update on the UI thread too.
+ */
+export interface ReferenceLineRenderProps {
+  /** The reference line being rendered. */
+  line: ReferenceLine;
+  /** Its index in the `referenceLines` array. */
+  index: number;
+  /** Live Y-axis value of the line — tracks dragging when {@link ReferenceLine.draggable}. */
+  value: SharedValue<number>;
+  /** The value formatted with the chart's `formatValue` (computed UI-side). */
+  valueStr: SharedValue<string>;
+  /** Canvas Y pixel of the line, recomputed each frame (`-1` when not laid out). */
+  y: SharedValue<number>;
+  /** Whether the value currently sits within the visible plot range. */
+  inRange: SharedValue<boolean>;
+  /**
+   * Which visible edge the value is pinned to when off-screen: `"above"` (past the
+   * top), `"below"` (past the bottom), or `"in"`. Use it to flip a directional
+   * chevron on a custom off-axis handle.
+   */
+  edge: SharedValue<"above" | "in" | "below">;
+  /** Whether this line is currently being dragged. */
+  dragging: SharedValue<boolean>;
+}
+
+/**
+ * Grouping behavior for reference lines (single-series). When enabled, Form-A
+ * lines whose handles fall within {@link ReferenceLineGroupingConfig.radius} px of
+ * each other collapse into a single count handle, so a cluster of nearby orders /
+ * alerts reads as one tag instead of an unreadable pile. Pass `true` for defaults
+ * or an object to tune the proximity radius.
+ */
+export interface ReferenceLineGroupingConfig {
+  /**
+   * Collapse lines whose value-Y positions are within this many px of each other.
+   * Default `18`.
+   */
   radius?: number;
 }
 
@@ -1575,6 +1676,28 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * routed here, not to reticle placement). Single-series only.
    */
   onReferenceLinePress?: (line: ReferenceLine, index: number) => void;
+  /**
+   * Render a reference line's tag as a custom **React Native** element instead of
+   * the built-in Skia pill / gutter label — the same model as `renderMarker` /
+   * `renderTooltip`. The chart floats the returned element over the canvas and
+   * pins it to the line's value on the UI thread (see {@link ReferenceLineRenderProps}),
+   * so it tracks the rescaling axis and any drag without JS re-renders. Called per
+   * Form-A line; return `null`/`undefined` to keep that line's built-in tag. Works
+   * with `badge: false` too (replace the plain gutter label). Single-series only.
+   */
+  renderReferenceLine?: (
+    ctx: ReferenceLineRenderProps,
+  ) => ReactElement | null | undefined;
+  /**
+   * Collapse Form-A reference lines whose handles sit near the same value into a
+   * single count handle (e.g. a stack of working orders at adjacent prices reads
+   * as one "×3" tag). `true` = defaults, `false`/omitted = off, or pass a
+   * {@link ReferenceLineGroupingConfig} to tune the proximity radius. Lines a
+   * {@link LiveChartProps.renderReferenceLine} owns are excluded (their custom tag
+   * draws itself), so the count reflects only collapsed built-in tags. Single-series
+   * only. Default off.
+   */
+  referenceLineGrouping?: boolean | ReferenceLineGroupingConfig;
   /**
    * Volume bars below the candles (candle mode only). `true` = defaults,
    * `false`/omitted = off, or pass a {@link VolumeConfig} for colors, band
