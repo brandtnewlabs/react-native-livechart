@@ -45,6 +45,7 @@ interface CandlePoint {
   high: number;
   low: number;
   close: number;
+  volume?: number; // optional — drives the volume bars (see below)
 }
 ```
 
@@ -62,6 +63,72 @@ interface CandlePoint {
 Bullish/bearish body and wick colors come from the palette derived from `accentColor` + `theme`.
 Override them precisely via the [`palette`](/guides/theming) prop (`candleUp`, `candleDown`,
 `wickUp`, `wickDown`).
+
+## Body & wick shape
+
+The candle body radius and wick thickness live in the `metrics.candle`
+[sizing tokens](/api-reference/types#metrics). Round the body corners with `bodyRadius`
+(clamped to half the body so thin candles stay sane) and set the wick stroke with `wickWidth`:
+
+```tsx
+<LiveChart
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  candleWidth={60}
+  metrics={{ candle: { bodyRadius: 3, wickWidth: 2 } }}
+/>
+```
+
+`bodyRadius` defaults to `0` (sharp corners); `wickWidth` defaults to `1`. Width/spacing tokens
+(`bodyWidthRatio`, `maxBodyPx`, `minBodyPx`) live in the same namespace — see
+[`CandleMetrics`](/api-reference/types#metrics).
+
+## Volume bars
+
+Pass `volume` to draw volume bars in a reserved band **below** the candles. The candle/price plot
+shrinks by the band height to make room (candles are never cut off) and the x-axis stays pinned to
+the bottom. Each bar reads its candle's `volume`; bar heights are normalized to the **largest
+visible volume**, so the tallest visible bar fills the band. Candles without a `volume` draw no bar.
+
+```tsx
+const candles = useSharedValue<CandlePoint[]>([
+  { time: 1700000000, open: 48, high: 52, low: 47, close: 50, volume: 1200 },
+  // …
+]);
+
+<LiveChart
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  candleWidth={60}
+  volume // `true` = defaults, or pass a VolumeConfig
+/>;
+```
+
+Configure colors, band height, rounding, and opacity with a
+[`VolumeConfig`](/api-reference/types#config-objects):
+
+```tsx
+<LiveChart
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  candleWidth={60}
+  volume={{
+    maxHeight: 64,        // reserved band height (px) = the tallest bar; default 48
+    radius: 2,            // bar-top corner radius; default 2
+    opacity: 0.6,         // opacity of the whole band; default 0.6
+    upColor: "#16a34a",   // default: palette.candleUp
+    downColor: "#dc2626", // default: palette.candleDown
+  }}
+/>;
+```
+
+<Note>
+  Volume is **candle mode only**. Bars align under the candle bodies (same width + center), colored
+  by candle direction (up/down) unless you override `upColor` / `downColor`.
+</Note>
 
 ## Scrubbing & the OHLC tooltip
 

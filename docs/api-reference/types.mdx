@@ -27,6 +27,7 @@ interface CandlePoint {
   high: number;
   low: number;
   close: number;
+  volume?: number; // optional traded volume; drives the volume bars (candle mode)
 }
 
 interface SeriesConfig {
@@ -221,6 +222,8 @@ interface BadgeConfig {
   tail?: boolean;
   background?: string;
   position?: "right" | "left";
+  followViewEdge?: boolean; // while time-scrolled, track the price at the visible
+                            // window's right edge (badge + value line + dot); default false
 }
 interface PulseConfig {
   interval?: number; duration?: number; maxRadius?: number;
@@ -264,8 +267,28 @@ interface SelectionDotConfig {
   component?: ComponentType<SelectionDotProps>; // custom Skia dot; ignores size/color/ring
 }
 interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }
-interface YAxisConfig { minGap?: number } // default 36
+interface YAxisConfig {
+  minGap?: number; // min px gap between grid lines; default 36
+  // Float the price axis over a full-width plot instead of reserving a right
+  // gutter — the line/candles run to the edge and the labels float on top.
+  // Pairs with `timeScroll` (see the Time-scroll guide). Default false. @experimental
+  float?: boolean;
+}
 interface XAxisConfig { minGap?: number } // default 60
+// Volume bars below the candles (candle mode only). Bars normalize to the largest
+// visible volume; the candle plot shrinks by `maxHeight` to make room. @see CandlePoint.volume
+interface VolumeConfig {
+  upColor?: string;    // bars for up (close ≥ open) candles; default palette.candleUp
+  downColor?: string;  // bars for down candles; default palette.candleDown
+  maxHeight?: number;  // reserved band height (px) = the tallest bar; default 48
+  radius?: number;     // bar-top corner radius (px); default 2
+  opacity?: number;    // opacity of the whole band (0..1); default 0.6
+}
+// Horizontal time-scrolling (pan back through history). @experimental
+interface TimeScrollConfig {
+  gesture?: "holdToScrub" | "axisDrag"; // activation; default "holdToScrub"
+  scrubHoldMs?: number; // holdToScrub: press-hold (ms) before scrub engages; default 500
+}
 // Edge label (topLabel / bottomLabel). Default off — both opt-in.
 interface AxisLabelConfig {
   format?: (v: number) => string; // built-in value formatter; defaults to formatValue
@@ -495,6 +518,8 @@ interface CandleMetrics {
   minBodyPx: number;      // min body height so dojis stay visible, default 1
   maxBodyPx: number;      // max body width, default 40
   bodyWidthRatio: number; // body width as a fraction of the slot, default 0.8
+  bodyRadius: number;     // body corner radius (px); 0 = sharp, default 0
+  wickWidth: number;      // wick (high–low line) stroke width (px), default 1
 }
 
 interface GridMetrics {

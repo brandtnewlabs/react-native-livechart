@@ -1,0 +1,95 @@
+---
+title: Time-scroll
+icon: "clock-rotate-left"
+description: "Pan back through history; auto-follow resumes at the live edge."
+---
+
+<Warning>
+  **Experimental.** `timeScroll` is a prototype — the gesture model and API may still change.
+  Single-series (`LiveChart`) only; line and candle modes both work.
+</Warning>
+
+By default the chart follows the live edge. Enable `timeScroll` to **pan back through history**:
+drag (or fling) to scroll the window into the past, and the chart stops auto-following until you
+return to the live edge, where live-following resumes. One-finger plot scrubbing is unchanged.
+
+<Note>
+  **Live example:**
+  [`app/demo/time-scroll.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/time-scroll.tsx)
+  in the example app.
+</Note>
+
+```tsx
+<LiveChart data={data} value={value} timeScroll />
+```
+
+Panning is clamped to the earliest retained point, so keep enough history in `data` (or `candles`)
+to scroll into — seed a few windows' worth and keep your buffer longer than the visible window.
+
+## Gestures
+
+`timeScroll: true` uses the default **drag-to-scroll** gesture. Pass a `TimeScrollConfig` to pick the
+activation:
+
+```tsx
+<LiveChart data={data} value={value} timeScroll={{ gesture: "axisDrag" }} />
+```
+
+- **`"holdToScrub"`** (default) — a one-finger drag **anywhere** scrolls the timeline; scrubbing
+  moves to a **press-and-hold** (Rainbow-style). A quick drag scrolls; hold, then drag, to scrub.
+- **`"axisDrag"`** — only a drag that **starts on the bottom x-axis strip** ("grab the time ruler")
+  scrolls. The plot area stays free, so a one-finger drag there scrubs immediately.
+
+### Hold duration (`scrubHoldMs`)
+
+In `holdToScrub`, `scrubHoldMs` sets how long to press before scrub engages (so a quicker drag
+scrolls instead). Higher = more deliberate scrub, fewer accidental scrubs while scrolling. Default
+`500`.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  scrub
+  timeScroll={{ gesture: "holdToScrub", scrubHoldMs: 350 }}
+/>
+```
+
+## Full-width plot while scrolled (`yAxis.float`)
+
+A normal chart reserves a right gutter for the price axis, so candles stop short of the edge. Pair
+`timeScroll` with [`yAxis: { float: true }`](/api-reference/types#config-objects) and the plot runs
+**full-width under a floating price axis** — but only while you're scrolled back. At the live edge
+(the default state) the chart keeps its normal gutter so the latest candle and the badge don't sit
+under the floating labels; as soon as you scroll back, the plot expands under the axis so panned-in
+candles aren't cut off, and it reverts when you return to live.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  timeScroll
+  yAxis={{ float: true }}
+  badge={{ followViewEdge: true }}
+/>
+```
+
+## Track the visible edge (`badge.followViewEdge`)
+
+While scrolled back, the live-price indicators normally stay at the (off-screen, still-advancing)
+live value. Set [`badge.followViewEdge`](/api-reference/types#config-objects) so the **badge, value
+line, and live dot** instead track the price at the **visible window's right edge** — the last
+price you can see — and snap back to the live value when you return to the live edge.
+
+## Notes
+
+- **Single-series only.** `timeScroll` is wired into `LiveChart`; `LiveChartSeries` doesn't support
+  it yet.
+- **Coexists with scrubbing.** Plot-area scrub (and the [order ticket](/guides/scrubbing#order-ticket-scrubaction))
+  work alongside time-scroll — the gestures are disambiguated by region (`axisDrag`) or press-hold
+  (`holdToScrub`).
+- See the [`LiveChart` reference](/api-reference/livechart#scrubbing) and
+  [`TimeScrollConfig`](/api-reference/types#config-objects) for every field.

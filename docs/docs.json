@@ -42,6 +42,7 @@
               "guides/candlestick",
               "guides/multi-series",
               "guides/scrubbing",
+              "guides/time-scroll",
               "guides/momentum-and-degen",
               "guides/markers-and-references",
               "guides/theming"
