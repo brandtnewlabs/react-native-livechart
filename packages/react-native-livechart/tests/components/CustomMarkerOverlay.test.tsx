@@ -5,8 +5,12 @@ import { useSharedValue } from "react-native-reanimated";
 import { CustomMarkerOverlay } from "../../src/components/CustomMarkerOverlay";
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { DEFAULT_PADDING } from "../../src/draw/line";
+import { resolveMarkerCluster } from "../../src/core/resolveConfig";
 import type { LiveChartPoint, Marker, SeriesConfig } from "../../src/types";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
+
+const anchored = resolveMarkerCluster("anchored");
+const stacked = resolveMarkerCluster("stacked");
 
 function engine(): ChartEngineLayout {
   return withSharedValueAccessors({
@@ -35,6 +39,7 @@ describe("CustomMarkerOverlay", () => {
           renderMarker={(m) => <Text testID={`cm-${m.id}`}>{m.id}</Text>}
           engine={engine()}
           padding={DEFAULT_PADDING}
+          cluster={anchored}
           lineData={lineData}
         />
       );
@@ -54,6 +59,7 @@ describe("CustomMarkerOverlay", () => {
           renderMarker={() => null}
           engine={engine()}
           padding={DEFAULT_PADDING}
+          cluster={anchored}
         />
       );
     }
@@ -73,6 +79,7 @@ describe("CustomMarkerOverlay", () => {
           }
           engine={engine()}
           padding={DEFAULT_PADDING}
+          cluster={anchored}
         />
       );
     }
@@ -92,6 +99,7 @@ describe("CustomMarkerOverlay", () => {
           )}
           engine={engine()}
           padding={DEFAULT_PADDING}
+          cluster={anchored}
         />
       );
     }
@@ -101,6 +109,77 @@ describe("CustomMarkerOverlay", () => {
       nativeEvent: { layout: { x: 0, y: 0, width: 24, height: 24 } },
     });
     expect(getByTestId("cm-a")).toBeTruthy();
+  });
+
+  it("passes a render context (index/side) to renderMarker", () => {
+    const seen: { index: number; side: string }[] = [];
+    function Fixture() {
+      const markers = useSharedValue<Marker[]>([
+        { id: "a", time: 999, kind: "trade", value: 50, side: "below" },
+      ]);
+      return (
+        <CustomMarkerOverlay
+          markers={markers}
+          renderMarker={(m, ctx) => {
+            seen.push({ index: ctx.index, side: ctx.side });
+            return <Text testID={`cm-${m.id}`}>{m.id}</Text>;
+          }}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          cluster={anchored}
+        />
+      );
+    }
+    render(<Fixture />);
+    expect(seen[0]).toEqual({ index: 0, side: "below" });
+  });
+
+  it("clusters co-located custom markers without crashing (stacked)", () => {
+    function Fixture() {
+      const markers = useSharedValue<Marker[]>([
+        { id: "a", time: 999, kind: "trade", value: 50, side: "above" },
+        { id: "b", time: 999, kind: "trade", value: 50, side: "above" },
+      ]);
+      return (
+        <CustomMarkerOverlay
+          markers={markers}
+          renderMarker={(m) => <Text testID={`cm-${m.id}`}>{m.id}</Text>}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          cluster={stacked}
+        />
+      );
+    }
+    const { getByTestId } = render(<Fixture />);
+    expect(getByTestId("cm-a")).toBeTruthy();
+  });
+
+  it("collapses a co-located run of custom markers (stacked)", () => {
+    function Fixture() {
+      const markers = useSharedValue<Marker[]>(
+        Array.from({ length: 7 }, (_, i) => ({
+          id: `m${i}`,
+          time: 999,
+          kind: "trade" as const,
+          value: 50,
+          side: "above" as const,
+        })),
+      );
+      return (
+        <CustomMarkerOverlay
+          markers={markers}
+          renderMarker={(m, ctx) => (
+            <Text testID={`cm-${m.id}`}>{ctx.isGrouped ? `+${ctx.groupCount}` : m.id}</Text>
+          )}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          cluster={stacked}
+        />
+      );
+    }
+    const { getByTestId } = render(<Fixture />);
+    // All views mount (collapsed members are hidden via opacity, not unmounted).
+    expect(getByTestId("cm-m6")).toBeTruthy();
   });
 
   it("anchors a custom marker to a series by seriesId", () => {
@@ -124,6 +203,7 @@ describe("CustomMarkerOverlay", () => {
           renderMarker={(m) => <Text testID={`cm-${m.id}`}>{m.id}</Text>}
           engine={engine()}
           padding={DEFAULT_PADDING}
+          cluster={anchored}
           series={series}
         />
       );

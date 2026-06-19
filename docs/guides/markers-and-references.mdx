@@ -34,11 +34,35 @@ const markers = useSharedValue<Marker[]>([
   value={value}
   markers={markers}
   markerHitRadius={16}
-  onMarkerHover={(event) => {
+  onMarkerPress={(event) => {
     if (!event) return; // tap missed every marker
     console.log(event.marker.id, event.point);
   }}
 />;
+```
+
+<Note>
+  `onMarkerPress` fires on **tap** — there is no hover on touch. (It replaces the
+  old `onMarkerHover`.)
+</Note>
+
+### Stacking co-located markers
+
+By default markers draw at their anchor and overlap. Set `markerCluster="stacked"` to fan
+co-located markers apart **horizontally** (overlapping, left-over-right — a stacked-coins look) at
+their `side` (`"above"` / `"below"` / `"center"`) — e.g. buys below the line and sells above it. Once a
+cluster exceeds `maxBeforeGroup` (default 5) it collapses into a single count-badge marker; tapping it
+fires `onMarkerPress` with `isGrouped: true` and the full `members` list. Grouping is recomputed every
+frame, so a cluster fans back out as you zoom in.
+
+```tsx
+<LiveChart data={data} value={value} markers={markers} markerCluster="stacked" />
+```
+
+Pass the object form to tune the fan — `overlap` (0–1, default `0.75`) and the collapse threshold:
+
+```tsx
+markerCluster={{ overlap: 0.75, maxBeforeGroup: 8 }}
 ```
 
 Built-in `kind` glyphs are `"trade" | "boost" | "graduation" | "winner" | "clawback"`. Override
@@ -86,8 +110,10 @@ import { BlurView } from "expo-blur";
 
 Custom-rendered markers are floated as RN views over the canvas, so they render **crisp at native
 resolution** (and skip the marker atlas entirely — no glyph drawn behind them). Taps still fire
-`onMarkerHover` via the marker hit-test. `expo-blur` is the consumer's choice — `renderMarker`
-accepts any element, and the library takes no extra dependency.
+`onMarkerPress` via the marker hit-test. `renderMarker` receives a second `ctx` argument
+(`{ index, isGrouped, groupCount, side }`) so a representative can render a distinct collapsed look.
+`expo-blur` is the consumer's choice — `renderMarker` accepts any element, and the library takes no
+extra dependency.
 
 <Note>
   Use `renderMarker` for a handful of special markers, not hundreds of high-frequency ones: each

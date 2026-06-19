@@ -29,6 +29,7 @@ import {
   resolveGridStyle,
   resolveLeftEdgeFade,
   resolveLegend,
+  resolveMarkerCluster,
   resolveMetrics,
   resolveMultiSeriesDot,
   resolveScrub,
@@ -146,13 +147,15 @@ function useLiveChartSeriesController({
   degen,
   onDegenShake,
   markers,
-  onMarkerHover,
+  onMarkerPress,
   markerHitRadius = 16,
+  markerCluster,
   renderMarker,
   leftEdgeFade = true,
 }: LiveChartSeriesProps) {
   const emptyMarkers = useSharedValue<Marker[]>([]);
   const markersSV = markers ?? emptyMarkers;
+  const markerClusterCfg = resolveMarkerCluster(markerCluster);
   const markersActive = markers != null;
   const yAxisCfg = resolveYAxis(yAxis);
   const xAxisCfg = resolveXAxis(xAxis);
@@ -336,8 +339,12 @@ function useLiveChartSeriesController({
     markersSV,
     markersActive,
     markerHitRadius,
-    onMarkerHover,
+    onMarkerPress,
     series,
+    undefined, // lineData — multi-series anchors by seriesId
+    true, // autostart
+    false, // lineLinear — per-series curve handled in projection
+    markerClusterCfg,
   );
 
   const rootGesture = markersActive
@@ -392,6 +399,7 @@ function useLiveChartSeriesController({
     rootGesture,
     markersActive,
     markersSV,
+    markerClusterCfg,
     renderMarker,
     // selection dot: resolved config + fallback color (the leading series' color)
     selectionDot: selectionDotCfg,
@@ -436,6 +444,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     degenPackRevision,
     markersActive,
     markersSV,
+    markerClusterCfg,
     renderMarker,
     series,
     emptyText,
@@ -553,6 +562,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
             font={skiaFont}
             series={series}
             renderMarker={renderMarker}
+            cluster={markerClusterCfg}
           />
         </Group>
       )}
@@ -665,6 +675,7 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     bottomConnector,
     markersActive,
     markersSV,
+    markerClusterCfg,
     renderMarker,
   } = model;
 
@@ -772,6 +783,7 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
               engine={engine}
               padding={effectivePadding}
               series={series}
+              cluster={markerClusterCfg}
             />
           )}
         </View>

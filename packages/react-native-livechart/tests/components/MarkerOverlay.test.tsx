@@ -4,11 +4,15 @@ import { useSharedValue } from "react-native-reanimated";
 import { MarkerOverlay } from "../../src/components/MarkerOverlay";
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { DEFAULT_PADDING } from "../../src/draw/line";
+import { resolveMarkerCluster } from "../../src/core/resolveConfig";
+import type { ResolvedMarkerCluster } from "../../src/math/markerCluster";
 import { resolveTheme } from "../../src/theme";
 import type { Marker, SeriesConfig } from "../../src/types";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 const palette = resolveTheme("#3b82f6", "dark");
+const anchored = resolveMarkerCluster("anchored");
+const stacked = resolveMarkerCluster("stacked");
 
 const font = {
   getSize: () => 12,
@@ -35,112 +39,77 @@ const ALL_KINDS: Marker[] = [
   { id: "c", time: 995, kind: "clawback", value: 40 },
 ];
 
+function renderOverlay(
+  markers: Marker[],
+  opts: {
+    cluster?: ResolvedMarkerCluster;
+    series?: SeriesConfig[];
+    renderMarker?: (m: Marker) => React.ReactElement | null;
+  } = {},
+) {
+  function Fixture() {
+    const m = useSharedValue<Marker[]>(markers);
+    const s = useSharedValue<SeriesConfig[]>(opts.series ?? []);
+    return (
+      <MarkerOverlay
+        markers={m}
+        engine={engine()}
+        padding={DEFAULT_PADDING}
+        palette={palette}
+        font={font}
+        series={opts.series ? s : undefined}
+        renderMarker={opts.renderMarker}
+        cluster={opts.cluster ?? anchored}
+      />
+    );
+  }
+  return render(<Fixture />);
+}
+
 describe("MarkerOverlay", () => {
   it("renders a glyph for every marker kind (self-projected)", () => {
-    function Fixture() {
-      const markers = useSharedValue<Marker[]>(ALL_KINDS);
-      return (
-        <MarkerOverlay
-          markers={markers}
-          engine={engine()}
-          padding={DEFAULT_PADDING}
-          palette={palette}
-          font={font}
-        />
-      );
-    }
-    render(<Fixture />);
+    renderOverlay(ALL_KINDS);
   });
 
   it("renders a text icon and a custom color", () => {
-    function Fixture() {
-      const markers = useSharedValue<Marker[]>([
-        { id: "i", time: 999, kind: "trade", value: 50, icon: "★", color: "#ff0" },
-      ]);
-      return (
-        <MarkerOverlay
-          markers={markers}
-          engine={engine()}
-          padding={DEFAULT_PADDING}
-          palette={palette}
-          font={font}
-        />
-      );
-    }
-    render(<Fixture />);
+    renderOverlay([
+      { id: "i", time: 999, kind: "trade", value: 50, icon: "★", color: "#ff0" },
+    ]);
   });
 
   it("renders a pill badge around the icon", () => {
-    function Fixture() {
-      const markers = useSharedValue<Marker[]>([
-        { id: "buy", time: 999, kind: "trade", value: 50, icon: "+", color: "#16a34a", pill: true },
-        { id: "sell", time: 998, kind: "trade", value: 55, icon: "−", color: "#dc2626", pill: true },
-      ]);
-      return (
-        <MarkerOverlay
-          markers={markers}
-          engine={engine()}
-          padding={DEFAULT_PADDING}
-          palette={palette}
-          font={font}
-        />
-      );
-    }
-    render(<Fixture />);
+    renderOverlay([
+      { id: "buy", time: 999, kind: "trade", value: 50, icon: "+", color: "#16a34a", pill: true },
+      { id: "sell", time: 998, kind: "trade", value: 55, icon: "−", color: "#dc2626", pill: true },
+    ]);
   });
 
   it("renders an image icon", () => {
-    function Fixture() {
-      const markers = useSharedValue<Marker[]>([
-        {
-          id: "img",
-          time: 999,
-          kind: "trade",
-          value: 50,
-          image: { width: () => 20, height: () => 20 } as never,
-          size: 20,
-        },
-      ]);
-      return (
-        <MarkerOverlay
-          markers={markers}
-          engine={engine()}
-          padding={DEFAULT_PADDING}
-          palette={palette}
-          font={font}
-        />
-      );
-    }
-    render(<Fixture />);
+    renderOverlay([
+      {
+        id: "img",
+        time: 999,
+        kind: "trade",
+        value: 50,
+        image: { width: () => 20, height: () => 20 } as never,
+        size: 20,
+      },
+    ]);
   });
 
   it("excludes custom-rendered markers from the atlas (renderMarker)", () => {
-    function Fixture() {
-      const markers = useSharedValue<Marker[]>([
+    renderOverlay(
+      [
         { id: "atlas", time: 999, kind: "trade", value: 50 },
         { id: "custom", time: 998, kind: "winner", value: 55 },
-      ]);
-      return (
-        <MarkerOverlay
-          markers={markers}
-          engine={engine()}
-          padding={DEFAULT_PADDING}
-          palette={palette}
-          font={font}
-          // Custom-render the winner; the trade still draws via the atlas.
-          renderMarker={(m) => (m.id === "custom" ? <></> : null)}
-        />
-      );
-    }
-    render(<Fixture />);
+      ],
+      { renderMarker: (m) => (m.id === "custom" ? <></> : null) },
+    );
   });
 
   it("anchors a marker to a series by seriesId", () => {
-    function Fixture() {
-      const markers = useSharedValue<Marker[]>([
-        { id: "s", time: 990, kind: "winner", seriesId: "a" },
-      ]);
-      const series = useSharedValue<SeriesConfig[]>([
+    renderOverlay([{ id: "s", time: 990, kind: "winner", seriesId: "a" }], {
+      series: [
         {
           id: "a",
           value: 0,
@@ -149,18 +118,26 @@ describe("MarkerOverlay", () => {
             { time: 1000, value: 40 },
           ],
         },
-      ]);
-      return (
-        <MarkerOverlay
-          markers={markers}
-          engine={engine()}
-          padding={DEFAULT_PADDING}
-          palette={palette}
-          font={font}
-          series={series}
-        />
-      );
+      ],
+    });
+  });
+
+  it("stacks and sides co-located markers without crashing", () => {
+    renderOverlay(
+      [
+        { id: "buy", time: 999, kind: "trade", value: 50, icon: "+", pill: true, side: "below" },
+        { id: "sell", time: 999, kind: "trade", value: 50, icon: "−", pill: true, side: "above" },
+        { id: "buy2", time: 999, kind: "trade", value: 50, icon: "+", pill: true, side: "below" },
+      ],
+      { cluster: stacked },
+    );
+  });
+
+  it("collapses a large co-located run into a count badge", () => {
+    const burst: Marker[] = [];
+    for (let i = 0; i < 9; i++) {
+      burst.push({ id: `m${i}`, time: 999, kind: "trade", value: 50, side: "above" });
     }
-    render(<Fixture />);
+    renderOverlay(burst, { cluster: stacked });
   });
 });

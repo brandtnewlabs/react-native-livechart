@@ -7,6 +7,16 @@ export interface ProjectedMarker {
   x: number;
   y: number;
   visible: boolean;
+  /** Collapsed cluster member that the representative stands in for — not drawn,
+   *  not hit-tested. Set by the cluster pass; `false` outside `markerCluster`. */
+  hidden: boolean;
+  /** This marker is the representative (count badge) of a collapsed cluster. */
+  isGrouped: boolean;
+  /** Size of the collapsed cluster this marker represents (`0` when not grouped). */
+  groupCount: number;
+  /** Index of the cluster's representative marker for collapsed members (and the
+   *  representative itself), else `-1`. Used to gather members on tap. */
+  groupRep: number;
 }
 
 export interface ProjectMarkersOpts {
@@ -47,6 +57,12 @@ function projectInto(
   target: ProjectedMarker,
 ): void {
   "worklet";
+  // Reset cluster fields so a reused buffer slot defaults to un-clustered; the
+  // cluster pass (when it runs) overwrites them. Lets anchored mode skip the pass.
+  target.hidden = false;
+  target.isGrouped = false;
+  target.groupCount = 0;
+  target.groupRep = -1;
   const w = opts.canvasWidth;
   const h = opts.canvasHeight;
   const chartLeft = opts.padLeft;
@@ -121,7 +137,15 @@ export function projectMarkers(
   for (let i = 0; i < markers.length; i++) {
     let cur = out[i];
     if (!cur) {
-      cur = { x: 0, y: 0, visible: false };
+      cur = {
+        x: 0,
+        y: 0,
+        visible: false,
+        hidden: false,
+        isGrouped: false,
+        groupCount: 0,
+        groupRep: -1,
+      };
       out[i] = cur;
     }
     const m = markers[i];
@@ -142,7 +166,15 @@ export function projectPoint(
   opts: ProjectMarkersOpts,
 ): ProjectedMarker {
   "worklet";
-  const target: ProjectedMarker = { x: 0, y: 0, visible: false };
+  const target: ProjectedMarker = {
+    x: 0,
+    y: 0,
+    visible: false,
+    hidden: false,
+    isGrouped: false,
+    groupCount: 0,
+    groupRep: -1,
+  };
   projectInto(time, value, seriesId, opts, target);
   return target;
 }
@@ -175,7 +207,7 @@ export function nearestMarkerIndex(
   let bestD = radius * radius;
   for (let i = 0; i < positions.length; i++) {
     const p = positions[i];
-    if (!p.visible) continue;
+    if (!p.visible || p.hidden) continue;
     const dx = p.x - x;
     const dy = p.y - y;
     const d = dx * dx + dy * dy;

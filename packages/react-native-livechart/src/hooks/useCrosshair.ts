@@ -513,6 +513,12 @@ export function useCrosshair(
           }
           return;
         }
+        // Defer to a marker / pressable badge under the finger: don't start a
+        // live scrub (or drop a crosshair) where the press is routed to an
+        // overlay tap. `scrubActive` is only set here, so bailing in `onStart`
+        // also keeps a follow-on drag from showing a crosshair — no `onUpdate`
+        // guard needed. (Plain-scrub counterpart of the scrub-action tap defer.)
+        if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
         scrubX.set(e.x);
         scrubActive.set(true);
         gestureStarted.set(true);

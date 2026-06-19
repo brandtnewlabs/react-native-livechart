@@ -1072,14 +1072,60 @@ export interface Marker {
   pill?: boolean;
   /** Icon / image box size in px (icon font size or image width+height). Default `16`. */
   size?: number;
-  /** Pass-through payload surfaced on `onMarkerHover`. */
+  /**
+   * Sit the glyph above / below its anchor instead of centered on it. Default
+   * `"center"` (on the line/value, today's behavior). Also the stack direction
+   * when `markerCluster: "stacked"` — e.g. buys `"below"`, sells `"above"`.
+   */
+  side?: MarkerSide;
+  /** Pass-through payload surfaced on `onMarkerPress`. */
   data?: unknown;
 }
 
-/** Payload for `onMarkerHover` — the marker and its screen position. */
-export interface MarkerHoverEvent {
+/** Where a marker glyph sits relative to its anchor (and the stack direction). */
+export type MarkerSide = "above" | "below" | "center";
+
+/**
+ * Object form of {@link LiveChartProps.markerCluster} for tuning the stacked
+ * collision behavior. Passing this object implies `mode: "stacked"` unless you
+ * set `mode` explicitly.
+ */
+export interface MarkerClusterConfig {
+  /** Defaults to `"stacked"` when this object form is used. */
+  mode?: "anchored" | "stacked";
+  /**
+   * How much adjacent co-located glyphs overlap when fanned, `0` (just touching)
+   * to `1` (fully stacked). Default `0.75`. The on-screen overlap is approximate
+   * (the fan step is estimated from the glyph size, not its exact pixels).
+   */
+  overlap?: number;
+  /** Collapse a co-located run to a single count badge once it exceeds this many.
+   *  Default `5`. */
+  maxBeforeGroup?: number;
+}
+
+/** Context passed to `renderMarker` alongside the marker (cluster / position state). */
+export interface MarkerRenderContext {
+  /** Index of the marker in the `markers` array. */
+  index: number;
+  /** `true` when this marker is the representative of a collapsed cluster. */
+  isGrouped: boolean;
+  /** Number of markers in the collapsed cluster (`0` when not grouped). */
+  groupCount: number;
+  /** Resolved side the glyph is drawn on. */
+  side: MarkerSide;
+}
+
+/** Payload for `onMarkerPress` — the marker and its screen position. */
+export interface MarkerPressEvent {
   marker: Marker;
   point: { x: number; y: number };
+  /** Index of the pressed marker in the `markers` array. */
+  index: number;
+  /** `true` when the press landed on a collapsed cluster (count badge). */
+  isGrouped: boolean;
+  /** The cluster's markers when `isGrouped`, so the consumer can list them. */
+  members?: Marker[];
 }
 
 /** Particle burst + screen shake on momentum swings ("degen mode"). */
@@ -1492,9 +1538,19 @@ export interface LiveChartCoreProps {
    */
   markers?: SharedValue<Marker[]>;
   /** Fires when a marker is tapped; `null` when a tap misses every marker. */
-  onMarkerHover?: (event: MarkerHoverEvent | null) => void;
+  onMarkerPress?: (event: MarkerPressEvent | null) => void;
   /** Tap hit-test radius in px. Default `16` (≈ 44px touch target with the glyph). */
   markerHitRadius?: number;
+  /**
+   * Collision handling for co-located markers. `"anchored"` (default) keeps
+   * today's behavior — glyphs draw at their anchor and overlap. `"stacked"` fans
+   * co-located markers apart horizontally (overlapping, left-over-right) along
+   * their {@link Marker.side}, collapsing a cluster into a single count-badge
+   * marker once it exceeds {@link MarkerClusterConfig.maxBeforeGroup}. Grouping is
+   * recomputed per frame, so a cluster fans back out as you zoom/scroll in. Pass a
+   * {@link MarkerClusterConfig} object to tune the `overlap` and group threshold.
+   */
+  markerCluster?: "anchored" | "stacked" | MarkerClusterConfig;
   /**
    * Render a marker as a custom **React Native** element instead of a built-in
    * Skia glyph — e.g. an `expo-blur` glass badge or any non-Skia view that the
@@ -1507,8 +1563,15 @@ export interface LiveChartCoreProps {
    * each custom marker is its own animated view + projection, whereas built-in
    * glyphs batch into a single draw call. Custom-rendered markers skip the atlas
    * glyph entirely (no double-draw).
+   *
+   * The second argument carries cluster / position state (see
+   * {@link MarkerRenderContext}) — e.g. render a distinct collapsed look when
+   * `ctx.isGrouped` (showing `ctx.groupCount`).
    */
-  renderMarker?: (marker: Marker) => ReactElement | null | undefined;
+  renderMarker?: (
+    marker: Marker,
+    ctx: MarkerRenderContext,
+  ) => ReactElement | null | undefined;
   /**
    * Render a fully custom scrub tooltip as a **React Native** element instead of
    * the built-in pill — the same idea as `renderMarker`. The chart floats the

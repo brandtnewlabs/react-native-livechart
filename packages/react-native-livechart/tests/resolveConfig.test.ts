@@ -9,6 +9,7 @@ import {
   resolveGradient,
   resolveGridStyle,
   resolveLeftEdgeFade,
+  resolveMarkerCluster,
   resolveMetrics,
   resolveMultiSeriesDot,
   resolvePulse,
@@ -1399,5 +1400,34 @@ describe("resolveThreshold", () => {
       showValue: false,
     });
     expect(resolveThreshold({ value, line: false })?.line).toBeNull();
+  });
+});
+
+describe("resolveMarkerCluster", () => {
+  it("defaults to anchored with stacking defaults", () => {
+    expect(resolveMarkerCluster(undefined)).toEqual({
+      mode: "anchored",
+      overlap: 0.75,
+      gap: 2,
+      maxBeforeGroup: 5,
+    });
+    expect(resolveMarkerCluster("anchored").mode).toBe("anchored");
+  });
+
+  it("enables stacking when requested", () => {
+    expect(resolveMarkerCluster("stacked").mode).toBe("stacked");
+  });
+
+  it("accepts the object form, implying stacked, with tunable overlap/threshold", () => {
+    expect(resolveMarkerCluster({ overlap: 0.8, maxBeforeGroup: 3 })).toEqual({
+      mode: "stacked",
+      overlap: 0.8,
+      gap: 2,
+      maxBeforeGroup: 3,
+    });
+    // Explicit mode honored; overlap clamped to [0, 0.95].
+    expect(resolveMarkerCluster({ mode: "anchored" }).mode).toBe("anchored");
+    expect(resolveMarkerCluster({ overlap: 5 }).overlap).toBe(0.95);
+    expect(resolveMarkerCluster({ overlap: -1 }).overlap).toBe(0);
   });
 });

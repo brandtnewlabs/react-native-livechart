@@ -130,22 +130,41 @@ provided; everything else has a default.
   Glyph markers drawn into the canvas (UI-thread read).
 </ParamField>
 
-<ParamField body="onMarkerHover" type="(event: MarkerHoverEvent | null) => void">
-  Fires when a marker is tapped; `null` on a miss.
+<ParamField body="onMarkerPress" type="(event: MarkerPressEvent | null) => void">
+  Fires when a marker is tapped; `null` on a miss. When a collapsed cluster (count
+  badge) is tapped, `event.isGrouped` is `true` and `event.members` lists the
+  cluster's markers.
 </ParamField>
 
 <ParamField body="markerHitRadius" type="number" default="16">
   Tap hit-test radius in px.
 </ParamField>
 
-<ParamField body="renderMarker" type="(marker: Marker) => ReactElement | null">
+<ParamField body="markerCluster" type='"anchored" | "stacked" | MarkerClusterConfig' default='"anchored"'>
+  Collision handling for co-located markers. `"anchored"` (default) keeps today's
+  behavior — glyphs draw at their anchor and overlap. `"stacked"` fans co-located
+  markers apart horizontally (overlapping, left-over-right) along their
+  [`side`](/api-reference/types#annotations), collapsing a cluster into a single
+  count-badge marker once it exceeds `maxBeforeGroup`. Grouping is recomputed per
+  frame, so a cluster fans back out as you zoom/scroll in. Pass a
+  [`MarkerClusterConfig`](/api-reference/types#annotations) object to tune the
+  `overlap` (`0`–`1`, default `0.75`) and `maxBeforeGroup` (default `5`):
+
+  ```tsx
+  markerCluster={{ overlap: 0.75, maxBeforeGroup: 8 }}
+  ```
+</ParamField>
+
+<ParamField body="renderMarker" type="(marker: Marker, ctx: MarkerRenderContext) => ReactElement | null">
   Render a marker as a custom **React Native** element instead of a built-in Skia
   glyph — e.g. an `expo-blur` glass badge or any non-Skia view. Return an element
   to float it, auto-centered, at the marker's live `(time, value)` position
   (tracked on the UI thread); return `null`/`undefined` to keep the built-in
-  glyph. Custom-rendered markers skip the atlas (no double-draw) and stay crisp at
-  native resolution. Use sparingly — each is its own animated view, whereas
-  built-in glyphs batch into one draw call. See
+  glyph. The second argument carries cluster/position state
+  (`{ index, isGrouped, groupCount, side }`) — e.g. render a distinct collapsed
+  look when `ctx.isGrouped`. Custom-rendered markers skip the atlas (no
+  double-draw) and stay crisp at native resolution. Use sparingly — each is its
+  own animated view, whereas built-in glyphs batch into one draw call. See
   [Custom marker rendering](/guides/markers-and-references#custom-marker-rendering).
 </ParamField>
 

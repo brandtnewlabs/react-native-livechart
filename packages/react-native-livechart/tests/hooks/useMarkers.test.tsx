@@ -24,12 +24,36 @@ describe("useMarkers", () => {
     expect(result.current.tapGesture).toBeDefined();
   });
 
-  it("works when inactive and without an onMarkerHover callback", () => {
+  it("works when inactive and without an onMarkerPress callback", () => {
     const { result } = renderHook(() => {
       const engine = useMakeEngine();
       const markers = useSharedValue<Marker[]>([]);
       return useMarkers(engine, DEFAULT_PADDING, markers, false, 16);
     });
     expect(result.current.projected.value).toEqual([]);
+  });
+
+  it("accepts a stacked cluster config and exposes a hit-test", () => {
+    const { result } = renderHook(() => {
+      const engine = useMakeEngine();
+      const markers = useSharedValue<Marker[]>([
+        { id: "a", time: 1_700_000_000, kind: "trade", value: 50, side: "above" },
+        { id: "b", time: 1_700_000_000, kind: "trade", value: 50, side: "above" },
+      ]);
+      return useMarkers(
+        engine,
+        DEFAULT_PADDING,
+        markers,
+        true,
+        16,
+        jest.fn(),
+        undefined,
+        undefined,
+        true,
+        false,
+        { mode: "stacked", overlap: 0.6, gap: 2, maxBeforeGroup: 5 },
+      );
+    });
+    expect(typeof result.current.hitTest).toBe("function");
   });
 });

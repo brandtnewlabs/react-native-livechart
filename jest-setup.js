@@ -109,6 +109,7 @@ jest.mock("@shopify/react-native-skia", () => {
     drawCircle: jest.fn(),
     drawText: jest.fn(),
     drawPath: jest.fn(),
+    drawRRect: jest.fn(),
     drawImageRect: jest.fn(),
     drawImage: jest.fn(),
     clear: jest.fn(),
@@ -177,6 +178,7 @@ jest.mock("@shopify/react-native-skia", () => {
       })),
       RSXform: jest.fn((scos, ssin, tx, ty) => ({ scos, ssin, tx, ty })),
       XYWHRect: jest.fn((x, y, width, height) => ({ x, y, width, height })),
+      RRectXY: jest.fn((rect, rx, ry) => ({ rect, rx, ry })),
       Color: jest.fn((c) => c),
       Paint: jest.fn(() => createMockPaint()),
       RuntimeEffect: {

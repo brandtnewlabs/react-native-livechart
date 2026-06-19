@@ -72,8 +72,35 @@ interface Marker {
   color?: string;
   icon?: string;       // text/emoji glyph override
   image?: SkImage;     // image glyph override
+  pill?: boolean;      // draw the icon in a filled circular badge
   size?: number;       // default 16
-  data?: unknown;      // surfaced on onMarkerHover
+  side?: "above" | "below" | "center"; // sit off the anchor (default "center")
+  data?: unknown;      // surfaced on onMarkerPress
+}
+
+// Fires on tap (there is no hover on touch); `null` on a miss.
+interface MarkerPressEvent {
+  marker: Marker;
+  point: { x: number; y: number };
+  index: number;       // index in the markers array
+  isGrouped: boolean;  // true when a collapsed cluster (count badge) was tapped
+  members?: Marker[];  // the cluster's markers when isGrouped
+}
+
+// Second argument to renderMarker — cluster / position state.
+interface MarkerRenderContext {
+  index: number;
+  isGrouped: boolean;
+  groupCount: number;
+  side: "above" | "below" | "center";
+}
+
+// Object form of the `markerCluster` prop (tunes stacked collision). Passing it
+// implies mode: "stacked" unless you set mode explicitly.
+interface MarkerClusterConfig {
+  mode?: "anchored" | "stacked";
+  overlap?: number;        // 0 (touching) – 1 (stacked); default 0.75
+  maxBeforeGroup?: number; // collapse a run past this many; default 5
 }
 
 interface TradeEvent {

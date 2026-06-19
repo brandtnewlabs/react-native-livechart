@@ -14,6 +14,7 @@ import type {
   LineStyleConfig,
   LiveChartMetrics,
   LiveChartMetricsOverride,
+  MarkerClusterConfig,
   DotConfig,
   DotRingConfig,
   MultiSeriesDotConfig,
@@ -35,6 +36,7 @@ import type {
 
 import type { ComponentType, ReactElement } from "react";
 import type { SharedValue } from "react-native-reanimated";
+import type { ResolvedMarkerCluster } from "../math/markerCluster";
 import {
   BADGE_METRICS_DEFAULTS,
   CANDLE_METRICS_DEFAULTS,
@@ -554,6 +556,42 @@ export function resolveScrubAction(
   prop: boolean | ScrubActionConfig | undefined,
 ): ResolvedScrubActionConfig | null {
   return resolveToggle(prop, SCRUB_ACTION_DEFAULTS, false);
+}
+
+/** Spacing + collapse-threshold defaults for `markerCluster: "stacked"`. */
+const MARKER_CLUSTER_GAP = 2;
+const MARKER_CLUSTER_MAX_BEFORE_GROUP = 5;
+const MARKER_CLUSTER_OVERLAP = 0.75;
+
+/**
+ * Resolves the `markerCluster` prop (a `"anchored"`/`"stacked"` shorthand or a
+ * {@link MarkerClusterConfig} object) to a full config. Always returns a config
+ * (never null) — `"anchored"` (the default) is a valid mode the cluster pass
+ * treats as "side offsets only, no bucketing". The object form implies
+ * `"stacked"` unless `mode` is set.
+ */
+export function resolveMarkerCluster(
+  prop: "anchored" | "stacked" | MarkerClusterConfig | undefined,
+): ResolvedMarkerCluster {
+  if (typeof prop === "object") {
+    return {
+      mode: prop.mode ?? "stacked",
+      overlap: clamp01(prop.overlap ?? MARKER_CLUSTER_OVERLAP),
+      gap: MARKER_CLUSTER_GAP,
+      maxBeforeGroup: prop.maxBeforeGroup ?? MARKER_CLUSTER_MAX_BEFORE_GROUP,
+    };
+  }
+  return {
+    mode: prop === "stacked" ? "stacked" : "anchored",
+    overlap: MARKER_CLUSTER_OVERLAP,
+    gap: MARKER_CLUSTER_GAP,
+    maxBeforeGroup: MARKER_CLUSTER_MAX_BEFORE_GROUP,
+  };
+}
+
+/** Clamp to [0, 0.95] so a glyph never fully covers its neighbor (overlap 1). */
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 0.95 ? 0.95 : v;
 }
 
 const GRADIENT_DEFAULTS: ResolvedGradientConfig = {
