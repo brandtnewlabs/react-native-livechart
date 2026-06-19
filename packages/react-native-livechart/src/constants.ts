@@ -9,6 +9,14 @@ import type {
 /** Milliseconds per frame at 60 fps — baseline for frame-rate-independent lerp. */
 export const MS_PER_FRAME_60FPS = 16.67;
 
+/**
+ * Default press-and-hold (ms) before scrub engages in the `holdToScrub`
+ * time-scroll mode, so a quick one-finger drag scrolls instead. Overridden by
+ * `timeScroll.scrubHoldMs`, then `scrub.panGestureDelay`. Shared by `LiveChart`
+ * and `LiveChartSeries`.
+ */
+export const HOLD_TO_SCRUB_MS = 500;
+
 // ─── Metric default tokens (single source of truth for LiveChartMetrics) ─────
 // The resolved `metrics` config (see resolveMetrics) is assembled from these
 // objects. Draw/worklet helpers default their metric params to the matching

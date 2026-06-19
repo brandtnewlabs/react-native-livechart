@@ -271,8 +271,29 @@ provided; everything else has a default.
   auto-following until you return to the live edge. `true` uses the default
   drag-to-scroll gesture (`"holdToScrub"` — drag scrolls, press-and-hold scrubs);
   pass a [`TimeScrollConfig`](/api-reference/types#config-objects) to pick
-  `"axisDrag"` (drag the x-axis strip) or set `scrubHoldMs`. Single-series only.
+  `"axisDrag"` (drag the x-axis strip) or set `scrubHoldMs`.
   **@experimental.** See [Time-scroll](/guides/time-scroll).
+</ParamField>
+
+<ParamField body="zoom" type="boolean | ZoomConfig" default="false">
+  Pinch-to-zoom the visible time window. Two-finger pinch in/out narrows or
+  widens the window, anchored at the focal point between your fingers. Composes
+  with `timeScroll` (zoom level and scroll position are independent). `true` uses
+  sensible default bounds; pass a [`ZoomConfig`](/api-reference/types#config-objects)
+  to set `minTimeWindow` / `maxTimeWindow`. **@experimental.** See
+  [Time-scroll](/guides/time-scroll#pinch-to-zoom-zoom).
+</ParamField>
+
+<ParamField body="onVisibleRangeChange" type="(range: VisibleRange) => void">
+  Called as the visible window changes (throttled to ~1 Hz) with
+  `{ startSec, endSec, following }`. Useful for paging a data source alongside
+  `timeScroll` / `zoom`. **@experimental.**
+</ParamField>
+
+<ParamField body="onReachStart" type="() => void">
+  Called once when the window's left edge comes within one window-width of the
+  earliest retained data — the cue to lazily load older history. Re-arms after
+  the edge moves back out. **@experimental.**
 </ParamField>
 
 ## Axes, grid & range

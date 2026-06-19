@@ -24,6 +24,7 @@ import {
   resolveVolume,
   resolveXAxis,
   resolveYAxis,
+  resolveZoom,
 } from "../src/core/resolveConfig";
 
 import {
@@ -241,6 +242,32 @@ describe("resolveVolume", () => {
       upColor: "#0f0",
       downColor: "#f00",
       opacity: 0.4,
+    });
+  });
+});
+
+// ─── resolveZoom ─────────────────────────────────────────────────────────────
+
+describe("resolveZoom", () => {
+  const defaults = { minTimeWindow: undefined, maxTimeWindow: undefined };
+
+  it("returns null for undefined and false", () => {
+    expect(resolveZoom(undefined)).toBeNull();
+    expect(resolveZoom(false)).toBeNull();
+  });
+
+  it("returns defaults for true", () => {
+    expect(resolveZoom(true)).toEqual(defaults);
+  });
+
+  it("merges a partial config with defaults", () => {
+    expect(resolveZoom({ minTimeWindow: 5 })).toEqual({
+      ...defaults,
+      minTimeWindow: 5,
+    });
+    expect(resolveZoom({ minTimeWindow: 5, maxTimeWindow: 600 })).toEqual({
+      minTimeWindow: 5,
+      maxTimeWindow: 600,
     });
   });
 });

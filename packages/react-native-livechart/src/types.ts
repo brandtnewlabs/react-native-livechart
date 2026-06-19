@@ -1415,6 +1415,37 @@ export interface TimeScrollConfig {
   scrubHoldMs?: number;
 }
 
+/**
+ * Pinch-to-zoom the visible time window (see {@link LiveChartCoreProps.zoom}).
+ *
+ * @experimental Prototype — gesture model and API may change.
+ */
+export interface ZoomConfig {
+  /**
+   * Tightest visible window in seconds (max zoom-in). Default `timeWindow / 8`.
+   */
+  minTimeWindow?: number;
+  /**
+   * Widest visible window in seconds (max zoom-out). Defaults to the full data
+   * span (you can zoom out to all retained history), never below `timeWindow`.
+   */
+  maxTimeWindow?: number;
+}
+
+/**
+ * The visible time range reported by {@link LiveChartCoreProps.onVisibleRangeChange}.
+ *
+ * @experimental
+ */
+export interface VisibleRange {
+  /** Left-edge time of the visible window (unix seconds). */
+  startSec: number;
+  /** Right-edge time of the visible window (unix seconds). */
+  endSec: number;
+  /** True when the window is at the live edge (not scrolled back / paused). */
+  following: boolean;
+}
+
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
@@ -1563,6 +1594,18 @@ export interface LiveChartCoreProps {
    * @experimental Prototype — gesture model and API may change.
    */
   timeScroll?: boolean | TimeScrollConfig;
+  /**
+   * Pinch-to-zoom the visible time window. Two-finger pinch in/out narrows or
+   * widens the window, anchored at the focal point between your fingers. Composes
+   * with `timeScroll` (zoom level and scroll position are independent). Seed extra
+   * history in `data` / `candles` to have room to zoom out into.
+   *
+   * `true` uses sensible default bounds; pass a {@link ZoomConfig} to set
+   * `minTimeWindow` / `maxTimeWindow`. Default `false`.
+   *
+   * @experimental Prototype — gesture model and API may change.
+   */
+  zoom?: boolean | ZoomConfig;
   /** Accessibility label for the chart container. */
   accessibilityLabel?: string;
   /** Accessibility role for the chart container. Default `"image"`. */
@@ -1579,6 +1622,22 @@ export interface LiveChartCoreProps {
   onGestureStart?: () => void;
   /** Called once when the user stops scrubbing/panning the chart. */
   onGestureEnd?: () => void;
+  /**
+   * Called as the visible time window changes (throttled to ~1 Hz), with the
+   * window's edges in unix seconds and whether the chart is at the live edge.
+   * Useful for paging data sources alongside `timeScroll` / `zoom`.
+   *
+   * @experimental
+   */
+  onVisibleRangeChange?: (range: VisibleRange) => void;
+  /**
+   * Called once when the visible window's left edge comes within one
+   * window-width of the earliest retained data — the cue to lazily load older
+   * history. Re-arms after the edge moves back out.
+   *
+   * @experimental
+   */
+  onReachStart?: () => void;
   /**
    * Fade out chart content on the left (destination-out style). `true` = defaults, `false` = off,
    * or pass `LeftEdgeFadeConfig`. Default `true`.

@@ -57,12 +57,14 @@ export interface ChartEngineLayout {
   /** Animating window (lerps toward {@link timeWindow}); use for positioning. */
   displayWindow: SharedValue<number>;
   /**
-   * The target window from props — the exact value `displayWindow` eases toward.
-   * Tick *selection* (which X-axis labels exist) must read this, not
-   * `displayWindow`: the lerp is asymptotic and never reaches the target, so it
-   * settles just above or just below it depending on the prior window. Bucketing
-   * that off-by-epsilon value (e.g. via `niceTimeInterval`) would otherwise make
-   * the tick cadence depend on where you came from. See issue #126.
+   * The *effective* target window — the value `displayWindow` eases toward: the
+   * pinch-zoom override ({@link ChartEngineScroll.viewWindow}) when active, else
+   * the `timeWindow` prop. Tick *selection* (which X-axis labels exist) must read
+   * this, not `displayWindow`: the lerp is asymptotic and never reaches the
+   * target, so it settles just above or just below it depending on the prior
+   * window. Bucketing that off-by-epsilon value (e.g. via `niceTimeInterval`)
+   * would otherwise make the tick cadence depend on where you came from. See
+   * issue #126.
    */
   timeWindow: SharedValue<number>;
   canvasWidth: SharedValue<number>;
@@ -100,6 +102,14 @@ export interface ChartEngineScroll {
    * frame even while {@link ChartEngineLayout.timestamp} is frozen by a pan.
    */
   liveEdge: SharedValue<number>;
+  /**
+   * Absolute visible-window width (seconds) to freeze at, or `null` to follow
+   * the configured `timeWindow`. Written by the pinch-zoom gesture; the
+   * symmetric counterpart of {@link viewEnd} (width vs. right edge). Folded into
+   * {@link ChartEngineLayout.timeWindow}, so downstream selection/positioning
+   * picks up the zoom for free.
+   */
+  viewWindow: SharedValue<number | null>;
 }
 
 /** Single-series only: smoothed price at the visible window's right edge. */
@@ -156,6 +166,8 @@ export interface EngineFrameRefs {
   pausedSV: SharedValue<boolean>;
   /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
   viewEndSV?: SharedValue<number | null>;
+  /** Pinch-zoom window-width override (null = follow timeWindow). Optional for callers/tests. */
+  viewWindowSV?: SharedValue<number | null>;
   /** Receives the computed live edge each frame. Optional for callers/tests. */
   liveEdgeSV?: SharedValue<number>;
   /** Receives the smoothed right-edge value each frame. Optional for callers/tests. */
@@ -211,6 +223,7 @@ export function applyLiveChartEngineFrame(
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
     viewEnd: sv.viewEndSV?.value,
+    viewWindow: sv.viewWindowSV?.value,
     mode: sv.modeSV.value,
     candles: sv.candles?.value,
     liveCandle: sv.liveCandle?.value,
@@ -231,8 +244,16 @@ export function applyLiveChartEngineFrame(
 export function useLiveChartEngine(
   config: EngineConfig,
 ): SingleEngineState & ChartEngineScroll & ChartEngineEdge {
-  // Low-frequency config → UI thread via useDerivedValue
-  const timeWindow = useDerivedValue(() => config.timeWindow);
+  // Pinch-zoom window-width override (null = follow the configured window).
+  // Declared first so `timeWindow` below can fold it in. Defaults to null so
+  // charts without `zoom` behave exactly as before.
+  const viewWindow = useSharedValue<number | null>(null);
+
+  // Low-frequency config → UI thread via useDerivedValue. `timeWindow` is the
+  // *effective* target window: the zoom override when set, else the prop. Both
+  // the tick's window lerp and the X-axis tick selection read it, so zoom flows
+  // downstream for free (mirrors how viewEnd drives `timestamp`).
+  const timeWindow = useDerivedValue(() => viewWindow.value ?? config.timeWindow);
   // Static charts snap to their target in one tick (smoothing=1), so the single
   // settle reaction below produces the final state with no per-frame easing.
   const smoothing = useDerivedValue(() =>
@@ -315,6 +336,7 @@ export function useLiveChartEngine(
     windowBufferSV,
     pausedSV,
     viewEndSV: viewEnd,
+    viewWindowSV: viewWindow,
     liveEdgeSV: liveEdge,
     edgeValueSV: edgeValue,
     modeSV,
@@ -375,6 +397,7 @@ export function useLiveChartEngine(
     canvasHeight,
     timestamp,
     viewEnd,
+    viewWindow,
     liveEdge,
     edgeValue,
     extremaMinValue,

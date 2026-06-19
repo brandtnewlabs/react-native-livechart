@@ -5,8 +5,8 @@ description: "Pan back through history; auto-follow resumes at the live edge."
 ---
 
 <Warning>
-  **Experimental.** `timeScroll` is a prototype — the gesture model and API may still change.
-  Single-series (`LiveChart`) only; line and candle modes both work.
+  **Experimental.** `timeScroll` and `zoom` are prototypes — the gesture model and API may still
+  change. Both work on `LiveChart` (line and candle) and `LiveChartSeries` (multi-series line).
 </Warning>
 
 By default the chart follows the live edge. Enable `timeScroll` to **pan back through history**:
@@ -55,6 +55,53 @@ scrolls instead). Higher = more deliberate scrub, fewer accidental scrubs while 
 />
 ```
 
+## Pinch-to-zoom (`zoom`)
+
+Enable `zoom` for **two-finger pinch-to-zoom** of the visible window. Pinch out to zoom in (a
+narrower window), pinch in to zoom out — anchored at the **focal point** between your fingers, so
+the time under your fingers stays put. It composes with `timeScroll`: zoom level and scroll position
+are independent, and you can pan a zoomed-in window. Pinch is two-finger, so it never competes with
+the one-finger pan / scrub.
+
+```tsx
+<LiveChart data={data} value={value} timeScroll zoom />
+```
+
+Bounds default sensibly — you can zoom in to `timeWindow / 8` and out to the full retained data span.
+Pass a `ZoomConfig` to set them explicitly:
+
+```tsx
+<LiveChart data={data} value={value} zoom={{ minTimeWindow: 5, maxTimeWindow: 3600 }} />
+```
+
+The Y-range auto-fits the visible window as you zoom, and candle bars re-flow to the new width.
+
+## Paging callbacks (`onVisibleRangeChange`, `onReachStart`)
+
+To lazily page in history as the user scrolls/zooms back, two callbacks report the visible window:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  timeScroll
+  zoom
+  onVisibleRangeChange={({ startSec, endSec, following }) => {
+    // throttled to ~1 Hz; `following` is true at the live edge
+  }}
+  onReachStart={() => {
+    // fires once when the left edge nears the oldest data — fetch older history here
+  }}
+/>
+```
+
+- **`onVisibleRangeChange`** fires (throttled to ~1 Hz) with the window's `startSec` / `endSec` and
+  whether the chart is `following` the live edge.
+- **`onReachStart`** is a **one-shot edge trigger**: it fires once when the left edge comes within one
+  window-width of the earliest retained point, then re-arms after you move back out — the cue to load
+  the next page of older data. When the fetched data extends `data` / `candles` further back, it can
+  fire again as you keep scrolling.
+
 ## Full-width plot while scrolled (`yAxis.float`)
 
 A normal chart reserves a right gutter for the price axis, so candles stop short of the edge. Pair
@@ -86,10 +133,14 @@ price you can see — and snap back to the live value when you return to the liv
 
 ## Notes
 
-- **Single-series only.** `timeScroll` is wired into `LiveChart`; `LiveChartSeries` doesn't support
-  it yet.
+- **Both charts.** `timeScroll` and `zoom` are wired into `LiveChart` and `LiveChartSeries`. In
+  multi-series, each series' dot / value label tracks its value at the visible right edge while
+  scrolled (the dot rides the end of each line, not the live price).
 - **Coexists with scrubbing.** Plot-area scrub (and the [order ticket](/guides/scrubbing#order-ticket-scrubaction))
   work alongside time-scroll — the gestures are disambiguated by region (`axisDrag`) or press-hold
-  (`holdToScrub`).
+  (`holdToScrub`). Pinch-zoom is two-finger, so it stays out of the one-finger gestures' way.
+- **`axisDrag` in multi-series** doesn't yet exclude the bottom-band from scrub; `holdToScrub` (the
+  default) is the recommended gesture for `LiveChartSeries`.
 - See the [`LiveChart` reference](/api-reference/livechart#scrubbing) and
-  [`TimeScrollConfig`](/api-reference/types#config-objects) for every field.
+  [`TimeScrollConfig`](/api-reference/types#config-objects) / [`ZoomConfig`](/api-reference/types#config-objects)
+  for every field.
