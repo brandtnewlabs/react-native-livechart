@@ -46,7 +46,7 @@ export default function HistoricalDataScreen() {
   return (
     <DemoScreen
       title="Historical data fill"
-      docs="guides/playback"
+      docs="guides/historical-data"
       description="nowOverride + windowBuffer — fill a fixed historical span edge-to-edge"
       chart={
         <LiveChart

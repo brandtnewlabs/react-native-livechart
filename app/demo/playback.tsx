@@ -14,12 +14,21 @@ const wave = (t: number) => 75 + 125 * Math.sin(t / 3);
 
 const WINDOW_OPTIONS = TIME_WINDOWS.map((w) => ({ value: w.secs, label: w.label }));
 
+/** Lerp speed the live tip eases toward `value` — 0 freezes, 1 snaps. Default 0.08. */
+const SMOOTHING_OPTIONS = [
+  { value: 0.08, label: "0.08 (default)" },
+  { value: 0.3, label: "0.3" },
+  { value: 0.6, label: "0.6" },
+  { value: 1, label: "1 (instant)" },
+];
+
 export default function PlaybackScreen() {
   const [windowSecs, setWindowSecs] = useState(30);
   const [paused, setPaused] = useState(false);
   const [exaggerate, setExaggerate] = useState(false);
   const [nonNegative, setNonNegative] = useState(false);
   const [maxValue, setMaxValue] = useState<number | undefined>(undefined);
+  const [smoothing, setSmoothing] = useState(0.08);
 
   const data = useSharedValue<LiveChartPoint[]>([]);
   const [initialValue] = useState(() => wave(Date.now() / 1000));
@@ -72,6 +81,7 @@ export default function PlaybackScreen() {
           exaggerate={exaggerate}
           nonNegative={nonNegative}
           maxValue={maxValue}
+          smoothing={smoothing}
           scrub={false}
         />
       }
@@ -81,6 +91,12 @@ export default function PlaybackScreen() {
         options={WINDOW_OPTIONS}
         value={windowSecs}
         onChange={setWindowSecs}
+      />
+      <ChipRow
+        label="Smoothing (live-tip lerp)"
+        options={SMOOTHING_OPTIONS}
+        value={smoothing}
+        onChange={setSmoothing}
       />
       <ControlRow label="Playback">
         <Chip

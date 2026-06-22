@@ -1,0 +1,33 @@
+---
+title: Historical data
+icon: "clock-rotate-left"
+description: "Render a fixed historical span edge-to-edge instead of a live-scrolling tail."
+---
+
+<Note>
+  **Live example:**
+  [`app/demo/historical-data.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/historical-data.tsx)
+  in the example app.
+</Note>
+
+To render a fixed historical span edge-to-edge — rather than a live-scrolling tail — freeze the
+engine's clock with `nowOverride` and reserve a little right-edge space with `windowBuffer`:
+
+- **`nowOverride`** — override the engine's "now" (unix seconds). Set it to your dataset's last
+  timestamp so the window ends exactly there.
+- **`windowBuffer`** — right-edge padding as a fraction of `timeWindow`, so the latest point
+  isn't flush against the edge.
+
+```tsx
+<LiveChart
+  data={history}
+  value={lastValue}
+  timeWindow={span}
+  nowOverride={lastTime}
+  windowBuffer={0.04}
+  paused
+/>
+```
+
+See the full prop list in the [`LiveChart` reference](/api-reference/livechart), and the live
+[Playback](/guides/playback) controls for tuning the window, smoothing, and Y-axis range.

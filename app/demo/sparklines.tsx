@@ -111,6 +111,7 @@ export default function SparklinesScreen() {
   return (
     <DemoScreen
       title="Sparklines"
+      docs="guides/sparklines"
       description="static — many mini-charts in a list with zero per-chart animation loops"
       chart={
         <LiveChart

@@ -4,7 +4,7 @@
  *
  * This is deliberately separate from the library's `MONO_FONT_FAMILY`: the
  * chart still renders its numeric axis/badge labels in the mono face (see the
- * `font` prop in app/demo/appearance.tsx) — only the playground's own text
+ * `font` prop in app/demo/theming.tsx) — only the playground's own text
  * defaults to Plus Jakarta Sans.
  *
  * Each weight is its own family name: @expo-google-fonts registers weights as

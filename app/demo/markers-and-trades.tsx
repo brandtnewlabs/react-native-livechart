@@ -1,7 +1,7 @@
 import { BlurView } from "expo-blur";
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { LiveChart, type Marker } from "react-native-livechart";
+import { LiveChart, type Marker, type MarkerKind } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -21,6 +21,26 @@ const SELL_COLOR = "#dc2626";
 
 const VOLATILITY_OPTIONS = VOLATILITY_MODES.map((m) => ({ value: m, label: m }));
 
+/**
+ * The full built-in glyph library — drawn into the Skia canvas with no `icon` /
+ * `pill` override, so each renders its native `kind` shape. (`graduation` and
+ * `clawback` are axis-anchored kinds.)
+ */
+const KIND_OPTIONS: { value: MarkerKind; label: string }[] = [
+  { value: "trade", label: "trade" },
+  { value: "boost", label: "boost" },
+  { value: "graduation", label: "graduation" },
+  { value: "winner", label: "winner" },
+  { value: "clawback", label: "clawback" },
+];
+
+/** Tap hit-test radius presets (px) for `markerHitRadius`. */
+const HIT_RADIUS_OPTIONS = [
+  { value: 12, label: "12 (tight)" },
+  { value: 22, label: "22 (default)" },
+  { value: 36, label: "36 (generous)" },
+];
+
 /** Fan-overlap presets for the `markerCluster` object form. */
 const OVERLAP_OPTIONS = [
   { value: 0.3, label: "30%" },
@@ -32,6 +52,9 @@ const OVERLAP_OPTIONS = [
 
 /** Visible time window (s). Markers are kept until they scroll just past it. */
 const WINDOW = 30;
+
+/** Live "now" in unix seconds — module-scope so `Date.now()` stays out of render. */
+const nowSec = () => Date.now() / 1000;
 
 /**
  * Buy = green `+` pill below the line, sell = red `−` pill above it. `value` is
@@ -51,6 +74,15 @@ function makeMarker(id: string, time: number, side: Side): Marker {
     side: side === "buy" ? "below" : "above",
     data: { side },
   };
+}
+
+/**
+ * A marker that shows off the BUILT-IN glyph for `kind` — no `icon` / `pill`
+ * override, so the chart draws its native shape (the buy/sell pills elsewhere
+ * deliberately override this). `value` is omitted so it anchors to the line.
+ */
+function makeKindMarker(id: string, time: number, kind: MarkerKind): Marker {
+  return { id, time, kind, data: { kind } };
 }
 
 /**
@@ -82,6 +114,7 @@ export default function MarkersScreen() {
   const [custom, setCustom] = useState(false);
   const [stacked, setStacked] = useState(false);
   const [overlap, setOverlap] = useState(0.75);
+  const [hitRadius, setHitRadius] = useState(22);
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("normal");
 
   const { data, value, tradeStream } = useSimulatedChartData({
@@ -102,7 +135,7 @@ export default function MarkersScreen() {
   const counter = useRef(0);
 
   const spawn = (side: Side) => {
-    const now = Date.now() / 1000;
+    const now = nowSec();
     counter.current += 1;
     const m = makeMarker(`m${counter.current}`, now - 1, side);
     // Keep markers until they scroll just past the left edge of the window; the
@@ -114,11 +147,24 @@ export default function MarkersScreen() {
     );
   };
 
+  // Spawn one marker using the BUILT-IN glyph for `kind` (no icon/pill override),
+  // so the native glyph library is actually shown.
+  const spawnKind = (kind: MarkerKind) => {
+    const now = nowSec();
+    counter.current += 1;
+    const m = makeKindMarker(`m${counter.current}`, now - 1, kind);
+    markers.set(
+      [...markers.get(), m]
+        .filter((x) => x.time > now - (WINDOW + 4))
+        .slice(-60),
+    );
+  };
+
   // Drop `n` buys at one instant — co-located, so `markerCluster="stacked"` fans
   // them horizontally (with overlap); past the group threshold it collapses to a
   // count badge. `Fan ×4` shows the overlap; `Burst ×12` shows the collapse.
   const spawnCluster = (n: number) => {
-    const now = Date.now() / 1000;
+    const now = nowSec();
     const t = now - 1;
     const added: Marker[] = [];
     for (let i = 0; i < n; i++) {
@@ -136,7 +182,7 @@ export default function MarkersScreen() {
   useEffect(() => {
     if (!auto) return;
     const id = setInterval(() => {
-      const now = Date.now() / 1000;
+      const now = nowSec();
       counter.current += 1;
       const side: Side = counter.current % 2 === 0 ? "buy" : "sell";
       const m = makeMarker(`m${counter.current}`, now - 1, side);
@@ -152,7 +198,7 @@ export default function MarkersScreen() {
   return (
     <DemoScreen
       title="Markers & trades"
-      docs="guides/markers-and-references"
+      docs="guides/markers-and-trades"
       description="Buy / sell markers anchored to the line — green + pill (buy), red − pill (sell). Tap a pill to hover; optional tradeStream overlay."
       chart={
         <LiveChart
@@ -162,7 +208,7 @@ export default function MarkersScreen() {
           theme={APP_THEME}
           timeWindow={WINDOW}
           markers={markers}
-          markerHitRadius={22}
+          markerHitRadius={hitRadius}
           markerCluster={stacked ? { mode: "stacked", overlap } : "anchored"}
           renderMarker={
             custom
@@ -208,6 +254,29 @@ export default function MarkersScreen() {
         Green + = buy (below the line) · red − = sell (above). Markers omit
         `value`, so each anchors to the line at its time; `side` lifts it off.
       </Text>
+
+      <ControlRow label="Built-in glyphs (kind)">
+        {KIND_OPTIONS.map((k) => (
+          <Chip
+            key={k.value}
+            label={k.label}
+            active={false}
+            onPress={() => spawnKind(k.value)}
+          />
+        ))}
+      </ControlRow>
+      <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+        Spawns a marker drawn with the built-in glyph for each `kind` (no
+        `icon`/`pill` override) — the native shape library the buy/sell pills
+        above replace.
+      </Text>
+
+      <ChipRow
+        label="markerHitRadius (tap target)"
+        options={HIT_RADIUS_OPTIONS}
+        value={hitRadius}
+        onChange={setHitRadius}
+      />
 
       <ControlRow label="Collision">
         <ToggleChip label="markerCluster: stacked" value={stacked} onChange={setStacked} />

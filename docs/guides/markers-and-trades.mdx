@@ -1,0 +1,148 @@
+---
+title: Markers & trades
+icon: "location-dot"
+description: "Annotate the chart with glyph markers and a live trade-fill stream."
+---
+
+<Note>
+  **Live example:**
+  [`app/demo/markers-and-trades.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/markers-and-trades.tsx)
+  in the example app.
+</Note>
+
+<Frame caption="Trade-fill markers and a scrolling buy/sell stream">
+  <video autoPlay loop muted playsInline controls poster="/media/008-markers-trades.jpg" src="/media/008-markers-trades.mp4" />
+</Frame>
+
+## Markers
+
+Draw glyphs into the canvas at a `(time, value)` position. Markers are read on the UI thread, so
+pass a `SharedValue<Marker[]>` and update it with `.set(...)` / `.modify(...)`.
+
+```tsx
+import { useSharedValue } from "react-native-reanimated";
+import { LiveChart, type Marker } from "react-native-livechart";
+
+const markers = useSharedValue<Marker[]>([
+  { id: "1", time: Date.now() / 1000, kind: "winner", value: 142.5 },
+]);
+
+<LiveChart
+  data={data}
+  value={value}
+  markers={markers}
+  markerHitRadius={16}
+  onMarkerPress={(event) => {
+    if (!event) return; // tap missed every marker
+    console.log(event.marker.id, event.point);
+  }}
+/>;
+```
+
+<Note>
+  `onMarkerPress` fires on **tap** — there is no hover on touch. (It replaces the
+  old `onMarkerHover`.)
+</Note>
+
+### Stacking co-located markers
+
+By default markers draw at their anchor and overlap. Set `markerCluster="stacked"` to fan
+co-located markers apart **horizontally** (overlapping, left-over-right — a stacked-coins look) at
+their `side` (`"above"` / `"below"` / `"center"`) — e.g. buys below the line and sells above it. Once a
+cluster exceeds `maxBeforeGroup` (default 5) it collapses into a single count-badge marker; tapping it
+fires `onMarkerPress` with `isGrouped: true` and the full `members` list. Grouping is recomputed every
+frame, so a cluster fans back out as you zoom in.
+
+```tsx
+<LiveChart data={data} value={value} markers={markers} markerCluster="stacked" />
+```
+
+Pass the object form to tune the fan — `overlap` (0–1, default `0.75`) and the collapse threshold:
+
+```tsx
+markerCluster={{ overlap: 0.75, maxBeforeGroup: 8 }}
+```
+
+Built-in `kind` glyphs are `"trade" | "boost" | "graduation" | "winner" | "clawback"`. Override
+the glyph with `icon` (text/emoji) or `image` (a Skia `SkImage`). Set `pill` to wrap the `icon` in a
+filled circular badge in the marker `color` (icon rendered white) — e.g. a green `+` buy / red `−`
+sell tag:
+
+```tsx
+{ id: "buy-1", time, kind: "trade", icon: "+", color: "#16a34a", pill: true }
+{ id: "sell-1", time, kind: "trade", icon: "−", color: "#dc2626", pill: true }
+```
+
+**Anchoring `y`:** pass an absolute `value`, or omit it to pin the marker to the line. On a
+single-series chart, omitting `value` anchors the marker to the line at `time` (interpolated from
+`data`); in multi-series, set `seriesId` to anchor to that series' line. So for a marker that should
+always sit on the line, just give it a `time` and `kind`.
+
+### Custom marker rendering
+
+Built-in glyphs are drawn into the Skia canvas. When you need something the canvas **can't** draw —
+a native `BlurView` glass badge, a gradient pill, an animated component — pass `renderMarker`. Return
+a **React Native** element to float it, auto-centered, at the marker's live `(time, value)` position
+(tracked on the UI thread); return `null`/`undefined` to keep the built-in glyph for that marker.
+
+```tsx
+import { BlurView } from "expo-blur";
+
+<LiveChart
+  data={data}
+  value={value}
+  markers={markers}
+  renderMarker={(marker) => {
+    const side = (marker.data as { side?: "buy" | "sell" })?.side;
+    if (!side) return null; // fall back to the built-in glyph
+    return (
+      <BlurView intensity={28} tint="light" style={styles.glassBadge}>
+        <Text style={{ color: side === "buy" ? "#16a34a" : "#dc2626" }}>
+          {side === "buy" ? "BUY" : "SELL"}
+        </Text>
+      </BlurView>
+    );
+  }}
+/>;
+```
+
+Custom-rendered markers are floated as RN views over the canvas, so they render **crisp at native
+resolution** (and skip the marker atlas entirely — no glyph drawn behind them). Taps still fire
+`onMarkerPress` via the marker hit-test. `renderMarker` receives a second `ctx` argument
+(`{ index, isGrouped, groupCount, side }`) so a representative can render a distinct collapsed look.
+`expo-blur` is the consumer's choice — `renderMarker` accepts any element, and the library takes no
+extra dependency.
+
+<Note>
+  Use `renderMarker` for a handful of special markers, not hundreds of high-frequency ones: each
+  custom marker is its own animated view + projection, whereas built-in glyphs batch into a single
+  draw call. Works the same on `LiveChart` and `LiveChartSeries`.
+</Note>
+
+## Trade stream
+
+For trade-fill markers specifically, feed a `SharedValue<TradeEvent[]>`:
+
+```tsx
+import type { TradeEvent } from "react-native-livechart";
+
+const tradeStream = useSharedValue<TradeEvent[]>([]);
+// tradeStream.modify((arr) => { "worklet"; arr.push({ side: "buy", price, size, time }); return arr; });
+
+<LiveChart data={data} value={value} tradeStream={tradeStream} />;
+```
+
+```ts
+interface TradeEvent {
+  side: "buy" | "sell";
+  price: number;
+  size: number;
+  time: number;   // unix seconds
+  symbol?: string;
+}
+```
+
+<Note>
+  Need a static line that doesn't track the data — a price alert, target, or working order? See
+  [Reference lines & bands](/guides/reference-lines-and-bands).
+</Note>

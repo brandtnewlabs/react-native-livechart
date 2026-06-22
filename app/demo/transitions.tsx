@@ -3,7 +3,7 @@ import { Text } from "react-native";
 import { LiveChart, LiveChartTransition } from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
-import { ChipRow } from "../../demo-lib/ChipRow";
+import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { demoStyles } from "../../demo-lib/styles";
@@ -39,6 +39,7 @@ export default function TransitionsScreen() {
   const [example, setExample] = useState<Example>("mode");
   const [mode, setMode] = useState<Mode>("line");
   const [accent, setAccent] = useState<Accent>("blue");
+  const [keepMounted, setKeepMounted] = useState(true);
 
   const { data, value, candles, liveCandle } = useSimulatedChartData({
     multiSeries: false,
@@ -82,7 +83,11 @@ export default function TransitionsScreen() {
           // Cross-fade between two instances. keepMounted lets both settle their
           // y-range up front, so switching is a pure opacity fade. Same data +
           // scale, so the two layers line up — only the accent color differs.
-          <LiveChartTransition active={accent} duration={350} keepMounted>
+          <LiveChartTransition
+            active={accent}
+            duration={350}
+            keepMounted={keepMounted}
+          >
             <LiveChart
               key="blue"
               data={data}
@@ -133,10 +138,18 @@ export default function TransitionsScreen() {
             value={accent}
             onChange={setAccent}
           />
+          <ControlRow label="LiveChartTransition">
+            <ToggleChip
+              label="keepMounted"
+              value={keepMounted}
+              onChange={setKeepMounted}
+            />
+          </ControlRow>
           <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
             LiveChartTransition cross-fades two chart instances (here: accent
-            color, blue↔violet). keepMounted pre-settles both so there is no
-            re-reveal.
+            color, blue↔violet). keepMounted on = both engines stay mounted and
+            switching is a pure cross-fade; off = the incoming chart mounts fresh
+            and re-reveals (range re-animates) on each switch.
           </Text>
         </>
       )}

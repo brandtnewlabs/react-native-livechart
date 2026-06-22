@@ -11,9 +11,8 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { demoStyles } from "./styles";
 
-/** Guides live in the repo's `docs/` tree; no separate docs site is deployed. */
-const DOCS_BASE =
-  "https://github.com/brandtnewlabs/react-native-livechart/blob/main/docs/";
+/** Guides are served from the hosted docs site; `docs=` is the page path under it. */
+const DOCS_BASE = "https://react-native-livechart.brandtnewlabs.com/";
 
 type DemoScreenProps = {
   /** Screen heading, e.g. "Line & area". Shown as the page title. */
@@ -55,7 +54,7 @@ export function DemoScreen({
           <Text style={demoStyles.demoDesc}>{description}</Text>
         ) : null}
         {docs ? (
-          <Pressable onPress={() => Linking.openURL(`${DOCS_BASE}${docs}.mdx`)}>
+          <Pressable onPress={() => Linking.openURL(`${DOCS_BASE}${docs}`)}>
             <Text style={demoStyles.demoDocsLink}>Read the guide ↗</Text>
           </Pressable>
         ) : null}

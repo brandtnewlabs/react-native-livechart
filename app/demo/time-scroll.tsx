@@ -82,6 +82,7 @@ export default function TimeScrollScreen() {
   return (
     <DemoScreen
       title="Time scroll"
+      docs="guides/time-scroll"
       description={`${hint} Pinch with two fingers to zoom the window in/out (anchored at your fingers). The chart stops auto-scrolling while panned; release (or fling) back to the live edge to resume. Works for line and candle; one-finger plot scrub is unchanged.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
       chart={
         <LiveChart

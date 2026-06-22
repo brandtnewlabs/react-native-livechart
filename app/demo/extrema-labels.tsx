@@ -46,6 +46,32 @@ const DOT_SIZE_OPTIONS: { value: number; label: string }[] = [
   { value: 16, label: "Large" },
 ];
 
+// Connector styling (the dot → edge line in "At the edge" mode). "Off" drops the
+// line; the rest are `LineStyleConfig`s (color + strokeWidth + intervals).
+type ConnectorStyle = "default" | "off" | "dashedThin" | "solidThick";
+
+const CONNECTOR_OPTIONS: { value: ConnectorStyle; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "off", label: "Off" },
+  { value: "dashedThin", label: "Dashed grey" },
+  { value: "solidThick", label: "Solid thick" },
+];
+
+// Marker dot color, independent of the label text color.
+type DotColorChoice = "match" | "white" | "amber";
+
+const DOT_COLOR_OPTIONS: { value: DotColorChoice; label: string }[] = [
+  { value: "match", label: "Match label" },
+  { value: "white", label: "White" },
+  { value: "amber", label: "Amber" },
+];
+
+const DOT_COLOR_VALUES: Record<DotColorChoice, string | undefined> = {
+  match: undefined,
+  white: "#ffffff",
+  amber: "#fbbf24",
+};
+
 const HIGH_COLOR = "#34d399";
 const LOW_COLOR = "#f87171";
 
@@ -67,6 +93,9 @@ export default function ExtremaLabelsScreen() {
   const [showDot, setShowDot] = useState(true);
   const [dotSize, setDotSize] = useState(7);
   const [connector, setConnector] = useState(true);
+  const [connectorStyle, setConnectorStyle] =
+    useState<ConnectorStyle>("default");
+  const [dotColorChoice, setDotColorChoice] = useState<DotColorChoice>("match");
 
   const windowSecs = 300;
   const candleWidthSecs = 15;
@@ -90,15 +119,35 @@ export default function ExtremaLabelsScreen() {
   const emptyCandles = useSharedValue<CandlePoint[]>([]);
   const nullLive = useSharedValue<CandlePoint | null>(null);
 
+  // The connector master toggle gates the dot → edge line; when on, the style
+  // chip picks how it draws. "default" passes the boolean `true` (the chart's
+  // built-in dashed default); the others are explicit LineStyleConfigs. The
+  // value type is sourced from AxisLabelConfig so the union stays accurate.
+  type ConnectorValue = NonNullable<AxisLabelConfig["connector"]>;
+  const CONNECTOR_STYLES: Record<ConnectorStyle, ConnectorValue> = {
+    default: true,
+    off: false,
+    dashedThin: { color: "#94a3b8", strokeWidth: 1, intervals: [4, 4] },
+    solidThick: { color: "#e2e8f0", strokeWidth: 2 },
+  };
+  const connectorValue: ConnectorValue = connector
+    ? CONNECTOR_STYLES[connectorStyle]
+    : false;
+
+  // `dotColor` colors the marker dot independently of the label text `color`.
+  const dotColor = DOT_COLOR_VALUES[dotColorChoice];
+
   // Built-in styling shared by both labels: font size + weight style the value
-  // text (in either position mode); dot + dotSize style the extrema marker;
-  // connector is the dot → edge line in "At the edge" mode (ignored otherwise).
+  // text (in either position mode); dot + dotSize + dotColor style the extrema
+  // marker; connector is the dot → edge line in "At the edge" mode (ignored
+  // otherwise).
   const styleProps = {
     fontSize,
     fontWeight: bold ? ("700" as const) : undefined,
     dot: showDot,
     dotSize,
-    connector,
+    dotColor,
+    connector: connectorValue,
   };
 
   // The high tracks the peak, the low tracks the trough. `render` floats any RN
@@ -129,7 +178,7 @@ export default function ExtremaLabelsScreen() {
   return (
     <DemoScreen
       title="Extrema labels"
-      docs="guides/theming"
+      docs="guides/extrema-labels"
       description='topLabel / bottomLabel extrema modes: "At the point" floats the readout on the high/low data point; "At the edge" keeps it on the top/bottom rail (x-aligned) with a connector to a dot on the point.'
       chart={
         <LiveChart
@@ -183,6 +232,18 @@ export default function ExtremaLabelsScreen() {
           onChange={setConnector}
         />
       </ControlRow>
+      <ChipRow
+        label="Connector style (LineStyleConfig)"
+        options={CONNECTOR_OPTIONS}
+        value={connectorStyle}
+        onChange={setConnectorStyle}
+      />
+      <ChipRow
+        label="Dot color (independent of label)"
+        options={DOT_COLOR_OPTIONS}
+        value={dotColorChoice}
+        onChange={setDotColorChoice}
+      />
       <ControlRow label="Rendering">
         {/* Built-in = dot + value text; Custom = a `render` element at the point. */}
         <ToggleChip label="Custom render" value={custom} onChange={setCustom} />

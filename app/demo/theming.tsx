@@ -10,6 +10,7 @@ import {
   LiveChart,
   MONO_FONT_FAMILY,
   type FontWeight,
+  type LiveChartMetricsOverride,
 } from "react-native-livechart";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -48,6 +49,19 @@ const MULTI_GRADIENT_COLORS = [
   "rgba(168,85,247,0)",
 ];
 
+// `metrics` is the shape-and-feel override (namespaced like `palette` is for
+// color). These two toggles each flip a couple of tokens that produce a visible
+// effect: a roomier value pill (badge geometry) and snappier motion (faster
+// badge-color lerp + grid fade-in).
+const ROOMY_BADGE: LiveChartMetricsOverride["badge"] = {
+  padX: 16,
+  tailLength: 9,
+};
+const FAST_MOTION: LiveChartMetricsOverride = {
+  motion: { badgeColorSpeed: 0.3 },
+  grid: { fadeInSpeed: 0.45 },
+};
+
 const FONT_SIZE_OPTIONS = FONT_SIZES.map((s) => ({
   value: s,
   label: `${s}px`,
@@ -79,6 +93,18 @@ export default function ThemingScreen() {
   const [roundedStyle, setRoundedStyle] = useState(false);
   const [gridDashed, setGridDashed] = useState(false);
   const [paletteOverride, setPaletteOverride] = useState(false);
+  const [roomyBadge, setRoomyBadge] = useState(false);
+  const [fastMotion, setFastMotion] = useState(false);
+
+  // Merge the two metric toggles into a single override (or undefined when both
+  // are off, so the chart keeps its built-in defaults).
+  const metrics: LiveChartMetricsOverride | undefined =
+    roomyBadge || fastMotion
+      ? {
+          ...(roomyBadge ? { badge: ROOMY_BADGE } : {}),
+          ...(fastMotion ? FAST_MOTION : {}),
+        }
+      : undefined;
 
   const gradientMode: GradientMode = !gradientOn
     ? "off"
@@ -142,6 +168,7 @@ export default function ThemingScreen() {
           gridStyle={
             gridDashed ? { intervals: [1, 3], opacity: 0.8 } : undefined
           }
+          metrics={metrics}
           palette={
             paletteOverride
               ? { gridLine: "rgba(96,165,250,0.35)", gridLabel: "#60a5fa" }
@@ -284,6 +311,23 @@ export default function ThemingScreen() {
           label="Palette override"
           value={paletteOverride}
           onChange={setPaletteOverride}
+        />
+      </ControlRow>
+
+      <ControlRow label="Sizing & motion (metrics)">
+        {/* `metrics` overrides shape + feel (namespaced like `palette` is for
+            color). "Roomy badge" widens the value-pill geometry (badge.padX +
+            tailLength); "Fast motion" speeds the badge-color lerp and grid
+            fade-in (motion.badgeColorSpeed + grid.fadeInSpeed). */}
+        <ToggleChip
+          label="Roomy badge"
+          value={roomyBadge}
+          onChange={setRoomyBadge}
+        />
+        <ToggleChip
+          label="Fast motion"
+          value={fastMotion}
+          onChange={setFastMotion}
         />
       </ControlRow>
 

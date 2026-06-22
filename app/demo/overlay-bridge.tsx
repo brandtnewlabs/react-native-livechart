@@ -3,6 +3,7 @@ import { StyleSheet, Text, type LayoutChangeEvent } from "react-native";
 import {
   LiveChart,
   usePriceY,
+  useTimeX,
   type ChartOverlayContext,
 } from "react-native-livechart";
 import Animated, {
@@ -41,6 +42,12 @@ const LEVELS: Level[] = [
  */
 export default function OverlayBridgeScreen() {
   const [showLines, setShowLines] = useState(true);
+  const [showTimeMarker, setShowTimeMarker] = useState(true);
+
+  // A FIXED timestamp the time marker is pinned to — captured once, ~halfway back
+  // into the visible window. `useTimeX` glues it to that instant, so it scrolls
+  // left as the window advances (the time↔x sibling of usePriceY's price↔y).
+  const [markedTime] = useState(() => Date.now() / 1000 - WINDOW_SECS / 2);
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -53,6 +60,7 @@ export default function OverlayBridgeScreen() {
   return (
     <DemoScreen
       title="Overlay bridge"
+      docs="guides/overlay-bridge"
       description="renderOverlay hands you worklet priceToY / yToPrice / timeToX + a live plot rect. Here a hand-rolled RN order overlay (level line + price tag) tracks each price as the axis rescales — drag the chart to scrub and watch the tags stay put."
       chart={
         <LiveChart
@@ -73,6 +81,9 @@ export default function OverlayBridgeScreen() {
                   showLine={showLines}
                 />
               ))}
+              {showTimeMarker ? (
+                <TimeMarker ctx={ctx} time={markedTime} />
+              ) : null}
             </>
           )}
         />
@@ -83,6 +94,11 @@ export default function OverlayBridgeScreen() {
           label="Level lines"
           value={showLines}
           onChange={setShowLines}
+        />
+        <ToggleChip
+          label="Time marker (useTimeX)"
+          value={showTimeMarker}
+          onChange={setShowTimeMarker}
         />
       </ControlRow>
     </DemoScreen>
@@ -161,6 +177,70 @@ function OrderLevel({
   );
 }
 
+/**
+ * A vertical TIME marker, the time↔x sibling of `OrderLevel`. `useTimeX(ctx, time)`
+ * gives the live X for a FIXED timestamp as a SharedValue; the marker is glued to
+ * that instant and scrolls left with the window, hiding once it leaves the plot.
+ */
+function TimeMarker({
+  ctx,
+  time,
+}: {
+  ctx: ChartOverlayContext;
+  time: number;
+}) {
+  const { scale } = ctx;
+  const x = useTimeX(ctx, time);
+
+  // Measured pin size, so it can be centered on the marker's x.
+  const pinSize = useSharedValue({ width: 0, height: 0 });
+  const onPinLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    pinSize.set({ width, height });
+  };
+
+  const lineStyle = useAnimatedStyle(() => {
+    const px = x.get();
+    const s = scale.get();
+    const inPlot = px >= s.plot.left && px <= s.plot.right;
+    return {
+      opacity: px < 0 || !inPlot ? 0 : 1,
+      height: Math.max(0, s.plot.bottom - s.plot.top),
+      transform: [{ translateX: px }, { translateY: s.plot.top }],
+    };
+  });
+
+  const pinStyle = useAnimatedStyle(() => {
+    const px = x.get();
+    const s = scale.get();
+    const inPlot = px >= s.plot.left && px <= s.plot.right;
+    const ps = pinSize.get();
+    return {
+      opacity: px < 0 || !inPlot ? 0 : 1,
+      transform: [
+        { translateX: px - ps.width / 2 },
+        { translateY: s.plot.top },
+      ],
+    };
+  });
+
+  return (
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.timeLine, { backgroundColor: ACCENT }, lineStyle]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        onLayout={onPinLayout}
+        style={[styles.timePin, { borderColor: ACCENT }, pinStyle]}
+      >
+        <Text style={[styles.tagText, { color: ACCENT }]}>T0</Text>
+      </Animated.View>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   line: {
     position: "absolute",
@@ -168,6 +248,23 @@ const styles = StyleSheet.create({
     left: 0,
     height: StyleSheet.hairlineWidth,
     opacity: 0.7,
+  },
+  timeLine: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: StyleSheet.hairlineWidth,
+    opacity: 0.7,
+  },
+  timePin: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.background,
   },
   tag: {
     position: "absolute",

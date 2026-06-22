@@ -150,7 +150,7 @@ export default function WorkingOrdersScreen() {
   return (
     <DemoScreen
       title="Working orders"
-      docs="guides/markers-and-references"
+      docs="guides/reference-lines-and-bands"
       description="Drag BUY / SELL to set a price (snap 0.05, clamped to bounds). Watch the live value, committed value, and the drag-callback log. Toggle custom RN tags and near-value grouping."
       chart={
         <LiveChart

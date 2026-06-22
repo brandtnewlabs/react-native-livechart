@@ -148,7 +148,11 @@ export default function ScrubbingScreen() {
     useState<TooltipPlacement>("side");
   const [tooltipMargin, setTooltipMargin] = useState(8);
   const [dateOnly, setDateOnly] = useState(false);
+  // Symmetric to "Date only" (drops the value row) — drops the TIME row so the
+  // pill can read value-only / time-only / both.
+  const [timeRow, setTimeRow] = useState(true);
   const [roundedTip, setRoundedTip] = useState(false);
+  const [crosshairDash, setCrosshairDash] = useState(false);
   const [dimOpacity, setDimOpacity] = useState(0.3);
   const [dotMode, setDotMode] = useState<DotMode>("default");
   const [holdToScrub, setHoldToScrub] = useState(false);
@@ -201,7 +205,11 @@ export default function ScrubbingScreen() {
           tooltipPlacement,
           tooltipMargin,
           tooltipShowValue: !dateOnly,
+          tooltipShowTime: timeRow,
           tooltipBorderRadius: roundedTip ? 16 : 5,
+          // `true` → default [4,4] dash; pass explicit [on, off] intervals for
+          // finer control. Omit / `false` → solid.
+          crosshairDash: crosshairDash ? [3, 4] : false,
           // The "Styled" toggle recolors the built-in pill + crosshair line.
           ...(styledTooltip
             ? {
@@ -305,7 +313,10 @@ export default function ScrubbingScreen() {
       <ControlRow label="Tooltip">
         {/* Date-only + rounded restyle the built-in pill; Custom render swaps in
             a brand-blue RN pill. Placement/margin apply to the custom one too. */}
+        {/* tooltipShowValue / tooltipShowTime drop a row independently — combine
+            for value-only / time-only / both. */}
         <ToggleChip label="Date only" value={dateOnly} onChange={setDateOnly} />
+        <ToggleChip label="Time row" value={timeRow} onChange={setTimeRow} />
         <ToggleChip
           label="Rounded"
           value={roundedTip}
@@ -334,6 +345,14 @@ export default function ScrubbingScreen() {
         value={dotMode}
         onChange={setDotMode}
       />
+      <ControlRow label="Crosshair">
+        {/* Dashed line via `scrub.crosshairDash` ([3,4] intervals here). */}
+        <ToggleChip
+          label="Dashed"
+          value={crosshairDash}
+          onChange={setCrosshairDash}
+        />
+      </ControlRow>
       <ControlRow label="Gesture">
         <ToggleChip
           label="Hold to scrub (250ms)"

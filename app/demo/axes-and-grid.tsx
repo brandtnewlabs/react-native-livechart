@@ -4,6 +4,7 @@ import {
   LiveChart,
   LiveChartSeries,
   type AxisLabelConfig,
+  type GridStyleConfig,
 } from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -18,6 +19,7 @@ export const options = { title: "Axes & grid" };
 type ChartKind = "single" | "multi";
 type AxisVis = "both" | "noY" | "noX" | "none";
 type GapPreset = "default" | "wide";
+type GridLineStyle = "default" | "dotted" | "solid" | "blue";
 
 const CHART_OPTIONS: { value: ChartKind; label: string }[] = [
   { value: "single", label: "LiveChart" },
@@ -36,6 +38,23 @@ const GAP_OPTIONS: { value: GapPreset; label: string }[] = [
   { value: "wide", label: "Wide minGap" },
 ];
 
+const GRID_OPTIONS: { value: GridLineStyle; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "dotted", label: "Dotted" },
+  { value: "solid", label: "Solid" },
+  { value: "blue", label: "Blue solid" },
+];
+
+// `gridStyle` is a GridStyleConfig: `intervals: [1, 3]` dashes the lines,
+// `intervals: []` forces solid; `color` / `opacity` recolor them. `undefined`
+// keeps the chart's built-in dotted default.
+const GRID_STYLES: Record<GridLineStyle, GridStyleConfig | undefined> = {
+  default: undefined,
+  dotted: { intervals: [1, 3], opacity: 0.8 },
+  solid: { intervals: [], opacity: 0.6 },
+  blue: { intervals: [], color: "rgba(96,165,250,0.5)", opacity: 1 },
+};
+
 export default function AxesGridScreen() {
   const [vis, setVis] = useState<AxisVis>("both");
   const [gap, setGap] = useState<GapPreset>("default");
@@ -43,6 +62,13 @@ export default function AxesGridScreen() {
   const [highLow, setHighLow] = useState(false);
   const [customLabel, setCustomLabel] = useState(false);
   const [flushBottom, setFlushBottom] = useState(false);
+  const [gridLine, setGridLine] = useState<GridLineStyle>("default");
+  const [edgeFade, setEdgeFade] = useState(false);
+
+  const gridStyle = GRID_STYLES[gridLine];
+  // A wider-than-default fade band (default is 40px) makes the soft left erase
+  // obvious. `undefined` keeps the chart's built-in fade.
+  const leftEdgeFade = edgeFade ? { width: 64 } : undefined;
 
   const yOn = vis !== "noY" && vis !== "none";
   const xOn = vis !== "noX" && vis !== "none";
@@ -81,7 +107,7 @@ export default function AxesGridScreen() {
   return (
     <DemoScreen
       title="Axes & grid"
-      docs="guides/theming"
+      docs="guides/axes-and-grid"
       description="Hide Y, X, or both; axis minGap; explicit insets (bottom 0 fills the plot to the edge). Toggle single vs multi chart, and Robinhood-style high/low edge labels (built-in or a custom render)."
       chart={
         which === "single" ? (
@@ -92,6 +118,8 @@ export default function AxesGridScreen() {
             theme={APP_THEME}
             yAxis={yAxis}
             xAxis={xAxis}
+            gridStyle={gridStyle}
+            leftEdgeFade={leftEdgeFade}
             insets={insets}
             scrub
             topLabel={topLabel}
@@ -104,6 +132,8 @@ export default function AxesGridScreen() {
             theme={APP_THEME}
             yAxis={yAxis}
             xAxis={xAxis}
+            gridStyle={gridStyle}
+            leftEdgeFade={leftEdgeFade}
             insets={insets}
             scrub
             topLabel={topLabel}
@@ -130,6 +160,21 @@ export default function AxesGridScreen() {
         value={gap}
         onChange={setGap}
       />
+      <ChipRow
+        label="Grid lines (gridStyle)"
+        options={GRID_OPTIONS}
+        value={gridLine}
+        onChange={setGridLine}
+      />
+      <ControlRow label="Left edge fade">
+        {/* `leftEdgeFade={{ width }}` softens the left edge so the line blends
+            into the gutter. Off here = the chart's built-in default fade. */}
+        <ToggleChip
+          label="Wide fade band"
+          value={edgeFade}
+          onChange={setEdgeFade}
+        />
+      </ControlRow>
       <ControlRow label="Axis labels">
         <ToggleChip
           label="Built-in high / low"

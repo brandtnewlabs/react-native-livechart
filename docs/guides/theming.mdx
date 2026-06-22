@@ -5,11 +5,9 @@ description: "Theme the chart with a color scheme, accent color, palette overrid
 ---
 
 <Note>
-  **Live examples:**
+  **Live example:**
   [`app/demo/theming.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/theming.tsx)
-  (colors, gradient, fonts) and
-  [`app/demo/axes-grid.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/axes-grid.tsx)
-  (axes, grid, insets) in the example app.
+  (colors, gradient, fonts) in the example app.
 </Note>
 
 <Frame caption="Light/dark themes and an accent-driven palette">
@@ -99,165 +97,6 @@ The five namespaces:
 `metrics` is available on both `LiveChart` and `LiveChartSeries`. See the
 [types reference](/api-reference/types) for the full `LiveChartMetrics` shape and every default.
 
-## Customizing the badge
-
-The value badge at the live edge is drawn in Skia, so its shape and style are
-**config knobs on `badge`** rather than a custom React element — they cost
-nothing per frame. Pass a `BadgeConfig` to reshape it:
-
-```tsx
-<LiveChart
-  data={data}
-  value={value}
-  badge={{
-    radius: 6, // square off the capsule into a rounded rect (0 = sharp corners)
-    borderColor: "#ffffff",
-    borderWidth: 1,
-    textColor: "#0f172a",
-    fontSize: 13,
-    fontWeight: "700",
-    offsetX: -2, // nudge off the live-dot / y-axis anchor
-    offsetY: 0,
-  }}
-/>
-```
-
-`radius` is clamped to the capsule (`pillHeight / 2`), which stays the maximum;
-`0` gives sharp corners. `textColor` mirrors `background` (set either or both).
-The font knobs fall back to the chart [`font`](#fonts) when omitted.
-
-<Note>
-  A badge `fontSize` larger than the chart font can crowd the reserved right
-  gutter (the badge text and y-axis labels share that space and are aligned to
-  the chart font). If a bigger badge font overflows, pair it with
-  `badge={{ position: "left" }}` or `yAxis={{ float: true }}`, which don't use
-  the gutter.
-</Note>
-
-## Grid & axes
-
-```tsx
-<LiveChart
-  data={data}
-  value={value}
-  yAxis={{ minGap: 36 }}
-  xAxis={{ minGap: 60 }}
-  gridStyle={{ color: "#1f2937", intervals: [1, 3], opacity: 0.8 }}
-/>
-```
-
-Pass `yAxis={false}` or `xAxis={false}` to hide an axis. `gridStyle.intervals` of `[]` renders
-solid grid lines.
-
-## Axis edge labels
-
-`topLabel` and `bottomLabel` float a value at the top / bottom edge of the plot — the
-Robinhood-style high/low readout. Pass `true` for the batteries-included label: the chart shows
-its current top (`topLabel`) and bottom (`bottomLabel`) Y-axis bound, formatted with the chart's
-`formatValue` and updated each frame on the UI thread.
-
-```tsx
-<LiveChart data={data} value={value} topLabel bottomLabel />
-```
-
-Both default off. Pass an [`AxisLabelConfig`](/api-reference/types#axislabelconfig) to tune the
-built-in label — `format`, `color`, `position` (`"left"` | `"right"`, default `"right"`), and the
-text `fontSize` / `fontWeight` / `fontFamily`:
-
-```tsx
-<LiveChart
-  data={data}
-  value={value}
-  topLabel={{ color: "#22d3ee", position: "left", fontSize: 14, fontWeight: "600" }}
-  bottomLabel={{ format: (v) => `$${v.toFixed(2)}` }}
-/>
-```
-
-For full control, the `render` escape hatch floats any element at the edge (it overrides the
-built-in value):
-
-```tsx
-<LiveChart
-  data={data}
-  value={value}
-  topLabel={{ render: () => <Text style={styles.highLabel}>High</Text> }}
-/>
-```
-
-### Marking the extrema points
-
-`position: "extrema"` floats the label at the **actual data point** where the value occurs instead
-of pinning it to an edge — `topLabel` tracks the highest point, `bottomLabel` the lowest. The chart
-projects the extremum's `(time, value)` to a canvas pixel each frame and positions a small dot +
-the value there on the UI thread, so it tracks the point as the chart scrolls and the Y-axis
-rescales. It's the easiest way to show **when** the high / low happened, not just what it was.
-
-```tsx
-<LiveChart
-  data={data}
-  value={value}
-  topLabel={{ position: "extrema", color: "#34d399" }}
-  bottomLabel={{ position: "extrema", color: "#f87171" }}
-/>
-```
-
-The label hides itself when the window holds no data, or when the extremum scrolls off the plot
-(the engine re-picks the visible high / low every frame). It works in **candle mode** too — the
-extrema track the highest high / lowest low.
-
-**`"extrema-edge"`** is a variant that keeps the readout on a clean rail: the value label pins to the
-top / bottom **edge** (still horizontally aligned with the extremum), and a dot marks the actual
-point, joined by a **connector** line. Good when a point-anchored label would crowd the live dot or
-sit awkwardly mid-candle.
-
-```tsx
-<LiveChart
-  data={data}
-  value={value}
-  topLabel={{ position: "extrema-edge", color: "#34d399" }}
-  // The connector is a LineStyleConfig (color, strokeWidth, intervals) — the same
-  // shape as `valueLine`. Defaults to a dashed line in the label color.
-  bottomLabel={{ position: "extrema-edge", connector: { color: "#475569", intervals: [4, 4] } }}
-/>
-```
-
-The connector defaults on (dashed) in `"extrema-edge"` mode; pass `connector: false` to drop it
-(value at the edge + dot on the point, no line), or a [`LineStyleConfig`](/api-reference/types#linestyleconfig)
-to style it. `dot: false` removes the dot.
-
-Style the built-in label without dropping to a custom render — `fontSize`, `fontWeight`,
-`fontFamily` size the value text, and `dotColor`, `dotSize`, and `dot: false` control the marker:
-
-```tsx
-<LiveChart
-  data={data}
-  value={value}
-  topLabel={{
-    position: "extrema",
-    color: "#34d399",
-    fontSize: 14,
-    fontWeight: "700",
-    dotSize: 10,        // or dotColor: "#fff", or dot: false for a dotless label
-  }}
-/>
-```
-
-(`fontSize` / `fontWeight` / `fontFamily` style the edge `"left"` / `"right"` labels too; the
-`dot*` knobs are `"extrema"`-only.) For anything beyond that, a custom `render` is centered over the
-point instead of the built-in dot + value — you own the chrome:
-
-```tsx
-<LiveChart
-  data={data}
-  value={value}
-  topLabel={{ position: "extrema", render: () => <PeakTag /> }}
-/>
-```
-
-The same props work on [`LiveChartSeries`](/api-reference/livechart-series#axis-labels), where the
-bounds track the combined range of the visible series (and `"extrema"` marks the global high / low
-across them). The labels are display-only (`pointerEvents="none"`), so they never block scrubbing.
-
 ## Fonts
 
 Chart text (axes, badges, tooltips) uses the `font` prop. Point it at a system family, or load a
@@ -277,16 +116,8 @@ custom typeface from a Metro asset:
 
 For multiple weights, register a Skia font manager (`useFonts`) and pass it as `font.fontManager`.
 
-## Spacing
-
-Adjust the drawing area with `insets` (`top`, `right`, `bottom`, `left`) and soften the left edge
-with `leftEdgeFade`.
-
-```tsx
-<LiveChart
-  data={data}
-  value={value}
-  insets={{ top: 12, bottom: 28, left: 12 }}
-  leftEdgeFade={{ width: 40 }}
-/>
-```
+<Note>
+  Shaping the live-edge value pill, the grid and axes, or the high / low edge labels has moved to
+  its own guide — see [Badge styling](/guides/badge-styling), [Axes & grid](/guides/axes-and-grid),
+  and [Extrema labels](/guides/extrema-labels).
+</Note>
