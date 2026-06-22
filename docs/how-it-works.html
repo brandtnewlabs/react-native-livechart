@@ -4,28 +4,31 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>react-native-livechart — How it works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #070b12;
-    --bg-2: #0b111c;
-    --panel: #111a28;
-    --panel-2: #16202f;
-    --line: rgba(255,255,255,0.07);
-    --line-2: rgba(255,255,255,0.12);
-    --text: #e7eef6;
-    --muted: #8b9bb0;
-    --muted-2: #5e6e84;
-    --up: #2ebd85;
-    --up-glow: rgba(46,189,133,0.35);
-    --down: #f6465d;
-    --down-glow: rgba(246,70,93,0.30);
-    --accent: #4dabf7;
-    --accent-2: #00e0ff;
-    --purple: #b18cff;
-    --gold: #f5c451;
+    --bg: #ffffff;
+    --bg-2: #fafafa;          /* zinc-50  */
+    --panel: #ffffff;
+    --panel-2: #f4f4f5;       /* zinc-100 */
+    --line: #e4e4e7;          /* zinc-200 */
+    --line-2: #d4d4d8;        /* zinc-300 */
+    --text: #18181b;          /* zinc-900 */
+    --muted: #52525b;         /* zinc-600 */
+    --muted-2: #a1a1aa;       /* zinc-400 */
+    --up: #16a34a;            /* green-600 */
+    --up-glow: rgba(34,197,94,0.30);
+    --down: #dc2626;          /* red-600  */
+    --down-glow: rgba(239,68,68,0.28);
+    --accent: #3323e6;        /* indigo primary */
+    --accent-2: #5c4feb;      /* indigo light   */
+    --purple: #8b5cf6;        /* violet-500 */
+    --gold: #f59e0b;          /* amber-500  */
     --radius: 16px;
-    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", "Fira Code", Menlo, monospace;
+    --sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
   }
 
   * { box-sizing: border-box; }
@@ -33,8 +36,8 @@
   body {
     margin: 0;
     background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(77,171,247,0.10), transparent 60%),
-      radial-gradient(900px 500px at -10% 10%, rgba(177,140,255,0.08), transparent 55%),
+      radial-gradient(1200px 600px at 80% -10%, rgba(51,35,230,0.06), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(139,92,246,0.05), transparent 55%),
       var(--bg);
     color: var(--text);
     font-family: var(--sans);
@@ -48,7 +51,7 @@
   nav {
     position: sticky; top: 0; z-index: 50;
     backdrop-filter: blur(14px);
-    background: rgba(7,11,18,0.72);
+    background: rgba(255,255,255,0.78);
     border-bottom: 1px solid var(--line);
   }
   .nav-inner {
@@ -70,9 +73,9 @@
   section { max-width: 1180px; margin: 0 auto; padding: 64px 24px; }
   .section-tag {
     display: inline-block; font-family: var(--mono); font-size: 12px;
-    color: var(--accent-2); letter-spacing: 0.12em; text-transform: uppercase;
-    padding: 4px 10px; border: 1px solid rgba(0,224,255,0.25); border-radius: 999px;
-    margin-bottom: 18px; background: rgba(0,224,255,0.05);
+    color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 4px 10px; border: 1px solid rgba(51,35,230,0.25); border-radius: 999px;
+    margin-bottom: 18px; background: rgba(51,35,230,0.06);
   }
   h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.05; letter-spacing: -0.03em; margin: 0 0 18px; font-weight: 800; }
   h2 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -0.02em; margin: 0 0 14px; font-weight: 750; }
@@ -80,7 +83,7 @@
   p.lead { font-size: 18px; color: var(--muted); max-width: 720px; }
   .muted { color: var(--muted); }
   .grad-text {
-    background: linear-gradient(100deg, var(--up), var(--accent-2) 55%, var(--accent));
+    background: linear-gradient(100deg, var(--accent), var(--accent-2) 55%, var(--purple));
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   }
 
@@ -90,7 +93,7 @@
     border-radius: var(--radius);
     padding: 22px;
   }
-  .glow-border { box-shadow: 0 0 0 1px rgba(77,171,247,0.10), 0 24px 60px -30px rgba(0,224,255,0.25); }
+  .glow-border { box-shadow: 0 0 0 1px rgba(51,35,230,0.08), 0 24px 60px -30px rgba(51,35,230,0.22); }
 
   code, .mono { font-family: var(--mono); }
   .chip {
@@ -105,11 +108,11 @@
 
   .chart-card {
     position: relative;
-    background: linear-gradient(180deg, #0d1726, #0a0f1a);
-    border: 1px solid var(--line-2);
+    background: var(--panel);
+    border: 1px solid var(--line);
     border-radius: 20px;
     padding: 16px;
-    box-shadow: 0 40px 90px -40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.04);
+    box-shadow: 0 1px 2px rgba(24,24,27,0.04), 0 18px 40px -24px rgba(24,24,27,0.18);
   }
   .chart-canvas-wrap { position: relative; width: 100%; }
   canvas { display: block; width: 100%; border-radius: 12px; }
@@ -137,7 +140,7 @@
     padding: 16px 14px; transition: all .2s; color: inherit; font: inherit;
   }
   .stage:hover { border-color: var(--line-2); transform: translateY(-3px); }
-  .stage.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 20px 40px -24px var(--accent); background: var(--panel-2); }
+  .stage.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 18px 36px -24px rgba(51,35,230,0.30); background: var(--panel-2); }
   .stage .num { font-family: var(--mono); font-size: 12px; color: var(--accent-2); }
   .stage .ico { font-size: 22px; margin: 6px 0; }
   .stage h4 { margin: 0; font-size: 15px; }
@@ -184,7 +187,7 @@
     transition: all .15s;
   }
   .toggle:hover { border-color: var(--line-2); color: var(--text); }
-  .toggle.on { color: var(--text); border-color: var(--accent); background: rgba(77,171,247,0.10); }
+  .toggle.on { color: var(--text); border-color: var(--accent); background: rgba(51,35,230,0.08); }
   .toggle .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted-2); transition: all .15s; }
   .toggle.on .dot { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
 
@@ -213,10 +216,10 @@
   .node:hover { color: var(--text); border-color: var(--line-2); transform: translateY(-2px); }
   .node .tip {
     position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-    background: #04070d; border: 1px solid var(--line-2); border-radius: 8px;
+    background: #ffffff; border: 1px solid var(--line-2); border-radius: 8px;
     padding: 8px 11px; font-family: var(--sans); font-size: 12px; color: var(--text);
     width: max-content; max-width: 240px; opacity: 0; pointer-events: none; transition: opacity .15s;
-    z-index: 5; box-shadow: 0 16px 40px -16px #000;
+    z-index: 5; box-shadow: 0 16px 40px -16px rgba(24,24,27,0.25);
   }
   .node:hover .tip { opacity: 1; }
 
@@ -235,10 +238,10 @@
     font: inherit; font-size: 13px; font-weight: 550; cursor: pointer;
     background: transparent; border: 0; color: var(--muted); padding: 7px 14px; border-radius: 8px; transition: all .15s;
   }
-  .pill-tabs button.on { background: var(--accent); color: #05121f; }
+  .pill-tabs button.on { background: var(--accent); color: #fff; }
 
   .callout {
-    border-left: 3px solid var(--gold); background: rgba(245,196,81,0.06);
+    border-left: 3px solid var(--gold); background: rgba(245,158,11,0.08);
     padding: 12px 16px; border-radius: 0 10px 10px 0; font-size: 14px; color: var(--muted);
     margin-top: 16px;
   }
@@ -260,8 +263,8 @@
     <div class="brand">
       <svg class="spark" viewBox="0 0 52 36" fill="none">
         <path d="M2 26 L12 22 L20 27 L30 9 L40 17 L50 6" stroke="url(#g)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="50" cy="6" r="4" fill="#2ebd85"/>
-        <defs><linearGradient id="g" x1="0" y1="0" x2="52" y2="0"><stop stop-color="#4dabf7"/><stop offset="1" stop-color="#2ebd85"/></linearGradient></defs>
+        <circle cx="50" cy="6" r="4" fill="#22c55e"/>
+        <defs><linearGradient id="g" x1="0" y1="0" x2="52" y2="0"><stop stop-color="#3323e6"/><stop offset="1" stop-color="#5c4feb"/></linearGradient></defs>
       </svg>
       <span>react-native-livechart</span>
     </div>
@@ -380,7 +383,7 @@
         The raw value <em>jumps</em> when new data arrives. <code>displayValue</code> chases it with a frame-rate-independent
         ease. This is the library's actual formula:
       </p>
-      <pre style="font-family:var(--mono);font-size:12.5px;background:#04070d;border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;color:var(--muted)"><span style="color:var(--purple)">const</span> factor = 1 - Math.pow(1 - <span style="color:var(--accent-2)">speed</span>, dt / 16.67);
+      <pre style="font-family:var(--mono);font-size:12.5px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;color:var(--muted)"><span style="color:var(--purple)">const</span> factor = 1 - Math.pow(1 - <span style="color:var(--accent-2)">speed</span>, dt / 16.67);
 displayValue += (target - displayValue) * factor;</pre>
       <div class="lerp-stage"><canvas id="lerp-canvas"></canvas></div>
       <div class="slider-row">
@@ -480,7 +483,7 @@ displayValue += (target - displayValue) * factor;</pre>
     UI thread, and React is kept out of the hot path entirely.</b>
   </p>
 
-  <div class="callout" style="border-left-color:var(--accent-2);background:rgba(0,224,255,0.06);margin-top:20px">
+  <div class="callout" style="border-left-color:var(--accent);background:rgba(51,35,230,0.06);margin-top:20px">
     <b style="color:var(--accent-2)">The property that matters when you embed it in a busy app:</b>
     after mount, the JS thread is essentially idle. The chart keeps animating at 60&nbsp;fps <i>even while JS is
     busy</i> — navigation transitions, data fetches, list rendering, your own business logic. The animation never
@@ -771,9 +774,9 @@ function pickInterval(valRange, pxPerUnit, minGap, prev) {
 }
 
 const COL = {
-  up: '#2ebd85', down: '#f6465d', accent: '#4dabf7', accent2: '#00e0ff',
-  gold: '#f5c451', purple: '#b18cff', muted: '#8b9bb0', grid: 'rgba(255,255,255,0.055)',
-  text: '#e7eef6'
+  up: '#16a34a', down: '#dc2626', accent: '#3323e6', accent2: '#5c4feb',
+  gold: '#f59e0b', purple: '#8b5cf6', muted: '#71717a', grid: 'rgba(24,24,27,0.07)',
+  text: '#18181b'
 };
 
 /* ============================================================
@@ -969,7 +972,7 @@ class LiveChartSim {
       const interval = pickInterval(vMax - vMin, plotH / (vMax - vMin || 1), 36, this._gridPrev);
       this._gridPrev = interval;
       const start = Math.ceil(vMin / interval) * interval;
-      ctx.font = '11px ui-monospace, monospace';
+      ctx.font = '11px "JetBrains Mono", ui-monospace, monospace';
       ctx.textBaseline = 'middle';
       for (let v = start; v <= vMax; v += interval) {
         const y = Y(v);
@@ -987,7 +990,7 @@ class LiveChartSim {
     // reference line
     if (o.refLine) {
       const y = Y(o.base);
-      ctx.strokeStyle = 'rgba(245,196,81,0.5)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(245,158,11,0.5)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -1041,7 +1044,7 @@ class LiveChartSim {
 
     // trade stream
     if (o.tradeStream) {
-      ctx.font = '10px ui-monospace, monospace'; ctx.textAlign = 'left';
+      ctx.font = '10px "JetBrains Mono", ui-monospace, monospace'; ctx.textAlign = 'left';
       for (const tr of this.trades) {
         const ty = padT + tr.y * plotH;
         ctx.globalAlpha = Math.max(0, Math.min(1, tr.life));
@@ -1082,13 +1085,13 @@ class LiveChartSim {
     // badge
     if (o.badge) {
       const txt = this.displayValue.toFixed(2);
-      ctx.font = '600 12px ui-monospace, monospace';
+      ctx.font = '600 12px "JetBrains Mono", ui-monospace, monospace';
       const tw = ctx.measureText(txt).width;
       let bx = livePx + 12, by = livePy;
       if (bx + tw + 16 > padL + plotW + padR) bx = livePx - tw - 28;
       roundRect(ctx, bx, by - 11, tw + 16, 22, 6);
       ctx.fillStyle = lineCol; ctx.fill();
-      ctx.fillStyle = '#06121d'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.fillText(txt, bx + 8, by + 0.5);
     }
 
@@ -1101,11 +1104,11 @@ class LiveChartSim {
       ctx.beginPath(); ctx.arc(sx, sy, 4.5, 0, 7); ctx.fillStyle = COL.text; ctx.fill();
       // tooltip
       const txt = scrubVal.toFixed(2);
-      ctx.font = '600 12px ui-monospace, monospace';
+      ctx.font = '600 12px "JetBrains Mono", ui-monospace, monospace';
       const tw = ctx.measureText(txt).width;
       let tx = sx + 10; if (tx + tw + 14 > padL + plotW) tx = sx - tw - 24;
       roundRect(ctx, tx, padT + 4, tw + 14, 22, 6);
-      ctx.fillStyle = '#04070d'; ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fill();
       ctx.strokeStyle = hexA(COL.text, 0.2); ctx.lineWidth = 1; roundRect(ctx, tx, padT + 4, tw + 14, 22, 6); ctx.stroke();
       ctx.fillStyle = COL.text; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.fillText(txt, tx + 7, padT + 15);
@@ -1204,20 +1207,20 @@ function bridgeDiagram(canvasId, bad) {
     const mid = (x0 + x1) / 2;
     // bridge zone
     if (bad) {
-      ctx.fillStyle = 'rgba(246,70,93,0.07)';
+      ctx.fillStyle = 'rgba(239,68,68,0.08)';
       roundRect(ctx, mid - 34, 18, 68, h - 36, 8); ctx.fill();
-      ctx.fillStyle = COL.down; ctx.font = '10px ui-monospace'; ctx.textAlign = 'center';
+      ctx.fillStyle = COL.down; ctx.font = '10px "JetBrains Mono", ui-monospace, monospace'; ctx.textAlign = 'center';
       ctx.fillText('BRIDGE', mid, 30);
     }
     // track
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(24,24,27,0.10)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x0, laneY); ctx.lineTo(x1, laneY); ctx.stroke();
     // end nodes
     [[x0, nodeL], [x1, nodeR]].forEach(([x, label]) => {
-      ctx.fillStyle = bad ? '#1a2433' : 'rgba(46,189,133,0.12)';
+      ctx.fillStyle = bad ? '#f4f4f5' : 'rgba(34,197,94,0.12)';
       roundRect(ctx, x - 26, laneY - 16, 52, 32, 8); ctx.fill();
-      ctx.strokeStyle = bad ? 'rgba(255,255,255,0.1)' : COL.up; ctx.lineWidth = 1; roundRect(ctx, x - 26, laneY - 16, 52, 32, 8); ctx.stroke();
-      ctx.fillStyle = COL.text; ctx.font = '600 11px var(--sans), sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.strokeStyle = bad ? 'rgba(24,24,27,0.12)' : COL.up; ctx.lineWidth = 1; roundRect(ctx, x - 26, laneY - 16, 52, 32, 8); ctx.stroke();
+      ctx.fillStyle = COL.text; ctx.font = '600 11px "Plus Jakarta Sans", -apple-system, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(label, x, laneY);
     });
     // spawn packets
@@ -1318,12 +1321,12 @@ renderStages();
     const { ctx, w, h } = fitCanvas(canvas, 64);
     ctx.clearRect(0, 0, w, h);
     const y = h / 2, x0 = 40, x1 = w - 40;
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(24,24,27,0.08)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
     // stage ticks
     for (let i = 0; i < 5; i++) {
       const x = x0 + (x1 - x0) * (i / 4);
-      ctx.fillStyle = i === activeStage ? COL.accent2 : 'rgba(255,255,255,0.25)';
+      ctx.fillStyle = i === activeStage ? COL.accent2 : 'rgba(24,24,27,0.20)';
       ctx.beginPath(); ctx.arc(x, y, i === activeStage ? 5 : 3, 0, 7); ctx.fill();
     }
     spawnT -= dt; if (spawnT <= 0) { spawnT = 0.7; packets.push({ p: 0 }); }
@@ -1390,17 +1393,17 @@ renderStages();
     for (let i = 0; i < N; i++) {
       const x = 16 + (w - 32) * (i / (N - 1));
       const inWin = x >= 16 + (w - 32) * cutoff;
-      ctx.fillStyle = inWin ? COL.accent2 : 'rgba(255,255,255,0.18)';
+      ctx.fillStyle = inWin ? COL.accent2 : 'rgba(24,24,27,0.18)';
       ctx.beginPath(); ctx.arc(x, y + Math.sin(i * 0.7 + scrollT) * 8, inWin ? 4 : 3, 0, 7); ctx.fill();
     }
     // window edge
     const ex = 16 + (w - 32) * cutoff;
     ctx.strokeStyle = COL.gold; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
     ctx.beginPath(); ctx.moveTo(ex, 6); ctx.lineTo(ex, h - 6); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = COL.gold; ctx.font = '10px ui-monospace'; ctx.textAlign = 'left';
+    ctx.fillStyle = COL.gold; ctx.font = '10px "JetBrains Mono", ui-monospace, monospace'; ctx.textAlign = 'left';
     ctx.fillText('first visible →', ex + 6, 14);
     // shaded visible zone
-    ctx.fillStyle = 'rgba(0,224,255,0.05)'; ctx.fillRect(ex, 0, w - ex - 8, h);
+    ctx.fillStyle = 'rgba(51,35,230,0.06)'; ctx.fillRect(ex, 0, w - ex - 8, h);
   });
 })();
 
@@ -1427,18 +1430,18 @@ renderStages();
     ctx.clearRect(0, 0, w, h);
     const Y = (v) => 8 + (1 - v) * (h - 16);
     // display band
-    ctx.fillStyle = 'rgba(77,171,247,0.08)';
+    ctx.fillStyle = 'rgba(51,35,230,0.08)';
     ctx.fillRect(0, Y(dMaxD), w, Y(dMinD) - Y(dMaxD));
     [['displayMax', dMaxD, COL.accent], ['displayMin', dMinD, COL.accent]].forEach(([l, v, c]) => {
       ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, Y(v)); ctx.lineTo(w, Y(v)); ctx.stroke();
-      ctx.fillStyle = c; ctx.font = '9px ui-monospace'; ctx.textAlign = 'left'; ctx.fillText(l, 6, Y(v) - 4);
+      ctx.fillStyle = c; ctx.font = '9px "JetBrains Mono", ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillText(l, 6, Y(v) - 4);
     });
     // data band
     [['data max', dataMax], ['data min', dataMin]].forEach(([l, v]) => {
       ctx.strokeStyle = COL.gold; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
       ctx.beginPath(); ctx.moveTo(0, Y(v)); ctx.lineTo(w, Y(v)); ctx.stroke(); ctx.setLineDash([]);
     });
-    ctx.fillStyle = COL.gold; ctx.textAlign = 'right'; ctx.font = '9px ui-monospace';
+    ctx.fillStyle = COL.gold; ctx.textAlign = 'right'; ctx.font = '9px "JetBrains Mono", ui-monospace, monospace';
     ctx.fillText('data range', w - 6, Y(dataMax) - 4);
   });
 })();
@@ -1538,7 +1541,7 @@ renderStages();
     ys.forEach((y, i) => pts.push(padL + (i / (ys.length - 1)) * plotW, padT + (1 - y) * plotH));
     // overshoot reference band (data envelope)
     let ymin = Math.min(...ys), ymax = Math.max(...ys);
-    ctx.strokeStyle = 'rgba(246,70,93,0.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = 'rgba(239,68,68,0.28)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
     ctx.beginPath(); ctx.moveTo(padL, padT + (1 - ymax) * plotH); ctx.lineTo(padL + plotW, padT + (1 - ymax) * plotH); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(padL, padT + (1 - ymin) * plotH); ctx.lineTo(padL + plotW, padT + (1 - ymin) * plotH); ctx.stroke();
     ctx.setLineDash([]);
@@ -1673,7 +1676,7 @@ pv.addEventListener('input', () => { playSim.opts.volatility = +pv.value; pvv.te
       // dot + label
       const lx = pts[pts.length - 2], ly = pts[pts.length - 1];
       ctx.beginPath(); ctx.arc(lx, ly, 3.4, 0, 7); ctx.fillStyle = s.color; ctx.fill();
-      ctx.font = '600 10px ui-monospace'; ctx.fillStyle = s.color; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.font = '600 10px "JetBrains Mono", ui-monospace, monospace'; ctx.fillStyle = s.color; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       ctx.fillText(s.v.toFixed(1), Math.min(lx - 6, padL + plotW - 4), ly - 8);
       ctx.globalAlpha = 1;
     });
