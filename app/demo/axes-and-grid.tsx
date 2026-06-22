@@ -5,6 +5,7 @@ import {
   LiveChartSeries,
   type AxisLabelConfig,
   type GridStyleConfig,
+  type YAxisConfig,
 } from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -19,6 +20,7 @@ export const options = { title: "Axes & grid" };
 type ChartKind = "single" | "multi";
 type AxisVis = "both" | "noY" | "noX" | "none";
 type GapPreset = "default" | "wide";
+type YCountPreset = "auto" | "3" | "5" | "7";
 type GridLineStyle = "default" | "dotted" | "solid" | "blue";
 
 const CHART_OPTIONS: { value: ChartKind; label: string }[] = [
@@ -36,6 +38,13 @@ const VIS_OPTIONS: { value: AxisVis; label: string }[] = [
 const GAP_OPTIONS: { value: GapPreset; label: string }[] = [
   { value: "default", label: "Default" },
   { value: "wide", label: "Wide minGap" },
+];
+
+const Y_COUNT_OPTIONS: { value: YCountPreset; label: string }[] = [
+  { value: "auto", label: "Auto" },
+  { value: "3", label: "3 prices" },
+  { value: "5", label: "5 prices" },
+  { value: "7", label: "7 prices" },
 ];
 
 const GRID_OPTIONS: { value: GridLineStyle; label: string }[] = [
@@ -58,6 +67,7 @@ const GRID_STYLES: Record<GridLineStyle, GridStyleConfig | undefined> = {
 export default function AxesGridScreen() {
   const [vis, setVis] = useState<AxisVis>("both");
   const [gap, setGap] = useState<GapPreset>("default");
+  const [yCount, setYCount] = useState<YCountPreset>("auto");
   const [which, setWhich] = useState<ChartKind>("single");
   const [highLow, setHighLow] = useState(false);
   const [customLabel, setCustomLabel] = useState(false);
@@ -73,7 +83,17 @@ export default function AxesGridScreen() {
   const yOn = vis !== "noY" && vis !== "none";
   const xOn = vis !== "noX" && vis !== "none";
 
-  const yAxis = !yOn ? false : gap === "wide" ? { minGap: 72 } : true;
+  // `count` shows a fixed number of evenly-spaced prices (high→low) instead of
+  // the dynamic nice-interval grid; `minGap` still acts as a floor on spacing.
+  const yCountVal = yCount === "auto" ? 0 : Number(yCount);
+  const yAxisCfg: YAxisConfig = {};
+  if (gap === "wide") yAxisCfg.minGap = 72;
+  if (yCountVal > 0) yAxisCfg.count = yCountVal;
+  const yAxis = !yOn
+    ? false
+    : Object.keys(yAxisCfg).length > 0
+      ? yAxisCfg
+      : true;
   const xAxis = !xOn ? false : gap === "wide" ? { minGap: 100 } : true;
 
   // An explicit inset overrides the auto-padding — including the live-dot pulse's
@@ -108,7 +128,7 @@ export default function AxesGridScreen() {
     <DemoScreen
       title="Axes & grid"
       docs="guides/axes-and-grid"
-      description="Hide Y, X, or both; axis minGap; explicit insets (bottom 0 fills the plot to the edge). Toggle single vs multi chart, and Robinhood-style high/low edge labels (built-in or a custom render)."
+      description="Hide Y, X, or both; axis minGap; a fixed Y-axis price count; explicit insets (bottom 0 fills the plot to the edge). Toggle single vs multi chart, and Robinhood-style high/low edge labels (built-in or a custom render)."
       chart={
         which === "single" ? (
           <LiveChart
@@ -159,6 +179,12 @@ export default function AxesGridScreen() {
         options={GAP_OPTIONS}
         value={gap}
         onChange={setGap}
+      />
+      <ChipRow
+        label="Fixed Y price count"
+        options={Y_COUNT_OPTIONS}
+        value={yCount}
+        onChange={setYCount}
       />
       <ChipRow
         label="Grid lines (gridStyle)"

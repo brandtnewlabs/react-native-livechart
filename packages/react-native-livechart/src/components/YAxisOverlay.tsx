@@ -5,7 +5,7 @@ import {
   type SkFont,
 } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import { BADGE_METRICS_DEFAULTS } from "../constants";
+import { BADGE_METRICS_DEFAULTS, MAX_Y_LABELS } from "../constants";
 import type { ResolvedGridStyleConfig } from "../core/resolveConfig";
 import type { YAxisEntry } from "../draw/grid";
 import {
@@ -21,7 +21,6 @@ import type { BadgeMetrics, LiveChartPalette } from "../types";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import { AnimatedLabel } from "./AnimatedLabel";
 
-const MAX_Y_LABELS = 15;
 /** Right margin (px) for floating labels — keeps them just off the canvas edge. */
 const FLOAT_LABEL_RIGHT_MARGIN = 6;
 

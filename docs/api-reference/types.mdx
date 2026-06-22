@@ -341,6 +341,10 @@ interface SelectionDotConfig {
 interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }
 interface YAxisConfig {
   minGap?: number; // min px gap between grid lines; default 36
+  // Show a fixed number of evenly-spaced prices (top = high, bottom = low)
+  // instead of the dynamic nice-interval grid. Values track the live range each
+  // frame. `minGap` still floors the spacing; clamped to at most 15. Default 0.
+  count?: number;
   // Float the price axis over a full-width plot instead of reserving a right
   // gutter — the line/candles run to the edge and the labels float on top.
   // Pairs with `timeScroll` (see the Time-scroll guide). Default false. @experimental

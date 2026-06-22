@@ -10,6 +10,13 @@ import type {
 export const MS_PER_FRAME_60FPS = 16.67;
 
 /**
+ * Size of the pre-allocated Y-axis label pool — the most price labels the axis
+ * ever renders at once. Caps both the dynamic (nice-interval) grid and the
+ * fixed-`count` mode (see {@link YAxisConfig.count}).
+ */
+export const MAX_Y_LABELS = 15;
+
+/**
  * Default press-and-hold (ms) before scrub engages in the `holdToScrub`
  * time-scroll mode, so a quick one-finger drag scrolls instead. Overridden by
  * `timeScroll.scrubHoldMs`, then `scrub.panGestureDelay`. Shared by `LiveChart`

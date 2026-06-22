@@ -1,4 +1,4 @@
-import { GRID_METRICS_DEFAULTS } from "../constants";
+import { GRID_METRICS_DEFAULTS, MAX_Y_LABELS } from "../constants";
 import { lerp } from "../math/lerp";
 import type { GridMetrics } from "../types";
 
@@ -6,6 +6,43 @@ export interface YAxisEntry {
   y: number;
   label: string;
   alpha: number;
+}
+
+/**
+ * Fixed-count Y-axis: place exactly `count` price labels evenly **in pixels**
+ * across the plot band — top = `displayMax`, bottom = `displayMin`. Values track
+ * the live range each frame (no nice-number rounding), so the label count stays
+ * constant while data streams in.
+ *
+ * `minGap` is a floor: the count drops to what fits when the plot is too short
+ * to space `count` labels at least `minGap` px apart. Clamped to
+ * `[2, MAX_Y_LABELS]`. Every entry is fully opaque — there's no per-line fade
+ * because the count (and thus each line's pixel slot) doesn't change.
+ */
+export function fixedGridEntries(
+  displayMax: number,
+  valRange: number,
+  chartH: number,
+  padTop: number,
+  count: number,
+  minGap: number,
+  formatValue: (v: number) => string,
+): YAxisEntry[] {
+  "worklet";
+  // minGap floor: at most `floor(chartH / minGap)` gaps fit ⇒ that many + 1 labels.
+  const maxFit = Math.floor(chartH / minGap) + 1;
+  let n = Math.min(count, maxFit, MAX_Y_LABELS);
+  if (n < 2) n = 2;
+
+  const stepPx = chartH / (n - 1);
+  const stepVal = valRange / (n - 1);
+  const entries: YAxisEntry[] = [];
+  for (let i = 0; i < n; i++) {
+    const y = padTop + i * stepPx;
+    const val = displayMax - i * stepVal;
+    entries.push({ y, label: formatValue(val), alpha: 1 });
+  }
+  return entries;
 }
 
 /**
@@ -94,6 +131,7 @@ export function computeGridEntries(
   dt: number,
   minGap = 36,
   grid: GridMetrics = GRID_METRICS_DEFAULTS,
+  count = 0,
 ): { entries: YAxisEntry[]; interval: number } {
   "worklet";
   const chartH = canvasHeight - padTop - padBottom;
@@ -101,6 +139,25 @@ export function computeGridEntries(
 
   const valRange = displayMax - displayMin;
   if (valRange <= 0) return { entries: [], interval: prevInterval };
+
+  // Fixed-count mode bypasses nice-interval picking and per-line fading. Leave
+  // `prevInterval`/`labelAlphas` untouched so toggling back to the dynamic grid
+  // resumes cleanly. Needs at least 2 labels (a high/low pair) to be meaningful;
+  // count of 0 or 1 falls through to the dynamic nice-interval grid.
+  if (count >= 2) {
+    return {
+      entries: fixedGridEntries(
+        displayMax,
+        valRange,
+        chartH,
+        padTop,
+        count,
+        minGap,
+        formatValue,
+      ),
+      interval: prevInterval,
+    };
+  }
 
   const pxPerUnit = chartH / valRange;
 

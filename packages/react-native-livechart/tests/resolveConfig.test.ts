@@ -192,15 +192,36 @@ describe("resolveYAxis", () => {
   });
 
   it("returns defaults for true", () => {
-    expect(resolveYAxis(true)).toEqual({ minGap: 36, float: false });
+    expect(resolveYAxis(true)).toEqual({ minGap: 36, count: 0, float: false });
   });
 
   it("merges partial config with defaults", () => {
-    expect(resolveYAxis({ minGap: 48 })).toEqual({ minGap: 48, float: false });
+    expect(resolveYAxis({ minGap: 48 })).toEqual({
+      minGap: 48,
+      count: 0,
+      float: false,
+    });
   });
 
   it("carries through the float flag", () => {
-    expect(resolveYAxis({ float: true })).toEqual({ minGap: 36, float: true });
+    expect(resolveYAxis({ float: true })).toEqual({
+      minGap: 36,
+      count: 0,
+      float: true,
+    });
+  });
+
+  it("carries through a fixed count", () => {
+    expect(resolveYAxis({ count: 5 })).toEqual({
+      minGap: 36,
+      count: 5,
+      float: false,
+    });
+  });
+
+  it("normalizes count to a non-negative integer", () => {
+    expect(resolveYAxis({ count: 4.8 })?.count).toBe(4);
+    expect(resolveYAxis({ count: -3 })?.count).toBe(0);
   });
 });
 

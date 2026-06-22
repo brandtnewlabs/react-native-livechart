@@ -1,4 +1,9 @@
-import { computeGridEntries, fineLineTargetAlpha, pickInterval } from "../../src/draw/grid";
+import {
+  computeGridEntries,
+  fineLineTargetAlpha,
+  fixedGridEntries,
+  pickInterval,
+} from "../../src/draw/grid";
 
 describe("fineLineTargetAlpha", () => {
   it("maps fine pixel spacing to 0, blend, and 1 bands (default minGap)", () => {
@@ -159,6 +164,74 @@ describe("computeGridEntries", () => {
     expect(r.entries.length).toBeGreaterThan(0);
     // Phase-1 stops emitting targets past the cap (would be ~2000 uncapped).
     expect(Object.keys(alphas).length).toBeLessThanOrEqual(1000);
+  });
+});
+
+describe("fixedGridEntries", () => {
+  const fmt = (v: number) => v.toFixed(2);
+
+  it("places exactly `count` evenly-spaced labels spanning high→low", () => {
+    // 400px plot, 36px minGap → maxFit 12, so count of 5 is honored exactly.
+    const entries = fixedGridEntries(100, 100, 400, 12, 5, 36, fmt);
+    expect(entries).toHaveLength(5);
+    // Top label = displayMax at padTop, bottom = displayMin at padTop + chartH.
+    expect(entries[0]).toEqual({ y: 12, label: "100.00", alpha: 1 });
+    expect(entries[4]).toEqual({ y: 412, label: "0.00", alpha: 1 });
+    // Even pixel + value steps between adjacent labels.
+    expect(entries[1].y - entries[0].y).toBeCloseTo(100);
+    expect(entries[2].label).toBe("50.00");
+  });
+
+  it("reduces the count when minGap won't fit all labels (floor)", () => {
+    // 100px plot, 50px minGap → at most 2 gaps... floor(100/50)+1 = 3 labels.
+    const entries = fixedGridEntries(100, 100, 100, 0, 10, 50, fmt);
+    expect(entries).toHaveLength(3);
+  });
+
+  it("never drops below 2 labels even on a tiny plot", () => {
+    const entries = fixedGridEntries(100, 100, 10, 0, 8, 36, fmt);
+    expect(entries).toHaveLength(2);
+  });
+
+  it("caps the count at the label pool size (15)", () => {
+    const entries = fixedGridEntries(100, 100, 100000, 0, 50, 1, fmt);
+    expect(entries).toHaveLength(15);
+  });
+});
+
+describe("computeGridEntries fixed-count mode", () => {
+  const fmt = (v: number) => v.toFixed(0);
+
+  it("returns fixed equidistant entries and leaves interval untouched", () => {
+    const alphas: Record<number, number> = {};
+    const r = computeGridEntries(
+      0,
+      100,
+      400,
+      12,
+      28,
+      7, // prevInterval — must survive untouched in fixed mode
+      alphas,
+      fmt,
+      16.67,
+      36,
+      undefined,
+      4,
+    );
+    expect(r.entries).toHaveLength(4);
+    expect(r.entries.every((e) => e.alpha === 1)).toBe(true);
+    expect(r.interval).toBe(7);
+    // Fixed mode must not seed the value-keyed fade map.
+    expect(Object.keys(alphas)).toHaveLength(0);
+  });
+
+  it("falls through to the dynamic grid for count < 2", () => {
+    // count of 1 isn't a meaningful fixed axis (needs a high/low pair), so it
+    // must take the dynamic nice-interval path — which seeds the fade map —
+    // rather than the fixed path (which leaves it empty).
+    const alphas: Record<number, number> = {};
+    computeGridEntries(0, 100, 400, 12, 28, 0, alphas, fmt, 16.67, 36, undefined, 1);
+    expect(Object.keys(alphas).length).toBeGreaterThan(0);
   });
 });
 

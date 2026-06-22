@@ -29,6 +29,20 @@ description: "Tune the grid lines, hide or space the axes, float edge labels, an
 Pass `yAxis={false}` or `xAxis={false}` to hide an axis. `gridStyle.intervals` of `[]` renders
 solid grid lines.
 
+## Fixed Y-axis price count
+
+By default the Y axis picks a dynamic number of "nice"-value grid lines from `minGap`. Pass
+`yAxis={{ count }}` to instead show a **fixed** number of prices, spaced evenly down the plot —
+top label = current high, bottom = current low. The count stays constant as data streams in;
+the values track the live range each frame (they aren't rounded to nice numbers).
+
+```tsx
+<LiveChart data={data} value={value} yAxis={{ count: 5 }} />
+```
+
+`minGap` still acts as a floor: if `count` labels won't fit at least `minGap` px apart, the count
+drops to what fits. The count is clamped to at most 15.
+
 ## Axis edge labels
 
 `topLabel` and `bottomLabel` float a value at the top / bottom edge of the plot — the
