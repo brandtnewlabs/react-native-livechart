@@ -152,7 +152,7 @@ export default function BadgeStylingScreen() {
   return (
     <DemoScreen
       title="Badge styling"
-      docs="guides/theming"
+      docs="guides/badge-styling"
       description="Skia-native badge knobs (radius, background, border, text color, font, offset), plus recoloring the momentum tint via the chart palette."
       chart={
         <LiveChart

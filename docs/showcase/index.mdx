@@ -1,0 +1,41 @@
+---
+title: Showcase
+icon: "grid-2"
+description: "LiveChart dropped into recreations of real finance & crypto apps."
+---
+
+The example app ships an **Examples** tab of full-screen recreations of real finance / crypto apps —
+LiveChart living inside production-style UI, as opposed to the feature-isolating screens under
+[`app/demo/`](https://github.com/brandtnewlabs/react-native-livechart/tree/main/app/demo). Each one
+is a single screen under
+[`app/showcase/`](https://github.com/brandtnewlabs/react-native-livechart/tree/main/app/showcase).
+
+<Note>
+  Screenshots and clips are still being captured — for now each card links to the source screen.
+  Run the example app (`npm start`) and open the **Examples** tab to see them live.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Fomo" icon="chart-line" href="https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/fomo.tsx">
+    Token detail — live price with a scrubbable hero chart.
+  </Card>
+  <Card title="Robinhood" icon="chart-line" href="https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/robinhood.tsx">
+    Tokenized-stock detail — an edgy line with a scrub dim-split.
+  </Card>
+  <Card title="Backpack" icon="chart-line" href="https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/backpack.tsx">
+    Token detail (light) — a live-scrolling edgy line with a scrub split.
+  </Card>
+  <Card title="Kraken" icon="chart-line" href="https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/kraken.tsx">
+    BTC/USD detail (light) — a thin line with a dot-lattice area fill.
+  </Card>
+</CardGroup>
+
+<Info>
+  **Coinbase** — an asset detail page with candle + line modes — is on the roadmap.
+</Info>
+
+## Build your own
+
+Each recreation is just `LiveChart` / `LiveChartSeries` styled to match a host app. Start from the
+[Quickstart](/quickstart), then layer on the [chart type](/guides/line-and-area),
+[scrubbing](/guides/scrubbing), and [theming](/guides/theming) that fit your screen.

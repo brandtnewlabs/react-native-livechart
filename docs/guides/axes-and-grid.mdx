@@ -1,0 +1,84 @@
+---
+title: Axes & grid
+icon: "border-all"
+description: "Tune the grid lines, hide or space the axes, float edge labels, and adjust the plot insets."
+---
+
+<Note>
+  **Live example:**
+  [`app/demo/axes-and-grid.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/axes-and-grid.tsx)
+  in the example app.
+</Note>
+
+<Frame caption="Grid lines, axis spacing, and edge labels">
+  <video autoPlay loop muted playsInline controls poster="/media/011-axes-grid.jpg" src="/media/011-axes-grid.mp4" />
+</Frame>
+
+## Grid & axes
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  yAxis={{ minGap: 36 }}
+  xAxis={{ minGap: 60 }}
+  gridStyle={{ color: "#1f2937", intervals: [1, 3], opacity: 0.8 }}
+/>
+```
+
+Pass `yAxis={false}` or `xAxis={false}` to hide an axis. `gridStyle.intervals` of `[]` renders
+solid grid lines.
+
+## Axis edge labels
+
+`topLabel` and `bottomLabel` float a value at the top / bottom edge of the plot — the
+Robinhood-style high/low readout. Pass `true` for the batteries-included label: the chart shows
+its current top (`topLabel`) and bottom (`bottomLabel`) Y-axis bound, formatted with the chart's
+`formatValue` and updated each frame on the UI thread.
+
+```tsx
+<LiveChart data={data} value={value} topLabel bottomLabel />
+```
+
+Both default off. Pass an [`AxisLabelConfig`](/api-reference/types#axislabelconfig) to tune the
+built-in label — `format`, `color`, `position` (`"left"` | `"right"`, default `"right"`), and the
+text `fontSize` / `fontWeight` / `fontFamily`:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  topLabel={{ color: "#22d3ee", position: "left", fontSize: 14, fontWeight: "600" }}
+  bottomLabel={{ format: (v) => `$${v.toFixed(2)}` }}
+/>
+```
+
+For full control, the `render` escape hatch floats any element at the edge (it overrides the
+built-in value):
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  topLabel={{ render: () => <Text style={styles.highLabel}>High</Text> }}
+/>
+```
+
+<Note>
+  To pin the label to the **actual high / low data point** instead of the edge — `position: "extrema"`
+  / `"extrema-edge"` — see [Extrema labels](/guides/extrema-labels).
+</Note>
+
+## Spacing
+
+Adjust the drawing area with `insets` (`top`, `right`, `bottom`, `left`) and soften the left edge
+with `leftEdgeFade`.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  insets={{ top: 12, bottom: 28, left: 12 }}
+  leftEdgeFade={{ width: 40 }}
+/>
+```

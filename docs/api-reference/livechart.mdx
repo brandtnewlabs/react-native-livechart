@@ -78,7 +78,7 @@ provided; everything else has a default.
   `textColor`, per-badge `fontSize` / `fontFamily` / `fontWeight`, and
   `offsetX` / `offsetY`. All are Skia-native and drawn in the batched canvas
   pass, so there's no per-frame view cost. See [Theming → Customizing the
-  badge](/guides/theming#customizing-the-badge).
+  badge](/guides/badge-styling).
 </ParamField>
 
 <ParamField body="pulse" type="boolean | PulseConfig" default="true">
@@ -165,7 +165,7 @@ provided; everything else has a default.
   look when `ctx.isGrouped`. Custom-rendered markers skip the atlas (no
   double-draw) and stay crisp at native resolution. Use sparingly — each is its
   own animated view, whereas built-in glyphs batch into one draw call. See
-  [Custom marker rendering](/guides/markers-and-references#custom-marker-rendering).
+  [Custom marker rendering](/guides/markers-and-trades#custom-marker-rendering).
 </ParamField>
 
 <ParamField body="renderTooltip" type="(ctx: TooltipRenderProps) => ReactElement | null">
@@ -194,14 +194,14 @@ provided; everything else has a default.
   (order / avg-entry / liquidation price tags, custom level lines); return
   `null`/`undefined` for no overlay. The tree mounts full-bleed with
   `pointerEvents="box-none"` so empty areas still scrub. **Single-series only.** See
-  [Overlay bridge](/guides/markers-and-references#overlay-bridge-renderoverlay).
+  [Overlay bridge](/guides/overlay-bridge).
 </ParamField>
 
 <ParamField body="referenceLines" type="ReferenceLine[]">
   Reference lines / bands (horizontal line, value band, or time band). Form-A lines
   can be `draggable` (drag to set a price, with `snap` / `bounds` and `onChange` /
   `onCommit` / `onDragIn` / `onDragOut` callbacks). See
-  [Reference lines](/guides/markers-and-references#reference-lines--bands).
+  [Reference lines](/guides/reference-lines-and-bands).
 </ParamField>
 
 <ParamField body="renderReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
@@ -227,7 +227,7 @@ provided; everything else has a default.
   when a segment is `active` — the focused segment keeps the base color and every
   other segment is de-emphasized (`mutedColor` / `mutedColors`) by recoloring the
   line stroke itself, not an overlay. Optional dashed `divider` + `label` mark a
-  segment's edge. See [Segments](/guides/markers-and-references#segments) and
+  segment's edge. See [Segments](/guides/segments) and
   [`ChartSegment`](/api-reference/types#chartsegment). Single-series only.
 </ParamField>
 
@@ -265,7 +265,7 @@ provided; everything else has a default.
   not the line value at that time. Coexists with `scrub`. Pass a
   [`ScrubActionConfig`](/api-reference/types#config-objects) for `icon`, colors,
   `snap`, `text: false` (icon-only), or `timeBadge` (an x-axis date/time pill, off by
-  default). See [Scrubbing](/guides/scrubbing#order-ticket-scrubaction).
+  default). See [Order ticket](/guides/order-ticket).
   Single-series only.
 </ParamField>
 
@@ -330,7 +330,7 @@ provided; everything else has a default.
   label — the chart's current top Y-axis bound, formatted and updated each frame
   (Robinhood-style high). Pass [`AxisLabelConfig`](/api-reference/types#axislabelconfig)
   to set `format` / `color` / `position`, or `{ render }` to float a fully custom
-  element instead. See [Axis labels](/guides/theming#axis-edge-labels).
+  element instead. See [Axis labels](/guides/axes-and-grid#axis-edge-labels).
 </ParamField>
 
 <ParamField body="bottomLabel" type="boolean | AxisLabelConfig" default="false">

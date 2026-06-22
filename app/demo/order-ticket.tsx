@@ -28,6 +28,20 @@ const CANDLE_WIDTH_SECS = 15;
 
 type WorkingOrder = { side: "buy" | "sell"; price: number };
 
+// Custom `formatTime` for the reticle's time badge: an exact date + clock.
+// `formatTime` runs on the UI thread (axis labels, tooltip, and the scrubAction
+// time badge all call it inside worklets), so this MUST be a worklet and use
+// worklet-safe ops — `new Date` getters + manual padding, NOT Intl/toLocaleString.
+function formatDateTime(t: number) {
+  "worklet";
+  const d = new Date(t * 1000);
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${mo}/${da} ${hh}:${mi}`; // e.g. "06/10 16:34"
+}
+
 /**
  * "Order ticket" demo for `scrubAction`. Tap the chart to drop a price reticle,
  * drag to fine-tune, then press the right-gutter `+` badge. The callback opens a
@@ -38,8 +52,15 @@ export default function ScrubActionScreen() {
   const [displayMode, setDisplayMode] = useState<DisplayMode>("candle");
   const [snap, setSnap] = useState(false);
   const [iconOnly, setIconOnly] = useState(false);
+  // Action glyph: default "+" vs a confirm "✓" (rendered as chart text).
+  const [checkIcon, setCheckIcon] = useState(false);
+  // Empty-plot tap clears the reticle instead of re-placing it.
+  const [dismissOnTapOutside, setDismissOnTapOutside] = useState(false);
   // Opt-in x-axis time badge (off by default — time is incidental to a price order).
   const [showTime, setShowTime] = useState(false);
+  // Swap the time badge's clock-only label for an exact date + time (worklet
+  // formatter). Only meaningful when the Time badge is on.
+  const [exactTime, setExactTime] = useState(false);
   // Working-order badge: icon + label vs an icon-only tag.
   const [orderIconOnly, setOrderIconOnly] = useState(false);
   const [orders, setOrders] = useState<WorkingOrder[]>([]);
@@ -119,6 +140,7 @@ export default function ScrubActionScreen() {
   return (
     <DemoScreen
       title="Order ticket"
+      docs="guides/order-ticket"
       description="scrubAction: tap to drop a price reticle, drag to adjust, press the + badge to place a limit order. Confirmed orders become working-order lines — tap an order's badge to cancel it."
       chart={
         <LiveChart
@@ -137,10 +159,15 @@ export default function ScrubActionScreen() {
           // adjust it. (dimOpacity 1 keeps the working-order lines un-dimmed.)
           scrub={{ dimOpacity: 1 }}
           scrubAction={{
+            icon: checkIcon ? "✓" : "+",
             snap: snap ? 0.5 : undefined,
             text: !iconOnly,
             timeBadge: showTime,
+            dismissOnTapOutside,
           }}
+          // Exact date + time formatter for the time badge (worklet — runs on the
+          // UI thread). Only swapped in when the date variant is chosen.
+          formatTime={exactTime ? formatDateTime : undefined}
           onScrubAction={onScrubAction}
           // Tap a working-order badge to manage it — here, open a cancel sheet.
           onReferenceLinePress={(_line, index) => setCancelIdx(index)}
@@ -157,7 +184,28 @@ export default function ScrubActionScreen() {
       <ControlRow label="Badge">
         <ToggleChip label="Snap to 0.5" value={snap} onChange={setSnap} />
         <ToggleChip label="Icon only" value={iconOnly} onChange={setIconOnly} />
-        <ToggleChip label="Time badge" value={showTime} onChange={setShowTime} />
+        {/* scrubAction.icon: default "+" vs a confirm "✓" glyph. */}
+        <ToggleChip
+          label="✓ glyph"
+          value={checkIcon}
+          onChange={setCheckIcon}
+        />
+        {/* scrubAction.dismissOnTapOutside: empty-plot tap clears the reticle. */}
+        <ToggleChip
+          label="Tap-outside dismiss"
+          value={dismissOnTapOutside}
+          onChange={setDismissOnTapOutside}
+        />
+      </ControlRow>
+
+      <ControlRow label="Time badge">
+        <ToggleChip label="Show" value={showTime} onChange={setShowTime} />
+        {/* Custom worklet formatTime → exact date + time. Only bites with Show on. */}
+        <ToggleChip
+          label="Exact date+time"
+          value={exactTime}
+          onChange={setExactTime}
+        />
       </ControlRow>
 
       <ControlRow label="Order badge">

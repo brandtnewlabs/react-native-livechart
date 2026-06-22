@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LiveChart, type ReferenceLine } from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
-import { ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
+import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
@@ -19,6 +19,16 @@ export default function ReferenceLinesScreen() {
   const [valueLine, setValueLine] = useState(true);
   // Span lines/bands edge-to-edge through the Y-axis gutter (vs stop at the plot).
   const [fullWidth, setFullWidth] = useState(false);
+  // How the off-axis target tags itself: the modern `badge` pill (icon + the
+  // `position`/`text` knobs) vs the legacy `offAxisBadge`. Modern is the default
+  // so the interactive badge controls below drive the visible path.
+  const [badgeMode, setBadgeMode] = useState<"modern" | "legacy">("modern");
+  // Which plot edge the modern badge pins to ("center" floats it with no connector).
+  const [badgePosition, setBadgePosition] = useState<
+    "left" | "center" | "right"
+  >("left");
+  // text:false → icon-only pill (just the chevron glyph, no label/value text).
+  const [badgeIconOnly, setBadgeIconOnly] = useState(false);
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -92,21 +102,39 @@ export default function ReferenceLinesScreen() {
   if (offAxis) {
     referenceLines.push({
       value: START * 1.5,
-      offAxisBadge: true,
-      offAxisBadgeLabel: "Target",
+      label: "Target",
       excludeFromRange: true,
       color: "#a855f7",
-      // Target panel styling: background / border / radius.
+      showValue: !badgeIconOnly,
+      // Target panel styling: background / border / radius. These are the
+      // fallbacks the modern `badge` also reads (badge.background / .borderColor
+      // / .radius), so the panel looks the same in either mode.
       badgeBackground: "rgba(168,85,247,0.18)",
       badgeBorderColor: "#a855f7",
       badgeRadius: 8,
+      // Modern pill badge: pins to `position`, carries an icon, and supports an
+      // icon-only (text:false) variant. Supersedes the legacy `offAxisBadge`.
+      ...(badgeMode === "modern"
+        ? {
+            badge: {
+              position: badgePosition,
+              icon: "▲",
+              text: !badgeIconOnly,
+            },
+          }
+        : {
+            // Legacy off-axis badge — pinned edge chevron, in-range it falls back
+            // to the plain gutter label. No icon / position / icon-only knobs.
+            offAxisBadge: true,
+            offAxisBadgeLabel: "Target",
+          }),
     });
   }
 
   return (
     <DemoScreen
       title="Reference lines & bands"
-      docs="guides/markers-and-references"
+      docs="guides/reference-lines-and-bands"
       description="referenceLines array — lines, value bands, time bands, off-axis badge"
       chart={
         <LiveChart
@@ -146,6 +174,40 @@ export default function ReferenceLinesScreen() {
           onChange={setFullWidth}
         />
       </ControlRow>
+      {offAxis ? (
+        <>
+          <ChipRow<"modern" | "legacy">
+            label="Target tag"
+            options={[
+              { value: "modern", label: "Badge pill" },
+              { value: "legacy", label: "offAxisBadge (legacy)" },
+            ]}
+            value={badgeMode}
+            onChange={setBadgeMode}
+          />
+          {badgeMode === "modern" ? (
+            <>
+              <ChipRow<"left" | "center" | "right">
+                label="Badge position"
+                options={[
+                  { value: "left", label: "Left" },
+                  { value: "center", label: "Center" },
+                  { value: "right", label: "Right" },
+                ]}
+                value={badgePosition}
+                onChange={setBadgePosition}
+              />
+              <ControlRow>
+                <ToggleChip
+                  label="Icon-only (text: false)"
+                  value={badgeIconOnly}
+                  onChange={setBadgeIconOnly}
+                />
+              </ControlRow>
+            </>
+          ) : null}
+        </>
+      ) : null}
     </DemoScreen>
   );
 }

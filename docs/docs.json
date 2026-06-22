@@ -26,6 +26,12 @@
   "icons": {
     "library": "fontawesome"
   },
+  "redirects": [
+    {
+      "source": "/guides/markers-and-references",
+      "destination": "/guides/markers-and-trades"
+    }
+  ],
   "navigation": {
     "tabs": [
       {
@@ -36,23 +42,52 @@
             "pages": ["index", "installation", "quickstart"]
           },
           {
-            "group": "Guides",
+            "group": "Chart types",
             "pages": [
               "guides/line-and-area",
               "guides/candlestick",
               "guides/multi-series",
-              "guides/scrubbing",
-              "guides/time-scroll",
-              "guides/momentum-and-degen",
-              "guides/markers-and-references",
-              "guides/theming"
+              "guides/sparklines"
             ]
           },
           {
-            "group": "Engine & data",
+            "group": "Interaction",
+            "pages": [
+              "guides/scrubbing",
+              "guides/order-ticket",
+              "guides/time-scroll"
+            ]
+          },
+          {
+            "group": "Annotations & overlays",
+            "pages": [
+              "guides/markers-and-trades",
+              "guides/reference-lines-and-bands",
+              "guides/overlay-bridge"
+            ]
+          },
+          {
+            "group": "Dynamic styling & effects",
+            "pages": [
+              "guides/momentum-and-degen",
+              "guides/threshold",
+              "guides/segments"
+            ]
+          },
+          {
+            "group": "Styling & theming",
+            "pages": [
+              "guides/theming",
+              "guides/badge-styling",
+              "guides/axes-and-grid",
+              "guides/extrema-labels"
+            ]
+          },
+          {
+            "group": "Live data & engine",
             "pages": [
               "guides/playback",
-              "guides/sparklines",
+              "guides/historical-data",
               "guides/states-and-formatting",
               "guides/transitions"
             ]
@@ -75,6 +110,15 @@
               "api-reference/hooks-and-utilities",
               "api-reference/types"
             ]
+          }
+        ]
+      },
+      {
+        "tab": "Showcase",
+        "groups": [
+          {
+            "group": "Real-app recreations",
+            "pages": ["showcase/index"]
           }
         ]
       }

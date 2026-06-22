@@ -1,17 +1,15 @@
 ---
-title: Playback & history
+title: Playback
 icon: "gauge-high"
-description: "Control the time window, pausing, smoothing, the Y-axis range, and historical fills."
+description: "Control the time window, pausing, smoothing, and the Y-axis range."
 ---
 
 `LiveChart` runs a tick loop on the UI thread that scrolls the time window and eases the live
 value toward its target each frame. These props tune that engine.
 
 <Note>
-  **Live examples:**
+  **Live example:**
   [`app/demo/playback.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/playback.tsx)
-  and
-  [`app/demo/historical-data.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/historical-data.tsx)
   in the example app.
 </Note>
 
@@ -58,25 +56,5 @@ By default the Y-axis fits the visible data with a little headroom. Three props 
 <LiveChart data={data} value={value} exaggerate nonNegative maxValue={150} />
 ```
 
-## Historical data fill
-
-To render a fixed historical span edge-to-edge — rather than a live-scrolling tail — freeze the
-engine's clock with `nowOverride` and reserve a little right-edge space with `windowBuffer`:
-
-- **`nowOverride`** — override the engine's "now" (unix seconds). Set it to your dataset's last
-  timestamp so the window ends exactly there.
-- **`windowBuffer`** — right-edge padding as a fraction of `timeWindow`, so the latest point
-  isn't flush against the edge.
-
-```tsx
-<LiveChart
-  data={history}
-  value={lastValue}
-  timeWindow={span}
-  nowOverride={lastTime}
-  windowBuffer={0.04}
-  paused
-/>
-```
-
-See the full prop list in the [`LiveChart` reference](/api-reference/livechart).
+See the full prop list in the [`LiveChart` reference](/api-reference/livechart). To render a fixed
+historical span edge-to-edge instead of a live tail, see [Historical data](/guides/historical-data).

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type {
+  AreaDotsConfig,
   BadgeConfig,
+  GradientConfig,
   LineConfig,
   PulseConfig,
 } from "react-native-livechart";
@@ -34,10 +36,30 @@ const CURVE_OPTIONS: { value: CurveMode; label: string }[] = [
   { value: "linear", label: "Linear" },
 ];
 
+// `curve`, `join`, and `cap` are independent knobs (see the "Curve & edges"
+// guide section) — they don't have to move together, so each gets its own chip.
+type JoinMode = "round" | "miter" | "bevel";
+
+const JOIN_OPTIONS: { value: JoinMode; label: string }[] = [
+  { value: "round", label: "Round" },
+  { value: "miter", label: "Miter" },
+  { value: "bevel", label: "Bevel" },
+];
+
+type CapMode = "round" | "butt" | "square";
+
+const CAP_OPTIONS: { value: CapMode; label: string }[] = [
+  { value: "round", label: "Round" },
+  { value: "butt", label: "Butt" },
+  { value: "square", label: "Square" },
+];
+
 function resolveLine(
   mode: LineMode,
   customColors: string[],
   curve: CurveMode,
+  join: JoinMode,
+  cap: CapMode,
 ): LineConfig | undefined {
   let base: LineConfig | undefined;
   switch (mode) {
@@ -58,11 +80,52 @@ function resolveLine(
     default:
       base = undefined;
   }
-  // "linear" draws straight segments (+ miter join / butt cap for true sharp
-  // vertices); "monotone" is the default smooth spline, so leave `base` as-is.
-  return curve === "linear"
-    ? { ...(base ?? {}), curve: "linear", join: "miter", cap: "butt" }
-    : base;
+  // Each edge knob is applied independently — e.g. a smooth curve with butt caps,
+  // or linear segments with round joins. Defaults (monotone/round/round) collapse
+  // back to `base` so the chart's own defaults shine through.
+  const overrides: LineConfig = {};
+  if (curve !== "monotone") overrides.curve = curve;
+  if (join !== "round") overrides.join = join;
+  if (cap !== "round") overrides.cap = cap;
+  if (Object.keys(overrides).length === 0) return base;
+  return { ...(base ?? {}), ...overrides };
+}
+
+// Area fill `gradient`: off, the accent-derived default, or explicit multi-stop
+// `colors` (see the guide's "Gradient fill" usage). GradientConfig fields:
+// topOpacity / bottomOpacity / colors / positions.
+type GradientMode = "default" | "off" | "custom";
+
+const GRADIENT_OPTIONS: { value: GradientMode; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "off", label: "Off" },
+  { value: "custom", label: "Custom" },
+];
+
+function resolveGradient(mode: GradientMode): boolean | GradientConfig {
+  if (mode === "off") return false;
+  if (mode === "default") return true;
+  // Explicit multi-stop colors (top → bottom) with matching stop positions.
+  return {
+    colors: ["rgba(107,107,255,0.45)", "rgba(255,107,107,0.12)", "transparent"],
+    positions: [0, 0.6, 1],
+  };
+}
+
+// Dotted-lattice area fill (`areaDots`, guide's "Dotted area fill"). Off by
+// default. AreaDotsConfig fields: spacing / size / color / opacity.
+type AreaDotsMode = "off" | "on" | "dense";
+
+const AREA_DOTS_OPTIONS: { value: AreaDotsMode; label: string }[] = [
+  { value: "off", label: "Off" },
+  { value: "on", label: "On" },
+  { value: "dense", label: "Dense" },
+];
+
+function resolveAreaDots(mode: AreaDotsMode): boolean | AreaDotsConfig {
+  if (mode === "off") return false;
+  if (mode === "on") return true;
+  return { spacing: 7, size: 1.4 };
 }
 
 function resolveBadge(mode: BadgeMode): boolean | BadgeConfig {
@@ -112,6 +175,10 @@ export default function LineScreen() {
   const [pulseMode, setPulseMode] = useState<PulseMode>("on");
   const [lineMode, setLineMode] = useState<LineMode>("default");
   const [curve, setCurve] = useState<CurveMode>("monotone");
+  const [join, setJoin] = useState<JoinMode>("round");
+  const [cap, setCap] = useState<CapMode>("round");
+  const [gradientMode, setGradientMode] = useState<GradientMode>("default");
+  const [areaDotsMode, setAreaDotsMode] = useState<AreaDotsMode>("off");
   const [customColors, setCustomColors] = useState(["#ff6b6b", "#6bff6b"]);
   const [valueLine, setValueLine] = useState(true);
   const [showValue, setShowValue] = useState(false);
@@ -140,7 +207,9 @@ export default function LineScreen() {
           value={value}
           accentColor={ACCENT}
           theme={APP_THEME}
-          line={resolveLine(lineMode, customColors, curve)}
+          line={resolveLine(lineMode, customColors, curve, join, cap)}
+          gradient={resolveGradient(gradientMode)}
+          areaDots={resolveAreaDots(areaDotsMode)}
           badge={resolveBadge(badgeMode)}
           pulse={resolvePulse(pulseMode)}
           dot={{ show: dots, ring }}
@@ -168,6 +237,30 @@ export default function LineScreen() {
         options={CURVE_OPTIONS}
         value={curve}
         onChange={setCurve}
+      />
+      <ChipRow
+        label="Join (corners)"
+        options={JOIN_OPTIONS}
+        value={join}
+        onChange={setJoin}
+      />
+      <ChipRow
+        label="Cap (ends)"
+        options={CAP_OPTIONS}
+        value={cap}
+        onChange={setCap}
+      />
+      <ChipRow
+        label="Gradient fill"
+        options={GRADIENT_OPTIONS}
+        value={gradientMode}
+        onChange={setGradientMode}
+      />
+      <ChipRow
+        label="Area dots"
+        options={AREA_DOTS_OPTIONS}
+        value={areaDotsMode}
+        onChange={setAreaDotsMode}
       />
       {lineMode === "custom" && (
         <ControlRow label="Gradient colors">

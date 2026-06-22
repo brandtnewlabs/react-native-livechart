@@ -136,7 +136,7 @@ price you can see — and snap back to the live value when you return to the liv
 - **Both charts.** `timeScroll` and `zoom` are wired into `LiveChart` and `LiveChartSeries`. In
   multi-series, each series' dot / value label tracks its value at the visible right edge while
   scrolled (the dot rides the end of each line, not the live price).
-- **Coexists with scrubbing.** Plot-area scrub (and the [order ticket](/guides/scrubbing#order-ticket-scrubaction))
+- **Coexists with scrubbing.** Plot-area scrub (and the [order ticket](/guides/order-ticket))
   work alongside time-scroll — the gestures are disambiguated by region (`axisDrag`) or press-hold
   (`holdToScrub`). Pinch-zoom is two-finger, so it stays out of the one-finger gestures' way.
 - **`axisDrag` in multi-series** doesn't yet exclude the bottom-band from scrub; `holdToScrub` (the

@@ -52,6 +52,7 @@ export default function SegmentsScreen() {
   const [showSegments, setShowSegments] = useState(true);
   const [divider, setDivider] = useState(true);
   const [active, setActive] = useState(false);
+  const [regularRecolor, setRegularRecolor] = useState(true);
   const [gradientLine, setGradientLine] = useState(false);
   const [colorIdx, setColorIdx] = useState(0);
   const [opacity, setOpacity] = useState(0.5);
@@ -81,7 +82,17 @@ export default function SegmentsScreen() {
   if (showSegments) {
     segments.push(
       { ...dimStyle, to: seed.t1 }, // pre-market: left edge → t1
-      { ...dimStyle, from: seed.t1, to: seed.t2, divider, label: "Regular" },
+      // `recolorLine: false` opts "Regular" out of scrub-focus de-emphasis — it
+      // still draws its divider + label but never dims, acting as a focus gap
+      // while the others react to scrub focus.
+      {
+        ...dimStyle,
+        recolorLine: regularRecolor,
+        from: seed.t1,
+        to: seed.t2,
+        divider,
+        label: "Regular",
+      },
       // after-hours: t2 → live edge. `active` force-focuses it (others dim).
       { ...dimStyle, from: seed.t2, divider, label: "After hours", active },
     );
@@ -90,6 +101,7 @@ export default function SegmentsScreen() {
   return (
     <DemoScreen
       title="Segments"
+      docs="guides/segments"
       description="scrub focus: the whole line is one color; scrub a session (or toggle Active) to keep it full while the others are de-emphasized"
       chart={
         <LiveChart
@@ -150,6 +162,11 @@ export default function SegmentsScreen() {
           label="Active (after-hours)"
           value={active}
           onChange={setActive}
+        />
+        <ToggleChip
+          label="Regular opts out"
+          value={!regularRecolor}
+          onChange={(v) => setRegularRecolor(!v)}
         />
         <ToggleChip
           label="Gradient line"

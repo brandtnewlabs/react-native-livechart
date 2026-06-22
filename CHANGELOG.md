@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.0.0] - 2026-06-19
 
-A large feature release — pinch-to-zoom, two-finger time-scroll, a price↔pixel
+A large feature release — two-finger pinch-to-zoom, one-finger time-scroll, a price↔pixel
 overlay bridge, draggable/groupable reference lines, marker stacking & grouping,
 volume bars, and badge styling — plus one breaking rename. See **Breaking** for
 the one-line migration.
@@ -27,10 +27,13 @@ the one-line migration.
 ### Added
 
 - **Time-scroll (`timeScroll`)** on `LiveChart`. A new `timeScroll` prop
-  (`boolean`) enables a **two-finger** horizontal pan (with fling/decay inertia)
-  to scroll back through retained history; the chart stops auto-following while
-  panned and snaps back to live at the right edge. Works in both line and candle
-  mode, and one-finger scrub is unchanged. **@experimental.**
+  (`boolean | TimeScrollConfig`) enables a **one-finger** horizontal pan (with
+  fling/decay inertia) to scroll back through retained history; the chart stops
+  auto-following while panned and snaps back to live at the right edge. Two
+  activation modes via `gesture`: `"holdToScrub"` (default — a quick drag
+  scrolls, so scrub moves to a press-and-hold) and `"axisDrag"` (only a drag
+  starting on the bottom x-axis strip scrolls, leaving the plot free to scrub).
+  Works in both line and candle mode. **@experimental.**
 - **`renderOverlay` price↔pixel bridge** (`LiveChart`). `renderOverlay(ctx)`
   mounts a `box-none` RN sibling of the canvas and hands you a
   `ChartOverlayContext`: a per-frame `scale` SharedValue plus pure

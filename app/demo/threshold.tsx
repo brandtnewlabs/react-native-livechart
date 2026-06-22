@@ -57,7 +57,7 @@ export default function ThresholdScreen() {
   return (
     <DemoScreen
       title="Threshold split"
-      docs="api-reference/livechart"
+      docs="guides/threshold"
       description="threshold — green above / red below a live break-even, with a P/L fill band + marker line"
       chart={
         <LiveChart

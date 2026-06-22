@@ -1,0 +1,75 @@
+---
+title: Overlay bridge
+icon: "diagram-project"
+description: "Hand-roll a React Native overlay glued to the chart's price↔pixel / time↔pixel scale."
+---
+
+<Note>
+  **Live example:**
+  [`app/demo/overlay-bridge.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/overlay-bridge.tsx)
+  in the example app.
+</Note>
+
+When the built-in lines and badges aren't enough — a draggable order book, an
+avg-entry / liquidation overlay with your own chrome — `renderOverlay` hands you
+the chart's **price↔pixel / time↔pixel scale** so you can hand-roll an overlay in
+plain React Native that stays glued to the auto-rescaling axis.
+
+The callback receives a [`ChartOverlayContext`](/api-reference/types#chartoverlaycontext).
+The returned tree mounts full-bleed over the canvas with `pointerEvents="box-none"`,
+so empty areas still scrub.
+
+## The easy path — `usePriceY` / `useTimeX`
+
+Render one component per level and call `usePriceY(ctx, price)` — it returns a
+`SharedValue<number>` that tracks the rescaling axis for you. Read it in your
+`useAnimatedStyle` like any SharedValue; no need to think about subscriptions.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  renderOverlay={(ctx) => <PriceTag ctx={ctx} price={142.5} label="Avg entry" />}
+/>
+
+function PriceTag({ ctx, price, label }) {
+  const y = usePriceY(ctx, price); // reactive — tracks the live axis
+  const style = useAnimatedStyle(() => ({
+    opacity: y.get() < 0 ? 0 : 1,
+    transform: [{ translateY: y.get() }],
+  }));
+  return <Animated.View pointerEvents="none" style={[styles.tag, style]}>{/* … */}</Animated.View>;
+}
+```
+
+`useTimeX(ctx, time)` is the time→x sibling. Both are hooks, so call them once per
+element (one component per level / annotation).
+
+## The manual path — `scale` + the pure mappings
+
+For one-off math (e.g. a gesture handler) or to keep everything in one worklet, read
+`scale.get()` yourself and feed the snapshot to the pure `priceToY` / `yToPrice` /
+`timeToX` / `xToTime` mappings:
+
+```tsx
+function PriceTag({ ctx, price }) {
+  const { priceToY, scale } = ctx;
+  const style = useAnimatedStyle(() => {
+    const s = scale.get();        // subscribe to the live scale (reactivity)
+    const y = priceToY(price, s); // pure projection against the snapshot
+    return { transform: [{ translateX: s.plot.left }, { translateY: y }] };
+  });
+  return <Animated.View pointerEvents="none" style={[styles.tag, style]} />;
+}
+```
+
+<Warning>
+  On the manual path, reactivity comes from reading `scale.get()` **inside** the
+  worklet — the mappings are pure and don't read it for you. A style that only calls
+  `priceToY(price, …)` without touching `scale.get()` won't re-run and the overlay
+  will freeze. (The `usePriceY` / `useTimeX` hooks handle this for you.)
+</Warning>
+
+These are the same projections the engine uses internally for the live dot, the
+scrub crosshair, and the [order-ticket drag](/guides/order-ticket)
+— so a custom overlay lines up pixel-for-pixel with the chart. Single-series only.

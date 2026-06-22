@@ -19,9 +19,9 @@ type Demo = { href: Href; title: string; blurb: string };
 type DemoSection = { title: string; data: Demo[] };
 
 /**
- * Demos are grouped to mirror the docs taxonomy (core → interaction → effects
- * → annotation → presentation), plus an "Engine & data" group for the
- * playback / state / layout concerns the guides don't yet cover.
+ * Demos are grouped to match the docs taxonomy exactly: Chart types → Interaction
+ * → Annotations & overlays → Dynamic styling & effects → Styling & theming → Live
+ * data & engine. Each section maps to a docs nav group of the same name.
  */
 const SECTIONS: DemoSection[] = [
   {
@@ -35,10 +35,10 @@ const SECTIONS: DemoSection[] = [
     ],
   },
   {
-    title: "Core charts",
+    title: "Chart types",
     data: [
       {
-        href: "/demo/line",
+        href: "/demo/line-and-area",
         title: "Line & area",
         blurb: "Badge, pulse, value line, live value overlay.",
       },
@@ -78,37 +78,27 @@ const SECTIONS: DemoSection[] = [
         blurb: "Brokerage-style: OHLC header above the chart, time pinned to the top edge, crosshair kept.",
       },
       {
-        href: "/demo/scrub-action",
+        href: "/demo/order-ticket",
         title: "Order ticket",
         blurb: "scrubAction: tap to drop a price, drag to adjust, press + to place a limit order.",
       },
       {
         href: "/demo/time-scroll",
         title: "Time scroll",
-        blurb: "timeScroll: two-finger drag to pan back through candle history; release at the live edge to resume.",
+        blurb: "timeScroll: one-finger drag to pan back through candle history; release at the live edge to resume.",
       },
     ],
   },
   {
-    title: "Effects",
+    title: "Annotations & overlays",
     data: [
       {
-        href: "/demo/momentum-degen",
-        title: "Momentum & degen",
-        blurb: "Momentum badge tint + particle / shake presets.",
-      },
-    ],
-  },
-  {
-    title: "Annotations",
-    data: [
-      {
-        href: "/demo/markers",
+        href: "/demo/markers-and-trades",
         title: "Markers & trades",
         blurb: "markers[] glyphs, tap hover, tradeStream overlay.",
       },
       {
-        href: "/demo/reference-lines",
+        href: "/demo/reference-lines-and-bands",
         title: "Reference lines & bands",
         blurb: "referenceLines: lines, value/time bands, off-axis badge.",
       },
@@ -123,6 +113,16 @@ const SECTIONS: DemoSection[] = [
         title: "Overlay bridge",
         blurb: "renderOverlay: hand-rolled RN order overlay via the priceToY / yToPrice / timeToX bridge.",
       },
+    ],
+  },
+  {
+    title: "Dynamic styling & effects",
+    data: [
+      {
+        href: "/demo/momentum-and-degen",
+        title: "Momentum & degen",
+        blurb: "Momentum badge tint + particle / shake presets.",
+      },
       {
         href: "/demo/threshold",
         title: "Threshold split",
@@ -136,7 +136,7 @@ const SECTIONS: DemoSection[] = [
     ],
   },
   {
-    title: "Appearance",
+    title: "Styling & theming",
     data: [
       {
         href: "/demo/theming",
@@ -149,7 +149,7 @@ const SECTIONS: DemoSection[] = [
         blurb: "BadgeConfig shape knobs: radius, background, border, text color, font, offset.",
       },
       {
-        href: "/demo/axes-grid",
+        href: "/demo/axes-and-grid",
         title: "Axes & grid",
         blurb: "Hide X/Y, minGap, insets; LiveChart vs LiveChartSeries.",
       },
@@ -161,7 +161,7 @@ const SECTIONS: DemoSection[] = [
     ],
   },
   {
-    title: "Engine & data",
+    title: "Live data & engine",
     data: [
       {
         href: "/demo/playback",
@@ -169,7 +169,7 @@ const SECTIONS: DemoSection[] = [
         blurb: "timeWindow, paused, smoothing, exaggerate, range clamps.",
       },
       {
-        href: "/demo/states",
+        href: "/demo/states-and-formatting",
         title: "States & formatting",
         blurb: "Loading, empty data, formatValue / formatTime.",
       },
