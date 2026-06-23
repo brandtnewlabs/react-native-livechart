@@ -434,6 +434,11 @@ export default function FomoPerpsShowcase() {
   const [sizeChip, setSizeChip] = useState<(typeof SIZE_CHIPS)[number]>("0.5");
   const [orders, setOrders] = useState<WorkingOrder[]>([]);
   const [cancelIdx, setCancelIdx] = useState<number | null>(null);
+  // Toggled 0↔1 on every range tap so `visibleWindow` changes by an (imperceptible)
+  // 1s even when re-tapping the ALREADY-active range. That forces the engine's
+  // timeWindow-change zoom reset to fire, so re-tapping the active pill zooms back
+  // out — React bails on a same-state `setRange`, so otherwise the tap is a no-op.
+  const [zoomBump, setZoomBump] = useState(0);
 
   const interval = INTERVALS.find((i) => i.id === intervalId) ?? INTERVALS[2];
   const candleMode = chartMode === "candle";
@@ -442,10 +447,18 @@ export default function FomoPerpsShowcase() {
   // is bucketed — never the feed itself — so switching either keeps the price
   // continuous. Clamp the window so it always fits inside the fixed seeded history.
   const baseWindow = interval.candleWidthSecs * VISIBLE_CANDLES;
-  const visibleWindow = Math.min(
-    Math.round(baseWindow * RANGE_FACTORS[range]),
-    FIXED_HISTORY_SECS - 600,
-  );
+  const visibleWindow =
+    Math.min(
+      Math.round(baseWindow * RANGE_FACTORS[range]),
+      FIXED_HISTORY_SECS - 600,
+    ) + zoomBump;
+
+  // Range tap: select it AND flip `zoomBump`, so re-tapping the active range still
+  // changes `timeWindow` (by 1s) and resets any pinch-zoom — see `zoomBump`.
+  const selectRange = (r: (typeof RANGES)[number]) => {
+    setRange(r);
+    setZoomBump((b) => (b === 0 ? 1 : 0));
+  };
 
   // ONE fixed feed: fine base candles over a fixed span. Nothing here depends on the
   // selected interval, so switching interval never reseeds — we re-bucket the base
@@ -708,7 +721,7 @@ export default function FomoPerpsShowcase() {
             return (
               <Pressable
                 key={r}
-                onPress={() => setRange(r)}
+                onPress={() => selectRange(r)}
                 hitSlop={6}
                 style={[styles.rangeChip, active && styles.rangeChipActive]}
               >
