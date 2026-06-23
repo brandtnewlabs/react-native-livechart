@@ -723,6 +723,7 @@ function useLiveChartController({
     skiaFont,
     yAxisCfg?.minGap ?? 36,
     metricsCfg.grid,
+    yAxisCfg?.count ?? 0,
   );
 
   const { xAxisEntries } = useXAxis(

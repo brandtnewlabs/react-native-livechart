@@ -79,6 +79,8 @@ export interface ResolvedBadgeConfig {
 
 export interface ResolvedYAxisConfig {
   minGap: number;
+  /** Fixed label count (≥ 2), or 0 for the dynamic nice-interval grid. */
+  count: number;
   /** Float the axis over a full-width plot (no reserved right gutter). */
   float: boolean;
 }
@@ -395,17 +397,22 @@ export function resolveBadge(
 
 const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
   minGap: 36,
+  count: 0,
   float: false,
 };
 
 /**
  * Resolves `yAxis` prop to a fully-typed config or null (disabled).
  * `true` → defaults, object → merged with defaults, falsy → null.
+ * `count` is normalized to a non-negative integer (the grid math clamps the
+ * upper bound to the label pool size).
  */
 export function resolveYAxis(
   prop: boolean | YAxisConfig | undefined,
 ): ResolvedYAxisConfig | null {
-  return resolveToggle(prop, Y_AXIS_DEFAULTS, false);
+  const resolved = resolveToggle(prop, Y_AXIS_DEFAULTS, false);
+  if (resolved === null) return null;
+  return { ...resolved, count: Math.max(0, Math.floor(resolved.count)) };
 }
 
 const VOLUME_DEFAULTS: ResolvedVolumeConfig = {

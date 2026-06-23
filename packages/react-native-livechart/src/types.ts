@@ -567,6 +567,18 @@ export interface YAxisConfig {
   /** Minimum pixel gap between grid lines. Default `36`. */
   minGap?: number;
   /**
+   * Show a fixed number of price labels instead of the dynamic nice-interval
+   * grid. When set (≥ 2), exactly `count` labels are spaced evenly **in pixels**
+   * across the plot — top label = current high, bottom = current low — so the
+   * count never changes as data streams in. Values are not rounded to "nice"
+   * numbers; they track the live range each frame.
+   *
+   * `minGap` still acts as a floor: if `count` labels won't fit at least
+   * `minGap` px apart, the count is reduced to what fits. Clamped to at most 15
+   * (the label pool size). Omit (or `0`) for the default dynamic grid.
+   */
+  count?: number;
+  /**
    * Float the price axis over a full-width plot instead of reserving a right
    * gutter for it. The line/candles run all the way to the right edge, and the
    * price labels (and the live-value badge) float on top — so the chart isn't
