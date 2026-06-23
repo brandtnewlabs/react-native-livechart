@@ -1458,11 +1458,13 @@ describe("resolveMarkerCluster", () => {
   it("defaults to anchored with stacking defaults", () => {
     expect(resolveMarkerCluster(undefined)).toEqual({
       mode: "anchored",
+      direction: "horizontal",
       overlap: 0.75,
       gap: 2,
       maxBeforeGroup: 5,
     });
     expect(resolveMarkerCluster("anchored").mode).toBe("anchored");
+    expect(resolveMarkerCluster("stacked").direction).toBe("horizontal");
   });
 
   it("enables stacking when requested", () => {
@@ -1472,12 +1474,15 @@ describe("resolveMarkerCluster", () => {
   it("accepts the object form, implying stacked, with tunable overlap/threshold", () => {
     expect(resolveMarkerCluster({ overlap: 0.8, maxBeforeGroup: 3 })).toEqual({
       mode: "stacked",
+      direction: "horizontal",
       overlap: 0.8,
       gap: 2,
       maxBeforeGroup: 3,
     });
     // Explicit mode honored; overlap clamped to [0, 0.95].
     expect(resolveMarkerCluster({ mode: "anchored" }).mode).toBe("anchored");
+    // Vertical stacking is opt-in via the object form.
+    expect(resolveMarkerCluster({ direction: "vertical" }).direction).toBe("vertical");
     expect(resolveMarkerCluster({ overlap: 5 }).overlap).toBe(0.95);
     expect(resolveMarkerCluster({ overlap: -1 }).overlap).toBe(0);
   });

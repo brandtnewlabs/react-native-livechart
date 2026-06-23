@@ -113,6 +113,7 @@ export default function MarkersScreen() {
   const [streamOn, setStreamOn] = useState(false);
   const [custom, setCustom] = useState(false);
   const [stacked, setStacked] = useState(false);
+  const [vertical, setVertical] = useState(false);
   const [overlap, setOverlap] = useState(0.75);
   const [hitRadius, setHitRadius] = useState(22);
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("normal");
@@ -209,7 +210,16 @@ export default function MarkersScreen() {
           timeWindow={WINDOW}
           markers={markers}
           markerHitRadius={hitRadius}
-          markerCluster={stacked ? { mode: "stacked", overlap } : "anchored"}
+          markerCluster={
+            stacked
+              ? {
+                  mode: "stacked",
+                  direction: vertical ? "vertical" : "horizontal",
+                  overlap,
+                  maxBeforeGroup: vertical ? 20 : 5,
+                }
+              : "anchored"
+          }
           renderMarker={
             custom
               ? (m) => (
@@ -280,11 +290,15 @@ export default function MarkersScreen() {
 
       <ControlRow label="Collision">
         <ToggleChip label="markerCluster: stacked" value={stacked} onChange={setStacked} />
+        {stacked ? (
+          <ToggleChip label="vertical column" value={vertical} onChange={setVertical} />
+        ) : null}
       </ControlRow>
       <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
         With stacking on, co-located markers fan apart horizontally (overlapping,
         left-over-right); a dense burst collapses to a count badge (tap it for the
-        member list).
+        member list). Switch on the vertical column to pile them up the value axis
+        instead (buys down, sells up) — the transactions-on-the-candle look.
       </Text>
       {stacked ? (
         <ChipRow

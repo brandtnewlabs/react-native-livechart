@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Vertical marker stacking** — `MarkerClusterConfig.direction`. The
+  `markerCluster` object form gains `direction?: "horizontal" | "vertical"`.
+  `"horizontal"` (default, unchanged) fans co-located markers into an overlapping
+  row; `"vertical"` piles them into a **column** that grows away from the line in
+  each glyph's `side` direction (`"above"` climbs up, `"below"` descends,
+  `"center"` climbs up from the line) — the transactions-stacked-on-the-candle
+  look. Collapse-to-count, grouping, and hit-testing all carry over; raise
+  `maxBeforeGroup` for taller columns before they collapse to a count badge.
+
 ## [4.1.0] - 2026-06-23
 
 ### Added

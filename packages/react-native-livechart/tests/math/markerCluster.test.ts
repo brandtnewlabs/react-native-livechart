@@ -9,12 +9,21 @@ import type { Marker } from "../../src/types";
 
 const ANCHORED: ClusterMarkersOpts["config"] = {
   mode: "anchored",
+  direction: "horizontal",
   overlap: 0.6,
   gap: 2,
   maxBeforeGroup: 5,
 };
 const STACKED: ClusterMarkersOpts["config"] = {
   mode: "stacked",
+  direction: "horizontal",
+  overlap: 0.6,
+  gap: 2,
+  maxBeforeGroup: 5,
+};
+const STACKED_VERTICAL: ClusterMarkersOpts["config"] = {
+  mode: "stacked",
+  direction: "vertical",
   overlap: 0.6,
   gap: 2,
   maxBeforeGroup: 5,
@@ -141,5 +150,57 @@ describe("clusterMarkers — stacked", () => {
     clusterMarkers(markers, proj, { config: STACKED });
     expect(proj[0].y).toBe(150); // connector untouched
     expect(proj[0].hidden).toBe(false);
+  });
+});
+
+describe("clusterMarkers — stacked vertical", () => {
+  const STEP = 16 * (1 - 0.6); // glyphHeight(trade) * (1 - overlap) = 6.4
+
+  it("piles co-located same-side markers into a vertical column at the anchor x", () => {
+    const markers = [trade("a", 1, "above"), trade("b", 2, "above"), trade("c", 3, "above")];
+    const proj = [pm(100, 150), pm(100, 150), pm(100, 150)];
+    clusterMarkers(markers, proj, { config: STACKED_VERTICAL });
+    // All keep the anchor x; the column climbs UP from the "above" base (140).
+    expect(proj.every((p) => p.x === 100 && !p.hidden && !p.isGrouped)).toBe(true);
+    expect(proj[0].y).toBeCloseTo(140); // base = 150 - (16/2 + 2)
+    expect(proj[1].y).toBeCloseTo(140 - STEP);
+    expect(proj[2].y).toBeCloseTo(140 - 2 * STEP);
+  });
+
+  it("grows down for `below` and up for `above` — opposite stacks at one anchor", () => {
+    const markers = [
+      trade("d1", 1, "below"),
+      trade("d2", 2, "below"),
+      trade("u1", 3, "above"),
+      trade("u2", 4, "above"),
+    ];
+    const proj = [pm(100, 150), pm(100, 150), pm(100, 150), pm(100, 150)];
+    clusterMarkers(markers, proj, { config: STACKED_VERTICAL });
+    expect(proj[0].y).toBeCloseTo(160); // below base, descending
+    expect(proj[1].y).toBeCloseTo(160 + STEP);
+    expect(proj[2].y).toBeCloseTo(140); // above base, ascending
+    expect(proj[3].y).toBeCloseTo(140 - STEP);
+    expect(proj.every((p) => p.x === 100)).toBe(true);
+  });
+
+  it("climbs up from the line for a `center` column", () => {
+    const markers = [trade("a", 1, "center"), trade("b", 2, "center")];
+    const proj = [pm(100, 150), pm(100, 150)];
+    clusterMarkers(markers, proj, { config: STACKED_VERTICAL });
+    expect(proj[0].y).toBeCloseTo(150); // first sits on the line
+    expect(proj[1].y).toBeCloseTo(150 - STEP);
+    expect(proj.every((p) => p.x === 100)).toBe(true);
+  });
+
+  it("still collapses a column past maxBeforeGroup to a count badge at the base", () => {
+    const markers = Array.from({ length: 6 }, (_, i) => trade(`m${i}`, i + 1, "above"));
+    const proj = markers.map(() => pm(100, 150));
+    clusterMarkers(markers, proj, { config: STACKED_VERTICAL });
+    const rep = proj[5]; // newest by time
+    expect(rep.isGrouped).toBe(true);
+    expect(rep.groupCount).toBe(6);
+    expect(rep.x).toBe(100);
+    expect(rep.y).toBe(140); // collapses at the side base, not up the column
+    expect(proj.slice(0, 5).every((p) => p.hidden && p.groupRep === 5)).toBe(true);
   });
 });

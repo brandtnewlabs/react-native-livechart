@@ -24,6 +24,7 @@ import type {
 
 const ANCHORED_CLUSTER: ResolvedMarkerCluster = {
   mode: "anchored",
+  direction: "horizontal",
   overlap: 0.75,
   gap: 2,
   maxBeforeGroup: 5,

@@ -99,6 +99,7 @@ interface MarkerRenderContext {
 // implies mode: "stacked" unless you set mode explicitly.
 interface MarkerClusterConfig {
   mode?: "anchored" | "stacked";
+  direction?: "horizontal" | "vertical"; // fan sideways (default) or pile into a column
   overlap?: number;        // 0 (touching) – 1 (stacked); default 0.75
   maxBeforeGroup?: number; // collapse a run past this many; default 5
 }

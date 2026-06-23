@@ -8,6 +8,10 @@ export interface ResolvedMarkerCluster {
   /** `"anchored"` = no collision handling (glyphs overlap). `"stacked"` = fan +
    *  collapse co-located markers. */
   mode: "anchored" | "stacked";
+  /** `"horizontal"` fans co-located glyphs sideways into an overlapping row;
+   *  `"vertical"` piles them into a column growing away from the line in each
+   *  glyph's `side` direction. */
+  direction: "horizontal" | "vertical";
   /** Fraction (0–1) that adjacent co-located glyphs overlap when fanned. The fan
    *  step is `glyphHeight * (1 - overlap)`; `glyphHeight` is a slightly generous
    *  primitive estimate, so the *visible* overlap runs a touch lower. */
@@ -113,11 +117,30 @@ function layoutBucket(
     return;
   }
 
+  const step = h * (1 - opts.config.overlap);
+
+  if (opts.config.direction === "vertical") {
+    // Vertical column: every glyph keeps the anchor x and stacks along y, growing
+    // AWAY from the line in the side direction (above → up, below → down,
+    // center → up from the line). `j` runs in time order, so the newest sits
+    // furthest out — and, drawn last in array order, paints over the one below it.
+    const dir = side === "below" ? 1 : -1;
+    for (let j = 0; j < count; j++) {
+      const p = proj[idx[s + j]];
+      p.x = anchorX;
+      p.y = anchorY + sideDy + dir * j * step;
+      p.hidden = false;
+      p.isGrouped = false;
+      p.groupCount = 0;
+      p.groupRep = -1;
+    }
+    return;
+  }
+
   // Horizontal overlapping fan, centered on the anchor x. Glyphs share the side
   // height. Positions run right→left as the bucket order advances, so the newest
   // (last, highest array index) sits LEFTMOST — and since the overlay draws in
   // array order, it paints on top: a left-over-right cascade ("(" over ")" over ")").
-  const step = h * (1 - opts.config.overlap);
   for (let j = 0; j < count; j++) {
     const p = proj[idx[s + j]];
     p.x = anchorX + ((count - 1) / 2 - j) * step;
