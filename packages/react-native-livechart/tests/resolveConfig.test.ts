@@ -506,6 +506,7 @@ describe("resolveScrubAction", () => {
     timeBadge: false,
     snap: undefined,
     dismissOnTapOutside: false,
+    dismissOnAction: false,
   };
 
   it("returns null for undefined (opt-in, off by default)", () => {
@@ -539,6 +540,7 @@ describe("resolveScrubAction", () => {
         iconColor: "#fff",
         lineColor: "#999",
         dismissOnTapOutside: true,
+        dismissOnAction: true,
       }),
     ).toEqual({
       ...DEFAULTS,
@@ -546,6 +548,7 @@ describe("resolveScrubAction", () => {
       iconColor: "#fff",
       lineColor: "#999",
       dismissOnTapOutside: true,
+      dismissOnAction: true,
     });
   });
 });

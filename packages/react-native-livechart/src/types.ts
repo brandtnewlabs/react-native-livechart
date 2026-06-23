@@ -752,6 +752,13 @@ export interface ScrubActionConfig {
    * instead of moving it. Default `false` (an empty-plot tap re-places the reticle).
    */
   dismissOnTapOutside?: boolean;
+  /**
+   * Dismiss the reticle once the action badge is pressed (and
+   * {@link LiveChartProps.onScrubAction} fires), so no crosshair lingers after the
+   * action — e.g. clear the order reticle once the order has been placed. Default
+   * `false` (the reticle stays until tapped away).
+   */
+  dismissOnAction?: boolean;
 }
 
 /**

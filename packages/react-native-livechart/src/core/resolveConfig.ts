@@ -179,6 +179,8 @@ export interface ResolvedScrubActionConfig {
   /** undefined → no rounding */
   snap: number | undefined;
   dismissOnTapOutside: boolean;
+  /** Clear the reticle once the action badge fires onScrubAction. */
+  dismissOnAction: boolean;
 }
 
 export interface ResolvedGradientConfig {
@@ -569,6 +571,7 @@ const SCRUB_ACTION_DEFAULTS: ResolvedScrubActionConfig = {
   timeBadge: false,
   snap: undefined,
   dismissOnTapOutside: false,
+  dismissOnAction: false,
 };
 
 /**

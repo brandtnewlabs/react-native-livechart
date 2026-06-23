@@ -5,7 +5,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useAnimatedReaction,
   useDerivedValue,
@@ -248,6 +248,13 @@ export function useLiveChartEngine(
   // Declared first so `timeWindow` below can fold it in. Defaults to null so
   // charts without `zoom` behave exactly as before.
   const viewWindow = useSharedValue<number | null>(null);
+  // A change to the `timeWindow` prop (a range / timeframe selector) is an explicit
+  // request to set the window, so it clears any active pinch-zoom override —
+  // otherwise the override below (`viewWindow ?? config.timeWindow`) would shadow
+  // the new prop forever, and prop-driven window changes would silently no-op.
+  useEffect(() => {
+    viewWindow.set(null);
+  }, [config.timeWindow, viewWindow]);
 
   // Low-frequency config → UI thread via useDerivedValue. `timeWindow` is the
   // *effective* target window: the zoom override when set, else the prop. Both

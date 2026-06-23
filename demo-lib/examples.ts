@@ -34,6 +34,14 @@ export const EXAMPLES: ExampleEntry[] = [
     href: "/showcase/fomo",
     status: "ready",
   },
+  {
+    id: "fomo-perps",
+    title: "Fomo · Perps",
+    tagline: "ETH perps — candles, volume, scroll/zoom + order ticket",
+    accent: "#23D55C",
+    href: "/showcase/fomo-perps",
+    status: "ready",
+  },
   // Placeholders — rename / re-point to the apps you're capturing screenshots
   // for. Give each a `href: "/showcase/<id>"` + a screen file to flip to "ready".
   {
