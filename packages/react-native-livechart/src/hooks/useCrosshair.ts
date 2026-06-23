@@ -166,6 +166,7 @@ export function useCrosshair(
   const hasScrubAction = scrubAction != null;
   const hasOnScrubAction = onScrubAction != null;
   const dismissOnTapOutside = scrubAction?.dismissOnTapOutside ?? false;
+  const dismissOnAction = scrubAction?.dismissOnAction ?? false;
   const snapIncrement = scrubAction?.snap;
   const actionIcon = scrubAction?.icon ?? "+";
   const actionShowText = scrubAction?.text ?? true;
@@ -611,6 +612,9 @@ export function useCrosshair(
               lockY.get(),
               candleJson,
             );
+          // Clear the reticle once the action fires, so no crosshair lingers after
+          // the order is placed via the badge.
+          if (dismissOnAction) lockActive.set(false);
         }
         return;
       }
