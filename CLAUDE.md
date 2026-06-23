@@ -65,6 +65,17 @@ Both compose from a shared set of overlay components and hooks in `src/component
 - **SkPath reuse**: Drawing functions `.reset()` and re-emit into persistent SkPath instances rather than allocating new ones each frame. Each curve keeps two paths and ping-pongs them per frame so the returned reference still changes and Reanimated re-notifies its subscribers (iOS memory optimization; see `useChartPaths.ts`).
 - **Library ships TypeScript source**: The package's `main`/`exports` point at `src/index.ts`. The consumer's Metro + Babel compiles it. `dist/` only contains `.d.ts` files.
 
+## Documentation (MANDATORY)
+
+**Any change to the library's public API is not done until its docs are updated in the same change.** This applies whenever you add, rename, retype, change a default of, or remove an exported prop, type/interface field, config option, hook, or component. Before treating the work as complete — and before opening a PR or cutting a release — update **all** of:
+
+- **Source JSDoc** — an accurate doc comment on the prop / type field / config option.
+- **`docs/api-reference/`** — `types.mdx` for type & interface fields, `livechart.mdx` / `livechart-series.mdx` for component props, `hooks-and-utilities.mdx` for hooks & utilities.
+- **`docs/guides/`** — add or update the user-facing guide for the feature (keep the docs↔demo slug parity).
+- **`CHANGELOG.md`** — an entry under `## [Unreleased]`.
+
+A public-API diff with no matching docs + CHANGELOG update is a bug, not a finished task.
+
 ## Testing
 
 Tests use `jest-expo` with a Skia mock and a Reanimated/Worklets stub (see `jest-setup.js`). SharedValues in tests are plain `{ value }` objects — full UI-thread round-trips don't work under Jest.

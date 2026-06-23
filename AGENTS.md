@@ -11,6 +11,9 @@ Quick orientation:
   root is an Expo example app.
 - **Before committing** — run `npm run verify` (typecheck + lint + test). A husky pre-commit hook
   also runs the tests.
+- **Docs are mandatory** — any change to the library's public API (props, types, config, hooks,
+  exports) MUST update the docs (`docs/`, JSDoc) and `CHANGELOG.md` in the same change. See the
+  **Documentation (MANDATORY)** section in [CLAUDE.md](CLAUDE.md).
 - **Contributing** — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 For everything else (engine architecture, worklet rules, drawing layer, testing setup), read
