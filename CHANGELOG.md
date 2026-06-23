@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-06-23
+
+### Added
+
+- **Fixed Y-axis price count** (`yAxis={{ count }}`). Render an exact number of
+  evenly-spaced price labels instead of the dynamic nice-interval grid — top label
+  = current high, bottom = current low — so the count stays constant as data
+  streams in while the values track the live range each frame (not rounded to nice
+  numbers). `minGap` still acts as a floor (the count drops to what fits on a short
+  plot) and is clamped to `15`. Works on both `LiveChart` and `LiveChartSeries`.
+  Thanks [@Cancuuu](https://github.com/Cancuuu).
+  ([#160](https://github.com/brandtnewlabs/react-native-livechart/issues/160))
+- **`dismissOnAction`** on `ScrubActionConfig` (`LiveChart`). When the locked
+  scrub reticle's action badge is pressed (firing `onScrubAction`), dismiss the
+  reticle so no crosshair lingers after the action — e.g. clear the order reticle
+  once the order is placed. Default `false` (the reticle stays until tapped away).
+  See the new `app/showcase/fomo-perps.tsx` example.
+  ([#161](https://github.com/brandtnewlabs/react-native-livechart/issues/161))
+
 ## [4.0.0] - 2026-06-19
 
 A large feature release — two-finger pinch-to-zoom, one-finger time-scroll, a price↔pixel
