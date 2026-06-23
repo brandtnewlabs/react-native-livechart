@@ -684,7 +684,9 @@ export default function FomoPerpsShowcase() {
           // pinch zooms the window. All coexist with the order-ticket reticle.
           timeScroll={{ gesture: "holdToScrub", scrubHoldMs: 450 }}
           zoom
-          scrubAction={{ icon: "+", snap: 0.5, text: true }}
+          // dismissOnAction: clear the reticle once the order is placed via the
+          // badge, so no crosshair lingers after the ticket opens.
+          scrubAction={{ icon: "+", snap: 0.5, text: true, dismissOnAction: true }}
           onScrubAction={onScrubAction}
           referenceLines={referenceLines}
           onReferenceLinePress={(_line, index) => setCancelIdx(index)}
@@ -1126,7 +1128,6 @@ const styles = StyleSheet.create({
   controls: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
     paddingHorizontal: 14,
     marginTop: 6,
     height: 38,
@@ -1145,8 +1146,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     gap: 2,
+    // Left-aligned to the candle-interval dropdown, 16px to its right.
+    marginLeft: 16,
   },
   rangeChip: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8 },
   rangeChipActive: { backgroundColor: C.chipStrong },
@@ -1156,6 +1159,7 @@ const styles = StyleSheet.create({
     width: StyleSheet.hairlineWidth,
     height: 22,
     backgroundColor: C.hairline,
+    marginHorizontal: 10,
   },
   typeBtn: { width: 34, alignItems: "center", justifyContent: "center" },
 
