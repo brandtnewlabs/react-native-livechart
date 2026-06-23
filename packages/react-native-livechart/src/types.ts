@@ -1115,6 +1115,16 @@ export interface MarkerClusterConfig {
   /** Defaults to `"stacked"` when this object form is used. */
   mode?: "anchored" | "stacked";
   /**
+   * Stack direction when `mode: "stacked"`. `"horizontal"` (default) fans
+   * co-located glyphs sideways into an overlapping row (the "( ) ) )"
+   * stacked-coins look). `"vertical"` piles them into a **column** that grows
+   * away from the line in each glyph's `side` direction — `side: "above"` climbs
+   * up, `"below"` descends, `"center"` climbs up from the line. This is the
+   * transactions-stacked-on-the-candle look; raise `maxBeforeGroup` for taller
+   * columns before they collapse to a count badge. Default `"horizontal"`.
+   */
+  direction?: "horizontal" | "vertical";
+  /**
    * How much adjacent co-located glyphs overlap when fanned, `0` (just touching)
    * to `1` (fully stacked). Default `0.75`. The on-screen overlap is approximate
    * (the fan step is estimated from the glyph size, not its exact pixels).
@@ -1600,7 +1610,9 @@ export interface LiveChartCoreProps {
    * their {@link Marker.side}, collapsing a cluster into a single count-badge
    * marker once it exceeds {@link MarkerClusterConfig.maxBeforeGroup}. Grouping is
    * recomputed per frame, so a cluster fans back out as you zoom/scroll in. Pass a
-   * {@link MarkerClusterConfig} object to tune the `overlap` and group threshold.
+   * {@link MarkerClusterConfig} object to tune the `overlap` and group threshold,
+   * or set `direction: "vertical"` to pile co-located markers into a column
+   * (growing away from the line in their `side` direction) instead of a row.
    */
   markerCluster?: "anchored" | "stacked" | MarkerClusterConfig;
   /**

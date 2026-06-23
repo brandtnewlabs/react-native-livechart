@@ -63,6 +63,16 @@ Pass the object form to tune the fan — `overlap` (0–1, default `0.75`) and t
 markerCluster={{ overlap: 0.75, maxBeforeGroup: 8 }}
 ```
 
+By default the stack fans **horizontally**. Pass `direction: "vertical"` to pile co-located markers
+into a **column** instead — each glyph keeps its time (x) and stacks along the value axis, growing
+away from the line in its `side` direction (`"above"` climbs up, `"below"` descends, `"center"` climbs
+up from the line). This is the "transactions piled on the candle" look; raise `maxBeforeGroup` so a
+tall column doesn't collapse to a count badge early.
+
+```tsx
+markerCluster={{ direction: "vertical", overlap: 0.6, maxBeforeGroup: 20 }}
+```
+
 Built-in `kind` glyphs are `"trade" | "boost" | "graduation" | "winner" | "clawback"`. Override
 the glyph with `icon` (text/emoji) or `image` (a Skia `SkImage`). Set `pill` to wrap the `icon` in a
 filled circular badge in the marker `color` (icon rendered white) — e.g. a green `+` buy / red `−`

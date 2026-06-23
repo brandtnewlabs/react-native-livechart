@@ -609,6 +609,7 @@ export function resolveMarkerCluster(
   if (typeof prop === "object") {
     return {
       mode: prop.mode ?? "stacked",
+      direction: prop.direction ?? "horizontal",
       overlap: clamp01(prop.overlap ?? MARKER_CLUSTER_OVERLAP),
       gap: MARKER_CLUSTER_GAP,
       maxBeforeGroup: prop.maxBeforeGroup ?? MARKER_CLUSTER_MAX_BEFORE_GROUP,
@@ -616,6 +617,7 @@ export function resolveMarkerCluster(
   }
   return {
     mode: prop === "stacked" ? "stacked" : "anchored",
+    direction: "horizontal",
     overlap: MARKER_CLUSTER_OVERLAP,
     gap: MARKER_CLUSTER_GAP,
     maxBeforeGroup: MARKER_CLUSTER_MAX_BEFORE_GROUP,

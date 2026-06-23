@@ -16,6 +16,7 @@ import {
 import {
   LiveChart,
   type CandlePoint,
+  type Marker,
   type ReferenceLine,
   type ScrubActionPoint,
   type ScrubPoint,
@@ -98,7 +99,10 @@ const CHART_HEIGHT = 286;
 // never reseeds to a fresh random walk. Display candles are merged up from the base
 // width to the chosen interval. The fixed span must cover the widest visible window.
 const BASE_CANDLE_SECS = 6;
-const FIXED_HISTORY_SECS = 9000;
+// Capped so the chart processes few enough candles per frame to hold a solid 60fps.
+// The per-frame candle work scales with this span ÷ BASE_CANDLE_SECS; the original
+// 9000 (~1500 base candles) periodically stalled the UI thread to ~56.
+const FIXED_HISTORY_SECS = 1200;
 // Roughly how many candles a timeframe shows at the 1× ("1D") range.
 const VISIBLE_CANDLES = 24;
 
@@ -509,6 +513,63 @@ export default function FomoPerpsShowcase() {
     },
   );
 
+  // ── Trade-tape markers (the "trenches" transaction stacks) ──────────────────
+  // Co-located buy/sell bursts that pile into vertical COLUMNS on the candles via
+  // `markerCluster={{ direction: "vertical" }}`. Every burst stacks UP off the
+  // candle (green + buys, red − sells) — `side: "above"` for both, color tells
+  // them apart. Anchored by `time` only (no `value`), so each column roots on the
+  // line at its candle. Seeded across the loaded history so columns show
+  // immediately, then ONE small burst drops per new candle (~4.5s), capped to keep
+  // the count low — both so a co-located bucket stays under `maxBeforeGroup` (no
+  // count-badge summaries) and so the per-frame cluster pass stays light.
+  const markers = useSharedValue<Marker[]>([]);
+  useEffect(() => {
+    const CAP = 40; // total glyphs kept; fewer = lighter per-frame clustering
+    let counter = 0;
+    let seeded = false;
+    let lastEdge = -1; // skip repeat bursts on the same candle (no mega-piles)
+    const makeBurst = (time: number): Marker[] => {
+      const buy = Math.random() < 0.5;
+      const n = 2 + Math.floor(Math.random() * 3); // 2–4 coins per column
+      return Array.from({ length: n }, () => {
+        counter += 1;
+        return {
+          id: `tx${counter}`,
+          time,
+          kind: "trade" as const,
+          color: buy ? C.green : C.red,
+          icon: buy ? "+" : "−",
+          pill: true,
+          // All trades stack UP off the candle (color = buy/sell), matching the
+          // trenches reference where every coin column rises from the price.
+          side: "above" as const,
+        };
+      });
+    };
+    const tick = () => {
+      const cur = data.get();
+      if (cur.length < 10) return; // wait for the feed to warm up
+      if (!seeded) {
+        seeded = true;
+        const out: Marker[] = [];
+        const step = Math.max(1, Math.floor(cur.length / 5));
+        for (let i = 6; i < cur.length - 2; i += step) {
+          out.push(...makeBurst(cur[i].time));
+        }
+        lastEdge = cur[cur.length - 1].time;
+        markers.set(out.slice(-CAP));
+        return;
+      }
+      const edge = cur[cur.length - 1].time;
+      if (edge === lastEdge) return; // one burst per candle, never pile a time
+      lastEdge = edge;
+      markers.set([...markers.get(), ...makeBurst(edge)].slice(-CAP));
+    };
+    tick(); // seed now if the feed is ready, else the interval picks it up
+    const id = setInterval(tick, 4500);
+    return () => clearInterval(id);
+  }, [data, markers]);
+
   // Trend tint vs the 24h open: green above, red below. Recolors the line, dot,
   // and badge together; flips only on a crossing (rare), so it's cheap.
   const [trendDown, setTrendDown] = useState(false);
@@ -638,6 +699,11 @@ export default function FomoPerpsShowcase() {
           liveCandle={candleMode ? displayLive : undefined}
           candleWidth={interval.candleWidthSecs}
           timeWindow={visibleWindow}
+          // Trade tape: co-located buy/sell bursts piled into vertical COLUMNS that
+          // stack UP off the candles (color = buy/sell) — see the Markers guide's
+          // vertical-stacking direction.
+          markers={markers}
+          markerCluster={{ direction: "vertical", overlap: 0.6, maxBeforeGroup: 12 }}
           // Stable green accent in candle mode (bodies carry the up/down color);
           // trend-flipping green/red for the line + its badge/dot.
           accentColor={candleMode ? C.green : trendColor}
