@@ -326,6 +326,7 @@ interface ScrubActionConfig {
   timeBadge?: boolean; // date/time pill where the line meets the x-axis; default false
   snap?: number;       // round the reported price to this increment (e.g. 0.01, 0.5)
   dismissOnTapOutside?: boolean; // empty-plot tap dismisses vs. re-places; default false
+  dismissOnAction?: boolean;     // dismiss the reticle once the badge fires onScrubAction; default false
 }
 interface SelectionDotRingConfig {
   color?: string; // ring color, defaults to the dot color

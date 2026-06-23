@@ -92,6 +92,7 @@ Pass a `ScrubActionConfig` to set the glyph, colors, price snapping, or dismissa
     snap: 0.5,             // round the reported price to a 0.5 tick
     background: "#3323E6", // badge fill; iconColor / lineColor also available
     dismissOnTapOutside: true, // empty-plot tap clears the reticle instead of moving it
+    dismissOnAction: true,     // clear the reticle once onScrubAction fires (order placed)
   }}
   onScrubAction={openTicket}
 />
