@@ -100,6 +100,26 @@ describe("useLiveChartEngine", () => {
     expect(result.current.displayMin.value).toBeDefined();
   });
 
+  it("exposes a null pinch-zoom override that follows the timeWindow prop", () => {
+    // `viewWindow` is the pinch-zoom override; it starts null (follow the prop) and
+    // a mount-time effect keeps it cleared so a `timeWindow` prop change (range /
+    // timeframe selector) isn't shadowed by a stale override. (The full reset-on-
+    // prop-change path is hard to drive under the SharedValue mock — a `set()` on a
+    // value read by a derived value forces a re-render that recreates it — so this
+    // asserts the wiring and default; the behavior is exercised in-app.)
+    const { result, rerender } = renderHook(
+      ({ tw }: { tw: number }) => {
+        const data = useSharedValue([{ time: 1700000000, value: 1 }]);
+        const value = useSharedValue(1);
+        return useLiveChartEngine({ data, value, timeWindow: tw, smoothing: 0.08 });
+      },
+      { initialProps: { tw: 30 } },
+    );
+    expect(result.current.viewWindow.get()).toBeNull();
+    rerender({ tw: 60 });
+    expect(result.current.viewWindow.get()).toBeNull();
+  });
+
   it("snaps the display state in one tick at smoothing=1 (the static settle)", () => {
     // The static settle reaction runs `applyLiveChartEngineFrame` once with
     // smoothing forced to 1, which must reach the final state immediately.
