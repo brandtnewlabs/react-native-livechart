@@ -569,8 +569,9 @@ export default function FomoPerpsShowcase() {
       intervals: [4, 4],
       badge: {
         icon: o.side === "long" ? "▲" : "▼",
-        background: `${color}26`,
+        background: color,
         borderColor: color,
+        textColor: C.white,
         radius: 6,
       },
     };
