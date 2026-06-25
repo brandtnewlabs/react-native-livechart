@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-06-25
+
+### Added
+
+- **Animated "return to live"** when `timeScroll` is switched off while scrolled
+  back. Instead of snapping, the window now **eases onto the live edge** (a brief
+  ~450 ms decelerate, all on the UI thread). It interpolates toward the *current*
+  live edge each frame, so it lands exactly on live with no end-snap.
+- **`returnToLive` prop** (`boolean | ReturnToLiveConfig`) on `LiveChart` and
+  `LiveChartSeries` to control that glide: `true` (default) glides over `450` ms,
+  `false` snaps instantly (the previous behavior), and `{ duration }` sets a custom
+  length. It's a sibling of `timeScroll` (not nested in `TimeScrollConfig`) so it
+  stays in effect through `timeScroll={false}` — the toggle that triggers it.
+  Exports the new `ReturnToLiveConfig` type.
+  ([#164](https://github.com/brandtnewlabs/react-native-livechart/issues/164))
+
+### Fixed
+
+- **Disabling `timeScroll` (or a mode switch that turns it off) no longer freezes
+  the chart at the scrolled-back position.** Previously, panning back through
+  history and then setting `timeScroll={false}` — or switching `mode` so the
+  consumer stopped passing `timeScroll` — left the window frozen at the scrolled-to
+  position with no way to return to live: the frozen edge survived because nothing
+  reset it once the gesture was disabled. The chart now returns to the live edge
+  (gliding by default — see Added), resets the internal scroll state so re-enabling
+  `timeScroll` resumes from live rather than snapping back, and, as an added guard,
+  follows live instead of stranding the window on an empty plot when a frozen edge
+  falls before the active series' first data point (e.g. line and candle series
+  with different history spans).
+  ([#164](https://github.com/brandtnewlabs/react-native-livechart/issues/164))
+
 ## [4.2.1] - 2026-06-25
 
 ### Fixed

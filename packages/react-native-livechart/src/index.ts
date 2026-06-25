@@ -79,6 +79,7 @@ export type {
   ReferenceLineBadgeConfig,
   ReferenceLineGroupingConfig,
   ReferenceLineRenderProps,
+  ReturnToLiveConfig,
   ScrubActionConfig,
   ScrubActionPoint,
   ScrubConfig,

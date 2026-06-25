@@ -611,6 +611,70 @@ describe("tickLiveChartEngineFrame", () => {
       expect(s.timestamp).toBe(950);
     });
 
+    // #164: the "return to live" glide. With viewEnd cleared, the right edge
+    // interpolates from returnFrom to the live edge by returnT (0→1).
+    it("starts the return glide at the frozen edge (returnT=0)", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, input({ returnFrom: 950, returnT: 0 }));
+      expect(s.timestamp).toBe(950); // lerp(950, 1000, 0)
+    });
+
+    it("eases the right edge toward live mid-glide (returnT=0.5)", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, input({ returnFrom: 950, returnT: 0.5 }));
+      expect(s.timestamp).toBe(975); // lerp(950, 1000, 0.5)
+    });
+
+    it("lands exactly on the live edge when the glide completes (returnT=1)", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, input({ returnFrom: 950, returnT: 1 }));
+      expect(s.timestamp).toBe(1000); // pinned to live, no end-snap
+    });
+
+    it("a frozen viewEnd still wins over an in-flight glide", () => {
+      // While actually scrolled back, viewEnd takes precedence over returnT.
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({ viewEnd: 950, returnFrom: 900, returnT: 0.5 }),
+      );
+      expect(s.timestamp).toBe(950);
+    });
+
+    // #164: a frozen edge stranded before the first data point follows live
+    // instead of rendering an empty plot (the differing-span repro).
+    it("follows live when the frozen edge precedes the first line point", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({ viewEnd: 950, points: [{ time: 980, value: 1 }] }),
+      );
+      expect(s.timestamp).toBe(1000); // 950 < firstTime 980 ⇒ follow live
+    });
+
+    it("freezes when the edge sits at or after the first line point", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({ viewEnd: 950, points: [{ time: 940, value: 1 }] }),
+      );
+      expect(s.timestamp).toBe(950); // 950 >= firstTime 940 ⇒ frozen
+    });
+
+    it("follows live when the frozen edge precedes the first candle", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          mode: "candle",
+          candles: [{ time: 980, open: 1, high: 2, low: 0.5, close: 1.5 }],
+          liveCandle: null,
+        }),
+      );
+      expect(s.timestamp).toBe(1000); // 950 < firstCandle 980 ⇒ follow live
+    });
+
     // edgeValue — the price at the window's right edge (for a followViewEdge badge).
     it("edgeValue tracks the live value while following", () => {
       const s = baseState();

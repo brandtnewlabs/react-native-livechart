@@ -14,6 +14,7 @@ import {
   resolveMultiSeriesDot,
   resolvePulse,
   resolveReferenceLineConfig,
+  resolveReturnToLiveMs,
   resolveScrub,
   resolveScrubAction,
   resolveSelectionDot,
@@ -35,6 +36,7 @@ import {
   FADE_EDGE_WIDTH,
   GRID_METRICS_DEFAULTS,
   MOTION_METRICS_DEFAULTS,
+  RETURN_TO_LIVE_MS,
 } from "../src/constants";
 import { leftEdgeFadeColorsFromBgRgb } from "../src/theme";
 
@@ -291,6 +293,32 @@ describe("resolveZoom", () => {
       minTimeWindow: 5,
       maxTimeWindow: 600,
     });
+  });
+});
+
+// ─── resolveReturnToLiveMs ───────────────────────────────────────────────────
+
+describe("resolveReturnToLiveMs", () => {
+  it("defaults to the glide duration for undefined and true", () => {
+    expect(resolveReturnToLiveMs(undefined)).toBe(RETURN_TO_LIVE_MS);
+    expect(resolveReturnToLiveMs(true)).toBe(RETURN_TO_LIVE_MS);
+  });
+
+  it("returns 0 (instant) for false", () => {
+    expect(resolveReturnToLiveMs(false)).toBe(0);
+  });
+
+  it("uses a custom duration from the config object", () => {
+    expect(resolveReturnToLiveMs({ duration: 700 })).toBe(700);
+  });
+
+  it("falls back to the default when duration is omitted", () => {
+    expect(resolveReturnToLiveMs({})).toBe(RETURN_TO_LIVE_MS);
+  });
+
+  it("collapses a non-positive duration to an instant snap", () => {
+    expect(resolveReturnToLiveMs({ duration: 0 })).toBe(0);
+    expect(resolveReturnToLiveMs({ duration: -100 })).toBe(0);
   });
 });
 

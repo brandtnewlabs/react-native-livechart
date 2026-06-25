@@ -87,9 +87,19 @@ default off.
 
 <ParamField body="timeScroll" type="boolean | TimeScrollConfig" default="false">
   Pan back through history (same as `LiveChart`). Drag (or fling) to scroll; the
-  chart stops auto-following until you return to the live edge. Per-series dots /
-  value labels track each series' value at the visible right edge while scrolled.
+  chart stops auto-following until you return to the live edge. Setting it back to
+  `false` while scrolled back glides the window back to the live edge (eased, not
+  an instant jump; never frozen at the old position). Per-series dots / value
+  labels track each series' value at the visible right edge while scrolled.
   **@experimental.** See [Time-scroll](/guides/time-scroll).
+</ParamField>
+
+<ParamField body="returnToLive" type="boolean | ReturnToLiveConfig" default="true">
+  Controls the glide back to live when `timeScroll` is switched off while scrolled
+  back (same as `LiveChart`). `true` (default) eases over `450` ms, `false` snaps
+  instantly, `{ duration }` sets a custom length. Sibling of `timeScroll` so it
+  survives `timeScroll={false}`. **@experimental.** See
+  [Time-scroll → Turning it back off](/guides/time-scroll#turning-it-back-off).
 </ParamField>
 
 <ParamField body="zoom" type="boolean | ZoomConfig" default="false">

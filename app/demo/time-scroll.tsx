@@ -43,11 +43,28 @@ const HOLD_OPTIONS: { value: number; label: string }[] = [
   { value: 750, label: "750ms" },
 ];
 
+// `returnToLive` controls how the window goes back to live when timeScroll is
+// switched off mid-scroll: glide (default), instant snap, or a slower glide.
+type ReturnMode = "glide" | "instant" | "slow";
+
+const RETURN_OPTIONS: { value: ReturnMode; label: string }[] = [
+  { value: "glide", label: "Glide" },
+  { value: "instant", label: "Instant" },
+  { value: "slow", label: "Slow" },
+];
+
+const RETURN_TO_LIVE: Record<ReturnMode, boolean | { duration: number }> = {
+  glide: true,
+  instant: false,
+  slow: { duration: 900 },
+};
+
 export default function TimeScrollScreen() {
   const [mode, setMode] = useState<"candle" | "line">("candle");
   const [gesture, setGesture] = useState<Gesture>("holdToScrub");
   const [holdMs, setHoldMs] = useState(500);
   const [enabled, setEnabled] = useState(true);
+  const [returnMode, setReturnMode] = useState<ReturnMode>("glide");
   const [zoomOn, setZoomOn] = useState(true);
   const [scrub, setScrub] = useState(true);
   const [orderTicket, setOrderTicket] = useState(true);
@@ -99,6 +116,7 @@ export default function TimeScrollScreen() {
           // Pill tracks the last visible price as you scroll back.
           badge={{ followViewEdge: true }}
           timeScroll={enabled ? { gesture, scrubHoldMs: holdMs } : false}
+          returnToLive={RETURN_TO_LIVE[returnMode]}
           zoom={zoomOn}
           // Paging callbacks (Phase 3): log the visible range (~1 Hz) and show an
           // indicator while the left edge is near the oldest seeded candle. The
@@ -144,6 +162,13 @@ export default function TimeScrollScreen() {
       <ControlRow label="Pan to scroll">
         <ToggleChip label="timeScroll" value={enabled} onChange={setEnabled} />
       </ControlRow>
+
+      <ChipRow
+        label="Return to live (toggle timeScroll off while scrolled back)"
+        options={RETURN_OPTIONS}
+        value={returnMode}
+        onChange={setReturnMode}
+      />
 
       <ControlRow label="Pinch to zoom">
         <ToggleChip label="zoom" value={zoomOn} onChange={setZoomOn} />

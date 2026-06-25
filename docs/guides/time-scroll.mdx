@@ -26,6 +26,28 @@ return to the live edge, where live-following resumes. One-finger plot scrubbing
 Panning is clamped to the earliest retained point, so keep enough history in `data` (or `candles`)
 to scroll into — seed a few windows' worth and keep your buffer longer than the visible window.
 
+### Turning it back off
+
+Setting `timeScroll` back to `false` while scrolled back — or switching `mode` so your component
+stops passing it — **glides the window back to the live edge**: a brief eased animation (it
+decelerates onto live), not an instant jump. It never stays frozen at the previous scroll position,
+so toggling time-scroll (or changing modes) is always a clean return to live, and re-enabling it
+later starts from the live edge rather than the old frozen spot. This holds even when your line and
+candle series carry different amounts of history: a frozen edge that would land before the active
+series' first point follows live instead of stranding the plot empty.
+
+Tune that glide — or turn it off — with the **`returnToLive`** prop (a sibling of `timeScroll`, so it
+survives `timeScroll={false}`):
+
+```tsx
+<LiveChart data={data} value={value} timeScroll={enabled} returnToLive={false} />        // instant snap
+<LiveChart data={data} value={value} timeScroll={enabled} returnToLive={{ duration: 700 }} /> // slower glide
+```
+
+`true` (the default) eases onto live over 450 ms; `false` snaps instantly (the pre-4.3 behavior);
+`{ duration }` sets a custom length in milliseconds. It only governs this programmatic return —
+flinging back to the live edge with the pan gesture keeps its own inertia.
+
 ## Gestures
 
 `timeScroll: true` uses the default **drag-to-scroll** gesture. Pass a `TimeScrollConfig` to pick the
