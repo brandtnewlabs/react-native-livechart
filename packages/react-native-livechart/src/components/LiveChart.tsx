@@ -798,13 +798,30 @@ function useLiveChartController({
       dragValues,
     );
 
-  // Combined "defer" hit-test for the scrub-action place-tap: yield to a marker or
-  // a pressable badge under the finger so the tap is routed there instead of
-  // dropping a reticle. (Both hit-tests return false when their feature is off.)
+  // Draggable reference lines: a per-line vertical pan that grabs a line near its
+  // value and drags it along the Y-axis (with snap / bounds / callbacks). Built
+  // unconditionally for stable hook order (and before `useCrosshair` so the scrub
+  // can defer to a line under the finger); the gesture self-disables when no line
+  // opts in, and it's only composed into the root when `refDragEnabled`.
+  const refDragEnabled =
+    !isStatic && allRefLines.some((l) => l.draggable === true);
+  const { gesture: refDragGesture, hitTest: refDragHitTest } = useReferenceDrag(
+    engine,
+    effectivePadding,
+    allRefLines,
+    dragValues,
+    dragActive,
+    !isStatic,
+  );
+
+  // Combined "defer" hit-test: the scrub-action place-tap and the live scrub both
+  // yield to a marker, a pressable badge, or a draggable line under the finger — so
+  // a press there is routed to that overlay / drag instead of dropping a reticle or
+  // crosshair. (Each hit-test returns false when its feature is off.)
   /* istanbul ignore next -- worklet runs on the UI thread, not in Jest */
   const deferTapHit = (x: number, y: number): boolean => {
     "worklet";
-    return markerHitTest(x, y) || refLineHitTest(x, y);
+    return markerHitTest(x, y) || refLineHitTest(x, y) || refDragHitTest(x, y);
   };
 
   // Time-scroll activation. `holdToScrub`: a quick one-finger drag scrolls while
@@ -843,7 +860,7 @@ function useLiveChartController({
     scrubActionCfg,
     onScrubAction,
     metricsCfg.badge,
-    markersActive || refPressActive ? deferTapHit : undefined,
+    markersActive || refPressActive || refDragEnabled ? deferTapHit : undefined,
     scrubCfg?.tooltipPlacement ?? "side",
     scrubCfg?.tooltipShowValue ?? true,
     scrubCfg?.tooltipShowTime ?? true,
@@ -875,21 +892,6 @@ function useLiveChartController({
       crosshair.scrubActive.set(false);
     },
   });
-
-  // Draggable reference lines: a per-line vertical pan that grabs a line near its
-  // value and drags it along the Y-axis (with snap / bounds / callbacks). Built
-  // unconditionally for stable hook order; the gesture self-disables when no line
-  // opts in, and it's only composed into the root when `refDragEnabled`.
-  const refDragEnabled =
-    !isStatic && allRefLines.some((l) => l.draggable === true);
-  const refDragGesture = useReferenceDrag(
-    engine,
-    effectivePadding,
-    allRefLines,
-    dragValues,
-    dragActive,
-    !isStatic,
-  );
 
   // Pinch-to-zoom the visible window (two-finger). Anchors at the focal point and
   // writes viewWindow + viewEnd; composes via Simultaneous (it's two-finger, so

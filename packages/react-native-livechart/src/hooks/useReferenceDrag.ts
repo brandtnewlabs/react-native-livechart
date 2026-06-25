@@ -13,6 +13,7 @@ import {
   clampToBounds,
   nearestDraggableIndex,
   referenceValueOut,
+  resolveDragIntent,
 } from "../math/referenceDrag";
 import { referenceLineForm } from "../math/referenceLines";
 import type { ReferenceLine } from "../types";
@@ -24,7 +25,7 @@ import {
 
 /** Vertical reach (px) around a line within which a touch grabs it. */
 const GRAB_SLOP = 14;
-/** Travel (px) that resolves drag (vertical) vs. fall-through (horizontal) intent. */
+/** Travel (px) past which a grabbed line starts dragging (in either axis). */
 const DRAG_ACTIVATE_PX = 4;
 
 /** Stable empty array so the handle / out-state worklets stay referentially stable
@@ -40,9 +41,12 @@ const EMPTY: never[] = [];
  * and overlays read.
  *
  * The pan uses `manualActivation`: it grabs only when a touch starts within
- * {@link GRAB_SLOP} of a draggable line **and** the motion is vertical — a
- * horizontal drag (scrub) or a touch off every line fails fast so the chart's other
- * gestures run (compose this ahead of them via `Gesture.Exclusive`).
+ * {@link GRAB_SLOP} of a draggable line, then **owns** that touch — any drag past
+ * {@link DRAG_ACTIVATE_PX} (in either axis) drags the line. A touch off every line
+ * fails fast so the chart's other gestures (scrub / scroll) run everywhere else
+ * (compose this ahead of them via `Gesture.Exclusive`). Crucially it no longer
+ * falls through to scrub on a horizontal start, so a drag begun on a line always
+ * wins the race rather than dropping a scrub crosshair (#163).
  *
  * Also fires the per-line drag callbacks: `onChange` (de-duped during drag),
  * `onCommit` (on release), and `onDragIn` / `onDragOut` (value crossing the visible
@@ -55,7 +59,12 @@ export function useReferenceDrag(
   dragValues: SharedValue<number[]>,
   dragActive: SharedValue<boolean[]>,
   enabled: boolean,
-): ReturnType<typeof Gesture.Pan> {
+): {
+  gesture: ReturnType<typeof Gesture.Pan>;
+  /** True when a touch at (x,y) would grab a draggable line — lets the scrub
+   *  gesture decline that press so it never drops a crosshair on a line (#163). */
+  hitTest: (x: number, y: number) => boolean;
+} {
   const anyDraggable =
     enabled &&
     lines.some((l) => l.draggable && referenceLineForm(l) === "line");
@@ -178,16 +187,22 @@ export function useReferenceDrag(
   /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
   const onTouchesMove = (
     e: { allTouches: { x: number; y: number }[] },
-    manager: { activate: () => void; fail: () => void },
+    manager: { activate: () => void },
   ) => {
     "worklet";
     if (dragIndex.get() < 0) return;
     const t = e.allTouches[0];
     if (!t) return;
-    const dx = Math.abs(t.x - startX.get());
-    const dy = Math.abs(t.y - startY.get());
-    if (dy > DRAG_ACTIVATE_PX && dy >= dx) manager.activate();
-    else if (dx > DRAG_ACTIVATE_PX) manager.fail();
+    // A line is grabbed → it owns the touch: any drag past the threshold drags it.
+    // We don't fail on horizontal intent (which used to hand the touch to scrub) —
+    // that let the scrub crosshair win the race even on a vertical drag started on
+    // the line (#163). Scrub / scroll still run off a line's grab band.
+    const intent = resolveDragIntent(
+      t.x - startX.get(),
+      t.y - startY.get(),
+      DRAG_ACTIVATE_PX,
+    );
+    if (intent === "activate") manager.activate();
   };
 
   /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
@@ -242,7 +257,20 @@ export function useReferenceDrag(
     activated.set(false);
   };
 
-  return Gesture.Pan()
+  // Geometric hit-test shared with the scrub gesture: is (x,y) within reach of a
+  // draggable line's handle? The scrub's `onStart` consults this to bail on a
+  // press over a line, so it never drops a crosshair there even though it activates
+  // independently of this manual-activation pan (the `Exclusive` priority alone
+  // doesn't hold scrub back while this gesture is merely pressed). x is unused —
+  // a Form-A line spans the full width, so only the y-reach matters.
+  /* istanbul ignore next -- worklet, runs on the UI thread */
+  const hitTest = (_x: number, y: number): boolean => {
+    "worklet";
+    if (!anyDraggable) return false;
+    return nearestDraggableIndex(handleYs.get(), y, GRAB_SLOP) >= 0;
+  };
+
+  const gesture = Gesture.Pan()
     .enabled(anyDraggable)
     .maxPointers(1)
     .manualActivation(true)
@@ -251,4 +279,6 @@ export function useReferenceDrag(
     .onStart(onStart)
     .onUpdate(onUpdate)
     .onFinalize(onFinalize);
+
+  return { gesture, hitTest };
 }

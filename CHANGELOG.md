@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Draggable reference lines now win the gesture race against scrubbing.**
+  Previously, grabbing a `draggable` reference line while `scrub` was enabled
+  would drop a scrub crosshair instead of moving the line — the drag fell through
+  to scrub the moment the touch drifted even slightly sideways (which a real
+  finger drag almost always does at the start). A grabbed line now **owns** the
+  touch: once you press within reach of the line, any drag past the activation
+  threshold drags it, in any direction. Scrubbing still works everywhere outside
+  a draggable line's grab band, so the two features can finally be used together.
+  ([#163](https://github.com/brandtnewlabs/react-native-livechart/issues/163))
+
 ## [4.2.0] - 2026-06-23
 
 ### Added

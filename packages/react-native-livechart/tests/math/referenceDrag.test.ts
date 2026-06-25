@@ -2,6 +2,7 @@ import {
   clampToBounds,
   nearestDraggableIndex,
   referenceValueOut,
+  resolveDragIntent,
 } from "../../src/math/referenceDrag";
 
 describe("clampToBounds", () => {
@@ -43,6 +44,26 @@ describe("nearestDraggableIndex", () => {
 
   it("favors the later (topmost-drawn) index on a tie", () => {
     expect(nearestDraggableIndex([50, 50], 50, 14)).toBe(1);
+  });
+});
+
+describe("resolveDragIntent", () => {
+  it("waits until the travel passes the threshold", () => {
+    expect(resolveDragIntent(0, 0, 4)).toBe("wait");
+    expect(resolveDragIntent(4, 4, 4)).toBe("wait"); // exactly at threshold (not past)
+    expect(resolveDragIntent(-4, -4, 4)).toBe("wait");
+  });
+
+  it("activates on vertical travel past the threshold", () => {
+    expect(resolveDragIntent(0, 5, 4)).toBe("activate");
+    expect(resolveDragIntent(1, -6, 4)).toBe("activate");
+  });
+
+  it("activates on horizontal / diagonal travel too (drag owns the touch, #163)", () => {
+    expect(resolveDragIntent(5, 0, 4)).toBe("activate");
+    // Horizontal-dominant start that previously fell through to scrub now drags.
+    expect(resolveDragIntent(8, 2, 4)).toBe("activate");
+    expect(resolveDragIntent(-9, 1, 4)).toBe("activate");
   });
 });
 
