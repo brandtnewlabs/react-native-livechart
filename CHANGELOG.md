@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.1] - 2026-06-25
+
 ### Fixed
 
 - **Draggable reference lines now win the gesture race against scrubbing.**
