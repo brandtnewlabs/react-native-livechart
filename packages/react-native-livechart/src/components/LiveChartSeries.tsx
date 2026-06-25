@@ -36,6 +36,7 @@ import {
   resolveMarkerCluster,
   resolveMetrics,
   resolveMultiSeriesDot,
+  resolveReturnToLiveMs,
   resolveScrub,
   resolveSelectionDot,
   resolveXAxis,
@@ -147,6 +148,7 @@ function useLiveChartSeriesController({
   scrub = true,
   selectionDot,
   timeScroll = false,
+  returnToLive,
   zoom = false,
   onScrub,
   onGestureStart,
@@ -181,6 +183,9 @@ function useLiveChartSeriesController({
   // gesture to wait for a press-and-hold so a quick drag scrolls instead — the
   // hold delay is threaded into `useCrosshairSeries` below.
   const timeScrollEnabled = Boolean(timeScroll);
+  // Return-to-live glide duration (0 = instant); sibling of `timeScroll` so it
+  // survives `timeScroll={false}` (the disable that triggers it). See #164.
+  const returnToLiveMs = resolveReturnToLiveMs(returnToLive);
   const zoomCfg = resolveZoom(zoom);
   const zoomEnabled = zoomCfg !== null;
   const scrollGestureMode =
@@ -296,6 +301,8 @@ function useLiveChartSeriesController({
     series: effectiveSeries,
     timeWindow,
     paused,
+    scrollEnabled: timeScrollEnabled,
+    returnToLiveMs,
     smoothing,
     adaptiveSpeedBoost: metricsCfg.motion.adaptiveSpeedBoost,
     exaggerate,

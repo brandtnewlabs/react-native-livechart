@@ -37,6 +37,7 @@ import {
   resolvePulse,
   resolveScrub,
   resolveScrubAction,
+  resolveReturnToLiveMs,
   resolveSelectionDot,
   resolveThreshold,
   resolveTradeStream,
@@ -216,6 +217,7 @@ function useLiveChartController({
   windowBuffer = 0,
   nowOverride,
   timeScroll = false,
+  returnToLive,
   zoom = false,
   accessibilityLabel,
   accessibilityRole = "image",
@@ -494,6 +496,9 @@ function useLiveChartController({
   // onto the JS thread (set by the reaction below, after the engine exists).
   const [scrolledBack, setScrolledBack] = useState(false);
   const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
+  // Glide duration for the return-to-live animation (0 = instant). A sibling of
+  // `timeScroll` so it survives `timeScroll={false}` (the disable that triggers it).
+  const returnToLiveMs = resolveReturnToLiveMs(returnToLive);
   const zoomCfg = resolveZoom(zoom);
   const zoomEnabled = zoomCfg !== null && !isStatic;
 
@@ -552,6 +557,8 @@ function useLiveChartController({
     timeWindow,
     paused,
     static: isStatic,
+    scrollEnabled: timeScrollEnabled,
+    returnToLiveMs,
     smoothing,
     adaptiveSpeedBoost: metricsCfg.motion.adaptiveSpeedBoost,
     exaggerate,
@@ -568,12 +575,16 @@ function useLiveChartController({
 
   // Mirror the UI-thread scroll state to React so the floating y-axis can keep
   // a right gutter at the live edge and collapse it only while scrolled back.
-  // Fires once per null↔frozen transition, and only matters for float+timeScroll.
+  // Fires once per null↔frozen transition. `viewEnd` is only non-null while
+  // time-scroll is enabled and actively scrolled (the engine resets it to null
+  // when time-scroll is disabled — see #164), so we don't gate on
+  // `timeScrollEnabled` here: that would strand `scrolledBack` at `true` after a
+  // disable-while-scrolled, wrongly floating the y-axis on a later re-enable.
   useAnimatedReaction(
     () => engine.viewEnd.value != null,
     /* istanbul ignore next -- Reanimated reaction; state mirrored on the JS thread, not exercised under Jest */
     (isScrolled, prev) => {
-      if (isScrolled !== prev && yAxisFloat && timeScrollEnabled) {
+      if (isScrolled !== prev && yAxisFloat) {
         scheduleOnRN(setScrolledBack, isScrolled);
       }
     },

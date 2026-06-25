@@ -57,6 +57,16 @@ export interface MultiEngineTickInput {
    */
   viewEnd?: number | null;
   /**
+   * "Return to live" glide (see #164). When time-scroll is disabled while scrolled
+   * back, the hook clears {@link viewEnd} and animates {@link returnT} `0`→`1`;
+   * each frame the right edge interpolates from {@link returnFrom} to the *current*
+   * live edge by `returnT`, gliding onto live with no end-snap. `1`/`undefined`
+   * pins to the live edge.
+   */
+  returnT?: number;
+  /** Frozen right-edge time the {@link returnT} glide starts from. */
+  returnFrom?: number;
+  /**
    * Absolute visible-window width (seconds) to freeze at, or `null`/`undefined`
    * to follow {@link timeWindow}. Drives pinch-zoom (see `usePinchZoom`); the
    * symmetric counterpart of {@link viewEnd}.
@@ -78,12 +88,34 @@ export function tickLiveChartSeriesEngineFrame(
   const liveEdge = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
   state.liveEdge = liveEdge;
   const viewEnd = input.viewEnd;
-  if (viewEnd != null && viewEnd < liveEdge) {
-    // Scrolled back in time: freeze the right edge (see usePanScroll).
+  // Earliest first-point time across visible series — the floor a frozen edge
+  // must stay at or above. `-Infinity` when no visible series has data, so the
+  // freeze still works (nothing to bound the window against).
+  let firstDataTime = Infinity;
+  for (let i = 0; i < input.series.length; i++) {
+    if (input.series[i].visible === false) continue;
+    const d = input.series[i].data;
+    if (d.length > 0 && d[0].time < firstDataTime) firstDataTime = d[0].time;
+  }
+  if (firstDataTime === Infinity) firstDataTime = -Infinity;
+  // Freeze the right edge while the gesture has parked `viewEnd` behind the live
+  // edge AND that edge still sits within the data; a stranded edge falls through
+  // to following live. When time-scroll is disabled the hook clears `viewEnd` and
+  // kicks off the glide below, so a stale edge can't keep the window frozen. #164.
+  const scrolledBack =
+    viewEnd != null && viewEnd < liveEdge && viewEnd >= firstDataTime;
+  if (scrolledBack) {
     state.timestamp = viewEnd;
   } else if (!input.paused) {
-    // Following the live edge — viewEnd is null/undefined or has caught back up.
-    state.timestamp = liveEdge;
+    // Following live; ease from the frozen `returnFrom` to the current live edge
+    // while a "return to live" glide is in flight (returnT < 1), else pin to live.
+    const returnT = input.returnT;
+    if (returnT != null && returnT < 1 && input.returnFrom != null) {
+      state.timestamp =
+        input.returnFrom + (liveEdge - input.returnFrom) * returnT;
+    } else {
+      state.timestamp = liveEdge;
+    }
   }
   // else: paused with no active pan → leave the frozen timestamp untouched.
 
@@ -115,7 +147,7 @@ export function tickLiveChartSeriesEngineFrame(
   // window's right edge, so they must track each series' value AT that edge
   // (`timestamp`), not the live value — otherwise the dot floats at the current
   // price while the line ends in the past. Mirrors single-series `edgeValue`.
-  const scrolledBack = viewEnd != null && viewEnd < liveEdge;
+  // Reuses the gated `scrolledBack` computed above.
 
   for (let i = 0; i < n; i++) {
     let target = series[i].value;

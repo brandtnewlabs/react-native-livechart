@@ -7,13 +7,16 @@
  */
 import { useEffect, useState } from "react";
 import {
+  cancelAnimation,
+  Easing,
   useAnimatedReaction,
   useDerivedValue,
   useFrameCallback,
   useSharedValue,
+  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import { MS_PER_FRAME_60FPS } from "../constants";
+import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type { CandlePoint, LiveChartPoint, SeriesConfig } from "../types";
 import { tickLiveChartEngineFrame } from "./liveChartEngineTick";
 
@@ -39,6 +42,20 @@ export interface EngineConfig {
   nowOverride?: number;
   windowBuffer?: number;
   paused?: boolean;
+  /**
+   * Whether the `timeScroll` gesture is active. Flipping this to `false` while
+   * scrolled back clears {@link ChartEngineScroll.viewEnd} and **glides** the
+   * window back to the live edge (a brief eased animation, not an instant jump),
+   * so disabling time-scroll — or a mode switch that turns it off — never strands
+   * the chart at a past position. See #164.
+   */
+  scrollEnabled?: boolean;
+  /**
+   * Duration (ms) of the return-to-live glide when {@link scrollEnabled} flips to
+   * `false` while scrolled back. `0` snaps instantly (no animation). Defaults to
+   * {@link RETURN_TO_LIVE_MS}. Resolved from `timeScroll.returnToLive`. See #164.
+   */
+  returnToLiveMs?: number;
   /**
    * Loop-free render: settle the display state once (smoothing forced to 1, no
    * per-frame frame callback) for many small charts in a list. See
@@ -166,6 +183,10 @@ export interface EngineFrameRefs {
   pausedSV: SharedValue<boolean>;
   /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
   viewEndSV?: SharedValue<number | null>;
+  /** "Return to live" glide progress (0→1); the right edge eases to live. Optional. */
+  returnTSV?: SharedValue<number>;
+  /** Frozen right-edge time the return glide starts from. Optional. */
+  returnFromSV?: SharedValue<number>;
   /** Pinch-zoom window-width override (null = follow timeWindow). Optional for callers/tests. */
   viewWindowSV?: SharedValue<number | null>;
   /** Receives the computed live edge each frame. Optional for callers/tests. */
@@ -223,6 +244,8 @@ export function applyLiveChartEngineFrame(
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
     viewEnd: sv.viewEndSV?.value,
+    returnT: sv.returnTSV?.value,
+    returnFrom: sv.returnFromSV?.value,
     viewWindow: sv.viewWindowSV?.value,
     mode: sv.modeSV.value,
     candles: sv.candles?.value,
@@ -283,6 +306,14 @@ export function useLiveChartEngine(
   const nowOverrideSV = useDerivedValue(() => config.nowOverride);
   const windowBufferSV = useDerivedValue(() => config.windowBuffer ?? 0);
   const pausedSV = useDerivedValue(() => config.paused ?? false);
+  // Whether time-scroll is active. Drives the return-to-live reaction below
+  // (the tick no longer reads it — clearing `viewEnd` is what makes it follow).
+  // Defaults to enabled so a caller that omits it behaves as before.
+  const scrollEnabledSV = useDerivedValue(() => config.scrollEnabled ?? true);
+  // Return-to-live glide duration (ms); 0 = instant snap. Read by the reaction.
+  const returnToLiveMsSV = useDerivedValue(
+    () => config.returnToLiveMs ?? RETURN_TO_LIVE_MS,
+  );
   const modeSV = useDerivedValue(() => config.mode ?? "line");
 
   // Animation state (mutated on UI thread each frame)
@@ -303,6 +334,12 @@ export function useLiveChartEngine(
   const viewEnd = useSharedValue<number | null>(null);
   const liveEdge = useSharedValue(initialTimestamp);
   const edgeValue = useSharedValue(0);
+  // "Return to live" glide (see #164). When time-scroll is disabled while scrolled
+  // back, the reaction below clears `viewEnd`, snapshots the frozen edge into
+  // `returnFrom`, and animates `returnT` 0→1; the tick eases the right edge onto
+  // the live edge over that progress. `returnT` rests at 1 (no glide in flight).
+  const returnT = useSharedValue(1);
+  const returnFrom = useSharedValue(0);
 
   // Live data extrema (value + time of the visible high / low). NaN until the
   // first tick finds data — the extrema label stays hidden until then.
@@ -343,6 +380,8 @@ export function useLiveChartEngine(
     windowBufferSV,
     pausedSV,
     viewEndSV: viewEnd,
+    returnTSV: returnT,
+    returnFromSV: returnFrom,
     viewWindowSV: viewWindow,
     liveEdgeSV: liveEdge,
     edgeValueSV: edgeValue,
@@ -361,6 +400,37 @@ export function useLiveChartEngine(
     "worklet";
     applyLiveChartEngineFrame(frameInfo, frameRefs);
   }, !config.static);
+
+  // When time-scroll is disabled while scrolled back, return the window to the
+  // live edge. With a positive duration this glides: snapshot the frozen edge into
+  // `returnFrom`, clear `viewEnd` (so the tick stops freezing and follows), and
+  // animate `returnT` 0→1 — the tick interpolates `returnFrom`→live by that
+  // progress, landing exactly on live. Duration 0 (`returnToLive: false`) just
+  // clears `viewEnd` for an instant snap. Clearing `viewEnd` also means a later
+  // re-enable resumes from live, not the stale frozen position. All on the UI
+  // thread, no JS round-trip. See #164.
+  useAnimatedReaction(
+    () => scrollEnabledSV.value,
+    /* istanbul ignore next -- Reanimated reaction driven by a prop→derived change; not exercised under the SharedValue mock (see the viewWindow-reset test note), verified in-app */
+    (enabled, prev) => {
+      if (prev === true && !enabled && viewEnd.value != null) {
+        const ms = returnToLiveMsSV.value;
+        if (ms > 0) {
+          returnFrom.value = viewEnd.value;
+          cancelAnimation(viewEnd);
+          viewEnd.value = null;
+          returnT.value = 0;
+          returnT.value = withTiming(1, {
+            duration: ms,
+            easing: Easing.out(Easing.cubic),
+          });
+        } else {
+          cancelAnimation(viewEnd);
+          viewEnd.value = null; // returnT stays 1 → tick pins to live (instant)
+        }
+      }
+    },
+  );
 
   // One-shot settle for static charts: the fingerprint changes when the canvas
   // lays out (width 0→real) or the framing inputs change, and the handler runs a

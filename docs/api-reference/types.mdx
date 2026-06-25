@@ -367,6 +367,10 @@ interface TimeScrollConfig {
   gesture?: "holdToScrub" | "axisDrag"; // activation; default "holdToScrub"
   scrubHoldMs?: number; // holdToScrub: press-hold (ms) before scrub engages; default 500
 }
+// Tunes the return-to-live glide (the `returnToLive` prop). @experimental
+interface ReturnToLiveConfig {
+  duration?: number; // glide duration (ms) back to live; default 450 (0 = instant snap)
+}
 // Pinch-to-zoom the visible time window (two-finger, focal-anchored). @experimental
 interface ZoomConfig {
   minTimeWindow?: number; // tightest window in seconds (max zoom-in); default timeWindow / 8

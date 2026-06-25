@@ -287,11 +287,24 @@ provided; everything else has a default.
 
 <ParamField body="timeScroll" type="boolean | TimeScrollConfig" default="false">
   Pan back through history: drag (or fling) to scroll, and the chart stops
-  auto-following until you return to the live edge. `true` uses the default
-  drag-to-scroll gesture (`"holdToScrub"` — drag scrolls, press-and-hold scrubs);
-  pass a [`TimeScrollConfig`](/api-reference/types#config-objects) to pick
-  `"axisDrag"` (drag the x-axis strip) or set `scrubHoldMs`.
+  auto-following until you return to the live edge. Setting it back to `false`
+  while scrolled back — or switching `mode` so it's no longer passed — glides the
+  window back to the live edge (eased, not an instant jump; never frozen at the
+  old position).
+  `true` uses the default drag-to-scroll gesture (`"holdToScrub"` — drag scrolls,
+  press-and-hold scrubs); pass a
+  [`TimeScrollConfig`](/api-reference/types#config-objects) to pick `"axisDrag"`
+  (drag the x-axis strip) or set `scrubHoldMs`.
   **@experimental.** See [Time-scroll](/guides/time-scroll).
+</ParamField>
+
+<ParamField body="returnToLive" type="boolean | ReturnToLiveConfig" default="true">
+  Controls the glide back to the live edge when `timeScroll` is switched off while
+  scrolled back. `true` (default) eases onto live over `450` ms; `false` snaps
+  instantly; `{ duration }` sets a custom glide length (ms). Kept separate from
+  `timeScroll` so it survives `timeScroll={false}` (the toggle that triggers it).
+  **@experimental.** See
+  [Time-scroll → Turning it back off](/guides/time-scroll#turning-it-back-off).
 </ParamField>
 
 <ParamField body="zoom" type="boolean | ZoomConfig" default="false">

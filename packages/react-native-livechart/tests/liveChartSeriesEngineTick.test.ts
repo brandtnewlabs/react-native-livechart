@@ -682,6 +682,61 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       expect(s.timestamp).toBe(950);
     });
 
+    // #164: the "return to live" glide. With viewEnd cleared, the right edge
+    // interpolates from returnFrom to the live edge by returnT (0→1).
+    it("eases the right edge from returnFrom toward live by returnT", () => {
+      const start = baseMulti();
+      tickLiveChartSeriesEngineFrame(start, input({ returnFrom: 950, returnT: 0 }));
+      expect(start.timestamp).toBe(950);
+
+      const mid = baseMulti();
+      tickLiveChartSeriesEngineFrame(mid, input({ returnFrom: 950, returnT: 0.5 }));
+      expect(mid.timestamp).toBe(975);
+
+      const done = baseMulti();
+      tickLiveChartSeriesEngineFrame(done, input({ returnFrom: 950, returnT: 1 }));
+      expect(done.timestamp).toBe(1000);
+    });
+
+    // #164: a frozen edge before any visible series' first point follows live.
+    it("follows live when the frozen edge precedes the first visible point", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          series: [
+            {
+              id: "a",
+              color: "#00f",
+              value: 5,
+              data: [{ time: 980, value: 5 }],
+            },
+          ],
+        }),
+      );
+      expect(s.timestamp).toBe(1000); // 950 < firstTime 980 ⇒ follow live
+    });
+
+    it("freezes when the edge sits at or after the first visible point", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          series: [
+            {
+              id: "a",
+              color: "#00f",
+              value: 5,
+              data: [{ time: 940, value: 5 }],
+            },
+          ],
+        }),
+      );
+      expect(s.timestamp).toBe(950); // 950 >= firstTime 940 ⇒ frozen
+    });
+
     // Regression: while scrolled back, each series' tip/dot must track its value
     // AT the visible right edge, not the live value — otherwise the dot floats at
     // the current price while the line ends in the past.

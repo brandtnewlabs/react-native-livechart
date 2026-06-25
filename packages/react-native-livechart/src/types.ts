@@ -1493,6 +1493,22 @@ export interface TimeScrollConfig {
 }
 
 /**
+ * Tunes the "return to live" glide — the eased animation that carries the window
+ * back to the live edge when `timeScroll` is switched off while scrolled back. See
+ * {@link TimeScrollConfig.returnToLive}.
+ *
+ * @experimental
+ */
+export interface ReturnToLiveConfig {
+  /**
+   * Glide duration in milliseconds. Default `450`. The window decelerates onto the
+   * live edge (ease-out cubic). Lower = snappier; `0` is treated as no animation
+   * (an instant snap).
+   */
+  duration?: number;
+}
+
+/**
  * Pinch-to-zoom the visible time window (see {@link LiveChartCoreProps.zoom}).
  *
  * @experimental Prototype — gesture model and API may change.
@@ -1683,6 +1699,11 @@ export interface LiveChartCoreProps {
    * live edge again. One-finger plot-area scrub is unchanged. Requires retained
    * history in `data` / `candles` to scroll into.
    *
+   * Setting this back to `false` while scrolled back — or switching `mode` so it's
+   * no longer passed — **glides** the window back to the live edge (a brief eased
+   * animation, not an instant jump); it never stays frozen at the previous scroll
+   * position. Tune or disable that glide with {@link returnToLive}.
+   *
    * `true` uses the default drag-to-scroll gesture (`"holdToScrub"`); pass a
    * {@link TimeScrollConfig} to pick the activation (`"holdToScrub"` or
    * `"axisDrag"`). Default `false`.
@@ -1690,6 +1711,22 @@ export interface LiveChartCoreProps {
    * @experimental Prototype — gesture model and API may change.
    */
   timeScroll?: boolean | TimeScrollConfig;
+  /**
+   * Controls the **return-to-live glide** — the animation that carries the window
+   * back to the live edge when {@link timeScroll} is switched off (set to `false`,
+   * or a `mode` switch stops passing it) while scrolled back into history:
+   *  - `true` (default) — glide back, easing onto the live edge over `450` ms.
+   *  - `false` — snap instantly, no animation.
+   *  - {@link ReturnToLiveConfig} — glide with a custom `{ duration }` (ms).
+   *
+   * Kept separate from {@link timeScroll} on purpose: the common way to leave
+   * time-scroll (`timeScroll={false}`) discards any `TimeScrollConfig`, so this
+   * lives alongside it to stay in effect through the toggle. Only governs that
+   * programmatic return; a finger fling back to live keeps its own inertia.
+   *
+   * @experimental
+   */
+  returnToLive?: boolean | ReturnToLiveConfig;
   /**
    * Pinch-to-zoom the visible time window. Two-finger pinch in/out narrows or
    * widens the window, anchored at the focal point between your fingers. Composes

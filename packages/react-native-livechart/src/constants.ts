@@ -24,6 +24,13 @@ export const MAX_Y_LABELS = 15;
  */
 export const HOLD_TO_SCRUB_MS = 500;
 
+/**
+ * Duration (ms) of the "return to live" glide — how long the window takes to ease
+ * from a scrolled-back position to the live edge when `timeScroll` is disabled
+ * (or a mode switch turns it off). Eased out so it decelerates onto live. See #164.
+ */
+export const RETURN_TO_LIVE_MS = 450;
+
 // ─── Metric default tokens (single source of truth for LiveChartMetrics) ─────
 // The resolved `metrics` config (see resolveMetrics) is assembled from these
 // objects. Draw/worklet helpers default their metric params to the matching

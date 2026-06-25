@@ -25,6 +25,7 @@ import type {
   SelectionDotConfig,
   SelectionDotProps,
   SelectionDotRingConfig,
+  ReturnToLiveConfig,
   ThresholdConfig,
   ThresholdLineConfig,
   TradeEvent,
@@ -45,6 +46,7 @@ import {
   FADE_EDGE_WIDTH,
   GRID_METRICS_DEFAULTS,
   MOTION_METRICS_DEFAULTS,
+  RETURN_TO_LIVE_MS,
 } from "../constants";
 
 // ─── Resolved types (all fields required, no optionals) ──────────────────────
@@ -454,6 +456,25 @@ export function resolveZoom(
   prop: boolean | ZoomConfig | undefined,
 ): ResolvedZoomConfig | null {
   return resolveToggle(prop, ZOOM_DEFAULTS, false);
+}
+
+/**
+ * Resolves `timeScroll.returnToLive` to the "return to live" glide duration in ms,
+ * where `0` means an instant snap (no animation):
+ *  - `undefined` / `true` → default {@link RETURN_TO_LIVE_MS}
+ *  - `false` → `0` (instant)
+ *  - `{ duration }` → that duration (a non-positive value collapses to `0`)
+ *
+ * See {@link ReturnToLiveConfig} / #164.
+ */
+export function resolveReturnToLiveMs(
+  prop: boolean | ReturnToLiveConfig | undefined,
+): number {
+  if (prop === false) return 0;
+  if (prop == null || prop === true) return RETURN_TO_LIVE_MS;
+  const d = prop.duration;
+  if (d == null) return RETURN_TO_LIVE_MS;
+  return d > 0 ? d : 0;
 }
 
 const AXIS_LABEL_DEFAULTS: ResolvedAxisLabelConfig = {

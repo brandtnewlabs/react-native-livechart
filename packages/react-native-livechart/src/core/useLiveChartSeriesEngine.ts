@@ -1,11 +1,15 @@
 import { useRef, useState } from "react";
 import {
+  cancelAnimation,
+  Easing,
+  useAnimatedReaction,
   useDerivedValue,
   useFrameCallback,
   useSharedValue,
+  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import { MS_PER_FRAME_60FPS } from "../constants";
+import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type { LiveChartPoint, SeriesConfig } from "../types";
 import { tickLiveChartSeriesEngineFrame } from "./liveChartSeriesEngineTick";
 import type { ChartEngineScroll, MultiEngineState } from "./useLiveChartEngine";
@@ -24,6 +28,19 @@ export interface MultiSeriesEngineConfig {
   nowOverride?: number;
   windowBuffer?: number;
   paused?: boolean;
+  /**
+   * Whether the `timeScroll` gesture is active. Flipping to `false` while scrolled
+   * back clears {@link ChartEngineScroll.viewEnd} and **glides** the window back to
+   * the live edge (eased, not an instant jump), so disabling time-scroll never
+   * strands the chart at a past position. See #164.
+   */
+  scrollEnabled?: boolean;
+  /**
+   * Duration (ms) of the return-to-live glide when {@link scrollEnabled} flips to
+   * `false` while scrolled back. `0` snaps instantly. Defaults to
+   * {@link RETURN_TO_LIVE_MS}. Resolved from `timeScroll.returnToLive`. See #164.
+   */
+  returnToLiveMs?: number;
 }
 
 export interface MultiEngineFrameRefs {
@@ -49,6 +66,10 @@ export interface MultiEngineFrameRefs {
   pausedSV: SharedValue<boolean>;
   /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
   viewEndSV?: SharedValue<number | null>;
+  /** "Return to live" glide progress (0→1); the right edge eases to live. Optional. */
+  returnTSV?: SharedValue<number>;
+  /** Frozen right-edge time the return glide starts from. Optional. */
+  returnFromSV?: SharedValue<number>;
   /** Pinch-zoom window-width override (null = follow timeWindow). Optional for callers/tests. */
   viewWindowSV?: SharedValue<number | null>;
   /** Receives the computed live edge each frame. Optional for callers/tests. */
@@ -137,6 +158,8 @@ export function applyLiveChartSeriesEngineFrame(
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
     viewEnd: sv.viewEndSV?.value,
+    returnT: sv.returnTSV?.value,
+    returnFrom: sv.returnFromSV?.value,
     viewWindow: sv.viewWindowSV?.value,
   });
   sv.displayMin.value = state.displayMin;
@@ -173,6 +196,13 @@ export function useLiveChartSeriesEngine(
   const nowOverrideSV = useDerivedValue(() => config.nowOverride);
   const windowBufferSV = useDerivedValue(() => config.windowBuffer ?? 0);
   const pausedSV = useDerivedValue(() => config.paused ?? false);
+  // Whether time-scroll is active — drives the return-to-live reaction below.
+  // Defaults to enabled (legacy behavior).
+  const scrollEnabledSV = useDerivedValue(() => config.scrollEnabled ?? true);
+  // Return-to-live glide duration (ms); 0 = instant snap. Read by the reaction.
+  const returnToLiveMsSV = useDerivedValue(
+    () => config.returnToLiveMs ?? RETURN_TO_LIVE_MS,
+  );
 
   const displayMin = useSharedValue(0);
   const displayMax = useSharedValue(1);
@@ -186,6 +216,10 @@ export function useLiveChartSeriesEngine(
   // Pan-scroll state (see useLiveChartEngine). Defaults to following live.
   const viewEnd = useSharedValue<number | null>(null);
   const liveEdge = useSharedValue(initialTimestamp);
+  // "Return to live" glide (see #164) — `returnT` rests at 1; the reaction below
+  // animates it 0→1 from `returnFrom` when time-scroll is disabled while scrolled.
+  const returnT = useSharedValue(1);
+  const returnFrom = useSharedValue(0);
 
   const displaySeriesValues = useSharedValue<number[]>([]);
   const seriesOpacities = useSharedValue<number[]>([]);
@@ -235,6 +269,8 @@ export function useLiveChartSeriesEngine(
         windowBufferSV,
         pausedSV,
         viewEndSV: viewEnd,
+        returnTSV: returnT,
+        returnFromSV: returnFrom,
         viewWindowSV: viewWindow,
         liveEdgeSV: liveEdge,
         extremaMinValue,
@@ -245,6 +281,34 @@ export function useLiveChartSeriesEngine(
       scratch,
     );
   });
+
+  // Return the window to live when time-scroll is disabled while scrolled back
+  // (mirrors useLiveChartEngine): with a positive duration, glide — snapshot the
+  // frozen edge, clear `viewEnd`, and animate `returnT` 0→1 so the tick eases
+  // `returnFrom`→live; duration 0 just clears `viewEnd` for an instant snap.
+  // Clearing `viewEnd` also means a later re-enable resumes from live. See #164.
+  useAnimatedReaction(
+    () => scrollEnabledSV.value,
+    /* istanbul ignore next -- Reanimated reaction driven by a prop→derived change; not exercised under the SharedValue mock, verified in-app */
+    (enabled, prev) => {
+      if (prev === true && !enabled && viewEnd.value != null) {
+        const ms = returnToLiveMsSV.value;
+        if (ms > 0) {
+          returnFrom.value = viewEnd.value;
+          cancelAnimation(viewEnd);
+          viewEnd.value = null;
+          returnT.value = 0;
+          returnT.value = withTiming(1, {
+            duration: ms,
+            easing: Easing.out(Easing.cubic),
+          });
+        } else {
+          cancelAnimation(viewEnd);
+          viewEnd.value = null;
+        }
+      }
+    },
+  );
 
   return {
     data,
