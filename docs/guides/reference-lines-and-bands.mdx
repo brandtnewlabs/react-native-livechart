@@ -103,6 +103,11 @@ the value back into `value` to make it controlled. `onDragIn` / `onDragOut` are 
 also fire when the axis rescales under a fixed value (e.g. an order scrolling off the top), so
 they're a clean "is my order still on screen" signal even without dragging.
 
+Dragging coexists with [scrubbing](/guides/scrubbing): a press that lands within reach of a
+draggable line grabs the line and any drag moves it (in any direction), while a press anywhere else
+scrubs as usual. So you can keep `scrub` enabled alongside draggable orders — only the thin grab
+band around each draggable line is reserved for the drag.
+
 ## Custom tags (`renderReferenceLine`)
 
 Replace a line's built-in pill / gutter label with any **React Native** view — the same model as

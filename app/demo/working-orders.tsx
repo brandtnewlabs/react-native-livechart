@@ -151,7 +151,7 @@ export default function WorkingOrdersScreen() {
     <DemoScreen
       title="Working orders"
       docs="guides/reference-lines-and-bands"
-      description="Drag BUY / SELL to set a price (snap 0.05, clamped to bounds). Watch the live value, committed value, and the drag-callback log. Toggle custom RN tags and near-value grouping."
+      description="Drag BUY / SELL to set a price (snap 0.05, clamped to bounds) — scrub anywhere off the lines. Watch the live value, committed value, and the drag-callback log. Toggle custom RN tags and near-value grouping."
       chart={
         <LiveChart
           data={data}
@@ -178,7 +178,6 @@ export default function WorkingOrdersScreen() {
               : false
           }
           renderReferenceLine={custom ? renderReferenceLine : undefined}
-          scrub={false}
         />
       }
     >

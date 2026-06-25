@@ -44,6 +44,25 @@ export function nearestDraggableIndex(
 }
 
 /**
+ * Resolve a grabbed line's drag intent from the touch travel (px) since the grab.
+ * Once a line is grabbed it **owns** the touch: any drag past `threshold` px in
+ * either axis activates the drag. We deliberately don't fall through to scrub on
+ * horizontal / diagonal intent — that let the scrub crosshair win the race even
+ * on a vertical drag started on the line (#163). Returns `"activate"` past the
+ * threshold, else `"wait"` (keep the gesture armed for more travel).
+ */
+export function resolveDragIntent(
+  dx: number,
+  dy: number,
+  threshold: number,
+): "activate" | "wait" {
+  "worklet";
+  return Math.abs(dx) > threshold || Math.abs(dy) > threshold
+    ? "activate"
+    : "wait";
+}
+
+/**
  * Whether a line's value sits **outside** its watched interval — the trigger for
  * `onDragOut` / `onDragIn` (edge-detected by the caller). When `bounds` is set the
  * watched interval is `bounds` (at-or-past a bound counts as out, since the drag
