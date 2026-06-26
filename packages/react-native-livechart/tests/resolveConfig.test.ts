@@ -462,6 +462,7 @@ describe("resolveScrub", () => {
       tooltipShowValue: true,
       tooltipShowTime: true,
       panGestureDelay: 0,
+      hideOverlaysOnScrub: false,
     });
   });
 
@@ -475,6 +476,7 @@ describe("resolveScrub", () => {
       tooltipShowValue: true,
       tooltipShowTime: true,
       panGestureDelay: 0,
+      hideOverlaysOnScrub: false,
     });
   });
 
@@ -488,6 +490,7 @@ describe("resolveScrub", () => {
       tooltipShowValue: true,
       tooltipShowTime: true,
       panGestureDelay: 0,
+      hideOverlaysOnScrub: false,
     });
   });
 
@@ -511,7 +514,15 @@ describe("resolveScrub", () => {
       tooltipShowValue: true,
       tooltipShowTime: true,
       panGestureDelay: 300,
+      hideOverlaysOnScrub: false,
     });
+  });
+
+  it("defaults hideOverlaysOnScrub to false and carries it when set", () => {
+    expect(resolveScrub(true)?.hideOverlaysOnScrub).toBe(false);
+    expect(
+      resolveScrub({ hideOverlaysOnScrub: true })?.hideOverlaysOnScrub,
+    ).toBe(true);
   });
 
   it("carries a custom tooltipBorderRadius", () => {

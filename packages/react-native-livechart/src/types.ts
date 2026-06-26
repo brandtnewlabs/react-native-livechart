@@ -720,6 +720,23 @@ export interface ScrubConfig {
    * Default `0`.
    */
   panGestureDelay?: number;
+  /**
+   * Fade the annotation overlays — buy/sell **markers** and **reference lines**
+   * (both the built-in Skia tags/lines and any custom `renderMarker` /
+   * `renderReferenceLine` RN views) — out while scrubbing, so they don't clutter
+   * the crosshair read-out. Reverses on release.
+   *
+   * The fade is driven by the **scrub-active** state (not the crosshair's
+   * edge-proximity fade, which would resurface the overlays as the crosshair
+   * nears the live dot) and eased on the UI thread over `SCRUB_OVERLAY_FADE_MS`.
+   * It animates only a **group opacity** — the marker atlas and reference-line
+   * geometry are left intact (still one batched draw each), so it's far cheaper
+   * than emptying / rebuilding overlay data per scrub. The leading dot is
+   * governed separately by `selectionDot`.
+   *
+   * `false` / omitted keeps the overlays visible while scrubbing (default).
+   */
+  hideOverlaysOnScrub?: boolean;
 }
 
 /**

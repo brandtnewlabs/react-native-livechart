@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`scrub.hideOverlaysOnScrub`** (`boolean`, default `false`) on `LiveChart` and
+  `LiveChartSeries`. Fades the annotation overlays — buy/sell **markers** and
+  **reference lines** (both the built-in Skia tags/lines and any custom
+  `renderMarker` / `renderReferenceLine` RN views) — out while scrubbing so they
+  don't clutter the crosshair read-out, easing back in on release. Driven by the
+  scrub-active state (not the crosshair's edge-proximity fade, which would
+  resurface the overlays near the live dot) and eased on the UI thread. Animates
+  only a group opacity — the marker atlas and reference-line geometry are left
+  intact (still one batched draw each), so there's no per-scrub data rebuild.
+
 ## [4.4.0] - 2026-06-26
 
 ### Added

@@ -329,6 +329,7 @@ interface ScrubConfig {
   tooltipMargin?: number; // gap (px) to the pinned plot edge (top for side/top, bottom for bottom); default 8
   tooltipShowValue?: boolean; tooltipShowTime?: boolean; // default both true; drop a row (e.g. date-only)
   panGestureDelay?: number; // press-and-hold ms before scrubbing activates; default 0
+  hideOverlaysOnScrub?: boolean; // fade markers + reference lines out while scrubbing; default false
 }
 // Order-ticket mode (scrubAction). Opt-in — default off.
 interface ScrubActionConfig {
