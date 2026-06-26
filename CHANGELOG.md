@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-06-26
+
 ### Added
 
 - **`scrub.hideOverlaysOnScrub`** (`boolean`, default `false`) on `LiveChart` and
@@ -18,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resurface the overlays near the live dot) and eased on the UI thread. Animates
   only a group opacity — the marker atlas and reference-line geometry are left
   intact (still one batched draw each), so there's no per-scrub data rebuild.
+  Thanks [@dszym00](https://github.com/dszym00).
+  ([#169](https://github.com/brandtnewlabs/react-native-livechart/pull/169))
 - **`transitions` prop** (`boolean | TransitionConfig`) on `LiveChart` and
   `LiveChartSeries` to tune or disable the built-in transition animations.
   `false` makes them instant; an object sets per-transition durations in ms —
@@ -27,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `reveal: 0` removes the grow-in on timeframe change and the line "animating in"
   when switching candle→line. Independent of `smoothing` (live value easing) and
   `static` (one-shot render). Exports the new `TransitionConfig` type.
+  Thanks [@dszym00](https://github.com/dszym00).
+  ([#171](https://github.com/brandtnewlabs/react-native-livechart/pull/171))
 - **Configurable loading shell** — `loading` now accepts a `LoadingConfig` object
   (`boolean | LoadingConfig`) on `LiveChart` and `LiveChartSeries`, so the
   breathing-line placeholder can be restyled: `color` (squiggle + skeleton
@@ -37,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keeps its look as it melts into the line. `true` keeps the defaults, `false` /
   omitted is "not loading". Exports the new `LoadingConfig` type. (The
   loading→live reveal duration is tuned separately via the `transitions.reveal`
-  prop above.)
+  prop above.) Thanks [@dszym00](https://github.com/dszym00).
+  ([#170](https://github.com/brandtnewlabs/react-native-livechart/pull/170))
 
 ## [4.4.0] - 2026-06-26
 
