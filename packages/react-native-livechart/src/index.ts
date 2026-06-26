@@ -97,6 +97,7 @@ export type {
   ThresholdLineConfig,
   TooltipRenderProps,
   TradeEvent,
+  TransitionConfig,
   ValueLineConfig,
   VisibleRange,
   VolumeConfig,

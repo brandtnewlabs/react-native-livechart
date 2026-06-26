@@ -1603,6 +1603,27 @@ export interface VisibleRange {
   following: boolean;
 }
 
+/**
+ * Per-transition animation durations (ms). Passed as the object form of
+ * {@link LiveChartCoreProps.transitions} to tune or disable the built-in
+ * animations. Omit a field to keep its default; `0` makes that transition
+ * instant (snap). Setting `transitions={false}` is shorthand for all `0`.
+ */
+export interface TransitionConfig {
+  /**
+   * Reveal / collapse transition — the grow-in when data first appears (and the
+   * fade-out when it goes away or `loading` toggles). This is what plays on a
+   * timeframe change and when a `line` chart's data appears (e.g. switching from
+   * candle to line). Default `600`. `0` = instant.
+   */
+  reveal?: number;
+  /**
+   * Candle ↔ line crossfade duration when `mode` changes. Single-series
+   * `LiveChart` only (multi-series is always lines). Default `300`. `0` = instant.
+   */
+  mode?: number;
+}
+
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
@@ -1619,6 +1640,15 @@ export interface LiveChartCoreProps {
   timeWindow?: number;
   /** Freeze chart scrolling. Resume catches up to real time. Default `false`. */
   paused?: boolean;
+  /**
+   * Tune or disable the built-in transition animations. `true` / omitted keeps
+   * the defaults; `false` makes them all instant (no grow-in on data
+   * appear/timeframe change, no candle↔line crossfade); a {@link TransitionConfig}
+   * sets per-transition durations in ms (`reveal`, `mode`), where `0` snaps that
+   * one. Live value tracking is governed separately by `smoothing`; static-entry
+   * suppression by `static`.
+   */
+  transitions?: boolean | TransitionConfig;
   /**
    * Breathing-line loading shell. When this becomes `false`, the chart reveals
    * only if there is data (≥2 line points or ≥2 committed candles).

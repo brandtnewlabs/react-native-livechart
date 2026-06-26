@@ -60,6 +60,8 @@ export function useChartReveal(
   hasData: SharedValue<boolean>,
   /** Static charts skip the entry ramp: morphT snaps to its target, no `withTiming`. */
   isStatic = false,
+  /** Reveal/collapse duration (ms). Default {@link CHART_REVEAL_DURATION_MS}; `0` snaps. */
+  revealDuration: number = CHART_REVEAL_DURATION_MS,
 ): ChartRevealState {
   // Best-guess initial so the common case — a live chart that already has data
   // and isn't loading — paints fully revealed with no flash. The reaction below
@@ -85,15 +87,18 @@ export function useChartReveal(
         return;
       }
       if (prev !== chartVisible) {
+        // 0ms → withTiming resolves on the next frame (effectively a snap), so an
+        // explicit `transitions={{ reveal: 0 }}` / `transitions={false}` removes
+        // the grow-in without a special-case branch.
         morphT.set(
           withTiming(chartVisible ? 1 : 0, {
-            duration: CHART_REVEAL_DURATION_MS,
+            duration: revealDuration,
             easing: Easing.out(Easing.cubic),
           }),
         );
       }
     },
-    [hasData, isStatic],
+    [hasData, isStatic, revealDuration],
   );
 
   const isEmpty = useDerivedValue(() => !isLoading.get() && !hasData.get());

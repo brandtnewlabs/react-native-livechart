@@ -40,6 +40,8 @@ export default function TransitionsScreen() {
   const [mode, setMode] = useState<Mode>("line");
   const [accent, setAccent] = useState<Accent>("blue");
   const [keepMounted, setKeepMounted] = useState(true);
+  // `transitions={false}` → instant reveal + instant line↔candle crossfade.
+  const [instant, setInstant] = useState(false);
 
   const { data, value, candles, liveCandle } = useSimulatedChartData({
     multiSeries: false,
@@ -76,6 +78,7 @@ export default function TransitionsScreen() {
             accentColor={ACCENT}
             theme={APP_THEME}
             timeWindow={WINDOW}
+            transitions={instant ? false : undefined}
             accessibilityLabel={`Price ${mode} chart`}
             scrub={false}
           />
@@ -125,9 +128,18 @@ export default function TransitionsScreen() {
             value={mode}
             onChange={setMode}
           />
+          <ControlRow label="transitions">
+            {/* transitions={false} → instant reveal + instant line↔candle switch. */}
+            <ToggleChip
+              label="Instant (no animation)"
+              value={instant}
+              onChange={setInstant}
+            />
+          </ControlRow>
           <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
             One LiveChart with a toggled mode — the engine morphs line↔candle and
-            the y-axis eases between the two ranges (no re-reveal).
+            the y-axis eases between the two ranges (no re-reveal). Flip Instant
+            ({`transitions={false}`}) to switch with no animation.
           </Text>
         </>
       ) : (

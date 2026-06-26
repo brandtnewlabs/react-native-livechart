@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resurface the overlays near the live dot) and eased on the UI thread. Animates
   only a group opacity — the marker atlas and reference-line geometry are left
   intact (still one batched draw each), so there's no per-scrub data rebuild.
+- **`transitions` prop** (`boolean | TransitionConfig`) on `LiveChart` and
+  `LiveChartSeries` to tune or disable the built-in transition animations.
+  `false` makes them instant; an object sets per-transition durations in ms —
+  `reveal` (the grow-in when data appears / on a timeframe change / when a line
+  chart's data appears; default `600`) and `mode` (the candle↔line crossfade,
+  single-series only; default `300`), with `0` snapping that transition.
+  `reveal: 0` removes the grow-in on timeframe change and the line "animating in"
+  when switching candle→line. Independent of `smoothing` (live value easing) and
+  `static` (one-shot render). Exports the new `TransitionConfig` type.
 
 ## [4.4.0] - 2026-06-26
 
