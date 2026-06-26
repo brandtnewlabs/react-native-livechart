@@ -1624,6 +1624,34 @@ export interface TransitionConfig {
   mode?: number;
 }
 
+/**
+ * Styling for the breathing-line loading shell (the {@link LiveChartCoreProps.loading}
+ * state). Every field is optional — pass it as the object form of `loading` to
+ * restyle the shell; omit a field to keep its default.
+ */
+export interface LoadingConfig {
+  /**
+   * Color of the loading squiggle **and** the skeleton Y-axis placeholders.
+   * Default: the theme's `gridLine` color.
+   */
+  color?: string;
+  /**
+   * Stroke width (px) of the loading squiggle. Default: the chart's line
+   * `strokeWidth`.
+   */
+  strokeWidth?: number;
+  /**
+   * Base wave amplitude (px) of the breathing squiggle — it breathes between
+   * `0.4×` and `1.0×` this. Default `14`.
+   */
+  amplitude?: number;
+  /**
+   * Multiplier on the breathing-wave animation cadence: `>1` ripples faster,
+   * `<1` slower, `0` freezes it. Default `1`.
+   */
+  speed?: number;
+}
+
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
@@ -1652,8 +1680,15 @@ export interface LiveChartCoreProps {
   /**
    * Breathing-line loading shell. When this becomes `false`, the chart reveals
    * only if there is data (≥2 line points or ≥2 committed candles).
+   *
+   * `true` shows the shell with the defaults; pass a {@link LoadingConfig} to
+   * restyle it — `color` / `strokeWidth` for the squiggle + skeleton, `amplitude`
+   * / `speed` for the breathing wave. `false` / omitted is "not loading". Toggle
+   * between the config and `false` as data loads (e.g. `loading={isLoading && cfg}`).
+   * The loading→live reveal duration is governed separately by
+   * {@link TransitionConfig.reveal} (the `transitions` prop).
    */
-  loading?: boolean;
+  loading?: boolean | LoadingConfig;
   /**
    * Value-lerp speed — how quickly the drawn value, time window, and Y-range chase
    * their targets each frame (0 = frozen, 1 = instant). Equivalent to liveline's

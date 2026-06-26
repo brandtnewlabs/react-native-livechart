@@ -62,6 +62,10 @@ export function LoadingOverlay({
   badgeTail = true,
   badgeMetrics = BADGE_METRICS_DEFAULTS,
   emptyMetrics = EMPTY_STATE_METRICS_DEFAULTS,
+  lineColor,
+  lineStrokeWidth,
+  waveAmplitude = 14,
+  waveSpeed = 1,
 }: {
   engine: ChartEngineLayout;
   padding: ChartPadding;
@@ -73,6 +77,14 @@ export function LoadingOverlay({
   isEmpty: SharedValue<boolean> | { value: boolean };
   emptyText: string;
   strokeWidth: number;
+  /** Loading squiggle + skeleton color. Omit → theme `gridLine`. */
+  lineColor?: string;
+  /** Loading squiggle stroke width. Omit → `strokeWidth`. */
+  lineStrokeWidth?: number;
+  /** Breathing-wave base amplitude (px). */
+  waveAmplitude?: number;
+  /** Breathing-wave speed multiplier. */
+  waveSpeed?: number;
   /** Mirror the badge prop so labels align with GridOverlay's label positions. */
   badge?: boolean;
   /** Whether the badge tail spike is shown; affects the left inset used for skeleton alignment. */
@@ -85,6 +97,11 @@ export function LoadingOverlay({
   // Same left-inset formula as GridOverlay (only used when badge=true)
   const leftInset =
     badgeMetrics.dotGap + badgeTailAndCap(font.getSize(), badgeTail, badgeMetrics);
+
+  // Loading-shell color (squiggle + skeleton placeholders) and squiggle stroke,
+  // both overridable via `loading={{ color, strokeWidth }}`.
+  const loadingColor = lineColor ?? palette.gridLine;
+  const loadingStroke = lineStrokeWidth ?? strokeWidth;
 
   // Squiggly path — built into a reused PathBuilder and detach()-ed each frame.
   const squigglyBuilder = usePathBuilder();
@@ -100,6 +117,8 @@ export function LoadingOverlay({
       engine.canvasHeight.get(),
       padding,
       engine.timestamp.get(),
+      waveAmplitude,
+      waveSpeed,
     );
     return buildSplineDetached(b, pts);
   });
@@ -225,8 +244,8 @@ export function LoadingOverlay({
       <Path
         path={squigglyPath}
         style="stroke"
-        strokeWidth={strokeWidth}
-        color={palette.gridLine}
+        strokeWidth={loadingStroke}
+        color={loadingColor}
         strokeCap="round"
         strokeJoin="round"
       />
@@ -255,7 +274,7 @@ export function LoadingOverlay({
         width={RECT_W}
         height={RECT_H}
         r={RECT_R}
-        color={palette.gridLine}
+        color={loadingColor}
       />
       <RoundedRect
         x={lx}
@@ -263,7 +282,7 @@ export function LoadingOverlay({
         width={RECT_W}
         height={RECT_H}
         r={RECT_R}
-        color={palette.gridLine}
+        color={loadingColor}
       />
       <RoundedRect
         x={lx}
@@ -271,7 +290,7 @@ export function LoadingOverlay({
         width={RECT_W}
         height={RECT_H}
         r={RECT_R}
-        color={palette.gridLine}
+        color={loadingColor}
       />
       <RoundedRect
         x={lx}
@@ -279,7 +298,7 @@ export function LoadingOverlay({
         width={RECT_W}
         height={RECT_H}
         r={RECT_R}
-        color={palette.gridLine}
+        color={loadingColor}
       />
 
       {/* Empty state label */}

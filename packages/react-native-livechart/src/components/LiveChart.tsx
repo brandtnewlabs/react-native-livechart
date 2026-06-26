@@ -38,6 +38,7 @@ import {
   resolveGradient,
   resolveGridStyle,
   resolveLeftEdgeFade,
+  resolveLoading,
   resolveMarkerCluster,
   resolveMetrics,
   resolvePulse,
@@ -543,9 +544,13 @@ function useLiveChartController({
     candles,
   });
 
+  // Resolve the loading shell: null = not loading, else the styled config (a
+  // non-null result is the "is loading" flag and carries the look).
+  const loadingCfg = resolveLoading(loading);
+  const loadingActive = loadingCfg !== null;
   const transitionsCfg = resolveTransitions(transitions);
   const reveal = useChartReveal(
-    loading,
+    loadingActive,
     hasData,
     isStatic,
     transitionsCfg.reveal,
@@ -677,6 +682,9 @@ function useLiveChartController({
     // live value when `followViewEdge` tracks the scrolled-back window.
     engine.edgeValue,
     badgeCfg?.followViewEdge ?? false,
+    // Match the standalone loading squiggle's wave during the reveal morph.
+    loadingCfg?.amplitude,
+    loadingCfg?.speed,
   );
 
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config
@@ -1124,6 +1132,11 @@ function useLiveChartController({
     // engine + reveal
     engine,
     reveal,
+    // loading shell styling (null → not loading)
+    loadingLineColor: loadingCfg?.color,
+    loadingStrokeWidth: loadingCfg?.strokeWidth,
+    loadingAmplitude: loadingCfg?.amplitude,
+    loadingSpeed: loadingCfg?.speed,
     // derived render values
     backgroundColor,
     gradientEnd,
@@ -1356,6 +1369,10 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     yAxisEntries,
     badgeUsesRightGutter,
     gridStyleCfg,
+    loadingLineColor,
+    loadingStrokeWidth,
+    loadingAmplitude,
+    loadingSpeed,
   } = model;
 
   return (
@@ -1611,6 +1628,10 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         badgeTail={badgeCfg?.tail ?? true}
         badgeMetrics={metricsCfg.badge}
         emptyMetrics={metricsCfg.emptyState}
+        lineColor={loadingLineColor}
+        lineStrokeWidth={loadingStrokeWidth}
+        waveAmplitude={loadingAmplitude}
+        waveSpeed={loadingSpeed}
       />
     </Group>
   );

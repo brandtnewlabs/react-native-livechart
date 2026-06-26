@@ -14,6 +14,7 @@ import type {
   LineStyleConfig,
   LiveChartMetrics,
   LiveChartMetricsOverride,
+  LoadingConfig,
   MarkerClusterConfig,
   DotConfig,
   DotRingConfig,
@@ -46,6 +47,8 @@ import {
   EMPTY_STATE_METRICS_DEFAULTS,
   FADE_EDGE_WIDTH,
   GRID_METRICS_DEFAULTS,
+  LOADING_WAVE_AMPLITUDE,
+  LOADING_WAVE_SPEED,
   MOTION_METRICS_DEFAULTS,
   RETURN_TO_LIVE_MS,
 } from "../constants";
@@ -618,6 +621,36 @@ export function resolveScrub(
     resolved.crosshairDash = dash === true ? [4, 4] : dash || undefined;
   }
   return resolved;
+}
+
+export interface ResolvedLoadingConfig {
+  /** undefined → palette.gridLine */
+  color: string | undefined;
+  /** undefined → the chart's line strokeWidth */
+  strokeWidth: number | undefined;
+  /** Base breathing-wave amplitude (px). */
+  amplitude: number;
+  /** Breathing-wave speed multiplier. */
+  speed: number;
+}
+
+const LOADING_DEFAULTS: ResolvedLoadingConfig = {
+  color: undefined,
+  strokeWidth: undefined,
+  amplitude: LOADING_WAVE_AMPLITUDE,
+  speed: LOADING_WAVE_SPEED,
+};
+
+/**
+ * Resolves the `loading` prop to a fully-typed config or null (not loading).
+ * `true` → defaults (loading on, built-in look), object → merged with defaults
+ * (loading on, restyled), `false` / omitted → null. So a non-null result is the
+ * "is loading" flag and carries the resolved styling.
+ */
+export function resolveLoading(
+  prop: boolean | LoadingConfig | undefined,
+): ResolvedLoadingConfig | null {
+  return resolveToggle(prop, LOADING_DEFAULTS, false);
 }
 
 const SCRUB_ACTION_DEFAULTS: ResolvedScrubActionConfig = {

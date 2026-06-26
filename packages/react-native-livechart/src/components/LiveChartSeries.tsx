@@ -36,6 +36,7 @@ import {
   resolveGridStyle,
   resolveLeftEdgeFade,
   resolveLegend,
+  resolveLoading,
   resolveMarkerCluster,
   resolveMetrics,
   resolveMultiSeriesDot,
@@ -294,11 +295,14 @@ function useLiveChartSeriesController({
     return false;
   });
 
+  // Resolve the loading shell: null = not loading, else the styled config.
+  const loadingCfg = resolveLoading(loading);
+  const loadingActive = loadingCfg !== null;
   // Multi-series is always lines, so only the reveal transition applies (no
   // candle↔line crossfade); `transitions.mode` is accepted but inert here.
   const transitionsCfg = resolveTransitions(transitions);
   const reveal = useChartReveal(
-    loading,
+    loadingActive,
     hasData,
     false,
     transitionsCfg.reveal,
@@ -514,6 +518,11 @@ function useLiveChartSeriesController({
     // engine + reveal
     engine,
     reveal,
+    // loading shell styling (null → not loading)
+    loadingLineColor: loadingCfg?.color,
+    loadingStrokeWidth: loadingCfg?.strokeWidth,
+    loadingAmplitude: loadingCfg?.amplitude,
+    loadingSpeed: loadingCfg?.speed,
     effectiveSeries,
     layoutHeight,
     onLayout,
@@ -583,6 +592,10 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     series,
     emptyText,
     metricsCfg,
+    loadingLineColor,
+    loadingStrokeWidth,
+    loadingAmplitude,
+    loadingSpeed,
   } = model;
 
   return (
@@ -717,6 +730,10 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         strokeWidth={strokeWidth}
         badge={false}
         emptyMetrics={metricsCfg.emptyState}
+        lineColor={loadingLineColor}
+        lineStrokeWidth={loadingStrokeWidth}
+        waveAmplitude={loadingAmplitude}
+        waveSpeed={loadingSpeed}
       />
     </Group>
   );

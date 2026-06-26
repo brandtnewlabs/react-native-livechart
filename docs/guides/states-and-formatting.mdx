@@ -25,6 +25,32 @@ While you wait for data, pass `loading` to render a breathing-line placeholder.
 <LiveChart data={data} value={value} loading={!ready} />
 ```
 
+### Styling the loading shell
+
+`loading` also takes a `LoadingConfig` object to restyle the shell — the squiggle and the skeleton
+Y-axis placeholders. Every field is optional:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  loading={
+    !ready && {
+      color: "#64748b",  // squiggle + skeleton color (default: theme gridLine)
+      strokeWidth: 3,     // squiggle thickness (default: the chart line width)
+      amplitude: 22,      // breathing-wave height in px (default: 14)
+      speed: 1.5,         // wave cadence (default: 1; 0 freezes the wave)
+    }
+  }
+/>
+```
+
+Pass `true` for the defaults, the object to restyle, and `false` (or omit) for "not loading" — so
+`loading={!ready && cfg}` toggles the styled shell as data arrives. `color`, `amplitude`, and `speed`
+also flow into the brief reveal morph, so the squiggle keeps its look as it melts into the line. The
+same config works on `LiveChartSeries`. The loading→live reveal duration itself is controlled by the
+[`transitions.reveal`](/guides/transitions) prop.
+
 ## Empty state
 
 When there are fewer than two samples and `loading` is `false`, the chart shows an empty shell
