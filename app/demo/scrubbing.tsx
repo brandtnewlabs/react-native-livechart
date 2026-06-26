@@ -1,10 +1,12 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Circle, Group } from "@shopify/react-native-skia";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   formatTime,
   LiveChart,
+  type Marker,
+  type ReferenceLine,
   type ScrubConfig,
   type SelectionDotProps,
   type TooltipRenderProps,
@@ -24,6 +26,9 @@ import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 export const options = { title: "Scrubbing" };
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+// Seed price for the line so the reference lines below land in-range.
+const START = 100;
 
 type ScrubMode = "off" | "on" | "noTooltip";
 
@@ -156,6 +161,8 @@ export default function ScrubbingScreen() {
   const [dimOpacity, setDimOpacity] = useState(0.3);
   const [dotMode, setDotMode] = useState<DotMode>("default");
   const [holdToScrub, setHoldToScrub] = useState(false);
+  // Fade markers + reference lines out while scrubbing (scrub.hideOverlaysOnScrub).
+  const [hideOverlays, setHideOverlays] = useState(true);
   // onGestureStart/onGestureEnd are JS-thread callbacks, so plain React state
   // is fine here (they fire once per gesture, not once per pointer move).
   const [gestureState, setGestureState] = useState<"idle" | "scrubbing…">(
@@ -181,6 +188,7 @@ export default function ScrubbingScreen() {
     multiSeries: false,
     candleAggregation: displayMode === "candle",
     tradeStream: false,
+    startValue: START,
     candleWidth: candleWidthSecs,
     // Dense seed (fine "1m" sampling over the window) so candle buckets get many
     // ticks each — real bodies + wicks instead of flat one-point dojis.
@@ -193,6 +201,32 @@ export default function ScrubbingScreen() {
     maxPoints: 6000,
   });
 
+  // Static reference lines (avg-entry / limit-style) so there's something for
+  // `hideOverlaysOnScrub` to fade. In-range because the line starts at START.
+  const referenceLines: ReferenceLine[] = [
+    { value: START * 1.04, label: "Limit Sell", color: "#f87171" },
+    { value: START * 0.96, label: "Avg Buy", color: "#34d399" },
+  ];
+
+  // A few buy/sell markers anchored to the line (value omitted), seeded once at
+  // recent times so they sit in the window. Live position tracked on the UI
+  // thread; here they're just present for the fade to act on.
+  const markers = useSharedValue<Marker[]>([]);
+  useEffect(() => {
+    const now = Date.now() / 1000;
+    markers.set(
+      [30, 80, 150, 220].map((ago, i) => ({
+        id: `m${i}`,
+        time: now - ago,
+        kind: "trade" as const,
+        color: i % 2 === 0 ? "#34d399" : "#f87171",
+        icon: i % 2 === 0 ? "+" : "−",
+        pill: true,
+        side: i % 2 === 0 ? ("below" as const) : ("above" as const),
+      })),
+    );
+  }, [markers]);
+
   const scrub: ScrubConfig | boolean =
     scrubMode === "off"
       ? false
@@ -200,6 +234,7 @@ export default function ScrubbingScreen() {
           tooltip: scrubMode !== "noTooltip",
           dimOpacity,
           panGestureDelay,
+          hideOverlaysOnScrub: hideOverlays,
           // Tooltip layout knobs — apply to the built-in pill and the custom
           // render alike (placement + margin position either one).
           tooltipPlacement,
@@ -249,6 +284,8 @@ export default function ScrubbingScreen() {
           accentColor={ACCENT}
           theme={APP_THEME}
           timeWindow={windowSecs}
+          referenceLines={referenceLines}
+          markers={markers}
           scrub={scrub}
           // A custom tooltip works in both modes: the blue date pill in line
           // mode, a bespoke OHLC pill (reading `ctx.candle`) in candle mode.
@@ -358,6 +395,15 @@ export default function ScrubbingScreen() {
           label="Hold to scrub (250ms)"
           value={holdToScrub}
           onChange={setHoldToScrub}
+        />
+      </ControlRow>
+      <ControlRow label="Overlays">
+        {/* scrub.hideOverlaysOnScrub — fade markers + reference lines while
+            scrubbing. Toggle off to see them stay put under the crosshair. */}
+        <ToggleChip
+          label="Hide on scrub"
+          value={hideOverlays}
+          onChange={setHideOverlays}
         />
       </ControlRow>
 
