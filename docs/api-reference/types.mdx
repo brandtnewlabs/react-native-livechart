@@ -102,6 +102,19 @@ interface MarkerClusterConfig {
   direction?: "horizontal" | "vertical"; // fan sideways (default) or pile into a column
   overlap?: number;        // 0 (touching) – 1 (stacked); default 0.75
   maxBeforeGroup?: number; // collapse a run past this many; default 5
+  groupBadge?: "count" | "marker" | MarkerGroupBadge; // collapsed look: count circle
+                          // (default), the representative marker's own glyph, or a
+                          // dedicated custom badge you supply (object form)
+  showGroupCount?: boolean; // with a non-count badge, stamp the count in the corner; default false
+}
+// A dedicated badge for a collapsed cluster — your own glyph, independent of the
+// members (set as groupBadge). Needs image or icon. @experimental
+interface MarkerGroupBadge {
+  image?: SkImage; // custom Skia image (precedence over icon)
+  icon?: string;   // text/emoji glyph (when image unset)
+  color?: string;  // icon / pill color; defaults to a palette accent
+  pill?: boolean;  // wrap the icon in a filled circular badge
+  size?: number;   // glyph box size in px; default 16
 }
 
 interface TradeEvent {

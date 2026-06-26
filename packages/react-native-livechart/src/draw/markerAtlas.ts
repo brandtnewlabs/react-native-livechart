@@ -10,7 +10,12 @@ import {
   type SkPaint,
   type SkRect,
 } from "@shopify/react-native-skia";
-import type { LiveChartPalette, Marker, MarkerKind } from "../types";
+import type {
+  LiveChartPalette,
+  Marker,
+  MarkerGroupBadge,
+  MarkerKind,
+} from "../types";
 
 /** Default icon box (px) when `marker.size` is unset. */
 export const DEFAULT_ICON_SIZE = 16;
@@ -36,6 +41,10 @@ export function groupGlyphSig(ch: string): string {
   "worklet";
   return `gd\x1f${ch}`;
 }
+
+/** Atlas cell sig for a dedicated group badge (one per chart — its own custom
+ *  image/icon, independent of the member markers). */
+export const GROUP_BADGE_SIG = "grpbadge";
 
 /** Atlas cell sig for the round count-badge background (one fixed circle per color). */
 export function groupBgSig(color: string): string {
@@ -362,6 +371,10 @@ export function buildMarkerAtlas(
   /** Also bake count-badge cells (digits + per-color backgrounds) for
    *  `markerCluster: "stacked"` collapse. Off by default — no atlas bloat. */
   withGroups = false,
+  /** A dedicated group badge (custom image/icon) to bake one cell for, under
+   *  {@link GROUP_BADGE_SIG} — drawn for a collapsed cluster instead of the count.
+   *  Only baked when it carries an `image` or `icon`. */
+  groupBadge?: MarkerGroupBadge,
 ): MarkerAtlas {
   const seen = new Set<string>();
   const specs: { sig: string; spec: CellSpec }[] = [];
@@ -372,6 +385,22 @@ export function buildMarkerAtlas(
     if (seen.has(sig)) continue;
     seen.add(sig);
     specs.push({ sig, spec: cellSpec(m, palette, font) });
+  }
+
+  // Dedicated group badge: bake one cell from its custom image/icon (reusing the
+  // marker cell geometry) so a collapsed cluster can blit it like any other glyph.
+  if (groupBadge && (groupBadge.image || groupBadge.icon)) {
+    const synthetic: Marker = {
+      id: GROUP_BADGE_SIG,
+      time: 0,
+      kind: "trade",
+      image: groupBadge.image,
+      icon: groupBadge.icon,
+      color: groupBadge.color,
+      pill: groupBadge.pill,
+      size: groupBadge.size,
+    };
+    specs.push({ sig: GROUP_BADGE_SIG, spec: cellSpec(synthetic, palette, font) });
   }
 
   // Count-badge cells: 10 uniform white digit cells shared across colors, plus one

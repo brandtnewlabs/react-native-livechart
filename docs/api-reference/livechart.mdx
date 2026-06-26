@@ -153,6 +153,22 @@ provided; everything else has a default.
   ```tsx
   markerCluster={{ overlap: 0.75, maxBeforeGroup: 8 }}
   ```
+
+  **Custom collapsed look** — by default a collapsed group draws a round count
+  badge (`groupBadge: "count"`). Two ways to customize it:
+  - `groupBadge: "marker"` — draw the **representative marker's own glyph** (its
+    `image` / `icon` / `pill` / `kind`), e.g. a run of buy pills → a buy pill.
+  - `groupBadge: { image }` (or `{ icon, pill, color }`) — a **dedicated badge you
+    supply** ([`MarkerGroupBadge`](/api-reference/types#config-objects)), independent
+    of the members — e.g. tiny dots that collapse into a distinct "Buy 5" image.
+
+  Add `showGroupCount` to stamp the member count in the glyph's corner. All are
+  Skia-drawn in the same batch as every other marker (not a `renderMarker` RN
+  overlay).
+
+  ```tsx
+  markerCluster={{ mode: "stacked", groupBadge: { image: buy5Badge }, showGroupCount: true }}
+  ```
 </ParamField>
 
 <ParamField body="renderMarker" type="(marker: Marker, ctx: MarkerRenderContext) => ReactElement | null">

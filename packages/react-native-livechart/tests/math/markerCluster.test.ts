@@ -13,6 +13,8 @@ const ANCHORED: ClusterMarkersOpts["config"] = {
   overlap: 0.6,
   gap: 2,
   maxBeforeGroup: 5,
+  groupBadge: "count",
+  showGroupCount: false,
 };
 const STACKED: ClusterMarkersOpts["config"] = {
   mode: "stacked",
@@ -20,6 +22,8 @@ const STACKED: ClusterMarkersOpts["config"] = {
   overlap: 0.6,
   gap: 2,
   maxBeforeGroup: 5,
+  groupBadge: "count",
+  showGroupCount: false,
 };
 const STACKED_VERTICAL: ClusterMarkersOpts["config"] = {
   mode: "stacked",
@@ -27,6 +31,8 @@ const STACKED_VERTICAL: ClusterMarkersOpts["config"] = {
   overlap: 0.6,
   gap: 2,
   maxBeforeGroup: 5,
+  groupBadge: "count",
+  showGroupCount: false,
 };
 
 function pm(x: number, y: number, visible = true): ProjectedMarker {

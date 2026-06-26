@@ -634,6 +634,8 @@ export function resolveMarkerCluster(
       overlap: clamp01(prop.overlap ?? MARKER_CLUSTER_OVERLAP),
       gap: MARKER_CLUSTER_GAP,
       maxBeforeGroup: prop.maxBeforeGroup ?? MARKER_CLUSTER_MAX_BEFORE_GROUP,
+      groupBadge: prop.groupBadge ?? "count",
+      showGroupCount: prop.showGroupCount ?? false,
     };
   }
   return {
@@ -642,6 +644,8 @@ export function resolveMarkerCluster(
     overlap: MARKER_CLUSTER_OVERLAP,
     gap: MARKER_CLUSTER_GAP,
     maxBeforeGroup: MARKER_CLUSTER_MAX_BEFORE_GROUP,
+    groupBadge: "count",
+    showGroupCount: false,
   };
 }
 

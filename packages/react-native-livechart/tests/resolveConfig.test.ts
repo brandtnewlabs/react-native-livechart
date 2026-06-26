@@ -1490,6 +1490,8 @@ describe("resolveMarkerCluster", () => {
       overlap: 0.75,
       gap: 2,
       maxBeforeGroup: 5,
+      groupBadge: "count",
+      showGroupCount: false,
     });
     expect(resolveMarkerCluster("anchored").mode).toBe("anchored");
     expect(resolveMarkerCluster("stacked").direction).toBe("horizontal");
@@ -1506,6 +1508,8 @@ describe("resolveMarkerCluster", () => {
       overlap: 0.8,
       gap: 2,
       maxBeforeGroup: 3,
+      groupBadge: "count",
+      showGroupCount: false,
     });
     // Explicit mode honored; overlap clamped to [0, 0.95].
     expect(resolveMarkerCluster({ mode: "anchored" }).mode).toBe("anchored");
@@ -1513,5 +1517,18 @@ describe("resolveMarkerCluster", () => {
     expect(resolveMarkerCluster({ direction: "vertical" }).direction).toBe("vertical");
     expect(resolveMarkerCluster({ overlap: 5 }).overlap).toBe(0.95);
     expect(resolveMarkerCluster({ overlap: -1 }).overlap).toBe(0);
+  });
+
+  it("defaults the collapsed-group badge to a count, with marker / showGroupCount opt-in", () => {
+    // #165: default collapsed look is the count badge.
+    expect(resolveMarkerCluster("stacked").groupBadge).toBe("count");
+    expect(resolveMarkerCluster("stacked").showGroupCount).toBe(false);
+    // Opt into the representative marker's own glyph + a corner count.
+    const cfg = resolveMarkerCluster({ groupBadge: "marker", showGroupCount: true });
+    expect(cfg.groupBadge).toBe("marker");
+    expect(cfg.showGroupCount).toBe(true);
+    // A dedicated group badge (object form) passes through untouched.
+    const badge = { icon: "★", pill: true, color: "#a855f7" };
+    expect(resolveMarkerCluster({ groupBadge: badge }).groupBadge).toEqual(badge);
   });
 });
