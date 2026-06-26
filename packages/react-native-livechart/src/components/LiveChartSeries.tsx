@@ -6,12 +6,14 @@
  */
 import { Canvas, Group } from "@shopify/react-native-skia";
 import { useLayoutEffect, useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import {
+import Animated, {
   useAnimatedReaction,
+  useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
+  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -19,6 +21,7 @@ import {
   DEFAULT_ACCENT_COLOR,
   HOLD_TO_SCRUB_MS,
   MAX_MULTI_SERIES,
+  SCRUB_OVERLAY_FADE_MS,
 } from "../constants";
 import {
   lineColorsSignatureFromArray,
@@ -453,6 +456,23 @@ function useLiveChartSeriesController({
 
   const backgroundColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
 
+  // Fade markers + reference lines out while scrubbing when
+  // `scrub.hideOverlaysOnScrub` is set. Eased off the scrub-ACTIVE flag (not the
+  // crosshair edge fade, which would resurface them near the live dot); only a
+  // group opacity animates — the overlay draws stay intact. See `LiveChart`.
+  const fadeOverlaysOnScrub =
+    scrubCfg !== null && scrubCfg.hideOverlaysOnScrub === true;
+  const overlayScrubFade = useDerivedValue(() =>
+    fadeOverlaysOnScrub
+      ? withTiming(crosshair.scrubActive.get() ? 0 : 1, {
+          duration: SCRUB_OVERLAY_FADE_MS,
+        })
+      : 1,
+  );
+  const markerGroupOpacity = useDerivedValue(
+    () => reveal.dotOpacity.get() * overlayScrubFade.get(),
+  );
+
   return {
     // passthrough props the render needs
     series,
@@ -500,6 +520,8 @@ function useLiveChartSeriesController({
     markersActive,
     markersSV,
     markerClusterCfg,
+    markerGroupOpacity,
+    overlayScrubFade,
     renderMarker,
     // selection dot: resolved config + fallback color (the leading series' color)
     selectionDot: selectionDotCfg,
@@ -545,6 +567,8 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     markersActive,
     markersSV,
     markerClusterCfg,
+    markerGroupOpacity,
+    overlayScrubFade,
     renderMarker,
     series,
     emptyText,
@@ -570,18 +594,21 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
 
       {/* Index keys: reference lines are a positional array and two may share
           value + label (e.g. duplicate working orders at the same price), which a
-          content-derived key would collapse to one. */}
-      {allRefLines.map((rl, i) => (
-        <ReferenceLineOverlay
-          key={i}
-          engine={engine}
-          padding={effectivePadding}
-          line={rl}
-          palette={palette}
-          formatValue={formatValue}
-          font={skiaFont}
-        />
-      ))}
+          content-derived key would collapse to one. Fade group lets
+          `scrub.hideOverlaysOnScrub` ease the lines out while scrubbing. */}
+      <Group opacity={overlayScrubFade}>
+        {allRefLines.map((rl, i) => (
+          <ReferenceLineOverlay
+            key={i}
+            engine={engine}
+            padding={effectivePadding}
+            line={rl}
+            palette={palette}
+            formatValue={formatValue}
+            font={skiaFont}
+          />
+        ))}
+      </Group>
 
       {dotCfg.valueLine && (
         <Group opacity={reveal.lineOpacity}>
@@ -654,7 +681,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
       )}
 
       {markersActive && (
-        <Group opacity={reveal.dotOpacity}>
+        <Group opacity={markerGroupOpacity}>
           <MarkerOverlay
             markers={markersSV}
             engine={engine}
@@ -726,10 +753,11 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
     formatValue,
     skiaFont,
     degenShakeTransform,
+    overlayScrubFade,
   } = model;
   if (allRefLines.length === 0) return null;
   return (
-    <Group transform={degenShakeTransform}>
+    <Group transform={degenShakeTransform} opacity={overlayScrubFade}>
       {allRefLines.map((rl, i) => (
         <ReferenceLineOverlay
           key={i}
@@ -778,7 +806,14 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     markersSV,
     markerClusterCfg,
     renderMarker,
+    overlayScrubFade,
   } = model;
+
+  // Mirror the Skia overlay fade onto the RN custom-marker sibling so
+  // `scrub.hideOverlaysOnScrub` hides it with the Skia markers.
+  const overlayFadeStyle = useAnimatedStyle(() => ({
+    opacity: overlayScrubFade.get(),
+  }));
 
   // Extend the scrub dim past the plot's right edge to fully cover the series
   // dots (with their halo) and pulse rings, all centered on that edge. The
@@ -876,16 +911,23 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
           />
 
           {/* Custom-rendered markers — RN views floated over the canvas
-              (non-Skia), pinned to each marker's live position. */}
+              (non-Skia), pinned to each marker's live position. Box-none fade
+              wrapper so `scrub.hideOverlaysOnScrub` hides them with the Skia
+              markers (full-bleed; children keep their own absolute positions). */}
           {markersActive && renderMarker && (
-            <CustomMarkerOverlay
-              markers={markersSV}
-              renderMarker={renderMarker}
-              engine={engine}
-              padding={effectivePadding}
-              series={series}
-              cluster={markerClusterCfg}
-            />
+            <Animated.View
+              pointerEvents="box-none"
+              style={[StyleSheet.absoluteFill, overlayFadeStyle]}
+            >
+              <CustomMarkerOverlay
+                markers={markersSV}
+                renderMarker={renderMarker}
+                engine={engine}
+                padding={effectivePadding}
+                series={series}
+                cluster={markerClusterCfg}
+              />
+            </Animated.View>
           )}
         </View>
       </GestureDetector>

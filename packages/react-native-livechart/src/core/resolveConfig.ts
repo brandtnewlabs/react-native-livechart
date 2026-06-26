@@ -165,6 +165,8 @@ export interface ResolvedScrubConfig {
   tooltipShowTime: boolean;
   /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
   panGestureDelay: number;
+  /** Fade markers + reference lines out while scrubbing. */
+  hideOverlaysOnScrub: boolean;
 }
 
 export interface ResolvedScrubActionConfig {
@@ -571,6 +573,7 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltipShowValue: true,
   tooltipShowTime: true,
   panGestureDelay: 0,
+  hideOverlaysOnScrub: false,
 };
 
 /**

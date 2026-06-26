@@ -178,6 +178,30 @@ Default `0.3`.
 
 The same `dimOpacity` option works on `LiveChartSeries`.
 
+## Hide overlays while scrubbing (`hideOverlaysOnScrub`)
+
+`dimOpacity` fades the line/candles, but annotation overlays — buy/sell **markers** and
+**reference lines** — stay at full strength and can clutter the crosshair read-out. Set
+`hideOverlaysOnScrub` to fade them out for the duration of the scrub and back in on release.
+
+```tsx
+<LiveChart data={data} value={value} scrub={{ hideOverlaysOnScrub: true }} />
+```
+
+It covers both the built-in Skia tags/lines **and** any custom `renderMarker` /
+`renderReferenceLine` views. The fade is driven by the scrub-active state (not the crosshair's
+edge-proximity fade, so the overlays don't resurface as the crosshair nears the live dot) and eased
+on the UI thread.
+
+<Note>
+  Cheap by construction: only a **group opacity** animates — the marker atlas and reference-line
+  geometry are untouched (still one batched draw each). It does **not** rebuild or empty the overlay
+  data per scrub, so there's no per-scrub layout/recompute cost.
+</Note>
+
+The leading live dot is governed separately — see [Selection dot](#selection-dot). Works the same on
+`LiveChartSeries`.
+
 ## Dashed crosshair (`crosshairDash`)
 
 The vertical crosshair line is solid by default. Set `crosshairDash` to draw it dashed — `true`

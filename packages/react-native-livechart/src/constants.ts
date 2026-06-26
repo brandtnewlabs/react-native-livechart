@@ -31,6 +31,14 @@ export const HOLD_TO_SCRUB_MS = 500;
  */
 export const RETURN_TO_LIVE_MS = 450;
 
+/**
+ * Duration (ms) of the fade applied to annotation overlays (markers + reference
+ * lines) when `scrub.hideOverlaysOnScrub` is on — how long they take to ease out as a
+ * scrub starts and back in on release. Driven by the scrub-active flag, eased on
+ * the UI thread. Shared by `LiveChart` and `LiveChartSeries`.
+ */
+export const SCRUB_OVERLAY_FADE_MS = 150;
+
 // ─── Metric default tokens (single source of truth for LiveChartMetrics) ─────
 // The resolved `metrics` config (see resolveMetrics) is assembled from these
 // objects. Draw/worklet helpers default their metric params to the matching
