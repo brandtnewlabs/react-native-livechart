@@ -15,6 +15,7 @@ import {
   resolvePulse,
   resolveReferenceLineConfig,
   resolveReturnToLiveMs,
+  resolveTransitions,
   resolveScrub,
   resolveScrubAction,
   resolveSelectionDot,
@@ -319,6 +320,46 @@ describe("resolveReturnToLiveMs", () => {
   it("collapses a non-positive duration to an instant snap", () => {
     expect(resolveReturnToLiveMs({ duration: 0 })).toBe(0);
     expect(resolveReturnToLiveMs({ duration: -100 })).toBe(0);
+  });
+});
+
+// ─── resolveTransitions ────────────────────────────────────────────────────────
+
+describe("resolveTransitions", () => {
+  it("returns undefined durations (use built-in defaults) for undefined and true", () => {
+    expect(resolveTransitions(undefined)).toEqual({
+      reveal: undefined,
+      mode: undefined,
+    });
+    expect(resolveTransitions(true)).toEqual({
+      reveal: undefined,
+      mode: undefined,
+    });
+  });
+
+  it("returns 0 (instant) for both when false", () => {
+    expect(resolveTransitions(false)).toEqual({ reveal: 0, mode: 0 });
+  });
+
+  it("carries per-transition overrides", () => {
+    expect(resolveTransitions({ reveal: 0, mode: 120 })).toEqual({
+      reveal: 0,
+      mode: 120,
+    });
+  });
+
+  it("leaves an omitted field undefined (keeps that default)", () => {
+    expect(resolveTransitions({ reveal: 0 })).toEqual({
+      reveal: 0,
+      mode: undefined,
+    });
+  });
+
+  it("clamps negative durations to an instant snap", () => {
+    expect(resolveTransitions({ reveal: -50, mode: -1 })).toEqual({
+      reveal: 0,
+      mode: 0,
+    });
   });
 });
 

@@ -29,6 +29,7 @@ import type {
   ThresholdConfig,
   ThresholdLineConfig,
   TradeEvent,
+  TransitionConfig,
   ValueLineConfig,
   VolumeConfig,
   XAxisConfig,
@@ -477,6 +478,32 @@ export function resolveReturnToLiveMs(
   const d = prop.duration;
   if (d == null) return RETURN_TO_LIVE_MS;
   return d > 0 ? d : 0;
+}
+
+/**
+ * Resolved transition durations. `undefined` for a field means "use the
+ * component's built-in default" (so we don't duplicate the default constants
+ * here); a number is an explicit duration in ms (clamped to ≥ 0).
+ */
+export interface ResolvedTransitionConfig {
+  reveal: number | undefined;
+  mode: number | undefined;
+}
+
+const clampMs = (v: number | undefined): number | undefined =>
+  v == null ? undefined : v > 0 ? v : 0;
+
+/**
+ * Resolves the `transitions` prop. `false` → all transitions instant (`0`);
+ * `true` / omitted → defaults (both `undefined` = use the built-in durations);
+ * an object → per-transition overrides (an omitted field keeps its default).
+ */
+export function resolveTransitions(
+  prop: boolean | TransitionConfig | undefined,
+): ResolvedTransitionConfig {
+  if (prop === false) return { reveal: 0, mode: 0 };
+  if (prop == null || prop === true) return { reveal: undefined, mode: undefined };
+  return { reveal: clampMs(prop.reveal), mode: clampMs(prop.mode) };
 }
 
 const AXIS_LABEL_DEFAULTS: ResolvedAxisLabelConfig = {

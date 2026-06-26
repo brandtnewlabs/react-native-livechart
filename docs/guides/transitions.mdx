@@ -34,6 +34,33 @@ const [mode, setMode] = useState<"line" | "candle">("line");
 />;
 ```
 
+## Tuning or disabling the animations (`transitions`)
+
+Two built-in animations play automatically: the **reveal** (the grow-in when data first appears —
+also on a timeframe change, and when a line chart's data appears) and the **mode** crossfade
+(candle↔line). The `transitions` prop tunes or turns them off:
+
+```tsx
+<LiveChart … transitions={false} />                 // both instant — no grow-in, no crossfade
+<LiveChart … transitions={{ reveal: 0 }} />         // snap the grow-in, keep the 300ms crossfade
+<LiveChart … transitions={{ reveal: 0, mode: 0 }} /> // same as transitions={false}
+<LiveChart … transitions={{ mode: 500 }} />         // slower crossfade, default grow-in
+```
+
+- **`reveal`** (default `600` ms) — the most common one to disable. With `reveal: 0` the chart no
+  longer "grows in" on a timeframe change, and switching **candle → line** shows the line at once
+  instead of animating it in.
+- **`mode`** (default `300` ms) — the candle↔line crossfade. Single-series `LiveChart` only
+  (multi-series is always lines).
+
+<Note>
+  `transitions` covers the **entry / mode** animations only. The live value's easing toward its
+  target is the separate `smoothing` prop (`1` = instant), and `static` suppresses all per-frame
+  loops for a one-shot render.
+</Note>
+
+The same `transitions` prop works on `LiveChartSeries` (only `reveal` applies there).
+
 ## Cross-fading instances
 
 To switch between *separate* charts — different symbols, timeframes, or accent treatments — wrap

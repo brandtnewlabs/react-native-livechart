@@ -385,6 +385,11 @@ interface TimeScrollConfig {
 interface ReturnToLiveConfig {
   duration?: number; // glide duration (ms) back to live; default 450 (0 = instant snap)
 }
+// Tune/disable the built-in transition animations — the object form of `transitions`.
+interface TransitionConfig {
+  reveal?: number; // grow-in/collapse on data appear, timeframe change, candle→line; default 600 (0 = snap)
+  mode?: number;   // candle↔line crossfade (single-series LiveChart only); default 300 (0 = snap)
+}
 // Pinch-to-zoom the visible time window (two-finger, focal-anchored). @experimental
 interface ZoomConfig {
   minTimeWindow?: number; // tightest window in seconds (max zoom-in); default timeWindow / 8

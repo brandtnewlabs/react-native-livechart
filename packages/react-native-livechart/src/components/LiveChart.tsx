@@ -43,6 +43,7 @@ import {
   resolvePulse,
   resolveScrub,
   resolveScrubAction,
+  resolveTransitions,
   resolveReturnToLiveMs,
   resolveSelectionDot,
   resolveThreshold,
@@ -214,6 +215,7 @@ function useLiveChartController({
   timeWindow = 30,
   paused = false,
   loading = false,
+  transitions,
   // `static` is a reserved word — alias it so the destructure parses.
   static: isStatic = false,
   smoothing = 0.08,
@@ -541,7 +543,13 @@ function useLiveChartController({
     candles,
   });
 
-  const reveal = useChartReveal(loading, hasData, isStatic);
+  const transitionsCfg = resolveTransitions(transitions);
+  const reveal = useChartReveal(
+    loading,
+    hasData,
+    isStatic,
+    transitionsCfg.reveal,
+  );
 
   // After data clears, keep last snapshot until morphT finishes dropping (web parity).
   const { lineEngineData, candlesEngine, liveEngine } =
@@ -600,6 +608,7 @@ function useLiveChartController({
   const { lineGroupOpacity, candleGroupOpacity } = useModeBlend(
     isCandle,
     reveal.lineOpacity,
+    transitionsCfg.mode,
   );
 
   // ── Per-frame derived values ───────────────────────────────────────────

@@ -42,6 +42,7 @@ import {
   resolveReturnToLiveMs,
   resolveScrub,
   resolveSelectionDot,
+  resolveTransitions,
   resolveXAxis,
   resolveYAxis,
   resolveZoom,
@@ -129,6 +130,7 @@ function useLiveChartSeriesController({
   timeWindow = 30,
   paused = false,
   loading = false,
+  transitions,
   smoothing = 0.08,
   exaggerate = false,
   nonNegative = false,
@@ -292,7 +294,15 @@ function useLiveChartSeriesController({
     return false;
   });
 
-  const reveal = useChartReveal(loading, hasData);
+  // Multi-series is always lines, so only the reveal transition applies (no
+  // candle↔line crossfade); `transitions.mode` is accepted but inert here.
+  const transitionsCfg = resolveTransitions(transitions);
+  const reveal = useChartReveal(
+    loading,
+    hasData,
+    false,
+    transitionsCfg.reveal,
+  );
 
   const effectiveSeries = useMultiSeriesReverseMorphInputs({
     series,
