@@ -390,6 +390,13 @@ interface TransitionConfig {
   reveal?: number; // grow-in/collapse on data appear, timeframe change, candle→line; default 600 (0 = snap)
   mode?: number;   // candle↔line crossfade (single-series LiveChart only); default 300 (0 = snap)
 }
+// Styling for the breathing loading shell — the object form of `loading`.
+interface LoadingConfig {
+  color?: string;          // squiggle + skeleton color; default theme gridLine
+  strokeWidth?: number;    // squiggle stroke width; default the chart line strokeWidth
+  amplitude?: number;      // base breathing-wave height (px); default 14
+  speed?: number;          // breathing-wave speed multiplier; default 1 (0 freezes)
+}
 // Pinch-to-zoom the visible time window (two-finger, focal-anchored). @experimental
 interface ZoomConfig {
   minTimeWindow?: number; // tightest window in seconds (max zoom-in); default timeWindow / 8

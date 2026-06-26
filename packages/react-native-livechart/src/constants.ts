@@ -39,6 +39,15 @@ export const RETURN_TO_LIVE_MS = 450;
  */
 export const SCRUB_OVERLAY_FADE_MS = 150;
 
+/**
+ * Base wave amplitude (px) of the breathing loading squiggle — it breathes
+ * between `0.4×` and `1.0×` this. Overridable via `loading={{ amplitude }}`.
+ */
+export const LOADING_WAVE_AMPLITUDE = 14;
+
+/** Default breathing-wave speed multiplier (`1` = built-in cadence). */
+export const LOADING_WAVE_SPEED = 1;
+
 // ─── Metric default tokens (single source of truth for LiveChartMetrics) ─────
 // The resolved `metrics` config (see resolveMetrics) is assembled from these
 // objects. Draw/worklet helpers default their metric params to the matching

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { LiveChartPoint } from "react-native-livechart";
+import type { LiveChartPoint, LoadingConfig } from "react-native-livechart";
 import { LiveChart } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
@@ -26,6 +26,15 @@ function formatValueUsd(v: number): string {
   return `$${v.toFixed(2)}`;
 }
 
+// A restyled loading shell: amber, thicker, taller + faster breathing. Toggled
+// against the plain `loading={true}` defaults below.
+const STYLED_LOADING: LoadingConfig = {
+  color: "#fbbf24",
+  strokeWidth: 3,
+  amplitude: 22,
+  speed: 1.6,
+};
+
 type FormatMode = "default" | "custom";
 
 const FORMAT_OPTIONS: { value: FormatMode; label: string }[] = [
@@ -37,6 +46,7 @@ export default function StatesScreen() {
   const [empty, setEmpty] = useState(false);
   const [onePoint, setOnePoint] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [styledLoading, setStyledLoading] = useState(false);
   const [formatMode, setFormatMode] = useState<FormatMode>("default");
 
   const customFormat = formatMode === "custom";
@@ -70,7 +80,7 @@ export default function StatesScreen() {
           value={chartValue}
           accentColor={ACCENT}
           theme={APP_THEME}
-          loading={loading}
+          loading={loading && (styledLoading ? STYLED_LOADING : true)}
           emptyText={showEmptyShell ? "Nothing to see here" : "No data"}
           formatValue={customFormat ? formatValueUsd : undefined}
           formatTime={customFormat ? formatTimeIsoUtcFragment : undefined}
@@ -103,6 +113,16 @@ export default function StatesScreen() {
             setLoading(true);
             setTimeout(() => setLoading(false), 2000);
           }}
+        />
+      </ControlRow>
+
+      <ControlRow label="Loading style">
+        {/* Plain `loading={true}` vs a restyled `LoadingConfig` (amber, thicker,
+            taller/faster wave, snappier reveal). Tap a Loading button to see it. */}
+        <Chip
+          label="Styled shell"
+          active={styledLoading}
+          onPress={() => setStyledLoading((s) => !s)}
         />
       </ControlRow>
 

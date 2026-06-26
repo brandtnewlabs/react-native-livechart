@@ -64,6 +64,7 @@ export type {
   LiveChartPoint,
   LiveChartProps,
   LiveChartSeriesProps,
+  LoadingConfig,
   Marker,
   MarkerClusterConfig,
   MarkerGroupBadge,
