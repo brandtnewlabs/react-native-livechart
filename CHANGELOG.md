@@ -27,6 +27,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `reveal: 0` removes the grow-in on timeframe change and the line "animating in"
   when switching candle→line. Independent of `smoothing` (live value easing) and
   `static` (one-shot render). Exports the new `TransitionConfig` type.
+- **Configurable loading shell** — `loading` now accepts a `LoadingConfig` object
+  (`boolean | LoadingConfig`) on `LiveChart` and `LiveChartSeries`, so the
+  breathing-line placeholder can be restyled: `color` (squiggle + skeleton
+  Y-axis placeholders; default theme `gridLine`), `strokeWidth` (default the
+  chart line width), `amplitude` (base breathing-wave height, default `14`), and
+  `speed` (wave cadence multiplier, default `1`; `0` freezes).
+  `color` / `amplitude` / `speed` also flow into the reveal morph so the squiggle
+  keeps its look as it melts into the line. `true` keeps the defaults, `false` /
+  omitted is "not loading". Exports the new `LoadingConfig` type. (The
+  loading→live reveal duration is tuned separately via the `transitions.reveal`
+  prop above.)
 
 ## [4.4.0] - 2026-06-26
 

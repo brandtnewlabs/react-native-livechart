@@ -14,6 +14,7 @@ import {
   resolveMultiSeriesDot,
   resolvePulse,
   resolveReferenceLineConfig,
+  resolveLoading,
   resolveReturnToLiveMs,
   resolveTransitions,
   resolveScrub,
@@ -591,6 +592,42 @@ describe("resolveScrub", () => {
     expect(resolveScrub({ tooltipShowValue: false })).toMatchObject({
       tooltipShowValue: false,
       tooltipShowTime: true,
+    });
+  });
+});
+
+// ─── resolveLoading ───────────────────────────────────────────────────────────
+
+describe("resolveLoading", () => {
+  const DEFAULTS = {
+    color: undefined,
+    strokeWidth: undefined,
+    amplitude: 14,
+    speed: 1,
+  };
+
+  it("returns null for undefined / false (not loading)", () => {
+    expect(resolveLoading(undefined)).toBeNull();
+    expect(resolveLoading(false)).toBeNull();
+  });
+
+  it("returns defaults for true", () => {
+    expect(resolveLoading(true)).toEqual(DEFAULTS);
+  });
+
+  it("merges a partial config over the defaults", () => {
+    expect(resolveLoading({ color: "#64748b", strokeWidth: 3 })).toEqual({
+      ...DEFAULTS,
+      color: "#64748b",
+      strokeWidth: 3,
+    });
+  });
+
+  it("carries the wave overrides", () => {
+    expect(resolveLoading({ amplitude: 22, speed: 1.5 })).toEqual({
+      ...DEFAULTS,
+      amplitude: 22,
+      speed: 1.5,
     });
   });
 });

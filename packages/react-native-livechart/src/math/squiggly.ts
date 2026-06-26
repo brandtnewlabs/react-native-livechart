@@ -4,16 +4,26 @@ import type { ChartPadding } from "../draw/line";
  * Composite sine squiggly — two overlapping frequencies with a breathing
  * amplitude envelope. Matches the original web LiveChart loading animation.
  *
- * amplitude = 14 * (0.4 + 0.6 * sin(0.8 * t))   // 5.6 → 22.4px breathing range
- * y = centerY + amplitude * (sin(0.035*x + 1.2*t) + 0.45*sin(0.08*x + 2.1*t))
+ * amplitude = base * (0.4 + 0.6 * sin(0.8 * t·speed))   // 0.4×→1.0× base
+ * y = centerY + amplitude * (sin(0.035*x + 1.2*t·speed) + 0.45*sin(0.08*x + 2.1*t·speed))
+ *
+ * `base` (default `14`) scales the wave height; `speed` (default `1`) scales the
+ * time phase so the ripple/breathing runs faster or slower (`0` freezes it).
  */
-export function squigglyYAt(x: number, centerY: number, t: number): number {
+export function squigglyYAt(
+  x: number,
+  centerY: number,
+  t: number,
+  base = 14,
+  speed = 1,
+): number {
   "worklet";
-  const amplitude = 14 * (0.4 + 0.6 * Math.sin(0.8 * t));
+  const ts = t * speed;
+  const amplitude = base * (0.4 + 0.6 * Math.sin(0.8 * ts));
   return (
     centerY +
     amplitude *
-      (Math.sin(0.035 * x + 1.2 * t) + 0.45 * Math.sin(0.08 * x + 2.1 * t))
+      (Math.sin(0.035 * x + 1.2 * ts) + 0.45 * Math.sin(0.08 * x + 2.1 * ts))
   );
 }
 
@@ -27,6 +37,8 @@ export function buildSquigglyPts(
   canvasHeight: number,
   padding: ChartPadding,
   t: number,
+  base = 14,
+  speed = 1,
 ): number[] {
   "worklet";
   const leftEdge = padding.left;
@@ -41,7 +53,7 @@ export function buildSquigglyPts(
   for (let i = 0; i < count; i++) {
     const x = leftEdge + Math.min(i * step, chartW);
     pts[i * 2] = x;
-    pts[i * 2 + 1] = squigglyYAt(x, centerY, t);
+    pts[i * 2 + 1] = squigglyYAt(x, centerY, t, base, speed);
   }
   return pts;
 }
@@ -54,13 +66,15 @@ export function squigglifyPts(
   flatPts: number[],
   t: number,
   centerY: number,
+  base = 14,
+  speed = 1,
 ): number[] {
   "worklet";
   const n = flatPts.length;
   const out: number[] = new Array(n);
   for (let i = 0; i < n; i += 2) {
     out[i] = flatPts[i];
-    out[i + 1] = squigglyYAt(flatPts[i], centerY, t);
+    out[i + 1] = squigglyYAt(flatPts[i], centerY, t, base, speed);
   }
   return out;
 }

@@ -35,6 +35,10 @@ export function useChartPaths(
    */
   edgeValue?: SharedValue<number>,
   followViewEdge = false,
+  /** Loading squiggle wave amplitude (px) for the reveal morph. Default 14. */
+  squiggleAmplitude = 14,
+  /** Loading squiggle wave speed multiplier for the reveal morph. Default 1. */
+  squiggleSpeed = 1,
 ) {
   const lineBuilder = usePathBuilder();
   const fillBuilder = usePathBuilder();
@@ -86,7 +90,13 @@ export function useChartPaths(
     // Compute squiggly Y values at the same X positions as the real line
     const centerY =
       (engine.canvasHeight.get() - padding.bottom + padding.top) / 2;
-    const squigglyPts = squigglifyPts(realPts, engine.timestamp.get(), centerY);
+    const squigglyPts = squigglifyPts(
+      realPts,
+      engine.timestamp.get(),
+      centerY,
+      squiggleAmplitude,
+      squiggleSpeed,
+    );
 
     // Blend center-out: centre of chart reveals first, edges last
     return blendPtsY(
