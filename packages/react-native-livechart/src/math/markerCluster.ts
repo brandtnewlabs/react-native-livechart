@@ -1,4 +1,4 @@
-import type { Marker, MarkerSide } from "../types";
+import type { Marker, MarkerGroupBadge, MarkerSide } from "../types";
 import type { ProjectedMarker } from "./markers";
 
 /**
@@ -20,6 +20,13 @@ export interface ResolvedMarkerCluster {
   gap: number;
   /** Collapse a co-located run to a single count badge once it exceeds this many. */
   maxBeforeGroup: number;
+  /** What a collapsed group draws: `"count"` = the round count badge (default);
+   *  `"marker"` = the representative marker's own glyph; a {@link MarkerGroupBadge}
+   *  = a dedicated badge (custom image/icon) independent of the members. */
+  groupBadge: "count" | "marker" | MarkerGroupBadge;
+  /** With `groupBadge: "marker"` or a dedicated badge, also stamp the member count
+   *  in the glyph's top-right corner. Ignored for `"count"`. */
+  showGroupCount: boolean;
 }
 
 export interface ClusterMarkersOpts {

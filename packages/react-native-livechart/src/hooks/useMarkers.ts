@@ -28,6 +28,8 @@ const ANCHORED_CLUSTER: ResolvedMarkerCluster = {
   overlap: 0.75,
   gap: 2,
   maxBeforeGroup: 5,
+  groupBadge: "count",
+  showGroupCount: false,
 };
 
 /**

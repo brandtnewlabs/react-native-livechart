@@ -1133,6 +1133,53 @@ export interface MarkerClusterConfig {
   /** Collapse a co-located run to a single count badge once it exceeds this many.
    *  Default `5`. */
   maxBeforeGroup?: number;
+  /**
+   * What a collapsed cluster draws in place of its members:
+   *  - `"count"` (default) — the built-in round count badge (a circle with the
+   *    member count inside).
+   *  - `"marker"` — the **representative marker's own glyph** (its `image`, `icon`
+   *    /`pill`, or `kind` shape). The representative is the newest marker in the run,
+   *    so a run of buy pills collapses to a buy pill — handy when the group should
+   *    look like its members.
+   *  - {@link MarkerGroupBadge} — a **dedicated group badge you supply** (your own
+   *    Skia `image`, or an `icon`/`pill`), independent of the member markers. Use
+   *    this when the collapse should look *different* from the individual markers —
+   *    e.g. tiny dots that collapse into a distinct "Buy 5" badge image.
+   *
+   * All three are Skia-drawn in the same `drawAtlas` batch (not a `renderMarker`
+   * RN overlay). Pair any non-`"count"` form with {@link showGroupCount} for a
+   * corner count. Default `"count"`.
+   */
+  groupBadge?: "count" | "marker" | MarkerGroupBadge;
+  /**
+   * When {@link groupBadge} is `"marker"` or a {@link MarkerGroupBadge}, also stamp
+   * the member count as a small badge in the glyph's top-right corner — the
+   * "Buy **5**" look. Ignored when `groupBadge` is `"count"` (the count *is* the
+   * badge). Default `false`.
+   */
+  showGroupCount?: boolean;
+}
+
+/**
+ * A dedicated badge drawn for a collapsed marker cluster — your own Skia design,
+ * independent of the member markers. Pass it as
+ * {@link MarkerClusterConfig.groupBadge}. Glyph precedence mirrors a single marker:
+ * `image` → `icon` (`pill`) → a filled dot. Requires `image` or `icon` (otherwise
+ * the group falls back to the count badge).
+ */
+export interface MarkerGroupBadge {
+  /** Custom Skia image for the collapsed group (e.g. from `useImage`). Takes
+   *  precedence over {@link icon}. */
+  image?: SkImage;
+  /** Text / emoji glyph for the collapsed group (used when {@link image} is unset).
+   *  Rendered with the chart font. */
+  icon?: string;
+  /** Color of the `icon` (and its `pill`). Defaults to a palette accent. */
+  color?: string;
+  /** Wrap the `icon` in a filled circular badge in {@link color} (icon drawn white). */
+  pill?: boolean;
+  /** Glyph box size in px (icon font size, or image width+height). Default `16`. */
+  size?: number;
 }
 
 /** Context passed to `renderMarker` alongside the marker (cluster / position state). */

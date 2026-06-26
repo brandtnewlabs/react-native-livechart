@@ -66,6 +66,7 @@ export type {
   LiveChartSeriesProps,
   Marker,
   MarkerClusterConfig,
+  MarkerGroupBadge,
   MarkerKind,
   MarkerPressEvent,
   MarkerRenderContext,

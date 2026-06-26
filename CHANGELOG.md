@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.4.0] - 2026-06-26
+
+### Added
+
+- **Custom look for collapsed marker groups** — `MarkerClusterConfig.groupBadge`
+  and `showGroupCount`. By default a collapsed cluster draws a round count badge;
+  give it a custom Skia look two ways:
+  - `groupBadge: "marker"` draws the **representative marker's own glyph** (its
+    `image` / `icon` / `pill` / `kind`), so a run of buy pills collapses to a single
+    buy pill rather than a generic count.
+  - `groupBadge: { image }` (or `{ icon, pill, color }`, the new `MarkerGroupBadge`
+    type) draws a **dedicated badge you supply**, independent of the member markers
+    — for when the collapse should look different from the individual markers (e.g.
+    tiny dots → a distinct "Buy 5" image).
+
+  Add `showGroupCount` to stamp the member count in the glyph's top-right corner
+  (the "Buy 5" look). Everything is batched in the same `drawAtlas` as every other
+  marker (not a `renderMarker` RN overlay). Default behavior is unchanged
+  (`groupBadge: "count"`). Exports the `MarkerGroupBadge` type.
+  ([#165](https://github.com/brandtnewlabs/react-native-livechart/issues/165))
+
 ## [4.3.0] - 2026-06-25
 
 ### Added
