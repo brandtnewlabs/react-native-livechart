@@ -61,6 +61,54 @@ also on a timeframe change, and when a line chart's data appears) and the **mode
 
 The same `transitions` prop works on `LiveChartSeries` (only `reveal` applies there).
 
+## Snap on a timeframe or data change
+
+`transitions` and `reveal` only animate **opacity** — the grow-in fade and the candle↔line
+crossfade. They do **not** govern the chart's *geometry*. When you change `timeWindow` (switch
+timeframe) or swap in a new `data` / `candles` array for a different range, the time window and
+Y-range **ease** toward their new targets over `smoothing`. With `smoothing < 1` that ease is a
+visible slide — and `transitions={{ reveal: 0 }}` does not stop it, because the slide isn't a
+transition.
+
+The two blunt ways to remove the slide each cost you something on a live chart: `smoothing={1}`
+kills the smooth easing of live ticks, and `static` turns off live updates entirely. `snapKey`
+is the middle option — **snap once when the view changes, keep smoothing for live ticks**:
+
+```tsx
+const [tf, setTf] = useState<"1H" | "1D" | "1W">("1H");
+
+<LiveChart
+  data={data}
+  value={value}
+  timeWindow={windowFor(tf)}
+  smoothing={0.4}   // live ticks still glide
+  snapKey={tf}      // ...but a timeframe switch lands in one frame
+/>;
+```
+
+Whenever `snapKey` changes, the **next frame** sends the time window, Y-range, and value straight
+to their targets (no lerp), then normal `smoothing` resumes. Pass any value that changes once per
+discrete view change — the current timeframe id (above), or a counter you bump when you replace the
+dataset:
+
+```tsx
+const [rev, setRev] = useState(0);
+
+function loadRange(next: LiveChartPoint[]) {
+  data.value = next;
+  setRev((r) => r + 1); // snap the framing to the new range
+}
+
+<LiveChart data={data} value={value} snapKey={rev} smoothing={0.4} />;
+```
+
+<Note>
+  `snapKey` settles only the **geometry**, and only for that one frame — it leaves the
+  time-scroll position untouched and never disables the live loop. It works the same on
+  `LiveChartSeries` (the per-series tips snap too). Omit it to keep easing on every change
+  (the default).
+</Note>
+
 ## Cross-fading instances
 
 To switch between *separate* charts — different symbols, timeframes, or accent treatments — wrap

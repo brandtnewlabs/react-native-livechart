@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`snapKey`** (`string | number`) on `LiveChart` and `LiveChartSeries`. Snaps
+  the framing — time window, Y-range, and value (per-series tips on
+  `LiveChartSeries`) — to its target in a single frame whenever the key changes,
+  then resumes normal `smoothing` for live ticks. Lets a timeframe switch (a
+  `timeWindow` change) or a dataset swap settle instantly instead of sliding,
+  without the all-or-nothing trade-offs of `smoothing={1}` (jumpy live ticks) or
+  `static` (no live updates). Pass the current timeframe id, or a counter you bump
+  when replacing the `data` / `candles` array. Geometry only and one frame only —
+  the time-scroll position and the live loop are untouched. Thanks
+  [@dszym00](https://github.com/dszym00).
+  ([#173](https://github.com/brandtnewlabs/react-native-livechart/issues/173))
+
+### Docs
+
+- Clarified that `transitions.reveal` animates **opacity** only (the grow-in
+  fade), not the time window / Y-range easing on a timeframe change — that easing
+  is `smoothing`, and `snapKey` collapses it to one frame.
+
 ## [4.5.0] - 2026-06-26
 
 ### Added

@@ -14,12 +14,29 @@ export const options = { title: "Transitions" };
 const WINDOW = 300;
 const CANDLE_WIDTH = 15;
 
-type Example = "mode" | "crossfade";
+type Example = "mode" | "crossfade" | "snap";
 
 const EXAMPLE_OPTIONS: { value: Example; label: string }[] = [
   { value: "mode", label: "Line ↔ Candle (mode)" },
   { value: "crossfade", label: "Cross-fade (transition)" },
+  { value: "snap", label: "Snap on timeframe (snapKey)" },
 ];
+
+// Three timeframes (visible window in seconds) for the snapKey example — all fit
+// inside the simulated history span so each window is fully backed by data.
+type Timeframe = "1m" | "2m" | "5m";
+
+const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
+  { value: "1m", label: "1m" },
+  { value: "2m", label: "2m" },
+  { value: "5m", label: "5m" },
+];
+
+const TIMEFRAME_WINDOW: Record<Timeframe, number> = {
+  "1m": 60,
+  "2m": 120,
+  "5m": 300,
+};
 
 type Mode = "line" | "candle";
 
@@ -42,6 +59,10 @@ export default function TransitionsScreen() {
   const [keepMounted, setKeepMounted] = useState(true);
   // `transitions={false}` → instant reveal + instant line↔candle crossfade.
   const [instant, setInstant] = useState(false);
+  // snapKey example: a timeframe selector + a toggle for whether switching it
+  // snaps the framing (snapKey set) or eases into it (snapKey omitted).
+  const [timeframe, setTimeframe] = useState<Timeframe>("5m");
+  const [snap, setSnap] = useState(true);
 
   const { data, value, candles, liveCandle } = useSimulatedChartData({
     multiSeries: false,
@@ -80,6 +101,22 @@ export default function TransitionsScreen() {
             timeWindow={WINDOW}
             transitions={instant ? false : undefined}
             accessibilityLabel={`Price ${mode} chart`}
+            scrub={false}
+          />
+        ) : example === "snap" ? (
+          // Snap-on-timeframe: a high smoothing keeps live ticks gliding, while
+          // `snapKey={timeframe}` makes a window change land in one frame. Toggle
+          // Snap off (snapKey omitted) to feel the framing slide instead.
+          <LiveChart
+            data={data}
+            value={value}
+            accentColor={ACCENT}
+            theme={APP_THEME}
+            timeWindow={TIMEFRAME_WINDOW[timeframe]}
+            smoothing={0.4}
+            snapKey={snap ? timeframe : undefined}
+            transitions={{ reveal: 0 }}
+            accessibilityLabel={`Price chart, ${timeframe} window`}
             scrub={false}
           />
         ) : (
@@ -140,6 +177,28 @@ export default function TransitionsScreen() {
             One LiveChart with a toggled mode — the engine morphs line↔candle and
             the y-axis eases between the two ranges (no re-reveal). Flip Instant
             ({`transitions={false}`}) to switch with no animation.
+          </Text>
+        </>
+      ) : example === "snap" ? (
+        <>
+          <ChipRow
+            label="Timeframe"
+            options={TIMEFRAME_OPTIONS}
+            value={timeframe}
+            onChange={setTimeframe}
+          />
+          <ControlRow label="snapKey">
+            <ToggleChip
+              label="Snap on change"
+              value={snap}
+              onChange={setSnap}
+            />
+          </ControlRow>
+          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+            Switch the timeframe. With Snap on ({`snapKey={timeframe}`}) the window
+            and y-range jump to the new framing in one frame; live ticks still
+            glide ({`smoothing={0.4}`}). Toggle Snap off to feel the same change
+            slide in instead — that slide is the easing, not a transition.
           </Text>
         </>
       ) : (

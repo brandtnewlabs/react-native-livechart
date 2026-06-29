@@ -63,6 +63,17 @@ export interface EngineTickInput {
   /** When true, freeze the viewport timestamp and skip displayWindow lerp */
   paused?: boolean;
   /**
+   * Settle the framing in this one frame instead of easing into it: the time
+   * window ({@link EngineTickMutable.displayWindow}), Y-range
+   * ({@link EngineTickMutable.displayMin}/{@link EngineTickMutable.displayMax}),
+   * and value ({@link EngineTickMutable.displayValue}/{@link EngineTickMutable.edgeValue})
+   * jump straight to their targets — `smoothing` is bypassed for this tick only.
+   * Set for the single frame after a `snapKey` change so a timeframe / dataset
+   * switch lands instantly while live ticks keep their normal smoothing. Leaves
+   * the timestamp / pan-scroll state untouched. See {@link LiveChartProps.snapKey}.
+   */
+  snap?: boolean;
+  /**
    * Absolute right-edge time (unix seconds) to freeze the window at, or
    * `null`/`undefined` to follow the live edge. Set by the pan-scroll gesture
    * to scroll back in time; once it reaches (or passes) the live edge the engine
@@ -147,6 +158,10 @@ export function tickLiveChartEngineFrame(
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
 
   const speed = input.smoothing;
+  // One-shot settle (snapKey change): collapse this frame's easing so the
+  // window / range / value land on target instantly, then normal smoothing
+  // resumes next frame. See `EngineTickInput.snap`.
+  const snap = input.snap === true;
   let target = input.targetValue;
   if (input.mode === "candle" && input.liveCandle) {
     target = input.liveCandle.close;
@@ -160,17 +175,16 @@ export function tickLiveChartEngineFrame(
     (1 - gapRatio) *
       (input.adaptiveSpeedBoost ?? MOTION_METRICS_DEFAULTS.adaptiveSpeedBoost);
 
-  state.displayValue = lerp(
-    state.displayValue,
-    target,
-    adaptiveSpeed,
-    input.dt,
-  );
+  state.displayValue = snap
+    ? target
+    : lerp(state.displayValue, target, adaptiveSpeed, input.dt);
 
   // Pinch-zoom: ease toward the zoom override when set, else the configured
   // window. Mirrors the viewEnd freeze above (width vs. right edge).
   const targetWindow = input.viewWindow ?? input.timeWindow;
-  state.displayWindow = lerp(state.displayWindow, targetWindow, speed, input.dt);
+  state.displayWindow = snap
+    ? targetWindow
+    : lerp(state.displayWindow, targetWindow, speed, input.dt);
 
   const winStart = state.timestamp - state.displayWindow;
 
@@ -292,13 +306,13 @@ export function tickLiveChartEngineFrame(
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
-    if (tMin < state.displayMin) {
+    if (snap || tMin < state.displayMin) {
       state.displayMin = tMin;
     } else {
       state.displayMin = lerp(state.displayMin, tMin, speed, input.dt);
     }
 
-    if (tMax > state.displayMax) {
+    if (snap || tMax > state.displayMax) {
       state.displayMax = tMax;
     } else {
       state.displayMax = lerp(state.displayMax, tMax, speed, input.dt);
@@ -338,6 +352,8 @@ export function tickLiveChartEngineFrame(
       }
       if (elo > 0) edgeTarget = pts[elo - 1].value;
     }
-    state.edgeValue = lerp(state.edgeValue, edgeTarget, speed, input.dt);
+    state.edgeValue = snap
+      ? edgeTarget
+      : lerp(state.edgeValue, edgeTarget, speed, input.dt);
   }
 }

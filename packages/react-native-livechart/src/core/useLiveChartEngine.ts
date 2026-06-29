@@ -5,7 +5,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   cancelAnimation,
   Easing,
@@ -62,6 +62,13 @@ export interface EngineConfig {
    * {@link LiveChartProps.static}.
    */
   static?: boolean;
+  /**
+   * Opaque key that snaps the framing to its target in one frame whenever it
+   * changes (the next tick bypasses `smoothing` for the window, Y-range, and
+   * value, then normal easing resumes). Lets a timeframe / dataset switch land
+   * instantly while live ticks stay smooth. See {@link LiveChartProps.snapKey}.
+   */
+  snapKey?: string | number;
   mode?: "line" | "candle";
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
@@ -193,6 +200,12 @@ export interface EngineFrameRefs {
   liveEdgeSV?: SharedValue<number>;
   /** Receives the smoothed right-edge value each frame. Optional for callers/tests. */
   edgeValueSV?: SharedValue<number>;
+  /**
+   * One-shot "snap the framing this frame" flag (set by the `snapKey` effect).
+   * Consumed and cleared by {@link applyLiveChartEngineFrame} after the tick.
+   * Optional for callers/tests.
+   */
+  snapSV?: SharedValue<boolean>;
   modeSV: SharedValue<"line" | "candle">;
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
@@ -212,6 +225,9 @@ export function applyLiveChartEngineFrame(
 ): void {
   "worklet";
   const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
+  // One-shot settle: a `snapKey` change set this flag; consume it for this tick
+  // and clear it below so only this frame snaps (live ticks stay smoothed).
+  const snap = sv.snapSV?.value ?? false;
   const state = {
     displayValue: sv.displayValue.value,
     displayMin: sv.displayMin.value,
@@ -243,6 +259,7 @@ export function applyLiveChartEngineFrame(
     points: sv.data.value,
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
+    snap,
     viewEnd: sv.viewEndSV?.value,
     returnT: sv.returnTSV?.value,
     returnFrom: sv.returnFromSV?.value,
@@ -262,6 +279,13 @@ export function applyLiveChartEngineFrame(
   sv.extremaMaxValue.value = state.extremaMaxValue;
   sv.extremaMinTime.value = state.extremaMinTime;
   sv.extremaMaxTime.value = state.extremaMaxTime;
+  // Clear the one-shot snap so the next frame eases normally again — but only
+  // once a real (measured) frame consumed it. The tick early-returns on a
+  // zero-size canvas (before applying the snap), so keep the flag pending until
+  // the canvas has laid out, or a snap arriving pre-layout would be dropped.
+  if (snap && sv.snapSV && sv.canvasWidth.value !== 0 && sv.canvasHeight.value !== 0) {
+    sv.snapSV.value = false;
+  }
 }
 
 export function useLiveChartEngine(
@@ -352,6 +376,20 @@ export function useLiveChartEngine(
   // no useDerivedValue bridging, no closure serialization per tick.
   const { data, value, candles, liveCandle } = config;
 
+  // One-shot "snap the framing" flag. The effect below flips it to `true` when
+  // `snapKey` changes; the next frame consumes it (bypassing `smoothing` for the
+  // window / range / value) and clears it, so a timeframe / dataset switch lands
+  // in one frame while live ticks stay smoothed. See `snapKey`.
+  const snapSV = useSharedValue(false);
+  // Compare against the previous key (not a "first render" flag) so React 18
+  // StrictMode's double-invoked mount effect can't fire a spurious snap.
+  const lastSnapKey = useRef(config.snapKey);
+  useEffect(() => {
+    if (config.snapKey === lastSnapKey.current) return;
+    lastSnapKey.current = config.snapKey;
+    snapSV.set(true);
+  }, [config.snapKey, snapSV]);
+
   // Static charts run zero per-frame loops. `isStaticSV` gates both the
   // frame-callback autostart and the one-shot settle reaction below.
   const isStaticSV = useDerivedValue(() => config.static ?? false);
@@ -385,6 +423,7 @@ export function useLiveChartEngine(
     viewWindowSV: viewWindow,
     liveEdgeSV: liveEdge,
     edgeValueSV: edgeValue,
+    snapSV,
     modeSV,
     candles,
     liveCandle,

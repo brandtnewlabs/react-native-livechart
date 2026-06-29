@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   cancelAnimation,
   Easing,
@@ -41,6 +41,13 @@ export interface MultiSeriesEngineConfig {
    * {@link RETURN_TO_LIVE_MS}. Resolved from `timeScroll.returnToLive`. See #164.
    */
   returnToLiveMs?: number;
+  /**
+   * Opaque key that snaps the framing to its target in one frame whenever it
+   * changes (the next tick bypasses `smoothing` for the window, Y-range, and
+   * series tips, then normal easing resumes). Lets a timeframe / dataset switch
+   * land instantly while live ticks stay smooth. See {@link LiveChartSeriesProps.snapKey}.
+   */
+  snapKey?: string | number;
 }
 
 export interface MultiEngineFrameRefs {
@@ -74,6 +81,12 @@ export interface MultiEngineFrameRefs {
   viewWindowSV?: SharedValue<number | null>;
   /** Receives the computed live edge each frame. Optional for callers/tests. */
   liveEdgeSV?: SharedValue<number>;
+  /**
+   * One-shot "snap the framing this frame" flag (set by the `snapKey` effect).
+   * Consumed and cleared by {@link applyLiveChartSeriesEngineFrame} after the
+   * tick. Optional for callers/tests.
+   */
+  snapSV?: SharedValue<boolean>;
   extremaMinValue: SharedValue<number>;
   extremaMaxValue: SharedValue<number>;
   extremaMinTime: SharedValue<number>;
@@ -110,6 +123,9 @@ export function applyLiveChartSeriesEngineFrame(
 ): void {
   "worklet";
   const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
+  // One-shot settle: a `snapKey` change set this flag; consume it for this tick
+  // and clear it below so only this frame snaps (live ticks stay smoothed).
+  const snap = sv.snapSV?.value ?? false;
   const seriesSnap = sv.series.value;
   const curDv = sv.displaySeriesValues.value;
   const curOp = sv.seriesOpacities.value;
@@ -157,6 +173,7 @@ export function applyLiveChartSeriesEngineFrame(
     series: seriesSnap,
     nowSeconds: Date.now() / 1000,
     paused: sv.pausedSV.value,
+    snap,
     viewEnd: sv.viewEndSV?.value,
     returnT: sv.returnTSV?.value,
     returnFrom: sv.returnFromSV?.value,
@@ -173,6 +190,12 @@ export function applyLiveChartSeriesEngineFrame(
   sv.extremaMaxValue.value = state.extremaMaxValue;
   sv.extremaMinTime.value = state.extremaMinTime;
   sv.extremaMaxTime.value = state.extremaMaxTime;
+  // Clear the one-shot snap so the next frame eases normally again — but only
+  // once a real (measured) frame consumed it (the tick early-returns on a
+  // zero-size canvas before applying the snap). See applyLiveChartEngineFrame.
+  if (snap && sv.snapSV && sv.canvasWidth.value !== 0 && sv.canvasHeight.value !== 0) {
+    sv.snapSV.value = false;
+  }
 }
 
 /**
@@ -234,6 +257,16 @@ export function useLiveChartSeriesEngine(
   const value = useSharedValue(0);
   const displayValue = useSharedValue(0);
 
+  // One-shot "snap the framing" flag — flipped by the effect when `snapKey`
+  // changes, consumed + cleared by the next frame (mirrors useLiveChartEngine).
+  const snapSV = useSharedValue(false);
+  const lastSnapKey = useRef(config.snapKey);
+  useEffect(() => {
+    if (config.snapKey === lastSnapKey.current) return;
+    lastSnapKey.current = config.snapKey;
+    snapSV.set(true);
+  }, [config.snapKey, snapSV]);
+
   const { series } = config;
 
   // Reused per-frame output buffers (ping-ponged) — see applyLiveChartSeriesEngineFrame.
@@ -273,6 +306,7 @@ export function useLiveChartSeriesEngine(
         returnFromSV: returnFrom,
         viewWindowSV: viewWindow,
         liveEdgeSV: liveEdge,
+        snapSV,
         extremaMinValue,
         extremaMaxValue,
         extremaMinTime,

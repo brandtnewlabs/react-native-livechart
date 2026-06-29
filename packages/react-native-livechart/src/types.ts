@@ -1611,10 +1611,15 @@ export interface VisibleRange {
  */
 export interface TransitionConfig {
   /**
-   * Reveal / collapse transition — the grow-in when data first appears (and the
-   * fade-out when it goes away or `loading` toggles). This is what plays on a
-   * timeframe change and when a `line` chart's data appears (e.g. switching from
-   * candle to line). Default `600`. `0` = instant.
+   * Reveal / collapse transition — the grow-in **opacity** fade when data first
+   * appears (and the fade-out when it goes away or `loading` toggles). This is
+   * the fade that plays on a timeframe change and when a `line` chart's data
+   * appears (e.g. switching from candle to line). Default `600`. `0` = instant.
+   *
+   * Note this animates opacity only, not geometry: it does not control the time
+   * window / Y-range *easing* on a timeframe or dataset change (that's
+   * `smoothing`). To make that framing settle in one frame instead of sliding,
+   * use {@link LiveChartCoreProps.snapKey}.
    */
   reveal?: number;
   /**
@@ -1695,6 +1700,30 @@ export interface LiveChartCoreProps {
    * `lerpSpeed`. Default `0.08`.
    */
   smoothing?: number;
+  /**
+   * Snap the framing to its target in a single frame whenever this key changes —
+   * without giving up smooth live ticks. On a timeframe / dataset switch, the
+   * window, Y-range, and value otherwise *ease* toward their new targets over
+   * `smoothing`, which reads as a slide. Bump `snapKey` at that moment and the
+   * next frame jumps straight to the new framing (no slide), then normal
+   * `smoothing` resumes for subsequent live ticks.
+   *
+   * Pass any value that changes once per discrete view change — the current
+   * timeframe id, or a counter you increment when you swap the `data` / `candles`
+   * array for a different range:
+   *
+   * ```tsx
+   * const [tf, setTf] = useState("1H");
+   * <LiveChart data={data} value={value} timeWindow={windowFor(tf)} snapKey={tf} />
+   * ```
+   *
+   * Unlike `transitions` (which only governs the reveal fade and the candle↔line
+   * crossfade — opacity, not geometry) and `static` (which turns off the live
+   * loop entirely), `snapKey` settles only the geometry and only for one frame.
+   * Leaves the timestamp / time-scroll position untouched. Omit to keep easing on
+   * every change (the default).
+   */
+  snapKey?: string | number;
   /** Tight Y-axis — small value moves fill the full chart height. Default `false`. */
   exaggerate?: boolean;
   /**
