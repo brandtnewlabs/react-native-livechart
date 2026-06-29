@@ -411,6 +411,17 @@ provided; everything else has a default.
   Value-lerp speed (0 = frozen, 1 = instant).
 </ParamField>
 
+<ParamField body="snapKey" type="string | number">
+  Snap the framing (time window, Y-range, value) to its target in one frame
+  whenever this key changes — **without** giving up smooth live ticks. On a
+  timeframe / dataset switch the framing otherwise eases over `smoothing`, which
+  reads as a slide; bump `snapKey` (e.g. to the current timeframe id, or a counter
+  you increment when swapping `data` / `candles`) and the next frame jumps to the
+  new framing, then normal `smoothing` resumes. Unlike `transitions` (opacity only)
+  and `static` (no live loop), this settles only the geometry and only for one
+  frame. See [Transitions](/guides/transitions#snap-on-a-timeframe-or-data-change).
+</ParamField>
+
 <ParamField body="exaggerate" type="boolean" default="false">
   Tight Y-axis so small moves fill the height.
 </ParamField>

@@ -995,3 +995,99 @@ describe("tickLiveChartEngineFrame adaptiveSpeedBoost", () => {
     expect(omitted).toBeLessThan(run(1));
   });
 });
+
+describe("tickLiveChartEngineFrame — snap (one-shot settle)", () => {
+  it("snaps window, range, and value straight to target in one frame", () => {
+    // Window far from the target (60→30) and range far from the data (0..1
+    // around a 100-value point): with snap the frame lands exactly, no easing.
+    const s = {
+      ...baseState(),
+      displayValue: 0,
+      displayMin: 0,
+      displayMax: 1,
+      displayWindow: 60,
+    };
+    tickLiveChartEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.08,
+      exaggerate: false,
+      referenceValue: undefined,
+      targetValue: 100,
+      points: [{ time: 1000, value: 100 }],
+      nowSeconds: 1000,
+      snap: true,
+    });
+    expect(s.displayValue).toBe(100);
+    expect(s.displayWindow).toBe(30);
+    // Range jumps to bracket the data point (≈95..105) instead of easing from 0..1.
+    expect(s.displayMin).toBeGreaterThan(1);
+    expect(s.displayMin).toBeLessThanOrEqual(100);
+    expect(s.displayMax).toBeGreaterThanOrEqual(100);
+  });
+
+  it("snaps a shrinking range/window that would otherwise lerp (the zoom-in case)", () => {
+    // Without snap, displayMax shrinking from 1000 and displayWindow from 60
+    // only ease a fraction per frame; with snap they reach target immediately.
+    const input = {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.08,
+      exaggerate: false,
+      referenceValue: undefined,
+      targetValue: 100,
+      points: [{ time: 1000, value: 100 }],
+      nowSeconds: 1000,
+    };
+    const eased = {
+      ...baseState(),
+      displayValue: 100,
+      displayMin: 0,
+      displayMax: 1000,
+      displayWindow: 60,
+    };
+    tickLiveChartEngineFrame(eased, input);
+    expect(eased.displayWindow).toBeGreaterThan(30); // still easing toward 30
+    expect(eased.displayMax).toBeGreaterThan(200); // still far from ≈105
+
+    const snapped = {
+      ...baseState(),
+      displayValue: 100,
+      displayMin: 0,
+      displayMax: 1000,
+      displayWindow: 60,
+    };
+    tickLiveChartEngineFrame(snapped, { ...input, snap: true });
+    expect(snapped.displayWindow).toBe(30);
+    expect(snapped.displayMax).toBeLessThan(200); // snapped down to bracket the data
+  });
+
+  it("snaps edgeValue to the right-edge value when scrolled back", () => {
+    // Scrolled back (viewEnd in the past): edgeValue tracks the last visible
+    // point's value. With snap it jumps there instead of easing from 0.
+    const s = { ...baseState(), edgeValue: 0, displayValue: 50 };
+    tickLiveChartEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.08,
+      exaggerate: false,
+      referenceValue: undefined,
+      targetValue: 50,
+      points: [
+        { time: 960, value: 20 },
+        { time: 980, value: 40 },
+      ],
+      nowSeconds: 1000,
+      viewEnd: 985, // < liveEdge(1000) and ≥ firstDataTime(960) → scrolled back
+      snap: true,
+    });
+    expect(s.timestamp).toBe(985);
+    expect(s.edgeValue).toBe(40);
+  });
+});

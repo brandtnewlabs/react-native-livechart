@@ -43,6 +43,72 @@ describe("applyLiveChartEngineFrame", () => {
     expect(sv.extremaMaxValue.value).toBe(10);
     expect(sv.extremaMinTime.value).toBe(1700000000);
   });
+
+  it("consumes the snap flag — snaps the value in one frame then clears it", () => {
+    const sv = {
+      data: { value: [{ time: 1700000000, value: 10 }] },
+      value: { value: 10 },
+      displayValue: { value: 0 },
+      displayMin: { value: 0 },
+      displayMax: { value: 1 },
+      displayWindow: { value: 30 },
+      timestamp: { value: 1700000000 },
+      canvasWidth: { value: 200 },
+      canvasHeight: { value: 100 },
+      timeWindow: { value: 30 },
+      smoothing: { value: 0.08 }, // small: only a snap reaches the target in one frame
+      exaggerateSV: { value: false },
+      referenceValue: { value: undefined as number | undefined },
+      nowOverrideSV: { value: 1700000000 },
+      windowBufferSV: { value: 0 },
+      pausedSV: { value: false },
+      snapSV: { value: true },
+      modeSV: { value: "line" as const },
+      extremaMinValue: { value: NaN },
+      extremaMaxValue: { value: NaN },
+      extremaMinTime: { value: NaN },
+      extremaMaxTime: { value: NaN },
+    };
+    applyLiveChartEngineFrame(
+      { timeSincePreviousFrame: 16.67 },
+      sv as unknown as EngineFrameRefs,
+    );
+    expect(sv.displayValue.value).toBe(10); // snapped, not eased
+    expect(sv.snapSV.value).toBe(false); // one-shot: cleared after consuming
+  });
+
+  it("keeps the snap flag pending when the canvas has not laid out yet", () => {
+    const sv = {
+      data: { value: [{ time: 1700000000, value: 10 }] },
+      value: { value: 10 },
+      displayValue: { value: 0 },
+      displayMin: { value: 0 },
+      displayMax: { value: 1 },
+      displayWindow: { value: 30 },
+      timestamp: { value: 1700000000 },
+      canvasWidth: { value: 0 }, // unmeasured → tick early-returns before snapping
+      canvasHeight: { value: 100 },
+      timeWindow: { value: 30 },
+      smoothing: { value: 0.08 },
+      exaggerateSV: { value: false },
+      referenceValue: { value: undefined as number | undefined },
+      nowOverrideSV: { value: 1700000000 },
+      windowBufferSV: { value: 0 },
+      pausedSV: { value: false },
+      snapSV: { value: true },
+      modeSV: { value: "line" as const },
+      extremaMinValue: { value: NaN },
+      extremaMaxValue: { value: NaN },
+      extremaMinTime: { value: NaN },
+      extremaMaxTime: { value: NaN },
+    };
+    applyLiveChartEngineFrame(
+      { timeSincePreviousFrame: 16.67 },
+      sv as unknown as EngineFrameRefs,
+    );
+    expect(sv.displayValue.value).toBe(0); // nothing applied (early return)
+    expect(sv.snapSV.value).toBe(true); // still pending for the first real frame
+  });
 });
 
 describe("useLiveChartEngine", () => {
@@ -118,6 +184,30 @@ describe("useLiveChartEngine", () => {
     expect(result.current.viewWindow.get()).toBeNull();
     rerender({ tw: 60 });
     expect(result.current.viewWindow.get()).toBeNull();
+  });
+
+  it("requests a one-shot snap when snapKey changes (and not on a stable key)", () => {
+    // snapSV is internal, so this asserts the effect wiring doesn't throw across
+    // the no-change / change paths; the snap math itself is covered by the
+    // applyLiveChartEngineFrame + tick tests above. (Mirrors the viewWindow-reset
+    // wiring test — the SharedValue mock can't round-trip the frame loop.)
+    const { result, rerender } = renderHook(
+      ({ k }: { k: string }) => {
+        const data = useSharedValue([{ time: 1700000000, value: 1 }]);
+        const value = useSharedValue(1);
+        return useLiveChartEngine({
+          data,
+          value,
+          timeWindow: 30,
+          smoothing: 0.08,
+          snapKey: k,
+        });
+      },
+      { initialProps: { k: "1H" } },
+    );
+    rerender({ k: "1H" }); // unchanged key → no snap requested
+    rerender({ k: "1D" }); // changed key → snap requested for the next frame
+    expect(result.current.displayMin.value).toBeDefined();
   });
 
   it("snaps the display state in one tick at smoothing=1 (the static settle)", () => {

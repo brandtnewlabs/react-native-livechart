@@ -219,6 +219,7 @@ function useLiveChartController({
   transitions,
   // `static` is a reserved word — alias it so the destructure parses.
   static: isStatic = false,
+  snapKey,
   smoothing = 0.08,
   exaggerate = false,
   nonNegative = false,
@@ -576,6 +577,7 @@ function useLiveChartController({
     timeWindow,
     paused,
     static: isStatic,
+    snapKey,
     scrollEnabled: timeScrollEnabled,
     returnToLiveMs,
     smoothing,

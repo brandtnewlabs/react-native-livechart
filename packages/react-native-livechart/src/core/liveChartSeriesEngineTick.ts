@@ -51,6 +51,17 @@ export interface MultiEngineTickInput {
   windowBuffer?: number;
   paused?: boolean;
   /**
+   * Settle the framing in this one frame instead of easing into it: the time
+   * window, Y-range ({@link MultiEngineTickMutable.displayMin}/{@link MultiEngineTickMutable.displayMax}),
+   * and per-series tips ({@link MultiEngineTickMutable.displayValues}) jump
+   * straight to their targets — `smoothing` is bypassed for this tick only. Set
+   * for the single frame after a `snapKey` change so a timeframe / dataset switch
+   * lands instantly while live ticks keep their normal smoothing. Series-toggle
+   * opacities and the timestamp / pan-scroll state are left untouched. See
+   * {@link LiveChartSeriesProps.snapKey}.
+   */
+  snap?: boolean;
+  /**
    * Absolute right-edge time (unix seconds) to freeze the window at, or
    * `null`/`undefined` to follow the live edge. Drives pan-scroll; takes
    * precedence over {@link paused}.
@@ -122,6 +133,9 @@ export function tickLiveChartSeriesEngineFrame(
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
 
   const speed = input.smoothing;
+  // One-shot settle (snapKey change): collapse this frame's easing so the
+  // window / range / tips land on target instantly. See `MultiEngineTickInput.snap`.
+  const snap = input.snap === true;
   const series = input.series;
   const n = series.length;
 
@@ -138,7 +152,9 @@ export function tickLiveChartSeriesEngineFrame(
   // Pinch-zoom: ease toward the zoom override when set, else the configured
   // window (mirrors the single-series tick).
   const targetWindow = input.viewWindow ?? input.timeWindow;
-  state.displayWindow = lerp(state.displayWindow, targetWindow, speed, input.dt);
+  state.displayWindow = snap
+    ? targetWindow
+    : lerp(state.displayWindow, targetWindow, speed, input.dt);
 
   const winStart = state.timestamp - state.displayWindow;
   const range = state.displayMax - state.displayMin;
@@ -170,7 +186,9 @@ export function tickLiveChartSeriesEngineFrame(
       (1 - gapRatio) *
         (input.adaptiveSpeedBoost ??
           MOTION_METRICS_DEFAULTS.adaptiveSpeedBoost);
-    state.displayValues[i] = lerp(cur, target, adaptiveSpeed, input.dt);
+    state.displayValues[i] = snap
+      ? target
+      : lerp(cur, target, adaptiveSpeed, input.dt);
 
     const targetOp = series[i].visible !== false ? 1 : 0;
     state.opacities[i] = lerp(state.opacities[i], targetOp, speed, input.dt);
@@ -261,13 +279,13 @@ export function tickLiveChartSeriesEngineFrame(
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
-    if (tMin < state.displayMin) {
+    if (snap || tMin < state.displayMin) {
       state.displayMin = tMin;
     } else {
       state.displayMin = lerp(state.displayMin, tMin, speed, input.dt);
     }
 
-    if (tMax > state.displayMax) {
+    if (snap || tMax > state.displayMax) {
       state.displayMax = tMax;
     } else {
       state.displayMax = lerp(state.displayMax, tMax, speed, input.dt);
