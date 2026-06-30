@@ -2021,8 +2021,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
   /** Latest live value for smooth interpolation between data updates. */
   value: SharedValue<number>;
   /** Render once with no per-frame animation loop — for many small charts (sparklines)
-   *  in a list. Pulse/scrub/degen and the entry animation are disabled. Frame the data
-   *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
+   *  in a list. The continuous animations (pulse, degen, the entry reveal) are disabled,
+   *  but `scrub` / `scrubAction` stay available — they're on-demand touch gestures with
+   *  no per-frame cost, so a still chart is still scrubbable. Frame the data with
+   *  `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
   static?: boolean;
   /**
    * Render a custom overlay floated over the chart canvas, handed a price↔pixel /

@@ -403,9 +403,11 @@ provided; everything else has a default.
 
 <ParamField body="static" type="boolean" default="false">
   Render once with no per-frame animation loops — engine, degen, trades, candles,
-  markers, pulse, and entry reveal are all disabled, and scrubbing is off. Keeps
-  many small charts cheap when you render a list or grid of sparklines. Frame the
-  data edge-to-edge with `timeWindow` + `nowOverride`. See the
+  markers, pulse, and entry reveal are all disabled. `scrub` / `scrubAction` stay
+  available, though: they're on-demand touch gestures with no per-frame cost, so a
+  still chart costs nothing at rest yet is still scrubbable on touch. Keeps many
+  small charts cheap when you render a list or grid of sparklines. Frame the data
+  edge-to-edge with `timeWindow` + `nowOverride`. See the
   [Sparklines guide](/guides/sparklines).
 </ParamField>
 

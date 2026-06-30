@@ -295,8 +295,10 @@ function useLiveChartController({
   const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const badgeCfg = resolveBadge(badge);
   const scrubCfg = resolveScrub(scrub);
-  // Static charts run no gestures, so scrub-action (tap/drag to lock a price) is off.
-  const scrubActionCfg = isStatic ? null : resolveScrubAction(scrubAction);
+  // Scrub + scrub-action are on-demand touch gestures (event-driven, no per-frame
+  // loop), so they stay live on static charts — `static` suppresses the continuous
+  // render loop, not interaction. A still sparkline in a list can still be scrubbed.
+  const scrubActionCfg = resolveScrubAction(scrubAction);
   // Volume bars sit below the candles — a candle-mode-only feature (inert in
   // line mode, like the candle paths themselves).
   const volumeCfg = isCandle ? resolveVolume(volume) : null;
@@ -886,9 +888,10 @@ function useLiveChartController({
     formatValue,
     formatTime,
     skiaFont,
-    // Static charts have an inert pan gesture — no scrub work on the UI thread.
-    // Scrub-action also needs the gesture live even when plain scrub is off.
-    !isStatic && (scrubCfg !== null || scrubActionCfg !== null),
+    // Scrub / scrub-action stay live even on static charts: the gesture is
+    // event-driven (no per-frame loop), so a settled chart costs nothing at rest
+    // yet becomes scrubbable on touch. `static` only kills the continuous loop.
+    scrubCfg !== null || scrubActionCfg !== null,
     onScrub,
     candleOpts,
     scrubHoldMs,
@@ -1044,9 +1047,10 @@ function useLiveChartController({
   );
 
   // Hide the live dot while scrubbing when a selection dot is marking the scrub
-  // point instead — otherwise both dots show at once.
+  // point instead — otherwise both dots show at once. Applies on static charts
+  // too, now that they're scrubbable.
   const selectionDotDuringScrub =
-    !isStatic && scrubCfg !== null && selectionDotCfg !== null;
+    scrubCfg !== null && selectionDotCfg !== null;
   const liveDotOpacity = useDerivedValue(
     () =>
       reveal.dotOpacity.value *
