@@ -279,11 +279,15 @@ interface AreaDotsConfig {  // dot-lattice fill of the area beneath the line
   opacity?: number; // overall field opacity (0..1); default 1
 }
 interface ThresholdConfig {
-  value: SharedValue<number>; // the split value (Y-axis units), always live
+  // The split value (Y-axis units). A SharedValue<number> for a single live
+  // benchmark, OR a LiveChartPoint[] for a time-varying threshold the split,
+  // band + marker follow point-for-point (clamps to its first/last value outside
+  // its range → flat-extends to the live edge). See the Threshold split guide.
+  value: SharedValue<number> | LiveChartPoint[];
   aboveColor?: string;        // stroke at/above value; default palette up-green
   belowColor?: string;        // stroke below value;    default palette down-red
   fill?: boolean;             // tint the line↔value band (profit/loss); default false
-  line?: boolean | ThresholdLineConfig; // dashed marker line at value; default off
+  line?: boolean | ThresholdLineConfig; // marker line at value; default off
 }
 interface ThresholdLineConfig {
   label?: string;                    // label text, e.g. "Break-even"

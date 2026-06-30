@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Time-varying `threshold`** — `ThresholdConfig.value` now also accepts a
+  `LiveChartPoint[]` series, not just a `SharedValue<number>`. The stroke split,
+  profit/loss fill band and marker line follow the threshold **point-for-point**
+  instead of a single horizontal level — a stepped break-even / average cost as
+  you DCA, a historical VWAP, a moving peg. The series clamps to its first/last
+  value outside its own time range, so a threshold whose last point sits behind
+  the live edge extends as a flat line to "now". Single-series `LiveChart`, line
+  mode (unchanged). The constant `SharedValue<number>` form is untouched; the two
+  are distinguished at render by `Array.isArray` (no `SharedValue` read), and the
+  series renders via a per-fragment split shader so the polyline boundary stays
+  one GPU draw with no per-frame clip. Thanks
+  [@fsher](https://github.com/fsher).
+  ([#174](https://github.com/brandtnewlabs/react-native-livechart/issues/174))
+
 ## [4.6.0] - 2026-06-29
 
 ### Added

@@ -32,6 +32,9 @@ interface ThresholdMarkerProps {
   palette: LiveChartPalette;
   font: SkFont;
   formatValue: (v: number) => string;
+  /** When set, draw the marker as this time-varying threshold polyline (`[x, y, …]`)
+   *  instead of a horizontal line at `lineY`. */
+  seriesPts?: SharedValue<number[]>;
 }
 
 /**
@@ -47,6 +50,7 @@ export function ThresholdLineOverlay({
   visible,
   cfg,
   palette,
+  seriesPts,
 }: ThresholdMarkerProps) {
   const lineColor = cfg.color ?? palette.refLine;
   const { strokeWidth, intervals } = cfg;
@@ -56,9 +60,16 @@ export function ThresholdLineOverlay({
   const linePath = useDerivedValue(() => {
     const b = builder.value;
     if (visible.get()) {
-      const y = lineY.get();
-      b.moveTo(padding.left, y);
-      b.lineTo(engine.canvasWidth.get() - padding.right, y);
+      const sp = seriesPts?.get();
+      if (sp && sp.length >= 4) {
+        // Time-varying threshold: trace the polyline across the plot.
+        b.moveTo(sp[0], sp[1]);
+        for (let i = 2; i < sp.length; i += 2) b.lineTo(sp[i], sp[i + 1]);
+      } else {
+        const y = lineY.get();
+        b.moveTo(padding.left, y);
+        b.lineTo(engine.canvasWidth.get() - padding.right, y);
+      }
     }
     return b.detach();
   });

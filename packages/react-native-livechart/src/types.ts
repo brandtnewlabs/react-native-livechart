@@ -431,22 +431,34 @@ export interface LineConfig {
 }
 
 /**
- * Color the line above vs. below a live threshold value — green above, red below
- * by default. The threshold is **always** a `SharedValue` so it can track a live
- * benchmark (break-even / average cost, VWAP, previous close, a peg) on the UI
- * thread without re-rendering. Drives a hard-split line stroke and, optionally, a
- * tinted profit/loss fill band and a dashed marker line at the threshold.
+ * Color the line above vs. below a threshold — green above, red below by
+ * default. The threshold is either a single **live benchmark** (a
+ * `SharedValue<number>` that tracks on the UI thread without re-rendering) or a
+ * **time-varying series** (a `LiveChartPoint[]` the split follows point-for-point
+ * — a stepped break-even, a historical VWAP). Drives a hard-split line stroke
+ * and, optionally, a tinted profit/loss fill band and a marker line at the
+ * threshold.
  *
  * The split stroke supersedes `LineConfig.color`/`colors` and segment recoloring
  * for the main line while a threshold is set.
  */
 export interface ThresholdConfig {
   /**
-   * The split value, in Y-axis (price) units. A `SharedValue` — update it with
-   * `.set()` and the split tracks live on the UI thread (break-even, VWAP, the
-   * previous close, a peg, …).
+   * The split value, in Y-axis (price) units. Two forms:
+   *
+   * - **`SharedValue<number>`** — a single live benchmark. Update it with
+   *   `.set()` and the horizontal split tracks on the UI thread without
+   *   re-rendering (break-even / average cost, VWAP, the previous close, a peg).
+   * - **`LiveChartPoint[]`** — a *time-varying* threshold (e.g. a historical
+   *   break-even that steps up as you average in). The stroke split, fill band
+   *   and marker line follow the series point-for-point. The series clamps to its
+   *   first/last value outside its own time range, so a threshold whose last
+   *   point sits behind the live edge extends as a flat line to "now". Flows in on
+   *   re-render — pass a stable (memoized) array and reserve it for thresholds
+   *   that change occasionally; use the `SharedValue<number>` form for a per-frame
+   *   live benchmark.
    */
-  value: SharedValue<number>;
+  value: SharedValue<number> | LiveChartPoint[];
   /** Stroke color where the line is at/above `value`. Default: palette up-green (`candleUp`). */
   aboveColor?: string;
   /** Stroke color where the line is below `value`. Default: palette down-red (`candleDown`). */

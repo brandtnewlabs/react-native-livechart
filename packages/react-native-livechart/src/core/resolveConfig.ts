@@ -14,6 +14,7 @@ import type {
   LineStyleConfig,
   LiveChartMetrics,
   LiveChartMetricsOverride,
+  LiveChartPoint,
   LoadingConfig,
   MarkerClusterConfig,
   DotConfig,
@@ -329,8 +330,12 @@ export interface ResolvedThresholdLineConfig {
 }
 
 export interface ResolvedThresholdConfig {
-  /** The live split value (Y-axis units). Read on the UI thread each frame. */
-  value: SharedValue<number>;
+  /**
+   * The split value (Y-axis units). A `SharedValue<number>` for a single live
+   * benchmark (read on the UI thread each frame), or a `LiveChartPoint[]` for a
+   * time-varying threshold the split follows point-for-point.
+   */
+  value: SharedValue<number> | LiveChartPoint[];
   /** undefined → use palette.candleUp (up-green) at render time. */
   aboveColor: string | undefined;
   /** undefined → use palette.candleDown (down-red) at render time. */

@@ -72,6 +72,35 @@ describe("useChartPaths", () => {
     expect(result.current.thresholdFillPath.value).toBeDefined();
   });
 
+  it("builds the threshold band from the shader samples (series threshold)", () => {
+    const { result } = renderHook(() => {
+      // The split shader's evenly-spaced pixel-Y samples — used as the band's
+      // bottom edge so it matches the shader (no bleed at step risers).
+      const thresholdSamples = useSharedValue([50, 48, 44, 46, 45]);
+      return useChartPaths(
+        makeEngine({
+          data: {
+            value: [
+              { time: 980, value: 1 },
+              { time: 990, value: 1.5 },
+              { time: 1000, value: 2 },
+            ],
+          },
+        } as unknown as Partial<SingleEngineState>),
+        DEFAULT_PADDING,
+        undefined, // morphT
+        undefined, // thresholdY (constant) — superseded by the samples below
+        false, // linear
+        undefined, // edgeValue
+        false, // followViewEdge
+        undefined, // squiggleAmplitude
+        undefined, // squiggleSpeed
+        thresholdSamples, // time-varying band bottom
+      );
+    });
+    expect(result.current.thresholdFillPath.value).toBeDefined();
+  });
+
   it("blends toward squiggly when morphT < 1", () => {
     const { result } = renderHook(() => {
       const morphT = useSharedValue(0.5);

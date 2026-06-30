@@ -75,6 +75,15 @@ describe("ThresholdLineOverlay (dashed line)", () => {
       />,
     );
   });
+
+  it("traces the threshold polyline when seriesPts is provided", () => {
+    render(
+      <ThresholdLineOverlay
+        {...props(LINE_DEFAULTS)}
+        seriesPts={sv([12, 100, 200, 80, 388, 90]) as never}
+      />,
+    );
+  });
 });
 
 describe("ThresholdBadgeOverlay", () => {

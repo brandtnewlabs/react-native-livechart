@@ -11,10 +11,11 @@ description: "Color the line above vs. below a live benchmark — green above, r
 </Note>
 
 Where a [reference line](/guides/reference-lines-and-bands) is a *static* annotation, `threshold`
-colors the line itself **above vs. below a live value** — green above, red below by default. The
-threshold is **always** a `SharedValue`, so the split tracks a moving benchmark on the UI thread
-without re-rendering: break-even / average cost, VWAP, the previous close, or a stablecoin peg.
-Single-series `LiveChart`, line mode.
+colors the line itself **above vs. below a value** — green above, red below by default. The value
+is either a single live benchmark (a `SharedValue<number>` that tracks on the UI thread without
+re-rendering — break-even / average cost, VWAP, the previous close, a stablecoin peg) or a
+[time-varying series](#time-varying-threshold-a-series) (a `LiveChartPoint[]` the split follows
+point-for-point). Single-series `LiveChart`, line mode.
 
 <Frame caption="Green above, red below a live break-even — with an optional P/L fill band">
   <video autoPlay loop muted playsInline controls poster="/media/015-threshold-split.jpg" src="/media/015-threshold-split.mp4" />
@@ -60,5 +61,49 @@ The label renders as an opaque **badge** anchored flush to the plot's left edge
 gutter, and is drawn on top of the line so it's never painted over. While a
 threshold is set it supersedes `line.color` / `line.colors` and segment recoloring
 for the main stroke.
+
+## Time-varying threshold (a series)
+
+Pass a `LiveChartPoint[]` as `value` instead of a `SharedValue<number>` and the
+threshold becomes a **line**, not a level — the stroke split, fill band and marker
+all follow it point-for-point. This is the natural fit for a benchmark that
+*changes over time*: a break-even / average cost that steps up as you DCA in, a
+historical VWAP, a moving peg.
+
+```tsx
+import { LiveChart, type LiveChartPoint } from "react-native-livechart";
+
+// A stepped average-cost (two points per step → a clean vertical riser).
+const breakEven: LiveChartPoint[] = [
+  { time: t0, value: 96.5 },
+  { time: t1, value: 96.5 },
+  { time: t1, value: 99.0 }, // ← step up
+  { time: t2, value: 99.0 },
+  { time: t2, value: 101.2 },
+  { time: t3, value: 101.2 },
+];
+
+<LiveChart data={data} value={value} threshold={{ value: breakEven, fill: true }} />;
+```
+
+- The series is **clamped to its first/last value** outside its own time range. So
+  a threshold whose last point sits behind the live edge **extends as a flat line
+  to "now"** — carrying the last known break-even forward — and a window that
+  starts before the first point holds the first value.
+- Points are connected with **straight segments**. For a step function, emit two
+  points at each boundary (same time, old then new value) as above; for a smooth
+  benchmark, emit it as you'd sample it.
+- The marker `line`'s badge shows the threshold's **current** value (at the live
+  edge) when `showValue` is set.
+
+Unlike the `SharedValue<number>` form, a series flows in on **re-render** (it's a
+plain array). Pass a stable, memoized array and update it when the benchmark
+actually changes — it's built for thresholds that move occasionally, not every
+frame. For a per-frame live benchmark, keep the `SharedValue<number>` form.
+
+<Note>
+  Candle mode and `LiveChartSeries` (multi-series) are unaffected — threshold is a
+  single-series line-mode feature in both forms.
+</Note>
 
 See [`ThresholdConfig`](/api-reference/types#thresholdconfig) for every field.

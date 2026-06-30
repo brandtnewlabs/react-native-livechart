@@ -103,6 +103,35 @@ function ThresholdHarness({
   );
 }
 
+function ThresholdSeriesHarness({
+  thresholdExtra,
+  ...props
+}: Partial<LiveChartProps> & {
+  thresholdExtra?: Omit<ThresholdConfig, "value">;
+}) {
+  const data = useSharedValue([
+    { time: 1700000000, value: 40 },
+    { time: 1700000030, value: 60 },
+  ]);
+  const value = useSharedValue(60);
+  // A time-varying threshold (plain `LiveChartPoint[]`) — the new #174 form.
+  return (
+    <LiveChart
+      data={data}
+      value={value}
+      threshold={{
+        value: [
+          { time: 1700000000, value: 45 },
+          { time: 1700000015, value: 50 },
+          { time: 1700000030, value: 55 },
+        ],
+        ...thresholdExtra,
+      }}
+      {...props}
+    />
+  );
+}
+
 function layoutFirst(screen: ReturnType<typeof render>) {
   const views = screen.UNSAFE_getAllByType(View);
   fireEvent(views[0], "layout", {
@@ -483,6 +512,26 @@ describe("LiveChart", () => {
         <ThresholdHarness
           thresholdValue={50}
           thresholdExtra={{ fill: true, line: { showValue: true } }}
+        />,
+      ),
+    );
+  });
+
+  it("colors the line above/below a time-varying threshold series (#174)", () => {
+    layoutFirst(render(<ThresholdSeriesHarness />));
+  });
+
+  it("renders the series threshold band + polyline marker + label badge", () => {
+    layoutFirst(
+      render(
+        <ThresholdSeriesHarness
+          gradient={false}
+          thresholdExtra={{
+            aboveColor: "#00ff00",
+            belowColor: "#ff0000",
+            fill: true,
+            line: { label: "Break-even", showValue: true },
+          }}
         />,
       ),
     );

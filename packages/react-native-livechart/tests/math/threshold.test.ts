@@ -1,5 +1,8 @@
 import {
+  sampleThresholdY,
+  sampleThresholdYAt,
   thresholdLineY,
+  thresholdSeriesVisible,
   thresholdSplitPositions,
   thresholdVisible,
 } from "../../src/math/threshold";
@@ -76,5 +79,102 @@ describe("thresholdSplitPositions", () => {
   it("falls back to a valid ascending array for NaN / height 0", () => {
     expect(thresholdSplitPositions(NaN, H)).toEqual([0, 1, 1, 1]);
     expect(thresholdSplitPositions(150, 0)).toEqual([0, 1, 1, 1]);
+  });
+});
+
+// Window/plot geometry for the series helpers: 400px wide canvas, 12px L/R
+// insets → 376px plot; the 300px canvas / 12 top / 28 bottom → 260px plot height,
+// value range [0,100]. now=1000, win=100 → winStart=900.
+const W = 400;
+const LEFT = 12;
+const RIGHT = 12;
+const NOW = 1000;
+const WIN = 100;
+// yOf(v) = TOP + (100 - v) * (260/100) — the value→pixel-Y mapping in the plot.
+const yOf = (v: number) => TOP + (100 - v) * (CHART_H / 100);
+
+describe("sampleThresholdY", () => {
+  it("returns `count` samples, flat for a flat series", () => {
+    const out = sampleThresholdY(
+      [{ time: 900, value: 50 }, { time: 1000, value: 50 }],
+      NOW, WIN, 0, 100, H, TOP, BOT, 5,
+    );
+    expect(out).toHaveLength(5);
+    out.forEach((y) => expect(y).toBeCloseTo(yOf(50)));
+  });
+
+  it("tracks a rising series across the samples (monotonic Y up the screen)", () => {
+    const out = sampleThresholdY(
+      [{ time: 900, value: 20 }, { time: 1000, value: 80 }],
+      NOW, WIN, 0, 100, H, TOP, BOT, 5,
+    );
+    // value rises 20→80 → Y decreases (screen-up) monotonically.
+    for (let i = 1; i < out.length; i++) expect(out[i]).toBeLessThan(out[i - 1]);
+    expect(out[0]).toBeCloseTo(yOf(20));
+    expect(out[out.length - 1]).toBeCloseTo(yOf(80));
+  });
+
+  it("fills with a far-below Y when the range is degenerate", () => {
+    const out = sampleThresholdY(
+      [{ time: 950, value: 50 }], NOW, WIN, 50, 50, H, TOP, BOT, 4,
+    );
+    expect(out).toHaveLength(4);
+    out.forEach((y) => expect(y).toBeGreaterThan(H));
+  });
+
+  it("samples a single value when count is 1 (no divide-by-zero)", () => {
+    const out = sampleThresholdY(
+      [{ time: 900, value: 50 }, { time: 1000, value: 50 }],
+      NOW, WIN, 0, 100, H, TOP, BOT, 1,
+    );
+    expect(out).toEqual([expect.closeTo(yOf(50))]);
+  });
+
+  it("uses a fixed far-below Y when the canvas has not laid out", () => {
+    const out = sampleThresholdY(
+      [{ time: 950, value: 50 }], NOW, WIN, 0, 100, 0, TOP, BOT, 3,
+    );
+    expect(out).toEqual([1e6, 1e6, 1e6]);
+  });
+});
+
+describe("sampleThresholdYAt", () => {
+  // 5 samples across the plot [100, 500] → spacing 100px: y = 80,60,60,40,40.
+  const samples = [80, 60, 60, 40, 40];
+  const PL = 100;
+  const PR = 500;
+
+  it("returns the exact sample value at a sample x", () => {
+    expect(sampleThresholdYAt(samples, PL, PR, 100)).toBeCloseTo(80);
+    expect(sampleThresholdYAt(samples, PL, PR, 300)).toBeCloseTo(60);
+    expect(sampleThresholdYAt(samples, PL, PR, 500)).toBeCloseTo(40);
+  });
+
+  it("linearly interpolates between samples (matching the shader)", () => {
+    expect(sampleThresholdYAt(samples, PL, PR, 150)).toBeCloseTo(70); // 80→60
+    expect(sampleThresholdYAt(samples, PL, PR, 450)).toBeCloseTo(40); // flat 40→40
+  });
+
+  it("clamps to the first/last sample outside the plot", () => {
+    expect(sampleThresholdYAt(samples, PL, PR, 0)).toBe(80);
+    expect(sampleThresholdYAt(samples, PL, PR, 999)).toBe(40);
+  });
+
+  it("degrades safely for empty / single-sample / zero-span input", () => {
+    expect(sampleThresholdYAt([], PL, PR, 200)).toBe(0);
+    expect(sampleThresholdYAt([55], PL, PR, 200)).toBe(55);
+    expect(sampleThresholdYAt(samples, PL, PL, 200)).toBe(80);
+  });
+});
+
+describe("thresholdSeriesVisible", () => {
+  it("is true when any vertex sits within the plot", () => {
+    expect(thresholdSeriesVisible([LEFT, TOP + 100, W - RIGHT, TOP + 100], H, TOP, BOT)).toBe(true);
+  });
+
+  it("is false when the whole polyline is off-plot, empty, or un-laid-out", () => {
+    expect(thresholdSeriesVisible([LEFT, -5, W - RIGHT, -5], H, TOP, BOT)).toBe(false);
+    expect(thresholdSeriesVisible([], H, TOP, BOT)).toBe(false);
+    expect(thresholdSeriesVisible([LEFT, 100], 0, TOP, BOT)).toBe(false);
   });
 });

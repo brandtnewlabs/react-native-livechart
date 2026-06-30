@@ -4,6 +4,7 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { drawSpline, makeSplineScratch } from "../math/spline";
+import { sampleThresholdYAt } from "../math/threshold";
 import { blendPtsY, squigglifyPts } from "../math/squiggly";
 import { usePathBuilder } from "./usePathBuilder";
 
@@ -39,6 +40,11 @@ export function useChartPaths(
   squiggleAmplitude = 14,
   /** Loading squiggle wave speed multiplier for the reveal morph. Default 1. */
   squiggleSpeed = 1,
+  /** When set, build `thresholdFillPath` as the band between the line and this
+   *  *time-varying* threshold — the split shader's evenly-spaced pixel-Y
+   *  `samples[]` (so band geometry matches the shader exactly). Takes precedence
+   *  over `thresholdY`, the constant (horizontal) case. */
+  thresholdSamples?: SharedValue<number[]>,
 ) {
   const lineBuilder = usePathBuilder();
   const fillBuilder = usePathBuilder();
@@ -134,17 +140,48 @@ export function useChartPaths(
     return b.detach();
   });
 
-  // Threshold-anchored fill: the same spline, closed at `thresholdY` instead of the
-  // baseline, so the band lies between the line and the threshold (the profit/loss
-  // area). Painted with the hard-split vertical gradient, the part above the split
-  // shows the above-color and the part below shows the below-color.
+  // Threshold-anchored fill: the same spline, closed along the threshold instead
+  // of the baseline, so the band lies between the line and the threshold (the
+  // profit/loss area). Painted with the split gradient/shader, the part above the
+  // split shows the above-color and the part below shows the below-color.
+  //
+  // `thresholdPts` (a time-varying series) closes the band along that polyline,
+  // right-to-left; otherwise `thresholdY` closes it at a single horizontal Y.
   const thresholdFillPath = useDerivedValue(() => {
     const cache = cacheRef.current!;
-    if (!thresholdY) return cache.emptyPath;
-    const yT = thresholdY.get();
     const pts = flatPts.get();
     const n = pts.length >> 1;
-    if (n < 2 || !Number.isFinite(yT)) return cache.emptyPath;
+    if (n < 2) return cache.emptyPath;
+
+    const tsamples = thresholdSamples?.get();
+    if (tsamples && tsamples.length >= 2) {
+      const b = thresholdFillBuilder.value;
+      b.moveTo(pts[0], pts[1]);
+      drawSpline(b, pts, cache.scratch, linear);
+      // Band bottom = the SAMPLED threshold (identical to what the split shader
+      // reads), pinned to the LINE's x-range. Because the geometry and the shader
+      // use the same evenly-spaced, linearly-interpolated samples, a step riser
+      // ramps the same way in both — no green/red sliver bleeds through — and the
+      // x-range pin keeps the band closing with clean vertical sides (no wedge).
+      const leftX = pts[0];
+      const rightX = pts[(n - 1) * 2];
+      const plotLeft = padding.left;
+      const plotRight = engine.canvasWidth.get() - padding.right;
+      const span = plotRight - plotLeft;
+      const count = tsamples.length;
+      b.lineTo(rightX, sampleThresholdYAt(tsamples, plotLeft, plotRight, rightX));
+      for (let i = count - 1; i >= 0; i--) {
+        const sx = span > 0 ? plotLeft + (span * i) / (count - 1) : plotLeft;
+        if (sx > leftX && sx < rightX) b.lineTo(sx, tsamples[i]);
+      }
+      b.lineTo(leftX, sampleThresholdYAt(tsamples, plotLeft, plotRight, leftX));
+      b.close();
+      return b.detach();
+    }
+
+    if (!thresholdY) return cache.emptyPath;
+    const yT = thresholdY.get();
+    if (!Number.isFinite(yT)) return cache.emptyPath;
     const b = thresholdFillBuilder.value;
     b.moveTo(pts[0], pts[1]);
     drawSpline(b, pts, cache.scratch, linear);
