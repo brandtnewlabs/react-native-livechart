@@ -723,6 +723,7 @@ function useLiveChartController({
     volumeBandHeight,
     volumeCfg?.radius ?? 0,
     !isStatic, // static: no candle-width lerp loop
+    transitionsCfg.candleLerpSpeed, // `transitions.candleLerpSpeed` (1 = instant)
   );
   const { dotX, dotY } = useLiveDot(
     engine,

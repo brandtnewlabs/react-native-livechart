@@ -1627,6 +1627,19 @@ export interface TransitionConfig {
    * `LiveChart` only (multi-series is always lines). Default `300`. `0` = instant.
    */
   mode?: number;
+  /**
+   * Per-frame lerp speed for the **candle body width** as it eases from the old
+   * to the new `candleWidth` — candle mode only. Same units as `smoothing`
+   * (`0`–`1`, the fraction approached per 60fps frame): `1` snaps the width in a
+   * single frame, lower is slower, `0` freezes it. Default `0.08`.
+   *
+   * Set this to `1` to make a `candleWidth` change (e.g. a timeframe / bucket
+   * switch like 1m → 1D) resize the candles instantly instead of sliding
+   * "fat → thin". Unlike `reveal` / `mode` this is a speed, not a duration, and
+   * unlike `snapKey` (which settles the engine framing) it controls only the
+   * candle-width animation. See [#176](https://github.com/brandtnewlabs/react-native-livechart/issues/176).
+   */
+  candleLerpSpeed?: number;
 }
 
 /**
