@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-07-01
+
 ### Added
 
 - **`transitions.candleLerpSpeed`** (`number`, default `0.08`) on `LiveChart`.
