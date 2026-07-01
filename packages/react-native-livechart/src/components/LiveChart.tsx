@@ -912,6 +912,12 @@ function useLiveChartController({
       : 0,
   );
 
+  // Capture only the shared value in the worklets below. Referencing
+  // `crosshair.scrubActive` inside a worklet closes over the whole `crosshair`
+  // object (which holds a non-serializable `gesture`), throwing
+  // "[Worklets] Cannot copy value of type `PanGesture`" on worklets >=0.10.
+  const crosshairScrubActive = crosshair.scrubActive;
+
   // ── Time-scroll (drag back through history) ───────────────────────────────
   // Experimental: a pan freezes the window at an absolute time and resumes
   // following once dragged back to the live edge. Pan is clamped to the earliest
@@ -929,7 +935,7 @@ function useLiveChartController({
     // Clear any live crosshair when a scroll drag takes over.
     onScrollStart: () => {
       "worklet";
-      crosshair.scrubActive.set(false);
+      crosshairScrubActive.set(false);
     },
   });
 
@@ -946,7 +952,7 @@ function useLiveChartController({
     maxTimeWindow: zoomCfg?.maxTimeWindow,
     onZoomStart: () => {
       "worklet";
-      crosshair.scrubActive.set(false);
+      crosshairScrubActive.set(false);
     },
   });
 
@@ -1054,7 +1060,7 @@ function useLiveChartController({
   const liveDotOpacity = useDerivedValue(
     () =>
       reveal.dotOpacity.value *
-      (selectionDotDuringScrub && crosshair.scrubActive.value ? 0 : 1),
+      (selectionDotDuringScrub && crosshairScrubActive.value ? 0 : 1),
   );
 
   // Fade the annotation overlays (markers + reference lines) out while scrubbing
@@ -1066,7 +1072,7 @@ function useLiveChartController({
     !isStatic && scrubCfg !== null && scrubCfg.hideOverlaysOnScrub === true;
   const overlayScrubFade = useDerivedValue(() =>
     fadeOverlaysOnScrub
-      ? withTiming(crosshair.scrubActive.get() ? 0 : 1, {
+      ? withTiming(crosshairScrubActive.get() ? 0 : 1, {
           duration: SCRUB_OVERLAY_FADE_MS,
         })
       : 1,

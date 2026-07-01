@@ -391,6 +391,12 @@ function useLiveChartSeriesController({
     onGestureEnd,
   );
 
+  // Capture only the shared value in the worklets below. Referencing
+  // `crosshair.scrubActive` inside a worklet closes over the whole `crosshair`
+  // object (which holds a non-serializable `gesture`), throwing
+  // "[Worklets] Cannot copy value of type `PanGesture`" on worklets >=0.10.
+  const crosshairScrubActive = crosshair.scrubActive;
+
   // `projected` is used internally by the hit-test gesture; the overlay
   // self-projects, so we only need the gesture here.
   const { tapGesture: markerTapGesture } = useMarkers(
@@ -428,7 +434,7 @@ function useLiveChartSeriesController({
     mode: scrollGestureMode,
     onScrollStart: () => {
       "worklet";
-      crosshair.scrubActive.set(false);
+      crosshairScrubActive.set(false);
     },
   });
 
@@ -442,7 +448,7 @@ function useLiveChartSeriesController({
     maxTimeWindow: zoomCfg?.maxTimeWindow,
     onZoomStart: () => {
       "worklet";
-      crosshair.scrubActive.set(false);
+      crosshairScrubActive.set(false);
     },
   });
 
@@ -480,7 +486,7 @@ function useLiveChartSeriesController({
     scrubCfg !== null && scrubCfg.hideOverlaysOnScrub === true;
   const overlayScrubFade = useDerivedValue(() =>
     fadeOverlaysOnScrub
-      ? withTiming(crosshair.scrubActive.get() ? 0 : 1, {
+      ? withTiming(crosshairScrubActive.get() ? 0 : 1, {
           duration: SCRUB_OVERLAY_FADE_MS,
         })
       : 1,
