@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [@dszym00](https://github.com/dszym00).
   ([#176](https://github.com/brandtnewlabs/react-native-livechart/issues/176))
 
+### Changed
+
+- **`static` charts are now scrubbable.** `scrub` and `scrubAction` stay live on a
+  `static` `LiveChart` — they're on-demand touch gestures with no per-frame loop,
+  so a still chart stays at zero idle cost yet reveals its crosshair / value
+  read-out on touch. Previously `static` forced both off, so the only way to stop
+  the render loop (e.g. for many sparklines in a list) also removed scrubbing. The
+  continuous animations (`pulse`, `degen`, the entry reveal) remain disabled under
+  `static`. Thanks [@dszym00](https://github.com/dszym00).
+  ([#177](https://github.com/brandtnewlabs/react-native-livechart/issues/177))
+
 ## [4.6.0] - 2026-06-29
 
 ### Added

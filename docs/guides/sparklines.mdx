@@ -6,8 +6,12 @@ description: "Render many cheap, non-animated mini-charts in a list or grid with
 
 `static` renders a `LiveChart` **once** with zero per-frame animation loops. The engine tick
 loop, the degen/trade/candle/marker callbacks, the pulse, and the entry reveal are all
-disabled, and scrubbing is off. That makes each instance cheap enough to put dozens of them in a
-scrolling list — a watchlist row, a token grid, a portfolio of sparklines.
+disabled. That makes each instance cheap enough to put dozens of them in a scrolling list — a
+watchlist row, a token grid, a portfolio of sparklines.
+
+Touch interaction still works: `scrub` and `scrubAction` are on-demand gestures with no
+per-frame loop, so a static chart costs nothing at rest yet becomes scrubbable the moment a
+finger lands on it — see [Scrubbing a static chart](#scrubbing-a-static-chart) below.
 
 It mirrors `react-native-graph`'s `animated={false}`.
 
@@ -17,9 +21,10 @@ It mirrors `react-native-graph`'s `animated={false}`.
 
 ## When to use it
 
-Reach for `static` when you're rendering **many** mini-charts at once and don't need them to
-animate or respond to touch. A single hero chart should stay live; a `FlatList` of forty
-thumbnails should be `static`.
+Reach for `static` when you're rendering **many** mini-charts at once and don't need each one
+to animate continuously. A single hero chart should stay live; a `FlatList` of forty thumbnails
+should be `static`. They can still be scrubbed on touch (see below) — `static` only turns off
+the continuous loop, not interaction.
 
 ## A sparkline cell
 
@@ -69,6 +74,38 @@ span you want to show and `nowOverride` to your dataset's last timestamp (unix s
 window ends right at the latest point. This is the same approach as the
 [historical data fill](/guides/historical-data) pattern.
 
+## Scrubbing a static chart
+
+`static` turns off the continuous render loop, not interaction — so a still sparkline is still
+scrubbable. `scrub` (and `scrubAction`) are event-driven gestures: they cost nothing while the
+finger is off the chart, and on touch they read the already-settled geometry. So you get a
+zero-idle-cost cell that reveals its crosshair / value read-out the moment it's pressed:
+
+```tsx
+<LiveChart
+  static
+  data={history}
+  value={lastValue}
+  timeWindow={span}
+  nowOverride={lastTime}
+  scrub          // ← works on a static chart; the loop stays off until you touch it
+/>;
+```
+
+This is the right tool for a list of cells you want **inert until touched**. Before, the only
+way to stop the loop was `static`, which also took scrubbing with it; now you can have both.
+
+<Note>
+  Continuous animations — `pulse`, `degen`, the entry reveal — stay off in `static` mode (they're
+  loops, not gestures). Only the on-demand touch gestures (`scrub`, `scrubAction`) remain live.
+</Note>
+
+### Pausing off-screen charts in a long list
+
+Because `static` is a prop, you can flip it from a list's viewability callback: render off-screen
+rows `static` (loop fully off, still scrubbable if they peek on screen) and the visible hero row
+live. Toggling `static` → live resumes the loop and catches up.
+
 ## `static` vs `paused`
 
 They sound similar but do opposite things:
@@ -76,6 +113,6 @@ They sound similar but do opposite things:
 - **`paused`** freezes a **live** chart — the tick loop keeps running, the value keeps buffering,
   and resuming catches the window back up to real time. Use it for one interactive chart.
 - **`static`** removes the loops **entirely** — nothing animates and nothing recovers, because
-  there's nothing to recover. Use it for many instances at once.
+  there's nothing to recover. Use it for many instances at once. Scrubbing still works (above).
 
 See the full prop list in the [`LiveChart` reference](/api-reference/livechart).
