@@ -491,22 +491,34 @@ export function resolveReturnToLiveMs(
 export interface ResolvedTransitionConfig {
   reveal: number | undefined;
   mode: number | undefined;
+  /** Candle-width lerp speed (0–1); `undefined` = use the built-in default. */
+  candleLerpSpeed: number | undefined;
 }
 
 const clampMs = (v: number | undefined): number | undefined =>
   v == null ? undefined : v > 0 ? v : 0;
 
+/** Clamp a per-frame lerp speed to `[0, 1]`; `undefined` → built-in default. */
+const clampSpeed = (v: number | undefined): number | undefined =>
+  v == null ? undefined : v < 0 ? 0 : v > 1 ? 1 : v;
+
 /**
- * Resolves the `transitions` prop. `false` → all transitions instant (`0`);
- * `true` / omitted → defaults (both `undefined` = use the built-in durations);
- * an object → per-transition overrides (an omitted field keeps its default).
+ * Resolves the `transitions` prop. `false` → all transitions instant (durations
+ * `0`, candle width snaps with speed `1`); `true` / omitted → defaults (all
+ * `undefined` = use the built-in durations / speed); an object → per-transition
+ * overrides (an omitted field keeps its default).
  */
 export function resolveTransitions(
   prop: boolean | TransitionConfig | undefined,
 ): ResolvedTransitionConfig {
-  if (prop === false) return { reveal: 0, mode: 0 };
-  if (prop == null || prop === true) return { reveal: undefined, mode: undefined };
-  return { reveal: clampMs(prop.reveal), mode: clampMs(prop.mode) };
+  if (prop === false) return { reveal: 0, mode: 0, candleLerpSpeed: 1 };
+  if (prop == null || prop === true)
+    return { reveal: undefined, mode: undefined, candleLerpSpeed: undefined };
+  return {
+    reveal: clampMs(prop.reveal),
+    mode: clampMs(prop.mode),
+    candleLerpSpeed: clampSpeed(prop.candleLerpSpeed),
+  };
 }
 
 const AXIS_LABEL_DEFAULTS: ResolvedAxisLabelConfig = {

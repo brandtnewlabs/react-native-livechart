@@ -392,10 +392,12 @@ provided; everything else has a default.
 <ParamField body="transitions" type="boolean | TransitionConfig">
   Tune or disable the built-in transition animations. `true` / omitted keeps the
   defaults; `false` makes them instant (no grow-in when data appears or the
-  timeframe changes, no candle↔line crossfade); a
+  timeframe changes, no candle↔line crossfade, candle width snaps); a
   [`TransitionConfig`](/api-reference/types#config-objects) sets per-transition
   durations in ms — `reveal` (default `600`) and `mode` (default `300`), `0` to
-  snap. Live value tracking is governed separately by `smoothing`, and
+  snap — plus `candleLerpSpeed` (default `0.08`, `1` = instant), the per-frame
+  speed at which candle bodies resize when `candleWidth` changes (a timeframe /
+  bucket switch). Live value tracking is governed separately by `smoothing`, and
   static-entry suppression by `static`. See [Transitions](/guides/transitions).
 </ParamField>
 

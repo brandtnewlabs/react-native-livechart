@@ -528,6 +528,16 @@ describe("LiveChart", () => {
     render(<CandleHarness scrub />);
   });
 
+  it("renders candle mode with an instant candleLerpSpeed (transitions)", () => {
+    const screen = render(
+      <CandleHarness transitions={{ candleLerpSpeed: 1 }} />,
+    );
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
+
   it("disables gradient in candle mode", () => {
     render(<CandleHarness gradient />);
   });

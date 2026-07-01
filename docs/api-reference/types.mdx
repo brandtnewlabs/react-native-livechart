@@ -387,8 +387,9 @@ interface ReturnToLiveConfig {
 }
 // Tune/disable the built-in transition animations — the object form of `transitions`.
 interface TransitionConfig {
-  reveal?: number; // grow-in/collapse on data appear, timeframe change, candle→line; default 600 (0 = snap)
-  mode?: number;   // candle↔line crossfade (single-series LiveChart only); default 300 (0 = snap)
+  reveal?: number;          // grow-in/collapse on data appear, timeframe change, candle→line; default 600 (0 = snap)
+  mode?: number;            // candle↔line crossfade (single-series LiveChart only); default 300 (0 = snap)
+  candleLerpSpeed?: number; // candle-width ease speed (0–1, like smoothing); candle mode; default 0.08 (1 = instant resize)
 }
 // Styling for the breathing loading shell — the object form of `loading`.
 interface LoadingConfig {

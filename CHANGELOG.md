@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`transitions.candleLerpSpeed`** (`number`, default `0.08`) on `LiveChart`.
+  Controls the per-frame speed at which candle bodies resize when `candleWidth`
+  changes (a timeframe / bucket switch). Same units as `smoothing` (`0`–`1`); set
+  it to `1` to resize candles in a single frame instead of the default
+  "fat → thin" slide. `transitions={false}` now also snaps the candle width
+  (every transition instant). Replaces the previously hard-coded candle-width
+  lerp speed, which nothing could tune or disable. Thanks
+  [@dszym00](https://github.com/dszym00).
+  ([#176](https://github.com/brandtnewlabs/react-native-livechart/issues/176))
+
 ## [4.6.0] - 2026-06-29
 
 ### Added
