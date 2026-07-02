@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.8.0] - 2026-07-02
+
 ### Added
 
 - **`LoadingConfig.axisLabels`** (`boolean`, default `true`). Set `false` to hide the
