@@ -7,7 +7,7 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 
-const MODE_BLEND_DURATION_MS = 300;
+export const MODE_BLEND_DURATION_MS = 300;
 
 export interface ModeBlendState {
   /** 0 = fully line, 1 = fully candle */
@@ -28,17 +28,19 @@ export interface ModeBlendState {
 export function useModeBlend(
   isCandle: boolean,
   lineOpacity: SharedValue<number>,
+  /** Crossfade duration (ms). Default {@link MODE_BLEND_DURATION_MS}; `0` snaps. */
+  duration: number = MODE_BLEND_DURATION_MS,
 ): ModeBlendState {
   const modeBlend = useSharedValue(isCandle ? 1 : 0);
 
   useEffect(() => {
     modeBlend.set(
       withTiming(isCandle ? 1 : 0, {
-        duration: MODE_BLEND_DURATION_MS,
+        duration,
         easing: Easing.inOut(Easing.ease),
       }),
     );
-  }, [isCandle, modeBlend]);
+  }, [isCandle, modeBlend, duration]);
 
   const lineGroupOpacity = useDerivedValue(
     () => lineOpacity.get() * (1 - modeBlend.get()),

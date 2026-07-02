@@ -720,6 +720,23 @@ export interface ScrubConfig {
    * Default `0`.
    */
   panGestureDelay?: number;
+  /**
+   * Fade the annotation overlays — buy/sell **markers** and **reference lines**
+   * (both the built-in Skia tags/lines and any custom `renderMarker` /
+   * `renderReferenceLine` RN views) — out while scrubbing, so they don't clutter
+   * the crosshair read-out. Reverses on release.
+   *
+   * The fade is driven by the **scrub-active** state (not the crosshair's
+   * edge-proximity fade, which would resurface the overlays as the crosshair
+   * nears the live dot) and eased on the UI thread over `SCRUB_OVERLAY_FADE_MS`.
+   * It animates only a **group opacity** — the marker atlas and reference-line
+   * geometry are left intact (still one batched draw each), so it's far cheaper
+   * than emptying / rebuilding overlay data per scrub. The leading dot is
+   * governed separately by `selectionDot`.
+   *
+   * `false` / omitted keeps the overlays visible while scrubbing (default).
+   */
+  hideOverlaysOnScrub?: boolean;
 }
 
 /**
@@ -1133,6 +1150,53 @@ export interface MarkerClusterConfig {
   /** Collapse a co-located run to a single count badge once it exceeds this many.
    *  Default `5`. */
   maxBeforeGroup?: number;
+  /**
+   * What a collapsed cluster draws in place of its members:
+   *  - `"count"` (default) — the built-in round count badge (a circle with the
+   *    member count inside).
+   *  - `"marker"` — the **representative marker's own glyph** (its `image`, `icon`
+   *    /`pill`, or `kind` shape). The representative is the newest marker in the run,
+   *    so a run of buy pills collapses to a buy pill — handy when the group should
+   *    look like its members.
+   *  - {@link MarkerGroupBadge} — a **dedicated group badge you supply** (your own
+   *    Skia `image`, or an `icon`/`pill`), independent of the member markers. Use
+   *    this when the collapse should look *different* from the individual markers —
+   *    e.g. tiny dots that collapse into a distinct "Buy 5" badge image.
+   *
+   * All three are Skia-drawn in the same `drawAtlas` batch (not a `renderMarker`
+   * RN overlay). Pair any non-`"count"` form with {@link showGroupCount} for a
+   * corner count. Default `"count"`.
+   */
+  groupBadge?: "count" | "marker" | MarkerGroupBadge;
+  /**
+   * When {@link groupBadge} is `"marker"` or a {@link MarkerGroupBadge}, also stamp
+   * the member count as a small badge in the glyph's top-right corner — the
+   * "Buy **5**" look. Ignored when `groupBadge` is `"count"` (the count *is* the
+   * badge). Default `false`.
+   */
+  showGroupCount?: boolean;
+}
+
+/**
+ * A dedicated badge drawn for a collapsed marker cluster — your own Skia design,
+ * independent of the member markers. Pass it as
+ * {@link MarkerClusterConfig.groupBadge}. Glyph precedence mirrors a single marker:
+ * `image` → `icon` (`pill`) → a filled dot. Requires `image` or `icon` (otherwise
+ * the group falls back to the count badge).
+ */
+export interface MarkerGroupBadge {
+  /** Custom Skia image for the collapsed group (e.g. from `useImage`). Takes
+   *  precedence over {@link icon}. */
+  image?: SkImage;
+  /** Text / emoji glyph for the collapsed group (used when {@link image} is unset).
+   *  Rendered with the chart font. */
+  icon?: string;
+  /** Color of the `icon` (and its `pill`). Defaults to a palette accent. */
+  color?: string;
+  /** Wrap the `icon` in a filled circular badge in {@link color} (icon drawn white). */
+  pill?: boolean;
+  /** Glyph box size in px (icon font size, or image width+height). Default `16`. */
+  size?: number;
 }
 
 /** Context passed to `renderMarker` alongside the marker (cluster / position state). */
@@ -1539,6 +1603,73 @@ export interface VisibleRange {
   following: boolean;
 }
 
+/**
+ * Per-transition animation durations (ms). Passed as the object form of
+ * {@link LiveChartCoreProps.transitions} to tune or disable the built-in
+ * animations. Omit a field to keep its default; `0` makes that transition
+ * instant (snap). Setting `transitions={false}` is shorthand for all `0`.
+ */
+export interface TransitionConfig {
+  /**
+   * Reveal / collapse transition — the grow-in **opacity** fade when data first
+   * appears (and the fade-out when it goes away or `loading` toggles). This is
+   * the fade that plays on a timeframe change and when a `line` chart's data
+   * appears (e.g. switching from candle to line). Default `600`. `0` = instant.
+   *
+   * Note this animates opacity only, not geometry: it does not control the time
+   * window / Y-range *easing* on a timeframe or dataset change (that's
+   * `smoothing`). To make that framing settle in one frame instead of sliding,
+   * use {@link LiveChartCoreProps.snapKey}.
+   */
+  reveal?: number;
+  /**
+   * Candle ↔ line crossfade duration when `mode` changes. Single-series
+   * `LiveChart` only (multi-series is always lines). Default `300`. `0` = instant.
+   */
+  mode?: number;
+  /**
+   * Per-frame lerp speed for the **candle body width** as it eases from the old
+   * to the new `candleWidth` — candle mode only. Same units as `smoothing`
+   * (`0`–`1`, the fraction approached per 60fps frame): `1` snaps the width in a
+   * single frame, lower is slower, `0` freezes it. Default `0.08`.
+   *
+   * Set this to `1` to make a `candleWidth` change (e.g. a timeframe / bucket
+   * switch like 1m → 1D) resize the candles instantly instead of sliding
+   * "fat → thin". Unlike `reveal` / `mode` this is a speed, not a duration, and
+   * unlike `snapKey` (which settles the engine framing) it controls only the
+   * candle-width animation. See [#176](https://github.com/brandtnewlabs/react-native-livechart/issues/176).
+   */
+  candleLerpSpeed?: number;
+}
+
+/**
+ * Styling for the breathing-line loading shell (the {@link LiveChartCoreProps.loading}
+ * state). Every field is optional — pass it as the object form of `loading` to
+ * restyle the shell; omit a field to keep its default.
+ */
+export interface LoadingConfig {
+  /**
+   * Color of the loading squiggle **and** the skeleton Y-axis placeholders.
+   * Default: the theme's `gridLine` color.
+   */
+  color?: string;
+  /**
+   * Stroke width (px) of the loading squiggle. Default: the chart's line
+   * `strokeWidth`.
+   */
+  strokeWidth?: number;
+  /**
+   * Base wave amplitude (px) of the breathing squiggle — it breathes between
+   * `0.4×` and `1.0×` this. Default `14`.
+   */
+  amplitude?: number;
+  /**
+   * Multiplier on the breathing-wave animation cadence: `>1` ripples faster,
+   * `<1` slower, `0` freezes it. Default `1`.
+   */
+  speed?: number;
+}
+
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
@@ -1556,10 +1687,26 @@ export interface LiveChartCoreProps {
   /** Freeze chart scrolling. Resume catches up to real time. Default `false`. */
   paused?: boolean;
   /**
+   * Tune or disable the built-in transition animations. `true` / omitted keeps
+   * the defaults; `false` makes them all instant (no grow-in on data
+   * appear/timeframe change, no candle↔line crossfade); a {@link TransitionConfig}
+   * sets per-transition durations in ms (`reveal`, `mode`), where `0` snaps that
+   * one. Live value tracking is governed separately by `smoothing`; static-entry
+   * suppression by `static`.
+   */
+  transitions?: boolean | TransitionConfig;
+  /**
    * Breathing-line loading shell. When this becomes `false`, the chart reveals
    * only if there is data (≥2 line points or ≥2 committed candles).
+   *
+   * `true` shows the shell with the defaults; pass a {@link LoadingConfig} to
+   * restyle it — `color` / `strokeWidth` for the squiggle + skeleton, `amplitude`
+   * / `speed` for the breathing wave. `false` / omitted is "not loading". Toggle
+   * between the config and `false` as data loads (e.g. `loading={isLoading && cfg}`).
+   * The loading→live reveal duration is governed separately by
+   * {@link TransitionConfig.reveal} (the `transitions` prop).
    */
-  loading?: boolean;
+  loading?: boolean | LoadingConfig;
   /**
    * Whether the loading shell draws the skeleton Y-axis label placeholders (the
    * short rounded dashes centred in the gutter). Set `false` to show only the
@@ -1572,6 +1719,30 @@ export interface LiveChartCoreProps {
    * `lerpSpeed`. Default `0.08`.
    */
   smoothing?: number;
+  /**
+   * Snap the framing to its target in a single frame whenever this key changes —
+   * without giving up smooth live ticks. On a timeframe / dataset switch, the
+   * window, Y-range, and value otherwise *ease* toward their new targets over
+   * `smoothing`, which reads as a slide. Bump `snapKey` at that moment and the
+   * next frame jumps straight to the new framing (no slide), then normal
+   * `smoothing` resumes for subsequent live ticks.
+   *
+   * Pass any value that changes once per discrete view change — the current
+   * timeframe id, or a counter you increment when you swap the `data` / `candles`
+   * array for a different range:
+   *
+   * ```tsx
+   * const [tf, setTf] = useState("1H");
+   * <LiveChart data={data} value={value} timeWindow={windowFor(tf)} snapKey={tf} />
+   * ```
+   *
+   * Unlike `transitions` (which only governs the reveal fade and the candle↔line
+   * crossfade — opacity, not geometry) and `static` (which turns off the live
+   * loop entirely), `snapKey` settles only the geometry and only for one frame.
+   * Leaves the timestamp / time-scroll position untouched. Omit to keep easing on
+   * every change (the default).
+   */
+  snapKey?: string | number;
   /** Tight Y-axis — small value moves fill the full chart height. Default `false`. */
   exaggerate?: boolean;
   /**
@@ -1856,8 +2027,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
   /** Latest live value for smooth interpolation between data updates. */
   value: SharedValue<number>;
   /** Render once with no per-frame animation loop — for many small charts (sparklines)
-   *  in a list. Pulse/scrub/degen and the entry animation are disabled. Frame the data
-   *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
+   *  in a list. The continuous animations (pulse, degen, the entry reveal) are disabled,
+   *  but `scrub` / `scrubAction` stay available — they're on-demand touch gestures with
+   *  no per-frame cost, so a still chart is still scrubbable. Frame the data with
+   *  `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
   static?: boolean;
   /**
    * Render a custom overlay floated over the chart canvas, handed a price↔pixel /

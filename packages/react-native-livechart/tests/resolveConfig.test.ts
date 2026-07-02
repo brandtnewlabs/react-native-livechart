@@ -14,7 +14,9 @@ import {
   resolveMultiSeriesDot,
   resolvePulse,
   resolveReferenceLineConfig,
+  resolveLoading,
   resolveReturnToLiveMs,
+  resolveTransitions,
   resolveScrub,
   resolveScrubAction,
   resolveSelectionDot,
@@ -322,6 +324,71 @@ describe("resolveReturnToLiveMs", () => {
   });
 });
 
+// ─── resolveTransitions ────────────────────────────────────────────────────────
+
+describe("resolveTransitions", () => {
+  it("returns undefined durations (use built-in defaults) for undefined and true", () => {
+    expect(resolveTransitions(undefined)).toEqual({
+      reveal: undefined,
+      mode: undefined,
+      candleLerpSpeed: undefined,
+    });
+    expect(resolveTransitions(true)).toEqual({
+      reveal: undefined,
+      mode: undefined,
+      candleLerpSpeed: undefined,
+    });
+  });
+
+  it("returns instant for all when false (durations 0, candle width snaps at speed 1)", () => {
+    expect(resolveTransitions(false)).toEqual({
+      reveal: 0,
+      mode: 0,
+      candleLerpSpeed: 1,
+    });
+  });
+
+  it("carries per-transition overrides", () => {
+    expect(resolveTransitions({ reveal: 0, mode: 120 })).toEqual({
+      reveal: 0,
+      mode: 120,
+      candleLerpSpeed: undefined,
+    });
+  });
+
+  it("leaves an omitted field undefined (keeps that default)", () => {
+    expect(resolveTransitions({ reveal: 0 })).toEqual({
+      reveal: 0,
+      mode: undefined,
+      candleLerpSpeed: undefined,
+    });
+  });
+
+  it("clamps negative durations to an instant snap", () => {
+    expect(resolveTransitions({ reveal: -50, mode: -1 })).toEqual({
+      reveal: 0,
+      mode: 0,
+      candleLerpSpeed: undefined,
+    });
+  });
+
+  it("carries candleLerpSpeed (1 = instant candle-width resize)", () => {
+    expect(resolveTransitions({ candleLerpSpeed: 1 })).toEqual({
+      reveal: undefined,
+      mode: undefined,
+      candleLerpSpeed: 1,
+    });
+  });
+
+  it("clamps candleLerpSpeed to [0, 1]", () => {
+    expect(resolveTransitions({ candleLerpSpeed: 5 }).candleLerpSpeed).toBe(1);
+    expect(resolveTransitions({ candleLerpSpeed: -2 }).candleLerpSpeed).toBe(0);
+    expect(resolveTransitions({ candleLerpSpeed: 0.5 }).candleLerpSpeed).toBe(
+      0.5,
+    );
+  });
+});
+
 // ─── resolveAxisLabel ──────────────────────────────────────────────────────────
 
 describe("resolveAxisLabel", () => {
@@ -462,6 +529,7 @@ describe("resolveScrub", () => {
       tooltipShowValue: true,
       tooltipShowTime: true,
       panGestureDelay: 0,
+      hideOverlaysOnScrub: false,
     });
   });
 
@@ -475,6 +543,7 @@ describe("resolveScrub", () => {
       tooltipShowValue: true,
       tooltipShowTime: true,
       panGestureDelay: 0,
+      hideOverlaysOnScrub: false,
     });
   });
 
@@ -488,6 +557,7 @@ describe("resolveScrub", () => {
       tooltipShowValue: true,
       tooltipShowTime: true,
       panGestureDelay: 0,
+      hideOverlaysOnScrub: false,
     });
   });
 
@@ -511,7 +581,15 @@ describe("resolveScrub", () => {
       tooltipShowValue: true,
       tooltipShowTime: true,
       panGestureDelay: 300,
+      hideOverlaysOnScrub: false,
     });
+  });
+
+  it("defaults hideOverlaysOnScrub to false and carries it when set", () => {
+    expect(resolveScrub(true)?.hideOverlaysOnScrub).toBe(false);
+    expect(
+      resolveScrub({ hideOverlaysOnScrub: true })?.hideOverlaysOnScrub,
+    ).toBe(true);
   });
 
   it("carries a custom tooltipBorderRadius", () => {
@@ -539,6 +617,42 @@ describe("resolveScrub", () => {
     expect(resolveScrub({ tooltipShowValue: false })).toMatchObject({
       tooltipShowValue: false,
       tooltipShowTime: true,
+    });
+  });
+});
+
+// ─── resolveLoading ───────────────────────────────────────────────────────────
+
+describe("resolveLoading", () => {
+  const DEFAULTS = {
+    color: undefined,
+    strokeWidth: undefined,
+    amplitude: 14,
+    speed: 1,
+  };
+
+  it("returns null for undefined / false (not loading)", () => {
+    expect(resolveLoading(undefined)).toBeNull();
+    expect(resolveLoading(false)).toBeNull();
+  });
+
+  it("returns defaults for true", () => {
+    expect(resolveLoading(true)).toEqual(DEFAULTS);
+  });
+
+  it("merges a partial config over the defaults", () => {
+    expect(resolveLoading({ color: "#64748b", strokeWidth: 3 })).toEqual({
+      ...DEFAULTS,
+      color: "#64748b",
+      strokeWidth: 3,
+    });
+  });
+
+  it("carries the wave overrides", () => {
+    expect(resolveLoading({ amplitude: 22, speed: 1.5 })).toEqual({
+      ...DEFAULTS,
+      amplitude: 22,
+      speed: 1.5,
     });
   });
 });
@@ -1490,6 +1604,8 @@ describe("resolveMarkerCluster", () => {
       overlap: 0.75,
       gap: 2,
       maxBeforeGroup: 5,
+      groupBadge: "count",
+      showGroupCount: false,
     });
     expect(resolveMarkerCluster("anchored").mode).toBe("anchored");
     expect(resolveMarkerCluster("stacked").direction).toBe("horizontal");
@@ -1506,6 +1622,8 @@ describe("resolveMarkerCluster", () => {
       overlap: 0.8,
       gap: 2,
       maxBeforeGroup: 3,
+      groupBadge: "count",
+      showGroupCount: false,
     });
     // Explicit mode honored; overlap clamped to [0, 0.95].
     expect(resolveMarkerCluster({ mode: "anchored" }).mode).toBe("anchored");
@@ -1513,5 +1631,18 @@ describe("resolveMarkerCluster", () => {
     expect(resolveMarkerCluster({ direction: "vertical" }).direction).toBe("vertical");
     expect(resolveMarkerCluster({ overlap: 5 }).overlap).toBe(0.95);
     expect(resolveMarkerCluster({ overlap: -1 }).overlap).toBe(0);
+  });
+
+  it("defaults the collapsed-group badge to a count, with marker / showGroupCount opt-in", () => {
+    // #165: default collapsed look is the count badge.
+    expect(resolveMarkerCluster("stacked").groupBadge).toBe("count");
+    expect(resolveMarkerCluster("stacked").showGroupCount).toBe(false);
+    // Opt into the representative marker's own glyph + a corner count.
+    const cfg = resolveMarkerCluster({ groupBadge: "marker", showGroupCount: true });
+    expect(cfg.groupBadge).toBe("marker");
+    expect(cfg.showGroupCount).toBe(true);
+    // A dedicated group badge (object form) passes through untouched.
+    const badge = { icon: "★", pill: true, color: "#a855f7" };
+    expect(resolveMarkerCluster({ groupBadge: badge }).groupBadge).toEqual(badge);
   });
 });

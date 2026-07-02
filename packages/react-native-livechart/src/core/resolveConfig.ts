@@ -14,6 +14,7 @@ import type {
   LineStyleConfig,
   LiveChartMetrics,
   LiveChartMetricsOverride,
+  LoadingConfig,
   MarkerClusterConfig,
   DotConfig,
   DotRingConfig,
@@ -29,6 +30,7 @@ import type {
   ThresholdConfig,
   ThresholdLineConfig,
   TradeEvent,
+  TransitionConfig,
   ValueLineConfig,
   VolumeConfig,
   XAxisConfig,
@@ -45,6 +47,8 @@ import {
   EMPTY_STATE_METRICS_DEFAULTS,
   FADE_EDGE_WIDTH,
   GRID_METRICS_DEFAULTS,
+  LOADING_WAVE_AMPLITUDE,
+  LOADING_WAVE_SPEED,
   MOTION_METRICS_DEFAULTS,
   RETURN_TO_LIVE_MS,
 } from "../constants";
@@ -165,6 +169,8 @@ export interface ResolvedScrubConfig {
   tooltipShowTime: boolean;
   /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
   panGestureDelay: number;
+  /** Fade markers + reference lines out while scrubbing. */
+  hideOverlaysOnScrub: boolean;
 }
 
 export interface ResolvedScrubActionConfig {
@@ -477,6 +483,44 @@ export function resolveReturnToLiveMs(
   return d > 0 ? d : 0;
 }
 
+/**
+ * Resolved transition durations. `undefined` for a field means "use the
+ * component's built-in default" (so we don't duplicate the default constants
+ * here); a number is an explicit duration in ms (clamped to ≥ 0).
+ */
+export interface ResolvedTransitionConfig {
+  reveal: number | undefined;
+  mode: number | undefined;
+  /** Candle-width lerp speed (0–1); `undefined` = use the built-in default. */
+  candleLerpSpeed: number | undefined;
+}
+
+const clampMs = (v: number | undefined): number | undefined =>
+  v == null ? undefined : v > 0 ? v : 0;
+
+/** Clamp a per-frame lerp speed to `[0, 1]`; `undefined` → built-in default. */
+const clampSpeed = (v: number | undefined): number | undefined =>
+  v == null ? undefined : v < 0 ? 0 : v > 1 ? 1 : v;
+
+/**
+ * Resolves the `transitions` prop. `false` → all transitions instant (durations
+ * `0`, candle width snaps with speed `1`); `true` / omitted → defaults (all
+ * `undefined` = use the built-in durations / speed); an object → per-transition
+ * overrides (an omitted field keeps its default).
+ */
+export function resolveTransitions(
+  prop: boolean | TransitionConfig | undefined,
+): ResolvedTransitionConfig {
+  if (prop === false) return { reveal: 0, mode: 0, candleLerpSpeed: 1 };
+  if (prop == null || prop === true)
+    return { reveal: undefined, mode: undefined, candleLerpSpeed: undefined };
+  return {
+    reveal: clampMs(prop.reveal),
+    mode: clampMs(prop.mode),
+    candleLerpSpeed: clampSpeed(prop.candleLerpSpeed),
+  };
+}
+
 const AXIS_LABEL_DEFAULTS: ResolvedAxisLabelConfig = {
   format: undefined,
   color: undefined,
@@ -571,6 +615,7 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltipShowValue: true,
   tooltipShowTime: true,
   panGestureDelay: 0,
+  hideOverlaysOnScrub: false,
 };
 
 /**
@@ -588,6 +633,36 @@ export function resolveScrub(
     resolved.crosshairDash = dash === true ? [4, 4] : dash || undefined;
   }
   return resolved;
+}
+
+export interface ResolvedLoadingConfig {
+  /** undefined → palette.gridLine */
+  color: string | undefined;
+  /** undefined → the chart's line strokeWidth */
+  strokeWidth: number | undefined;
+  /** Base breathing-wave amplitude (px). */
+  amplitude: number;
+  /** Breathing-wave speed multiplier. */
+  speed: number;
+}
+
+const LOADING_DEFAULTS: ResolvedLoadingConfig = {
+  color: undefined,
+  strokeWidth: undefined,
+  amplitude: LOADING_WAVE_AMPLITUDE,
+  speed: LOADING_WAVE_SPEED,
+};
+
+/**
+ * Resolves the `loading` prop to a fully-typed config or null (not loading).
+ * `true` → defaults (loading on, built-in look), object → merged with defaults
+ * (loading on, restyled), `false` / omitted → null. So a non-null result is the
+ * "is loading" flag and carries the resolved styling.
+ */
+export function resolveLoading(
+  prop: boolean | LoadingConfig | undefined,
+): ResolvedLoadingConfig | null {
+  return resolveToggle(prop, LOADING_DEFAULTS, false);
 }
 
 const SCRUB_ACTION_DEFAULTS: ResolvedScrubActionConfig = {
@@ -634,6 +709,8 @@ export function resolveMarkerCluster(
       overlap: clamp01(prop.overlap ?? MARKER_CLUSTER_OVERLAP),
       gap: MARKER_CLUSTER_GAP,
       maxBeforeGroup: prop.maxBeforeGroup ?? MARKER_CLUSTER_MAX_BEFORE_GROUP,
+      groupBadge: prop.groupBadge ?? "count",
+      showGroupCount: prop.showGroupCount ?? false,
     };
   }
   return {
@@ -642,6 +719,8 @@ export function resolveMarkerCluster(
     overlap: MARKER_CLUSTER_OVERLAP,
     gap: MARKER_CLUSTER_GAP,
     maxBeforeGroup: MARKER_CLUSTER_MAX_BEFORE_GROUP,
+    groupBadge: "count",
+    showGroupCount: false,
   };
 }
 

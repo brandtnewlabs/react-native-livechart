@@ -50,6 +50,23 @@ const OVERLAP_OPTIONS = [
   { value: 0.9, label: "90%" },
 ];
 
+/** What a collapsed group draws: the count badge, the representative buy/sell pill,
+ *  that pill with a corner count ("+5"), or a dedicated custom group badge (its own
+ *  glyph, independent of the members). Maps to `markerCluster.groupBadge` /
+ *  `showGroupCount`. */
+type GroupBadge = "count" | "marker" | "marker+count" | "custom";
+
+const GROUP_BADGE_OPTIONS: { value: GroupBadge; label: string }[] = [
+  { value: "count", label: "Count" },
+  { value: "marker", label: "Pill" },
+  { value: "marker+count", label: "Pill +N" },
+  { value: "custom", label: "Custom" },
+];
+
+/** A dedicated group badge (object form of `groupBadge`) — its own glyph, distinct
+ *  from the buy/sell member pills. Here a purple star pill with the count. */
+const CUSTOM_GROUP_BADGE = { icon: "★", pill: true, color: "#a855f7" } as const;
+
 /** Visible time window (s). Markers are kept until they scroll just past it. */
 const WINDOW = 30;
 
@@ -115,6 +132,7 @@ export default function MarkersScreen() {
   const [stacked, setStacked] = useState(false);
   const [vertical, setVertical] = useState(false);
   const [overlap, setOverlap] = useState(0.75);
+  const [groupBadge, setGroupBadge] = useState<GroupBadge>("count");
   const [hitRadius, setHitRadius] = useState(22);
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("normal");
 
@@ -217,6 +235,19 @@ export default function MarkersScreen() {
                   direction: vertical ? "vertical" : "horizontal",
                   overlap,
                   maxBeforeGroup: vertical ? 20 : 5,
+                  // #165: collapsed-group look — a count circle, the representative
+                  // buy/sell pill (optionally with a corner "+N"), or a dedicated
+                  // custom group badge (its own glyph, distinct from the members).
+                  groupBadge:
+                    groupBadge === "count"
+                      ? "count"
+                      : groupBadge === "custom"
+                        ? CUSTOM_GROUP_BADGE
+                        : "marker",
+                  // `showGroupCount` is its own concern — demoed by "Pill +N".
+                  // "Custom" shows just the dedicated badge (no corner count) so the
+                  // two ideas don't blur together; the count still composes with it.
+                  showGroupCount: groupBadge === "marker+count",
                 }
               : "anchored"
           }
@@ -307,6 +338,23 @@ export default function MarkersScreen() {
           value={overlap}
           onChange={setOverlap}
         />
+      ) : null}
+      {stacked ? (
+        <ChipRow
+          label="Collapsed group badge"
+          options={GROUP_BADGE_OPTIONS}
+          value={groupBadge}
+          onChange={setGroupBadge}
+        />
+      ) : null}
+      {stacked ? (
+        <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+          A collapsed burst can show the round count, the representative buy/sell
+          pill (`groupBadge: &quot;marker&quot;`, optionally with a corner
+          &quot;+N&quot; via `showGroupCount`), or a dedicated custom badge — here a
+          purple ★ pill (`groupBadge: {'{'} icon: &quot;★&quot;, pill: true {'}'}`),
+          its own glyph independent of the members. All drawn in Skia.
+        </Text>
       ) : null}
 
       <ControlRow label="Custom render">

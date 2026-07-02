@@ -51,7 +51,15 @@ describe("useMarkers", () => {
         undefined,
         true,
         false,
-        { mode: "stacked", direction: "horizontal", overlap: 0.6, gap: 2, maxBeforeGroup: 5 },
+        {
+          mode: "stacked",
+          direction: "horizontal",
+          overlap: 0.6,
+          gap: 2,
+          maxBeforeGroup: 5,
+          groupBadge: "count",
+          showGroupCount: false,
+        },
       );
     });
     expect(typeof result.current.hitTest).toBe("function");

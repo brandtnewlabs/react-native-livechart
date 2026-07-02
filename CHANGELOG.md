@@ -7,6 +7,113 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-07-01
+
+### Added
+
+- **`transitions.candleLerpSpeed`** (`number`, default `0.08`) on `LiveChart`.
+  Controls the per-frame speed at which candle bodies resize when `candleWidth`
+  changes (a timeframe / bucket switch). Same units as `smoothing` (`0`–`1`); set
+  it to `1` to resize candles in a single frame instead of the default
+  "fat → thin" slide. `transitions={false}` now also snaps the candle width
+  (every transition instant). Replaces the previously hard-coded candle-width
+  lerp speed, which nothing could tune or disable. Thanks
+  [@dszym00](https://github.com/dszym00).
+  ([#176](https://github.com/brandtnewlabs/react-native-livechart/issues/176))
+
+### Changed
+
+- **`static` charts are now scrubbable.** `scrub` and `scrubAction` stay live on a
+  `static` `LiveChart` — they're on-demand touch gestures with no per-frame loop,
+  so a still chart stays at zero idle cost yet reveals its crosshair / value
+  read-out on touch. Previously `static` forced both off, so the only way to stop
+  the render loop (e.g. for many sparklines in a list) also removed scrubbing. The
+  continuous animations (`pulse`, `degen`, the entry reveal) remain disabled under
+  `static`. Thanks [@dszym00](https://github.com/dszym00).
+  ([#177](https://github.com/brandtnewlabs/react-native-livechart/issues/177))
+
+## [4.6.0] - 2026-06-29
+
+### Added
+
+- **`snapKey`** (`string | number`) on `LiveChart` and `LiveChartSeries`. Snaps
+  the framing — time window, Y-range, and value (per-series tips on
+  `LiveChartSeries`) — to its target in a single frame whenever the key changes,
+  then resumes normal `smoothing` for live ticks. Lets a timeframe switch (a
+  `timeWindow` change) or a dataset swap settle instantly instead of sliding,
+  without the all-or-nothing trade-offs of `smoothing={1}` (jumpy live ticks) or
+  `static` (no live updates). Pass the current timeframe id, or a counter you bump
+  when replacing the `data` / `candles` array. Geometry only and one frame only —
+  the time-scroll position and the live loop are untouched. Thanks
+  [@dszym00](https://github.com/dszym00).
+  ([#173](https://github.com/brandtnewlabs/react-native-livechart/issues/173))
+
+### Docs
+
+- Clarified that `transitions.reveal` animates **opacity** only (the grow-in
+  fade), not the time window / Y-range easing on a timeframe change — that easing
+  is `smoothing`, and `snapKey` collapses it to one frame.
+
+## [4.5.0] - 2026-06-26
+
+### Added
+
+- **`scrub.hideOverlaysOnScrub`** (`boolean`, default `false`) on `LiveChart` and
+  `LiveChartSeries`. Fades the annotation overlays — buy/sell **markers** and
+  **reference lines** (both the built-in Skia tags/lines and any custom
+  `renderMarker` / `renderReferenceLine` RN views) — out while scrubbing so they
+  don't clutter the crosshair read-out, easing back in on release. Driven by the
+  scrub-active state (not the crosshair's edge-proximity fade, which would
+  resurface the overlays near the live dot) and eased on the UI thread. Animates
+  only a group opacity — the marker atlas and reference-line geometry are left
+  intact (still one batched draw each), so there's no per-scrub data rebuild.
+  Thanks [@dszym00](https://github.com/dszym00).
+  ([#169](https://github.com/brandtnewlabs/react-native-livechart/pull/169))
+- **`transitions` prop** (`boolean | TransitionConfig`) on `LiveChart` and
+  `LiveChartSeries` to tune or disable the built-in transition animations.
+  `false` makes them instant; an object sets per-transition durations in ms —
+  `reveal` (the grow-in when data appears / on a timeframe change / when a line
+  chart's data appears; default `600`) and `mode` (the candle↔line crossfade,
+  single-series only; default `300`), with `0` snapping that transition.
+  `reveal: 0` removes the grow-in on timeframe change and the line "animating in"
+  when switching candle→line. Independent of `smoothing` (live value easing) and
+  `static` (one-shot render). Exports the new `TransitionConfig` type.
+  Thanks [@dszym00](https://github.com/dszym00).
+  ([#171](https://github.com/brandtnewlabs/react-native-livechart/pull/171))
+- **Configurable loading shell** — `loading` now accepts a `LoadingConfig` object
+  (`boolean | LoadingConfig`) on `LiveChart` and `LiveChartSeries`, so the
+  breathing-line placeholder can be restyled: `color` (squiggle + skeleton
+  Y-axis placeholders; default theme `gridLine`), `strokeWidth` (default the
+  chart line width), `amplitude` (base breathing-wave height, default `14`), and
+  `speed` (wave cadence multiplier, default `1`; `0` freezes).
+  `color` / `amplitude` / `speed` also flow into the reveal morph so the squiggle
+  keeps its look as it melts into the line. `true` keeps the defaults, `false` /
+  omitted is "not loading". Exports the new `LoadingConfig` type. (The
+  loading→live reveal duration is tuned separately via the `transitions.reveal`
+  prop above.) Thanks [@dszym00](https://github.com/dszym00).
+  ([#170](https://github.com/brandtnewlabs/react-native-livechart/pull/170))
+
+## [4.4.0] - 2026-06-26
+
+### Added
+
+- **Custom look for collapsed marker groups** — `MarkerClusterConfig.groupBadge`
+  and `showGroupCount`. By default a collapsed cluster draws a round count badge;
+  give it a custom Skia look two ways:
+  - `groupBadge: "marker"` draws the **representative marker's own glyph** (its
+    `image` / `icon` / `pill` / `kind`), so a run of buy pills collapses to a single
+    buy pill rather than a generic count.
+  - `groupBadge: { image }` (or `{ icon, pill, color }`, the new `MarkerGroupBadge`
+    type) draws a **dedicated badge you supply**, independent of the member markers
+    — for when the collapse should look different from the individual markers (e.g.
+    tiny dots → a distinct "Buy 5" image).
+
+  Add `showGroupCount` to stamp the member count in the glyph's top-right corner
+  (the "Buy 5" look). Everything is batched in the same `drawAtlas` as every other
+  marker (not a `renderMarker` RN overlay). Default behavior is unchanged
+  (`groupBadge: "count"`). Exports the `MarkerGroupBadge` type.
+  ([#165](https://github.com/brandtnewlabs/react-native-livechart/issues/165))
+
 ## [4.3.0] - 2026-06-25
 
 ### Added

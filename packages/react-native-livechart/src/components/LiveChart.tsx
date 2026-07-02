@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import {
+import Animated, {
   useAnimatedReaction,
+  useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
@@ -22,7 +24,11 @@ import {
   vec,
 } from "@shopify/react-native-skia";
 
-import { DEFAULT_ACCENT_COLOR, HOLD_TO_SCRUB_MS } from "../constants";
+import {
+  DEFAULT_ACCENT_COLOR,
+  HOLD_TO_SCRUB_MS,
+  SCRUB_OVERLAY_FADE_MS,
+} from "../constants";
 import {
   resolveAreaDots,
   resolveAxisLabel,
@@ -32,11 +38,13 @@ import {
   resolveGradient,
   resolveGridStyle,
   resolveLeftEdgeFade,
+  resolveLoading,
   resolveMarkerCluster,
   resolveMetrics,
   resolvePulse,
   resolveScrub,
   resolveScrubAction,
+  resolveTransitions,
   resolveReturnToLiveMs,
   resolveSelectionDot,
   resolveThreshold,
@@ -209,8 +217,10 @@ function useLiveChartController({
   paused = false,
   loading = false,
   loadingAxisLabels = true,
+  transitions,
   // `static` is a reserved word — alias it so the destructure parses.
   static: isStatic = false,
+  snapKey,
   smoothing = 0.08,
   exaggerate = false,
   nonNegative = false,
@@ -286,8 +296,10 @@ function useLiveChartController({
   const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const badgeCfg = resolveBadge(badge);
   const scrubCfg = resolveScrub(scrub);
-  // Static charts run no gestures, so scrub-action (tap/drag to lock a price) is off.
-  const scrubActionCfg = isStatic ? null : resolveScrubAction(scrubAction);
+  // Scrub + scrub-action are on-demand touch gestures (event-driven, no per-frame
+  // loop), so they stay live on static charts — `static` suppresses the continuous
+  // render loop, not interaction. A still sparkline in a list can still be scrubbed.
+  const scrubActionCfg = resolveScrubAction(scrubAction);
   // Volume bars sit below the candles — a candle-mode-only feature (inert in
   // line mode, like the candle paths themselves).
   const volumeCfg = isCandle ? resolveVolume(volume) : null;
@@ -536,7 +548,17 @@ function useLiveChartController({
     candles,
   });
 
-  const reveal = useChartReveal(loading, hasData, isStatic);
+  // Resolve the loading shell: null = not loading, else the styled config (a
+  // non-null result is the "is loading" flag and carries the look).
+  const loadingCfg = resolveLoading(loading);
+  const loadingActive = loadingCfg !== null;
+  const transitionsCfg = resolveTransitions(transitions);
+  const reveal = useChartReveal(
+    loadingActive,
+    hasData,
+    isStatic,
+    transitionsCfg.reveal,
+  );
 
   // After data clears, keep last snapshot until morphT finishes dropping (web parity).
   const { lineEngineData, candlesEngine, liveEngine } =
@@ -558,6 +580,7 @@ function useLiveChartController({
     timeWindow,
     paused,
     static: isStatic,
+    snapKey,
     scrollEnabled: timeScrollEnabled,
     returnToLiveMs,
     smoothing,
@@ -595,6 +618,7 @@ function useLiveChartController({
   const { lineGroupOpacity, candleGroupOpacity } = useModeBlend(
     isCandle,
     reveal.lineOpacity,
+    transitionsCfg.mode,
   );
 
   // ── Per-frame derived values ───────────────────────────────────────────
@@ -663,6 +687,9 @@ function useLiveChartController({
     // live value when `followViewEdge` tracks the scrolled-back window.
     engine.edgeValue,
     badgeCfg?.followViewEdge ?? false,
+    // Match the standalone loading squiggle's wave during the reveal morph.
+    loadingCfg?.amplitude,
+    loadingCfg?.speed,
   );
 
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config
@@ -699,6 +726,7 @@ function useLiveChartController({
     volumeBandHeight,
     volumeCfg?.radius ?? 0,
     !isStatic, // static: no candle-width lerp loop
+    transitionsCfg.candleLerpSpeed, // `transitions.candleLerpSpeed` (1 = instant)
   );
   const { dotX, dotY } = useLiveDot(
     engine,
@@ -861,9 +889,10 @@ function useLiveChartController({
     formatValue,
     formatTime,
     skiaFont,
-    // Static charts have an inert pan gesture — no scrub work on the UI thread.
-    // Scrub-action also needs the gesture live even when plain scrub is off.
-    !isStatic && (scrubCfg !== null || scrubActionCfg !== null),
+    // Scrub / scrub-action stay live even on static charts: the gesture is
+    // event-driven (no per-frame loop), so a settled chart costs nothing at rest
+    // yet becomes scrubbable on touch. `static` only kills the continuous loop.
+    scrubCfg !== null || scrubActionCfg !== null,
     onScrub,
     candleOpts,
     scrubHoldMs,
@@ -1019,13 +1048,33 @@ function useLiveChartController({
   );
 
   // Hide the live dot while scrubbing when a selection dot is marking the scrub
-  // point instead — otherwise both dots show at once.
+  // point instead — otherwise both dots show at once. Applies on static charts
+  // too, now that they're scrubbable.
   const selectionDotDuringScrub =
-    !isStatic && scrubCfg !== null && selectionDotCfg !== null;
+    scrubCfg !== null && selectionDotCfg !== null;
   const liveDotOpacity = useDerivedValue(
     () =>
       reveal.dotOpacity.value *
       (selectionDotDuringScrub && crosshair.scrubActive.value ? 0 : 1),
+  );
+
+  // Fade the annotation overlays (markers + reference lines) out while scrubbing
+  // when `scrub.hideOverlays` is set. Eased off the scrub-ACTIVE flag — not the
+  // crosshair's edge-proximity fade, which drops to 0 near the live dot and would
+  // resurface the overlays mid-scrub. Only this group opacity animates; the
+  // marker atlas / reference-line draws stay intact (one batched draw each).
+  const fadeOverlaysOnScrub =
+    !isStatic && scrubCfg !== null && scrubCfg.hideOverlaysOnScrub === true;
+  const overlayScrubFade = useDerivedValue(() =>
+    fadeOverlaysOnScrub
+      ? withTiming(crosshair.scrubActive.get() ? 0 : 1, {
+          duration: SCRUB_OVERLAY_FADE_MS,
+        })
+      : 1,
+  );
+  // Markers already fade with the dot reveal; fold the scrub-hide fade in too.
+  const markerGroupOpacity = useDerivedValue(
+    () => reveal.dotOpacity.get() * overlayScrubFade.get(),
   );
 
   return {
@@ -1092,6 +1141,11 @@ function useLiveChartController({
     // engine + reveal
     engine,
     reveal,
+    // loading shell styling (null → not loading)
+    loadingLineColor: loadingCfg?.color,
+    loadingStrokeWidth: loadingCfg?.strokeWidth,
+    loadingAmplitude: loadingCfg?.amplitude,
+    loadingSpeed: loadingCfg?.speed,
     // derived render values
     backgroundColor,
     gradientEnd,
@@ -1123,6 +1177,8 @@ function useLiveChartController({
     dotX,
     dotY,
     liveDotOpacity,
+    overlayScrubFade,
+    markerGroupOpacity,
     momentumSV,
     tradeMarkers,
     degenPack,
@@ -1311,6 +1367,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     markersActive,
     markersSV,
     markerClusterCfg,
+    markerGroupOpacity,
+    overlayScrubFade,
     renderMarker,
     emptyText,
     loadingAxisLabels,
@@ -1321,6 +1379,10 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     yAxisEntries,
     badgeUsesRightGutter,
     gridStyleCfg,
+    loadingLineColor,
+    loadingStrokeWidth,
+    loadingAmplitude,
+    loadingSpeed,
   } = model;
 
   return (
@@ -1353,21 +1415,24 @@ function ChartStack({ model }: { model: LiveChartModel }) {
 
       {/* Index keys: reference lines are a positional array and two may share
           value + label (e.g. duplicate working orders at the same price), which a
-          content-derived key would collapse to one. */}
-      {allRefLines.map((rl, i) => (
-        <ReferenceLineOverlay
-          key={i}
-          engine={engine}
-          padding={effectivePadding}
-          line={rl}
-          palette={palette}
-          formatValue={formatValue}
-          font={skiaFont}
-          fontProp={fontProp}
-          dragValues={dragValues}
-          index={i}
-        />
-      ))}
+          content-derived key would collapse to one. Wrapped in a fade group so
+          `scrub.hideOverlaysOnScrub` can ease the lines out while scrubbing. */}
+      <Group opacity={overlayScrubFade}>
+        {allRefLines.map((rl, i) => (
+          <ReferenceLineOverlay
+            key={i}
+            engine={engine}
+            padding={effectivePadding}
+            line={rl}
+            palette={palette}
+            formatValue={formatValue}
+            font={skiaFont}
+            fontProp={fontProp}
+            dragValues={dragValues}
+            index={i}
+          />
+        ))}
+      </Group>
 
       {/* Threshold marker line + label (behind the chart line). */}
       {thresholdCfg?.line && (
@@ -1526,7 +1591,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
       )}
 
       {markersActive && (
-        <Group opacity={reveal.dotOpacity}>
+        <Group opacity={markerGroupOpacity}>
           <MarkerOverlay
             markers={markersSV}
             engine={engine}
@@ -1574,6 +1639,10 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         badgeMetrics={metricsCfg.badge}
         emptyMetrics={metricsCfg.emptyState}
         showAxisLabels={loadingAxisLabels}
+        lineColor={loadingLineColor}
+        lineStrokeWidth={loadingStrokeWidth}
+        waveAmplitude={loadingAmplitude}
+        waveSpeed={loadingSpeed}
       />
     </Group>
   );
@@ -1751,10 +1820,11 @@ function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
     skiaFont,
     fontProp,
     degenShakeTransform,
+    overlayScrubFade,
   } = model;
   if (allRefLines.length === 0) return null;
   return (
-    <Group transform={degenShakeTransform}>
+    <Group transform={degenShakeTransform} opacity={overlayScrubFade}>
       {allRefLines.map((rl, i) => (
         <ReferenceLineOverlay
           key={i}
@@ -1857,7 +1927,14 @@ export function LiveChart(props: LiveChartProps) {
     topConnector,
     bottomConnector,
     lineIsLinear,
+    overlayScrubFade,
   } = model;
+
+  // Mirror the Skia overlay fade onto the RN custom-overlay siblings (custom
+  // markers / reference-line tags) so `scrub.hideOverlaysOnScrub` hides them too.
+  const overlayFadeStyle = useAnimatedStyle(() => ({
+    opacity: overlayScrubFade.get(),
+  }));
 
   return (
     <GestureDetector gesture={rootGesture}>
@@ -1925,33 +2002,47 @@ export function LiveChart(props: LiveChartProps) {
         />
 
         {/* Custom-rendered markers — RN views floated over the canvas (non-Skia),
-            pinned to each marker's live position. Sibling of <Canvas>. */}
+            pinned to each marker's live position. Sibling of <Canvas>. Wrapped in
+            a box-none fade layer so `scrub.hideOverlaysOnScrub` hides them with the
+            Skia markers (the wrapper is full-bleed; children keep their own
+            absolute positions). */}
         {markersActive && renderMarker && (
-          <CustomMarkerOverlay
-            markers={markersSV}
-            renderMarker={renderMarker}
-            engine={engine}
-            padding={effectivePadding}
-            lineData={engine.data}
-            lineLinear={lineIsLinear}
-            cluster={markerClusterCfg}
-          />
+          <Animated.View
+            pointerEvents="box-none"
+            style={[StyleSheet.absoluteFill, overlayFadeStyle]}
+          >
+            <CustomMarkerOverlay
+              markers={markersSV}
+              renderMarker={renderMarker}
+              engine={engine}
+              padding={effectivePadding}
+              lineData={engine.data}
+              lineLinear={lineIsLinear}
+              cluster={markerClusterCfg}
+            />
+          </Animated.View>
         )}
 
         {/* Custom-rendered reference-line tags — RN views floated over the canvas
             (non-Skia), pinned to each Form-A line's value. Sibling of <Canvas>.
-            Built-in Skia tags for these lines are suppressed (no double-draw). */}
+            Built-in Skia tags for these lines are suppressed (no double-draw).
+            Same box-none fade wrapper as the custom markers above. */}
         {renderReferenceLine && allRefLines.length > 0 && (
-          <CustomReferenceLineOverlay
-            lines={allRefLines}
-            renderReferenceLine={renderReferenceLine}
-            custom={refLineCustom}
-            engine={engine}
-            padding={effectivePadding}
-            formatValue={formatValue}
-            dragValues={dragValues}
-            dragActive={dragActive}
-          />
+          <Animated.View
+            pointerEvents="box-none"
+            style={[StyleSheet.absoluteFill, overlayFadeStyle]}
+          >
+            <CustomReferenceLineOverlay
+              lines={allRefLines}
+              renderReferenceLine={renderReferenceLine}
+              custom={refLineCustom}
+              engine={engine}
+              padding={effectivePadding}
+              formatValue={formatValue}
+              dragValues={dragValues}
+              dragActive={dragActive}
+            />
+          </Animated.View>
         )}
 
         {/* Custom scrub tooltip — an RN view floated over the canvas (non-Skia),

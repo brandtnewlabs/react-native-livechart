@@ -36,9 +36,23 @@ export function useCandlePaths(
   volumeRadius = 0,
   /** Static charts run no loops: register without starting. Default `true`. */
   autostart = true,
+  /**
+   * Per-frame lerp speed (0–1) for the candle-body width as it eases toward
+   * `candleWidthSecs`. `1` snaps in one frame (no "fat → thin" slide on a
+   * timeframe / bucket change); `undefined` uses {@link CANDLE_WIDTH_LERP_SPEED}.
+   * Resolved from `transitions.candleLerpSpeed`. See #176.
+   */
+  candleLerpSpeed?: number,
 ) {
   const targetCandleWidth = useDerivedValue(() => candleWidthSecs);
   const displayCandleWidth = useSharedValue(candleWidthSecs);
+  // `transitions.candleLerpSpeed` overrides the built-in speed (0–1, already
+  // clamped by `resolveTransitions`); fall back to the default when unset.
+  // Bridged through a derived value so the frame-callback worklet always reads
+  // the current speed on the UI thread (mirrors `targetCandleWidth`).
+  const widthLerpSpeed = useDerivedValue(
+    () => candleLerpSpeed ?? CANDLE_WIDTH_LERP_SPEED,
+  );
 
   const upBodiesBuilder = usePathBuilder();
   const downBodiesBuilder = usePathBuilder();
@@ -55,7 +69,7 @@ export function useCandlePaths(
       lerp(
         displayCandleWidth.get(),
         targetCandleWidth.get(),
-        CANDLE_WIDTH_LERP_SPEED,
+        widthLerpSpeed.get(),
         dt,
       ),
     );

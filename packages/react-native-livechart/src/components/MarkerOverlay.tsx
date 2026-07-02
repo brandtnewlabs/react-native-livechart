@@ -4,6 +4,8 @@ import {
   Path,
   Skia,
   type SkFont,
+  type SkRect,
+  type SkRSXform,
 } from "@shopify/react-native-skia";
 import { useMemo, useRef, useState } from "react";
 import { PixelRatio } from "react-native";
@@ -20,6 +22,7 @@ import {
   BADGE_TEXT_SCALE,
   buildMarkerAtlas,
   defaultMarkerColor,
+  GROUP_BADGE_SIG,
   groupBgSig,
   groupCountText,
   groupGlyphSig,
@@ -46,6 +49,77 @@ import type {
 } from "../types";
 
 const OFF = -9999;
+
+/** Size of the `showGroupCount` corner badge relative to a full count badge. */
+const GROUP_CORNER_SCALE = 0.62;
+/** How far the corner count badge sits toward the glyph's top-right corner
+ *  (1 = centered exactly on the corner; < 1 pulls it inward). */
+const GROUP_CORNER_INSET = 0.82;
+
+/**
+ * Append a collapsed-cluster count badge (round bg + centered, proportionally
+ * kerned digits) to the atlas blit lists at `(cx, cy)`, scaled by `mul` — full
+ * size as the default group badge, shrunk in a glyph's corner for `showGroupCount`.
+ *
+ * A **module-level** worklet (not a closure inside the per-frame derived value):
+ * the `transforms` / `sprites` arrays are passed in by reference so the pushes land
+ * on the real per-frame lists. A nested `"worklet"` closure would capture them by
+ * serialized copy, so its pushes would be silently dropped and the badge never drawn.
+ */
+function pushGroupCountBadge(
+  transforms: SkRSXform[],
+  sprites: SkRect[],
+  cells: Record<string, AtlasCell>,
+  digitWidths: Record<string, number>,
+  invScale: number,
+  cx: number,
+  cy: number,
+  repColor: string,
+  count: number,
+  mul: number,
+): void {
+  "worklet";
+  const text = groupCountText(count);
+  const bg = cells[groupBgSig(repColor)];
+  if (bg) {
+    transforms.push(
+      Skia.RSXform(invScale * mul, 0, cx - (bg.w * mul) / 2, cy - (bg.h * mul) / 2),
+    );
+    sprites.push(bg.rect);
+  }
+  // Lay digits out proportionally (each by its own ink width), scaled to fit the
+  // small round badge, centered. A negative kern (fraction of a digit) closes the
+  // font's side-bearing gap so "12" reads tight, not "1 2".
+  const S = BADGE_TEXT_SCALE;
+  let maxDW = 1;
+  for (let d = 0; d < 10; d++) {
+    const dw = digitWidths["" + d] ?? 0;
+    if (dw > maxDW) maxDW = dw;
+  }
+  const kern = -maxDW * S * 0.42;
+  let totalW = 0;
+  for (let c = 0; c < text.length; c++) {
+    totalW += (digitWidths[text[c]] ?? 0) * S + (c > 0 ? kern : 0);
+  }
+  let dx = cx - (totalW * mul) / 2;
+  for (let c = 0; c < text.length; c++) {
+    const w = (digitWidths[text[c]] ?? 0) * S * mul;
+    const gc = cells[groupGlyphSig(text[c])];
+    if (gc) {
+      const gcx = dx + w / 2;
+      transforms.push(
+        Skia.RSXform(
+          invScale * S * mul,
+          0,
+          gcx - (gc.w * S * mul) / 2,
+          cy - (gc.h * S * mul) / 2,
+        ),
+      );
+      sprites.push(gc.rect);
+    }
+    dx += w + kern * mul;
+  }
+}
 
 /**
  * Self-projecting fallback for the axis-anchored kinds (graduation stem + flag,
@@ -246,6 +320,14 @@ export function MarkerOverlay({
   // retina canvases instead of being upscaled from a logical-sized texture.
   const dpr = PixelRatio.get();
   const clusterStacked = cluster.mode === "stacked";
+  // A dedicated group badge (object form) bakes one extra atlas cell; its image
+  // identity + styling drive the rebuild key alongside the marker appearances.
+  const groupBadgeCfg =
+    typeof cluster.groupBadge === "object" ? cluster.groupBadge : undefined;
+  const groupBadgeImage = groupBadgeCfg?.image;
+  const groupBadgeKey = groupBadgeCfg
+    ? `${groupBadgeCfg.icon ?? ""}|${groupBadgeCfg.color ?? ""}|${groupBadgeCfg.pill ? 1 : 0}|${groupBadgeCfg.size ?? ""}`
+    : "";
   const atlas = useMemo(
     () =>
       buildMarkerAtlas(
@@ -254,9 +336,10 @@ export function MarkerOverlay({
         font,
         dpr,
         clusterStacked,
+        groupBadgeCfg,
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- appearanceKey/paletteKey capture the inputs that change cell pixels
-    [appearanceKey, paletteKey, font, dpr, clusterStacked],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- appearanceKey/paletteKey/groupBadgeKey capture the inputs that change cell pixels
+    [appearanceKey, paletteKey, font, dpr, clusterStacked, groupBadgeKey, groupBadgeImage],
   );
   const cells: Record<string, AtlasCell> = atlas.cells;
   const atlasImage = atlas.image;
@@ -301,8 +384,8 @@ export function MarkerOverlay({
         lineLinear,
       });
       clusterMarkers(ms, buf, { config: cluster });
-      const transforms = [];
-      const sprites = [];
+      const transforms: SkRSXform[] = [];
+      const sprites: SkRect[] = [];
       for (let i = 0; i < ms.length; i++) {
         const pt = buf[i];
         // Collapsed-cluster members fold into their representative's badge.
@@ -311,46 +394,61 @@ export function MarkerOverlay({
         if (isConnectorMarker(m)) continue;
         // Custom-rendered markers are floated as RN views, not drawn here.
         if (customIds[m.id]) continue;
-        // Collapsed cluster: draw a count badge (bg stadium + composed digits)
-        // instead of the marker's own glyph, all within this one `drawAtlas`.
+        // Collapsed cluster. By default a round count badge; with
+        // `groupBadge: "marker"` the representative marker's own glyph, or with a
+        // `MarkerGroupBadge` object a dedicated baked badge — either optionally
+        // carrying a corner count, all within this one `drawAtlas`.
         if (pt.isGrouped) {
           const repColor = m.color ?? defaultMarkerColor(m.kind, palette);
-          const text = groupCountText(pt.groupCount);
-          const bg = cells[groupBgSig(repColor)];
-          if (bg) {
+          const gb = cluster.groupBadge;
+          // Pick the non-count glyph cell: a dedicated group badge (object form)
+          // or the representative marker's own appearance.
+          const glyphCell =
+            typeof gb === "object" && gb !== null
+              ? cells[GROUP_BADGE_SIG]
+              : gb === "marker"
+                ? cells[markerAppearanceSig(m)]
+                : undefined;
+          if (glyphCell) {
             transforms.push(
-              Skia.RSXform(invScale, 0, pt.x - bg.w / 2, pt.y - bg.h / 2),
+              Skia.RSXform(
+                invScale,
+                0,
+                pt.x - glyphCell.w / 2,
+                pt.y - glyphCell.h / 2,
+              ),
             );
-            sprites.push(bg.rect);
-          }
-          // Lay the digits out proportionally (each by its own ink width), scaled
-          // down to fit the small round badge, and center the whole number. A
-          // negative kern (fraction of a digit) closes the font's side-bearing gap
-          // so "12" reads tight, not "1 2".
-          const S = BADGE_TEXT_SCALE;
-          let maxDW = 1;
-          for (let d = 0; d < 10; d++) {
-            const dw = digitWidths["" + d] ?? 0;
-            if (dw > maxDW) maxDW = dw;
-          }
-          const kern = -maxDW * S * 0.42;
-          let totalW = 0;
-          for (let c = 0; c < text.length; c++) {
-            totalW += (digitWidths[text[c]] ?? 0) * S + (c > 0 ? kern : 0);
-          }
-          let dx = pt.x - totalW / 2;
-          for (let c = 0; c < text.length; c++) {
-            const w = (digitWidths[text[c]] ?? 0) * S;
-            const gc = cells[groupGlyphSig(text[c])];
-            if (gc) {
-              const cx = dx + w / 2;
-              transforms.push(
-                Skia.RSXform(invScale * S, 0, cx - (gc.w * S) / 2, pt.y - (gc.h * S) / 2),
+            sprites.push(glyphCell.rect);
+            if (cluster.showGroupCount) {
+              pushGroupCountBadge(
+                transforms,
+                sprites,
+                cells,
+                digitWidths,
+                invScale,
+                pt.x + (glyphCell.w / 2) * GROUP_CORNER_INSET,
+                pt.y - (glyphCell.h / 2) * GROUP_CORNER_INSET,
+                repColor,
+                pt.groupCount,
+                GROUP_CORNER_SCALE,
               );
-              sprites.push(gc.rect);
             }
-            dx += w + kern;
+            continue;
           }
+          // Default — or fall back here when a non-count badge has no baked cell
+          // (e.g. an empty group-badge config): the round count badge.
+          pushGroupCountBadge(
+            transforms,
+            sprites,
+            cells,
+            digitWidths,
+            invScale,
+            pt.x,
+            pt.y,
+            repColor,
+            pt.groupCount,
+            1,
+          );
           continue;
         }
         const cell = cells[markerAppearanceSig(m)];

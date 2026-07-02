@@ -85,6 +85,36 @@ describe("static mode — no per-frame loops", () => {
     );
   });
 
+  it("keeps every loop inert when a static chart enables scrub + scrubAction", () => {
+    // #177: scrub / scrubAction are on-demand touch gestures (event-driven, no
+    // per-frame loop), so enabling them on a static chart must NOT reactivate any
+    // frame callback — a still sparkline stays scrubbable at zero idle cost.
+    function Harness() {
+      const data = useSharedValue<LiveChartPoint[]>([
+        { time: 1700000000, value: 10 },
+        { time: 1700000030, value: 30 },
+      ]);
+      const value = useSharedValue(30);
+      return (
+        <LiveChart
+          static
+          scrub
+          scrubAction
+          data={data}
+          value={value}
+          timeWindow={30}
+          nowOverride={1700000030}
+        />
+      );
+    }
+    const screen = render(<Harness />);
+    screen.rerender(<Harness />);
+    expect(frameCallbackCalls.length).toBeGreaterThanOrEqual(2);
+    expect(frameCallbackCalls.every((autostart) => autostart === false)).toBe(
+      true,
+    );
+  });
+
   it("autostarts LiveChart frame-callback loops when not static", () => {
     function Harness() {
       const data = useSharedValue<LiveChartPoint[]>([

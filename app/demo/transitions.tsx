@@ -14,12 +14,40 @@ export const options = { title: "Transitions" };
 const WINDOW = 300;
 const CANDLE_WIDTH = 15;
 
-type Example = "mode" | "crossfade";
+type Example = "mode" | "crossfade" | "snap" | "candleWidth";
 
 const EXAMPLE_OPTIONS: { value: Example; label: string }[] = [
   { value: "mode", label: "Line ↔ Candle (mode)" },
   { value: "crossfade", label: "Cross-fade (transition)" },
+  { value: "snap", label: "Snap on timeframe (snapKey)" },
+  { value: "candleWidth", label: "Candle resize (candleLerpSpeed)" },
 ];
+
+// Two candle bucket sizes (seconds) for the candleLerpSpeed example. Switching
+// re-buckets the OHLC (fewer / fatter ⇄ more / thinner bars) — the moment the
+// candle bodies ease (or snap) to their new width.
+type Bucket = 15 | 30;
+
+const BUCKET_OPTIONS: { value: Bucket; label: string }[] = [
+  { value: 15, label: "15s" },
+  { value: 30, label: "30s" },
+];
+
+// Three timeframes (visible window in seconds) for the snapKey example — all fit
+// inside the simulated history span so each window is fully backed by data.
+type Timeframe = "1m" | "2m" | "5m";
+
+const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
+  { value: "1m", label: "1m" },
+  { value: "2m", label: "2m" },
+  { value: "5m", label: "5m" },
+];
+
+const TIMEFRAME_WINDOW: Record<Timeframe, number> = {
+  "1m": 60,
+  "2m": 120,
+  "5m": 300,
+};
 
 type Mode = "line" | "candle";
 
@@ -40,12 +68,24 @@ export default function TransitionsScreen() {
   const [mode, setMode] = useState<Mode>("line");
   const [accent, setAccent] = useState<Accent>("blue");
   const [keepMounted, setKeepMounted] = useState(true);
+  // `transitions={false}` → instant reveal + instant line↔candle crossfade.
+  const [instant, setInstant] = useState(false);
+  // snapKey example: a timeframe selector + a toggle for whether switching it
+  // snaps the framing (snapKey set) or eases into it (snapKey omitted).
+  const [timeframe, setTimeframe] = useState<Timeframe>("5m");
+  const [snap, setSnap] = useState(true);
+  // candleLerpSpeed example: a bucket selector + a toggle for whether a width
+  // change snaps in one frame (candleLerpSpeed: 1) or eases (the 0.08 default).
+  const [bucket, setBucket] = useState<Bucket>(15);
+  const [candleSnap, setCandleSnap] = useState(true);
 
   const { data, value, candles, liveCandle } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: true,
     tradeStream: false,
-    candleWidth: CANDLE_WIDTH,
+    // The candleWidth example drives the live re-bucketing from `bucket`; every
+    // other example uses the fixed CANDLE_WIDTH seed.
+    candleWidth: example === "candleWidth" ? bucket : CANDLE_WIDTH,
     // Dense seed (fine "1m" sampling over the window) so the candle side of the
     // morph shows real bodies + wicks rather than flat one-point dojis.
     historySpanSeconds: WINDOW,
@@ -76,7 +116,43 @@ export default function TransitionsScreen() {
             accentColor={ACCENT}
             theme={APP_THEME}
             timeWindow={WINDOW}
+            transitions={instant ? false : undefined}
             accessibilityLabel={`Price ${mode} chart`}
+            scrub={false}
+          />
+        ) : example === "snap" ? (
+          // Snap-on-timeframe: a high smoothing keeps live ticks gliding, while
+          // `snapKey={timeframe}` makes a window change land in one frame. Toggle
+          // Snap off (snapKey omitted) to feel the framing slide instead.
+          <LiveChart
+            data={data}
+            value={value}
+            accentColor={ACCENT}
+            theme={APP_THEME}
+            timeWindow={TIMEFRAME_WINDOW[timeframe]}
+            smoothing={0.4}
+            snapKey={snap ? timeframe : undefined}
+            transitions={{ reveal: 0 }}
+            accessibilityLabel={`Price chart, ${timeframe} window`}
+            scrub={false}
+          />
+        ) : example === "candleWidth" ? (
+          // Candle-width resize: switching the bucket re-buckets the OHLC (the
+          // candle count + width both change). With Instant on, the bodies snap to
+          // the new width in one frame (candleLerpSpeed: 1); off uses the 0.08
+          // default ease, the "fat → thin" slide from #176.
+          <LiveChart
+            data={data}
+            value={value}
+            mode="candle"
+            candles={candles}
+            liveCandle={liveCandle}
+            candleWidth={bucket}
+            accentColor={ACCENT}
+            theme={APP_THEME}
+            timeWindow={WINDOW}
+            transitions={{ candleLerpSpeed: candleSnap ? 1 : undefined }}
+            accessibilityLabel={`Candle chart, ${bucket}s buckets`}
             scrub={false}
           />
         ) : (
@@ -125,9 +201,62 @@ export default function TransitionsScreen() {
             value={mode}
             onChange={setMode}
           />
+          <ControlRow label="transitions">
+            {/* transitions={false} → instant reveal + instant line↔candle switch. */}
+            <ToggleChip
+              label="Instant (no animation)"
+              value={instant}
+              onChange={setInstant}
+            />
+          </ControlRow>
           <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
             One LiveChart with a toggled mode — the engine morphs line↔candle and
-            the y-axis eases between the two ranges (no re-reveal).
+            the y-axis eases between the two ranges (no re-reveal). Flip Instant
+            ({`transitions={false}`}) to switch with no animation.
+          </Text>
+        </>
+      ) : example === "snap" ? (
+        <>
+          <ChipRow
+            label="Timeframe"
+            options={TIMEFRAME_OPTIONS}
+            value={timeframe}
+            onChange={setTimeframe}
+          />
+          <ControlRow label="snapKey">
+            <ToggleChip
+              label="Snap on change"
+              value={snap}
+              onChange={setSnap}
+            />
+          </ControlRow>
+          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+            Switch the timeframe. With Snap on ({`snapKey={timeframe}`}) the window
+            and y-range jump to the new framing in one frame; live ticks still
+            glide ({`smoothing={0.4}`}). Toggle Snap off to feel the same change
+            slide in instead — that slide is the easing, not a transition.
+          </Text>
+        </>
+      ) : example === "candleWidth" ? (
+        <>
+          <ChipRow
+            label="Bucket"
+            options={BUCKET_OPTIONS}
+            value={bucket}
+            onChange={setBucket}
+          />
+          <ControlRow label="transitions.candleLerpSpeed">
+            <ToggleChip
+              label="Instant (candleLerpSpeed: 1)"
+              value={candleSnap}
+              onChange={setCandleSnap}
+            />
+          </ControlRow>
+          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+            Switch the Bucket to re-aggregate the candles. With Instant on
+            ({`transitions={{ candleLerpSpeed: 1 }}`}) the bodies resize in one
+            frame; toggle it off for the default 0.08 ease — the slow “fat → thin”
+            slide from #176. Independent of {`snapKey`} / {`smoothing`}.
           </Text>
         </>
       ) : (

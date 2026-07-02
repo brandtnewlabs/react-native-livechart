@@ -153,6 +153,22 @@ provided; everything else has a default.
   ```tsx
   markerCluster={{ overlap: 0.75, maxBeforeGroup: 8 }}
   ```
+
+  **Custom collapsed look** — by default a collapsed group draws a round count
+  badge (`groupBadge: "count"`). Two ways to customize it:
+  - `groupBadge: "marker"` — draw the **representative marker's own glyph** (its
+    `image` / `icon` / `pill` / `kind`), e.g. a run of buy pills → a buy pill.
+  - `groupBadge: { image }` (or `{ icon, pill, color }`) — a **dedicated badge you
+    supply** ([`MarkerGroupBadge`](/api-reference/types#config-objects)), independent
+    of the members — e.g. tiny dots that collapse into a distinct "Buy 5" image.
+
+  Add `showGroupCount` to stamp the member count in the glyph's corner. All are
+  Skia-drawn in the same batch as every other marker (not a `renderMarker` RN
+  overlay).
+
+  ```tsx
+  markerCluster={{ mode: "stacked", groupBadge: { image: buy5Badge }, showGroupCount: true }}
+  ```
 </ParamField>
 
 <ParamField body="renderMarker" type="(marker: Marker, ctx: MarkerRenderContext) => ReactElement | null">
@@ -365,20 +381,49 @@ provided; everything else has a default.
   Freeze scrolling; resume catches up to real time.
 </ParamField>
 
-<ParamField body="loading" type="boolean">
-  Breathing-line loading shell until data is ready.
+<ParamField body="loading" type="boolean | LoadingConfig">
+  Breathing-line loading shell until data is ready. `true` uses the defaults; pass
+  a [`LoadingConfig`](/api-reference/types#loadingconfig) to restyle it (`color`,
+  `strokeWidth`, `amplitude`, `speed`). `false` / omitted is "not loading". The
+  loading→live reveal duration is set via the `transitions` prop below — see
+  [Transitions](/guides/transitions).
+</ParamField>
+
+<ParamField body="transitions" type="boolean | TransitionConfig">
+  Tune or disable the built-in transition animations. `true` / omitted keeps the
+  defaults; `false` makes them instant (no grow-in when data appears or the
+  timeframe changes, no candle↔line crossfade, candle width snaps); a
+  [`TransitionConfig`](/api-reference/types#config-objects) sets per-transition
+  durations in ms — `reveal` (default `600`) and `mode` (default `300`), `0` to
+  snap — plus `candleLerpSpeed` (default `0.08`, `1` = instant), the per-frame
+  speed at which candle bodies resize when `candleWidth` changes (a timeframe /
+  bucket switch). Live value tracking is governed separately by `smoothing`, and
+  static-entry suppression by `static`. See [Transitions](/guides/transitions).
 </ParamField>
 
 <ParamField body="static" type="boolean" default="false">
   Render once with no per-frame animation loops — engine, degen, trades, candles,
-  markers, pulse, and entry reveal are all disabled, and scrubbing is off. Keeps
-  many small charts cheap when you render a list or grid of sparklines. Frame the
-  data edge-to-edge with `timeWindow` + `nowOverride`. See the
+  markers, pulse, and entry reveal are all disabled. `scrub` / `scrubAction` stay
+  available, though: they're on-demand touch gestures with no per-frame cost, so a
+  still chart costs nothing at rest yet is still scrubbable on touch. Keeps many
+  small charts cheap when you render a list or grid of sparklines. Frame the data
+  edge-to-edge with `timeWindow` + `nowOverride`. See the
   [Sparklines guide](/guides/sparklines).
 </ParamField>
 
 <ParamField body="smoothing" type="number" default="0.08">
   Value-lerp speed (0 = frozen, 1 = instant).
+</ParamField>
+
+<ParamField body="snapKey" type="string | number">
+  Snap the framing (time window, Y-range, value) to its target in one frame
+  whenever this key changes — **without** giving up smooth live ticks. On a
+  timeframe / dataset switch the framing otherwise eases over `smoothing`, which
+  reads as a slide; bump `snapKey` (e.g. to the current timeframe id, or a counter
+  you increment when swapping `data` / `candles`) and the next frame jumps to the
+  new framing, then normal `smoothing` resumes. Unlike `transitions` (opacity only)
+  and `static` (no live loop), this settles only the geometry and only for one
+  frame. See [Transitions](/guides/transitions#snap-on-a-timeframe-or-data-change).
 </ParamField>
 
 <ParamField body="exaggerate" type="boolean" default="false">

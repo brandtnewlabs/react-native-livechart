@@ -140,4 +140,77 @@ describe("MarkerOverlay", () => {
     }
     renderOverlay(burst, { cluster: stacked });
   });
+
+  // #165: a collapsed group can draw the representative marker's own glyph
+  // (its icon/pill/image/kind) instead of the round count badge.
+  it("draws the representative glyph for a collapsed group with groupBadge: marker", () => {
+    const markerBadge = resolveMarkerCluster({
+      mode: "stacked",
+      groupBadge: "marker",
+    });
+    const burst: Marker[] = [];
+    for (let i = 0; i < 9; i++) {
+      burst.push({
+        id: `buy${i}`,
+        time: 999,
+        kind: "trade",
+        value: 50,
+        icon: "+",
+        pill: true,
+        color: "#16a34a",
+        side: "below",
+      });
+    }
+    renderOverlay(burst, { cluster: markerBadge });
+  });
+
+  it("overlays a corner count on the representative glyph with showGroupCount", () => {
+    const markerCount = resolveMarkerCluster({
+      mode: "stacked",
+      groupBadge: "marker",
+      showGroupCount: true,
+    });
+    const burst: Marker[] = [];
+    for (let i = 0; i < 12; i++) {
+      burst.push({
+        id: `sell${i}`,
+        time: 999,
+        kind: "trade",
+        value: 50,
+        icon: "−",
+        pill: true,
+        color: "#dc2626",
+        side: "above",
+      });
+    }
+    renderOverlay(burst, { cluster: markerCount });
+  });
+
+  // #165 (dedicated badge): a collapsed group can draw a custom group-only glyph
+  // supplied via `groupBadge` (object form), independent of the member markers.
+  it("draws a dedicated group badge from the groupBadge object form", () => {
+    const dedicated = resolveMarkerCluster({
+      mode: "stacked",
+      groupBadge: { icon: "★", pill: true, color: "#a855f7" },
+      showGroupCount: true,
+    });
+    const burst: Marker[] = [];
+    for (let i = 0; i < 9; i++) {
+      // Members are plain trade dots — the group badge is intentionally distinct.
+      burst.push({ id: `d${i}`, time: 999, kind: "trade", value: 50, side: "above" });
+    }
+    renderOverlay(burst, { cluster: dedicated });
+  });
+
+  it("falls back to the count badge when a group-badge object has no image/icon", () => {
+    const empty = resolveMarkerCluster({
+      mode: "stacked",
+      groupBadge: {} as never,
+    });
+    const burst: Marker[] = [];
+    for (let i = 0; i < 9; i++) {
+      burst.push({ id: `e${i}`, time: 999, kind: "trade", value: 50, side: "above" });
+    }
+    renderOverlay(burst, { cluster: empty });
+  });
 });

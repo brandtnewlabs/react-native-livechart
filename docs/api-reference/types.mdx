@@ -102,6 +102,19 @@ interface MarkerClusterConfig {
   direction?: "horizontal" | "vertical"; // fan sideways (default) or pile into a column
   overlap?: number;        // 0 (touching) – 1 (stacked); default 0.75
   maxBeforeGroup?: number; // collapse a run past this many; default 5
+  groupBadge?: "count" | "marker" | MarkerGroupBadge; // collapsed look: count circle
+                          // (default), the representative marker's own glyph, or a
+                          // dedicated custom badge you supply (object form)
+  showGroupCount?: boolean; // with a non-count badge, stamp the count in the corner; default false
+}
+// A dedicated badge for a collapsed cluster — your own glyph, independent of the
+// members (set as groupBadge). Needs image or icon. @experimental
+interface MarkerGroupBadge {
+  image?: SkImage; // custom Skia image (precedence over icon)
+  icon?: string;   // text/emoji glyph (when image unset)
+  color?: string;  // icon / pill color; defaults to a palette accent
+  pill?: boolean;  // wrap the icon in a filled circular badge
+  size?: number;   // glyph box size in px; default 16
 }
 
 interface TradeEvent {
@@ -316,6 +329,7 @@ interface ScrubConfig {
   tooltipMargin?: number; // gap (px) to the pinned plot edge (top for side/top, bottom for bottom); default 8
   tooltipShowValue?: boolean; tooltipShowTime?: boolean; // default both true; drop a row (e.g. date-only)
   panGestureDelay?: number; // press-and-hold ms before scrubbing activates; default 0
+  hideOverlaysOnScrub?: boolean; // fade markers + reference lines out while scrubbing; default false
 }
 // Order-ticket mode (scrubAction). Opt-in — default off.
 interface ScrubActionConfig {
@@ -370,6 +384,19 @@ interface TimeScrollConfig {
 // Tunes the return-to-live glide (the `returnToLive` prop). @experimental
 interface ReturnToLiveConfig {
   duration?: number; // glide duration (ms) back to live; default 450 (0 = instant snap)
+}
+// Tune/disable the built-in transition animations — the object form of `transitions`.
+interface TransitionConfig {
+  reveal?: number;          // grow-in/collapse on data appear, timeframe change, candle→line; default 600 (0 = snap)
+  mode?: number;            // candle↔line crossfade (single-series LiveChart only); default 300 (0 = snap)
+  candleLerpSpeed?: number; // candle-width ease speed (0–1, like smoothing); candle mode; default 0.08 (1 = instant resize)
+}
+// Styling for the breathing loading shell — the object form of `loading`.
+interface LoadingConfig {
+  color?: string;          // squiggle + skeleton color; default theme gridLine
+  strokeWidth?: number;    // squiggle stroke width; default the chart line strokeWidth
+  amplitude?: number;      // base breathing-wave height (px); default 14
+  speed?: number;          // breathing-wave speed multiplier; default 1 (0 freezes)
 }
 // Pinch-to-zoom the visible time window (two-finger, focal-anchored). @experimental
 interface ZoomConfig {

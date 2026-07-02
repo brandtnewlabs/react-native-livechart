@@ -770,4 +770,85 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       expect(live.displayValues[0]).toBe(99);
     });
   });
+
+  describe("snap (one-shot settle)", () => {
+    const seriesAB = [
+      {
+        id: "a",
+        data: [
+          { time: 980, value: 10 },
+          { time: 1000, value: 12 },
+        ],
+        value: 20,
+        color: "#00f",
+      },
+      {
+        id: "b",
+        data: [
+          { time: 980, value: 50 },
+          { time: 1000, value: 55 },
+        ],
+        value: 60,
+        color: "#f00",
+      },
+    ];
+
+    it("snaps window, range, and per-series tips to target in one frame", () => {
+      // Pre-seed the tips away from their targets (the tick otherwise seeds an
+      // empty array straight to each series' value, leaving nothing to ease).
+      const s = {
+        ...baseMulti(),
+        displayValues: [0, 0],
+        opacities: [1, 1],
+        displayMin: 0,
+        displayMax: 1000,
+        displayWindow: 60,
+      };
+      tickLiveChartSeriesEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.08,
+        exaggerate: false,
+        referenceValue: undefined,
+        series: seriesAB,
+        nowSeconds: 1000,
+        snap: true,
+      });
+      // Tips jump straight to each series' live value (20, 60), not eased from it.
+      expect(s.displayValues[0]).toBe(20);
+      expect(s.displayValues[1]).toBe(60);
+      // Window snaps to the configured 30; range snaps to bracket the tips.
+      expect(s.displayWindow).toBe(30);
+      expect(s.displayMax).toBeLessThan(200); // shrunk from 1000 in one frame
+      expect(s.displayMin).toBeLessThanOrEqual(20);
+    });
+
+    it("eases (does not snap) without the flag", () => {
+      const s = {
+        ...baseMulti(),
+        displayValues: [0, 0],
+        opacities: [1, 1],
+        displayMin: 0,
+        displayMax: 1000,
+        displayWindow: 60,
+      };
+      tickLiveChartSeriesEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.08,
+        exaggerate: false,
+        referenceValue: undefined,
+        series: seriesAB,
+        nowSeconds: 1000,
+      });
+      expect(s.displayValues[0]).toBeGreaterThan(0); // still easing up from 0
+      expect(s.displayValues[0]).toBeLessThan(20); // ...but not yet at the target
+      expect(s.displayWindow).toBeGreaterThan(30);
+      expect(s.displayMax).toBeGreaterThan(200);
+    });
+  });
 });

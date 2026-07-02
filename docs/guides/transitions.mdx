@@ -34,6 +34,108 @@ const [mode, setMode] = useState<"line" | "candle">("line");
 />;
 ```
 
+## Tuning or disabling the animations (`transitions`)
+
+Two built-in animations play automatically: the **reveal** (the grow-in when data first appears —
+also on a timeframe change, and when a line chart's data appears) and the **mode** crossfade
+(candle↔line). The `transitions` prop tunes or turns them off:
+
+```tsx
+<LiveChart … transitions={false} />                 // both instant — no grow-in, no crossfade
+<LiveChart … transitions={{ reveal: 0 }} />         // snap the grow-in, keep the 300ms crossfade
+<LiveChart … transitions={{ reveal: 0, mode: 0 }} /> // same as transitions={false}
+<LiveChart … transitions={{ mode: 500 }} />         // slower crossfade, default grow-in
+```
+
+- **`reveal`** (default `600` ms) — the most common one to disable. With `reveal: 0` the chart no
+  longer "grows in" on a timeframe change, and switching **candle → line** shows the line at once
+  instead of animating it in.
+- **`mode`** (default `300` ms) — the candle↔line crossfade. Single-series `LiveChart` only
+  (multi-series is always lines).
+- **`candleLerpSpeed`** (default `0.08`, candle mode only) — the per-frame speed at which candle
+  **bodies resize** when `candleWidth` changes. Same units as `smoothing` (`0`–`1`); `1` snaps in
+  one frame. See [Candle-width resize](#candle-width-resize-on-a-timeframe-change) below.
+
+<Note>
+  `transitions` covers the **entry / mode** animations only. The live value's easing toward its
+  target is the separate `smoothing` prop (`1` = instant), and `static` suppresses all per-frame
+  loops for a one-shot render.
+</Note>
+
+The same `transitions` prop works on `LiveChartSeries` (only `reveal` applies there).
+
+## Candle-width resize on a timeframe change
+
+In candle mode the candle **body width** eases toward `candleWidth` each frame, so when you switch
+the bucket size (e.g. `1m → 1D`) the candles glide from "fat → thin" over ~half a second. That
+ease is independent of the engine framing, so `snapKey`, `smoothing`, and `reveal` / `mode` don't
+touch it. Control it with `transitions.candleLerpSpeed`:
+
+```tsx
+<LiveChart
+  mode="candle"
+  candles={candles}
+  candleWidth={bucketFor(tf)}                 // changes with the timeframe
+  transitions={{ candleLerpSpeed: 1 }}        // resize in one frame — no "fat → thin" slide
+/>;
+```
+
+- **`1`** — instant: the bodies jump to the new width the frame `candleWidth` changes.
+- **`0.08`** (default) — the original gentle resize.
+- **lower** — slower; **`0`** freezes the width (it never tracks `candleWidth`).
+
+Setting `transitions={false}` also snaps the width (it makes every transition instant), so
+`transitions={{ reveal: 0, mode: 0, candleLerpSpeed: 1 }}` and `transitions={false}` resize candles
+the same way.
+
+## Snap on a timeframe or data change
+
+`transitions` and `reveal` only animate **opacity** — the grow-in fade and the candle↔line
+crossfade. They do **not** govern the chart's *geometry*. When you change `timeWindow` (switch
+timeframe) or swap in a new `data` / `candles` array for a different range, the time window and
+Y-range **ease** toward their new targets over `smoothing`. With `smoothing < 1` that ease is a
+visible slide — and `transitions={{ reveal: 0 }}` does not stop it, because the slide isn't a
+transition.
+
+The two blunt ways to remove the slide each cost you something on a live chart: `smoothing={1}`
+kills the smooth easing of live ticks, and `static` turns off live updates entirely. `snapKey`
+is the middle option — **snap once when the view changes, keep smoothing for live ticks**:
+
+```tsx
+const [tf, setTf] = useState<"1H" | "1D" | "1W">("1H");
+
+<LiveChart
+  data={data}
+  value={value}
+  timeWindow={windowFor(tf)}
+  smoothing={0.4}   // live ticks still glide
+  snapKey={tf}      // ...but a timeframe switch lands in one frame
+/>;
+```
+
+Whenever `snapKey` changes, the **next frame** sends the time window, Y-range, and value straight
+to their targets (no lerp), then normal `smoothing` resumes. Pass any value that changes once per
+discrete view change — the current timeframe id (above), or a counter you bump when you replace the
+dataset:
+
+```tsx
+const [rev, setRev] = useState(0);
+
+function loadRange(next: LiveChartPoint[]) {
+  data.value = next;
+  setRev((r) => r + 1); // snap the framing to the new range
+}
+
+<LiveChart data={data} value={value} snapKey={rev} smoothing={0.4} />;
+```
+
+<Note>
+  `snapKey` settles only the **geometry**, and only for that one frame — it leaves the
+  time-scroll position untouched and never disables the live loop. It works the same on
+  `LiveChartSeries` (the per-series tips snap too). Omit it to keep easing on every change
+  (the default).
+</Note>
+
 ## Cross-fading instances
 
 To switch between *separate* charts — different symbols, timeframes, or accent treatments — wrap
