@@ -126,6 +126,7 @@ function useLiveChartSeriesController({
   timeWindow = 30,
   paused = false,
   loading = false,
+  loadingAxisLabels = true,
   smoothing = 0.08,
   exaggerate = false,
   nonNegative = false,
@@ -460,6 +461,7 @@ function useLiveChartSeriesController({
     accessibilityLabel,
     accessibilityRole,
     emptyText,
+    loadingAxisLabels,
     formatValue,
     onSeriesToggle,
     // configs
@@ -548,6 +550,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     renderMarker,
     series,
     emptyText,
+    loadingAxisLabels,
     metricsCfg,
   } = model;
 
@@ -680,6 +683,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         strokeWidth={strokeWidth}
         badge={false}
         emptyMetrics={metricsCfg.emptyState}
+        showAxisLabels={loadingAxisLabels}
       />
     </Group>
   );

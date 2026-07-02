@@ -208,6 +208,7 @@ function useLiveChartController({
   timeWindow = 30,
   paused = false,
   loading = false,
+  loadingAxisLabels = true,
   // `static` is a reserved word — alias it so the destructure parses.
   static: isStatic = false,
   smoothing = 0.08,
@@ -1033,6 +1034,7 @@ function useLiveChartController({
     accessibilityLabel,
     accessibilityRole,
     emptyText,
+    loadingAxisLabels,
     showValue,
     valueMomentumColor,
     lineProp,
@@ -1311,6 +1313,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     markerClusterCfg,
     renderMarker,
     emptyText,
+    loadingAxisLabels,
     metricsCfg,
     layoutWidth,
     yAxisCfg,
@@ -1570,6 +1573,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         badgeTail={badgeCfg?.tail ?? true}
         badgeMetrics={metricsCfg.badge}
         emptyMetrics={metricsCfg.emptyState}
+        showAxisLabels={loadingAxisLabels}
       />
     </Group>
   );

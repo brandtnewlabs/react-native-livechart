@@ -1561,6 +1561,12 @@ export interface LiveChartCoreProps {
    */
   loading?: boolean;
   /**
+   * Whether the loading shell draws the skeleton Y-axis label placeholders (the
+   * short rounded dashes centred in the gutter). Set `false` to show only the
+   * breathing squiggle with no placeholder ticks. Default `true`.
+   */
+  loadingAxisLabels?: boolean;
+  /**
    * Value-lerp speed — how quickly the drawn value, time window, and Y-range chase
    * their targets each frame (0 = frozen, 1 = instant). Equivalent to liveline's
    * `lerpSpeed`. Default `0.08`.
