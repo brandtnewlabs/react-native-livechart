@@ -55,6 +55,33 @@ if (typeof reanimated.setUpTests === "function") {
   reanimated.setUpTests();
 }
 
+// react-native-reanimated 4.5 / react-native-worklets 0.10 test shim.
+// In __DEV__ (Jest), `scheduleOnUI` eagerly serializes every worklet it schedules
+// — including the mapper reanimated starts for `useAnimatedStyle`/`useAnimatedProps`.
+// That mapper's view descriptor references the animated view: on device it's a
+// native view tag (a number, trivially cloneable), but under react-test-renderer
+// it's a JS component *instance* whose constructor is "View"/"Text"/"TextInput",
+// which the worklets serializer can't clone → it throws "Cannot copy value of type
+// `View`" and any component that mounts an Animated.View fails to render. This is a
+// Jest-only artifact (the real app serializes fine — see the SDK 57 upgrade notes).
+//
+// worklets consults a global custom-serializer registry immediately before it would
+// throw (createSerializable in react-native-worklets). Register a lenient entry that
+// packs any React component instance into an inert stub, so the dev-only eager
+// serialization becomes a no-op. Tests never drive the UI thread (SharedValues are
+// plain doubles), so stubbing the descriptor is unobservable.
+globalThis.__customSerializationRegistry =
+  globalThis.__customSerializationRegistry || [];
+globalThis.__customSerializationRegistry.push({
+  name: "reactTestRendererInstanceStub",
+  determine: (value) =>
+    value != null &&
+    typeof value === "object" &&
+    ("_reactInternals" in value || "_reactInternalInstance" in value),
+  pack: () => ({}),
+  unpack: () => ({}),
+});
+
 jest.mock("@shopify/react-native-skia", () => {
   const React = require("react");
   const { View } = require("react-native");
