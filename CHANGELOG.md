@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Crash `[Worklets] Cannot copy value of type PanGesture` on
+  `react-native-worklets` ≥ 0.10** (Reanimated ≥ 4.5, Expo SDK 57, RN 0.86).
+  Several `"worklet"` closures in `LiveChart` / `LiveChartSeries` referenced
+  `crosshair.scrubActive`, which made the worklets Babel plugin capture the whole
+  `crosshair` object — including the non-serializable `gesture` (`Gesture.Pan()`)
+  it also returns. Worklets 0.10 removed the silent fallback for unknown class
+  instances and now throws on serialization, so scrub + time-scroll/pinch charts
+  crashed on mount. The affected closures now capture only the hoisted
+  `SharedValue`; behavior is unchanged. Latent (non-crashing) on worklets 0.9.x.
+
 ## [4.7.0] - 2026-07-01
 
 ### Added
