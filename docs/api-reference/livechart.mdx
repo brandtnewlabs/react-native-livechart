@@ -384,8 +384,9 @@ provided; everything else has a default.
 <ParamField body="loading" type="boolean | LoadingConfig">
   Breathing-line loading shell until data is ready. `true` uses the defaults; pass
   a [`LoadingConfig`](/api-reference/types#loadingconfig) to restyle it (`color`,
-  `strokeWidth`, `amplitude`, `speed`). `false` / omitted is "not loading". The
-  loading→live reveal duration is set via the `transitions` prop below — see
+  `strokeWidth`, `amplitude`, `speed`, and `axisLabels` to toggle the skeleton
+  Y-axis placeholders). `false` / omitted is "not loading". The loading→live reveal
+  duration is set via the `transitions` prop below — see
   [Transitions](/guides/transitions).
 </ParamField>
 

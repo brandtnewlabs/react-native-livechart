@@ -320,6 +320,29 @@ describe("LoadingOverlay", () => {
     render(<Fixture />);
   });
 
+  it("renders in loading state without skeleton axis labels (showAxisLabels=false)", () => {
+    function Fixture() {
+      const morphT = useSharedValue(0);
+      const isLoading = useSharedValue(true);
+      const isEmpty = useSharedValue(false);
+      return (
+        <LoadingOverlay
+          engine={makeLoadingEngine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          morphT={morphT}
+          isLoading={isLoading}
+          isEmpty={isEmpty}
+          emptyText="No data"
+          strokeWidth={2}
+          showAxisLabels={false}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
   it("renders with zero canvas size (early return path)", () => {
     function Fixture() {
       const morphT = useSharedValue(0.5);

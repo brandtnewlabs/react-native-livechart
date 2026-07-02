@@ -644,6 +644,8 @@ export interface ResolvedLoadingConfig {
   amplitude: number;
   /** Breathing-wave speed multiplier. */
   speed: number;
+  /** Draw the skeleton Y-axis label placeholders. */
+  axisLabels: boolean;
 }
 
 const LOADING_DEFAULTS: ResolvedLoadingConfig = {
@@ -651,6 +653,7 @@ const LOADING_DEFAULTS: ResolvedLoadingConfig = {
   strokeWidth: undefined,
   amplitude: LOADING_WAVE_AMPLITUDE,
   speed: LOADING_WAVE_SPEED,
+  axisLabels: true,
 };
 
 /**

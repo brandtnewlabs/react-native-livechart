@@ -629,6 +629,7 @@ describe("resolveLoading", () => {
     strokeWidth: undefined,
     amplitude: 14,
     speed: 1,
+    axisLabels: true,
   };
 
   it("returns null for undefined / false (not loading)", () => {
@@ -653,6 +654,13 @@ describe("resolveLoading", () => {
       ...DEFAULTS,
       amplitude: 22,
       speed: 1.5,
+    });
+  });
+
+  it("toggles the skeleton axis-label placeholders off", () => {
+    expect(resolveLoading({ axisLabels: false })).toEqual({
+      ...DEFAULTS,
+      axisLabels: false,
     });
   });
 });

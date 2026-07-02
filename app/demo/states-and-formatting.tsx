@@ -47,9 +47,18 @@ export default function StatesScreen() {
   const [onePoint, setOnePoint] = useState(false);
   const [loading, setLoading] = useState(false);
   const [styledLoading, setStyledLoading] = useState(false);
+  const [axisLabels, setAxisLabels] = useState(true);
   const [formatMode, setFormatMode] = useState<FormatMode>("default");
 
   const customFormat = formatMode === "custom";
+
+  // Resolve the loading prop from the style + axis-label toggles below. `axisLabels`
+  // rides on the LoadingConfig, so `false` drops the skeleton Y-axis placeholders.
+  const loadingCfg: boolean | LoadingConfig = styledLoading
+    ? { ...STYLED_LOADING, axisLabels }
+    : axisLabels
+      ? true
+      : { axisLabels: false };
 
   const emptyData = useSharedValue<LiveChartPoint[]>([]);
   const emptyValue = useSharedValue(100);
@@ -80,7 +89,7 @@ export default function StatesScreen() {
           value={chartValue}
           accentColor={ACCENT}
           theme={APP_THEME}
-          loading={loading && (styledLoading ? STYLED_LOADING : true)}
+          loading={loading && loadingCfg}
           emptyText={showEmptyShell ? "Nothing to see here" : "No data"}
           formatValue={customFormat ? formatValueUsd : undefined}
           formatTime={customFormat ? formatTimeIsoUtcFragment : undefined}
@@ -123,6 +132,11 @@ export default function StatesScreen() {
           label="Styled shell"
           active={styledLoading}
           onPress={() => setStyledLoading((s) => !s)}
+        />
+        <Chip
+          label="Axis labels"
+          active={axisLabels}
+          onPress={() => setAxisLabels((a) => !a)}
         />
       </ControlRow>
 

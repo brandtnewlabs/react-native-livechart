@@ -1150,6 +1150,7 @@ function useLiveChartController({
     loadingStrokeWidth: loadingCfg?.strokeWidth,
     loadingAmplitude: loadingCfg?.amplitude,
     loadingSpeed: loadingCfg?.speed,
+    loadingAxisLabels: loadingCfg?.axisLabels ?? true,
     // derived render values
     backgroundColor,
     gradientEnd,
@@ -1375,6 +1376,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     overlayScrubFade,
     renderMarker,
     emptyText,
+    loadingAxisLabels,
     metricsCfg,
     layoutWidth,
     yAxisCfg,
@@ -1641,6 +1643,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         badgeTail={badgeCfg?.tail ?? true}
         badgeMetrics={metricsCfg.badge}
         emptyMetrics={metricsCfg.emptyState}
+        showAxisLabels={loadingAxisLabels}
         lineColor={loadingLineColor}
         lineStrokeWidth={loadingStrokeWidth}
         waveAmplitude={loadingAmplitude}

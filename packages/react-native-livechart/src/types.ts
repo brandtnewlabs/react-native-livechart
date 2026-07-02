@@ -1668,6 +1668,12 @@ export interface LoadingConfig {
    * `<1` slower, `0` freezes it. Default `1`.
    */
   speed?: number;
+  /**
+   * Whether the shell draws the skeleton Y-axis label placeholders (the short
+   * rounded dashes centred in the gutter). Set `false` to show only the breathing
+   * squiggle with no placeholder ticks. Default `true`.
+   */
+  axisLabels?: boolean;
 }
 
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
@@ -1701,10 +1707,11 @@ export interface LiveChartCoreProps {
    *
    * `true` shows the shell with the defaults; pass a {@link LoadingConfig} to
    * restyle it — `color` / `strokeWidth` for the squiggle + skeleton, `amplitude`
-   * / `speed` for the breathing wave. `false` / omitted is "not loading". Toggle
-   * between the config and `false` as data loads (e.g. `loading={isLoading && cfg}`).
-   * The loading→live reveal duration is governed separately by
-   * {@link TransitionConfig.reveal} (the `transitions` prop).
+   * / `speed` for the breathing wave, `axisLabels` to toggle the skeleton
+   * placeholders. `false` / omitted is "not loading". Toggle between the config
+   * and `false` as data loads (e.g. `loading={isLoading && cfg}`). The loading→live
+   * reveal duration is governed separately by {@link TransitionConfig.reveal} (the
+   * `transitions` prop).
    */
   loading?: boolean | LoadingConfig;
   /**
