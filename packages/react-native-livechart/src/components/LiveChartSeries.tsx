@@ -531,6 +531,7 @@ function useLiveChartSeriesController({
     loadingStrokeWidth: loadingCfg?.strokeWidth,
     loadingAmplitude: loadingCfg?.amplitude,
     loadingSpeed: loadingCfg?.speed,
+    loadingAxisLabels: loadingCfg?.axisLabels ?? true,
     effectiveSeries,
     layoutHeight,
     onLayout,
@@ -599,6 +600,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     renderMarker,
     series,
     emptyText,
+    loadingAxisLabels,
     metricsCfg,
     loadingLineColor,
     loadingStrokeWidth,
@@ -738,6 +740,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         strokeWidth={strokeWidth}
         badge={false}
         emptyMetrics={metricsCfg.emptyState}
+        showAxisLabels={loadingAxisLabels}
         lineColor={loadingLineColor}
         lineStrokeWidth={loadingStrokeWidth}
         waveAmplitude={loadingAmplitude}

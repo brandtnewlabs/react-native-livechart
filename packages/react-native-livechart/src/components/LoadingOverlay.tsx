@@ -62,6 +62,7 @@ export function LoadingOverlay({
   badgeTail = true,
   badgeMetrics = BADGE_METRICS_DEFAULTS,
   emptyMetrics = EMPTY_STATE_METRICS_DEFAULTS,
+  showAxisLabels = true,
   lineColor,
   lineStrokeWidth,
   waveAmplitude = 14,
@@ -93,6 +94,8 @@ export function LoadingOverlay({
   badgeMetrics?: BadgeMetrics;
   /** Empty-state layout tokens. */
   emptyMetrics?: EmptyStateMetrics;
+  /** Draw the skeleton Y-axis label placeholders. Default `true`. */
+  showAxisLabels?: boolean;
 }) {
   // Same left-inset formula as GridOverlay (only used when badge=true)
   const leftInset =
@@ -268,38 +271,42 @@ export function LoadingOverlay({
       </Group>
 
       {/* Skeleton Y-axis label placeholders */}
-      <RoundedRect
-        x={lx}
-        y={ly0}
-        width={RECT_W}
-        height={RECT_H}
-        r={RECT_R}
+      {showAxisLabels ? (
+        <>
+          <RoundedRect
+            x={lx}
+            y={ly0}
+            width={RECT_W}
+            height={RECT_H}
+            r={RECT_R}
         color={loadingColor}
-      />
-      <RoundedRect
-        x={lx}
-        y={ly1}
-        width={RECT_W}
-        height={RECT_H}
-        r={RECT_R}
+          />
+          <RoundedRect
+            x={lx}
+            y={ly1}
+            width={RECT_W}
+            height={RECT_H}
+            r={RECT_R}
         color={loadingColor}
-      />
-      <RoundedRect
-        x={lx}
-        y={ly2}
-        width={RECT_W}
-        height={RECT_H}
-        r={RECT_R}
+          />
+          <RoundedRect
+            x={lx}
+            y={ly2}
+            width={RECT_W}
+            height={RECT_H}
+            r={RECT_R}
         color={loadingColor}
-      />
-      <RoundedRect
-        x={lx}
-        y={ly3}
-        width={RECT_W}
-        height={RECT_H}
-        r={RECT_R}
+          />
+          <RoundedRect
+            x={lx}
+            y={ly3}
+            width={RECT_W}
+            height={RECT_H}
+            r={RECT_R}
         color={loadingColor}
-      />
+          />
+        </>
+      ) : null}
 
       {/* Empty state label */}
       <SkiaText

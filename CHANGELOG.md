@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`LoadingConfig.axisLabels`** (`boolean`, default `true`). Set `false` to hide the
+  loading shell's skeleton Y-axis label placeholders and show only the breathing
+  squiggle. Resolves through `resolveLoading`, so it works on both `LiveChart` and
+  `LiveChartSeries` (`loading={{ axisLabels: false }}`). Thanks @dszym00.
+
 ### Fixed
 
 - **Crash `[Worklets] Cannot copy value of type PanGesture` on
