@@ -6,7 +6,7 @@
   "description": "High-performance live line and candlestick charts for React Native, built on Skia and Reanimated. Inspired by liveline (Benji Taylor).",
   "devDependencies": {
     "@types/react": "~19.2.14",
-    "react-native-worklets": "0.8.3",
+    "react-native-worklets": "0.10.0",
     "typescript": "~6.0.3"
   },
   "exports": {
