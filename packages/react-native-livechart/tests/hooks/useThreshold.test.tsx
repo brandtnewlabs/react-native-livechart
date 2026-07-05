@@ -94,4 +94,52 @@ describe("useThresholdSeries (time-varying)", () => {
     expect(result.current.screenPts.value).toEqual([]);
     expect(result.current.currentValue.value).toBeNaN();
   });
+
+  it("reads a live SharedValue series (threshold.series form)", () => {
+    const seriesSV = {
+      value: series,
+      get: () => series,
+    } as unknown as import("react-native-reanimated").SharedValue<
+      LiveChartPoint[]
+    >;
+    const { result } = renderHook(() =>
+      // Constant `value` placeholder — `series` wins.
+      useThresholdSeries(engine(), DEFAULT_PADDING, useSharedValue(0), seriesSV),
+    );
+    expect(result.current.samples.value).toHaveLength(THRESHOLD_SAMPLE_COUNT);
+    expect(result.current.currentValue.value).toBeCloseTo(55);
+    expect(result.current.visible.value).toBe(true);
+  });
+
+  it("extendToNow=false: clips at the last point and hides the badge past it", () => {
+    // Last point at t=950, now=1000 → the threshold ends mid-plot.
+    const ended: LiveChartPoint[] = [
+      { time: 900, value: 50 },
+      { time: 950, value: 50 },
+    ];
+    const { result } = renderHook(() =>
+      useThresholdSeries(engine(), DEFAULT_PADDING, ended, null, false),
+    );
+    // clipRightX = x of t=950: plotLeft + (950-900)/100 * plotWidth = 12 + 188.
+    expect(result.current.clipRightX.value).toBeCloseTo(200);
+    // Marker polyline stops at the clip X, not the plot right edge.
+    const pts = result.current.screenPts.value;
+    expect(pts[pts.length - 2]).toBeCloseTo(200);
+    // Badge hidden: "now" is past the series end.
+    expect(result.current.currentVisible.value).toBe(false);
+  });
+
+  it("extendToNow=true (default): no clip, badge shows", () => {
+    const ended: LiveChartPoint[] = [
+      { time: 900, value: 50 },
+      { time: 950, value: 50 },
+    ];
+    const { result } = renderHook(() =>
+      useThresholdSeries(engine(), DEFAULT_PADDING, ended),
+    );
+    expect(result.current.clipRightX.value).toBe(1e9);
+    const pts = result.current.screenPts.value;
+    expect(pts[pts.length - 2]).toBe(400 - DEFAULT_PADDING.right);
+    expect(result.current.currentVisible.value).toBe(true);
+  });
 });

@@ -20,11 +20,19 @@ const SPLIT_SKSL = `
 // and glides with the window so features move fluidly, frame to frame.
 uniform float sampleLeft;
 uniform float sampleRight;
+// X where the threshold ends (extendToNow: false → the last point's pixel-X,
+// else a huge sentinel). Fragments right of it paint restColor: the plain line
+// color for the stroke, transparent for the band.
+uniform float clipRight;
 uniform vec4 aboveColor; // straight-alpha rgba, 0..1
 uniform vec4 belowColor; // straight-alpha rgba, 0..1
+uniform vec4 restColor;  // straight-alpha rgba, 0..1
 uniform float samples[${THRESHOLD_SAMPLE_COUNT}];
 
 half4 main(vec2 xy) {
+  if (xy.x > clipRight) {
+    return half4(half3(restColor.rgb) * restColor.a, restColor.a);
+  }
   float span = sampleRight - sampleLeft;
   float u = span > 0.0 ? (xy.x - sampleLeft) / span : 0.0;
   u = clamp(u, 0.0, 1.0) * float(${THRESHOLD_SAMPLE_COUNT - 1});

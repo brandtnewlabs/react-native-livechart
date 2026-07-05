@@ -111,7 +111,7 @@ export function ThresholdBadgeOverlay({
   const { label, labelPosition, showValue } = cfg;
   const badgeBackground = palette.tooltipBg;
   const badgeBorderColor = cfg.color ?? palette.refLine;
-  const labelColor = cfg.color ?? palette.refLabel;
+  const labelColor = cfg.labelColor ?? cfg.color ?? palette.refLabel;
 
   // Font metrics are stable → read once (getMetrics allocates + crosses JSI).
   const { fontAscent, baselineOffset, pillH } = (() => {

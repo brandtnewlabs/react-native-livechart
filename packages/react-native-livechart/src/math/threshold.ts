@@ -212,6 +212,50 @@ export function sampleThresholdYAt(
 }
 
 /**
+ * Min/max of a threshold series over the visible window `[now - windowSecs,
+ * now]` — the values folded into the engine's Y-range fit when
+ * `threshold.includeInRange` is set (like reference-line values). Uses the
+ * clamped window-edge values plus every interior point; with `extendToNow` off,
+ * the window end clamps to the series' last point (nothing projects forward).
+ * Writes `[min, max]` into `out` and returns it, or returns null when the
+ * series is empty / entirely outside the effective window / non-finite.
+ */
+export function thresholdRangeMinMax(
+  points: LiveChartPoint[],
+  now: number,
+  windowSecs: number,
+  extendToNow: boolean,
+  out: [number, number],
+): [number, number] | null {
+  "worklet";
+  if (points.length === 0 || !(windowSecs > 0)) return null;
+  const tStart = now - windowSecs;
+  let tEnd = now;
+  if (!extendToNow) {
+    const lastT = points[points.length - 1].time;
+    if (lastT < tStart) return null;
+    if (lastT < tEnd) tEnd = lastT;
+  }
+  let mn = interpolateAtTime(points, tStart)!;
+  let mx = mn;
+  const vEnd = interpolateAtTime(points, tEnd)!;
+  if (vEnd < mn) mn = vEnd;
+  else if (vEnd > mx) mx = vEnd;
+  for (let i = 0; i < points.length; i++) {
+    const t = points[i].time;
+    if (t <= tStart) continue;
+    if (t >= tEnd) break;
+    const v = points[i].value;
+    if (v < mn) mn = v;
+    else if (v > mx) mx = v;
+  }
+  if (!Number.isFinite(mn) || !Number.isFinite(mx)) return null;
+  out[0] = mn;
+  out[1] = mx;
+  return out;
+}
+
+/**
  * True when any part of a threshold screen polyline crosses the plot: a vertex
  * inside it, or a segment whose endpoints straddle it (a step riser can jump
  * from below the bottom edge to above the top edge between two samples without

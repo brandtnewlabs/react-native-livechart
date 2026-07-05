@@ -408,6 +408,78 @@ describe("tickLiveChartEngineFrame", () => {
     expect(s.displayMin).toBeLessThan(0);
   });
 
+  it("folds a threshold series' window min/max into the range (includeInRange)", () => {
+    const s = baseState();
+    // Data sits at ~10; the threshold staircase spans 200..300 inside the
+    // window [970, 1000] — the range must expand to keep it on-plot.
+    tickLiveChartEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.2,
+      exaggerate: false,
+      referenceValue: undefined,
+      thresholdRangePoints: [
+        { time: 980, value: 200 },
+        { time: 990, value: 300 },
+      ],
+      targetValue: 10,
+      points: [{ time: 1000, value: 10 }],
+      nowSeconds: 1000,
+    });
+    expect(s.displayMax).toBeGreaterThanOrEqual(300 * 0.2 /* one lerp step */);
+    // Re-tick to convergence: the target max must cover the threshold.
+    for (let i = 0; i < 200; i++) {
+      tickLiveChartEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        thresholdRangePoints: [
+          { time: 980, value: 200 },
+          { time: 990, value: 300 },
+        ],
+        targetValue: 10,
+        points: [{ time: 1000, value: 10 }],
+        nowSeconds: 1000,
+      });
+    }
+    expect(s.displayMax).toBeGreaterThanOrEqual(300);
+  });
+
+  it("skips an off-window threshold series when extendToNow is false", () => {
+    const run = (extend: boolean) => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        // Series ended before the window start (970) …
+        thresholdRangePoints: [
+          { time: 900, value: 500 },
+          { time: 940, value: 500 },
+        ],
+        thresholdRangeExtendToNow: extend,
+        targetValue: 10,
+        points: [{ time: 1000, value: 10 }],
+        nowSeconds: 1000,
+      });
+      return s.displayMax;
+    };
+    // … so with extension it still holds 500 into the window and expands the
+    // range; without it, the range fits the data alone.
+    expect(run(true)).toBeGreaterThanOrEqual(500);
+    expect(run(false)).toBeLessThan(100);
+  });
+
   it("clamps the lower bound to 0 when nonNegative", () => {
     const s = baseState();
     tickLiveChartEngineFrame(s, {

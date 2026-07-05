@@ -48,6 +48,7 @@ import {
   resolveReturnToLiveMs,
   resolveSelectionDot,
   resolveThreshold,
+  THRESHOLD_FILL_OPACITY_DEFAULT,
   resolveTradeStream,
   resolveValueLine,
   resolveVolume,
@@ -114,6 +115,7 @@ import {
 } from "../theme";
 import type {
   LiveChartPalette,
+  LiveChartPoint,
   LiveChartProps,
   Marker,
   TradeEvent,
@@ -157,8 +159,6 @@ import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
 
-/** Translucent fill alpha for the threshold profit/loss band. */
-const THRESHOLD_FILL_OPACITY = 0.16;
 
 /** Stable empty grouping result (identity-stable so downstream worklets don't
  *  re-run) used when reference-line grouping is off. */
@@ -171,9 +171,9 @@ const EMPTY_NUMS: number[] = [];
 /**
  * Color stops for the threshold's hard-split vertical gradient. Both arrays pair
  * with the `[0, t, t, 1]` split positions: index 0–1 paint above the split,
- * 2–3 below. `stroke` is full-strength; `fill` is the same hues at
- * {@link THRESHOLD_FILL_OPACITY} for the band. Defaults to the palette's semantic
- * up-green / down-red when colors are omitted.
+ * 2–3 below. `stroke` is full-strength; `fill` is the same hues at the config's
+ * band opacity (`fill: { opacity }`, default `0.16`). Defaults to the palette's
+ * semantic up-green / down-red when colors are omitted.
  */
 function thresholdStops(
   cfg: ResolvedThresholdConfig,
@@ -183,8 +183,8 @@ function thresholdStops(
   const below = cfg.belowColor ?? palette.candleDown;
   const [ar, ag, ab] = parseColorRgb(above);
   const [br, bg, bb] = parseColorRgb(below);
-  const aboveFill = `rgba(${ar}, ${ag}, ${ab}, ${THRESHOLD_FILL_OPACITY})`;
-  const belowFill = `rgba(${br}, ${bg}, ${bb}, ${THRESHOLD_FILL_OPACITY})`;
+  const aboveFill = `rgba(${ar}, ${ag}, ${ab}, ${cfg.fillOpacity})`;
+  const belowFill = `rgba(${br}, ${bg}, ${bb}, ${cfg.fillOpacity})`;
   return {
     stroke: [above, above, below, below],
     fill: [aboveFill, aboveFill, belowFill, belowFill],
@@ -197,8 +197,8 @@ const THRESHOLD_FALLBACK_COLOR = [0, 0, 0, 1];
 /**
  * Above/below split colors as straight-alpha `[r, g, b, a]` vec4s (channels 0..1)
  * for the time-varying {@link ThresholdSplitShader}: full-strength `stroke*` for
- * the line, {@link THRESHOLD_FILL_OPACITY} `fill*` for the band — the vec4
- * equivalent of {@link thresholdStops}' gradient color array. Takes the already
+ * the line, band-opacity `fill*` for the band — the vec4 equivalent of
+ * {@link thresholdStops}' gradient color array. Takes the already
  * palette-defaulted color strings; an rgba() alpha carries into the stroke and
  * multiplies the band opacity (matching what the constant gradient's raw-string
  * stroke does).
@@ -206,6 +206,7 @@ const THRESHOLD_FALLBACK_COLOR = [0, 0, 0, 1];
 function thresholdSplitColorVecs(
   above: string,
   below: string,
+  fillOpacity: number,
 ): {
   strokeAbove: number[];
   strokeBelow: number[];
@@ -219,10 +220,13 @@ function thresholdSplitColorVecs(
   return {
     strokeAbove: [a[0], a[1], a[2], aa],
     strokeBelow: [b[0], b[1], b[2], ba],
-    fillAbove: [a[0], a[1], a[2], aa * THRESHOLD_FILL_OPACITY],
-    fillBelow: [b[0], b[1], b[2], ba * THRESHOLD_FILL_OPACITY],
+    fillAbove: [a[0], a[1], a[2], aa * fillOpacity],
+    fillBelow: [b[0], b[1], b[2], ba * fillOpacity],
   };
 }
+
+/** Transparent vec4 — the band shader's "threshold ended" rest color. */
+const TRANSPARENT_VEC4 = [0, 0, 0, 0];
 
 /**
  * Resolves props → configs → theme/layout → engine → per-frame derived values and
@@ -349,6 +353,9 @@ function useLiveChartController({
   // Threshold split is a line-mode feature (candle bodies carry their own up/down
   // colors), so it's inert in candle mode — same as the area gradient.
   const thresholdCfg = isCandle ? null : resolveThreshold(threshold);
+  const thresholdSeriesSV = thresholdCfg?.series ?? null;
+  const thresholdIsSeries =
+    thresholdSeriesSV !== null || Array.isArray(thresholdCfg?.value);
   const valueLineCfg = resolveValueLine(valueLine);
   // Static charts run zero loops: force the pulse off so its `withRepeat`-driven
   // ring never starts (the DotOverlay reads `pulseCfg`, so null = no pulse).
@@ -406,6 +413,11 @@ function useLiveChartController({
   // range and the axis follows the finger in one motion (the committed values are
   // already in `refValues`). `excludeFromRange` lines opt out, matching the static
   // fit. Identity-stable (no re-fit) when nothing is draggable.
+  //
+  // `threshold.includeInRange` rides the same channel: the constant benchmark
+  // contributes its live value; a series contributes its window min/max
+  // (respecting `extendToNow`), so an off-range break-even expands the axis and
+  // stays on-plot like a reference line would.
   const draggableRefIdx = allRefLines
     .map((l, i) =>
       l.draggable && !l.excludeFromRange && referenceLineForm(l) === "line"
@@ -413,13 +425,30 @@ function useLiveChartController({
         : -1,
     )
     .filter((i) => i >= 0);
+  const thresholdInRange = thresholdCfg?.includeInRange === true;
+  // Constant benchmark → its live value rides this channel. A series threshold
+  // is folded inside the engine tick instead (`thresholdRangePoints`), which
+  // already knows the window bounds for the min/max.
+  const thresholdRangeValueSV =
+    thresholdInRange &&
+    thresholdCfg?.value != null &&
+    !Array.isArray(thresholdCfg.value)
+      ? thresholdCfg.value
+      : null;
   const liveRefValues = useDerivedValue<number[]>(() => {
-    if (draggableRefIdx.length === 0) return EMPTY_NUMS;
-    const dv = dragValues.get();
+    if (draggableRefIdx.length === 0 && thresholdRangeValueSV === null)
+      return EMPTY_NUMS;
     const out: number[] = [];
-    for (let k = 0; k < draggableRefIdx.length; k++) {
-      const v = dv[draggableRefIdx[k]];
-      if (v != null) out.push(v);
+    if (draggableRefIdx.length > 0) {
+      const dv = dragValues.get();
+      for (let k = 0; k < draggableRefIdx.length; k++) {
+        const v = dv[draggableRefIdx[k]];
+        if (v != null) out.push(v);
+      }
+    }
+    if (thresholdRangeValueSV !== null) {
+      const v = thresholdRangeValueSV.get();
+      if (Number.isFinite(v)) out.push(v);
     }
     return out;
   });
@@ -626,6 +655,13 @@ function useLiveChartController({
     exaggerate,
     referenceValues: refValues,
     liveReferenceValues: liveRefValues,
+    // Series threshold with `includeInRange`: the tick folds its window min/max
+    // into the Y-range fit (the constant form rides `liveReferenceValues`).
+    thresholdRangePoints:
+      thresholdInRange && thresholdIsSeries
+        ? (thresholdSeriesSV ?? (thresholdCfg?.value as LiveChartPoint[]))
+        : undefined,
+    thresholdRangeExtendToNow: thresholdCfg?.extendToNow ?? true,
     nonNegative,
     maxValue,
     windowBuffer,
@@ -703,37 +739,69 @@ function useLiveChartController({
   // series drives the per-fragment split shader (`thresholdSeriesGeom`). Both hooks
   // run unconditionally — the unused one short-circuits cheaply on the UI thread.
   const thresholdValue = thresholdCfg?.value ?? emptyThresholdValue;
-  const thresholdIsSeries = Array.isArray(thresholdCfg?.value);
   // An empty series (e.g. threshold history not fetched yet) must not paint: no
   // band, no shader-forced stroke color — unlike the constant form, "no points
-  // yet" is a reachable state and should look like "no threshold".
-  const thresholdSeriesHasPoints =
-    Array.isArray(thresholdCfg?.value) && thresholdCfg.value.length > 0;
+  // yet" is a reachable state and should look like "no threshold". For the live
+  // `series` SharedValue form the emptiness lives on the UI thread, so mirror it
+  // to React state (fires only on empty↔non-empty transitions).
+  const [svSeriesNonEmpty, setSvSeriesNonEmpty] = useState(false);
+  useAnimatedReaction(
+    () => (thresholdSeriesSV ? thresholdSeriesSV.get().length > 0 : false),
+    /* istanbul ignore next -- Reanimated reaction; state mirrored on the JS thread, not exercised under Jest */
+    (hasPts, prev) => {
+      if (hasPts !== prev) scheduleOnRN(setSvSeriesNonEmpty, hasPts);
+    },
+  );
+  const thresholdSeriesHasPoints = thresholdSeriesSV
+    ? svSeriesNonEmpty
+    : Array.isArray(thresholdCfg?.value) && thresholdCfg.value.length > 0;
   const thresholdGeom = useThreshold(engine, effectivePadding, thresholdValue);
   const thresholdSeriesGeom = useThresholdSeries(
     engine,
     effectivePadding,
     thresholdValue,
+    thresholdSeriesSV,
+    thresholdCfg?.extendToNow ?? true,
   );
   const thresholdStopColors = thresholdCfg
     ? thresholdStops(thresholdCfg, palette)
     : null;
 
-  // Split colors as vec4s for the series shader, memoized on the *resolved* color
-  // strings (so a threshold added after mount with default colors still computes,
-  // and the per-frame uniforms worklet isn't rebuilt every render).
+  // Split colors as vec4s for the series shader, memoized on the *resolved*
+  // color strings + opacity (so a threshold added after mount with default
+  // colors still computes, and the per-frame uniforms worklet isn't rebuilt
+  // every render). `strokeRest` is the plain line color painted right of the
+  // `extendToNow: false` cutoff.
   const thresholdSplitAbove = thresholdCfg
     ? (thresholdCfg.aboveColor ?? palette.candleUp)
     : null;
   const thresholdSplitBelow = thresholdCfg
     ? (thresholdCfg.belowColor ?? palette.candleDown)
     : null;
+  const thresholdFillOpacity =
+    thresholdCfg?.fillOpacity ?? THRESHOLD_FILL_OPACITY_DEFAULT;
+  const thresholdLineColorStr = lineProp?.color ?? palette.line;
   const thresholdVecs = useMemo(
     () =>
       thresholdSplitAbove !== null && thresholdSplitBelow !== null
-        ? thresholdSplitColorVecs(thresholdSplitAbove, thresholdSplitBelow)
+        ? {
+            ...thresholdSplitColorVecs(
+              thresholdSplitAbove,
+              thresholdSplitBelow,
+              thresholdFillOpacity,
+            ),
+            strokeRest: (() => {
+              const [r, g, b, a] = parseColorRgba(thresholdLineColorStr);
+              return [r / 255, g / 255, b / 255, a];
+            })(),
+          }
         : null,
-    [thresholdSplitAbove, thresholdSplitBelow],
+    [
+      thresholdSplitAbove,
+      thresholdSplitBelow,
+      thresholdFillOpacity,
+      thresholdLineColorStr,
+    ],
   );
   const thresholdStrokeUniforms = useThresholdSplitUniforms(
     thresholdSeriesGeom.samples,
@@ -741,6 +809,8 @@ function useLiveChartController({
     effectivePadding,
     thresholdVecs?.strokeAbove ?? THRESHOLD_FALLBACK_COLOR,
     thresholdVecs?.strokeBelow ?? THRESHOLD_FALLBACK_COLOR,
+    thresholdVecs?.strokeRest ?? THRESHOLD_FALLBACK_COLOR,
+    thresholdSeriesGeom.clipRightX,
   );
   const thresholdFillUniforms = useThresholdSplitUniforms(
     thresholdSeriesGeom.samples,
@@ -748,6 +818,8 @@ function useLiveChartController({
     effectivePadding,
     thresholdVecs?.fillAbove ?? THRESHOLD_FALLBACK_COLOR,
     thresholdVecs?.fillBelow ?? THRESHOLD_FALLBACK_COLOR,
+    TRANSPARENT_VEC4,
+    thresholdSeriesGeom.clipRightX,
   );
 
   // Marker line + badge sources: the series anchors at the value-at-now (flat-
@@ -764,8 +836,8 @@ function useLiveChartController({
     ? thresholdSeriesGeom.currentVisible
     : thresholdGeom.visible;
   const thresholdMarkerValue =
-    thresholdCfg && !Array.isArray(thresholdCfg.value)
-      ? thresholdCfg.value
+    thresholdCfg && !thresholdIsSeries && !Array.isArray(thresholdCfg.value)
+      ? (thresholdCfg.value ?? thresholdSeriesGeom.currentValue)
       : thresholdSeriesGeom.currentValue;
   const thresholdSeriesPts = thresholdIsSeries
     ? thresholdSeriesGeom.screenPts

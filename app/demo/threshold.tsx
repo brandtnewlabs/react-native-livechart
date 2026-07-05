@@ -107,6 +107,9 @@ export default function ThresholdScreen() {
   const [thresholdType, setThresholdType] =
     useState<ThresholdType>("benchmark");
   const [fill, setFill] = useState(true);
+  const [strongFill, setStrongFill] = useState(false);
+  const [includeInRange, setIncludeInRange] = useState(false);
+  const [extendToNow, setExtendToNow] = useState(true);
   const [markerLine, setMarkerLine] = useState(true);
   const [label, setLabel] = useState(true);
   const [showValue, setShowValue] = useState(true);
@@ -127,20 +130,20 @@ export default function ThresholdScreen() {
 
   const isSeries = thresholdType === "series";
 
-  // SERIES form: a LIVE time-varying `LiveChartPoint[]` threshold. It scrolls in
-  // lockstep with the price (same timeline) and gains a fresh step every few
-  // seconds. Appending (not regenerating) keeps existing points put, so the
-  // staircase never jumps.
-  const [series, setSeries] = useState<LiveChartPoint[]>(() =>
-    seedBreakEven(Date.now() / 1000),
-  );
+  // SERIES form: a LIVE time-varying threshold via the `threshold.series`
+  // SharedValue — updated with `.set()`, no re-render (like the chart's own
+  // `data` prop). It scrolls in lockstep with the price (same timeline) and
+  // gains a fresh step every few seconds; appending (not regenerating) keeps
+  // existing points put, so the staircase never jumps.
+  const [initialSeries] = useState(() => seedBreakEven(Date.now() / 1000));
+  const series = useSharedValue<LiveChartPoint[]>(initialSeries);
   useEffect(() => {
     if (!isSeries) return;
     const id = setInterval(() => {
-      setSeries((prev) => stepBreakEven(prev, Date.now() / 1000));
+      series.set(stepBreakEven(series.get(), Date.now() / 1000));
     }, 6000);
     return () => clearInterval(id);
-  }, [isSeries]);
+  }, [isSeries, series]);
 
   const customColors =
     colorMode === "custom"
@@ -160,9 +163,14 @@ export default function ThresholdScreen() {
           theme={APP_THEME}
           gradient={false}
           threshold={{
-            value: isSeries ? series : breakEven,
+            ...(isSeries ? { series } : { value: breakEven }),
             ...customColors,
-            fill,
+            // `true` → default band opacity (0.16); object → tuned band.
+            fill: fill ? (strongFill ? { opacity: 0.35 } : true) : false,
+            // Fold the threshold into the Y-range fit (like reference lines).
+            includeInRange,
+            // Series: stop at the last point instead of flat-extending to now.
+            extendToNow,
             // `true` → dashed line only (no text/badge); object → labelled badge.
             line: markerLine
               ? label
@@ -186,6 +194,16 @@ export default function ThresholdScreen() {
 
       <ControlRow label="Threshold">
         <ToggleChip label="Fill band" value={fill} onChange={setFill} />
+        <ToggleChip
+          label="Strong fill"
+          value={strongFill}
+          onChange={setStrongFill}
+        />
+        <ToggleChip
+          label="In range"
+          value={includeInRange}
+          onChange={setIncludeInRange}
+        />
         <ToggleChip
           label="Marker line"
           value={markerLine}
@@ -218,6 +236,16 @@ export default function ThresholdScreen() {
         value={colorMode}
         onChange={setColorMode}
       />
+
+      {isSeries && (
+        <ControlRow label="Series">
+          <ToggleChip
+            label="Extend to now"
+            value={extendToNow}
+            onChange={setExtendToNow}
+          />
+        </ControlRow>
+      )}
 
       {!isSeries && (
         <ChipRow

@@ -1479,6 +1479,7 @@ describe("resolveThresholdLine", () => {
       label: undefined,
       labelPosition: "left",
       color: undefined,
+      labelColor: undefined,
       intervals: [4, 4],
       strokeWidth: 1,
       showValue: false,
@@ -1499,10 +1500,17 @@ describe("resolveThresholdLine", () => {
       label: "Break-even",
       labelPosition: "right",
       color: "#0f0",
+      labelColor: undefined,
       intervals: [6, 3],
       strokeWidth: 2,
       showValue: true,
     });
+  });
+
+  it("passes labelColor through", () => {
+    expect(resolveThresholdLine({ labelColor: "#123456" })?.labelColor).toBe(
+      "#123456",
+    );
   });
 });
 
@@ -1520,9 +1528,13 @@ describe("resolveThreshold", () => {
     const r = resolveThreshold({ value });
     expect(r).toEqual({
       value,
+      series: null,
       aboveColor: undefined,
       belowColor: undefined,
       fill: false,
+      fillOpacity: 0.16,
+      includeInRange: false,
+      extendToNow: true,
       line: null,
     });
     // Identity of the SharedValue must be preserved (read on the UI thread).
@@ -1539,11 +1551,42 @@ describe("resolveThreshold", () => {
       }),
     ).toEqual({
       value,
+      series: null,
       aboveColor: "#0f0",
       belowColor: "#f00",
       fill: true,
+      fillOpacity: 0.16,
+      includeInRange: false,
+      extendToNow: true,
       line: null,
     });
+  });
+
+  it("returns null when neither value nor series is given", () => {
+    expect(resolveThreshold({} as never)).toBeNull();
+  });
+
+  it("resolves the fill object form to enabled + custom opacity", () => {
+    const r = resolveThreshold({ value, fill: { opacity: 0.3 } });
+    expect(r?.fill).toBe(true);
+    expect(r?.fillOpacity).toBe(0.3);
+  });
+
+  it("passes through series / includeInRange / extendToNow", () => {
+    const series = {
+      sentinel: "sv-series",
+    } as unknown as import("react-native-reanimated").SharedValue<
+      import("../src/types").LiveChartPoint[]
+    >;
+    const r = resolveThreshold({
+      series,
+      includeInRange: true,
+      extendToNow: false,
+    });
+    expect(r?.series).toBe(series);
+    expect(r?.value).toBeUndefined();
+    expect(r?.includeInRange).toBe(true);
+    expect(r?.extendToNow).toBe(false);
   });
 
   it("resolves the line sub-config (true → dashed defaults)", () => {
@@ -1552,6 +1595,7 @@ describe("resolveThreshold", () => {
       label: undefined,
       labelPosition: "left",
       color: undefined,
+      labelColor: undefined,
       intervals: [4, 4],
       strokeWidth: 1,
       showValue: false,

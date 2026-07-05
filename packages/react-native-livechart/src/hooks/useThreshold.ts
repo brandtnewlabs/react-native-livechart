@@ -20,6 +20,9 @@ import type { LiveChartPoint } from "../types";
 /** A threshold value that is either a single live benchmark or a time-varying series. */
 export type ThresholdValue = SharedValue<number> | LiveChartPoint[];
 
+/** `clipRight` sentinel when the threshold extends to "now" (no forward cutoff). */
+export const THRESHOLD_NO_CLIP = 1e9;
+
 export interface ThresholdGeometry {
   /** Threshold pixel-Y within the canvas, or NaN before layout / degenerate range. */
   lineY: SharedValue<number>;
@@ -38,9 +41,9 @@ export interface ThresholdGeometry {
  * value + engine Y-range on the UI thread; the math lives in `math/threshold` so
  * it stays unit-testable without Reanimated.
  *
- * When `value` is a time-varying series (`LiveChartPoint[]`) this geometry is
- * unused — the worklets short-circuit to a NaN `lineY` (→ off-screen, solid-above
- * fallback) and {@link useThresholdSeries} drives the render instead.
+ * When the threshold is a time-varying series this geometry is unused — the
+ * worklets short-circuit to a NaN `lineY` (→ off-screen, solid-above fallback)
+ * and {@link useThresholdSeries} drives the render instead.
  */
 export function useThreshold(
   engine: ChartEngineLayout,
@@ -83,7 +86,7 @@ export function useThreshold(
 export interface ThresholdSeriesGeometry {
   /** Marker-line polyline in screen space `[x, y, …]`, projected from `samples`
    *  (so it aligns exactly with the band edge + stroke split) and pinned to the
-   *  plot's left/right edges. */
+   *  plot's left edge and to `min(plot right, clipRightX)`. */
   screenPts: SharedValue<number[]>;
   /** `THRESHOLD_SAMPLE_COUNT` threshold pixel-Y values on the time-anchored
    *  sample grid — the split shader's `samples[]`, and the bottom edge of the
@@ -96,10 +99,15 @@ export interface ThresholdSeriesGeometry {
   currentValue: SharedValue<number>;
   /** Pixel-Y of `currentValue` — anchors the badge. */
   currentLineY: SharedValue<number>;
-  /** Whether `currentLineY` itself is on-plot — gates the badge, which is pinned
-   *  at that Y. (`visible` can be true for the polyline while the value-at-now
-   *  sits outside the plot; the badge must not draw into the gutters then.) */
+  /** Whether the badge should show: `currentLineY` on-plot AND, with
+   *  `extendToNow` off, "now" not past the series' last point. (`visible` can be
+   *  true for the polyline while the value-at-now sits outside the plot; the
+   *  badge must not draw into the gutters then.) */
   currentVisible: SharedValue<boolean>;
+  /** Pixel-X where the threshold ends: the last point's X with `extendToNow`
+   *  off, else {@link THRESHOLD_NO_CLIP}. The shader paints its plain
+   *  `restColor` right of it; the marker polyline stops there. */
+  clipRightX: SharedValue<number>;
 }
 
 /** Stable empties so the constant-mode short-circuit returns a churn-free reference. */
@@ -107,17 +115,22 @@ const EMPTY_PTS: number[] = [];
 const EMPTY_SAMPLES: number[] = new Array(THRESHOLD_SAMPLE_COUNT).fill(0);
 
 /**
- * Per-frame screen geometry for a **time-varying** threshold (`LiveChartPoint[]`):
- * the screen polyline (marker line + fill-band bottom), the shader's pixel-Y
- * `samples[]`, and the current value/anchor for the badge. The array buffers
- * ping-pong (Reanimated only re-notifies subscribers when the returned reference
- * changes). When `value` is a constant `SharedValue<number>` every worklet
- * short-circuits cheaply and {@link useThreshold} drives the render instead.
+ * Per-frame screen geometry for a **time-varying** threshold — a plain
+ * `LiveChartPoint[]` `value` or a live `SharedValue<LiveChartPoint[]>` `series`
+ * (which wins when both are given): the screen polyline (marker line +
+ * fill-band bottom), the shader's pixel-Y `samples[]`, the current value/anchor
+ * for the badge, and the `extendToNow` cutoff X. The array buffers ping-pong
+ * (Reanimated only re-notifies subscribers when the returned reference
+ * changes). When the threshold is a constant `SharedValue<number>` every
+ * worklet short-circuits cheaply and {@link useThreshold} drives the render
+ * instead.
  */
 export function useThresholdSeries(
   engine: ChartEngineLayout,
   padding: ChartPadding,
   value: ThresholdValue,
+  series: SharedValue<LiveChartPoint[]> | null = null,
+  extendToNow = true,
 ): ThresholdSeriesGeometry {
   const cacheRef = useRef<{
     ptsA: number[];
@@ -138,13 +151,18 @@ export function useThresholdSeries(
     };
   }
 
+  // Per-worklet inline: the live SharedValue form wins, then the plain-array
+  // form; null in constant / no-threshold mode. Inlined (not a shared helper)
+  // so `series` sits directly in each worklet's closure and Reanimated tracks
+  // it as a mapper input.
   const samples = useDerivedValue(() => {
-    if (!Array.isArray(value)) return EMPTY_SAMPLES;
+    const pts = series ? series.get() : Array.isArray(value) ? value : null;
+    if (pts === null) return EMPTY_SAMPLES;
     const cache = cacheRef.current!;
     cache.sampTick = !cache.sampTick;
     const buf = cache.sampTick ? cache.sampA : cache.sampB;
     return sampleThresholdY(
-      value,
+      pts,
       engine.timestamp.get(),
       engine.displayWindow.get(),
       engine.displayMin.get(),
@@ -157,6 +175,19 @@ export function useThresholdSeries(
     );
   });
 
+  const clipRightX = useDerivedValue(() => {
+    if (extendToNow) return THRESHOLD_NO_CLIP;
+    const pts = series ? series.get() : Array.isArray(value) ? value : null;
+    if (pts === null || pts.length === 0) return THRESHOLD_NO_CLIP;
+    const win = engine.displayWindow.get();
+    const plotLeft = padding.left;
+    const plotRight = engine.canvasWidth.get() - padding.right;
+    if (!(win > 0) || plotRight <= plotLeft) return THRESHOLD_NO_CLIP;
+    const winStart = engine.timestamp.get() - win;
+    const lastT = pts[pts.length - 1].time;
+    return plotLeft + ((lastT - winStart) / win) * (plotRight - plotLeft);
+  });
+
   // Marker-line polyline projected from the SAME `samples` the band + shader read
   // (the time-anchored, gliding grid). Tracing the exact threshold vertices
   // instead would put the marker a fraction of a sample off the band/stroke
@@ -164,18 +195,22 @@ export function useThresholdSeries(
   // stroke colour all share one source of truth here. The grid overhangs the
   // plot, so the ends are pinned to the exact plot edges via interpolation —
   // which also keeps the dash pattern's anchor (the path start) fixed while the
-  // geometry glides.
+  // geometry glides. With `extendToNow` off the right end pins to the
+  // threshold's end X instead.
   const screenPts = useDerivedValue(() => {
-    if (!Array.isArray(value) || value.length === 0) return EMPTY_PTS;
+    const pts = series ? series.get() : Array.isArray(value) ? value : null;
+    if (pts === null || pts.length === 0) return EMPTY_PTS;
     const s = samples.get();
     const n = s.length;
     if (n < 2) return EMPTY_PTS;
+    const plotLeft = padding.left;
+    const plotRight = engine.canvasWidth.get() - padding.right;
+    const endX = Math.min(plotRight, clipRightX.get());
+    if (endX <= plotLeft) return EMPTY_PTS;
     const cache = cacheRef.current!;
     cache.ptsTick = !cache.ptsTick;
     const buf = cache.ptsTick ? cache.ptsA : cache.ptsB;
     buf.length = 0;
-    const plotLeft = padding.left;
-    const plotRight = engine.canvasWidth.get() - padding.right;
     const [x0, x1] = thresholdSampleSpanX(
       engine.timestamp.get(),
       engine.displayWindow.get(),
@@ -187,14 +222,14 @@ export function useThresholdSeries(
     const step = (x1 - x0) / (n - 1);
     for (let i = 0; i < n; i++) {
       const sx = x0 + step * i;
-      if (sx > plotLeft && sx < plotRight) buf.push(sx, s[i]);
+      if (sx > plotLeft && sx < endX) buf.push(sx, s[i]);
     }
-    buf.push(plotRight, sampleThresholdYAt(s, x0, x1, plotRight));
+    buf.push(endX, sampleThresholdYAt(s, x0, x1, endX));
     return buf;
   });
 
   const visible = useDerivedValue(() => {
-    if (!Array.isArray(value)) return false;
+    if (series === null && !Array.isArray(value)) return false;
     return thresholdSeriesVisible(
       screenPts.get(),
       engine.canvasHeight.get(),
@@ -204,8 +239,9 @@ export function useThresholdSeries(
   });
 
   const currentValue = useDerivedValue(() => {
-    if (!Array.isArray(value)) return NaN;
-    return interpolateAtTime(value, engine.timestamp.get()) ?? NaN;
+    const pts = series ? series.get() : Array.isArray(value) ? value : null;
+    if (pts === null) return NaN;
+    return interpolateAtTime(pts, engine.timestamp.get()) ?? NaN;
   });
 
   const currentLineY = useDerivedValue(() =>
@@ -219,14 +255,20 @@ export function useThresholdSeries(
     ),
   );
 
-  const currentVisible = useDerivedValue(() =>
-    thresholdVisible(
+  const currentVisible = useDerivedValue(() => {
+    if (!extendToNow) {
+      // The threshold ends at its last point — no badge past it.
+      const pts = series ? series.get() : Array.isArray(value) ? value : null;
+      if (pts === null || pts.length === 0) return false;
+      if (pts[pts.length - 1].time < engine.timestamp.get()) return false;
+    }
+    return thresholdVisible(
       currentLineY.get(),
       engine.canvasHeight.get(),
       padding.top,
       padding.bottom,
-    ),
-  );
+    );
+  });
 
   return {
     screenPts,
@@ -235,14 +277,17 @@ export function useThresholdSeries(
     currentValue,
     currentLineY,
     currentVisible,
+    clipRightX,
   };
 }
 
 /**
- * Pack a series geometry + a color pair into the {@link ThresholdSplitShader}'s
+ * Pack a series geometry + a color set into the {@link ThresholdSplitShader}'s
  * uniforms (one `SharedValue` per paint — stroke vs. the alpha-reduced fill band).
  * The object is rebuilt each frame so the shader re-paints as `samples` advance;
- * `sampleLeft`/`sampleRight` are the gliding pixel-X span of the sample grid.
+ * `sampleLeft`/`sampleRight` are the gliding pixel-X span of the sample grid and
+ * `clipRight`/`restColor` implement the `extendToNow: false` cutoff (plain line
+ * color for the stroke, transparent for the band).
  */
 export function useThresholdSplitUniforms(
   samples: SharedValue<number[]>,
@@ -250,6 +295,8 @@ export function useThresholdSplitUniforms(
   padding: ChartPadding,
   aboveColor: number[],
   belowColor: number[],
+  restColor: number[],
+  clipRightX: SharedValue<number>,
 ): SharedValue<Uniforms> {
   return useDerivedValue<Uniforms>(() => {
     const s = samples.get();
@@ -263,8 +310,10 @@ export function useThresholdSplitUniforms(
     return {
       sampleLeft: x0,
       sampleRight: x1,
+      clipRight: clipRightX.get(),
       aboveColor,
       belowColor,
+      restColor,
       samples: s,
     };
   });

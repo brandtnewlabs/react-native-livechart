@@ -583,6 +583,78 @@ describe("LiveChart", () => {
     expect(shaders[0].props.uniforms.value.aboveColor).toEqual([0, 1, 0, 0.5]);
   });
 
+  it("scales the band alpha with fill: { opacity } (series form)", () => {
+    const screen = render(
+      <ThresholdSeriesHarness
+        gradient={false}
+        thresholdExtra={{
+          aboveColor: "rgba(0, 255, 0, 1)",
+          fill: { opacity: 0.5 },
+        }}
+      />,
+    );
+    layoutFirst(screen);
+    const shaders = screen
+      .UNSAFE_getAllByType(View)
+      .filter((v) => v.props.uniforms != null);
+    expect(shaders).toHaveLength(2); // stroke + band
+    const alphas = shaders.map((v) => v.props.uniforms.value.aboveColor[3]);
+    expect(alphas).toContain(1); // stroke keeps full strength
+    expect(alphas).toContain(0.5); // band uses the custom opacity
+  });
+
+  it("renders the live SharedValue series form (threshold.series)", () => {
+    function LiveSeriesHarness() {
+      const data = useSharedValue([
+        { time: 1700000000, value: 40 },
+        { time: 1700000030, value: 60 },
+      ]);
+      const value = useSharedValue(60);
+      const series = useSharedValue<LiveChartPoint[]>([
+        { time: 1700000000, value: 45 },
+        { time: 1700000030, value: 55 },
+      ]);
+      return (
+        <LiveChart
+          data={data}
+          value={value}
+          threshold={{ series, fill: true, line: true, includeInRange: true }}
+        />
+      );
+    }
+    layoutFirst(render(<LiveSeriesHarness />));
+  });
+
+  it("clips the split at the series end with extendToNow: false", () => {
+    const screen = render(
+      <ThresholdSeriesHarness
+        thresholdExtra={{ extendToNow: false } as never}
+      />,
+    );
+    layoutFirst(screen);
+    const shaders = screen
+      .UNSAFE_getAllByType(View)
+      .filter((v) => v.props.uniforms != null);
+    expect(shaders).toHaveLength(1);
+    // The clip uniforms are wired (their live values are computed on the UI
+    // thread post-layout — pinned in the useThresholdSeries hook tests; the
+    // jest stub freezes derived values at their pre-layout mount computation).
+    expect(typeof shaders[0].props.uniforms.value.clipRight).toBe("number");
+    expect(shaders[0].props.uniforms.value.restColor).toHaveLength(4);
+  });
+
+  it("renders a labelled marker with a custom labelColor", () => {
+    layoutFirst(
+      render(
+        <ThresholdSeriesHarness
+          thresholdExtra={{
+            line: { label: "VWAP", showValue: true, labelColor: "#123456" },
+          }}
+        />,
+      ),
+    );
+  });
+
   it("renders no split paint or band for an empty threshold series", () => {
     // An empty series (threshold history not loaded yet) must look like "no
     // threshold": no shader-forced stroke color, no full-area fill band.

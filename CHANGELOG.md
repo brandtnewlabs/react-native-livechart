@@ -19,7 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mode (unchanged). The constant `SharedValue<number>` form is untouched; the two
   are distinguished at render by `Array.isArray` (no `SharedValue` read), and the
   series renders via a per-fragment split shader so the polyline boundary stays
-  one GPU draw with no per-frame clip. Thanks
+  one GPU draw with no per-frame clip. Also ships: **`threshold.series`** — a
+  live `SharedValue<LiveChartPoint[]>` form that updates with `.set()` and no
+  re-render (a per-tick VWAP, mirroring the `data` prop); **`fill: { opacity }`**
+  to tune the P/L band (default `0.16`, parity with reference-line bands);
+  **`includeInRange`** to fold the threshold into the Y-range fit like reference
+  lines (an off-range break-even stays on-plot); **`extendToNow: false`** to stop
+  a series at its last point instead of projecting flat to "now"; and
+  **`line.labelColor`** for the marker badge text. Thanks
   [@fsher](https://github.com/fsher).
   ([#174](https://github.com/brandtnewlabs/react-native-livechart/issues/174))
 

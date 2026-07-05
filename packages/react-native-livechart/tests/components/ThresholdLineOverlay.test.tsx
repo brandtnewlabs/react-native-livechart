@@ -33,6 +33,7 @@ const LINE_DEFAULTS: ResolvedThresholdLineConfig = {
   label: undefined,
   labelPosition: "left",
   color: undefined,
+  labelColor: undefined,
   intervals: [4, 4],
   strokeWidth: 1,
   showValue: false,

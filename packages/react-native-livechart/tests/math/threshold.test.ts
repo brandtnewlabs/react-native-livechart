@@ -2,6 +2,7 @@ import {
   sampleThresholdY,
   sampleThresholdYAt,
   thresholdLineY,
+  thresholdRangeMinMax,
   thresholdSampleSpanX,
   thresholdSeriesVisible,
   thresholdSplitPositions,
@@ -232,5 +233,59 @@ describe("thresholdSeriesVisible", () => {
     expect(thresholdSeriesVisible([LEFT, -50, W - RIGHT, -5], H, TOP, BOT)).toBe(false);
     // A NaN vertex breaks the segment — no phantom crossing through the gap.
     expect(thresholdSeriesVisible([LEFT, -50, 200, NaN, W - RIGHT, H + 200], H, TOP, BOT)).toBe(false);
+  });
+});
+
+describe("thresholdRangeMinMax", () => {
+  const scratch: [number, number] = [0, 0];
+  // Stepped series inside window [900, 1000]: 40 → 70 at t=950, last point 980.
+  const stepped = [
+    { time: 900, value: 40 },
+    { time: 950, value: 40 },
+    { time: 950, value: 70 },
+    { time: 980, value: 70 },
+  ];
+
+  it("returns the window min/max (flat-extended to now)", () => {
+    expect(thresholdRangeMinMax(stepped, NOW, WIN, true, scratch)).toEqual([
+      40, 70,
+    ]);
+  });
+
+  it("clamps to the series edges outside the window", () => {
+    // Window entirely after the last point → flat extension holds 70.
+    expect(thresholdRangeMinMax(stepped, 1200, 100, true, scratch)).toEqual([
+      70, 70,
+    ]);
+  });
+
+  it("returns null for an empty series or degenerate window", () => {
+    expect(thresholdRangeMinMax([], NOW, WIN, true, scratch)).toBeNull();
+    expect(thresholdRangeMinMax(stepped, NOW, 0, true, scratch)).toBeNull();
+  });
+
+  it("respects extendToNow=false (no forward projection)", () => {
+    // Window after the last point → nothing to contribute without extension.
+    expect(thresholdRangeMinMax(stepped, 1200, 100, false, scratch)).toBeNull();
+    // Window straddling the last point → clamps the end at t=980 (same values
+    // here, but the fold stops at the series end).
+    expect(thresholdRangeMinMax(stepped, NOW, WIN, false, scratch)).toEqual([
+      40, 70,
+    ]);
+  });
+
+  it("returns null when the visible values are non-finite", () => {
+    expect(
+      thresholdRangeMinMax(
+        [
+          { time: 900, value: NaN },
+          { time: 1000, value: NaN },
+        ],
+        NOW,
+        WIN,
+        true,
+        scratch,
+      ),
+    ).toBeNull();
   });
 });

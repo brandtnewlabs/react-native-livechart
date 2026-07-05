@@ -36,9 +36,15 @@ below; override with `aboveColor` / `belowColor`). Two opt-in extras share the s
 
 - **`fill`** — tints the area *between the line and the threshold* (the profit/loss
   band) toward the above/below colors. It's independent of the baseline `gradient`
-  fill, so set `gradient={false}` for the band alone.
+  fill, so set `gradient={false}` for the band alone. `true` uses the default band
+  opacity (`0.16`, matching reference-line bands); pass `{ opacity: 0.35 }` to tune it.
 - **`line`** — a dashed marker line at the threshold. `true` draws just the line;
-  pass a `ThresholdLineConfig` to add a label badge.
+  pass a `ThresholdLineConfig` to add a label badge (`labelColor` overrides the
+  label's text color, like `ReferenceLine.labelColor`).
+- **`includeInRange`** — fold the threshold into the Y-axis range fit, like
+  reference lines do. Without it the range fits the data alone, so a benchmark
+  outside the price range renders invisibly (marker off-plot, whole line one
+  color). Default `false`.
 
 ```tsx
 <LiveChart
@@ -68,7 +74,8 @@ Pass a `LiveChartPoint[]` as `value` instead of a `SharedValue<number>` and the
 threshold becomes a **line**, not a level — the stroke split, fill band and marker
 all follow it point-for-point. This is the natural fit for a benchmark that
 *changes over time*: a break-even / average cost that steps up as you DCA in, a
-historical VWAP, a moving peg.
+historical VWAP, a moving peg. For a series that updates **live**, pass a
+`SharedValue<LiveChartPoint[]>` as `series` instead (below).
 
 ```tsx
 import { LiveChart, type LiveChartPoint } from "react-native-livechart";
@@ -105,11 +112,23 @@ const breakEven: LiveChartPoint[] = [
   edge) when `showValue` is set.
 - An **empty series** (`[]`) renders as "no threshold yet": plain line color, no
   band, no marker — handy while the threshold history is still loading.
+- **`extendToNow: false`** opts out of the flat extension for a benchmark that
+  must not project into the future (a closed session's VWAP): right of the last
+  point the stroke keeps its plain line color and the band / marker / badge end.
 
-Unlike the `SharedValue<number>` form, a series flows in on **re-render** (it's a
-plain array). Pass a stable, memoized array and update it when the benchmark
-actually changes — it's built for thresholds that move occasionally, not every
-frame. For a per-frame live benchmark, keep the `SharedValue<number>` form.
+Unlike the `SharedValue<number>` form, a `value` series flows in on **re-render**
+(it's a plain array). Pass a stable, memoized array and update it when the
+benchmark actually changes. For a threshold series that updates **live** — a VWAP
+recomputed every tick — use the `series` form, a `SharedValue<LiveChartPoint[]>`
+that works like the chart's own `data` prop: update it with `.set()` /
+`.modify()` and the split tracks on the UI thread without re-rendering.
+
+```tsx
+const vwap = useSharedValue<LiveChartPoint[]>([]);
+// on each tick: vwap.set([...vwap.get(), { time, value }])
+
+<LiveChart data={data} value={value} threshold={{ series: vwap, fill: true }} />;
+```
 
 <Note>
   Candle mode and `LiveChartSeries` (multi-series) are unaffected — threshold is a
