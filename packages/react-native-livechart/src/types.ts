@@ -459,9 +459,15 @@ export interface ThresholdConfig {
    *   live benchmark.
    */
   value: SharedValue<number> | LiveChartPoint[];
-  /** Stroke color where the line is at/above `value`. Default: palette up-green (`candleUp`). */
+  /**
+   * Stroke color where the line is at/above `value`. Default: palette up-green
+   * (`candleUp`). With a series `value`, use hex (`#rgb`/`#rrggbb`), `rgb()` or
+   * `rgba()` — the split shader parses these; named CSS colors and 8-digit hex
+   * are only supported by the constant form.
+   */
   aboveColor?: string;
-  /** Stroke color where the line is below `value`. Default: palette down-red (`candleDown`). */
+  /** Stroke color where the line is below `value`. Default: palette down-red
+   *  (`candleDown`). Same format support as `aboveColor`. */
   belowColor?: string;
   /**
    * Tint the area between the line and `value` (the profit/loss band) toward the

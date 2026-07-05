@@ -93,6 +93,14 @@ const breakEven: LiveChartPoint[] = [
 - Points are connected with **straight segments**. For a step function, emit two
   points at each boundary (same time, old then new value) as above; for a smooth
   benchmark, emit it as you'd sample it.
+- The split renders from **64 samples** across the plot (a GPU shader), so a hard
+  step becomes a riser about 1/63 of the plot wide — visually a clean vertical at
+  phone sizes. The stroke split, band and marker share the same samples, so they
+  always agree at the riser.
+- `aboveColor` / `belowColor` accept **hex (`#rgb`/`#rrggbb`), `rgb()` and
+  `rgba()`** in series mode (an `rgba()` alpha carries into the stroke and scales
+  the band). Named CSS colors and 8-digit hex are only supported by the constant
+  form — in series mode they fall back to grey.
 - The marker `line`'s badge shows the threshold's **current** value (at the live
   edge) when `showValue` is set.
 - An **empty series** (`[]`) renders as "no threshold yet": plain line color, no
