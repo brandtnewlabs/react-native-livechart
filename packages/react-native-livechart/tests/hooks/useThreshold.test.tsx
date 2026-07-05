@@ -54,7 +54,10 @@ describe("useThresholdSeries (time-varying)", () => {
     // value-at-now clamps to the last point (55).
     expect(result.current.currentValue.value).toBeCloseTo(55);
     expect(result.current.currentVisible.value).toBe(true);
-    expect(result.current.plotLeft).toBe(DEFAULT_PADDING.left);
+    // Polyline is pinned to the exact plot edges (stable dash anchor).
+    const pts = result.current.screenPts.value;
+    expect(pts[0]).toBe(DEFAULT_PADDING.left);
+    expect(pts[pts.length - 2]).toBe(400 - DEFAULT_PADDING.right);
   });
 
   it("gates the badge anchor off when the value-at-now is off-plot while older segments are visible", () => {

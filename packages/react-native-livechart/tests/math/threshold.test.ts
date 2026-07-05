@@ -2,6 +2,7 @@ import {
   sampleThresholdY,
   sampleThresholdYAt,
   thresholdLineY,
+  thresholdSampleSpanX,
   thresholdSeriesVisible,
   thresholdSplitPositions,
   thresholdVisible,
@@ -108,10 +109,41 @@ describe("sampleThresholdY", () => {
       [{ time: 900, value: 20 }, { time: 1000, value: 80 }],
       NOW, WIN, 0, 100, H, TOP, BOT, 5,
     );
-    // value rises 20→80 → Y decreases (screen-up) monotonically.
-    for (let i = 1; i < out.length; i++) expect(out[i]).toBeLessThan(out[i - 1]);
+    // value rises 20→80 → Y decreases (screen-up); the time-anchored grid can
+    // overhang the series' clamped ends, so ties are allowed there.
+    for (let i = 1; i < out.length; i++)
+      expect(out[i]).toBeLessThanOrEqual(out[i - 1]);
     expect(out[0]).toBeCloseTo(yOf(20));
     expect(out[out.length - 1]).toBeCloseTo(yOf(80));
+  });
+
+  it("keeps sample values stable while the window glides (fluid motion)", () => {
+    // Fluidity regression (#187 follow-up): sample TIMES are anchored to an
+    // absolute grid, so a step's samples must be IDENTICAL for nearby `now`s —
+    // the step then translates via the gliding span instead of popping from one
+    // fixed screen bin to the next while the data line glides beside it.
+    // Step at 933.4 — chosen so a window-relative sampler (the old behavior,
+    // times winStart + i/(count-1)·window = 900, 933.33, 966.67, 1000) sweeps a
+    // sample time across the step under the +0.2s nudge and its values change,
+    // while the absolute grid (900, 950, 1000, 1050) is nowhere near it.
+    const step = [
+      { time: 900, value: 30 },
+      { time: 933.4, value: 30 },
+      { time: 933.4, value: 70 },
+      { time: 1000, value: 70 },
+    ];
+    // count 4 → spacing WIN/2 = 50s; a sub-spacing nudge must not re-anchor.
+    const a = sampleThresholdY(step, NOW, WIN, 0, 100, H, TOP, BOT, 4);
+    const b = sampleThresholdY(step, NOW + 0.2, WIN, 0, 100, H, TOP, BOT, 4);
+    expect(b).toEqual(a);
+    // The pixel span DOES glide with the nudge (same width, shifted left).
+    const [a0, a1] = thresholdSampleSpanX(NOW, WIN, LEFT, W - RIGHT, 4);
+    const [b0, b1] = thresholdSampleSpanX(NOW + 0.2, WIN, LEFT, W - RIGHT, 4);
+    expect(b0).toBeLessThan(a0);
+    expect(b1 - b0).toBeCloseTo(a1 - a0);
+    // And the grid always covers the plot.
+    expect(a0).toBeLessThanOrEqual(LEFT);
+    expect(a1).toBeGreaterThanOrEqual(W - RIGHT);
   });
 
   it("fills with a far-below Y when the range is degenerate", () => {

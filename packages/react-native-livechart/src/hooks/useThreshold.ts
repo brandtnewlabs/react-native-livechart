@@ -7,8 +7,10 @@ import type { ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
 import {
   sampleThresholdY,
+  sampleThresholdYAt,
   THRESHOLD_SAMPLE_COUNT,
   thresholdLineY,
+  thresholdSampleSpanX,
   thresholdSeriesVisible,
   thresholdSplitPositions,
   thresholdVisible,
@@ -79,16 +81,15 @@ export function useThreshold(
 }
 
 export interface ThresholdSeriesGeometry {
-  /** Marker-line polyline in screen space `[x, y, …]`, projected from `samples` so
-   *  it aligns exactly with the band edge + stroke split. */
+  /** Marker-line polyline in screen space `[x, y, …]`, projected from `samples`
+   *  (so it aligns exactly with the band edge + stroke split) and pinned to the
+   *  plot's left/right edges. */
   screenPts: SharedValue<number[]>;
-  /** `THRESHOLD_SAMPLE_COUNT` threshold pixel-Y values across the plot — the split
-   *  shader's `samples[]`, and the bottom edge of the profit/loss band. */
+  /** `THRESHOLD_SAMPLE_COUNT` threshold pixel-Y values on the time-anchored
+   *  sample grid — the split shader's `samples[]`, and the bottom edge of the
+   *  profit/loss band. Their pixel-X span is `thresholdSampleSpanX(...)`, which
+   *  glides with the window (NOT the static plot edges). */
   samples: SharedValue<number[]>;
-  /** Plot left edge X (px) — constant (`padding.left`). */
-  plotLeft: number;
-  /** Plot right edge X (px) — `canvasWidth - padding.right`. */
-  plotRight: SharedValue<number>;
   /** Whether any of the polyline is on-screen (drives marker-line opacity). */
   visible: SharedValue<boolean>;
   /** Threshold value at `now` (flat-extended past the last point) — the badge label. */
@@ -157,10 +158,13 @@ export function useThresholdSeries(
   });
 
   // Marker-line polyline projected from the SAME `samples` the band + shader read
-  // (evenly spaced across the plot). Tracing the exact threshold vertices instead
-  // would put the marker a fraction of a sample off the band/stroke split — the
-  // "gradient lagging the line" — so the marker, band edge and stroke colour all
-  // share one source of truth here.
+  // (the time-anchored, gliding grid). Tracing the exact threshold vertices
+  // instead would put the marker a fraction of a sample off the band/stroke
+  // split — the "gradient lagging the line" — so the marker, band edge and
+  // stroke colour all share one source of truth here. The grid overhangs the
+  // plot, so the ends are pinned to the exact plot edges via interpolation —
+  // which also keeps the dash pattern's anchor (the path start) fixed while the
+  // geometry glides.
   const screenPts = useDerivedValue(() => {
     if (!Array.isArray(value) || value.length === 0) return EMPTY_PTS;
     const s = samples.get();
@@ -171,16 +175,23 @@ export function useThresholdSeries(
     const buf = cache.ptsTick ? cache.ptsA : cache.ptsB;
     buf.length = 0;
     const plotLeft = padding.left;
-    const span = engine.canvasWidth.get() - padding.right - plotLeft;
+    const plotRight = engine.canvasWidth.get() - padding.right;
+    const [x0, x1] = thresholdSampleSpanX(
+      engine.timestamp.get(),
+      engine.displayWindow.get(),
+      plotLeft,
+      plotRight,
+      n,
+    );
+    buf.push(plotLeft, sampleThresholdYAt(s, x0, x1, plotLeft));
+    const step = (x1 - x0) / (n - 1);
     for (let i = 0; i < n; i++) {
-      buf.push(plotLeft + (span * i) / (n - 1), s[i]);
+      const sx = x0 + step * i;
+      if (sx > plotLeft && sx < plotRight) buf.push(sx, s[i]);
     }
+    buf.push(plotRight, sampleThresholdYAt(s, x0, x1, plotRight));
     return buf;
   });
-
-  const plotRight = useDerivedValue(
-    () => engine.canvasWidth.get() - padding.right,
-  );
 
   const visible = useDerivedValue(() => {
     if (!Array.isArray(value)) return false;
@@ -220,8 +231,6 @@ export function useThresholdSeries(
   return {
     screenPts,
     samples,
-    plotLeft: padding.left,
-    plotRight,
     visible,
     currentValue,
     currentLineY,
@@ -232,20 +241,31 @@ export function useThresholdSeries(
 /**
  * Pack a series geometry + a color pair into the {@link ThresholdSplitShader}'s
  * uniforms (one `SharedValue` per paint — stroke vs. the alpha-reduced fill band).
- * The object is rebuilt each frame so the shader re-paints as `samples` advance.
+ * The object is rebuilt each frame so the shader re-paints as `samples` advance;
+ * `sampleLeft`/`sampleRight` are the gliding pixel-X span of the sample grid.
  */
 export function useThresholdSplitUniforms(
   samples: SharedValue<number[]>,
-  plotLeft: number,
-  plotRight: SharedValue<number>,
+  engine: ChartEngineLayout,
+  padding: ChartPadding,
   aboveColor: number[],
   belowColor: number[],
 ): SharedValue<Uniforms> {
-  return useDerivedValue<Uniforms>(() => ({
-    plotLeft,
-    plotRight: plotRight.get(),
-    aboveColor,
-    belowColor,
-    samples: samples.get(),
-  }));
+  return useDerivedValue<Uniforms>(() => {
+    const s = samples.get();
+    const [x0, x1] = thresholdSampleSpanX(
+      engine.timestamp.get(),
+      engine.displayWindow.get(),
+      padding.left,
+      engine.canvasWidth.get() - padding.right,
+      s.length,
+    );
+    return {
+      sampleLeft: x0,
+      sampleRight: x1,
+      aboveColor,
+      belowColor,
+      samples: s,
+    };
+  });
 }

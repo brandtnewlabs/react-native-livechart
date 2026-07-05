@@ -16,15 +16,17 @@ import { THRESHOLD_SAMPLE_COUNT } from "../math/threshold";
  * `AreaDotsOverlay`. One GPU draw, no per-frame clip / `saveLayer`.
  */
 const SPLIT_SKSL = `
-uniform float plotLeft;
-uniform float plotRight;
+// Pixel-X span of the sample grid (thresholdSampleSpanX) — overhangs the plot
+// and glides with the window so features move fluidly, frame to frame.
+uniform float sampleLeft;
+uniform float sampleRight;
 uniform vec4 aboveColor; // straight-alpha rgba, 0..1
 uniform vec4 belowColor; // straight-alpha rgba, 0..1
 uniform float samples[${THRESHOLD_SAMPLE_COUNT}];
 
 half4 main(vec2 xy) {
-  float span = plotRight - plotLeft;
-  float u = span > 0.0 ? (xy.x - plotLeft) / span : 0.0;
+  float span = sampleRight - sampleLeft;
+  float u = span > 0.0 ? (xy.x - sampleLeft) / span : 0.0;
   u = clamp(u, 0.0, 1.0) * float(${THRESHOLD_SAMPLE_COUNT - 1});
   // SkSL forbids indexing a uniform array with a non-constant index, so walk the
   // segments in an unrolled, constant-bound loop — the index is the loop variable
@@ -63,10 +65,10 @@ export const THRESHOLD_SPLIT_AVAILABLE = SPLIT_EFFECT !== null;
 
 interface ThresholdSplitShaderProps {
   /**
-   * Per-frame uniforms (built in `useThresholdSplitUniforms`): `plotLeft` /
-   * `plotRight` (the sample span, px), `aboveColor` / `belowColor` (straight-alpha
-   * `[r, g, b, a]` vec4s, channels 0..1) and `samples` (`THRESHOLD_SAMPLE_COUNT`
-   * threshold pixel-Y values across the plot).
+   * Per-frame uniforms (built in `useThresholdSplitUniforms`): `sampleLeft` /
+   * `sampleRight` (the gliding sample-grid span, px), `aboveColor` / `belowColor`
+   * (straight-alpha `[r, g, b, a]` vec4s, channels 0..1) and `samples`
+   * (`THRESHOLD_SAMPLE_COUNT` threshold pixel-Y values on the grid).
    */
   uniforms: SharedValue<Uniforms>;
 }

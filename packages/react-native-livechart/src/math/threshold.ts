@@ -76,13 +76,68 @@ export function thresholdSplitPositions(
  * ------------------------------------------------------------------------- */
 
 /**
- * Sample the threshold series to `count` evenly-spaced pixel-Y values across the
- * plot's x-range, for the split shader's `samples[]` uniform (it linearly
- * interpolates between them and compares each fragment's Y). Clamps to the
- * series' first/last value outside its range (flat extension). When the canvas or
- * range is degenerate — or a series value is NaN — it fills with a far-below Y,
- * so the shader paints the above-color everywhere — matching the constant
- * split's pre-layout fallback (`thresholdSplitPositions` → solid above).
+ * Spacing of the threshold sample grid, in seconds. `count - 2` (not `count - 1`)
+ * so the `count` samples cover the window plus up to one spacing of overhang on
+ * each side — the grid is anchored to absolute time (see
+ * {@link thresholdSampleStart}) and must keep covering the plot as it glides.
+ */
+export function thresholdSampleStep(windowSecs: number, count: number): number {
+  "worklet";
+  return windowSecs / Math.max(count - 2, 1);
+}
+
+/**
+ * First sample time of the grid: the greatest multiple of the spacing at or
+ * before the window start. Anchoring sample TIMES to an absolute grid (instead
+ * of evenly across the current window) keeps each sample's *value* stable while
+ * the window scrolls — the grid's *pixel* positions glide left each frame, so a
+ * step riser translates fluidly instead of popping from one fixed sample bin to
+ * the next (~plotWidth/63 px at a time) while the data line glides beside it.
+ */
+export function thresholdSampleStart(
+  now: number,
+  windowSecs: number,
+  count: number,
+): number {
+  "worklet";
+  const dt = thresholdSampleStep(windowSecs, count);
+  return Math.floor((now - windowSecs) / dt) * dt;
+}
+
+/**
+ * Pixel-X endpoints `[x0, x1]` of the sample grid for the current frame — the
+ * span the shader / band / marker interpolate {@link sampleThresholdY}'s output
+ * across. Overhangs `[plotLeft, plotRight]` by up to one spacing per side and
+ * glides with the window. Falls back to the plot edges when the window or plot
+ * is degenerate (matching `sampleThresholdY`'s degenerate fill).
+ */
+export function thresholdSampleSpanX(
+  now: number,
+  windowSecs: number,
+  plotLeft: number,
+  plotRight: number,
+  count: number,
+): [number, number] {
+  "worklet";
+  const span = plotRight - plotLeft;
+  if (!(windowSecs > 0) || span <= 0 || count < 2) return [plotLeft, plotRight];
+  const dt = thresholdSampleStep(windowSecs, count);
+  const t0 = thresholdSampleStart(now, windowSecs, count);
+  const winStart = now - windowSecs;
+  const xScale = span / windowSecs;
+  const x0 = plotLeft + (t0 - winStart) * xScale;
+  return [x0, x0 + (count - 1) * dt * xScale];
+}
+
+/**
+ * Sample the threshold series to `count` pixel-Y values on the time-anchored
+ * grid ({@link thresholdSampleStart}/{@link thresholdSampleSpanX}), for the
+ * split shader's `samples[]` uniform (it linearly interpolates between them and
+ * compares each fragment's Y). Clamps to the series' first/last value outside
+ * its range (flat extension). When the canvas or range is degenerate — or a
+ * series value is NaN — it fills with a far-below Y, so the shader paints the
+ * above-color everywhere — matching the constant split's pre-layout fallback
+ * (`thresholdSplitPositions` → solid above).
  */
 export function sampleThresholdY(
   points: LiveChartPoint[],
@@ -109,10 +164,10 @@ export function sampleThresholdY(
     for (let i = 0; i < count; i++) arr.push(farBelow);
     return arr;
   }
-  const winStart = now - windowSecs;
+  const dt = thresholdSampleStep(windowSecs, count);
+  const t0 = thresholdSampleStart(now, windowSecs, count);
   for (let i = 0; i < count; i++) {
-    const frac = count > 1 ? i / (count - 1) : 0;
-    const v = interpolateAtTime(points, winStart + frac * windowSecs)!;
+    const v = interpolateAtTime(points, t0 + i * dt)!;
     const y = thresholdLineY(
       v,
       displayMin,
@@ -129,27 +184,27 @@ export function sampleThresholdY(
 }
 
 /**
- * Evaluate the threshold at pixel-x `x` from the shader's evenly-spaced
- * `samples[]` (the same array the split shader reads), linearly interpolated and
- * clamped outside `[plotLeft, plotRight]`. The profit/loss band's bottom edge is
- * built from this so the band geometry matches the shader **exactly** — a sharp
- * step in the threshold becomes the same ~1-sample ramp in both, so no green/red
- * sliver bleeds through at a step riser. Also pins the band to the line's x-range
- * (clean vertical sides, no stray wedge).
+ * Evaluate the threshold at pixel-x `x` from the evenly-spaced `samples[]` (the
+ * same array the split shader reads), linearly interpolated across the sample
+ * span `[spanLeft, spanRight]` (see {@link thresholdSampleSpanX}) and clamped
+ * outside it. The profit/loss band's bottom edge and the marker polyline's
+ * plot-edge pins are built from this so their geometry matches the shader
+ * **exactly** — a sharp step in the threshold becomes the same ~1-sample ramp in
+ * all of them, so no green/red sliver bleeds through at a step riser.
  */
 export function sampleThresholdYAt(
   samples: number[],
-  plotLeft: number,
-  plotRight: number,
+  spanLeft: number,
+  spanRight: number,
   x: number,
 ): number {
   "worklet";
   const count = samples.length;
   if (count === 0) return 0;
   if (count === 1) return samples[0];
-  const span = plotRight - plotLeft;
+  const span = spanRight - spanLeft;
   if (span <= 0) return samples[0];
-  const u = ((x - plotLeft) / span) * (count - 1);
+  const u = ((x - spanLeft) / span) * (count - 1);
   if (u <= 0) return samples[0];
   if (u >= count - 1) return samples[count - 1];
   const i = Math.floor(u);

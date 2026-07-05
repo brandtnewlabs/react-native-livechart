@@ -4,7 +4,7 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { drawSpline, makeSplineScratch } from "../math/spline";
-import { sampleThresholdYAt } from "../math/threshold";
+import { sampleThresholdYAt, thresholdSampleSpanX } from "../math/threshold";
 import { blendPtsY, squigglifyPts } from "../math/squiggly";
 import { usePathBuilder } from "./usePathBuilder";
 
@@ -165,16 +165,23 @@ export function useChartPaths(
       // x-range pin keeps the band closing with clean vertical sides (no wedge).
       const leftX = pts[0];
       const rightX = pts[(n - 1) * 2];
-      const plotLeft = padding.left;
-      const plotRight = engine.canvasWidth.get() - padding.right;
-      const span = plotRight - plotLeft;
       const count = tsamples.length;
-      b.lineTo(rightX, sampleThresholdYAt(tsamples, plotLeft, plotRight, rightX));
+      // The samples live on the time-anchored, gliding grid — interpolate them
+      // across that span (same as the shader), not the static plot edges.
+      const [x0, x1] = thresholdSampleSpanX(
+        engine.timestamp.get(),
+        engine.displayWindow.get(),
+        padding.left,
+        engine.canvasWidth.get() - padding.right,
+        count,
+      );
+      const step = (x1 - x0) / (count - 1);
+      b.lineTo(rightX, sampleThresholdYAt(tsamples, x0, x1, rightX));
       for (let i = count - 1; i >= 0; i--) {
-        const sx = span > 0 ? plotLeft + (span * i) / (count - 1) : plotLeft;
+        const sx = x0 + step * i;
         if (sx > leftX && sx < rightX) b.lineTo(sx, tsamples[i]);
       }
-      b.lineTo(leftX, sampleThresholdYAt(tsamples, plotLeft, plotRight, leftX));
+      b.lineTo(leftX, sampleThresholdYAt(tsamples, x0, x1, leftX));
       b.close();
       return b.detach();
     }

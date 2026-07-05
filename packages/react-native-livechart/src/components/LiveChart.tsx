@@ -737,15 +737,15 @@ function useLiveChartController({
   );
   const thresholdStrokeUniforms = useThresholdSplitUniforms(
     thresholdSeriesGeom.samples,
-    thresholdSeriesGeom.plotLeft,
-    thresholdSeriesGeom.plotRight,
+    engine,
+    effectivePadding,
     thresholdVecs?.strokeAbove ?? THRESHOLD_FALLBACK_COLOR,
     thresholdVecs?.strokeBelow ?? THRESHOLD_FALLBACK_COLOR,
   );
   const thresholdFillUniforms = useThresholdSplitUniforms(
     thresholdSeriesGeom.samples,
-    thresholdSeriesGeom.plotLeft,
-    thresholdSeriesGeom.plotRight,
+    engine,
+    effectivePadding,
     thresholdVecs?.fillAbove ?? THRESHOLD_FALLBACK_COLOR,
     thresholdVecs?.fillBelow ?? THRESHOLD_FALLBACK_COLOR,
   );
