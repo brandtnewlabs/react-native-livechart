@@ -52,6 +52,15 @@ try {
   SPLIT_EFFECT = null;
 }
 
+/**
+ * Whether the split effect compiled. Callers must gate any `<Path>` whose ONLY
+ * paint is this shader on it — without the shader child the path fills with the
+ * default paint (opaque black). A fallback `color` prop can't stand in instead:
+ * Skia multiplies the shader output by the paint alpha, so a transparent color
+ * erases the shader's own output too.
+ */
+export const THRESHOLD_SPLIT_AVAILABLE = SPLIT_EFFECT !== null;
+
 interface ThresholdSplitShaderProps {
   /**
    * Per-frame uniforms (built in `useThresholdSplitUniforms`): `plotLeft` /

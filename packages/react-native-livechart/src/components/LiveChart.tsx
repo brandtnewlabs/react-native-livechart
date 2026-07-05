@@ -122,7 +122,10 @@ import {
   ThresholdBadgeOverlay,
   ThresholdLineOverlay,
 } from "./ThresholdLineOverlay";
-import { ThresholdSplitShader } from "./ThresholdSplitShader";
+import {
+  THRESHOLD_SPLIT_AVAILABLE,
+  ThresholdSplitShader,
+} from "./ThresholdSplitShader";
 import { AreaDotsOverlay } from "./AreaDotsOverlay";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
 import {
@@ -1417,12 +1420,11 @@ function ChartFillLayer({ model }: { model: LiveChartModel }) {
           vertical hard-stop gradient. */}
       {thresholdCfg?.fill &&
         (thresholdIsSeries ? (
-          thresholdSeriesHasPoints ? (
+          // The availability gate keeps a failed shader compile from filling the
+          // band with the default paint (opaque black) — see THRESHOLD_SPLIT_AVAILABLE.
+          thresholdSeriesHasPoints && THRESHOLD_SPLIT_AVAILABLE ? (
             <Group opacity={reveal.fillOpacity}>
-              {/* `transparent` is the no-shader fallback: if the split effect
-                  failed to compile the band must vanish, not fill with the
-                  default paint (opaque black). */}
-              <Path path={thresholdFillPath} style="fill" color="transparent">
+              <Path path={thresholdFillPath} style="fill">
                 <ThresholdSplitShader uniforms={thresholdFillUniforms} />
               </Path>
             </Group>
