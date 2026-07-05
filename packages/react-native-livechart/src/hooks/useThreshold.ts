@@ -95,6 +95,10 @@ export interface ThresholdSeriesGeometry {
   currentValue: SharedValue<number>;
   /** Pixel-Y of `currentValue` — anchors the badge. */
   currentLineY: SharedValue<number>;
+  /** Whether `currentLineY` itself is on-plot — gates the badge, which is pinned
+   *  at that Y. (`visible` can be true for the polyline while the value-at-now
+   *  sits outside the plot; the badge must not draw into the gutters then.) */
+  currentVisible: SharedValue<boolean>;
 }
 
 /** Stable empties so the constant-mode short-circuit returns a churn-free reference. */
@@ -204,6 +208,15 @@ export function useThresholdSeries(
     ),
   );
 
+  const currentVisible = useDerivedValue(() =>
+    thresholdVisible(
+      currentLineY.get(),
+      engine.canvasHeight.get(),
+      padding.top,
+      padding.bottom,
+    ),
+  );
+
   return {
     screenPts,
     samples,
@@ -212,6 +225,7 @@ export function useThresholdSeries(
     visible,
     currentValue,
     currentLineY,
+    currentVisible,
   };
 }
 

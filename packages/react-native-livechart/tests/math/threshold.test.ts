@@ -136,6 +136,19 @@ describe("sampleThresholdY", () => {
     );
     expect(out).toEqual([1e6, 1e6, 1e6]);
   });
+
+  it("degrades NaN series values to the far-below fallback per sample", () => {
+    // Bad data must not leak NaN into the shader uniform / band vertices.
+    const out = sampleThresholdY(
+      [{ time: 900, value: NaN }, { time: 1000, value: NaN }],
+      NOW, WIN, 0, 100, H, TOP, BOT, 4,
+    );
+    expect(out).toHaveLength(4);
+    out.forEach((y) => {
+      expect(Number.isFinite(y)).toBe(true);
+      expect(y).toBeGreaterThan(H);
+    });
+  });
 });
 
 describe("sampleThresholdYAt", () => {
@@ -176,5 +189,16 @@ describe("thresholdSeriesVisible", () => {
     expect(thresholdSeriesVisible([LEFT, -5, W - RIGHT, -5], H, TOP, BOT)).toBe(false);
     expect(thresholdSeriesVisible([], H, TOP, BOT)).toBe(false);
     expect(thresholdSeriesVisible([LEFT, 100], 0, TOP, BOT)).toBe(false);
+  });
+
+  it("is true for a step riser that crosses the plot between two vertices", () => {
+    // Both endpoints outside the plot band, on opposite sides — the segment
+    // still crosses the whole visible plot and must count as visible.
+    expect(thresholdSeriesVisible([LEFT, -50, W - RIGHT, H + 200], H, TOP, BOT)).toBe(true);
+    expect(thresholdSeriesVisible([LEFT, H + 200, W - RIGHT, -50], H, TOP, BOT)).toBe(true);
+    // Same side (both above) stays invisible.
+    expect(thresholdSeriesVisible([LEFT, -50, W - RIGHT, -5], H, TOP, BOT)).toBe(false);
+    // A NaN vertex breaks the segment — no phantom crossing through the gap.
+    expect(thresholdSeriesVisible([LEFT, -50, 200, NaN, W - RIGHT, H + 200], H, TOP, BOT)).toBe(false);
   });
 });

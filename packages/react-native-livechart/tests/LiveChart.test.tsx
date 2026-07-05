@@ -6,6 +6,7 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { LiveChart } from "../src/components/LiveChart";
 import type {
   CandlePoint,
+  LiveChartPoint,
   LiveChartProps,
   Marker,
   ThresholdConfig,
@@ -130,6 +131,19 @@ function ThresholdSeriesHarness({
       {...props}
     />
   );
+}
+
+function ToggleableThresholdHarness({
+  threshold,
+}: {
+  threshold?: ThresholdConfig;
+}) {
+  const data = useSharedValue([
+    { time: 1700000000, value: 40 },
+    { time: 1700000030, value: 60 },
+  ]);
+  const value = useSharedValue(60);
+  return <LiveChart data={data} value={value} threshold={threshold} />;
 }
 
 function layoutFirst(screen: ReturnType<typeof render>) {
@@ -519,6 +533,69 @@ describe("LiveChart", () => {
 
   it("colors the line above/below a time-varying threshold series (#174)", () => {
     layoutFirst(render(<ThresholdSeriesHarness />));
+  });
+
+  it("mounts the split shader when a series threshold is added after mount", () => {
+    // Regression scenario for the stale split-color memo (a threshold added
+    // after mount with default colors must not stay on the black fallback).
+    // The jest Reanimated stub never re-runs a derived value's mapper, so the
+    // recomputed uniforms can't be asserted here — the fresh-mount test below
+    // pins the resolved colors; this covers the mount-then-add wiring.
+    const series: LiveChartPoint[] = [
+      { time: 1700000000, value: 45 },
+      { time: 1700000030, value: 55 },
+    ];
+    const screen = render(<ToggleableThresholdHarness />);
+    layoutFirst(screen);
+    screen.rerender(
+      <ToggleableThresholdHarness threshold={{ value: series, fill: true }} />,
+    );
+    const shaders = screen
+      .UNSAFE_getAllByType(View)
+      .filter((v) => v.props.uniforms != null);
+    expect(shaders).toHaveLength(2); // stroke + fill band
+  });
+
+  it("resolves default palette split colors on mount (not the black fallback)", () => {
+    const screen = render(<ThresholdSeriesHarness />);
+    layoutFirst(screen);
+    const shaders = screen
+      .UNSAFE_getAllByType(View)
+      .filter((v) => v.props.uniforms != null);
+    expect(shaders.length).toBeGreaterThan(0);
+    for (const s of shaders) {
+      expect(s.props.uniforms.value.aboveColor).not.toEqual([0, 0, 0, 1]);
+      expect(s.props.uniforms.value.belowColor).not.toEqual([0, 0, 0, 1]);
+    }
+  });
+
+  it("carries an rgba() alpha into the series split stroke", () => {
+    const screen = render(
+      <ThresholdSeriesHarness
+        thresholdExtra={{ aboveColor: "rgba(0, 255, 0, 0.5)" }}
+      />,
+    );
+    layoutFirst(screen);
+    const shaders = screen
+      .UNSAFE_getAllByType(View)
+      .filter((v) => v.props.uniforms != null);
+    expect(shaders).toHaveLength(1); // stroke only (no fill band)
+    expect(shaders[0].props.uniforms.value.aboveColor).toEqual([0, 1, 0, 0.5]);
+  });
+
+  it("renders no split paint or band for an empty threshold series", () => {
+    // An empty series (threshold history not loaded yet) must look like "no
+    // threshold": no shader-forced stroke color, no full-area fill band.
+    const screen = render(
+      <ToggleableThresholdHarness
+        threshold={{ value: [], fill: true, line: true }}
+      />,
+    );
+    layoutFirst(screen);
+    const shaders = screen
+      .UNSAFE_getAllByType(View)
+      .filter((v) => v.props.uniforms != null);
+    expect(shaders).toHaveLength(0);
   });
 
   it("renders the series threshold band + polyline marker + label badge", () => {

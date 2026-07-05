@@ -53,7 +53,26 @@ describe("useThresholdSeries (time-varying)", () => {
     expect(result.current.samples.value).toHaveLength(THRESHOLD_SAMPLE_COUNT);
     // value-at-now clamps to the last point (55).
     expect(result.current.currentValue.value).toBeCloseTo(55);
+    expect(result.current.currentVisible.value).toBe(true);
     expect(result.current.plotLeft).toBe(DEFAULT_PADDING.left);
+  });
+
+  it("gates the badge anchor off when the value-at-now is off-plot while older segments are visible", () => {
+    // Latest step jumps far above the display range: the polyline is still
+    // visible (its earlier flat run is on-plot) but the badge, pinned at the
+    // value-at-now Y, must be hidden instead of drawing outside the plot.
+    const stepped: LiveChartPoint[] = [
+      { time: 900, value: 50 },
+      { time: 980, value: 50 },
+      { time: 980, value: 500 },
+      { time: 1000, value: 500 },
+    ];
+    const { result } = renderHook(() =>
+      useThresholdSeries(engine(), DEFAULT_PADDING, stepped),
+    );
+    expect(result.current.visible.value).toBe(true);
+    expect(result.current.currentValue.value).toBeCloseTo(500);
+    expect(result.current.currentVisible.value).toBe(false);
   });
 
   it("short-circuits to empty geometry for a constant value", () => {

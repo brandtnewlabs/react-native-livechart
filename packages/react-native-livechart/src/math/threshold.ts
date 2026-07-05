@@ -80,9 +80,9 @@ export function thresholdSplitPositions(
  * plot's x-range, for the split shader's `samples[]` uniform (it linearly
  * interpolates between them and compares each fragment's Y). Clamps to the
  * series' first/last value outside its range (flat extension). When the canvas or
- * range is degenerate it fills with a far-below Y, so the shader paints the
- * above-color everywhere — matching the constant split's pre-layout fallback
- * (`thresholdSplitPositions` → solid above).
+ * range is degenerate — or a series value is NaN — it fills with a far-below Y,
+ * so the shader paints the above-color everywhere — matching the constant
+ * split's pre-layout fallback (`thresholdSplitPositions` → solid above).
  */
 export function sampleThresholdY(
   points: LiveChartPoint[],
@@ -101,19 +101,29 @@ export function sampleThresholdY(
   if (out) out.length = 0;
   const chartH = canvasHeight - paddingTop - paddingBottom;
   const valRange = displayMax - displayMin;
-  const degenerate =
-    points.length === 0 || valRange <= 0 || chartH <= 0 || windowSecs <= 0;
   // A Y safely below every fragment → shader compares "above" everywhere.
-  const farBelow = canvasHeight > 0 ? canvasHeight + chartH : 1e6;
+  // (canvasHeight * 2 stays below the canvas even when chartH is negative.)
+  const farBelow = canvasHeight > 0 ? canvasHeight * 2 : 1e6;
+  // !(valRange > 0) also catches a NaN display range.
+  if (points.length === 0 || !(valRange > 0) || chartH <= 0 || windowSecs <= 0) {
+    for (let i = 0; i < count; i++) arr.push(farBelow);
+    return arr;
+  }
   const winStart = now - windowSecs;
   for (let i = 0; i < count; i++) {
-    if (degenerate) {
-      arr.push(farBelow);
-      continue;
-    }
     const frac = count > 1 ? i / (count - 1) : 0;
     const v = interpolateAtTime(points, winStart + frac * windowSecs)!;
-    arr.push(paddingTop + ((displayMax - v) / valRange) * chartH);
+    const y = thresholdLineY(
+      v,
+      displayMin,
+      displayMax,
+      canvasHeight,
+      paddingTop,
+      paddingBottom,
+    );
+    // A NaN series value degrades per-sample to the solid-above fallback
+    // instead of leaking NaN into the shader uniform / band vertices.
+    arr.push(Number.isFinite(y) ? y : farBelow);
   }
   return arr;
 }
@@ -146,7 +156,12 @@ export function sampleThresholdYAt(
   return samples[i] + (samples[i + 1] - samples[i]) * (u - i);
 }
 
-/** True when any vertex of a threshold screen polyline sits within the plot. */
+/**
+ * True when any part of a threshold screen polyline crosses the plot: a vertex
+ * inside it, or a segment whose endpoints straddle it (a step riser can jump
+ * from below the bottom edge to above the top edge between two samples without
+ * landing a vertex inside).
+ */
 export function thresholdSeriesVisible(
   screenPts: number[],
   canvasHeight: number,
@@ -155,10 +170,19 @@ export function thresholdSeriesVisible(
 ): boolean {
   "worklet";
   if (canvasHeight <= 0) return false;
-  const bottom = canvasHeight - paddingBottom;
+  let prev = NaN;
   for (let i = 1; i < screenPts.length; i += 2) {
     const y = screenPts[i];
-    if (Number.isFinite(y) && y >= paddingTop && y <= bottom) return true;
+    if (!Number.isFinite(y)) {
+      prev = NaN;
+      continue;
+    }
+    if (thresholdVisible(y, canvasHeight, paddingTop, paddingBottom)) return true;
+    // Both endpoints are outside the plot band — on opposite sides means the
+    // segment crosses straight through it.
+    if (Number.isFinite(prev) && prev < paddingTop !== y < paddingTop)
+      return true;
+    prev = y;
   }
   return false;
 }

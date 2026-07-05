@@ -58,9 +58,14 @@ function useSmoothPriceFeed() {
     }
     data.set(seed);
     value.set(priceAt(now0));
+    let tick = 0;
     const id = setInterval(() => {
       const now = Date.now() / 1000;
       const v = priceAt(now);
+      value.set(v);
+      // Commit a point every 3rd tick (~10Hz, matching the seed density) so the
+      // 1000-point cap keeps ~100s of history instead of eroding to ~33s.
+      if (++tick % 3 !== 0) return;
       const point: LiveChartPoint = { time: now, value: v };
       // Append IN PLACE on the UI thread (only `point` crosses the bridge) — never
       // re-clone the growing array JS→UI, matching the sim's hot path so the line
@@ -71,7 +76,6 @@ function useSmoothPriceFeed() {
         if (arr.length > 1000) arr.shift();
         return arr;
       });
-      value.set(v);
     }, 33);
     return () => clearInterval(id);
   }, [data, value]);

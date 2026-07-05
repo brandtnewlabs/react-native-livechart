@@ -95,6 +95,8 @@ const breakEven: LiveChartPoint[] = [
   benchmark, emit it as you'd sample it.
 - The marker `line`'s badge shows the threshold's **current** value (at the live
   edge) when `showValue` is set.
+- An **empty series** (`[]`) renders as "no threshold yet": plain line color, no
+  band, no marker — handy while the threshold history is still loading.
 
 Unlike the `SharedValue<number>` form, a series flows in on **re-render** (it's a
 plain array). Pass a stable, memoized array and update it when the benchmark
