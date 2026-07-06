@@ -2,6 +2,10 @@ import type { CandlePoint, LiveChartPoint } from "../types";
 
 import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
+import { thresholdRangeMinMax } from "../math/threshold";
+
+/** Scratch for the threshold range fold — only alive within one tick call. */
+const THRESHOLD_RANGE_SCRATCH: [number, number] = [0, 0];
 
 export interface EngineTickMutable {
   displayValue: number;
@@ -48,6 +52,15 @@ export interface EngineTickInput {
   referenceValue: number | undefined;
   /** Additional reference values (lines + bands) folded into the Y range. */
   referenceValues?: number[];
+  /**
+   * Time-varying threshold series (`threshold.includeInRange`): its min/max over
+   * the visible window is folded into the Y range, like {@link referenceValues}
+   * but windowed each tick.
+   */
+  thresholdRangePoints?: LiveChartPoint[];
+  /** Whether {@link thresholdRangePoints} extends flat past its last point to
+   *  "now" (`threshold.extendToNow`). Default `true`. */
+  thresholdRangeExtendToNow?: boolean;
   /** Clamp the computed lower bound at 0. */
   nonNegative?: boolean;
   /** Hard cap for the computed upper bound. */
@@ -282,6 +295,21 @@ export function tickLiveChartEngineFrame(
       const rv = refs[i];
       if (rv < tMin) tMin = rv;
       if (rv > tMax) tMax = rv;
+    }
+  }
+
+  const thrPts = input.thresholdRangePoints;
+  if (thrPts !== undefined && thrPts.length > 0) {
+    const mm = thresholdRangeMinMax(
+      thrPts,
+      state.timestamp,
+      state.displayWindow,
+      input.thresholdRangeExtendToNow ?? true,
+      THRESHOLD_RANGE_SCRATCH,
+    );
+    if (mm !== null) {
+      if (mm[0] < tMin) tMin = mm[0];
+      if (mm[1] > tMax) tMax = mm[1];
     }
   }
 

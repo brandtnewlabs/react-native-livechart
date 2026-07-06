@@ -1,5 +1,11 @@
 import {
+  sampleThresholdY,
+  thresholdDashPhase,
+  sampleThresholdYAt,
   thresholdLineY,
+  thresholdRangeMinMax,
+  thresholdSampleSpanX,
+  thresholdSeriesVisible,
   thresholdSplitPositions,
   thresholdVisible,
 } from "../../src/math/threshold";
@@ -76,5 +82,240 @@ describe("thresholdSplitPositions", () => {
   it("falls back to a valid ascending array for NaN / height 0", () => {
     expect(thresholdSplitPositions(NaN, H)).toEqual([0, 1, 1, 1]);
     expect(thresholdSplitPositions(150, 0)).toEqual([0, 1, 1, 1]);
+  });
+});
+
+// Window/plot geometry for the series helpers: 400px wide canvas, 12px L/R
+// insets → 376px plot; the 300px canvas / 12 top / 28 bottom → 260px plot height,
+// value range [0,100]. now=1000, win=100 → winStart=900.
+const W = 400;
+const LEFT = 12;
+const RIGHT = 12;
+const NOW = 1000;
+const WIN = 100;
+// yOf(v) = TOP + (100 - v) * (260/100) — the value→pixel-Y mapping in the plot.
+const yOf = (v: number) => TOP + (100 - v) * (CHART_H / 100);
+
+describe("sampleThresholdY", () => {
+  it("returns `count` samples, flat for a flat series", () => {
+    const out = sampleThresholdY(
+      [{ time: 900, value: 50 }, { time: 1000, value: 50 }],
+      NOW, WIN, 0, 100, H, TOP, BOT, 5,
+    );
+    expect(out).toHaveLength(5);
+    out.forEach((y) => expect(y).toBeCloseTo(yOf(50)));
+  });
+
+  it("tracks a rising series across the samples (monotonic Y up the screen)", () => {
+    const out = sampleThresholdY(
+      [{ time: 900, value: 20 }, { time: 1000, value: 80 }],
+      NOW, WIN, 0, 100, H, TOP, BOT, 5,
+    );
+    // value rises 20→80 → Y decreases (screen-up); the time-anchored grid can
+    // overhang the series' clamped ends, so ties are allowed there.
+    for (let i = 1; i < out.length; i++)
+      expect(out[i]).toBeLessThanOrEqual(out[i - 1]);
+    expect(out[0]).toBeCloseTo(yOf(20));
+    expect(out[out.length - 1]).toBeCloseTo(yOf(80));
+  });
+
+  it("keeps sample values stable while the window glides (fluid motion)", () => {
+    // Fluidity regression (#187 follow-up): sample TIMES are anchored to an
+    // absolute grid, so a step's samples must be IDENTICAL for nearby `now`s —
+    // the step then translates via the gliding span instead of popping from one
+    // fixed screen bin to the next while the data line glides beside it.
+    // Step at 933.4 — chosen so a window-relative sampler (the old behavior,
+    // times winStart + i/(count-1)·window = 900, 933.33, 966.67, 1000) sweeps a
+    // sample time across the step under the +0.2s nudge and its values change,
+    // while the absolute grid (900, 950, 1000, 1050) is nowhere near it.
+    const step = [
+      { time: 900, value: 30 },
+      { time: 933.4, value: 30 },
+      { time: 933.4, value: 70 },
+      { time: 1000, value: 70 },
+    ];
+    // count 4 → spacing WIN/2 = 50s; a sub-spacing nudge must not re-anchor.
+    const a = sampleThresholdY(step, NOW, WIN, 0, 100, H, TOP, BOT, 4);
+    const b = sampleThresholdY(step, NOW + 0.2, WIN, 0, 100, H, TOP, BOT, 4);
+    expect(b).toEqual(a);
+    // The pixel span DOES glide with the nudge (same width, shifted left).
+    const [a0, a1] = thresholdSampleSpanX(NOW, WIN, LEFT, W - RIGHT, 4);
+    const [b0, b1] = thresholdSampleSpanX(NOW + 0.2, WIN, LEFT, W - RIGHT, 4);
+    expect(b0).toBeLessThan(a0);
+    expect(b1 - b0).toBeCloseTo(a1 - a0);
+    // And the grid always covers the plot.
+    expect(a0).toBeLessThanOrEqual(LEFT);
+    expect(a1).toBeGreaterThanOrEqual(W - RIGHT);
+  });
+
+  it("fills with a far-below Y when the range is degenerate", () => {
+    const out = sampleThresholdY(
+      [{ time: 950, value: 50 }], NOW, WIN, 50, 50, H, TOP, BOT, 4,
+    );
+    expect(out).toHaveLength(4);
+    out.forEach((y) => expect(y).toBeGreaterThan(H));
+  });
+
+  it("samples a single value when count is 1 (no divide-by-zero)", () => {
+    const out = sampleThresholdY(
+      [{ time: 900, value: 50 }, { time: 1000, value: 50 }],
+      NOW, WIN, 0, 100, H, TOP, BOT, 1,
+    );
+    expect(out).toEqual([expect.closeTo(yOf(50))]);
+  });
+
+  it("uses a fixed far-below Y when the canvas has not laid out", () => {
+    const out = sampleThresholdY(
+      [{ time: 950, value: 50 }], NOW, WIN, 0, 100, 0, TOP, BOT, 3,
+    );
+    expect(out).toEqual([1e6, 1e6, 1e6]);
+  });
+
+  it("degrades NaN series values to the far-below fallback per sample", () => {
+    // Bad data must not leak NaN into the shader uniform / band vertices.
+    const out = sampleThresholdY(
+      [{ time: 900, value: NaN }, { time: 1000, value: NaN }],
+      NOW, WIN, 0, 100, H, TOP, BOT, 4,
+    );
+    expect(out).toHaveLength(4);
+    out.forEach((y) => {
+      expect(Number.isFinite(y)).toBe(true);
+      expect(y).toBeGreaterThan(H);
+    });
+  });
+});
+
+describe("sampleThresholdYAt", () => {
+  // 5 samples across the plot [100, 500] → spacing 100px: y = 80,60,60,40,40.
+  const samples = [80, 60, 60, 40, 40];
+  const PL = 100;
+  const PR = 500;
+
+  it("returns the exact sample value at a sample x", () => {
+    expect(sampleThresholdYAt(samples, PL, PR, 100)).toBeCloseTo(80);
+    expect(sampleThresholdYAt(samples, PL, PR, 300)).toBeCloseTo(60);
+    expect(sampleThresholdYAt(samples, PL, PR, 500)).toBeCloseTo(40);
+  });
+
+  it("linearly interpolates between samples (matching the shader)", () => {
+    expect(sampleThresholdYAt(samples, PL, PR, 150)).toBeCloseTo(70); // 80→60
+    expect(sampleThresholdYAt(samples, PL, PR, 450)).toBeCloseTo(40); // flat 40→40
+  });
+
+  it("clamps to the first/last sample outside the plot", () => {
+    expect(sampleThresholdYAt(samples, PL, PR, 0)).toBe(80);
+    expect(sampleThresholdYAt(samples, PL, PR, 999)).toBe(40);
+  });
+
+  it("degrades safely for empty / single-sample / zero-span input", () => {
+    expect(sampleThresholdYAt([], PL, PR, 200)).toBe(0);
+    expect(sampleThresholdYAt([55], PL, PR, 200)).toBe(55);
+    expect(sampleThresholdYAt(samples, PL, PL, 200)).toBe(80);
+  });
+});
+
+describe("thresholdSeriesVisible", () => {
+  it("is true when any vertex sits within the plot", () => {
+    expect(thresholdSeriesVisible([LEFT, TOP + 100, W - RIGHT, TOP + 100], H, TOP, BOT)).toBe(true);
+  });
+
+  it("is false when the whole polyline is off-plot, empty, or un-laid-out", () => {
+    expect(thresholdSeriesVisible([LEFT, -5, W - RIGHT, -5], H, TOP, BOT)).toBe(false);
+    expect(thresholdSeriesVisible([], H, TOP, BOT)).toBe(false);
+    expect(thresholdSeriesVisible([LEFT, 100], 0, TOP, BOT)).toBe(false);
+  });
+
+  it("is true for a step riser that crosses the plot between two vertices", () => {
+    // Both endpoints outside the plot band, on opposite sides — the segment
+    // still crosses the whole visible plot and must count as visible.
+    expect(thresholdSeriesVisible([LEFT, -50, W - RIGHT, H + 200], H, TOP, BOT)).toBe(true);
+    expect(thresholdSeriesVisible([LEFT, H + 200, W - RIGHT, -50], H, TOP, BOT)).toBe(true);
+    // Same side (both above) stays invisible.
+    expect(thresholdSeriesVisible([LEFT, -50, W - RIGHT, -5], H, TOP, BOT)).toBe(false);
+    // A NaN vertex breaks the segment — no phantom crossing through the gap.
+    expect(thresholdSeriesVisible([LEFT, -50, 200, NaN, W - RIGHT, H + 200], H, TOP, BOT)).toBe(false);
+  });
+});
+
+describe("thresholdRangeMinMax", () => {
+  const scratch: [number, number] = [0, 0];
+  // Stepped series inside window [900, 1000]: 40 → 70 at t=950, last point 980.
+  const stepped = [
+    { time: 900, value: 40 },
+    { time: 950, value: 40 },
+    { time: 950, value: 70 },
+    { time: 980, value: 70 },
+  ];
+
+  it("returns the window min/max (flat-extended to now)", () => {
+    expect(thresholdRangeMinMax(stepped, NOW, WIN, true, scratch)).toEqual([
+      40, 70,
+    ]);
+  });
+
+  it("clamps to the series edges outside the window", () => {
+    // Window entirely after the last point → flat extension holds 70.
+    expect(thresholdRangeMinMax(stepped, 1200, 100, true, scratch)).toEqual([
+      70, 70,
+    ]);
+  });
+
+  it("returns null for an empty series or degenerate window", () => {
+    expect(thresholdRangeMinMax([], NOW, WIN, true, scratch)).toBeNull();
+    expect(thresholdRangeMinMax(stepped, NOW, 0, true, scratch)).toBeNull();
+  });
+
+  it("respects extendToNow=false (no forward projection)", () => {
+    // Window after the last point → nothing to contribute without extension.
+    expect(thresholdRangeMinMax(stepped, 1200, 100, false, scratch)).toBeNull();
+    // Window straddling the last point → clamps the end at t=980 (same values
+    // here, but the fold stops at the series end).
+    expect(thresholdRangeMinMax(stepped, NOW, WIN, false, scratch)).toEqual([
+      40, 70,
+    ]);
+  });
+
+  it("returns null when the visible values are non-finite", () => {
+    expect(
+      thresholdRangeMinMax(
+        [
+          { time: 900, value: NaN },
+          { time: 1000, value: NaN },
+        ],
+        NOW,
+        WIN,
+        true,
+        scratch,
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("thresholdDashPhase", () => {
+  const CYCLE = 8; // default [4, 4] dash pattern
+
+  it("advances at exactly the content scroll speed (px/sec mod cycle)", () => {
+    // span 376px over 100s → 3.76 px/s. After dt seconds the phase must have
+    // advanced by dt * 3.76 (mod 8) so the dashes ride the gliding geometry.
+    const a = thresholdDashPhase(NOW, WIN, LEFT, W - RIGHT, CYCLE);
+    const b = thresholdDashPhase(NOW + 1, WIN, LEFT, W - RIGHT, CYCLE);
+    const speed = (W - RIGHT - LEFT) / WIN;
+    expect((b - a + CYCLE) % CYCLE).toBeCloseTo(speed % CYCLE);
+  });
+
+  it("is periodic in the dash cycle (no drift or jumps at wrap)", () => {
+    const a = thresholdDashPhase(NOW, WIN, LEFT, W - RIGHT, CYCLE);
+    // One full cycle of scroll time later, the phase is identical.
+    const dt = (CYCLE * WIN) / (W - RIGHT - LEFT);
+    const b = thresholdDashPhase(NOW + dt, WIN, LEFT, W - RIGHT, CYCLE);
+    expect(b).toBeCloseTo(a);
+    expect(a).toBeGreaterThanOrEqual(0);
+    expect(a).toBeLessThan(CYCLE);
+  });
+
+  it("degrades to a static phase for degenerate inputs", () => {
+    expect(thresholdDashPhase(NOW, 0, LEFT, W - RIGHT, CYCLE)).toBe(0);
+    expect(thresholdDashPhase(NOW, WIN, LEFT, LEFT, CYCLE)).toBe(0);
+    expect(thresholdDashPhase(NOW, WIN, LEFT, W - RIGHT, 0)).toBe(0);
   });
 });

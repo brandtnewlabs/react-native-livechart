@@ -279,16 +279,28 @@ interface AreaDotsConfig {  // dot-lattice fill of the area beneath the line
   opacity?: number; // overall field opacity (0..1); default 1
 }
 interface ThresholdConfig {
-  value: SharedValue<number>; // the split value (Y-axis units), always live
+  // The split value (Y-axis units). A SharedValue<number> for a single live
+  // benchmark, OR a LiveChartPoint[] for a time-varying threshold the split,
+  // band + marker follow point-for-point (clamps to its first/last value outside
+  // its range → flat-extends to the live edge). See the Threshold split guide.
+  // Provide value OR series (series wins).
+  value?: SharedValue<number> | LiveChartPoint[];
+  // LIVE time-varying threshold: like the LiveChartPoint[] form but a
+  // SharedValue — .set()/.modify() tracks on the UI thread, no re-render
+  // (a VWAP updated every tick). Points sorted by time, like `data`.
+  series?: SharedValue<LiveChartPoint[]>;
   aboveColor?: string;        // stroke at/above value; default palette up-green
   belowColor?: string;        // stroke below value;    default palette down-red
-  fill?: boolean;             // tint the line↔value band (profit/loss); default false
-  line?: boolean | ThresholdLineConfig; // dashed marker line at value; default off
+  fill?: boolean | { opacity?: number }; // line↔threshold P/L band; default off, opacity 0.16
+  includeInRange?: boolean;   // fold the threshold into the Y-range fit (like reference lines); default false
+  extendToNow?: boolean;      // series: extend flat past the last point to "now"; default true
+  line?: boolean | ThresholdLineConfig; // marker line at value; default off
 }
 interface ThresholdLineConfig {
   label?: string;                    // label text, e.g. "Break-even"
   labelPosition?: "left" | "right";  // "left" = inside plot (clear of y-axis); default "left"
   color?: string;                    // line + label color; default palette refLine/refLabel
+  labelColor?: string;               // label text color; falls back to color, then palette refLabel
   intervals?: [number, number];      // dash pattern; default [4, 4]
   strokeWidth?: number;              // default 1
   showValue?: boolean;               // append the formatted value to the label; default false

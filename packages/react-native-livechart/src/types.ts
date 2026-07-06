@@ -431,32 +431,77 @@ export interface LineConfig {
 }
 
 /**
- * Color the line above vs. below a live threshold value — green above, red below
- * by default. The threshold is **always** a `SharedValue` so it can track a live
- * benchmark (break-even / average cost, VWAP, previous close, a peg) on the UI
- * thread without re-rendering. Drives a hard-split line stroke and, optionally, a
- * tinted profit/loss fill band and a dashed marker line at the threshold.
+ * Color the line above vs. below a threshold — green above, red below by
+ * default. The threshold is either a single **live benchmark** (a
+ * `SharedValue<number>` that tracks on the UI thread without re-rendering) or a
+ * **time-varying series** (a `LiveChartPoint[]` the split follows point-for-point
+ * — a stepped break-even, a historical VWAP). Drives a hard-split line stroke
+ * and, optionally, a tinted profit/loss fill band and a marker line at the
+ * threshold.
  *
  * The split stroke supersedes `LineConfig.color`/`colors` and segment recoloring
  * for the main line while a threshold is set.
  */
 export interface ThresholdConfig {
   /**
-   * The split value, in Y-axis (price) units. A `SharedValue` — update it with
-   * `.set()` and the split tracks live on the UI thread (break-even, VWAP, the
-   * previous close, a peg, …).
+   * The split value, in Y-axis (price) units. Two forms:
+   *
+   * - **`SharedValue<number>`** — a single live benchmark. Update it with
+   *   `.set()` and the horizontal split tracks on the UI thread without
+   *   re-rendering (break-even / average cost, VWAP, the previous close, a peg).
+   * - **`LiveChartPoint[]`** — a *time-varying* threshold (e.g. a historical
+   *   break-even that steps up as you average in). The stroke split, fill band
+   *   and marker line follow the series point-for-point. The series clamps to its
+   *   first/last value outside its own time range, so a threshold whose last
+   *   point sits behind the live edge extends as a flat line to "now" (see
+   *   {@link extendToNow}). Flows in on re-render — pass a stable (memoized)
+   *   array and reserve it for thresholds that change occasionally; for a
+   *   threshold series that updates live, use {@link series} instead.
+   *
+   * Provide `value` or {@link series} (not both) — `series` wins if both are set.
    */
-  value: SharedValue<number>;
-  /** Stroke color where the line is at/above `value`. Default: palette up-green (`candleUp`). */
+  value?: SharedValue<number> | LiveChartPoint[];
+  /**
+   * A **live** time-varying threshold: like the `LiveChartPoint[]` form of
+   * {@link value}, but a `SharedValue` — update it with `.set()`/`.modify()` and
+   * the split tracks on the UI thread without re-rendering (a VWAP that updates
+   * every tick, mirroring how the chart's own `data` prop works). Points must be
+   * sorted by `time`, like `data`. Takes precedence over {@link value}.
+   */
+  series?: SharedValue<LiveChartPoint[]>;
+  /**
+   * Stroke color where the line is at/above `value`. Default: palette up-green
+   * (`candleUp`). With a series `value`, use hex (`#rgb`/`#rrggbb`), `rgb()` or
+   * `rgba()` — the split shader parses these; named CSS colors and 8-digit hex
+   * are only supported by the constant form.
+   */
   aboveColor?: string;
-  /** Stroke color where the line is below `value`. Default: palette down-red (`candleDown`). */
+  /** Stroke color where the line is below `value`. Default: palette down-red
+   *  (`candleDown`). Same format support as `aboveColor`. */
   belowColor?: string;
   /**
-   * Tint the area between the line and `value` (the profit/loss band) toward the
-   * above/below colors. Independent of the baseline `gradient` fill — set
-   * `gradient={false}` for the threshold band alone. Default `false`.
+   * Tint the area between the line and the threshold (the profit/loss band)
+   * toward the above/below colors. Independent of the baseline `gradient` fill —
+   * set `gradient={false}` for the threshold band alone. `true` → default band
+   * opacity (`0.16`), or an object to tune it. Default `false`.
    */
-  fill?: boolean;
+  fill?: boolean | ThresholdFillConfig;
+  /**
+   * Fold the threshold into the Y-axis range fit — like reference lines — so a
+   * benchmark outside the data's own range stays on-plot instead of rendering
+   * invisibly (marker off-plot, whole line one color). For a series, the values
+   * visible in the current window count (respecting {@link extendToNow}).
+   * Default `false` (range fits the data only).
+   */
+  includeInRange?: boolean;
+  /**
+   * Series forms only: extend the threshold **flat past its last point to
+   * "now"**, carrying the last known benchmark forward. Set `false` for a
+   * benchmark that must not project into the future (a closed session's VWAP) —
+   * right of the last point the stroke keeps its plain line color and the band /
+   * marker / badge end. Default `true`.
+   */
+  extendToNow?: boolean;
   /**
    * Dashed marker line + optional gutter label at the threshold. `true` → a dashed
    * line in the palette reference color; object → styled; omit/`false` → none.
@@ -483,6 +528,16 @@ export interface ThresholdLineConfig {
   strokeWidth?: number;
   /** Append the formatted threshold value to the label. Default `false`. */
   showValue?: boolean;
+  /** Label text color. Defaults to {@link color}, then palette `refLabel` —
+   *  mirroring `ReferenceLine.labelColor`. */
+  labelColor?: string;
+}
+
+/** Object form of {@link ThresholdConfig.fill} — band tuning. */
+export interface ThresholdFillConfig {
+  /** Band fill opacity (0–1), applied to the above/below colors. Multiplies an
+   *  `rgba()` color's own alpha. Default `0.16` (matching reference-line bands). */
+  opacity?: number;
 }
 
 /** Area fill gradient beneath the chart line. */

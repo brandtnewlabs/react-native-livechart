@@ -37,6 +37,17 @@ export interface EngineConfig {
    * `referenceValues`). Read on the UI thread each frame; omit for non-draggable charts.
    */
   liveReferenceValues?: SharedValue<number[]>;
+  /**
+   * Time-varying threshold series folded into the axis-range fit
+   * (`threshold.includeInRange`): each tick contributes the series' min/max over
+   * the visible window — like {@link referenceValues}, but windowed. A
+   * `SharedValue` for the live `threshold.series` form, a plain array for the
+   * `LiveChartPoint[]` form.
+   */
+  thresholdRangePoints?: SharedValue<LiveChartPoint[]> | LiveChartPoint[];
+  /** With {@link thresholdRangePoints}: whether the series extends flat past its
+   *  last point to "now" (`threshold.extendToNow`). Default `true`. */
+  thresholdRangeExtendToNow?: boolean;
   nonNegative?: boolean;
   maxValue?: number;
   nowOverride?: number;
@@ -183,6 +194,9 @@ export interface EngineFrameRefs {
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
   referenceValues?: SharedValue<number[] | undefined>;
+  /** Series threshold folded into the range fit (`threshold.includeInRange`). */
+  thresholdRangePoints?: SharedValue<LiveChartPoint[] | undefined>;
+  thresholdRangeExtendToNow?: SharedValue<boolean>;
   nonNegativeSV?: SharedValue<boolean>;
   maxValueSV?: SharedValue<number | undefined>;
   nowOverrideSV?: SharedValue<number | undefined>;
@@ -251,6 +265,8 @@ export function applyLiveChartEngineFrame(
     exaggerate: sv.exaggerateSV.value,
     referenceValue: sv.referenceValue.value,
     referenceValues: sv.referenceValues?.value,
+    thresholdRangePoints: sv.thresholdRangePoints?.value,
+    thresholdRangeExtendToNow: sv.thresholdRangeExtendToNow?.value ?? true,
     nonNegative: sv.nonNegativeSV?.value ?? false,
     maxValue: sv.maxValueSV?.value,
     nowOverride: sv.nowOverrideSV?.value,
@@ -325,6 +341,23 @@ export function useLiveChartEngine(
     if (!live || live.length === 0) return base;
     return base && base.length > 0 ? base.concat(live) : live;
   });
+  // Threshold range fold (`threshold.includeInRange`, series forms). Captured
+  // directly (not via `config.`) like `liveReferenceValues`, so the live
+  // `threshold.series` SharedValue is tracked and the tick sees fresh points.
+  const thresholdRangeSourceSV =
+    config.thresholdRangePoints !== undefined &&
+    !Array.isArray(config.thresholdRangePoints)
+      ? config.thresholdRangePoints
+      : null;
+  const thresholdRangePoints = useDerivedValue<LiveChartPoint[] | undefined>(
+    () =>
+      thresholdRangeSourceSV
+        ? thresholdRangeSourceSV.value
+        : (config.thresholdRangePoints as LiveChartPoint[] | undefined),
+  );
+  const thresholdRangeExtendToNow = useDerivedValue(
+    () => config.thresholdRangeExtendToNow ?? true,
+  );
   const nonNegativeSV = useDerivedValue(() => config.nonNegative ?? false);
   const maxValueSV = useDerivedValue(() => config.maxValue);
   const nowOverrideSV = useDerivedValue(() => config.nowOverride);
@@ -412,6 +445,8 @@ export function useLiveChartEngine(
     exaggerateSV,
     referenceValue,
     referenceValues,
+    thresholdRangePoints,
+    thresholdRangeExtendToNow,
     nonNegativeSV,
     maxValueSV,
     nowOverrideSV,

@@ -11,10 +11,11 @@ description: "Color the line above vs. below a live benchmark — green above, r
 </Note>
 
 Where a [reference line](/guides/reference-lines-and-bands) is a *static* annotation, `threshold`
-colors the line itself **above vs. below a live value** — green above, red below by default. The
-threshold is **always** a `SharedValue`, so the split tracks a moving benchmark on the UI thread
-without re-rendering: break-even / average cost, VWAP, the previous close, or a stablecoin peg.
-Single-series `LiveChart`, line mode.
+colors the line itself **above vs. below a value** — green above, red below by default. The value
+is either a single live benchmark (a `SharedValue<number>` that tracks on the UI thread without
+re-rendering — break-even / average cost, VWAP, the previous close, a stablecoin peg) or a
+[time-varying series](#time-varying-threshold-a-series) (a `LiveChartPoint[]` the split follows
+point-for-point). Single-series `LiveChart`, line mode.
 
 <Frame caption="Green above, red below a live break-even — with an optional P/L fill band">
   <video autoPlay loop muted playsInline controls poster="/media/threshold.jpg" src="/media/threshold.mp4" />
@@ -35,9 +36,15 @@ below; override with `aboveColor` / `belowColor`). Two opt-in extras share the s
 
 - **`fill`** — tints the area *between the line and the threshold* (the profit/loss
   band) toward the above/below colors. It's independent of the baseline `gradient`
-  fill, so set `gradient={false}` for the band alone.
+  fill, so set `gradient={false}` for the band alone. `true` uses the default band
+  opacity (`0.16`, matching reference-line bands); pass `{ opacity: 0.35 }` to tune it.
 - **`line`** — a dashed marker line at the threshold. `true` draws just the line;
-  pass a `ThresholdLineConfig` to add a label badge.
+  pass a `ThresholdLineConfig` to add a label badge (`labelColor` overrides the
+  label's text color, like `ReferenceLine.labelColor`).
+- **`includeInRange`** — fold the threshold into the Y-axis range fit, like
+  reference lines do. Without it the range fits the data alone, so a benchmark
+  outside the price range renders invisibly (marker off-plot, whole line one
+  color). Default `false`.
 
 ```tsx
 <LiveChart
@@ -60,5 +67,72 @@ The label renders as an opaque **badge** anchored flush to the plot's left edge
 gutter, and is drawn on top of the line so it's never painted over. While a
 threshold is set it supersedes `line.color` / `line.colors` and segment recoloring
 for the main stroke.
+
+## Time-varying threshold (a series)
+
+Pass a `LiveChartPoint[]` as `value` instead of a `SharedValue<number>` and the
+threshold becomes a **line**, not a level — the stroke split, fill band and marker
+all follow it point-for-point. This is the natural fit for a benchmark that
+*changes over time*: a break-even / average cost that steps up as you DCA in, a
+historical VWAP, a moving peg. For a series that updates **live**, pass a
+`SharedValue<LiveChartPoint[]>` as `series` instead (below).
+
+```tsx
+import { LiveChart, type LiveChartPoint } from "react-native-livechart";
+
+// A stepped average-cost (two points per step → a clean vertical riser).
+const breakEven: LiveChartPoint[] = [
+  { time: t0, value: 96.5 },
+  { time: t1, value: 96.5 },
+  { time: t1, value: 99.0 }, // ← step up
+  { time: t2, value: 99.0 },
+  { time: t2, value: 101.2 },
+  { time: t3, value: 101.2 },
+];
+
+<LiveChart data={data} value={value} threshold={{ value: breakEven, fill: true }} />;
+```
+
+- The series is **clamped to its first/last value** outside its own time range. So
+  a threshold whose last point sits behind the live edge **extends as a flat line
+  to "now"** — carrying the last known break-even forward — and a window that
+  starts before the first point holds the first value.
+- Points are connected with **straight segments**. For a step function, emit two
+  points at each boundary (same time, old then new value) as above; for a smooth
+  benchmark, emit it as you'd sample it.
+- The split renders from **64 samples** across the plot (a GPU shader), so a hard
+  step becomes a riser about 1/63 of the plot wide — visually a clean vertical at
+  phone sizes. The stroke split, band and marker share the same samples, so they
+  always agree at the riser.
+- `aboveColor` / `belowColor` accept **hex (`#rgb`/`#rrggbb`), `rgb()` and
+  `rgba()`** in series mode (an `rgba()` alpha carries into the stroke and scales
+  the band). Named CSS colors and 8-digit hex are only supported by the constant
+  form — in series mode they fall back to grey.
+- The marker `line`'s badge shows the threshold's **current** value (at the live
+  edge) when `showValue` is set.
+- An **empty series** (`[]`) renders as "no threshold yet": plain line color, no
+  band, no marker — handy while the threshold history is still loading.
+- **`extendToNow: false`** opts out of the flat extension for a benchmark that
+  must not project into the future (a closed session's VWAP): right of the last
+  point the stroke keeps its plain line color and the band / marker / badge end.
+
+Unlike the `SharedValue<number>` form, a `value` series flows in on **re-render**
+(it's a plain array). Pass a stable, memoized array and update it when the
+benchmark actually changes. For a threshold series that updates **live** — a VWAP
+recomputed every tick — use the `series` form, a `SharedValue<LiveChartPoint[]>`
+that works like the chart's own `data` prop: update it with `.set()` /
+`.modify()` and the split tracks on the UI thread without re-rendering.
+
+```tsx
+const vwap = useSharedValue<LiveChartPoint[]>([]);
+// on each tick: vwap.set([...vwap.get(), { time, value }])
+
+<LiveChart data={data} value={value} threshold={{ series: vwap, fill: true }} />;
+```
+
+<Note>
+  Candle mode and `LiveChartSeries` (multi-series) are unaffected — threshold is a
+  single-series line-mode feature in both forms.
+</Note>
 
 See [`ThresholdConfig`](/api-reference/types#thresholdconfig) for every field.

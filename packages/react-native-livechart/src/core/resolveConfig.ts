@@ -14,6 +14,7 @@ import type {
   LineStyleConfig,
   LiveChartMetrics,
   LiveChartMetricsOverride,
+  LiveChartPoint,
   LoadingConfig,
   MarkerClusterConfig,
   DotConfig,
@@ -326,16 +327,31 @@ export interface ResolvedThresholdLineConfig {
   intervals: [number, number];
   strokeWidth: number;
   showValue: boolean;
+  /** undefined → fall back to `color`, then palette.refLabel at render time. */
+  labelColor: string | undefined;
 }
 
 export interface ResolvedThresholdConfig {
-  /** The live split value (Y-axis units). Read on the UI thread each frame. */
-  value: SharedValue<number>;
+  /**
+   * The split value (Y-axis units). A `SharedValue<number>` for a single live
+   * benchmark (read on the UI thread each frame), or a `LiveChartPoint[]` for a
+   * time-varying threshold the split follows point-for-point. `undefined` when
+   * {@link series} carries the threshold instead.
+   */
+  value: SharedValue<number> | LiveChartPoint[] | undefined;
+  /** Live time-varying threshold (`SharedValue<LiveChartPoint[]>`); wins over `value`. */
+  series: SharedValue<LiveChartPoint[]> | null;
   /** undefined → use palette.candleUp (up-green) at render time. */
   aboveColor: string | undefined;
   /** undefined → use palette.candleDown (down-red) at render time. */
   belowColor: string | undefined;
   fill: boolean;
+  /** Band opacity (0–1); {@link THRESHOLD_FILL_OPACITY_DEFAULT} unless tuned. */
+  fillOpacity: number;
+  /** Fold the threshold into the Y-axis range fit. */
+  includeInRange: boolean;
+  /** Series forms: extend flat past the last point to "now". */
+  extendToNow: boolean;
   line: ResolvedThresholdLineConfig | null;
 }
 
@@ -346,7 +362,11 @@ const THRESHOLD_LINE_DEFAULTS: ResolvedThresholdLineConfig = {
   intervals: [4, 4],
   strokeWidth: 1,
   showValue: false,
+  labelColor: undefined,
 };
+
+/** Default threshold band opacity — matches reference-line bands. */
+export const THRESHOLD_FILL_OPACITY_DEFAULT = 0.16;
 
 /**
  * Resolves the `threshold.line` sub-prop to a config or null (no marker line).
@@ -360,18 +380,24 @@ export function resolveThresholdLine(
 
 /**
  * Resolves the `threshold` prop to a fully-typed config or null (disabled).
- * Presence-gated (like `referenceLines`/`markers`): the required `value`
- * SharedValue means there is no boolean form — a config object enables it.
+ * Presence-gated (like `referenceLines`/`markers`): a config object with a
+ * `value` or `series` enables it — there is no boolean form.
  */
 export function resolveThreshold(
   prop: ThresholdConfig | undefined,
 ): ResolvedThresholdConfig | null {
-  if (!prop) return null;
+  if (!prop || (prop.value == null && prop.series == null)) return null;
   return {
     value: prop.value,
+    series: prop.series ?? null,
     aboveColor: prop.aboveColor,
     belowColor: prop.belowColor,
-    fill: prop.fill ?? false,
+    fill: !!prop.fill,
+    fillOpacity:
+      (typeof prop.fill === "object" ? prop.fill.opacity : undefined) ??
+      THRESHOLD_FILL_OPACITY_DEFAULT,
+    includeInRange: prop.includeInRange ?? false,
+    extendToNow: prop.extendToNow ?? true,
     line: resolveThresholdLine(prop.line),
   };
 }

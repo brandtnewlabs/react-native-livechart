@@ -33,6 +33,7 @@ const LINE_DEFAULTS: ResolvedThresholdLineConfig = {
   label: undefined,
   labelPosition: "left",
   color: undefined,
+  labelColor: undefined,
   intervals: [4, 4],
   strokeWidth: 1,
   showValue: false,
@@ -72,6 +73,15 @@ describe("ThresholdLineOverlay (dashed line)", () => {
     render(
       <ThresholdLineOverlay
         {...props(LINE_DEFAULTS, { visible: false, lineY: NaN })}
+      />,
+    );
+  });
+
+  it("traces the threshold polyline when seriesPts is provided", () => {
+    render(
+      <ThresholdLineOverlay
+        {...props(LINE_DEFAULTS)}
+        seriesPts={sv([12, 100, 200, 80, 388, 90]) as never}
       />,
     );
   });
