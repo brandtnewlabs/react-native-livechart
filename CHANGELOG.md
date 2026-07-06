@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`LiveChartSeries` hides the scrub selection dot by default** (`selectionDot`
+  now defaults to `false` on the multi-series chart; `LiveChart` is unchanged).
+  With multiple lines the dot could only track the leading series, which read as
+  a stray dot following one line while scrubbing — the crosshair + per-series
+  tooltip stack already mark the scrub point. Pass `selectionDot` (or a
+  `SelectionDotConfig`) explicitly to opt back in.
+
 ### Fixed
 
 - **Y-axis now adapts to the visible window while time-scrolled.** While panned

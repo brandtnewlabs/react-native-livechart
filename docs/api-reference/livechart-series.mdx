@@ -64,11 +64,13 @@ default off.
   defaulted to `false`); pass `scrub={false}` to disable.
 </ParamField>
 
-<ParamField body="selectionDot" type="boolean | SelectionDotConfig" default="true">
-  Dot drawn at the scrub intersection (anchored to the leading series) while
-  scrubbing. `false` hides it; pass a config to set `size` / `color` / `ring`, or
-  `{ component }` for a fully custom Skia dot. See
-  [Scrubbing](/guides/scrubbing#selection-dot).
+<ParamField body="selectionDot" type="boolean | SelectionDotConfig" default="false">
+  Dot drawn at the scrub intersection while scrubbing. **Hidden by default on
+  `LiveChartSeries`** (unlike `LiveChart`): with multiple lines the dot can only
+  track the leading series, so the crosshair + per-series tooltips mark the
+  scrub point instead. Pass `true` to opt in (it anchors to the leading series),
+  a config to set `size` / `color` / `ring`, or `{ component }` for a fully
+  custom Skia dot. See [Scrubbing](/guides/scrubbing#selection-dot).
 </ParamField>
 
 <ParamField body="onScrub" type="(point: ScrubPointMulti | null) => void">

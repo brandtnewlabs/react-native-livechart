@@ -5,6 +5,7 @@ import { useSharedValue } from "react-native-reanimated";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import { LiveChartSeries } from "../src/components/LiveChartSeries";
+import { DefaultSelectionDot } from "../src/components/SelectionDot";
 import type { SeriesConfig } from "../src/types";
 
 describe("LiveChartSeries", () => {
@@ -118,6 +119,65 @@ describe("LiveChartSeries", () => {
     fireEvent(layoutView, "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
+  });
+
+  it("hides the scrub selection dot by default (multi-series)", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return <LiveChartSeries series={series} />;
+    }
+    const screen = render(<H />);
+    await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
+    const views = screen.UNSAFE_getAllByType(View);
+    const layoutView =
+      views.find((v) => typeof v.props.onLayout === "function") ?? views[0];
+    fireEvent(layoutView, "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+    // The dot can only follow one line, so multi-series defaults it off.
+    expect(screen.UNSAFE_queryAllByType(DefaultSelectionDot)).toHaveLength(0);
+  });
+
+  it("shows the scrub selection dot when opted in via selectionDot", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return <LiveChartSeries series={series} selectionDot />;
+    }
+    const screen = render(<H />);
+    await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
+    const views = screen.UNSAFE_getAllByType(View);
+    const layoutView =
+      views.find((v) => typeof v.props.onLayout === "function") ?? views[0];
+    fireEvent(layoutView, "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+    expect(
+      screen.UNSAFE_queryAllByType(DefaultSelectionDot).length,
+    ).toBeGreaterThan(0);
   });
 
   it("renders with explicit non-default props", async () => {
