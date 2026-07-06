@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   history on screen. All three are now excluded from the range while scrolled
   back (line + candle, single- and multi-series); live-following behavior is
   unchanged.
+- **Skia system-font matching is now cached module-wide** (`matchFont` per
+  `{family, size, weight}` instead of per chart per render). Screens that mount
+  many charts at once no longer pay ~4 native font lookups per chart per render —
+  measured ~40% faster time-to-rendered on the example app's Sparklines screen
+  (25 static charts).
 
 ## [4.9.0] - 2026-07-06
 
