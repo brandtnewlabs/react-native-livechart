@@ -235,8 +235,10 @@ through to the parent gesture, while a deliberate hold begins scrubbing.
 
 ## Selection dot
 
-A dot is drawn at the scrub intersection — where the crosshair meets the line (or the leading
-series, on `LiveChartSeries`). It's **on by default**, so you get it for free with `scrub`.
+A dot is drawn at the scrub intersection — where the crosshair meets the line. On `LiveChart` it's
+**on by default**, so you get it for free with `scrub`. On `LiveChartSeries` it's **off by
+default** — with multiple lines the dot can only track the leading series, so the crosshair +
+per-series tooltips mark the scrub point instead; pass `selectionDot` explicitly to opt in.
 
 Turn it off, or tweak its look, with the `boolean | SelectionDotConfig` `selectionDot` prop:
 
@@ -275,7 +277,8 @@ function RingDot({ x, y, opacity, color, size }: SelectionDotProps) {
 <LiveChart data={data} value={value} selectionDot={{ component: RingDot }} />;
 ```
 
-The same `selectionDot` prop works on `LiveChartSeries`.
+The same `selectionDot` prop works on `LiveChartSeries` — there it defaults to hidden, so pass
+`true` (or a config) to show the dot anchored to the leading series.
 
 ## Reading the scrub position (single series)
 

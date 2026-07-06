@@ -1979,9 +1979,14 @@ export interface LiveChartCoreProps {
   /** Crosshair scrubbing on hover/drag. `true` = defaults, `false` = disabled, or pass `ScrubConfig`. Default `true`. */
   scrub?: boolean | ScrubConfig;
   /**
-   * Selection dot drawn at the scrub intersection while scrubbing. `true`/omitted
-   * = built-in dot, `false` = hidden, or pass `SelectionDotConfig` (`size`,
-   * `color`, `ring`, or a custom `component`). Default `true`.
+   * Selection dot drawn at the scrub intersection while scrubbing. `true` =
+   * built-in dot, `false` = hidden, or pass `SelectionDotConfig` (`size`,
+   * `color`, `ring`, or a custom `component`).
+   *
+   * Defaults differ per chart: `LiveChart` shows it (`true`); `LiveChartSeries`
+   * hides it (`false`) — with multiple lines the dot can only track the leading
+   * series, so the crosshair + per-series tooltips mark the scrub point instead.
+   * Pass `true` / a config to opt a multi-series chart in.
    */
   selectionDot?: boolean | SelectionDotConfig;
   /** Called once when the user starts scrubbing/panning the chart. */

@@ -208,7 +208,11 @@ function useLiveChartSeriesController({
       ? (timeScrollHoldMs ?? (scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS))
       : (scrubCfg?.panGestureDelay ?? 0);
 
-  const selectionDotCfg = resolveSelectionDot(selectionDot);
+  // Multi-series defaults the scrub selection dot OFF: it can only track one
+  // line (the leading series), which reads as a bug next to the other series.
+  // The crosshair line + per-series tooltip stack already mark the scrub point.
+  // Passing `selectionDot` explicitly (true / config) still opts it in.
+  const selectionDotCfg = resolveSelectionDot(selectionDot ?? false);
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
   // Outer footprint of a dot (the color-filled radius plus the halo ring).

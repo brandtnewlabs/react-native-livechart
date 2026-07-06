@@ -359,7 +359,8 @@ interface SelectionDotRingConfig {
   color?: string; // ring color, defaults to the dot color
   width?: number; // ring thickness past the dot, default 2
 }
-// The scrub-intersection dot (selectionDot). Default ON.
+// The scrub-intersection dot (selectionDot). Default ON for LiveChart,
+// OFF for LiveChartSeries (the crosshair + tooltips mark the scrub point there).
 interface SelectionDotConfig {
   size?: number; // dot radius, default 4
   color?: string; // dot color, defaults to the line / leading-series color
