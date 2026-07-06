@@ -331,21 +331,28 @@ describe("resolveTransitions", () => {
     expect(resolveTransitions(undefined)).toEqual({
       reveal: undefined,
       mode: undefined,
+      candleLerpSpeed: undefined,
     });
     expect(resolveTransitions(true)).toEqual({
       reveal: undefined,
       mode: undefined,
+      candleLerpSpeed: undefined,
     });
   });
 
-  it("returns 0 (instant) for both when false", () => {
-    expect(resolveTransitions(false)).toEqual({ reveal: 0, mode: 0 });
+  it("returns instant for all when false (durations 0, candle width snaps at speed 1)", () => {
+    expect(resolveTransitions(false)).toEqual({
+      reveal: 0,
+      mode: 0,
+      candleLerpSpeed: 1,
+    });
   });
 
   it("carries per-transition overrides", () => {
     expect(resolveTransitions({ reveal: 0, mode: 120 })).toEqual({
       reveal: 0,
       mode: 120,
+      candleLerpSpeed: undefined,
     });
   });
 
@@ -353,6 +360,7 @@ describe("resolveTransitions", () => {
     expect(resolveTransitions({ reveal: 0 })).toEqual({
       reveal: 0,
       mode: undefined,
+      candleLerpSpeed: undefined,
     });
   });
 
@@ -360,7 +368,24 @@ describe("resolveTransitions", () => {
     expect(resolveTransitions({ reveal: -50, mode: -1 })).toEqual({
       reveal: 0,
       mode: 0,
+      candleLerpSpeed: undefined,
     });
+  });
+
+  it("carries candleLerpSpeed (1 = instant candle-width resize)", () => {
+    expect(resolveTransitions({ candleLerpSpeed: 1 })).toEqual({
+      reveal: undefined,
+      mode: undefined,
+      candleLerpSpeed: 1,
+    });
+  });
+
+  it("clamps candleLerpSpeed to [0, 1]", () => {
+    expect(resolveTransitions({ candleLerpSpeed: 5 }).candleLerpSpeed).toBe(1);
+    expect(resolveTransitions({ candleLerpSpeed: -2 }).candleLerpSpeed).toBe(0);
+    expect(resolveTransitions({ candleLerpSpeed: 0.5 }).candleLerpSpeed).toBe(
+      0.5,
+    );
   });
 });
 
@@ -604,6 +629,7 @@ describe("resolveLoading", () => {
     strokeWidth: undefined,
     amplitude: 14,
     speed: 1,
+    axisLabels: true,
   };
 
   it("returns null for undefined / false (not loading)", () => {
@@ -628,6 +654,13 @@ describe("resolveLoading", () => {
       ...DEFAULTS,
       amplitude: 22,
       speed: 1.5,
+    });
+  });
+
+  it("toggles the skeleton axis-label placeholders off", () => {
+    expect(resolveLoading({ axisLabels: false })).toEqual({
+      ...DEFAULTS,
+      axisLabels: false,
     });
   });
 });

@@ -4,6 +4,7 @@ import { LiveChart, type LiveChartPoint } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT, ACCENT_PRESETS } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 import { demoStyles } from "../../demo-lib/styles";
@@ -107,12 +108,15 @@ export default function SparklinesScreen() {
   // Featured larger sparkline shown in the fixed chart slot above the grid.
   const featuredData = useSharedValue<LiveChartPoint[]>(seeds[0].points);
   const featuredValue = useSharedValue(seeds[0].last);
+  // A static chart is still scrubbable — the gesture is event-driven, so the
+  // render loop stays off until you touch. Toggle it on the featured chart.
+  const [scrubFeatured, setScrubFeatured] = useState(true);
 
   return (
     <DemoScreen
       title="Sparklines"
       docs="guides/sparklines"
-      description="static — many mini-charts in a list with zero per-chart animation loops"
+      description="static — many mini-charts in a list with zero per-chart animation loops (still scrubbable on touch)"
       chart={
         <LiveChart
           static
@@ -123,15 +127,28 @@ export default function SparklinesScreen() {
           timeWindow={CELL_SPAN}
           nowOverride={seeds[0].endTime}
           windowBuffer={0}
-          scrub={false}
+          scrub={scrubFeatured}
           pulse={false}
         />
       }
     >
+      <ControlRow label="Featured chart (static)">
+        <ToggleChip
+          label="Scrub on touch"
+          value={scrubFeatured}
+          onChange={setScrubFeatured}
+        />
+      </ControlRow>
+      <Text style={[demoStyles.chipText, { opacity: 0.6, marginBottom: 12 }]}>
+        The featured chart above is {`static`} — no render loop — yet stays
+        scrubbable: drag across it to reveal the crosshair. {`scrub`} is an
+        on-demand gesture, so the loop stays off until you touch.
+      </Text>
       <Text style={demoStyles.sectionLabel}>{CELL_COUNT} static sparklines</Text>
       <Text style={[demoStyles.chipText, { opacity: 0.6, marginBottom: 12 }]}>
         Each cell renders once from a fixed seeded walk. No frame callback, no
-        pulse, no scrub, no entry animation — so a long list of them stays cheap.
+        pulse, no entry animation — so a long list of them stays cheap. (These
+        leave {`scrub`} off too; a thumbnail rarely needs it.)
       </Text>
       <View style={styles.grid}>
         {seeds.map((seed) => (

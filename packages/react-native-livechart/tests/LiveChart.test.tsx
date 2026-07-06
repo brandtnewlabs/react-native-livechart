@@ -726,6 +726,16 @@ describe("LiveChart", () => {
     render(<CandleHarness scrub />);
   });
 
+  it("renders candle mode with an instant candleLerpSpeed (transitions)", () => {
+    const screen = render(
+      <CandleHarness transitions={{ candleLerpSpeed: 1 }} />,
+    );
+    const views = screen.UNSAFE_getAllByType(View);
+    fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
+
   it("disables gradient in candle mode", () => {
     render(<CandleHarness gradient />);
   });
@@ -757,11 +767,19 @@ describe("LiveChart", () => {
     });
   });
 
-  it("static gates off pulse, scrub, and degen even when requested", () => {
-    // The controller forces these features off in static; exercising the gating
-    // branches with all three explicitly enabled must still render cleanly.
+  it("static gates off pulse + degen but keeps scrub/scrubAction live", () => {
+    // The controller forces the continuous animations (pulse, degen) off in
+    // static, but scrub / scrubAction stay live (on-demand, no per-frame loop).
+    // Exercising every gating branch with all of them enabled must render cleanly.
     const screen = render(
-      <Harness static pulse scrub degen nowOverride={1700000030} />,
+      <Harness
+        static
+        pulse
+        scrub
+        scrubAction
+        degen
+        nowOverride={1700000030}
+      />,
     );
     const views = screen.UNSAFE_getAllByType(View);
     fireEvent(views[0], "layout", {

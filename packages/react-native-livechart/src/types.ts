@@ -1682,6 +1682,19 @@ export interface TransitionConfig {
    * `LiveChart` only (multi-series is always lines). Default `300`. `0` = instant.
    */
   mode?: number;
+  /**
+   * Per-frame lerp speed for the **candle body width** as it eases from the old
+   * to the new `candleWidth` — candle mode only. Same units as `smoothing`
+   * (`0`–`1`, the fraction approached per 60fps frame): `1` snaps the width in a
+   * single frame, lower is slower, `0` freezes it. Default `0.08`.
+   *
+   * Set this to `1` to make a `candleWidth` change (e.g. a timeframe / bucket
+   * switch like 1m → 1D) resize the candles instantly instead of sliding
+   * "fat → thin". Unlike `reveal` / `mode` this is a speed, not a duration, and
+   * unlike `snapKey` (which settles the engine framing) it controls only the
+   * candle-width animation. See [#176](https://github.com/brandtnewlabs/react-native-livechart/issues/176).
+   */
+  candleLerpSpeed?: number;
 }
 
 /**
@@ -1710,6 +1723,12 @@ export interface LoadingConfig {
    * `<1` slower, `0` freezes it. Default `1`.
    */
   speed?: number;
+  /**
+   * Whether the shell draws the skeleton Y-axis label placeholders (the short
+   * rounded dashes centred in the gutter). Set `false` to show only the breathing
+   * squiggle with no placeholder ticks. Default `true`.
+   */
+  axisLabels?: boolean;
 }
 
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
@@ -1743,10 +1762,11 @@ export interface LiveChartCoreProps {
    *
    * `true` shows the shell with the defaults; pass a {@link LoadingConfig} to
    * restyle it — `color` / `strokeWidth` for the squiggle + skeleton, `amplitude`
-   * / `speed` for the breathing wave. `false` / omitted is "not loading". Toggle
-   * between the config and `false` as data loads (e.g. `loading={isLoading && cfg}`).
-   * The loading→live reveal duration is governed separately by
-   * {@link TransitionConfig.reveal} (the `transitions` prop).
+   * / `speed` for the breathing wave, `axisLabels` to toggle the skeleton
+   * placeholders. `false` / omitted is "not loading". Toggle between the config
+   * and `false` as data loads (e.g. `loading={isLoading && cfg}`). The loading→live
+   * reveal duration is governed separately by {@link TransitionConfig.reveal} (the
+   * `transitions` prop).
    */
   loading?: boolean | LoadingConfig;
   /**
@@ -2063,8 +2083,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
   /** Latest live value for smooth interpolation between data updates. */
   value: SharedValue<number>;
   /** Render once with no per-frame animation loop — for many small charts (sparklines)
-   *  in a list. Pulse/scrub/degen and the entry animation are disabled. Frame the data
-   *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
+   *  in a list. The continuous animations (pulse, degen, the entry reveal) are disabled,
+   *  but `scrub` / `scrubAction` stay available — they're on-demand touch gestures with
+   *  no per-frame cost, so a still chart is still scrubbable. Frame the data with
+   *  `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
   static?: boolean;
   /**
    * Render a custom overlay floated over the chart canvas, handed a price↔pixel /

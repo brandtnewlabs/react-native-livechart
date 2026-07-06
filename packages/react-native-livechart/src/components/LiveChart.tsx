@@ -340,8 +340,10 @@ function useLiveChartController({
   const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const badgeCfg = resolveBadge(badge);
   const scrubCfg = resolveScrub(scrub);
-  // Static charts run no gestures, so scrub-action (tap/drag to lock a price) is off.
-  const scrubActionCfg = isStatic ? null : resolveScrubAction(scrubAction);
+  // Scrub + scrub-action are on-demand touch gestures (event-driven, no per-frame
+  // loop), so they stay live on static charts — `static` suppresses the continuous
+  // render loop, not interaction. A still sparkline in a list can still be scrubbed.
+  const scrubActionCfg = resolveScrubAction(scrubAction);
   // Volume bars sit below the candles — a candle-mode-only feature (inert in
   // line mode, like the candle paths themselves).
   const volumeCfg = isCandle ? resolveVolume(volume) : null;
@@ -907,6 +909,7 @@ function useLiveChartController({
     volumeBandHeight,
     volumeCfg?.radius ?? 0,
     !isStatic, // static: no candle-width lerp loop
+    transitionsCfg.candleLerpSpeed, // `transitions.candleLerpSpeed` (1 = instant)
   );
   const { dotX, dotY } = useLiveDot(
     engine,
@@ -1069,9 +1072,10 @@ function useLiveChartController({
     formatValue,
     formatTime,
     skiaFont,
-    // Static charts have an inert pan gesture — no scrub work on the UI thread.
-    // Scrub-action also needs the gesture live even when plain scrub is off.
-    !isStatic && (scrubCfg !== null || scrubActionCfg !== null),
+    // Scrub / scrub-action stay live even on static charts: the gesture is
+    // event-driven (no per-frame loop), so a settled chart costs nothing at rest
+    // yet becomes scrubbable on touch. `static` only kills the continuous loop.
+    scrubCfg !== null || scrubActionCfg !== null,
     onScrub,
     candleOpts,
     scrubHoldMs,
@@ -1092,6 +1096,12 @@ function useLiveChartController({
       : 0,
   );
 
+  // Capture only the shared value in the worklets below. Referencing
+  // `crosshair.scrubActive` inside a worklet closes over the whole `crosshair`
+  // object (which holds a non-serializable `gesture`), throwing
+  // "[Worklets] Cannot copy value of type `PanGesture`" on worklets >=0.10.
+  const crosshairScrubActive = crosshair.scrubActive;
+
   // ── Time-scroll (drag back through history) ───────────────────────────────
   // Experimental: a pan freezes the window at an absolute time and resumes
   // following once dragged back to the live edge. Pan is clamped to the earliest
@@ -1109,7 +1119,7 @@ function useLiveChartController({
     // Clear any live crosshair when a scroll drag takes over.
     onScrollStart: () => {
       "worklet";
-      crosshair.scrubActive.set(false);
+      crosshairScrubActive.set(false);
     },
   });
 
@@ -1126,7 +1136,7 @@ function useLiveChartController({
     maxTimeWindow: zoomCfg?.maxTimeWindow,
     onZoomStart: () => {
       "worklet";
-      crosshair.scrubActive.set(false);
+      crosshairScrubActive.set(false);
     },
   });
 
@@ -1227,13 +1237,14 @@ function useLiveChartController({
   );
 
   // Hide the live dot while scrubbing when a selection dot is marking the scrub
-  // point instead — otherwise both dots show at once.
+  // point instead — otherwise both dots show at once. Applies on static charts
+  // too, now that they're scrubbable.
   const selectionDotDuringScrub =
-    !isStatic && scrubCfg !== null && selectionDotCfg !== null;
+    scrubCfg !== null && selectionDotCfg !== null;
   const liveDotOpacity = useDerivedValue(
     () =>
       reveal.dotOpacity.value *
-      (selectionDotDuringScrub && crosshair.scrubActive.value ? 0 : 1),
+      (selectionDotDuringScrub && crosshairScrubActive.value ? 0 : 1),
   );
 
   // Fade the annotation overlays (markers + reference lines) out while scrubbing
@@ -1245,7 +1256,7 @@ function useLiveChartController({
     !isStatic && scrubCfg !== null && scrubCfg.hideOverlaysOnScrub === true;
   const overlayScrubFade = useDerivedValue(() =>
     fadeOverlaysOnScrub
-      ? withTiming(crosshair.scrubActive.get() ? 0 : 1, {
+      ? withTiming(crosshairScrubActive.get() ? 0 : 1, {
           duration: SCRUB_OVERLAY_FADE_MS,
         })
       : 1,
@@ -1334,6 +1345,7 @@ function useLiveChartController({
     loadingStrokeWidth: loadingCfg?.strokeWidth,
     loadingAmplitude: loadingCfg?.amplitude,
     loadingSpeed: loadingCfg?.speed,
+    loadingAxisLabels: loadingCfg?.axisLabels ?? true,
     // derived render values
     backgroundColor,
     gradientEnd,
@@ -1583,6 +1595,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     overlayScrubFade,
     renderMarker,
     emptyText,
+    loadingAxisLabels,
     metricsCfg,
     layoutWidth,
     yAxisCfg,
@@ -1859,6 +1872,7 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         badgeTail={badgeCfg?.tail ?? true}
         badgeMetrics={metricsCfg.badge}
         emptyMetrics={metricsCfg.emptyState}
+        showAxisLabels={loadingAxisLabels}
         lineColor={loadingLineColor}
         lineStrokeWidth={loadingStrokeWidth}
         waveAmplitude={loadingAmplitude}

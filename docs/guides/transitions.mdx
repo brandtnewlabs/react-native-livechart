@@ -14,7 +14,7 @@ There are two kinds of transition: the built-in line/candle morph on a single ch
 </Note>
 
 <Frame caption="The built-in line ⇄ candle morph">
-  <video autoPlay loop muted playsInline controls poster="/media/004-line-candle-morph.jpg" src="/media/004-line-candle-morph.mp4" />
+  <video autoPlay loop muted playsInline controls poster="/media/transitions.jpg" src="/media/transitions.mp4" />
 </Frame>
 
 ## Built-in line/candle morph
@@ -52,6 +52,9 @@ also on a timeframe change, and when a line chart's data appears) and the **mode
   instead of animating it in.
 - **`mode`** (default `300` ms) — the candle↔line crossfade. Single-series `LiveChart` only
   (multi-series is always lines).
+- **`candleLerpSpeed`** (default `0.08`, candle mode only) — the per-frame speed at which candle
+  **bodies resize** when `candleWidth` changes. Same units as `smoothing` (`0`–`1`); `1` snaps in
+  one frame. See [Candle-width resize](#candle-width-resize-on-a-timeframe-change) below.
 
 <Note>
   `transitions` covers the **entry / mode** animations only. The live value's easing toward its
@@ -60,6 +63,30 @@ also on a timeframe change, and when a line chart's data appears) and the **mode
 </Note>
 
 The same `transitions` prop works on `LiveChartSeries` (only `reveal` applies there).
+
+## Candle-width resize on a timeframe change
+
+In candle mode the candle **body width** eases toward `candleWidth` each frame, so when you switch
+the bucket size (e.g. `1m → 1D`) the candles glide from "fat → thin" over ~half a second. That
+ease is independent of the engine framing, so `snapKey`, `smoothing`, and `reveal` / `mode` don't
+touch it. Control it with `transitions.candleLerpSpeed`:
+
+```tsx
+<LiveChart
+  mode="candle"
+  candles={candles}
+  candleWidth={bucketFor(tf)}                 // changes with the timeframe
+  transitions={{ candleLerpSpeed: 1 }}        // resize in one frame — no "fat → thin" slide
+/>;
+```
+
+- **`1`** — instant: the bodies jump to the new width the frame `candleWidth` changes.
+- **`0.08`** (default) — the original gentle resize.
+- **lower** — slower; **`0`** freezes the width (it never tracks `candleWidth`).
+
+Setting `transitions={false}` also snaps the width (it makes every transition instant), so
+`transitions={{ reveal: 0, mode: 0, candleLerpSpeed: 1 }}` and `transitions={false}` resize candles
+the same way.
 
 ## Snap on a timeframe or data change
 

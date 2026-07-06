@@ -384,26 +384,31 @@ provided; everything else has a default.
 <ParamField body="loading" type="boolean | LoadingConfig">
   Breathing-line loading shell until data is ready. `true` uses the defaults; pass
   a [`LoadingConfig`](/api-reference/types#loadingconfig) to restyle it (`color`,
-  `strokeWidth`, `amplitude`, `speed`). `false` / omitted is "not loading". The
-  loading→live reveal duration is set via the `transitions` prop below — see
+  `strokeWidth`, `amplitude`, `speed`, and `axisLabels` to toggle the skeleton
+  Y-axis placeholders). `false` / omitted is "not loading". The loading→live reveal
+  duration is set via the `transitions` prop below — see
   [Transitions](/guides/transitions).
 </ParamField>
 
 <ParamField body="transitions" type="boolean | TransitionConfig">
   Tune or disable the built-in transition animations. `true` / omitted keeps the
   defaults; `false` makes them instant (no grow-in when data appears or the
-  timeframe changes, no candle↔line crossfade); a
+  timeframe changes, no candle↔line crossfade, candle width snaps); a
   [`TransitionConfig`](/api-reference/types#config-objects) sets per-transition
   durations in ms — `reveal` (default `600`) and `mode` (default `300`), `0` to
-  snap. Live value tracking is governed separately by `smoothing`, and
+  snap — plus `candleLerpSpeed` (default `0.08`, `1` = instant), the per-frame
+  speed at which candle bodies resize when `candleWidth` changes (a timeframe /
+  bucket switch). Live value tracking is governed separately by `smoothing`, and
   static-entry suppression by `static`. See [Transitions](/guides/transitions).
 </ParamField>
 
 <ParamField body="static" type="boolean" default="false">
   Render once with no per-frame animation loops — engine, degen, trades, candles,
-  markers, pulse, and entry reveal are all disabled, and scrubbing is off. Keeps
-  many small charts cheap when you render a list or grid of sparklines. Frame the
-  data edge-to-edge with `timeWindow` + `nowOverride`. See the
+  markers, pulse, and entry reveal are all disabled. `scrub` / `scrubAction` stay
+  available, though: they're on-demand touch gestures with no per-frame cost, so a
+  still chart costs nothing at rest yet is still scrubbable on touch. Keeps many
+  small charts cheap when you render a list or grid of sparklines. Frame the data
+  edge-to-edge with `timeWindow` + `nowOverride`. See the
   [Sparklines guide](/guides/sparklines).
 </ParamField>
 
