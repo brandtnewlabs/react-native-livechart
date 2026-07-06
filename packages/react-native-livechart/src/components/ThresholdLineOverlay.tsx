@@ -12,6 +12,7 @@ import type { ResolvedThresholdLineConfig } from "../core/resolveConfig";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import { usePathBuilder } from "../hooks/usePathBuilder";
+import { thresholdDashPhase } from "../math/threshold";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import type { LiveChartPalette } from "../types";
 
@@ -54,6 +55,24 @@ export function ThresholdLineOverlay({
 }: ThresholdMarkerProps) {
   const lineColor = cfg.color ?? palette.refLine;
   const { strokeWidth, intervals } = cfg;
+  const isSeries = seriesPts !== undefined;
+  const dashCycle = intervals[0] + intervals[1];
+
+  // Series marker: advance the dash phase with the content scroll so the
+  // pattern rides the staircase instead of sitting screen-fixed under it (the
+  // path start is pinned at the plot edge, so a static phase reads as the dots
+  // marching right along the gliding line). The constant marker is a static
+  // level — its dashes stay screen-fixed (phase 0).
+  const dashPhase = useDerivedValue(() => {
+    if (!isSeries) return 0;
+    return thresholdDashPhase(
+      engine.timestamp.get(),
+      engine.displayWindow.get(),
+      padding.left,
+      engine.canvasWidth.get() - padding.right,
+      dashCycle,
+    );
+  });
 
   const builder = usePathBuilder();
 
@@ -84,7 +103,7 @@ export function ThresholdLineOverlay({
         strokeWidth={strokeWidth}
         color={lineColor}
       >
-        <DashPathEffect intervals={intervals} />
+        <DashPathEffect intervals={intervals} phase={dashPhase} />
       </Path>
     </Group>
   );

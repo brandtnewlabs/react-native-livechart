@@ -212,6 +212,28 @@ export function sampleThresholdYAt(
 }
 
 /**
+ * Dash-phase (px) for the series marker line so its dash pattern travels WITH
+ * the scrolling threshold instead of staying screen-fixed. The marker path
+ * starts at the static plot edge, so without a moving phase the dashes sit
+ * still while the staircase glides left — reading as the dots "marching" right
+ * along the line. Advancing the phase at exactly the content scroll speed
+ * (`span/windowSecs` px per second, mod the dash cycle) pins the pattern to the
+ * geometry. Returns 0 for a degenerate window/plot/cycle (static dashes).
+ */
+export function thresholdDashPhase(
+  now: number,
+  windowSecs: number,
+  plotLeft: number,
+  plotRight: number,
+  dashCycle: number,
+): number {
+  "worklet";
+  const span = plotRight - plotLeft;
+  if (!(windowSecs > 0) || span <= 0 || !(dashCycle > 0)) return 0;
+  return ((now * span) / windowSecs) % dashCycle;
+}
+
+/**
  * Min/max of a threshold series over the visible window `[now - windowSecs,
  * now]` — the values folded into the engine's Y-range fit when
  * `threshold.includeInRange` is set (like reference-line values). Uses the

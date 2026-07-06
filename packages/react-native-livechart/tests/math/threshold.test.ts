@@ -1,5 +1,6 @@
 import {
   sampleThresholdY,
+  thresholdDashPhase,
   sampleThresholdYAt,
   thresholdLineY,
   thresholdRangeMinMax,
@@ -287,5 +288,34 @@ describe("thresholdRangeMinMax", () => {
         scratch,
       ),
     ).toBeNull();
+  });
+});
+
+describe("thresholdDashPhase", () => {
+  const CYCLE = 8; // default [4, 4] dash pattern
+
+  it("advances at exactly the content scroll speed (px/sec mod cycle)", () => {
+    // span 376px over 100s → 3.76 px/s. After dt seconds the phase must have
+    // advanced by dt * 3.76 (mod 8) so the dashes ride the gliding geometry.
+    const a = thresholdDashPhase(NOW, WIN, LEFT, W - RIGHT, CYCLE);
+    const b = thresholdDashPhase(NOW + 1, WIN, LEFT, W - RIGHT, CYCLE);
+    const speed = (W - RIGHT - LEFT) / WIN;
+    expect((b - a + CYCLE) % CYCLE).toBeCloseTo(speed % CYCLE);
+  });
+
+  it("is periodic in the dash cycle (no drift or jumps at wrap)", () => {
+    const a = thresholdDashPhase(NOW, WIN, LEFT, W - RIGHT, CYCLE);
+    // One full cycle of scroll time later, the phase is identical.
+    const dt = (CYCLE * WIN) / (W - RIGHT - LEFT);
+    const b = thresholdDashPhase(NOW + dt, WIN, LEFT, W - RIGHT, CYCLE);
+    expect(b).toBeCloseTo(a);
+    expect(a).toBeGreaterThanOrEqual(0);
+    expect(a).toBeLessThan(CYCLE);
+  });
+
+  it("degrades to a static phase for degenerate inputs", () => {
+    expect(thresholdDashPhase(NOW, 0, LEFT, W - RIGHT, CYCLE)).toBe(0);
+    expect(thresholdDashPhase(NOW, WIN, LEFT, LEFT, CYCLE)).toBe(0);
+    expect(thresholdDashPhase(NOW, WIN, LEFT, W - RIGHT, 0)).toBe(0);
   });
 });
