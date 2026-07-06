@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { LiveChart, type LiveChartPoint } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
@@ -14,6 +14,11 @@ export const options = { title: "Sparklines" };
 const CELL_COUNT = 24;
 const POINTS_PER_CELL = 40;
 const CELL_SPAN = 60; // seconds of history per sparkline
+// Cells mounted per batch once the grid starts mounting (see the deferral
+// effect). Each deferred batch renders time-sliced (non-urgent), so it carries
+// real overhead beyond the per-cell mounts — fewer, larger batches finish
+// sooner than many small ones. All 24 in one deferred commit measured fastest.
+const CELL_BATCH = 24;
 
 /**
  * Mulberry32 — a tiny, fast, deterministic PRNG. Seeded so every cell renders the
@@ -59,7 +64,11 @@ type CellSeed = {
  * `nowOverride` (the historical-data-fill pattern). `static` disables every
  * per-frame loop, so dozens of these cost almost nothing.
  */
-function SparklineCell({ seed }: { seed: CellSeed }) {
+const SparklineCell = memo(function SparklineCell({
+  seed,
+}: {
+  seed: CellSeed;
+}) {
   const dataSV = useSharedValue<LiveChartPoint[]>(seed.points);
   const valSV = useSharedValue(seed.last);
   return (
@@ -83,6 +92,52 @@ function SparklineCell({ seed }: { seed: CellSeed }) {
         leftEdgeFade={false}
         style={styles.cellChart}
       />
+    </View>
+  );
+});
+
+/**
+ * The 24-cell grid, mounted in a deferred batch. A chart's *mount* isn't free
+ * (each one builds its full hook tree even when `static`), so mounting all 24
+ * in the screen's first commit would hold up the navigation — deferring by two
+ * frames lets the push transition land instantly on the featured chart +
+ * placeholders. The batching state lives HERE — not in the screen — so the
+ * batch re-renders only this grid (memoized cells skip), never the featured
+ * chart above it. (Same pattern to recommend for any big non-virtualized
+ * sparkline grid; a virtualized list gets it for free by mounting only what's
+ * visible — see the Coin list demo.)
+ */
+function SparklineGrid({ seeds }: { seeds: CellSeed[] }) {
+  const [mounted, setMounted] = useState(0);
+  useEffect(() => {
+    if (mounted >= seeds.length) return;
+    // First batch waits a couple of frames so the push transition starts
+    // unblocked; later batches step one frame apart. (Deliberately rAF-driven,
+    // not InteractionManager — a lingering touch interaction would starve
+    // runAfterInteractions and stall the grid.)
+    let id: number;
+    const step = () =>
+      setMounted((c) => Math.min(c + CELL_BATCH, seeds.length));
+    if (mounted === 0) {
+      id = requestAnimationFrame(() => {
+        id = requestAnimationFrame(step);
+      });
+    } else {
+      id = requestAnimationFrame(step);
+    }
+    return () => cancelAnimationFrame(id);
+  }, [mounted, seeds.length]);
+
+  return (
+    <View style={styles.grid}>
+      {seeds.map((seed) =>
+        seed.id < mounted ? (
+          <SparklineCell key={seed.id} seed={seed} />
+        ) : (
+          // Same-size placeholder so the layout is stable while batches mount.
+          <View key={seed.id} style={styles.cell} />
+        ),
+      )}
     </View>
   );
 }
@@ -150,11 +205,7 @@ export default function SparklinesScreen() {
         pulse, no entry animation — so a long list of them stays cheap. (These
         leave {`scrub`} off too; a thumbnail rarely needs it.)
       </Text>
-      <View style={styles.grid}>
-        {seeds.map((seed) => (
-          <SparklineCell key={seed.id} seed={seed} />
-        ))}
-      </View>
+      <SparklineGrid seeds={seeds} />
     </DemoScreen>
   );
 }

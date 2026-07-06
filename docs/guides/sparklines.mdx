@@ -106,6 +106,21 @@ Because `static` is a prop, you can flip it from a list's viewability callback: 
 rows `static` (loop fully off, still scrubbable if they peek on screen) and the visible hero row
 live. Toggling `static` → live resumes the loop and catches up.
 
+### Mounting a big grid: batch it
+
+`static` makes a settled sparkline nearly free **at rest**, but the **mount** isn't free — each
+chart builds its full hook tree once. Mounting dozens in a single commit (a non-virtualized grid)
+can hold up a navigation for a beat. Two ways out:
+
+- **Virtualize** — a `FlatList` / LegendList only mounts what's visible (see the Coin list demo).
+- **Defer** — for a fixed grid, render same-size placeholders in the first commit and mount the
+  cells a couple of `requestAnimationFrame`s later, so the screen transition lands instantly.
+  Keep the deferral state in the grid component and `memo` the cells so the batch re-renders
+  nothing else. (Prefer one deferred batch over many tiny ones — deferred renders are
+  time-sliced, so each extra batch adds real overhead.) The demo's
+  [`app/demo/sparklines.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/sparklines.tsx)
+  shows the pattern.
+
 ## `static` vs `paused`
 
 They sound similar but do opposite things:
