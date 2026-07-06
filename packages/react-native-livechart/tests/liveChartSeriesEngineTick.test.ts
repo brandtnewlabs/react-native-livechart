@@ -769,6 +769,34 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       );
       expect(live.displayValues[0]).toBe(99);
     });
+
+    // Y-range while scrolled back: points after the frozen right edge must not
+    // stretch displayMin/Max — the axis adapts to the visible history instead.
+    it("excludes points after the frozen edge from the Y range", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          snap: true,
+          series: [
+            {
+              id: "a",
+              color: "#00f",
+              value: 1000,
+              data: [
+                { time: 940, value: 10 },
+                { time: 945, value: 12 }, // in-window extrema: 10..12
+                { time: 990, value: 1000 }, // after the frozen edge — excluded
+              ],
+            },
+          ],
+        }),
+      );
+      expect(s.displayMax).toBeLessThan(100); // ≈12 + margin, not ≈1000
+      expect(s.extremaMaxValue).toBe(12);
+      expect(s.extremaMinValue).toBe(10);
+    });
   });
 
   describe("snap (one-shot settle)", () => {

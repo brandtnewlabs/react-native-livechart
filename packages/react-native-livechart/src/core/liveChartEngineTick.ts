@@ -235,7 +235,9 @@ export function tickLiveChartEngineFrame(
       }
     }
     const lc = input.liveCandle;
-    if (lc) {
+    // Fold the in-progress candle in only while its bucket is visible — when
+    // scrolled back past it, the live candle must not stretch the Y range.
+    if (lc && (!scrolledBack || lc.time <= state.timestamp)) {
       /* istanbul ignore next -- trivial min/max */
       if (lc.low < tMin) {
         tMin = lc.low;
@@ -257,6 +259,11 @@ export function tickLiveChartEngineFrame(
       else hi = mid;
     }
     for (let i = lo; i < points.length; i++) {
+      // While scrolled back, stop at the frozen right edge (mirrors the candle
+      // scan) so newer points don't inflate the visible Y range. Following
+      // live, keep the tail inclusive — feed timestamps can run slightly ahead
+      // of the local clock and must not flicker out of the range.
+      if (scrolledBack && points[i].time > state.timestamp) break;
       const v = points[i].value;
       if (v < tMin) {
         tMin = v;
@@ -279,9 +286,15 @@ export function tickLiveChartEngineFrame(
   state.extremaMinTime = hasMin ? minTime : NaN;
   state.extremaMaxTime = hasMax ? maxTime : NaN;
 
-  const cv = state.displayValue;
-  if (cv < tMin) tMin = cv;
-  if (cv > tMax) tMax = cv;
+  // Keep the animated live tip inside the range — but only while it's actually
+  // in the window. Scrolled back, the live value sits beyond the frozen right
+  // edge; folding it in would pin the Y range to the live price and stop the
+  // axis from adapting to the visible history.
+  if (!scrolledBack) {
+    const cv = state.displayValue;
+    if (cv < tMin) tMin = cv;
+    if (cv > tMax) tMax = cv;
+  }
 
   const ref = input.referenceValue;
   if (ref !== undefined) {

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Y-axis now adapts to the visible window while time-scrolled.** While panned
+  back through history (`timeScroll`), the engine's Y-range folded in data
+  *newer* than the frozen window edge, the in-progress live candle, and the live
+  price — so the axis stayed pinned to the live range instead of re-fitting the
+  history on screen. All three are now excluded from the range while scrolled
+  back (line + candle, single- and multi-series); live-following behavior is
+  unchanged.
+
 ## [4.9.0] - 2026-07-06
 
 ### Added
