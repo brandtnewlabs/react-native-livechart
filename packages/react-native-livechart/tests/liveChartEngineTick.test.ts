@@ -796,6 +796,77 @@ describe("tickLiveChartEngineFrame", () => {
       expect(s.edgeValue).toBeGreaterThan(0);
       expect(s.edgeValue).toBeLessThanOrEqual(42);
     });
+
+    // Y-range while scrolled back: only the data inside the frozen window may
+    // shape displayMin/Max — newer points, the live candle, and the live value
+    // all sit past the frozen right edge and must not stretch the axis.
+    it("excludes points after the frozen edge from the Y range (line)", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          snap: true,
+          points: [
+            { time: 940, value: 10 },
+            { time: 945, value: 12 }, // in-window extrema: 10..12
+            { time: 990, value: 1000 }, // after the frozen edge — excluded
+          ],
+        }),
+      );
+      expect(s.displayMax).toBeLessThan(100); // ≈12 + margin, not ≈1000
+      expect(s.extremaMaxValue).toBe(12);
+      expect(s.extremaMinValue).toBe(10);
+    });
+
+    it("excludes the live value from the Y range while scrolled back", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          snap: true,
+          targetValue: 500, // live price far above the visible history
+          points: [
+            { time: 940, value: 10 },
+            { time: 945, value: 12 },
+          ],
+        }),
+      );
+      expect(s.displayValue).toBe(500); // still tracks live…
+      expect(s.displayMax).toBeLessThan(100); // …but doesn't stretch the range
+    });
+
+    it("excludes a live candle past the frozen edge from the Y range", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          snap: true,
+          targetValue: 12,
+          mode: "candle",
+          candles: [{ time: 940, open: 10, high: 12, low: 9, close: 11 }],
+          liveCandle: { time: 990, open: 900, high: 1000, low: 800, close: 950 },
+        }),
+      );
+      expect(s.displayMax).toBeLessThan(100); // ≈12 + margin, not ≈1000
+    });
+
+    it("still includes the live candle in the Y range while following", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({
+          snap: true,
+          targetValue: 950,
+          mode: "candle",
+          candles: [{ time: 940, open: 10, high: 12, low: 9, close: 11 }],
+          liveCandle: { time: 990, open: 900, high: 1000, low: 800, close: 950 },
+        }),
+      );
+      expect(s.displayMax).toBeGreaterThanOrEqual(1000);
+    });
   });
 
   // ── Extrema tracking (for "extrema"-positioned axis labels) ──────────────

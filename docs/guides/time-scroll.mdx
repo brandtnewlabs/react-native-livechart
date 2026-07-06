@@ -30,6 +30,11 @@ return to the live edge, where live-following resumes. One-finger plot scrubbing
 Panning is clamped to the earliest retained point, so keep enough history in `data` (or `candles`)
 to scroll into — seed a few windows' worth and keep your buffer longer than the visible window.
 
+While scrolled back, the **Y-range fits the visible window**: only the points (or candles) inside
+the frozen window shape the axis — newer data and the live price sit beyond the right edge and
+don't stretch it — so the axis re-fits the history you're looking at as you pan. Back at the live
+edge, the range folds the live value back in as usual.
+
 ### Turning it back off
 
 Setting `timeScroll` back to `false` while scrolled back — or switching `mode` so your component

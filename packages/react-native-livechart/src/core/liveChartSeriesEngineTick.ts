@@ -215,6 +215,12 @@ export function tickLiveChartSeriesEngineFrame(
       else hi = mid;
     }
     for (let j = lo; j < points.length; j++) {
+      // While scrolled back, stop at the frozen right edge so newer points
+      // don't inflate the visible Y range (the per-series tips folded below
+      // already track the edge value, so they stay in-range). Following live,
+      // keep the tail inclusive — feed timestamps can run slightly ahead of
+      // the local clock and must not flicker out of the range.
+      if (scrolledBack && points[j].time > state.timestamp) break;
       const v = points[j].value;
       /* istanbul ignore next -- trivial min/max */
       if (v < tMin) tMin = v;
