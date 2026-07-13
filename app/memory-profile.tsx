@@ -3,21 +3,24 @@
  *
  * Keep the synthetic feed mounted through every phase so static/live trace
  * differences measure chart rendering rather than the JS data producer.
- * Select the variant at bundle time with:
+ * Select the matrix run at bundle time with:
  *
- *   EXPO_PUBLIC_MEMORY_PROFILE_MODE=static|live
+ *   EXPO_PUBLIC_MEMORY_PROFILE_RUN=live-monotone-round
  */
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { LiveChart } from "react-native-livechart";
+import { resolveLiveRendererProfile } from "../profiling/liveRendererProfile";
 import { useSimulatedChartData } from "../sim/useSimulatedChartData";
 
-const PROFILE_MODE =
-  process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE === "static" ? "static" : "live";
+const PROFILE = resolveLiveRendererProfile(
+  process.env.EXPO_PUBLIC_MEMORY_PROFILE_RUN,
+  process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE,
+);
 
 const PHASES = [
   { name: "baseline", chartMounted: false, seconds: 15 },
-  { name: `${PROFILE_MODE}-chart`, chartMounted: true, seconds: 30 },
+  { name: PROFILE.id, chartMounted: true, seconds: 30 },
   { name: "unmounted", chartMounted: false, seconds: 15 },
 ] as const;
 
@@ -29,9 +32,9 @@ export default function MemoryProfileScreen() {
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,
-    tradesPerSecond: 10,
-    maxPoints: 2000,
-    historySpanSeconds: 40,
+    tradesPerSecond: PROFILE.tradesPerSecond,
+    maxPoints: PROFILE.maxPoints,
+    historySpanSeconds: PROFILE.historySpanSeconds,
   });
 
   useEffect(() => {
@@ -54,14 +57,25 @@ export default function MemoryProfileScreen() {
         MEMORY PROFILE {phaseIndex}: {phase.name}
       </Text>
       <Text style={styles.detail}>
-        Feed: 10 updates/s · chart: {PROFILE_MODE}
+        {PROFILE.mode} · {PROFILE.curve} · {PROFILE.join}/{PROFILE.cap}
+      </Text>
+      <Text style={styles.detail}>
+        {PROFILE.tradesPerSecond} updates/s · {PROFILE.timeWindowSeconds}s window
+        · {PROFILE.chartHeight}px high
       </Text>
       {phase.chartMounted ? (
-        <View style={styles.chartBox}>
+        <View style={[styles.chartBox, { height: PROFILE.chartHeight }]}>
           <LiveChart
             data={data}
             value={value}
-            static={PROFILE_MODE === "static"}
+            static={PROFILE.mode === "static"}
+            timeWindow={PROFILE.timeWindowSeconds}
+            line={{
+              curve: PROFILE.curve,
+              join: PROFILE.join,
+              cap: PROFILE.cap,
+              width: PROFILE.lineWidth,
+            }}
             gradient={false}
             badge={false}
             pulse={false}
@@ -96,6 +110,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   chartBox: {
-    height: 150,
+    width: "100%",
   },
 });

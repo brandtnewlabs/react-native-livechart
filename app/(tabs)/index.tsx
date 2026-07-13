@@ -223,7 +223,10 @@ const Footer = () => (
 
 export default function Index() {
   const insets = useSafeAreaInsets();
-  if (process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE) {
+  if (
+    process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE ||
+    process.env.EXPO_PUBLIC_MEMORY_PROFILE_RUN
+  ) {
     return <Redirect href={"/memory-profile" as Href} />;
   }
   return (

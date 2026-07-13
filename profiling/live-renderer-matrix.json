@@ -1,0 +1,53 @@
+{
+  "defaults": {
+    "mode": "live",
+    "curve": "monotone",
+    "join": "round",
+    "cap": "round",
+    "lineWidth": 2,
+    "tradesPerSecond": 10,
+    "historySpanSeconds": 40,
+    "timeWindowSeconds": 30,
+    "maxPoints": 2000,
+    "chartHeight": 150
+  },
+  "runs": [
+    {
+      "id": "static-control",
+      "description": "No continuous chart loop; isolates mount and worklet cost.",
+      "mode": "static"
+    },
+    {
+      "id": "live-monotone-round",
+      "description": "Current production line renderer and canonical live baseline."
+    },
+    {
+      "id": "live-monotone-sharp",
+      "description": "Keeps cubic geometry but removes round stroke caps and joins.",
+      "join": "miter",
+      "cap": "butt"
+    },
+    {
+      "id": "live-linear-round",
+      "description": "Removes cubic geometry while retaining round stroke edges.",
+      "curve": "linear"
+    },
+    {
+      "id": "live-linear-sharp",
+      "description": "Straight segments with the simplest built-in stroke edges.",
+      "curve": "linear",
+      "join": "miter",
+      "cap": "butt"
+    },
+    {
+      "id": "live-monotone-round-dense",
+      "description": "Triples incoming point density while preserving the baseline renderer.",
+      "tradesPerSecond": 30
+    },
+    {
+      "id": "live-monotone-round-tall",
+      "description": "Doubles the raster mask height while preserving path complexity.",
+      "chartHeight": 300
+    }
+  ]
+}
