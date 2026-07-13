@@ -1,4 +1,4 @@
-import { Link, type Href } from "expo-router";
+import { Link, Redirect, type Href } from "expo-router";
 import {
   Linking,
   Pressable,
@@ -223,6 +223,9 @@ const Footer = () => (
 
 export default function Index() {
   const insets = useSafeAreaInsets();
+  if (process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE) {
+    return <Redirect href={"/memory-profile" as Href} />;
+  }
   return (
     <View style={[styles.root, { paddingTop: insets.top + 12 }]}>
       <Text style={styles.title}>LiveChart demos</Text>
