@@ -1,7 +1,4 @@
 import {
-  createContext,
-  type ReactNode,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -1344,17 +1341,15 @@ function useLiveChartController({
 type LiveChartModel = ReturnType<typeof useLiveChartController>;
 
 type YAxisEntries = ReturnType<typeof useYAxis>["yAxisEntries"];
-const YAxisEntriesContext = createContext<YAxisEntries | null>(null);
 type DegenState = ReturnType<typeof useDegen>;
-const DegenContext = createContext<DegenState | null>(null);
 
 /** Owns the particle/shake state only while the degen effect is enabled. */
-function ChartDegenProvider({
+function ChartWithDegen({
   model,
-  children,
+  yAxisEntries,
 }: {
   model: LiveChartModel;
-  children: ReactNode;
+  yAxisEntries: YAxisEntries | null;
 }) {
   const { engine, dotX, dotY, momentumSV, degenCfg, onDegenShake, isStatic } =
     model;
@@ -1368,23 +1363,17 @@ function ChartDegenProvider({
     isStatic,
   );
   return (
-    <DegenContext.Provider value={state}>{children}</DegenContext.Provider>
+    <ChartView model={model} yAxisEntries={yAxisEntries} degen={state} />
   );
 }
 
 /**
  * Owns the Y-axis worklets. The provider itself is mounted only while the axis
  * is enabled, so `yAxis={false}` never registers its shared values or mapper.
- * Context lets the grid (below the plot) and floating labels (above it) share a
- * single mapper despite living at different paint-order positions.
+ * The entries are passed through ordinary props so both paint-order positions
+ * receive the same mapper across the React Native → Skia renderer boundary.
  */
-function ChartYAxisProvider({
-  model,
-  children,
-}: {
-  model: LiveChartModel;
-  children: ReactNode;
-}) {
+function ChartWithYAxis({ model }: { model: LiveChartModel }) {
   const {
     engine,
     effectivePadding,
@@ -1402,29 +1391,20 @@ function ChartYAxisProvider({
     metricsCfg.grid,
     yAxisCfg?.count ?? 0,
   );
-  return (
-    <YAxisEntriesContext.Provider value={yAxisEntries}>
-      {children}
-    </YAxisEntriesContext.Provider>
-  );
-}
-
-function useChartYAxisEntries(): YAxisEntries {
-  const entries = useContext(YAxisEntriesContext);
-  if (entries === null) {
-    throw new Error(
-      "Chart Y-axis layers must be wrapped in ChartYAxisProvider",
-    );
+  if (model.degenCfg) {
+    return <ChartWithDegen model={model} yAxisEntries={yAxisEntries} />;
   }
-  return entries;
+  return <ChartView model={model} yAxisEntries={yAxisEntries} degen={null} />;
 }
 
 function ChartYAxisLayer({
   model,
   variant,
+  entries,
 }: {
   model: LiveChartModel;
   variant: "all" | "grid" | "labels";
+  entries: YAxisEntries;
 }) {
   const {
     reveal,
@@ -1438,7 +1418,6 @@ function ChartYAxisLayer({
     gridStyleCfg,
     yAxisFloat,
   } = model;
-  const entries = useChartYAxisEntries();
   return (
     <Group opacity={reveal.yAxisOpacity}>
       <YAxisOverlay
@@ -1492,7 +1471,15 @@ function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
  * the fade's `dstOut` only softens the fills — the line and everything above it
  * (drawn in `ChartStack`, after the fade) stay crisp at the left edge.
  */
-function ChartFillLayer({ model }: { model: LiveChartModel }) {
+function ChartFillLayer({
+  model,
+  yAxisEntries,
+  degen,
+}: {
+  model: LiveChartModel;
+  yAxisEntries: YAxisEntries | null;
+  degen: DegenState | null;
+}) {
   const {
     yAxisCfg,
     yAxisFloat,
@@ -1513,15 +1500,17 @@ function ChartFillLayer({ model }: { model: LiveChartModel }) {
     thresholdSeriesHasPoints,
     thresholdFillUniforms,
   } = model;
-  const degen = useContext(DegenContext);
-
   return (
     <Group transform={degen?.shakeTransform}>
       {/* Y-axis. Default: grid + labels here (in a reserved gutter). Floating
           mode: grid only — the labels + a soft edge fade draw above the candles
           in ChartStack so the plot runs full-width and candles dim under them. */}
       {yAxisCfg && (
-        <ChartYAxisLayer model={model} variant={yAxisFloat ? "grid" : "all"} />
+        <ChartYAxisLayer
+          model={model}
+          variant={yAxisFloat ? "grid" : "all"}
+          entries={yAxisEntries!}
+        />
       )}
 
       {/* Dot-lattice area fill (the under-line `fillPath` painted with a dot
@@ -1663,7 +1652,15 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
  *  segment dividers, value/reference lines, the line/candles, axes, dot, degen,
  *  markers, and the loading/empty art. Background fills are in `ChartFillLayer`
  *  (below the fade); the live value text is `ChartValueOverlay` (above the fade). */
-function ChartStack({ model }: { model: LiveChartModel }) {
+function ChartStack({
+  model,
+  yAxisEntries,
+  degen,
+}: {
+  model: LiveChartModel;
+  yAxisEntries: YAxisEntries | null;
+  degen: DegenState | null;
+}) {
   const {
     reveal,
     engine,
@@ -1720,8 +1717,6 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     loadingAmplitude,
     loadingSpeed,
   } = model;
-  const degen = useContext(DegenContext);
-
   return (
     <Group transform={degen?.shakeTransform}>
       {/* Segment dividers + labels (behind the line). The scrub-focus emphasis is
@@ -1841,7 +1836,11 @@ function ChartStack({ model }: { model: LiveChartModel }) {
           edge) so the plot runs full-width and candles stay fully visible behind
           them. (Default non-floating axis draws grid + labels in ChartFillLayer.) */}
       {yAxisCfg && yAxisFloat && (
-        <ChartYAxisLayer model={model} variant="labels" />
+        <ChartYAxisLayer
+          model={model}
+          variant="labels"
+          entries={yAxisEntries!}
+        />
       )}
 
       {/* X-axis time labels. With a volume band the bottom padding is inflated by
@@ -1941,7 +1940,13 @@ function ChartStack({ model }: { model: LiveChartModel }) {
 }
 
 /** Owns the trade-tape frame callback and only mounts with a trade stream. */
-function ChartTradeStreamLayer({ model }: { model: LiveChartModel }) {
+function ChartTradeStreamLayer({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
   const {
     engine,
     tradeStream,
@@ -1952,7 +1957,6 @@ function ChartTradeStreamLayer({ model }: { model: LiveChartModel }) {
     reveal,
     isStatic,
   } = model;
-  const degen = useContext(DegenContext);
   const tradeMarkers = useTradeStream(
     engine,
     tradeStream!,
@@ -1975,7 +1979,13 @@ function ChartTradeStreamLayer({ model }: { model: LiveChartModel }) {
 }
 
 /** Scrub crosshair/tooltip drawn in canvas space on top of the shaken stack. */
-function ChartScrubLayer({ model }: { model: LiveChartModel }) {
+function ChartScrubLayer({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
   const {
     scrubCfg,
     palette,
@@ -1989,8 +1999,6 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
     selectionColor,
     renderTooltip,
   } = model;
-  const degen = useContext(DegenContext);
-
   // A custom tooltip is an RN overlay (sibling of <Canvas>), so the built-in
   // Skia tooltip is suppressed here while it's active — the line pill in line
   // mode, and the OHLC stack in candle mode (see the stack gate below).
@@ -2055,7 +2063,13 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
 /** Live-value text drawn as its own canvas layer, above both the area gradient
  *  and the left-edge fade, so the large number stays crisp at the left edge
  *  instead of being washed out by the fade's `dstOut` blend. */
-function ChartValueOverlay({ model }: { model: LiveChartModel }) {
+function ChartValueOverlay({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
   const {
     showValue,
     engine,
@@ -2067,8 +2081,6 @@ function ChartValueOverlay({ model }: { model: LiveChartModel }) {
     valueMomentumColor,
     reveal,
   } = model;
-  const degen = useContext(DegenContext);
-
   if (!showValue) return null;
 
   return (
@@ -2090,7 +2102,13 @@ function ChartValueOverlay({ model }: { model: LiveChartModel }) {
 
 /** Live-price badge, drawn above the scrub dim so the dim never clips its left
  *  edge. Shares the degen shake transform so it tracks the shaken stack. */
-function ChartBadgeLayer({ model }: { model: LiveChartModel }) {
+function ChartBadgeLayer({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
   const {
     badgeFont,
     reveal,
@@ -2102,7 +2120,6 @@ function ChartBadgeLayer({ model }: { model: LiveChartModel }) {
     metricsCfg,
     yAxisFloat,
   } = model;
-  const degen = useContext(DegenContext);
   const badgeCfg = model.badgeCfg!;
   const badgeData = useBadge(
     engine,
@@ -2143,7 +2160,13 @@ function ChartBadgeLayer({ model }: { model: LiveChartModel }) {
  *  left-pinned badge (off-axis / `labelBadge`) and any label stay crisp instead
  *  of being erased by the fade's dstOut. The lines/bands themselves render in the
  *  base pass inside ChartStack (behind the chart content). */
-function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
+function ChartRefBadgeLayer({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
   const {
     allRefLines,
     refLineCustom,
@@ -2162,7 +2185,6 @@ function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
     fontProp,
     overlayScrubFade,
   } = model;
-  const degen = useContext(DegenContext);
   if (allRefLines.length === 0) return null;
   return (
     <Group transform={degen?.shakeTransform} opacity={overlayScrubFade}>
@@ -2303,8 +2325,15 @@ function ChartCustomConsumerOverlay({ model }: { model: LiveChartModel }) {
   return <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />;
 }
 
-export function LiveChart(props: LiveChartProps) {
-  const model = useLiveChartController(props);
+function ChartView({
+  model,
+  yAxisEntries,
+  degen,
+}: {
+  model: LiveChartModel;
+  yAxisEntries: YAxisEntries | null;
+  degen: DegenState | null;
+}) {
   const {
     rootGesture,
     backgroundColor,
@@ -2332,7 +2361,7 @@ export function LiveChart(props: LiveChartProps) {
     bottomConnector,
   } = model;
 
-  const chart = (
+  return (
     <GestureDetector gesture={rootGesture}>
       <View
         style={[{ flex: 1, backgroundColor }, style]}
@@ -2345,7 +2374,11 @@ export function LiveChart(props: LiveChartProps) {
           {/* Background fills first, then the left-edge fade (a canvas-space sibling
               so dstOut blends correctly), then the line stack on top — so the fade
               softens only the fills and the line stays crisp at the left edge. */}
-          <ChartFillLayer model={model} />
+          <ChartFillLayer
+            model={model}
+            yAxisEntries={yAxisEntries}
+            degen={degen}
+          />
 
           {leftEdgeFadeCfg && (
             <LeftEdgeFade
@@ -2358,7 +2391,11 @@ export function LiveChart(props: LiveChartProps) {
           )}
 
           {/* Line stack above the fade so the line stays crisp at the left edge. */}
-          <ChartStack model={model} />
+          <ChartStack
+            model={model}
+            yAxisEntries={yAxisEntries}
+            degen={degen}
+          />
 
           {/* "extrema-edge" connector lines (dot → edge readout), above the chart
               content so the dashed guide reads over the line / candles. */}
@@ -2373,19 +2410,19 @@ export function LiveChart(props: LiveChartProps) {
           )}
 
           {/* Reference-line badges + labels above the fade so they stay crisp. */}
-          <ChartRefBadgeLayer model={model} />
+          <ChartRefBadgeLayer model={model} degen={degen} />
 
-          <ChartValueOverlay model={model} />
+          <ChartValueOverlay model={model} degen={degen} />
 
           {model.tradeStreamResolved && model.tradeStream && (
-            <ChartTradeStreamLayer model={model} />
+            <ChartTradeStreamLayer model={model} degen={degen} />
           )}
 
-          <ChartScrubLayer model={model} />
+          <ChartScrubLayer model={model} degen={degen} />
 
           {/* Live-price badge on top of the scrub dim so the dim never clips
               its left edge (the badge tracks the live value, not the scrub). */}
-          {model.badgeCfg && <ChartBadgeLayer model={model} />}
+          {model.badgeCfg && <ChartBadgeLayer model={model} degen={degen} />}
 
           {/* Scrub-action reticle + action badge — top-most, no shake transform. */}
           <ChartScrubActionLayer model={model} />
@@ -2444,17 +2481,15 @@ export function LiveChart(props: LiveChartProps) {
       </View>
     </GestureDetector>
   );
+}
 
-  let wrappedChart: ReactNode = chart;
+export function LiveChart(props: LiveChartProps) {
+  const model = useLiveChartController(props);
   if (model.yAxisCfg) {
-    wrappedChart = (
-      <ChartYAxisProvider model={model}>{wrappedChart}</ChartYAxisProvider>
-    );
+    return <ChartWithYAxis model={model} />;
   }
   if (model.degenCfg) {
-    wrappedChart = (
-      <ChartDegenProvider model={model}>{wrappedChart}</ChartDegenProvider>
-    );
+    return <ChartWithDegen model={model} yAxisEntries={null} />;
   }
-  return wrappedChart;
+  return <ChartView model={model} yAxisEntries={null} degen={null} />;
 }
