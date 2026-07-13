@@ -19,6 +19,16 @@ import {
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type { CandlePoint, LiveChartPoint, SeriesConfig } from "../types";
 import { tickLiveChartEngineFrame } from "./liveChartEngineTick";
+import {
+  renderCadenceIntervalMs,
+  resolveRenderCadenceMode,
+} from "./renderCadence";
+
+// Profiling-only bundle switch. The production default remains `display` until
+// physical-device measurements justify a lower adaptive publication cadence.
+const PROFILE_RENDER_CADENCE = resolveRenderCadenceMode(
+  process.env.EXPO_PUBLIC_MEMORY_PROFILE_CADENCE,
+);
 
 export interface EngineConfig {
   data: SharedValue<LiveChartPoint[]>;
@@ -397,6 +407,10 @@ export function useLiveChartEngine(
   // the live edge over that progress. `returnT` rests at 1 (no glide in flight).
   const returnT = useSharedValue(1);
   const returnFrom = useSharedValue(0);
+  // Time accumulated while an experiment coalesces adjacent display frames.
+  // This SharedValue has no renderer subscriber, so updating it does not request
+  // a Skia redraw. The full elapsed time is passed to the next engine tick.
+  const cadenceElapsedMs = useSharedValue(0);
 
   // Live data extrema (value + time of the visible high / low). NaN until the
   // first tick finds data — the extrema label stays hidden until then.
@@ -472,6 +486,28 @@ export function useLiveChartEngine(
   // loop is fully inert in static mode (the invariant that makes this worth it).
   useFrameCallback((frameInfo) => {
     "worklet";
+    const frameMs =
+      frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
+    const intervalMs = renderCadenceIntervalMs(
+      PROFILE_RENDER_CADENCE,
+      canvasWidth.get(),
+      displayWindow.get(),
+    );
+    if (intervalMs > 0) {
+      const elapsedMs = cadenceElapsedMs.get() + frameMs;
+      // Small tolerance avoids a 120 Hz device needing a fifth frame because
+      // four reported deltas sum a few floating-point microseconds below 1/30s.
+      if (elapsedMs + 0.01 < intervalMs) {
+        cadenceElapsedMs.set(elapsedMs);
+        return;
+      }
+      cadenceElapsedMs.set(0);
+      applyLiveChartEngineFrame(
+        { timeSincePreviousFrame: elapsedMs },
+        frameRefs,
+      );
+      return;
+    }
     applyLiveChartEngineFrame(frameInfo, frameRefs);
   }, !config.static);
 

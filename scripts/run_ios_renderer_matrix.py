@@ -92,7 +92,10 @@ def capture_run(
     args: argparse.Namespace,
 ) -> None:
     run_id = run["id"]
-    profile_env = {"EXPO_PUBLIC_MEMORY_PROFILE_RUN": run_id}
+    profile_env = {
+        "EXPO_PUBLIC_MEMORY_PROFILE_RUN": run_id,
+        "EXPO_PUBLIC_MEMORY_PROFILE_CADENCE": run["cadence"],
+    }
     print(f"\n## {run_id}: {run['description']}", flush=True)
 
     if not args.skip_build:
