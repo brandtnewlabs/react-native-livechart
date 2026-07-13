@@ -3,7 +3,6 @@ import { Platform } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
-  useDerivedValue,
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
@@ -32,6 +31,7 @@ import {
   deriveCrosshairTooltipSingle,
   HIDDEN_ACTION_BADGE,
   HIDDEN_TIME_BADGE,
+  HIDDEN_TOOLTIP,
   pointInRect,
   snapPrice,
   type CrosshairState,
@@ -172,202 +172,215 @@ export function useCrosshair(
   const actionShowText = scrubAction?.text ?? true;
   const hasTimeBadge = scrubAction?.timeBadge ?? false;
 
-  const scrubTime = useDerivedValue(() =>
-    computeScrubTime(
-      scrubActive.get(),
-      scrubX.get(),
-      padding,
-      engine.canvasWidth.get(),
-      engine.timestamp.get(),
-      engine.displayWindow.get(),
-    ),
-  );
-
   const isCandleMode = candleOpts?.mode === "candle";
   const candlesSV = candleOpts?.candles;
   const liveCandleSV = candleOpts?.liveCandle;
   const candleWidthSecs = candleOpts?.candleWidthSecs ?? 60;
 
-  /* istanbul ignore next -- worklet */
-  const scrubCandle = useDerivedValue(() => {
-    if (
-      !isCandleMode ||
-      !candlesSV ||
-      !scrubActive.get() ||
-      scrubTime.get() < 0
-    )
-      return null;
-    return pickCandleAtTime(
-      candlesSV.get(),
-      liveCandleSV?.get() ?? null,
-      scrubTime.get(),
-      candleWidthSecs,
-    );
-  });
-
-  /* istanbul ignore next -- worklet */
-  const scrubValue = useDerivedValue(() => {
-    if (!scrubActive.get() || scrubTime.get() < 0) return null;
-    if (isCandleMode) {
-      return scrubCandle.get()?.close ?? null;
-    }
-    return interpolateAtTime(engine.data.get(), scrubTime.get());
-  });
-
-  const crosshairOpacity = useDerivedValue(() =>
-    computeCrosshairOpacity(
-      scrubActive.get(),
-      scrubX.get(),
-      engine.canvasWidth.get(),
-      padding.right,
-    ),
-  );
-
-  // Y pixel of the scrub intersection — used by the selection dot. -1 when
-  // there's no value to mark.
-  const scrubDotY = useDerivedValue(() =>
-    computeScrubDotY(
-      scrubValue.get(),
-      engine.displayMin.get(),
-      engine.displayMax.get(),
-      engine.canvasHeight.get(),
-      padding.top,
-      padding.bottom,
-    ),
-  );
-
   // Monospace advance width, measured once per render (not per scrub frame) so
   // the tooltip layout worklet can size text by character count instead of a
   // per-frame Skia measureText.
   const monoCharWidth = font.measureText("0").width;
+  const scrubTime = useSharedValue(-1);
+  const scrubCandle = useSharedValue<CandlePoint | null>(null);
+  const scrubValue = useSharedValue<number | null>(null);
+  const crosshairOpacity = useSharedValue(0);
+  const scrubDotY = useSharedValue(-1);
+  const tooltipLayout = useSharedValue(HIDDEN_TOOLTIP);
 
-  const tooltipLayout = useDerivedValue(() => {
-    if (isCandleMode) {
-      return computeCandleTooltipLayout(
-        scrubActive.get(),
-        scrubX.get(),
-        scrubCandle.get(),
-        scrubTime.get(),
+  // These six outputs traverse the same scrub + engine inputs. One reaction
+  // computes and publishes the snapshot atomically instead of compiling six
+  // independent derived-value mappers with chained dependencies.
+  useAnimatedReaction(
+    () => {
+      "worklet";
+      const active = scrubActive.get();
+      const x = scrubX.get();
+      const canvasWidth = engine.canvasWidth.get();
+      const canvasHeight = engine.canvasHeight.get();
+      const time = computeScrubTime(
+        active,
+        x,
         padding,
-        engine.canvasWidth.get(),
-        formatValue,
-        formatTime,
-        font,
-        monoCharWidth,
+        canvasWidth,
+        engine.timestamp.get(),
+        engine.displayWindow.get(),
       );
-    }
-    return deriveCrosshairTooltipSingle(
-      scrubActive.get(),
-      scrubX.get(),
-      scrubTime.get(),
-      scrubValue.get(),
-      padding,
-      engine.canvasWidth.get(),
-      formatValue,
-      formatTime,
-      font,
-      monoCharWidth,
-      tooltipPlacement,
-      tooltipShowValue,
-      tooltipShowTime,
-      engine.canvasHeight.get(),
-      tooltipMargin,
-      scrubDotY.get(),
-    );
-  });
-
-  // ── Scrub-action lock derivations ──────────────────────────────────────────
-  // Reported price = the frozen chosen price, optionally snapped. Independent of
-  // the display range (the point of freezing it), so the badge readout and the
-  // onScrubAction payload stay stable while the chart auto-rescales. Null until a
-  // reticle is placed.
-  /* istanbul ignore next -- worklet (locked branch only runs on the UI thread) */
-  const lockPrice = useDerivedValue(() => {
-    if (!lockActive.get()) return null;
-    const p = lockPriceValue.get();
-    return p === null ? null : snapPrice(p, snapIncrement);
-  });
-
-  // Screen Y of the locked level, DERIVED from the frozen price each frame so the
-  // line + badge track the chosen price as displayMin/Max move (rather than the
-  // price drifting under a pixel-fixed reticle). Pins to the plot edge when the
-  // price scrolls out of the visible range; -1 until placed / laid out.
-  /* istanbul ignore next -- worklet (locked branch only runs on the UI thread) */
-  const lockY = useDerivedValue(() => {
-    const p = lockPriceValue.get();
-    const ch = engine.canvasHeight.get();
-    if (p === null || ch - padding.top - padding.bottom <= 0) return -1;
-    const y = computeScrubDotY(
-      p,
-      engine.displayMin.get(),
-      engine.displayMax.get(),
-      ch,
-      padding.top,
-      padding.bottom,
-    );
-    return clampPlotY(y, padding.top, ch, padding.bottom);
-  });
-
-  const lockTime = useDerivedValue(() =>
-    computeScrubTime(
-      lockActive.get(),
-      lockX.get(),
-      padding,
-      engine.canvasWidth.get(),
-      engine.timestamp.get(),
-      engine.displayWindow.get(),
-    ),
+      const candle =
+        isCandleMode && candlesSV && active && time >= 0
+          ? pickCandleAtTime(
+              candlesSV.get(),
+              liveCandleSV?.get() ?? null,
+              time,
+              candleWidthSecs,
+            )
+          : null;
+      const value =
+        !active || time < 0
+          ? null
+          : isCandleMode
+            ? (candle?.close ?? null)
+            : interpolateAtTime(engine.data.get(), time);
+      const dotY = computeScrubDotY(
+        value,
+        engine.displayMin.get(),
+        engine.displayMax.get(),
+        canvasHeight,
+        padding.top,
+        padding.bottom,
+      );
+      const layout = isCandleMode
+        ? computeCandleTooltipLayout(
+            active,
+            x,
+            candle,
+            time,
+            padding,
+            canvasWidth,
+            formatValue,
+            formatTime,
+            font,
+            monoCharWidth,
+          )
+        : deriveCrosshairTooltipSingle(
+            active,
+            x,
+            time,
+            value,
+            padding,
+            canvasWidth,
+            formatValue,
+            formatTime,
+            font,
+            monoCharWidth,
+            tooltipPlacement,
+            tooltipShowValue,
+            tooltipShowTime,
+            canvasHeight,
+            tooltipMargin,
+            dotY,
+          );
+      return {
+        time,
+        candle,
+        value,
+        opacity: computeCrosshairOpacity(active, x, canvasWidth, padding.right),
+        dotY,
+        layout,
+      };
+    },
+    (snapshot) => {
+      "worklet";
+      scrubTime.set(snapshot.time);
+      scrubCandle.set(snapshot.candle);
+      scrubValue.set(snapshot.value);
+      crosshairOpacity.set(snapshot.opacity);
+      scrubDotY.set(snapshot.dotY);
+      tooltipLayout.set(snapshot.layout);
+    },
   );
 
-  /* istanbul ignore next -- worklet */
-  const lockCandle = useDerivedValue(() => {
-    if (!isCandleMode || !candlesSV || !lockActive.get() || lockTime.get() < 0)
-      return null;
-    return pickCandleAtTime(
-      candlesSV.get(),
-      liveCandleSV?.get() ?? null,
-      lockTime.get(),
-      candleWidthSecs,
-    );
-  });
+  // ── Scrub-action lock derivations ──────────────────────────────────────────
+  const lockPrice = useSharedValue<number | null>(null);
+  const lockY = useSharedValue(-1);
+  const lockTime = useSharedValue(-1);
+  const lockCandle = useSharedValue<CandlePoint | null>(null);
+  const actionBadge = useSharedValue(HIDDEN_ACTION_BADGE);
+  const timeBadge = useSharedValue(HIDDEN_TIME_BADGE);
 
-  // Right-gutter action-badge layout — also the tap hit rect. Hidden when not locked.
+  // The lock price, projected coordinates, candle and both badges are one
+  // coherent reticle snapshot. Publishing them from one reaction replaces six
+  // chained derived-value mappers and prevents intermediate mixed-frame state.
   /* istanbul ignore next -- worklet (locked branch only runs on the UI thread) */
-  const actionBadge = useDerivedValue(() => {
-    const price = lockPrice.get();
-    if (price === null) return HIDDEN_ACTION_BADGE;
-    return computeActionBadgeLayout(
-      lockActive.get(),
-      lockY.get(),
-      actionShowText ? formatValue(price) : "",
-      actionIcon,
-      engine.canvasWidth.get(),
-      engine.canvasWidth.get() - padding.right,
-      font,
-      badgeMetrics.marginEdge,
-      badgeMetrics.padX,
-      badgeMetrics.padY,
-    );
-  });
-
-  // X-axis time badge at the reticle (opt-in). Hidden unless enabled + locked.
-  /* istanbul ignore next -- worklet (locked branch only runs on the UI thread) */
-  const timeBadge = useDerivedValue(() => {
-    if (!hasTimeBadge || !lockActive.get()) return HIDDEN_TIME_BADGE;
-    const t = lockTime.get();
-    if (t < 0) return HIDDEN_TIME_BADGE;
-    return computeTimeBadgeLayout(
-      lockActive.get(),
-      lockX.get(),
-      formatTime(t),
-      engine.canvasWidth.get(),
-      engine.canvasHeight.get() - padding.bottom + X_AXIS_LABEL_OFFSET_Y,
-      font,
-      badgeMetrics.padX,
-      badgeMetrics.padY,
-      badgeMetrics.marginEdge,
-    );
-  });
+  useAnimatedReaction(
+    () => {
+      "worklet";
+      const active = lockActive.get();
+      const x = lockX.get();
+      const rawPrice = lockPriceValue.get();
+      const canvasWidth = engine.canvasWidth.get();
+      const canvasHeight = engine.canvasHeight.get();
+      const price =
+        active && rawPrice !== null
+          ? snapPrice(rawPrice, snapIncrement)
+          : null;
+      let y = -1;
+      if (
+        rawPrice !== null &&
+        canvasHeight - padding.top - padding.bottom > 0
+      ) {
+        y = clampPlotY(
+          computeScrubDotY(
+            rawPrice,
+            engine.displayMin.get(),
+            engine.displayMax.get(),
+            canvasHeight,
+            padding.top,
+            padding.bottom,
+          ),
+          padding.top,
+          canvasHeight,
+          padding.bottom,
+        );
+      }
+      const time = computeScrubTime(
+        active,
+        x,
+        padding,
+        canvasWidth,
+        engine.timestamp.get(),
+        engine.displayWindow.get(),
+      );
+      const candle =
+        isCandleMode && candlesSV && active && time >= 0
+          ? pickCandleAtTime(
+              candlesSV.get(),
+              liveCandleSV?.get() ?? null,
+              time,
+              candleWidthSecs,
+            )
+          : null;
+      const badge =
+        price === null
+          ? HIDDEN_ACTION_BADGE
+          : computeActionBadgeLayout(
+              active,
+              y,
+              actionShowText ? formatValue(price) : "",
+              actionIcon,
+              canvasWidth,
+              canvasWidth - padding.right,
+              font,
+              badgeMetrics.marginEdge,
+              badgeMetrics.padX,
+              badgeMetrics.padY,
+            );
+      const timeLayout =
+        !hasTimeBadge || !active || time < 0
+          ? HIDDEN_TIME_BADGE
+          : computeTimeBadgeLayout(
+              active,
+              x,
+              formatTime(time),
+              canvasWidth,
+              canvasHeight - padding.bottom + X_AXIS_LABEL_OFFSET_Y,
+              font,
+              badgeMetrics.padX,
+              badgeMetrics.padY,
+              badgeMetrics.marginEdge,
+            );
+      return { price, y, time, candle, badge, timeLayout };
+    },
+    (snapshot) => {
+      "worklet";
+      lockPrice.set(snapshot.price);
+      lockY.set(snapshot.y);
+      lockTime.set(snapshot.time);
+      lockCandle.set(snapshot.candle);
+      actionBadge.set(snapshot.badge);
+      timeBadge.set(snapshot.timeLayout);
+    },
+  );
 
   /* istanbul ignore next -- invoked only via scheduleOnRN from UI-thread gesture */
   function handleScrubAction(

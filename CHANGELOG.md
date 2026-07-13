@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Axis, badge, trade-tape, custom-overlay, degen, and line-vs-candle rendering
   hooks now live in conditionally mounted child components. Minimal line charts
   avoid compiling and retaining worklets for features they do not use.
+- **Crosshair geometry now publishes two coherent snapshots instead of twelve
+  chained derived values.** Scrub and locked-reticle state still expose the same
+  individual SharedValues, but compile fewer Hermes worklets and no longer pass
+  through intermediate mixed-frame geometry while dependent mappers settle.
 
 ## [4.9.1] - 2026-07-06
 
