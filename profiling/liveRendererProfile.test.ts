@@ -33,6 +33,15 @@ describe("live renderer profile matrix", () => {
     );
   });
 
+  it("selects fixed and adaptive cadence runs", () => {
+    expect(resolveLiveRendererProfile("live-monotone-round-30fps").cadence).toBe(
+      "fixed30",
+    );
+    expect(
+      resolveLiveRendererProfile("live-monotone-round-adaptive").cadence,
+    ).toBe("adaptive");
+  });
+
   it("keeps the original static/live environment variable as an override", () => {
     expect(
       resolveLiveRendererProfile("live-linear-sharp", "static"),

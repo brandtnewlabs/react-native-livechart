@@ -96,7 +96,10 @@ def capture_run(
     worklets_mode: str | None,
 ) -> None:
     run_id = run["id"]
-    profile_env = {"EXPO_PUBLIC_MEMORY_PROFILE_RUN": run_id}
+    profile_env = {
+        "EXPO_PUBLIC_MEMORY_PROFILE_RUN": run_id,
+        "EXPO_PUBLIC_MEMORY_PROFILE_CADENCE": run["cadence"],
+    }
     if worklets_mode:
         profile_env["WORKLETS_BUNDLE_MODE"] = (
             "1" if worklets_mode == "bundle" else "0"

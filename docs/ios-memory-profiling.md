@@ -46,6 +46,8 @@ dimension:
 | --- | --- |
 | `static-control` | How much cost remains without the continuous chart loop? |
 | `live-monotone-round` | What is the current production live baseline? |
+| `live-monotone-round-30fps` | How much churn disappears at a fixed 30 fps? |
+| `live-monotone-round-adaptive` | Can visible pixel velocity retain 60 fps only where it matters? |
 | `live-monotone-sharp` | Do round caps and joins drive mask churn? |
 | `live-linear-round` | Do cubic path verbs drive mask churn? |
 | `live-linear-sharp` | What does the simplest built-in stroke cost? |
@@ -92,6 +94,18 @@ timeline, exports Activity Monitor XML, and writes one Markdown phase summary
 beside each trace. It refuses to overwrite traces unless `--force` is supplied.
 Metro's transform cache is keyed by the selected run, mode, and cadence so a
 sequential matrix cannot silently reuse the previous run's inlined environment.
+
+Use a physical iOS device: simulator Activity Monitor recordings do not produce
+a valid Instruments trace for this workflow.
+
+The cadence variants are profiling-only bundle switches. `display` preserves the
+existing frame callback. `fixed30` accumulates adjacent display-frame deltas and
+publishes the engine at 30 fps. `adaptive` waits for one half-pixel of horizontal
+movement, clamped between 30 and 60 fps. The accumulated elapsed time is passed
+to the next tick, so easing duration is unchanged; only expensive publication
+and redraw frequency differs. With the canonical 400-point-wide, 30-second
+window, adaptive cadence resolves to 33.3 ms: one publication for every two
+60 Hz display callbacks, or about half as many steady-state redraw requests.
 
 ## Bundle Mode simulator screen
 

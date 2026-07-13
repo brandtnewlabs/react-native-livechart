@@ -57,7 +57,8 @@ export default function MemoryProfileScreen() {
         MEMORY PROFILE {phaseIndex}: {phase.name}
       </Text>
       <Text style={styles.detail}>
-        {PROFILE.mode} · {PROFILE.curve} · {PROFILE.join}/{PROFILE.cap}
+        {PROFILE.mode} · {PROFILE.cadence} · {PROFILE.curve} · {PROFILE.join}/
+        {PROFILE.cap}
       </Text>
       <Text style={styles.detail}>
         {PROFILE.tradesPerSecond} updates/s · {PROFILE.timeWindowSeconds}s window

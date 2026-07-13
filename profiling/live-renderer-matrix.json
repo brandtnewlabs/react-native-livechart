@@ -1,6 +1,7 @@
 {
   "defaults": {
     "mode": "live",
+    "cadence": "display",
     "curve": "monotone",
     "join": "round",
     "cap": "round",
@@ -20,6 +21,16 @@
     {
       "id": "live-monotone-round",
       "description": "Current production line renderer and canonical live baseline."
+    },
+    {
+      "id": "live-monotone-round-30fps",
+      "description": "Coalesces steady engine publications to a fixed 30 fps.",
+      "cadence": "fixed30"
+    },
+    {
+      "id": "live-monotone-round-adaptive",
+      "description": "Uses visible pixel velocity to choose a 30–60 fps cadence.",
+      "cadence": "adaptive"
     },
     {
       "id": "live-monotone-sharp",
