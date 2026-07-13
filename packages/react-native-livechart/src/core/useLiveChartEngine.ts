@@ -25,14 +25,8 @@ import {
 } from "./liveChartEngineTick";
 import {
   renderCadenceIntervalMs,
-  resolveRenderCadenceMode,
+  resolveRenderCadenceProfileOverride,
 } from "./renderCadence";
-
-// Profiling-only bundle switch. The production default remains `display` until
-// physical-device measurements justify a lower adaptive publication cadence.
-const PROFILE_RENDER_CADENCE = resolveRenderCadenceMode(
-  process.env.EXPO_PUBLIC_MEMORY_PROFILE_CADENCE,
-);
 
 export interface EngineConfig {
   data: SharedValue<LiveChartPoint[]>;
@@ -380,6 +374,9 @@ export function applyLiveChartEngineFrame(
 export function useLiveChartEngine(
   config: EngineConfig,
 ): SingleEngineState & ChartEngineScroll & ChartEngineEdge {
+  // The example app can select a bundle-time experiment without making Node's
+  // `process` global part of the publishable library's declaration build.
+  const profileRenderCadence = resolveRenderCadenceProfileOverride();
   // Pinch-zoom window-width override (null = follow the configured window).
   // Declared first so `timeWindow` below can fold it in. Defaults to null so
   // charts without `zoom` behave exactly as before.
@@ -556,7 +553,7 @@ export function useLiveChartEngine(
     const frameMs =
       frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
     const intervalMs = renderCadenceIntervalMs(
-      PROFILE_RENDER_CADENCE,
+      profileRenderCadence,
       canvasWidth.get(),
       displayWindow.get(),
     );
