@@ -67,6 +67,8 @@ python3 scripts/run_ios_renderer_matrix.py \
 The runner builds a Release bundle for each selection, records the same 65-second
 timeline, exports Activity Monitor XML, and writes one Markdown phase summary
 beside each trace. It refuses to overwrite traces unless `--force` is supplied.
+Metro's transform cache is keyed by the selected run, mode, and cadence so a
+sequential matrix cannot silently reuse the previous run's inlined environment.
 
 ## Physical footprint
 
