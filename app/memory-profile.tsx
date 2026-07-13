@@ -18,6 +18,15 @@ const PROFILE = resolveLiveRendererProfile(
   process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE,
 );
 
+// Keep Expo's bundle-time environment access in the example app. The library
+// reads this only when the profiling screen mounts, preserving its Node-free
+// declaration build and avoiding a public profiling prop.
+(
+  globalThis as typeof globalThis & {
+    __reactNativeLiveChartProfileCadence?: string;
+  }
+).__reactNativeLiveChartProfileCadence = PROFILE.cadence;
+
 const PHASES = [
   { name: "baseline", chartMounted: false, seconds: 15 },
   { name: PROFILE.id, chartMounted: true, seconds: 30 },

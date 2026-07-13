@@ -2,14 +2,30 @@ import { MS_PER_FRAME_60FPS } from "../constants";
 
 export type RenderCadenceMode = "display" | "fixed30" | "adaptive";
 
+type RenderCadenceProfileGlobal = typeof globalThis & {
+  __reactNativeLiveChartProfileCadence?: string;
+};
+
 export const FIXED_30FPS_INTERVAL_MS = 1000 / 30;
 export const ADAPTIVE_PIXEL_STEP = 0.5;
 
 /** Bundle-time profiling mode. Unknown/absent values preserve display cadence. */
 export function resolveRenderCadenceMode(
   value: string | undefined,
+  fallback: RenderCadenceMode = "display",
 ): RenderCadenceMode {
-  return value === "fixed30" || value === "adaptive" ? value : "display";
+  return value === "display" || value === "fixed30" || value === "adaptive"
+    ? value
+    : fallback;
+}
+
+/** Read the example app's bundle-time profiling override without Node globals. */
+export function resolveRenderCadenceProfileOverride(
+  fallback: RenderCadenceMode = "display",
+): RenderCadenceMode {
+  const value = (globalThis as RenderCadenceProfileGlobal)
+    .__reactNativeLiveChartProfileCadence;
+  return resolveRenderCadenceMode(value, fallback);
 }
 
 /**
