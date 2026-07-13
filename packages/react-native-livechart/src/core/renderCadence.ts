@@ -28,6 +28,17 @@ export function resolveRenderCadenceProfileOverride(
   return resolveRenderCadenceMode(value, fallback);
 }
 
+/** Whether the accumulated display time has reached the next publication. */
+export function shouldPublishRenderFrame(
+  intervalMs: number,
+  elapsedMs: number,
+): boolean {
+  "worklet";
+  // Avoid a 120 Hz device needing a fifth frame because four reported deltas
+  // sum a few floating-point microseconds below the 30 fps interval.
+  return intervalMs <= 0 || elapsedMs + 0.01 >= intervalMs;
+}
+
 /**
  * Minimum time between expensive chart-state publications for a profiling mode.
  *

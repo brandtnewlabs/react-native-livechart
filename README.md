@@ -198,7 +198,7 @@ Screens demonstrate candlestick mode, multi-series, scrub, momentum tuning, dege
 - **Reanimated** owns timeline layout, smoothing, and scrub state; hooks feed a small engine API on the UI thread.
 - **Gesture Handler** drives scrubbing and chart interactions.
 
-A frame-callback engine (`useFrameCallback`) runs a pure tick function on the UI thread each frame, updating display range, time window, and smoothed values, then writing results to `SharedValue`s. Path builders and overlays read those `SharedValue`s inside `useDerivedValue`, so React re-renders stay minimal.
+A frame-callback engine (`useFrameCallback`) runs a pure tick function on the UI thread, updating display range, time window, and smoothed values, then writing results to `SharedValue`s. Steady live scrolling publishes adaptively at 30–60 fps from visible pixel velocity (while fast snap/return transitions retain display cadence), avoiding redraws that would move the chart by less than half a pixel. Path builders and overlays read those `SharedValue`s inside `useDerivedValue`, so React re-renders stay minimal.
 
 ## Contributing
 

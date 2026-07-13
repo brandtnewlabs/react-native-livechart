@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   chained derived values.** Scrub and locked-reticle state still expose the same
   individual SharedValues, but compile fewer Hermes worklets and no longer pass
   through intermediate mixed-frame geometry while dependent mappers settle.
+- **Steady live scrolling now publishes chart state at a pixel-aware 30–60 fps.**
+  The engine coalesces display callbacks until time movement reaches half a
+  pixel, while snap and return-to-live transitions retain display cadence. The
+  canonical 400 px / 30 s window therefore requests about half as many steady
+  Skia redraws without changing animation duration or gesture-driven updates.
 
 ## [4.9.1] - 2026-07-06
 
