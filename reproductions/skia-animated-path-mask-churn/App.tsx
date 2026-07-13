@@ -1,5 +1,5 @@
 import { Canvas, Group, Path, Skia } from "@shopify/react-native-skia";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, StyleSheet, Text, View } from "react-native";
 import {
   useDerivedValue,
@@ -16,6 +16,23 @@ const POINT_COUNT = 900;
 
 type Phase = "baseline" | "static" | "animated" | "unmounted";
 
+// One immutable fixture for the entire process. Keeping path construction out of
+// the component makes both remounts and animated frames reuse the exact object.
+const DENSE_PATH = (() => {
+  const result = Skia.Path.Make();
+  for (let index = 0; index < POINT_COUNT; index++) {
+    const t = index / (POINT_COUNT - 1);
+    const x = 8 + t * (CANVAS_WIDTH - 16);
+    const y =
+      CANVAS_HEIGHT / 2 +
+      Math.sin(t * Math.PI * 18) * 120 +
+      Math.sin(t * Math.PI * 74) * 26;
+    if (index === 0) result.moveTo(x, y);
+    else result.lineTo(x, y);
+  }
+  return result;
+})();
+
 function DensePathScene({ animated }: { animated: boolean }) {
   const animatedSV = useSharedValue(animated);
   const translateX = useSharedValue(0);
@@ -24,23 +41,6 @@ function DensePathScene({ animated }: { animated: boolean }) {
     animatedSV.set(animated);
     if (!animated) translateX.set(0);
   }, [animated, animatedSV, translateX]);
-
-  // Construct one immutable SkPath on the JS thread. The animated phase only
-  // changes its transform, so per-frame SkPath/array construction is excluded.
-  const path = useMemo(() => {
-    const result = Skia.Path.Make();
-    for (let index = 0; index < POINT_COUNT; index++) {
-      const t = index / (POINT_COUNT - 1);
-      const x = 8 + t * (CANVAS_WIDTH - 16);
-      const y =
-        CANVAS_HEIGHT / 2 +
-        Math.sin(t * Math.PI * 18) * 120 +
-        Math.sin(t * Math.PI * 74) * 26;
-      if (index === 0) result.moveTo(x, y);
-      else result.lineTo(x, y);
-    }
-    return result;
-  }, []);
 
   useFrameCallback((frameInfo) => {
     "worklet";
@@ -58,7 +58,7 @@ function DensePathScene({ animated }: { animated: boolean }) {
     <Canvas style={styles.canvas}>
       <Group transform={transform}>
         <Path
-          path={path}
+          path={DENSE_PATH}
           color="#66e3ff"
           style="stroke"
           strokeWidth={3}
