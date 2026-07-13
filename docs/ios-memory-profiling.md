@@ -126,3 +126,53 @@ has not changed, cap the redraw rate below the display refresh rate, reduce path
 or antialiasing complexity, and determine why this workload selects Ganesh's
 software path renderer. Pooling JavaScript or SkPath wrappers is unlikely to
 address the measured mask-pixmap churn.
+
+## Graphite experiment
+
+A follow-up run upgraded React Native Skia from 2.6.4 to 2.7.0 and replaced the
+default Ganesh m150 binaries with the upstream Graphite m150 prebuilts. The
+profiling harness, device, Release configuration, update rate, and phase windows
+were otherwise unchanged. CocoaPods reported `SK_GRAPHITE: ON`, and the build
+compiled the Dawn/Graphite sources.
+
+| Backend        | Baseline mean | Mounted mean |    Mounted max/last | Unmounted mean | Unmounted last |
+| -------------- | ------------: | -----------: | ------------------: | -------------: | -------------: |
+| Ganesh 2.6.4   |    123.65 MiB |   497.55 MiB | 555.64 / 555.64 MiB |     502.52 MiB |     501.99 MiB |
+| Graphite 2.7.0 |    126.26 MiB |   302.16 MiB | 304.75 / 304.75 MiB |     254.98 MiB |     254.66 MiB |
+
+Graphite reduced the mounted mean by 195.39 MiB (39%) and the post-unmount last
+sample by 247.33 MiB (49%). Whole-run heap plus anonymous-VM allocation volume
+fell from 3.36 GiB to 830.17 MiB while persistent allocation stayed effectively
+flat at 224.78 MiB. This confirms that the earlier post-unmount footprint was
+mostly allocator/VM high-water caused by transient Ganesh churn.
+
+| Allocation class           | Ganesh total | Graphite total | Reduction |
+| -------------------------- | -----------: | -------------: | --------: |
+| All heap + anonymous VM    |     3.36 GiB |     830.17 MiB |       76% |
+| Malloc 48 KiB              |   329.48 MiB |     169.17 MiB |       49% |
+| Malloc 20 KiB              |   181.48 MiB |       2.56 MiB |       99% |
+| Malloc 7 KiB               |   158.94 MiB |      96.24 MiB |       39% |
+| Malloc 12 KiB              |    85.45 MiB |       5.13 MiB |       94% |
+| Malloc 16 KiB              |    53.92 MiB |       4.19 MiB |       92% |
+| Malloc 256 KiB, persistent |   173.00 MiB |     173.00 MiB |      none |
+
+The unchanged persistent 256 KiB class is expected: switching renderers does
+not affect retained Hermes worklet bytecode. The large reductions in transient
+allocation classes are consistent with bypassing the measured Ganesh software
+path renderer and its mask pixmap scratch allocation.
+
+### Installation and limitations
+
+React Native Skia 2.7.0 contains the Graphite code paths, but its stable npm
+package still selects Ganesh prebuilts. `scripts/setup-skia-graphite.mjs` copies
+the official m150 Graphite Android, Apple, and header packages into the layout
+recognized by React Native Skia and writes its `libs/.graphite` marker after
+every install.
+
+This remains an experimental backend evaluation, not a production
+recommendation. Upstream labels Graphite highly experimental; Android requires
+API level 26, and the Apple prebuilt emitted a warning that an object was built
+for iOS 18.5 while the demo targets iOS 16.4. Graphite also has known unsupported
+native-texture APIs in React Native Skia 2.7.0. Validate visual parity, gestures,
+screenshots, image readback, older supported iOS versions, and Android before
+promoting this configuration beyond the draft experiment.
