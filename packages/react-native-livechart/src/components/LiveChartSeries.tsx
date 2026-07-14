@@ -712,6 +712,8 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
             badge={false}
             seriesLabelInset={seriesLabelInset}
             gridStyle={gridStyleCfg}
+            labelRightMargin={yAxisCfg.labelRightMargin}
+            gridEndGap={yAxisCfg.gridEndGap}
           />
         </Group>
       )}

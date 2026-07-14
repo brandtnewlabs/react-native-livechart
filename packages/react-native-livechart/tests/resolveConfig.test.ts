@@ -196,7 +196,13 @@ describe("resolveYAxis", () => {
   });
 
   it("returns defaults for true", () => {
-    expect(resolveYAxis(true)).toEqual({ minGap: 36, count: 0, float: false });
+    expect(resolveYAxis(true)).toEqual({
+      minGap: 36,
+      count: 0,
+      float: false,
+      labelRightMargin: undefined,
+      gridEndGap: undefined,
+    });
   });
 
   it("merges partial config with defaults", () => {
@@ -204,6 +210,8 @@ describe("resolveYAxis", () => {
       minGap: 48,
       count: 0,
       float: false,
+      labelRightMargin: undefined,
+      gridEndGap: undefined,
     });
   });
 
@@ -212,6 +220,8 @@ describe("resolveYAxis", () => {
       minGap: 36,
       count: 0,
       float: true,
+      labelRightMargin: undefined,
+      gridEndGap: undefined,
     });
   });
 
@@ -220,6 +230,18 @@ describe("resolveYAxis", () => {
       minGap: 36,
       count: 5,
       float: false,
+      labelRightMargin: undefined,
+      gridEndGap: undefined,
+    });
+  });
+
+  it("carries through right-anchored label spacing", () => {
+    expect(resolveYAxis({ labelRightMargin: 8, gridEndGap: 6 })).toEqual({
+      minGap: 36,
+      count: 0,
+      float: false,
+      labelRightMargin: 8,
+      gridEndGap: 6,
     });
   });
 

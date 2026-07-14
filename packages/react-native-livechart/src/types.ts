@@ -648,6 +648,17 @@ export interface YAxisConfig {
    */
   count?: number;
   /**
+   * Place price labels in a shared left-aligned column whose right edge sits
+   * this many pixels from the canvas edge. When omitted, labels keep the
+   * default centered-gutter placement.
+   */
+  labelRightMargin?: number;
+  /**
+   * Gap (px) between the end of each grid line and the shared price-label
+   * column. Only applies when {@link labelRightMargin} is set. Default `0`.
+   */
+  gridEndGap?: number;
+  /**
    * Float the price axis over a full-width plot instead of reserving a right
    * gutter for it. The line/candles run all the way to the right edge, and the
    * price labels (and the live-value badge) float on top — so the chart isn't

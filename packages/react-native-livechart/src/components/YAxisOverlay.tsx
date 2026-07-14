@@ -57,6 +57,8 @@ export function YAxisOverlay({
   gridStyle,
   variant = "all",
   float = false,
+  labelRightMargin,
+  gridEndGap = 0,
 }: {
   entries: SharedValue<YAxisEntry[]>;
   engine: ChartEngineLayout;
@@ -92,6 +94,10 @@ export function YAxisOverlay({
    * plot) instead of centering them in a reserved gutter. See {@link YAxisConfig.float}.
    */
   float?: boolean;
+  /** Fixed canvas-edge margin for a shared left-aligned label column. */
+  labelRightMargin?: number;
+  /** Gap between the grid-line end and the shared label column. */
+  gridEndGap?: number;
 }) {
   const gridColor = gridStyle?.color ?? palette.gridLine;
   const gridWidth = gridStyle?.strokeWidth ?? 1;
@@ -99,14 +105,33 @@ export function YAxisOverlay({
   const gridOpacity = gridStyle?.opacity ?? 1;
   const gridBuilder = usePathBuilder();
 
+  const rightAnchoredColumn = useDerivedValue(() => {
+    if (labelRightMargin === undefined) return null;
+    const items = entries.get();
+    let maxTextW = 0;
+    for (let i = 0; i < items.length; i++) {
+      maxTextW = Math.max(
+        maxTextW,
+        measureFontTextWidth(font, items[i].label),
+      );
+    }
+    const rightX = engine.canvasWidth.get() - labelRightMargin;
+    const labelX = rightX - maxTextW;
+    return {
+      labelX,
+      gridEndX: labelX - gridEndGap,
+    };
+  });
+
   const gridLinesPath = useDerivedValue(() => {
     const b = gridBuilder.value;
     if (variant === "labels") return b.detach();
     const items = entries.get();
     const w = engine.canvasWidth.get();
+    const lineX2 = rightAnchoredColumn.get()?.gridEndX ?? w - padding.right;
     for (let i = 0; i < items.length; i++) {
       b.moveTo(padding.left, items[i].y);
-      b.lineTo(w - padding.right, items[i].y);
+      b.lineTo(lineX2, items[i].y);
     }
     return b.detach();
   });
@@ -120,6 +145,7 @@ export function YAxisOverlay({
     const w = engine.canvasWidth.get();
     const fm = font.getMetrics();
     const baselineOffset = (fm.ascent + fm.descent) / 2;
+    const columnX = rightAnchoredColumn.get()?.labelX;
     const labelHeight = fm.descent - fm.ascent;
     const badgeIsVisible = badgeOpacity === undefined || badgeOpacity.get() > 0;
     const resolvedBadgeCenterY = badgeCenterY && badgeIsVisible
@@ -133,13 +159,16 @@ export function YAxisOverlay({
     for (let i = 0; i < items.length; i++) {
       const e = items[i];
       const textW = measureFontTextWidth(font, e.label);
-      const x = float
-        ? gutterRightAlignedTextLeftX(w, textW, FLOAT_LABEL_RIGHT_MARGIN)
-        : badge
-          ? pillTextLeftX(w, padding.right, leftInset, textW, badgeMetrics)
-          : seriesLabelInset > 0
-            ? gutterRightAlignedTextLeftX(w, textW)
-            : gutterCenteredTextLeftX(w, padding.right, textW);
+      const x =
+        columnX !== undefined
+          ? columnX
+          : float
+            ? gutterRightAlignedTextLeftX(w, textW, FLOAT_LABEL_RIGHT_MARGIN)
+            : badge
+              ? pillTextLeftX(w, padding.right, leftInset, textW, badgeMetrics)
+              : seriesLabelInset > 0
+                ? gutterRightAlignedTextLeftX(w, textW)
+                : gutterCenteredTextLeftX(w, padding.right, textW);
       result.push({
         x,
         y: e.y - baselineOffset,

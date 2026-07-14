@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Right-anchored Y-axis label columns.** `yAxis.labelRightMargin` pins a
+  shared left-aligned column to a fixed canvas-edge margin; `yAxis.gridEndGap`
+  leaves a deterministic gap between grid lines and the widest label. Omitting
+  `labelRightMargin` preserves the centered-gutter layout.
+
 ## [4.12.0] - 2026-07-28
 
 ### Added

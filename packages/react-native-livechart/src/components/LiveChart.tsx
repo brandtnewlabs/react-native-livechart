@@ -1495,6 +1495,7 @@ function ChartYAxisLayer({
     metricsCfg,
     gridStyleCfg,
     yAxisFloat,
+    yAxisCfg,
     liveBadgeOpacity,
   } = model;
   return (
@@ -1515,6 +1516,8 @@ function ChartYAxisLayer({
         badgeOffsetY={badgeCfg?.offsetY ?? 0}
         badgeOpacity={badgeUsesRightGutter ? liveBadgeOpacity : undefined}
         gridStyle={gridStyleCfg}
+        labelRightMargin={yAxisCfg?.labelRightMargin}
+        gridEndGap={yAxisCfg?.gridEndGap}
       />
     </Group>
   );

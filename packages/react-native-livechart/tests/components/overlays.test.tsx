@@ -24,6 +24,7 @@ import {
   resolveSelectionDot,
 } from "../../src/core/resolveConfig";
 import { resolveTheme } from "../../src/theme";
+import { View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
@@ -116,6 +117,9 @@ describe("YAxisOverlay", () => {
   });
 
   it("renders grid lines and labels", () => {
+    const makeBuilder = Skia.PathBuilder.Make as jest.Mock;
+    const resultIndex = makeBuilder.mock.results.length;
+
     function Fixture() {
       const entries = useSharedValue([{ y: 40, label: "10", alpha: 1 }]);
       return (
@@ -129,6 +133,48 @@ describe("YAxisOverlay", () => {
       );
     }
     render(<Fixture />);
+
+    const builder = makeBuilder.mock.results[resultIndex].value;
+    expect(builder.lineTo).toHaveBeenCalledWith(388, 40);
+  });
+
+  it("ends grid lines before the right-anchored label column", () => {
+    const makeBuilder = Skia.PathBuilder.Make as jest.Mock;
+    const resultIndex = makeBuilder.mock.results.length;
+
+    function Fixture() {
+      const entries = useSharedValue([
+        { y: 40, label: "10", alpha: 1 },
+        { y: 80, label: "100000", alpha: 1 },
+      ]);
+      return (
+        <YAxisOverlay
+          entries={entries}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          labelRightMargin={8}
+          gridEndGap={6}
+        />
+      );
+    }
+
+    const screen = render(<Fixture />);
+
+    // 400 canvas - 8 edge margin - 42 widest label - 6 grid gap = 344.
+    const builder = makeBuilder.mock.results[resultIndex].value;
+    expect(builder.lineTo).toHaveBeenNthCalledWith(1, 344, 40);
+    expect(builder.lineTo).toHaveBeenNthCalledWith(2, 344, 80);
+
+    const labels = screen
+      .UNSAFE_getAllByType(View)
+      .filter(
+        (view) =>
+          view.props.text?.value === "10" ||
+          view.props.text?.value === "100000",
+      );
+    expect(labels.map((view) => view.props.x.value)).toEqual([350, 350]);
   });
 
   it("renders with live-badge collision suppression enabled", () => {
