@@ -9,7 +9,8 @@
     "jsEngine": "hermes",
     "ios": {
       "bundleIdentifier": "com.brandtnewlabs.skia-animated-path-mask-churn",
-      "appleTeamId": "MCL33ZBD7G"
+      "appleTeamId": "MCL33ZBD7G",
+      "deploymentTarget": "16.4"
     }
   }
 }

@@ -16,6 +16,10 @@ path builders, and per-frame `SkPath` construction from the experiment.
 | 35–65 s | animated | the same path moves at display cadence |
 | 65 s onward | unmounted | no Skia canvas mounted |
 
+The canvas is intentionally absent during the first 15 seconds. A dark empty
+app background at launch is the baseline phase, not a failed render. The phase
+label and cyan path appear when the static phase begins.
+
 ## Run on a physical iPhone
 
 From this directory:
@@ -57,5 +61,23 @@ software path renderer and 816.75 MiB through mask pixmap allocation. Almost all
 of it was destroyed before the interval ended. This reproduction is meant to
 confirm that the same transient mask churn survives after chart data, path
 construction, and wrapper lifetime are removed.
+
+## Physical-device result (2026-07-14)
+
+A Release capture on an iPhone 17 Pro Max running iOS 26.6 measured:
+
+| Phase | Physical-footprint mean | Min | Max | Last |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | 104.32 MiB | 103.78 MiB | 105.08 MiB | 105.08 MiB |
+| Static path | 212.09 MiB | 198.41 MiB | 221.75 MiB | 221.75 MiB |
+| Animated path | 492.97 MiB | 491.99 MiB | 494.94 MiB | 492.72 MiB |
+| Unmounted | 430.03 MiB | 430.02 MiB | 430.06 MiB | 430.06 MiB |
+
+The immutable path therefore added about 281 MiB when display-cadence redraws
+were enabled, without changing JavaScript data or rebuilding the `SkPath`.
+Across the complete Allocations run, 4.76 GiB flowed through heap and anonymous
+VM allocations while only 115.37 MiB remained. The 48 KiB allocation class
+accounted for 749.48 MiB across 15,989 allocations but retained only 288 KiB.
+This independently reproduces high-volume transient native rendering churn.
 
 The Static, Animate, and Unmount buttons allow repeating each phase manually.

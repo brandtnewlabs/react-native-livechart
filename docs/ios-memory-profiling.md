@@ -102,6 +102,44 @@ allocations were destroyed, so the post-unmount physical footprint should be
 treated as an allocator/VM high-water observation rather than 198 MiB of proven
 live objects.
 
+## Stack-wide physical verification (2026-07-14)
+
+The complete performance stack was rebuilt in Release mode and recaptured on
+Trooper. Every run used a distinct bundled matrix selection and the fixed phase
+timeline above. Activity Monitor and Allocations traces were saved for every
+listed variant.
+
+The renderer matrix isolated path shape, point density, and mask area:
+
+| Variant | Baseline mean | Mounted mean | Mounted max | Unmounted last |
+| --- | ---: | ---: | ---: | ---: |
+| `static-control` | 123.88 MiB | 344.46 MiB | 355.88 MiB | 304.45 MiB |
+| `live-monotone-round` | 124.45 MiB | 512.47 MiB | 580.55 MiB | 536.52 MiB |
+| `live-monotone-sharp` | 124.26 MiB | 505.55 MiB | 566.36 MiB | 523.58 MiB |
+| `live-linear-round` | 124.39 MiB | 519.29 MiB | 595.74 MiB | 548.77 MiB |
+| `live-linear-sharp` | 124.28 MiB | 532.51 MiB | 621.52 MiB | 567.80 MiB |
+| `live-monotone-round-dense` | 126.01 MiB | 507.84 MiB | 560.83 MiB | 523.14 MiB |
+| `live-monotone-round-tall` | 123.85 MiB | 612.78 MiB | 636.99 MiB | 580.94 MiB |
+
+Curve simplification did not improve the footprint, and tripling point density
+did not make it worse. Doubling chart height increased the mounted mean by about
+100 MiB. That makes mask/raster area a materially stronger target than point
+arrays or path-verb count.
+
+The cadence experiment then held the renderer at `live-monotone-round`:
+
+| Cadence | Baseline mean | Mounted mean | Mounted max | Unmounted last |
+| --- | ---: | ---: | ---: | ---: |
+| Display cadence | 124.13 MiB | 523.17 MiB | 597.74 MiB | 547.09 MiB |
+| Fixed 30 fps | 124.08 MiB | 429.12 MiB | 478.53 MiB | 430.27 MiB |
+| Adaptive | 124.08 MiB | 419.92 MiB | 447.89 MiB | 401.91 MiB |
+
+Adaptive cadence reduced the mounted mean by 103.25 MiB (19.7%) and the peak by
+149.85 MiB (25.1%) relative to display cadence. A separate capture of the
+production-promoted adaptive implementation measured 421.31 MiB mean and
+452.89 MiB max, reproducing the experiment rather than regressing back toward
+display cadence.
+
 ## Allocation volume and lifetime
 
 Whole-run Allocations statistics make the static/live distinction clear:
