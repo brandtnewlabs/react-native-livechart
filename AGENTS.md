@@ -18,3 +18,9 @@ Quick orientation:
 
 For everything else (engine architecture, worklet rules, drawing layer, testing setup), read
 **[CLAUDE.md](CLAUDE.md)**.
+
+## Agent skills
+
+Codex skills live canonically under `.agents/skills/`. The `.claude/skills/` path is a symlink to
+that directory so Claude Code and Codex always load the same skill files. Add or edit skills only
+under `.agents/skills/`; do not create a second copy under `.claude/skills/`.
