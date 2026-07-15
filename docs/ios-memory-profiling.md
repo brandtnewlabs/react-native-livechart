@@ -22,9 +22,53 @@ chart is absent, mounted in static mode, or mounted in live mode:
 | 15–45 s | Chart mounted                            |
 | 45–60 s | Chart unmounted; producer remains active |
 
-Setting `EXPO_PUBLIC_MEMORY_PROFILE_MODE` to `static` or `live` selects the
-variant at bundle time and redirects the demo app to the profiling route. The
-ordinary demo index is unchanged when the variable is absent.
+Setting `EXPO_PUBLIC_MEMORY_PROFILE_RUN` selects a checked-in renderer-matrix
+run at bundle time and redirects the demo app to the profiling route. The
+original `EXPO_PUBLIC_MEMORY_PROFILE_MODE=static|live` switch remains available
+as a compatibility override. The ordinary demo index is unchanged when neither
+variable is present.
+
+## Renderer experiment matrix
+
+`profiling/live-renderer-matrix.json` is the source of truth for controlled
+renderer comparisons. Every live variant keeps the feed, window, line width,
+feature flags, and fixed phases identical unless its description names that
+dimension:
+
+| Run | Isolated question |
+| --- | --- |
+| `static-control` | How much cost remains without the continuous chart loop? |
+| `live-monotone-round` | What is the current production live baseline? |
+| `live-monotone-sharp` | Do round caps and joins drive mask churn? |
+| `live-linear-round` | Do cubic path verbs drive mask churn? |
+| `live-linear-sharp` | What does the simplest built-in stroke cost? |
+| `live-monotone-round-dense` | Does allocation volume scale with point density? |
+| `live-monotone-round-tall` | Does allocation volume scale with mask area? |
+
+List or dry-run the matrix without a connected phone:
+
+```sh
+python3 scripts/run_ios_renderer_matrix.py --list
+python3 scripts/run_ios_renderer_matrix.py \
+  --udid DEVICE_UDID --run live-monotone-round --dry-run
+```
+
+Run selected physical-device captures (omit `--run` to execute the full matrix):
+
+```sh
+python3 scripts/run_ios_renderer_matrix.py \
+  --device Trooper --udid DEVICE_UDID \
+  --capture both \
+  --run static-control \
+  --run live-monotone-round \
+  --run live-linear-sharp
+```
+
+The runner builds a Release bundle for each selection, records the same 65-second
+timeline, exports Activity Monitor XML, and writes one Markdown phase summary
+beside each trace. It refuses to overwrite traces unless `--force` is supplied.
+Metro's transform cache is keyed by the selected run, mode, and cadence so a
+sequential matrix cannot silently reuse the previous run's inlined environment.
 
 ## Physical footprint
 
@@ -91,10 +135,7 @@ volume from 81.14 MiB (577 allocations) to 1.83 MiB (13 allocations).
 Build and install each Release variant:
 
 ```sh
-EXPO_PUBLIC_MEMORY_PROFILE_MODE=static npx expo run:ios \
-  --device Trooper --configuration Release --no-bundler
-
-EXPO_PUBLIC_MEMORY_PROFILE_MODE=live npx expo run:ios \
+EXPO_PUBLIC_MEMORY_PROFILE_RUN=live-monotone-round npx expo run:ios \
   --device Trooper --configuration Release --no-bundler
 ```
 

@@ -10,7 +10,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.brandtnewlabs.react-native-livechart",
-      "appleTeamId": "MCL33ZBD7G"
+      "appleTeamId": "MCL33ZBD7G",
+      "deploymentTarget": "16.4"
     },
     "android": {
       "adaptiveIcon": {
