@@ -129,15 +129,28 @@ export function useXAxis(
       targetKeys.push(Math.round(t * 100));
     }
 
-    const alphas = labelAlphas.get();
+    // SharedValue payloads may be frozen after crossing the JS/UI boundary.
+    // Work on a fresh cache (including fresh entries) so adding/removing keys
+    // and updating alpha never mutates the serialized value returned by get().
+    const previousAlphas = labelAlphas.get();
+    const alphas: Record<number, { alpha: number; text: string }> = {};
+    const previousKeys = Object.keys(previousAlphas);
+    for (let i = 0; i < previousKeys.length; i++) {
+      const key = Number(previousKeys[i]);
+      const previous = previousAlphas[key];
+      alphas[key] = { alpha: previous.alpha, text: previous.text };
+    }
+    let cacheChanged = false;
 
     // Create labels for new keys only. A key encodes its time, so the formatted
-    // text never changes — re-formatting (and re-allocating the entry) every
-    // frame just churns strings/objects for the GC.
+    // text never changes — re-formatting every frame would churn strings for
+    // the GC. The cache itself is copied below to keep SharedValue payloads
+    // immutable after they cross the JS/UI boundary.
     for (let i = 0; i < targetKeys.length; i++) {
       const key = targetKeys[i];
       if (!alphas[key]) {
         alphas[key] = { alpha: 0, text: formatTime(key / 100) };
+        cacheChanged = true;
       }
     }
 
@@ -160,13 +173,16 @@ export function useXAxis(
 
       if (next < 0.01 && target === 0) {
         delete alphas[key];
+        cacheChanged = true;
       } else {
-        // Mutate in place — text is stable, so no need to reallocate the entry.
+        // The entry is already a private copy, so updating alpha cannot mutate
+        // the serialized cache held by the SharedValue.
+        if (label.alpha !== next) cacheChanged = true;
         label.alpha = next;
       }
     }
 
-    labelAlphas.set(alphas);
+    if (cacheChanged) labelAlphas.set(alphas);
 
     // Collect visible labels
     const raw: XAxisEntry[] = [];
