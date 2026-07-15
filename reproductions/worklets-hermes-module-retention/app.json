@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Worklets Hermes Retention",
+    "slug": "worklets-hermes-module-retention",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "jsEngine": "hermes",
+    "ios": {
+      "bundleIdentifier": "com.brandtnewlabs.worklets-hermes-retention",
+      "appleTeamId": "MCL33ZBD7G"
+    }
+  }
+}
+
