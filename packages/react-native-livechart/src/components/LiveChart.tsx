@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -118,7 +124,6 @@ import type {
   LiveChartPoint,
   LiveChartProps,
   Marker,
-  TradeEvent,
 } from "../types";
 import {
   ThresholdBadgeOverlay,
@@ -158,7 +163,6 @@ import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
-
 
 /** Stable empty grouping result (identity-stable so downstream worklets don't
  *  re-run) used when reference-line grouping is off. */
@@ -324,8 +328,6 @@ function useLiveChartController({
   onReachStart,
   onDegenShake,
 }: LiveChartProps) {
-  const emptyTradeStream = useSharedValue<TradeEvent[]>([]);
-  const tradeStreamSV = tradeStream ?? emptyTradeStream;
   const emptyMarkers = useSharedValue<Marker[]>([]);
   const markersSV = markers ?? emptyMarkers;
   // Stand-in threshold value so `useThreshold` can be called unconditionally
@@ -408,7 +410,10 @@ function useLiveChartController({
 
   // Form-A lines a custom `renderReferenceLine` owns → suppress their built-in tag
   // (no double-draw). Probed on the JS thread, index-aligned with `allRefLines`.
-  const refLineCustom = customReferenceLineFlags(allRefLines, renderReferenceLine);
+  const refLineCustom = customReferenceLineFlags(
+    allRefLines,
+    renderReferenceLine,
+  );
 
   // Live Y values of the *draggable* Form-A lines, folded into the engine's
   // axis-range fit so dragging a line toward / past the visible edge expands the
@@ -726,7 +731,14 @@ function useLiveChartController({
         continue;
       }
       const v = dragValues.get()[i] ?? l.value;
-      const y = computeScrubDotY(v, dMin, dMax, ch, top, effectivePadding.bottom);
+      const y = computeScrubDotY(
+        v,
+        dMin,
+        dMax,
+        ch,
+        top,
+        effectivePadding.bottom,
+      );
       ys.push(y < 0 ? -1 : Math.min(bottom, Math.max(top, y)));
     }
     return groupReferenceLines(ys, refGroupingRadius);
@@ -890,27 +902,6 @@ function useLiveChartController({
     adA * (areaDotsCfg?.opacity ?? 1),
   ];
 
-  const {
-    upBodiesPath,
-    downBodiesPath,
-    upWicksPath,
-    downWicksPath,
-    upBarsPath,
-    downBarsPath,
-  } = useCandlePaths(
-    engine,
-    effectivePadding,
-    // Match engine: stashed candles while reverse-morphing in candle mode.
-    isCandle ? candlesEngine : candles,
-    isCandle ? liveEngine : liveCandle,
-    candleWidth,
-    isCandle,
-    metricsCfg.candle,
-    volumeBandHeight,
-    volumeCfg?.radius ?? 0,
-    !isStatic, // static: no candle-width lerp loop
-    transitionsCfg.candleLerpSpeed, // `transitions.candleLerpSpeed` (1 = instant)
-  );
   const { dotX, dotY } = useLiveDot(
     engine,
     effectivePadding,
@@ -918,64 +909,9 @@ function useLiveChartController({
     badgeCfg?.followViewEdge ?? false,
   );
 
-  // Price↔pixel / time↔pixel bridge for a custom `renderOverlay`. Built
-  // unconditionally (hooks rule); only mounted when `renderOverlay` is provided.
-  const overlayContext = useChartOverlayContext(engine, effectivePadding);
-
   const momentumSV = useMomentum(engine, momentum);
 
-  const tradeMarkers = useTradeStream(
-    engine,
-    tradeStreamSV,
-    effectivePadding,
-    !isStatic && tradeStreamResolved !== null,
-    !isStatic, // static: no trade-tape loop
-  );
-
-  const {
-    pack: degenPack,
-    packRevision: degenPackRevision,
-    shakeTransform: degenShakeTransform,
-  } = useDegen(engine, dotX, dotY, momentumSV, degenCfg, onDegenShake, isStatic);
-
   // ── Overlay hooks ─────────────────────────────────────────────────────
-  const { yAxisEntries } = useYAxis(
-    engine,
-    effectivePadding,
-    formatValue,
-    skiaFont,
-    yAxisCfg?.minGap ?? 36,
-    metricsCfg.grid,
-    yAxisCfg?.count ?? 0,
-  );
-
-  const { xAxisEntries } = useXAxis(
-    engine,
-    effectivePadding,
-    formatTime,
-    skiaFont,
-  );
-
-  const badgeData = useBadge(
-    engine,
-    effectivePadding,
-    palette,
-    formatValue,
-    badgeFont,
-    badgeCfg?.variant ?? "default",
-    badgeCfg?.tail ?? true,
-    momentumSV,
-    badgeCfg?.position ?? "right",
-    badgeCfg?.background,
-    metricsCfg.badge,
-    metricsCfg.motion.badgeColorSpeed,
-    effectiveYAxisFloat,
-    engine.edgeValue,
-    badgeCfg?.followViewEdge ?? false,
-    badgeCfg?.radius,
-    badgeCfg?.textColor,
-  );
-
   // Scrub/crosshair must see the same stash-backed candles as the engine.
   const candleOpts = isCandle
     ? {
@@ -1239,8 +1175,7 @@ function useLiveChartController({
   // Hide the live dot while scrubbing when a selection dot is marking the scrub
   // point instead — otherwise both dots show at once. Applies on static charts
   // too, now that they're scrubbable.
-  const selectionDotDuringScrub =
-    scrubCfg !== null && selectionDotCfg !== null;
+  const selectionDotDuringScrub = scrubCfg !== null && selectionDotCfg !== null;
   const liveDotOpacity = useDerivedValue(
     () =>
       reveal.dotOpacity.value *
@@ -1276,7 +1211,9 @@ function useLiveChartController({
     valueMomentumColor,
     lineProp,
     formatValue,
+    formatTime,
     isCandle,
+    isStatic,
     // Half a candle width (seconds) so an "extrema" axis label's dot lands on the
     // candle's drawn center, not its bucket-start (left) edge. 0 in line mode.
     extremaTimeOffset: isCandle ? candleWidth / 2 : 0,
@@ -1297,6 +1234,7 @@ function useLiveChartController({
     gridStyleCfg,
     degenCfg,
     tradeStreamResolved,
+    tradeStream,
     leftEdgeFadeCfg,
     metricsCfg,
     allRefLines,
@@ -1355,18 +1293,17 @@ function useLiveChartController({
     gradientPositions,
     lineGroupOpacity,
     candleGroupOpacity,
+    candlesEngine,
+    liveEngine,
+    candleWidth,
+    transitionsCfg,
     layoutWidth,
     onLayout,
     linePath,
     fillPath,
     thresholdFillPath,
     lineIsLinear,
-    upBodiesPath,
-    downBodiesPath,
-    upWicksPath,
-    downWicksPath,
-    upBarsPath,
-    downBarsPath,
+    volumeCfg,
     // Volume bars: active flag, fade-in opacity, and resolved colors (default to
     // the candle palette). The reserved band height is read by the x-axis.
     volumeActive: volumeCfg !== null,
@@ -1380,13 +1317,7 @@ function useLiveChartController({
     overlayScrubFade,
     markerGroupOpacity,
     momentumSV,
-    tradeMarkers,
-    degenPack,
-    degenPackRevision,
-    degenShakeTransform,
-    yAxisEntries,
-    xAxisEntries,
-    badgeData,
+    onDegenShake,
     crosshair,
     rootGesture,
     markersActive,
@@ -1395,7 +1326,6 @@ function useLiveChartController({
     renderMarker,
     renderTooltip,
     renderOverlay,
-    overlayContext,
     // selection dot: resolved config + fallback color (the chart line/accent color)
     selectionDot: selectionDotCfg,
     selectionColor: lineProp?.color ?? palette.line,
@@ -1410,27 +1340,151 @@ function useLiveChartController({
 
 type LiveChartModel = ReturnType<typeof useLiveChartController>;
 
+type YAxisEntries = ReturnType<typeof useYAxis>["yAxisEntries"];
+type DegenState = ReturnType<typeof useDegen>;
+
+/** Owns the particle/shake state only while the degen effect is enabled. */
+function ChartWithDegen({
+  model,
+  yAxisEntries,
+}: {
+  model: LiveChartModel;
+  yAxisEntries: YAxisEntries | null;
+}) {
+  const { engine, dotX, dotY, momentumSV, degenCfg, onDegenShake, isStatic } =
+    model;
+  const state = useDegen(
+    engine,
+    dotX,
+    dotY,
+    momentumSV,
+    degenCfg,
+    onDegenShake,
+    isStatic,
+  );
+  return (
+    <ChartView model={model} yAxisEntries={yAxisEntries} degen={state} />
+  );
+}
+
 /**
- * Background fills drawn BENEATH the left-edge fade: the y-axis grid, the area
- * gradient, and the threshold profit/loss band. Split out from `ChartStack` so
- * the fade's `dstOut` only softens the fills — the line and everything above it
- * (drawn in `ChartStack`, after the fade) stay crisp at the left edge.
+ * Owns the Y-axis worklets. The provider itself is mounted only while the axis
+ * is enabled, so `yAxis={false}` never registers its shared values or mapper.
+ * The entries are passed through ordinary props so both paint-order positions
+ * receive the same mapper across the React Native → Skia renderer boundary.
  */
-function ChartFillLayer({ model }: { model: LiveChartModel }) {
+function ChartWithYAxis({ model }: { model: LiveChartModel }) {
   const {
-    degenShakeTransform,
+    engine,
+    effectivePadding,
+    formatValue,
+    skiaFont,
     yAxisCfg,
-    yAxisFloat,
+    metricsCfg,
+  } = model;
+  const { yAxisEntries } = useYAxis(
+    engine,
+    effectivePadding,
+    formatValue,
+    skiaFont,
+    yAxisCfg?.minGap ?? 36,
+    metricsCfg.grid,
+    yAxisCfg?.count ?? 0,
+  );
+  if (model.degenCfg) {
+    return <ChartWithDegen model={model} yAxisEntries={yAxisEntries} />;
+  }
+  return <ChartView model={model} yAxisEntries={yAxisEntries} degen={null} />;
+}
+
+function ChartYAxisLayer({
+  model,
+  variant,
+  entries,
+}: {
+  model: LiveChartModel;
+  variant: "all" | "grid" | "labels";
+  entries: YAxisEntries;
+}) {
+  const {
     reveal,
-    yAxisEntries,
     engine,
     effectivePadding,
     palette,
     skiaFont,
     badgeUsesRightGutter,
     badgeCfg,
-    gridStyleCfg,
     metricsCfg,
+    gridStyleCfg,
+    yAxisFloat,
+  } = model;
+  return (
+    <Group opacity={reveal.yAxisOpacity}>
+      <YAxisOverlay
+        variant={variant}
+        float={variant === "labels" && yAxisFloat}
+        entries={entries}
+        engine={engine}
+        padding={effectivePadding}
+        palette={palette}
+        font={skiaFont}
+        badge={badgeUsesRightGutter}
+        badgeTail={badgeCfg?.tail ?? true}
+        badgeMetrics={metricsCfg.badge}
+        gridStyle={gridStyleCfg}
+      />
+    </Group>
+  );
+}
+
+/** Owns the X-axis worklet and only mounts when `xAxis` is enabled. */
+function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
+  const {
+    engine,
+    effectivePadding,
+    formatTime,
+    skiaFont,
+    palette,
+    volumeBandHeight,
+  } = model;
+  const { xAxisEntries } = useXAxis(
+    engine,
+    effectivePadding,
+    formatTime,
+    skiaFont,
+  );
+  return (
+    <XAxisOverlay
+      entries={xAxisEntries}
+      engine={engine}
+      padding={effectivePadding}
+      palette={palette}
+      font={skiaFont}
+      volumeBandHeight={volumeBandHeight}
+    />
+  );
+}
+
+/**
+ * Background fills drawn BENEATH the left-edge fade: the y-axis grid, the area
+ * gradient, and the threshold profit/loss band. Split out from `ChartStack` so
+ * the fade's `dstOut` only softens the fills — the line and everything above it
+ * (drawn in `ChartStack`, after the fade) stay crisp at the left edge.
+ */
+function ChartFillLayer({
+  model,
+  yAxisEntries,
+  degen,
+}: {
+  model: LiveChartModel;
+  yAxisEntries: YAxisEntries | null;
+  degen: DegenState | null;
+}) {
+  const {
+    yAxisCfg,
+    yAxisFloat,
+    reveal,
+    effectivePadding,
     gradientCfg,
     areaDotsCfg,
     areaDotColorVec,
@@ -1446,27 +1500,17 @@ function ChartFillLayer({ model }: { model: LiveChartModel }) {
     thresholdSeriesHasPoints,
     thresholdFillUniforms,
   } = model;
-
   return (
-    <Group transform={degenShakeTransform}>
+    <Group transform={degen?.shakeTransform}>
       {/* Y-axis. Default: grid + labels here (in a reserved gutter). Floating
           mode: grid only — the labels + a soft edge fade draw above the candles
           in ChartStack so the plot runs full-width and candles dim under them. */}
       {yAxisCfg && (
-        <Group opacity={reveal.yAxisOpacity}>
-          <YAxisOverlay
-            variant={yAxisFloat ? "grid" : "all"}
-            entries={yAxisEntries}
-            engine={engine}
-            padding={effectivePadding}
-            palette={palette}
-            font={skiaFont}
-            badge={badgeUsesRightGutter}
-            badgeTail={badgeCfg?.tail ?? true}
-            badgeMetrics={metricsCfg.badge}
-            gridStyle={gridStyleCfg}
-          />
-        </Group>
+        <ChartYAxisLayer
+          model={model}
+          variant={yAxisFloat ? "grid" : "all"}
+          entries={yAxisEntries!}
+        />
       )}
 
       {/* Dot-lattice area fill (the under-line `fillPath` painted with a dot
@@ -1529,13 +1573,95 @@ function ChartFillLayer({ model }: { model: LiveChartModel }) {
   );
 }
 
+/**
+ * Candle/volume paths are a mode-specific subsystem. Keeping their hooks in a
+ * child means a line chart never registers the candle-width frame callback or
+ * the six derived path worklets.
+ */
+function ChartCandleLayer({ model }: { model: LiveChartModel }) {
+  const {
+    engine,
+    effectivePadding,
+    candlesEngine,
+    liveEngine,
+    candleWidth,
+    metricsCfg,
+    volumeBandHeight,
+    volumeCfg,
+    isStatic,
+    transitionsCfg,
+    candleGroupOpacity,
+    palette,
+    volumeOpacity,
+    volumeUpColor,
+    volumeDownColor,
+  } = model;
+  const {
+    upBodiesPath,
+    downBodiesPath,
+    upWicksPath,
+    downWicksPath,
+    upBarsPath,
+    downBarsPath,
+  } = useCandlePaths(
+    engine,
+    effectivePadding,
+    candlesEngine,
+    liveEngine,
+    candleWidth,
+    true,
+    metricsCfg.candle,
+    volumeBandHeight,
+    volumeCfg?.radius ?? 0,
+    !isStatic,
+    transitionsCfg.candleLerpSpeed,
+  );
+
+  return (
+    <>
+      <Group opacity={candleGroupOpacity}>
+        <Path
+          path={upWicksPath}
+          style="stroke"
+          strokeWidth={metricsCfg.candle.wickWidth}
+          color={palette.wickUp}
+        />
+        <Path
+          path={downWicksPath}
+          style="stroke"
+          strokeWidth={metricsCfg.candle.wickWidth}
+          color={palette.wickDown}
+        />
+        <Path path={upBodiesPath} style="fill" color={palette.candleUp} />
+        <Path path={downBodiesPath} style="fill" color={palette.candleDown} />
+      </Group>
+
+      {volumeCfg && (
+        <Group opacity={candleGroupOpacity}>
+          <Group opacity={volumeOpacity}>
+            <Path path={upBarsPath} style="fill" color={volumeUpColor} />
+            <Path path={downBarsPath} style="fill" color={volumeDownColor} />
+          </Group>
+        </Group>
+      )}
+    </>
+  );
+}
+
 /** Main shaken chart stack drawn ABOVE the left-edge fade so the line stays crisp:
  *  segment dividers, value/reference lines, the line/candles, axes, dot, degen,
  *  markers, and the loading/empty art. Background fills are in `ChartFillLayer`
  *  (below the fade); the live value text is `ChartValueOverlay` (above the fade). */
-function ChartStack({ model }: { model: LiveChartModel }) {
+function ChartStack({
+  model,
+  yAxisEntries,
+  degen,
+}: {
+  model: LiveChartModel;
+  yAxisEntries: YAxisEntries | null;
+  degen: DegenState | null;
+}) {
   const {
-    degenShakeTransform,
     reveal,
     engine,
     effectivePadding,
@@ -1567,27 +1693,13 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     lineIsLinear,
     strokeWidth,
     lineProp,
-    candleGroupOpacity,
-    upWicksPath,
-    downWicksPath,
-    upBodiesPath,
-    downBodiesPath,
-    upBarsPath,
-    downBarsPath,
-    volumeActive,
-    volumeBandHeight,
-    volumeOpacity,
-    volumeUpColor,
-    volumeDownColor,
+    isCandle,
     xAxisCfg,
-    xAxisEntries,
     dotX,
     liveDotOpacity,
     pulseCfg,
     dotCfg,
     degenCfg,
-    degenPack,
-    degenPackRevision,
     markersActive,
     markersSV,
     markerClusterCfg,
@@ -1600,17 +1712,13 @@ function ChartStack({ model }: { model: LiveChartModel }) {
     layoutWidth,
     yAxisCfg,
     yAxisFloat,
-    yAxisEntries,
-    badgeUsesRightGutter,
-    gridStyleCfg,
     loadingLineColor,
     loadingStrokeWidth,
     loadingAmplitude,
     loadingSpeed,
   } = model;
-
   return (
-    <Group transform={degenShakeTransform}>
+    <Group transform={degen?.shakeTransform}>
       {/* Segment dividers + labels (behind the line). The scrub-focus emphasis is
           painted on the line stroke itself, below — this overlay draws no fill. */}
       {resolvedSegments.map((seg, i) => (
@@ -1722,73 +1830,22 @@ function ChartStack({ model }: { model: LiveChartModel }) {
         </Path>
       </Group>
 
-      {/* Candle bodies/wicks (fades in in candle mode) */}
-      <Group opacity={candleGroupOpacity}>
-        <Path
-          path={upWicksPath}
-          style="stroke"
-          strokeWidth={metricsCfg.candle.wickWidth}
-          color={palette.wickUp}
-        />
-        <Path
-          path={downWicksPath}
-          style="stroke"
-          strokeWidth={metricsCfg.candle.wickWidth}
-          color={palette.wickDown}
-        />
-        <Path path={upBodiesPath} style="fill" color={palette.candleUp} />
-        <Path
-          path={downBodiesPath}
-          style="fill"
-          color={palette.candleDown}
-        />
-      </Group>
-
-      {/* Volume bars in the reserved band below the candles. Fades in with the
-          candle group (outer opacity); the config opacity dims the whole band
-          (inner). Up/down bars carry their own colors (default candle palette). */}
-      {volumeActive && (
-        <Group opacity={candleGroupOpacity}>
-          <Group opacity={volumeOpacity}>
-            <Path path={upBarsPath} style="fill" color={volumeUpColor} />
-            <Path path={downBarsPath} style="fill" color={volumeDownColor} />
-          </Group>
-        </Group>
-      )}
+      {isCandle && <ChartCandleLayer model={model} />}
 
       {/* Floating axis: the labels float ABOVE the candles (right-aligned at the
           edge) so the plot runs full-width and candles stay fully visible behind
           them. (Default non-floating axis draws grid + labels in ChartFillLayer.) */}
       {yAxisCfg && yAxisFloat && (
-        <Group opacity={reveal.yAxisOpacity}>
-          <YAxisOverlay
-            variant="labels"
-            float
-            entries={yAxisEntries}
-            engine={engine}
-            padding={effectivePadding}
-            palette={palette}
-            font={skiaFont}
-            badge={badgeUsesRightGutter}
-            badgeTail={badgeCfg?.tail ?? true}
-            badgeMetrics={metricsCfg.badge}
-            gridStyle={gridStyleCfg}
-          />
-        </Group>
+        <ChartYAxisLayer
+          model={model}
+          variant="labels"
+          entries={yAxisEntries!}
+        />
       )}
 
       {/* X-axis time labels. With a volume band the bottom padding is inflated by
           the band height; pass it so the axis shifts back to the very bottom. */}
-      {xAxisCfg && (
-        <XAxisOverlay
-          entries={xAxisEntries}
-          engine={engine}
-          padding={effectivePadding}
-          palette={palette}
-          font={skiaFont}
-          volumeBandHeight={volumeBandHeight}
-        />
-      )}
+      {xAxisCfg && <ChartXAxisLayer model={model} />}
 
       {/* Live dot — the badge is drawn later (after the scrub layer) so the
           scrub dim never clips the live-price badge's left edge. Hidden while
@@ -1812,8 +1869,8 @@ function ChartStack({ model }: { model: LiveChartModel }) {
       {degenCfg && (
         <Group opacity={reveal.dotOpacity}>
           <DegenParticlesOverlay
-            pack={degenPack}
-            packRevision={degenPackRevision}
+            pack={degen!.pack}
+            packRevision={degen!.packRevision}
             engine={engine}
             palette={palette}
             particleSlotCount={degenCfg.particleSlotCount}
@@ -1882,18 +1939,58 @@ function ChartStack({ model }: { model: LiveChartModel }) {
   );
 }
 
-/** Trade-tape labels and the scrub crosshair/tooltip (drawn in canvas space, on
- *  top of the shaken stack). */
-function ChartScrubLayer({ model }: { model: LiveChartModel }) {
+/** Owns the trade-tape frame callback and only mounts with a trade stream. */
+function ChartTradeStreamLayer({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
   const {
+    engine,
+    tradeStream,
     tradeStreamResolved,
+    effectivePadding,
+    palette,
+    skiaFont,
+    reveal,
+    isStatic,
+  } = model;
+  const tradeMarkers = useTradeStream(
+    engine,
+    tradeStream!,
+    effectivePadding,
+    !isStatic,
+    !isStatic,
+  );
+  return (
+    <Group transform={degen?.shakeTransform}>
+      <TradeStreamOverlay
+        markers={tradeMarkers}
+        palette={palette}
+        padding={effectivePadding}
+        font={skiaFont}
+        opacity={reveal.dotOpacity}
+        labelOffsetX={tradeStreamResolved!.labelOffsetX}
+      />
+    </Group>
+  );
+}
+
+/** Scrub crosshair/tooltip drawn in canvas space on top of the shaken stack. */
+function ChartScrubLayer({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
+  const {
     scrubCfg,
-    degenShakeTransform,
-    tradeMarkers,
     palette,
     effectivePadding,
     skiaFont,
-    reveal,
     crosshair,
     isCandle,
     pulseCfg,
@@ -1902,13 +1999,12 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
     selectionColor,
     renderTooltip,
   } = model;
-
   // A custom tooltip is an RN overlay (sibling of <Canvas>), so the built-in
   // Skia tooltip is suppressed here while it's active — the line pill in line
   // mode, and the OHLC stack in candle mode (see the stack gate below).
   const customTooltipActive = renderTooltip != null;
 
-  if (!tradeStreamResolved && !scrubCfg) return null;
+  if (!scrubCfg) return null;
 
   // Extend the scrub dim past the plot's right edge to fully cover the live dot
   // (with its halo) and pulse ring, all centered on that edge. The gutter
@@ -1919,18 +2015,7 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
   );
 
   return (
-    <Group transform={degenShakeTransform}>
-      {tradeStreamResolved && (
-        <TradeStreamOverlay
-          markers={tradeMarkers}
-          palette={palette}
-          padding={effectivePadding}
-          font={skiaFont}
-          opacity={reveal.dotOpacity}
-          labelOffsetX={tradeStreamResolved.labelOffsetX}
-        />
-      )}
-
+    <Group transform={degen?.shakeTransform}>
       {scrubCfg && (
         <CrosshairOverlay
           scrubX={crosshair.scrubX}
@@ -1978,10 +2063,15 @@ function ChartScrubLayer({ model }: { model: LiveChartModel }) {
 /** Live-value text drawn as its own canvas layer, above both the area gradient
  *  and the left-edge fade, so the large number stays crisp at the left edge
  *  instead of being washed out by the fade's `dstOut` blend. */
-function ChartValueOverlay({ model }: { model: LiveChartModel }) {
+function ChartValueOverlay({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
   const {
     showValue,
-    degenShakeTransform,
     engine,
     effectivePadding,
     palette,
@@ -1991,11 +2081,10 @@ function ChartValueOverlay({ model }: { model: LiveChartModel }) {
     valueMomentumColor,
     reveal,
   } = model;
-
   if (!showValue) return null;
 
   return (
-    <Group transform={degenShakeTransform}>
+    <Group transform={degen?.shakeTransform}>
       <Group opacity={reveal.lineOpacity}>
         <ValueTextOverlay
           engine={engine}
@@ -2013,11 +2102,46 @@ function ChartValueOverlay({ model }: { model: LiveChartModel }) {
 
 /** Live-price badge, drawn above the scrub dim so the dim never clips its left
  *  edge. Shares the degen shake transform so it tracks the shaken stack. */
-function ChartBadgeLayer({ model }: { model: LiveChartModel }) {
-  const { badgeCfg, badgeData, badgeFont, reveal, degenShakeTransform } = model;
-  if (!badgeCfg) return null;
+function ChartBadgeLayer({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
+  const {
+    badgeFont,
+    reveal,
+    engine,
+    effectivePadding,
+    palette,
+    formatValue,
+    momentumSV,
+    metricsCfg,
+    yAxisFloat,
+  } = model;
+  const badgeCfg = model.badgeCfg!;
+  const badgeData = useBadge(
+    engine,
+    effectivePadding,
+    palette,
+    formatValue,
+    badgeFont,
+    badgeCfg.variant,
+    badgeCfg.tail,
+    momentumSV,
+    badgeCfg.position,
+    badgeCfg.background,
+    metricsCfg.badge,
+    metricsCfg.motion.badgeColorSpeed,
+    yAxisFloat,
+    engine.edgeValue,
+    badgeCfg.followViewEdge,
+    badgeCfg.radius,
+    badgeCfg.textColor,
+  );
   return (
-    <Group transform={degenShakeTransform}>
+    <Group transform={degen?.shakeTransform}>
       <Group opacity={reveal.badgeOpacity}>
         <BadgeOverlay
           badge={badgeData}
@@ -2036,7 +2160,13 @@ function ChartBadgeLayer({ model }: { model: LiveChartModel }) {
  *  left-pinned badge (off-axis / `labelBadge`) and any label stay crisp instead
  *  of being erased by the fade's dstOut. The lines/bands themselves render in the
  *  base pass inside ChartStack (behind the chart content). */
-function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
+function ChartRefBadgeLayer({
+  model,
+  degen,
+}: {
+  model: LiveChartModel;
+  degen: DegenState | null;
+}) {
   const {
     allRefLines,
     refLineCustom,
@@ -2053,12 +2183,11 @@ function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
     formatValue,
     skiaFont,
     fontProp,
-    degenShakeTransform,
     overlayScrubFade,
   } = model;
   if (allRefLines.length === 0) return null;
   return (
-    <Group transform={degenShakeTransform} opacity={overlayScrubFade}>
+    <Group transform={degen?.shakeTransform} opacity={overlayScrubFade}>
       {allRefLines.map((rl, i) => (
         <ReferenceLineOverlay
           key={i}
@@ -2096,8 +2225,14 @@ function ChartRefBadgeLayer({ model }: { model: LiveChartModel }) {
  *  shake group so the rendered badge stays aligned with the untransformed tap
  *  hit-test; it tracks the locked reticle, not the shaken stack. */
 function ChartScrubActionLayer({ model }: { model: LiveChartModel }) {
-  const { scrubActionCfg, crosshair, engine, effectivePadding, palette, skiaFont } =
-    model;
+  const {
+    scrubActionCfg,
+    crosshair,
+    engine,
+    effectivePadding,
+    palette,
+    skiaFont,
+  } = model;
   if (
     !scrubActionCfg ||
     !crosshair.lockActive ||
@@ -2126,8 +2261,79 @@ function ChartScrubActionLayer({ model }: { model: LiveChartModel }) {
   );
 }
 
-export function LiveChart(props: LiveChartProps) {
-  const model = useLiveChartController(props);
+/**
+ * RN-backed marker and reference-line slots. Their animated fade mapper is
+ * registered only when at least one custom annotation renderer is present.
+ */
+function ChartCustomAnnotations({ model }: { model: LiveChartModel }) {
+  const {
+    markersActive,
+    markersSV,
+    markerClusterCfg,
+    renderMarker,
+    renderReferenceLine,
+    allRefLines,
+    refLineCustom,
+    dragValues,
+    dragActive,
+    engine,
+    effectivePadding,
+    formatValue,
+    lineIsLinear,
+    overlayScrubFade,
+  } = model;
+  const overlayFadeStyle = useAnimatedStyle(() => ({
+    opacity: overlayScrubFade.get(),
+  }));
+
+  return (
+    <Animated.View
+      pointerEvents="box-none"
+      style={[StyleSheet.absoluteFill, overlayFadeStyle]}
+    >
+      {markersActive && renderMarker && (
+        <CustomMarkerOverlay
+          markers={markersSV}
+          renderMarker={renderMarker}
+          engine={engine}
+          padding={effectivePadding}
+          lineData={engine.data}
+          lineLinear={lineIsLinear}
+          cluster={markerClusterCfg}
+        />
+      )}
+      {renderReferenceLine && allRefLines.length > 0 && (
+        <CustomReferenceLineOverlay
+          lines={allRefLines}
+          renderReferenceLine={renderReferenceLine}
+          custom={refLineCustom}
+          engine={engine}
+          padding={effectivePadding}
+          formatValue={formatValue}
+          dragValues={dragValues}
+          dragActive={dragActive}
+        />
+      )}
+    </Animated.View>
+  );
+}
+
+/** Owns the price/time projection worklets for the custom overlay slot. */
+function ChartCustomConsumerOverlay({ model }: { model: LiveChartModel }) {
+  const { engine, effectivePadding, renderOverlay } = model;
+  const overlayContext = useChartOverlayContext(engine, effectivePadding);
+  return <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />;
+}
+
+function ChartView({
+  model,
+  yAxisEntries,
+  degen,
+}: {
+  model: LiveChartModel;
+  yAxisEntries: YAxisEntries | null;
+  degen: DegenState | null;
+}) {
   const {
     rootGesture,
     backgroundColor,
@@ -2143,32 +2349,17 @@ export function LiveChart(props: LiveChartProps) {
     topLabelCfg,
     bottomLabelCfg,
     markersActive,
-    markersSV,
-    markerClusterCfg,
     renderMarker,
     renderTooltip,
     renderOverlay,
     renderReferenceLine,
     allRefLines,
-    refLineCustom,
-    dragValues,
-    dragActive,
-    overlayContext,
     scrubCfg,
     crosshair,
-    isCandle,
     extremaTimeOffset,
     topConnector,
     bottomConnector,
-    lineIsLinear,
-    overlayScrubFade,
   } = model;
-
-  // Mirror the Skia overlay fade onto the RN custom-overlay siblings (custom
-  // markers / reference-line tags) so `scrub.hideOverlaysOnScrub` hides them too.
-  const overlayFadeStyle = useAnimatedStyle(() => ({
-    opacity: overlayScrubFade.get(),
-  }));
 
   return (
     <GestureDetector gesture={rootGesture}>
@@ -2183,7 +2374,11 @@ export function LiveChart(props: LiveChartProps) {
           {/* Background fills first, then the left-edge fade (a canvas-space sibling
               so dstOut blends correctly), then the line stack on top — so the fade
               softens only the fills and the line stays crisp at the left edge. */}
-          <ChartFillLayer model={model} />
+          <ChartFillLayer
+            model={model}
+            yAxisEntries={yAxisEntries}
+            degen={degen}
+          />
 
           {leftEdgeFadeCfg && (
             <LeftEdgeFade
@@ -2196,28 +2391,38 @@ export function LiveChart(props: LiveChartProps) {
           )}
 
           {/* Line stack above the fade so the line stays crisp at the left edge. */}
-          <ChartStack model={model} />
+          <ChartStack
+            model={model}
+            yAxisEntries={yAxisEntries}
+            degen={degen}
+          />
 
           {/* "extrema-edge" connector lines (dot → edge readout), above the chart
               content so the dashed guide reads over the line / candles. */}
-          <ExtremaConnectorOverlay
-            engine={engine}
-            padding={effectivePadding}
-            extremaTimeOffset={extremaTimeOffset}
-            top={topConnector}
-            bottom={bottomConnector}
-          />
+          {(topConnector || bottomConnector) && (
+            <ExtremaConnectorOverlay
+              engine={engine}
+              padding={effectivePadding}
+              extremaTimeOffset={extremaTimeOffset}
+              top={topConnector}
+              bottom={bottomConnector}
+            />
+          )}
 
           {/* Reference-line badges + labels above the fade so they stay crisp. */}
-          <ChartRefBadgeLayer model={model} />
+          <ChartRefBadgeLayer model={model} degen={degen} />
 
-          <ChartValueOverlay model={model} />
+          <ChartValueOverlay model={model} degen={degen} />
 
-          <ChartScrubLayer model={model} />
+          {model.tradeStreamResolved && model.tradeStream && (
+            <ChartTradeStreamLayer model={model} degen={degen} />
+          )}
+
+          <ChartScrubLayer model={model} degen={degen} />
 
           {/* Live-price badge on top of the scrub dim so the dim never clips
               its left edge (the badge tracks the live value, not the scrub). */}
-          <ChartBadgeLayer model={model} />
+          {model.badgeCfg && <ChartBadgeLayer model={model} degen={degen} />}
 
           {/* Scrub-action reticle + action badge — top-most, no shake transform. */}
           <ChartScrubActionLayer model={model} />
@@ -2225,58 +2430,26 @@ export function LiveChart(props: LiveChartProps) {
 
         {/* RN labels floated over the canvas (sibling of <Canvas>, an RN view).
             Pinned to the plot's top/bottom edges via the resolved padding. */}
-        <AxisLabelOverlay
-          topLabel={topLabelCfg}
-          bottomLabel={bottomLabelCfg}
-          engine={engine}
-          formatValue={formatValue}
-          defaultColor={palette.gridLabel}
-          padding={effectivePadding}
-          extremaTimeOffset={extremaTimeOffset}
-        />
+        {(topLabelCfg || bottomLabelCfg) && (
+          <AxisLabelOverlay
+            topLabel={topLabelCfg}
+            bottomLabel={bottomLabelCfg}
+            engine={engine}
+            formatValue={formatValue}
+            defaultColor={palette.gridLabel}
+            padding={effectivePadding}
+            extremaTimeOffset={extremaTimeOffset}
+          />
+        )}
 
         {/* Custom-rendered markers — RN views floated over the canvas (non-Skia),
             pinned to each marker's live position. Sibling of <Canvas>. Wrapped in
             a box-none fade layer so `scrub.hideOverlaysOnScrub` hides them with the
             Skia markers (the wrapper is full-bleed; children keep their own
             absolute positions). */}
-        {markersActive && renderMarker && (
-          <Animated.View
-            pointerEvents="box-none"
-            style={[StyleSheet.absoluteFill, overlayFadeStyle]}
-          >
-            <CustomMarkerOverlay
-              markers={markersSV}
-              renderMarker={renderMarker}
-              engine={engine}
-              padding={effectivePadding}
-              lineData={engine.data}
-              lineLinear={lineIsLinear}
-              cluster={markerClusterCfg}
-            />
-          </Animated.View>
-        )}
-
-        {/* Custom-rendered reference-line tags — RN views floated over the canvas
-            (non-Skia), pinned to each Form-A line's value. Sibling of <Canvas>.
-            Built-in Skia tags for these lines are suppressed (no double-draw).
-            Same box-none fade wrapper as the custom markers above. */}
-        {renderReferenceLine && allRefLines.length > 0 && (
-          <Animated.View
-            pointerEvents="box-none"
-            style={[StyleSheet.absoluteFill, overlayFadeStyle]}
-          >
-            <CustomReferenceLineOverlay
-              lines={allRefLines}
-              renderReferenceLine={renderReferenceLine}
-              custom={refLineCustom}
-              engine={engine}
-              padding={effectivePadding}
-              formatValue={formatValue}
-              dragValues={dragValues}
-              dragActive={dragActive}
-            />
-          </Animated.View>
+        {((markersActive && renderMarker) ||
+          (renderReferenceLine && allRefLines.length > 0)) && (
+          <ChartCustomAnnotations model={model} />
         )}
 
         {/* Custom scrub tooltip — an RN view floated over the canvas (non-Skia),
@@ -2304,10 +2477,19 @@ export function LiveChart(props: LiveChartProps) {
         {/* Custom consumer overlay — an RN view tree floated over the canvas with
             the price↔pixel / time↔pixel bridge, for order / avg-entry / liquidation
             tags etc. Topmost RN sibling; `box-none` so empty areas still scrub. */}
-        {renderOverlay && (
-          <ChartOverlayLayer render={renderOverlay} context={overlayContext} />
-        )}
+        {renderOverlay && <ChartCustomConsumerOverlay model={model} />}
       </View>
     </GestureDetector>
   );
+}
+
+export function LiveChart(props: LiveChartProps) {
+  const model = useLiveChartController(props);
+  if (model.yAxisCfg) {
+    return <ChartWithYAxis model={model} />;
+  }
+  if (model.degenCfg) {
+    return <ChartWithDegen model={model} yAxisEntries={null} />;
+  }
+  return <ChartView model={model} yAxisEntries={null} degen={null} />;
 }

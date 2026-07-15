@@ -4,6 +4,13 @@ import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { LiveChart } from "../src/components/LiveChart";
+import * as badgeHooks from "../src/hooks/useBadge";
+import * as candlePathHooks from "../src/hooks/useCandlePaths";
+import * as chartOverlayHooks from "../src/hooks/useChartOverlayContext";
+import * as degenHooks from "../src/hooks/useDegen";
+import * as tradeStreamHooks from "../src/hooks/useTradeStream";
+import * as xAxisHooks from "../src/hooks/useXAxis";
+import * as yAxisHooks from "../src/hooks/useYAxis";
 import type {
   CandlePoint,
   LiveChartPoint,
@@ -164,6 +171,37 @@ describe("LiveChart", () => {
 
   it("supports gradient off and overlays off", () => {
     render(<Harness gradient={false} yAxis={false} badge={false} />);
+  });
+
+  it("does not register disabled optional subsystem worklets", () => {
+    const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
+    const candlePathSpy = jest.spyOn(candlePathHooks, "useCandlePaths");
+    const degenSpy = jest.spyOn(degenHooks, "useDegen");
+    const overlaySpy = jest.spyOn(chartOverlayHooks, "useChartOverlayContext");
+    const tradeSpy = jest.spyOn(tradeStreamHooks, "useTradeStream");
+    const xAxisSpy = jest.spyOn(xAxisHooks, "useXAxis");
+    const yAxisSpy = jest.spyOn(yAxisHooks, "useYAxis");
+
+    render(
+      <Harness
+        badge={false}
+        degen={false}
+        xAxis={false}
+        yAxis={false}
+        renderOverlay={undefined}
+        tradeStream={undefined}
+      />,
+    );
+
+    expect(badgeSpy).not.toHaveBeenCalled();
+    expect(candlePathSpy).not.toHaveBeenCalled();
+    expect(degenSpy).not.toHaveBeenCalled();
+    expect(overlaySpy).not.toHaveBeenCalled();
+    expect(tradeSpy).not.toHaveBeenCalled();
+    expect(xAxisSpy).not.toHaveBeenCalled();
+    expect(yAxisSpy).not.toHaveBeenCalled();
+
+    jest.restoreAllMocks();
   });
 
   it("renders areaDots (dot-lattice area fill) with default palette tint", () => {
