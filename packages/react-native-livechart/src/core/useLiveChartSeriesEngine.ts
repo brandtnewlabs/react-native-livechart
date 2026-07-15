@@ -12,7 +12,17 @@ import {
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type { LiveChartPoint, SeriesConfig } from "../types";
 import { tickLiveChartSeriesEngineFrame } from "./liveChartSeriesEngineTick";
+import {
+  renderCadenceIntervalMs,
+  resolveRenderCadenceMode,
+  shouldPublishRenderFrame,
+} from "./renderCadence";
 import type { ChartEngineScroll, MultiEngineState } from "./useLiveChartEngine";
+
+const LIVE_RENDER_CADENCE = resolveRenderCadenceMode(
+  process.env.EXPO_PUBLIC_MEMORY_PROFILE_CADENCE,
+  "adaptive",
+);
 
 export interface MultiSeriesEngineConfig {
   series: SharedValue<SeriesConfig[]>;
@@ -243,6 +253,9 @@ export function useLiveChartSeriesEngine(
   // animates it 0→1 from `returnFrom` when time-scroll is disabled while scrolled.
   const returnT = useSharedValue(1);
   const returnFrom = useSharedValue(0);
+  // No renderer subscribes to this accumulator; skipped callbacks therefore do
+  // not publish chart state or ask Skia to redraw.
+  const cadenceElapsedMs = useSharedValue(0);
 
   const displaySeriesValues = useSharedValue<number[]>([]);
   const seriesOpacities = useSharedValue<number[]>([]);
@@ -278,8 +291,28 @@ export function useLiveChartSeriesEngine(
   useFrameCallback((frameInfo) => {
     "worklet";
     const scratch = scratchRef.current!;
+    const frameMs =
+      frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
+    let tickFrameInfo: { timeSincePreviousFrame?: number | null } = frameInfo;
+    const forceDisplayCadence = snapSV.get() || returnT.get() < 1;
+    const intervalMs = renderCadenceIntervalMs(
+      forceDisplayCadence ? "display" : LIVE_RENDER_CADENCE,
+      canvasWidth.get(),
+      displayWindow.get(),
+    );
+    if (intervalMs > 0) {
+      const elapsedMs = cadenceElapsedMs.get() + frameMs;
+      if (!shouldPublishRenderFrame(intervalMs, elapsedMs)) {
+        cadenceElapsedMs.set(elapsedMs);
+        return;
+      }
+      cadenceElapsedMs.set(0);
+      tickFrameInfo = { timeSincePreviousFrame: elapsedMs };
+    } else {
+      cadenceElapsedMs.set(0);
+    }
     applyLiveChartSeriesEngineFrame(
-      frameInfo,
+      tickFrameInfo,
       {
         series,
         displaySeriesValues,

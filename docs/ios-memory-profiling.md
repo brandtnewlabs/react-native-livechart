@@ -75,14 +75,14 @@ sequential matrix cannot silently reuse the previous run's inlined environment.
 Use a physical iOS device: simulator Activity Monitor recordings do not produce
 a valid Instruments trace for this workflow.
 
-The cadence variants are profiling-only bundle switches. `display` preserves the
-existing frame callback. `fixed30` accumulates adjacent display-frame deltas and
-publishes the engine at 30 fps. `adaptive` waits for one half-pixel of horizontal
-movement, clamped between 30 and 60 fps. The accumulated elapsed time is passed
-to the next tick, so easing duration is unchanged; only expensive publication
-and redraw frequency differs. With the canonical 400-point-wide, 30-second
-window, adaptive cadence resolves to 33.3 ms: one publication for every two
-60 Hz display callbacks, or about half as many steady-state redraw requests.
+`adaptive` is the production cadence; the matrix can force `display` and
+`fixed30` baselines at bundle time. Adaptive cadence waits for one half-pixel of
+horizontal movement, clamped between 30 and 60 fps. The accumulated elapsed time
+is passed to the next tick, so easing duration is unchanged; only expensive
+publication and redraw frequency differs. Snap and return-to-live transitions
+retain display cadence. With the canonical 400-point-wide, 30-second window,
+adaptive cadence resolves to 33.3 ms: one publication for every two 60 Hz
+display callbacks, or about half as many steady-state redraw requests.
 
 ## Physical footprint
 
