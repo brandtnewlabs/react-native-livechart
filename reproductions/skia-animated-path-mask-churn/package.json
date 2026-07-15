@@ -1,0 +1,23 @@
+{
+  "name": "skia-animated-path-mask-churn-repro",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "ios:release": "expo run:ios --configuration Release",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@shopify/react-native-skia": "2.6.4",
+    "expo": "57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-reanimated": "4.5.0",
+    "react-native-worklets": "0.10.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "babel-preset-expo": "57.0.0",
+    "typescript": "6.0.3"
+  }
+}
