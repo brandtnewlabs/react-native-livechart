@@ -14,6 +14,17 @@ const TOOLTIP_EDGE_GAP = 4;
 const TOOLTIP_TOP_MARGIN = 8;
 const FADE_ZONE = 4;
 
+/** Measure rendered text so the pill and its content share the same centre. */
+function measureTooltipTextWidth(
+  font: SkFont,
+  text: string,
+  monoCharWidth: number,
+): number {
+  "worklet";
+  const measured = measureFontTextWidth(font, text);
+  return measured > 0 ? measured : text.length * monoCharWidth;
+}
+
 export interface TooltipLayout {
   x: number;
   y: number;
@@ -197,10 +208,7 @@ export function computeTooltipLayout(
   formatValue: (v: number) => string,
   formatTime: (t: number) => string,
   font: SkFont,
-  /** Monospace advance width. When > 0, text width is `len * monoCharWidth`
-   *  instead of a per-frame Skia `measureText` — scrubbing re-runs this worklet
-   *  every frame, and `measureText` shapes text each call (a real cost,
-   *  especially in the simulator). Falls back to `measureText` when 0. */
+  /** Monospace advance width fallback when font measurement returns zero. */
   monoCharWidth = 0,
   /** Where the pill sits relative to the scrub line. `"side"` offsets it right
    *  (flipping left near the edge); `"top"`/`"bottom"` center it over the line,
@@ -243,14 +251,11 @@ export function computeTooltipLayout(
   const totalH =
     TOOLTIP_PAD_Y * 2 + lineH * rowCount + TOOLTIP_LINE_GAP * (rowCount - 1);
 
-  const valueW =
-    monoCharWidth > 0
-      ? valueStr.length * monoCharWidth
-      : measureFontTextWidth(font, valueStr);
-  const timeW =
-    monoCharWidth > 0
-      ? timeStr.length * monoCharWidth
-      : measureFontTextWidth(font, timeStr);
+  // Use actual glyph bounds for every visible-row variant. The old
+  // character-count approximation made punctuation-heavy dates/times appear
+  // off-centre even when the pill itself was positioned correctly.
+  const valueW = measureTooltipTextWidth(font, valueStr, monoCharWidth);
+  const timeW = measureTooltipTextWidth(font, timeStr, monoCharWidth);
   // Only the visible rows contribute to the pill width.
   const contentW = Math.max(sv ? valueW : 0, st ? timeW : 0);
   const pillW = contentW + TOOLTIP_PAD_X * 2;
@@ -333,8 +338,7 @@ export function computeTooltipLayoutMulti(
   padding: ChartPadding,
   canvasWidth: number,
   font: SkFont,
-  /** Monospace advance width; when > 0, sizes text by length instead of a
-   *  per-frame Skia `measureText`. See {@link computeTooltipLayout}. */
+  /** Monospace advance width fallback when font measurement returns zero. */
   monoCharWidth = 0,
 ): TooltipLayout {
   "worklet";
@@ -349,10 +353,7 @@ export function computeTooltipLayoutMulti(
   let contentW = 0;
   const lineWidths: number[] = [];
   for (let i = 0; i < n; i++) {
-    const w =
-      monoCharWidth > 0
-        ? lines[i].text.length * monoCharWidth
-        : measureFontTextWidth(font, lines[i].text);
+    const w = measureTooltipTextWidth(font, lines[i].text, monoCharWidth);
     lineWidths.push(w);
     if (w > contentW) contentW = w;
   }

@@ -142,6 +142,11 @@ export function CrosshairOverlay({
   const line1Y = useDerivedValue(() => tooltipLayout.value.line1Y);
   const line2Y = useDerivedValue(() => tooltipLayout.value.line2Y);
 
+  // Keep the built-in body in sync with computeTooltipLayout: when both rows
+  // are disabled, retain the time row so the tooltip never renders empty.
+  const effectiveTooltipShowTime =
+    tooltipShowTime || (!tooltipShowValue && !tooltipShowTime);
+
   // dstOut erase color: alpha = how much of the trailing content to remove,
   // ramped by the crosshair fade-in. Color RGB is irrelevant for dstOut.
   const dimErase = useDerivedValue(
@@ -231,7 +236,7 @@ export function CrosshairOverlay({
                     color={tooltipColor ?? palette.tooltipText}
                   />
                 )}
-                {tooltipShowTime && (
+                {effectiveTooltipShowTime && (
                   <SkiaText
                     x={timeTextX}
                     y={tooltipShowValue ? line2Y : line1Y}
