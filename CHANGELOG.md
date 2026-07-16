@@ -7,16 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.10.0] - 2026-07-16
+
+### Added
+
+- **Configurable spacing for collapsed marker-cluster counts.**
+  `markerCluster.groupBadge.letterSpacing` adds extra spacing between digits in
+  the built-in count badge and in the optional corner count on a custom group
+  badge. The default remains `0`. ([#205](https://github.com/brandtnewlabs/react-native-livechart/issues/205))
+
 ### Fixed
 
 - **Multi-digit marker-cluster counts remain legible with proportional fonts.**
   Count badges no longer apply a hard-coded negative kern derived from the
-  widest digit, and `markerCluster.groupBadge.letterSpacing` can tune the count
-  (including custom-badge corner counts). ([#205](https://github.com/brandtnewlabs/react-native-livechart/issues/205))
+  widest digit and now position each digit from its measured glyph width.
+  ([#205](https://github.com/brandtnewlabs/react-native-livechart/issues/205))
 - **Y-axis labels no longer render underneath the live value badge.** Labels
   whose line box intersects a right-side badge pill are hidden while their grid
   lines remain visible, including floating-axis layouts and configured vertical
   badge offsets. ([#200](https://github.com/brandtnewlabs/react-native-livechart/issues/200))
+- **Built-in scrub tooltips now size and align every row variant correctly.**
+  Tooltip pills measure actual glyph widths for value, date-only, and
+  multi-series layouts, keeping punctuation-heavy timestamps centered. If both
+  built-in rows are disabled, the time row remains visible instead of leaving
+  an empty pill. ([#202](https://github.com/brandtnewlabs/react-native-livechart/pull/202))
 - **Short taps no longer strand a delayed scrub crosshair on iOS.** When a
   stationary press ended before `scrub.panGestureDelay` /
   `timeScroll.scrubHoldMs`, React Native Gesture Handler could fire its pending
