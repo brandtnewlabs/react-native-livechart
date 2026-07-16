@@ -25,6 +25,7 @@ import {
   GROUP_BADGE_SIG,
   groupBgSig,
   groupCountText,
+  groupCountTextWidth,
   groupGlyphSig,
   isConnectorMarker,
   markerAppearanceSig,
@@ -58,7 +59,7 @@ const GROUP_CORNER_INSET = 0.82;
 
 /**
  * Append a collapsed-cluster count badge (round bg + centered, proportionally
- * kerned digits) to the atlas blit lists at `(cx, cy)`, scaled by `mul` — full
+ * laid-out digits) to the atlas blit lists at `(cx, cy)`, scaled by `mul` — full
  * size as the default group badge, shrunk in a glyph's corner for `showGroupCount`.
  *
  * A **module-level** worklet (not a closure inside the per-frame derived value):
@@ -77,6 +78,7 @@ function pushGroupCountBadge(
   repColor: string,
   count: number,
   mul: number,
+  letterSpacing: number,
 ): void {
   "worklet";
   const text = groupCountText(count);
@@ -87,20 +89,11 @@ function pushGroupCountBadge(
     );
     sprites.push(bg.rect);
   }
-  // Lay digits out proportionally (each by its own ink width), scaled to fit the
-  // small round badge, centered. A negative kern (fraction of a digit) closes the
-  // font's side-bearing gap so "12" reads tight, not "1 2".
+  // Lay digits out proportionally (each by its own ink width), centered. The
+  // configurable spacing is applied between glyph ink bounds, not inferred from
+  // the widest digit — proportional fonts otherwise overlap narrow digits.
   const S = BADGE_TEXT_SCALE;
-  let maxDW = 1;
-  for (let d = 0; d < 10; d++) {
-    const dw = digitWidths["" + d] ?? 0;
-    if (dw > maxDW) maxDW = dw;
-  }
-  const kern = -maxDW * S * 0.42;
-  let totalW = 0;
-  for (let c = 0; c < text.length; c++) {
-    totalW += (digitWidths[text[c]] ?? 0) * S + (c > 0 ? kern : 0);
-  }
+  const totalW = groupCountTextWidth(text, digitWidths, letterSpacing);
   let dx = cx - (totalW * mul) / 2;
   for (let c = 0; c < text.length; c++) {
     const w = (digitWidths[text[c]] ?? 0) * S * mul;
@@ -117,7 +110,7 @@ function pushGroupCountBadge(
       );
       sprites.push(gc.rect);
     }
-    dx += w + kern * mul;
+    dx += w + letterSpacing * mul;
   }
 }
 
@@ -326,7 +319,7 @@ export function MarkerOverlay({
     typeof cluster.groupBadge === "object" ? cluster.groupBadge : undefined;
   const groupBadgeImage = groupBadgeCfg?.image;
   const groupBadgeKey = groupBadgeCfg
-    ? `${groupBadgeCfg.icon ?? ""}|${groupBadgeCfg.color ?? ""}|${groupBadgeCfg.pill ? 1 : 0}|${groupBadgeCfg.size ?? ""}`
+    ? `${groupBadgeCfg.icon ?? ""}|${groupBadgeCfg.color ?? ""}|${groupBadgeCfg.pill ? 1 : 0}|${groupBadgeCfg.size ?? ""}|${groupBadgeCfg.letterSpacing ?? ""}`
     : "";
   const atlas = useMemo(
     () =>
@@ -431,6 +424,7 @@ export function MarkerOverlay({
                 repColor,
                 pt.groupCount,
                 GROUP_CORNER_SCALE,
+                groupBadgeCfg?.letterSpacing ?? 0,
               );
             }
             continue;
@@ -448,6 +442,7 @@ export function MarkerOverlay({
             repColor,
             pt.groupCount,
             1,
+            groupBadgeCfg?.letterSpacing ?? 0,
           );
           continue;
         }

@@ -78,6 +78,13 @@ markerCluster={{ direction: "vertical", overlap: 0.6, maxBeforeGroup: 20 }}
 A collapsed group draws a round **count badge** by default (`groupBadge: "count"`). Two ways to give
 it your own Skia look:
 
+The built-in count uses the measured width of each digit, so proportional fonts such as `System`
+remain readable. Pass an object with `letterSpacing` to add or remove space between count digits:
+
+```tsx
+markerCluster={{ mode: "stacked", groupBadge: { letterSpacing: 1 } }}
+```
+
 **1. Reuse the members' look** — `groupBadge: "marker"` draws the **representative marker's own glyph**
 (the newest marker in the run: its `image` → `icon`/`pill` → `kind`). So a run of green `+` buy pills
 collapses to a single buy pill, not a generic count.
