@@ -1236,10 +1236,15 @@ export interface MarkerClusterConfig {
  * A dedicated badge drawn for a collapsed marker cluster — your own Skia design,
  * independent of the member markers. Pass it as
  * {@link MarkerClusterConfig.groupBadge}. Glyph precedence mirrors a single marker:
- * `image` → `icon` (`pill`) → a filled dot. Requires `image` or `icon` (otherwise
- * the group falls back to the count badge).
+ * `image` → `icon` (`pill`) → the built-in count badge. An object containing only
+ * {@link letterSpacing} customizes that built-in count badge.
  */
 export interface MarkerGroupBadge {
+  /**
+   * Extra spacing in px between digits in the built-in count badge. Also applies
+   * to the optional corner count on a custom group badge. Default `0`.
+   */
+  letterSpacing?: number;
   /** Custom Skia image for the collapsed group (e.g. from `useImage`). Takes
    *  precedence over {@link icon}. */
   image?: SkImage;

@@ -59,6 +59,21 @@ export function groupCountText(count: number): string {
   return count > 99 ? "99" : `${count}`;
 }
 
+/** Width of proportionally laid-out count-badge text at its on-canvas scale. */
+export function groupCountTextWidth(
+  text: string,
+  digitWidths: Record<string, number>,
+  letterSpacing = 0,
+): number {
+  "worklet";
+  let width = 0;
+  for (let i = 0; i < text.length; i++) {
+    width += (digitWidths[text[i]] ?? 0) * BADGE_TEXT_SCALE;
+    if (i > 0) width += letterSpacing;
+  }
+  return width;
+}
+
 /** Default glyph color per kind when `marker.color` is unset. Worklet-safe so the
  *  per-frame overlay worklet can resolve a collapsed cluster's badge color. */
 export function defaultMarkerColor(
@@ -333,10 +348,12 @@ function groupBgCellSpec(
   bgColor: string,
   uw: number,
   gh: number,
+  letterSpacing: number,
 ): CellSpec {
   const m2 = CELL_MARGIN * 2;
   // Inner circle fits a centered two-digit string at BADGE_TEXT_SCALE plus padding.
-  const innerR = Math.ceil(Math.max(2 * uw, gh) * BADGE_TEXT_SCALE) / 2 + BADGE_PAD;
+  const textWidth = 2 * uw * BADGE_TEXT_SCALE + Math.max(0, letterSpacing);
+  const innerR = Math.ceil(Math.max(textWidth, gh * BADGE_TEXT_SCALE)) / 2 + BADGE_PAD;
   const outerR = innerR + BADGE_BORDER;
   const diameter = 2 * outerR;
   return {
@@ -429,7 +446,10 @@ export function buildMarkerAtlas(
       colors.add(m.color ?? defaultMarkerColor(m.kind, palette));
     }
     for (const color of colors) {
-      specs.push({ sig: groupBgSig(color), spec: groupBgCellSpec(color, bgColor, uw, gh) });
+      specs.push({
+        sig: groupBgSig(color),
+        spec: groupBgCellSpec(color, bgColor, uw, gh, groupBadge?.letterSpacing ?? 0),
+      });
     }
   }
 

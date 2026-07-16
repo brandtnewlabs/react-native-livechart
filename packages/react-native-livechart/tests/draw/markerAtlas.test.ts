@@ -3,6 +3,7 @@ import {
   defaultMarkerColor,
   groupBgSig,
   groupCountText,
+  groupCountTextWidth,
   groupGlyphSig,
   isConnectorMarker,
   markerAppearanceSig,
@@ -157,5 +158,24 @@ describe("groupCountText", () => {
     expect(groupCountText(2)).toBe("2");
     expect(groupCountText(42)).toBe("42");
     expect(groupCountText(100)).toBe("99");
+  });
+});
+
+describe("groupCountTextWidth", () => {
+  it("uses proportional glyph widths without forcing digits to overlap", () => {
+    const widths = { "1": 4, "2": 7 };
+    expect(groupCountTextWidth("12", widths)).toBe((4 + 7) * 0.75);
+    expect(groupCountTextWidth("12", widths, 2)).toBe((4 + 7) * 0.75 + 2);
+  });
+
+  it("widens the count background for positive letter spacing", () => {
+    const marker = m({ id: "t", color: "#16a34a" });
+    const plain = buildMarkerAtlas([marker], palette, font, 1, true);
+    const spaced = buildMarkerAtlas([marker], palette, font, 1, true, {
+      letterSpacing: 4,
+    });
+    expect(spaced.cells[groupBgSig("#16a34a")].w).toBeGreaterThan(
+      plain.cells[groupBgSig("#16a34a")].w,
+    );
   });
 });

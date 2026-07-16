@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Multi-digit marker-cluster counts remain legible with proportional fonts.**
+  Count badges no longer apply a hard-coded negative kern derived from the
+  widest digit, and `markerCluster.groupBadge.letterSpacing` can tune the count
+  (including custom-badge corner counts). ([#205](https://github.com/brandtnewlabs/react-native-livechart/issues/205))
 - **Y-axis labels no longer render underneath the live value badge.** Labels
   whose line box intersects a right-side badge pill are hidden while their grid
   lines remain visible, including floating-axis layouts and configured vertical

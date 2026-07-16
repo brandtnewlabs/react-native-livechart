@@ -107,9 +107,10 @@ interface MarkerClusterConfig {
                           // dedicated custom badge you supply (object form)
   showGroupCount?: boolean; // with a non-count badge, stamp the count in the corner; default false
 }
-// A dedicated badge for a collapsed cluster — your own glyph, independent of the
-// members (set as groupBadge). Needs image or icon. @experimental
+// Badge options for a collapsed cluster. Use letterSpacing by itself to tune the
+// built-in count, or add image/icon for a dedicated glyph. @experimental
 interface MarkerGroupBadge {
+  letterSpacing?: number; // extra px between count digits; default 0
   image?: SkImage; // custom Skia image (precedence over icon)
   icon?: string;   // text/emoji glyph (when image unset)
   color?: string;  // icon / pill color; defaults to a palette accent
