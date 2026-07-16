@@ -36,6 +36,13 @@ import {
   snapPrice,
   type CrosshairState,
 } from "./crosshairShared";
+import {
+  delayedPanTouchCancelled,
+  delayedPanTouchDown,
+  delayedPanTouchUp,
+  resetDelayedPanGuard,
+  shouldStartDelayedPan,
+} from "./delayedPanGuard";
 
 const ACTION_HIT_SLOP = 6;
 const RETICLE_HIT = 14;
@@ -150,13 +157,8 @@ export function useCrosshair(
   // Tracks whether the active scrub phase actually began, so a tap that never
   // activates doesn't emit a spurious onGestureEnd.
   const gestureStarted = useSharedValue(false);
-  // Guards the `activateAfterLongPress` post-lift activation: on iOS, RNGH only
-  // cancels the long-press timer on >10pt movement or recognizer reset — NOT on
-  // touch-up. A still press shorter than the delay leaves the timer armed; it
-  // fires after the finger lifts, onStart runs with no finger down, and no END
-  // ever follows — stranding the crosshair. `onTouchesUp` fails a still-pending
-  // pan outright (killing the timer), and `fingerDown` lets onStart bail if an
-  // activation still slips in after the lift.
+  // Guard state for RNGH's delayed-pan post-lift activation on iOS. The shared
+  // lifecycle helpers are also used by LiveChartSeries and unit-tested directly.
   const fingerDown = useSharedValue(false);
   const panActivated = useSharedValue(false);
   // Where the crosshair line should start (canvas Y) so it stops at a top-pinned
@@ -510,24 +512,25 @@ export function useCrosshair(
     .onTouchesDown(
       /* istanbul ignore next */ () => {
         "worklet";
-        fingerDown.set(true);
+        delayedPanTouchDown(longPressMs, fingerDown);
       },
     )
     .onTouchesUp(
       /* istanbul ignore next */ (e, manager) => {
         "worklet";
-        if (e.numberOfTouches > 0) return;
-        fingerDown.set(false);
-        // Last finger up while the pan is still pending (long-press timer not
-        // fired): fail it now so a timer landing after this UP can't activate
-        // a gesture that will never receive an END.
-        if (!panActivated.get()) manager.fail();
+        delayedPanTouchUp(
+          longPressMs,
+          e,
+          manager,
+          fingerDown,
+          panActivated,
+        );
       },
     )
     .onTouchesCancelled(
       /* istanbul ignore next */ () => {
         "worklet";
-        fingerDown.set(false);
+        delayedPanTouchCancelled(longPressMs, fingerDown);
       },
     )
     // Start scrubbing on ACTIVE (onStart), not on touch-down (onBegin):
@@ -537,11 +540,8 @@ export function useCrosshair(
     .onStart(
       /* istanbul ignore next */ (e) => {
         "worklet";
-        panActivated.set(true);
+        if (!shouldStartDelayedPan(longPressMs, fingerDown, panActivated)) return;
         if (!enabled) return;
-        // Activation raced a lift (see fingerDown above): don't engage — there
-        // is no finger to scrub with and no END coming to clean up.
-        if (!fingerDown.get()) return;
         // Scrub-action: once a reticle is placed, drag adjusts it (2D — the Y is
         // the price). The ephemeral live-scrub never engages, so scrubActive
         // stays false and the live crosshair hides itself.
@@ -605,8 +605,7 @@ export function useCrosshair(
     .onFinalize(
       /* istanbul ignore next */ () => {
         "worklet";
-        panActivated.set(false);
-        fingerDown.set(false);
+        resetDelayedPanGuard(fingerDown, panActivated);
         // A lock-adjust drag leaves the reticle in place (scrubActive was never
         // set); a live-scrub clears its crosshair. Always clear scrubActive so a
         // stray scrub can never linger behind a placed reticle.

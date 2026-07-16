@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Short taps no longer strand a delayed scrub crosshair on iOS.** When a
+  stationary press ended before `scrub.panGestureDelay` /
+  `timeScroll.scrubHoldMs`, React Native Gesture Handler could fire its pending
+  long-press timer after the finger was already up, leaving the crosshair active
+  without a matching gesture end. Both `LiveChart` and `LiveChartSeries` now
+  fail that pending pan on the final pointer-up and ignore any raced activation;
+  zero-delay scrubbing is unchanged. Thanks [@ianlapham](https://github.com/ianlapham).
+  ([#206](https://github.com/brandtnewlabs/react-native-livechart/pull/206))
+
 ## [4.9.2] - 2026-07-15
 
 ### Changed
