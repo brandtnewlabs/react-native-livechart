@@ -20,6 +20,13 @@ import {
   HIDDEN_TOOLTIP,
   type CrosshairState,
 } from "./crosshairShared";
+import {
+  delayedPanTouchCancelled,
+  delayedPanTouchDown,
+  delayedPanTouchUp,
+  resetDelayedPanGuard,
+  shouldStartDelayedPan,
+} from "./delayedPanGuard";
 
 /**
  * LiveChartSeries crosshair + scrub. No tooltip — data is delivered via
@@ -40,6 +47,10 @@ export function useCrosshairSeries(
   // Tracks whether the active scrub phase actually began, so a tap that never
   // activates doesn't emit a spurious onGestureEnd.
   const gestureStarted = useSharedValue(false);
+  // Mirrors LiveChart's guard against RNGH's delayed-pan timer activating after
+  // the final pointer has already lifted on iOS.
+  const fingerDown = useSharedValue(false);
+  const panActivated = useSharedValue(false);
 
   const scrubTime = useDerivedValue(() =>
     computeScrubTime(
@@ -158,6 +169,30 @@ export function useCrosshairSeries(
     .activateAfterLongPress(panGestureDelay)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
+    .onTouchesDown(
+      /* istanbul ignore next */ () => {
+        "worklet";
+        delayedPanTouchDown(panGestureDelay, fingerDown);
+      },
+    )
+    .onTouchesUp(
+      /* istanbul ignore next */ (e, manager) => {
+        "worklet";
+        delayedPanTouchUp(
+          panGestureDelay,
+          e,
+          manager,
+          fingerDown,
+          panActivated,
+        );
+      },
+    )
+    .onTouchesCancelled(
+      /* istanbul ignore next */ () => {
+        "worklet";
+        delayedPanTouchCancelled(panGestureDelay, fingerDown);
+      },
+    )
     // Start scrubbing on ACTIVE (onStart), not on touch-down (onBegin):
     // `activateAfterLongPress` only delays activation, so onBegin still fires
     // immediately — using it would scrub instantly and ignore panGestureDelay,
@@ -165,6 +200,8 @@ export function useCrosshairSeries(
     .onStart(
       /* istanbul ignore next */ (e) => {
         "worklet";
+        if (!shouldStartDelayedPan(panGestureDelay, fingerDown, panActivated))
+          return;
         if (!enabled) return;
         scrubX.set(e.x);
         scrubActive.set(true);
@@ -182,6 +219,7 @@ export function useCrosshairSeries(
     .onFinalize(
       /* istanbul ignore next */ () => {
         "worklet";
+        resetDelayedPanGuard(fingerDown, panActivated);
         scrubActive.set(false);
         if (gestureStarted.get()) {
           gestureStarted.set(false);
