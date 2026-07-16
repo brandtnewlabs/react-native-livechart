@@ -54,3 +54,5 @@ app-example
 .mint/
 .mintlify/
 docs/.mint/
+
+/reproductions/*

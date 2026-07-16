@@ -1,0 +1,3 @@
+[mcp_servers.agent-device]
+command = "agent-device"
+args = ["mcp"]
