@@ -235,7 +235,7 @@ describe("computeTooltipLayout", () => {
     expect(layout.timeStr.length).toBeGreaterThan(0);
   });
 
-  it("sizes text by character count when monoCharWidth is set (skips measureText)", () => {
+  it("sizes text using measured widths", () => {
     const layout = computeTooltipLayout(
       true,
       50,
@@ -248,9 +248,9 @@ describe("computeTooltipLayout", () => {
       font,
       8, // monospace advance
     );
-    // timeStr "HH:MM:SS" (8 chars) is the widest line; pill = 8*8 + 2*PAD_X(8)
+    // timeStr "HH:MM:SS" (8 chars) is the widest line; the mock font is 7px/char.
     expect(layout.timeStr.length).toBe(8);
-    expect(layout.w).toBe(8 * 8 + 16);
+    expect(layout.w).toBe(8 * 7 + 16);
   });
 
   it("places tooltip to the right of crosshair when space is available", () => {
@@ -542,7 +542,42 @@ describe("computeTooltipLayout", () => {
     );
     // Single row: height = PAD_Y*2 + lineH = 12 + 12 = 24; sized by the time row.
     expect(layout.h).toBe(24);
-    expect(layout.w).toBe(layout.timeStr.length * 8 + 16);
+    expect(layout.w).toBe(layout.timeStr.length * 7 + 16);
+  });
+
+  it("centers a date-only row using its measured text width", () => {
+    const dateFont = {
+      ...font,
+      measureText: (s: string) => ({
+        x: 0,
+        y: 0,
+        // Deliberately make punctuation narrower than the digit advance.
+        width: s.length * 7 - (s.match(/:/g)?.length ?? 0) * 2,
+        height: 12,
+      }),
+    } as unknown as SkFont;
+    const layout = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      () => "06:39:29",
+      dateFont,
+      7,
+      "bottom",
+      false,
+      true,
+      300,
+      8,
+    );
+    const textW = dateFont.measureText(layout.timeStr).width;
+
+    expect(layout.w).toBe(textW + 16);
+    expect(layout.x + layout.w / 2).toBeCloseTo(200);
+    expect(layout.timeTextX + textW / 2).toBeCloseTo(200);
   });
 
   it("drops the time row when showTime is false (single row sized by value)", () => {
@@ -562,7 +597,38 @@ describe("computeTooltipLayout", () => {
       false, // showTime
     );
     expect(layout.h).toBe(24);
-    expect(layout.w).toBe(layout.valueStr.length * 8 + 16);
+    expect(layout.w).toBe(layout.valueStr.length * 7 + 16);
+  });
+
+  it("centers both value and time rows using their measured widths", () => {
+    const mixedFont = {
+      ...font,
+      measureText: (s: string) => ({
+        x: 0,
+        y: 0,
+        width: s.length * 7 - (s.match(/:/g)?.length ?? 0) * 2,
+        height: 12,
+      }),
+    } as unknown as SkFont;
+    const layout = computeTooltipLayout(
+      true,
+      200,
+      42,
+      985,
+      padding,
+      400,
+      formatValue,
+      () => "06:39:29",
+      mixedFont,
+      7,
+    );
+    const valueW = mixedFont.measureText(layout.valueStr).width;
+    const timeW = mixedFont.measureText(layout.timeStr).width;
+    const pillCenter = layout.x + layout.w / 2;
+
+    expect(layout.w).toBe(Math.max(valueW, timeW) + 16);
+    expect(layout.valueTextX + valueW / 2).toBeCloseTo(pillCenter);
+    expect(layout.timeTextX + timeW / 2).toBeCloseTo(pillCenter);
   });
 
   it("falls back to the time row when both content rows are off", () => {
@@ -582,7 +648,7 @@ describe("computeTooltipLayout", () => {
       false,
     );
     expect(layout.h).toBe(24);
-    expect(layout.w).toBe(layout.timeStr.length * 8 + 16);
+    expect(layout.w).toBe(layout.timeStr.length * 7 + 16);
   });
 });
 
@@ -599,7 +665,7 @@ describe("computeTooltipLayoutMulti", () => {
     expect(layout.x).toBeLessThan(0);
   });
 
-  it("sizes rows by character count when monoCharWidth is set (skips measureText)", () => {
+  it("sizes rows using measured text widths", () => {
     const layout = computeTooltipLayoutMulti(
       true,
       50,
@@ -612,8 +678,8 @@ describe("computeTooltipLayoutMulti", () => {
       font,
       8, // monospace advance
     );
-    // widest row is 5 chars; pill = 5*8 + 2*PAD_X(8)
-    expect(layout.w).toBe(5 * 8 + 16);
+    // widest row is 5 chars at 7px each; pill = 5*7 + 2*PAD_X(8)
+    expect(layout.w).toBe(5 * 7 + 16);
   });
 
   it("builds stackedLines for each row", () => {

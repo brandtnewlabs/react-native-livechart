@@ -240,7 +240,9 @@ export default function ScrubbingScreen() {
           tooltipPlacement,
           tooltipMargin,
           tooltipShowValue: !dateOnly,
-          tooltipShowTime: timeRow,
+          // Date only means hide the value while keeping the date visible. The
+          // separate Time row toggle can add the date to the normal value view.
+          tooltipShowTime: dateOnly || timeRow,
           tooltipBorderRadius: roundedTip ? 16 : 5,
           // `true` → default [4,4] dash; pass explicit [on, off] intervals for
           // finer control. Omit / `false` → solid.

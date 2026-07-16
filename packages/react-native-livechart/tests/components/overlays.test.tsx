@@ -539,6 +539,44 @@ describe("CrosshairOverlay", () => {
     expect(tree).toContain('"r":9');
   });
 
+  it("keeps the time row when both built-in tooltip rows are disabled", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const tooltipLayout = useSharedValue<TooltipLayout>({
+        x: 110,
+        y: 20,
+        w: 80,
+        h: 24,
+        valueStr: "42.00",
+        timeStr: "12:00:00",
+        valueTextX: 115,
+        timeTextX: 115,
+        line1Y: 30,
+        line2Y: 45,
+        stackedLines: undefined,
+      });
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          showTooltip
+          tooltipShowValue={false}
+          tooltipShowTime={false}
+        />
+      );
+    }
+    const { toJSON } = render(<Fixture />);
+    const tree = JSON.stringify(toJSON());
+    expect(tree).not.toContain("42.00");
+    expect(tree).toContain("12:00:00");
+  });
+
   it("renders stacked multi-series tooltip lines", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
