@@ -1412,8 +1412,10 @@ function ChartYAxisLayer({
     effectivePadding,
     palette,
     skiaFont,
+    dotY,
     badgeUsesRightGutter,
     badgeCfg,
+    badgeFont,
     metricsCfg,
     gridStyleCfg,
     yAxisFloat,
@@ -1431,6 +1433,9 @@ function ChartYAxisLayer({
         badge={badgeUsesRightGutter}
         badgeTail={badgeCfg?.tail ?? true}
         badgeMetrics={metricsCfg.badge}
+        badgeCenterY={badgeUsesRightGutter ? dotY : undefined}
+        badgeFontSize={badgeUsesRightGutter ? badgeFont.getSize() : undefined}
+        badgeOffsetY={badgeCfg?.offsetY ?? 0}
         gridStyle={gridStyleCfg}
       />
     </Group>

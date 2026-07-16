@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Y-axis labels no longer render underneath the live value badge.** Labels
+  whose line box intersects a right-side badge pill are hidden while their grid
+  lines remain visible, including floating-axis layouts and configured vertical
+  badge offsets. ([#200](https://github.com/brandtnewlabs/react-native-livechart/issues/200))
 - **Short taps no longer strand a delayed scrub crosshair on iOS.** When a
   stationary press ended before `scrub.panGestureDelay` /
   `timeScroll.scrubHoldMs`, React Native Gesture Handler could fire its pending
