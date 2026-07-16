@@ -150,6 +150,15 @@ export function useCrosshair(
   // Tracks whether the active scrub phase actually began, so a tap that never
   // activates doesn't emit a spurious onGestureEnd.
   const gestureStarted = useSharedValue(false);
+  // Guards the `activateAfterLongPress` post-lift activation: on iOS, RNGH only
+  // cancels the long-press timer on >10pt movement or recognizer reset — NOT on
+  // touch-up. A still press shorter than the delay leaves the timer armed; it
+  // fires after the finger lifts, onStart runs with no finger down, and no END
+  // ever follows — stranding the crosshair. `onTouchesUp` fails a still-pending
+  // pan outright (killing the timer), and `fingerDown` lets onStart bail if an
+  // activation still slips in after the lift.
+  const fingerDown = useSharedValue(false);
+  const panActivated = useSharedValue(false);
   // Where the crosshair line should start (canvas Y) so it stops at a top-pinned
   // custom tooltip instead of running through it. -1 = no top tooltip → the line
   // starts at padding.top. Written by CustomTooltipOverlay, read by CrosshairOverlay.
@@ -498,6 +507,29 @@ export function useCrosshair(
     .activateAfterLongPress(longPressMs)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
+    .onTouchesDown(
+      /* istanbul ignore next */ () => {
+        "worklet";
+        fingerDown.set(true);
+      },
+    )
+    .onTouchesUp(
+      /* istanbul ignore next */ (e, manager) => {
+        "worklet";
+        if (e.numberOfTouches > 0) return;
+        fingerDown.set(false);
+        // Last finger up while the pan is still pending (long-press timer not
+        // fired): fail it now so a timer landing after this UP can't activate
+        // a gesture that will never receive an END.
+        if (!panActivated.get()) manager.fail();
+      },
+    )
+    .onTouchesCancelled(
+      /* istanbul ignore next */ () => {
+        "worklet";
+        fingerDown.set(false);
+      },
+    )
     // Start scrubbing on ACTIVE (onStart), not on touch-down (onBegin):
     // `activateAfterLongPress` only delays activation, so onBegin still fires
     // immediately — using it would scrub instantly and ignore panGestureDelay,
@@ -505,7 +537,11 @@ export function useCrosshair(
     .onStart(
       /* istanbul ignore next */ (e) => {
         "worklet";
+        panActivated.set(true);
         if (!enabled) return;
+        // Activation raced a lift (see fingerDown above): don't engage — there
+        // is no finger to scrub with and no END coming to clean up.
+        if (!fingerDown.get()) return;
         // Scrub-action: once a reticle is placed, drag adjusts it (2D — the Y is
         // the price). The ephemeral live-scrub never engages, so scrubActive
         // stays false and the live crosshair hides itself.
@@ -569,6 +605,8 @@ export function useCrosshair(
     .onFinalize(
       /* istanbul ignore next */ () => {
         "worklet";
+        panActivated.set(false);
+        fingerDown.set(false);
         // A lock-adjust drag leaves the reticle in place (scrubActive was never
         // set); a live-scrub clears its crosshair. Always clear scrubActive so a
         // stray scrub can never linger behind a placed reticle.
