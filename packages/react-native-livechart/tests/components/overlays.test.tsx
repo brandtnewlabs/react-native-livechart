@@ -15,7 +15,10 @@ import type { TooltipLayout } from "../../src/hooks/crosshairShared";
 import type { SelectionDotProps } from "../../src/types";
 import { ValueLineOverlay } from "../../src/components/ValueLineOverlay";
 import { XAxisOverlay } from "../../src/components/XAxisOverlay";
-import { YAxisOverlay } from "../../src/components/YAxisOverlay";
+import {
+  YAxisOverlay,
+  yAxisLabelIntersectsBadge,
+} from "../../src/components/YAxisOverlay";
 import { render } from "@testing-library/react-native";
 import {
   resolvePulse,
@@ -108,6 +111,11 @@ describe("BadgeOverlay", () => {
 });
 
 describe("YAxisOverlay", () => {
+  it("detects vertical overlap with the live badge pill", () => {
+    expect(yAxisLabelIntersectsBadge(100, 12, 100, 18)).toBe(true);
+    expect(yAxisLabelIntersectsBadge(100, 12, 116, 18)).toBe(false);
+  });
+
   it("renders grid lines and labels", () => {
     function Fixture() {
       const entries = useSharedValue([{ y: 40, label: "10", alpha: 1 }]);
@@ -118,6 +126,27 @@ describe("YAxisOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+        />
+      );
+    }
+    render(<Fixture />);
+  });
+
+  it("renders with live-badge collision suppression enabled", () => {
+    function Fixture() {
+      const entries = useSharedValue([{ y: 40, label: "10", alpha: 1 }]);
+      const badgeCenterY = useSharedValue(40);
+      return (
+        <YAxisOverlay
+          entries={entries}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          badge
+          badgeCenterY={badgeCenterY}
+          badgeFontSize={12}
+          badgeOffsetY={2}
         />
       );
     }

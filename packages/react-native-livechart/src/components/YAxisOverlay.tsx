@@ -24,6 +24,22 @@ import { AnimatedLabel } from "./AnimatedLabel";
 /** Right margin (px) for floating labels — keeps them just off the canvas edge. */
 const FLOAT_LABEL_RIGHT_MARGIN = 6;
 
+/** Returns true when a Y-axis label's line box intersects the live badge pill. */
+export function yAxisLabelIntersectsBadge(
+  labelCenterY: number,
+  labelHeight: number,
+  badgeCenterY: number,
+  badgeHeight: number,
+) {
+  "worklet";
+  const labelHalfHeight = labelHeight / 2;
+  const badgeHalfHeight = badgeHeight / 2;
+  return (
+    labelCenterY + labelHalfHeight > badgeCenterY - badgeHalfHeight &&
+    labelCenterY - labelHalfHeight < badgeCenterY + badgeHalfHeight
+  );
+}
+
 export function YAxisOverlay({
   entries,
   engine,
@@ -33,6 +49,9 @@ export function YAxisOverlay({
   badge = false,
   badgeTail = true,
   badgeMetrics = BADGE_METRICS_DEFAULTS,
+  badgeCenterY,
+  badgeFontSize,
+  badgeOffsetY = 0,
   seriesLabelInset = 0,
   gridStyle,
   variant = "all",
@@ -49,6 +68,12 @@ export function YAxisOverlay({
   badgeTail?: boolean;
   /** Badge pill geometry tokens (kept in sync with useBadge). */
   badgeMetrics?: BadgeMetrics;
+  /** Live badge center before its configured Y offset. Enables label collision suppression. */
+  badgeCenterY?: SharedValue<number>;
+  /** Live badge font size, used to reconstruct the pill's vertical bounds. */
+  badgeFontSize?: number;
+  /** Configured live badge Y offset. */
+  badgeOffsetY?: number;
   /** When > 0, series labels occupy the left portion of the gutter; Y-axis labels right-align. */
   seriesLabelInset?: number;
   /** Grid-line styling overrides. Omit for the legacy solid 1px line. */
@@ -92,6 +117,14 @@ export function YAxisOverlay({
     const w = engine.canvasWidth.get();
     const fm = font.getMetrics();
     const baselineOffset = (fm.ascent + fm.descent) / 2;
+    const labelHeight = fm.descent - fm.ascent;
+    const resolvedBadgeCenterY = badgeCenterY
+      ? badgeCenterY.get() + badgeOffsetY
+      : null;
+    const badgeHeight =
+      badgeFontSize === undefined
+        ? 0
+        : badgeFontSize + badgeMetrics.padY * 2;
     const result: { x: number; y: number; label: string; alpha: number }[] = [];
     for (let i = 0; i < items.length; i++) {
       const e = items[i];
@@ -107,7 +140,16 @@ export function YAxisOverlay({
         x,
         y: e.y - baselineOffset,
         label: e.label,
-        alpha: e.alpha,
+        alpha:
+          resolvedBadgeCenterY !== null &&
+          yAxisLabelIntersectsBadge(
+            e.y,
+            labelHeight,
+            resolvedBadgeCenterY,
+            badgeHeight,
+          )
+            ? 0
+            : e.alpha,
       });
     }
     return result;
