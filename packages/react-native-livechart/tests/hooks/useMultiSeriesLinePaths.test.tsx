@@ -37,7 +37,7 @@ describe("useMultiSeriesLinePaths", () => {
       const padding = { top: 12, right: 44, bottom: 28, left: 12 };
       return useMultiSeriesLinePaths(engine, padding);
     });
-    expect(result.current.value.length).toBeGreaterThan(0);
+    expect(result.current.value).toHaveLength(1);
   });
 
   it("builds a straight-polyline path for a series with curve: \"linear\"", () => {

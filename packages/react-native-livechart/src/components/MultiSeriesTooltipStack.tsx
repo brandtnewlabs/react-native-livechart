@@ -4,11 +4,13 @@ import {
   type SkFont,
 } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import { MAX_MULTI_SERIES } from "../constants";
 import type { TooltipLayout } from "../hooks/crosshairShared";
 import type { LiveChartPalette } from "../types";
 
-const TOOLTIP_STACK_SLOTS = MAX_MULTI_SERIES + 1;
+// Candle tooltips have exactly O/H/L/C + time. This component is only mounted
+// for candle mode, so reserving the multi-series capacity registered 40 unused
+// derived-value mappers (8 empty rows × 5 mappers).
+const TOOLTIP_STACK_SLOTS = 5;
 
 function TooltipStackLine({
   index,

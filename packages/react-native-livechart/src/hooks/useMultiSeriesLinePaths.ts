@@ -8,18 +8,19 @@ import { drawSpline, makeSplineScratch } from "../math/spline";
 import { usePathBuilders } from "./usePathBuilder";
 
 /**
- * One derived shared value holding up to `MAX_MULTI_SERIES` Skia paths (unused
- * slots reuse one cached empty path).
+ * One derived shared value holding only the active series' Skia paths, capped at
+ * `MAX_MULTI_SERIES`.
  *
  * Each visible series' path is built into a per-slot `Skia.PathBuilder` (reused
  * across frames via a SharedValue) and finalized with `detach()` — a fresh
  * immutable `SkPath` per frame, so `MultiSeriesStroke`'s per-slot
  * `useDerivedValue(() => paths.value[index])` repaints without the two-SkPath
- * ping-pong. Only visible series allocate a path.
+ * ping-pong. Only active series allocate and publish a path.
  */
 export function useMultiSeriesLinePaths(
   engine: MultiEngineState,
   padding: ChartPadding,
+  activeSeriesCount = MAX_MULTI_SERIES,
 ): SharedValue<SkPath[]> {
   const builders = usePathBuilders(MAX_MULTI_SERIES);
 
@@ -42,11 +43,8 @@ export function useMultiSeriesLinePaths(
     const s = engine.series.get();
     const displays = engine.displaySeriesValues.get();
     const out: SkPath[] = [];
-    for (let i = 0; i < MAX_MULTI_SERIES; i++) {
-      if (i >= s.length) {
-        out.push(pool.empty);
-        continue;
-      }
+    const count = Math.min(activeSeriesCount, s.length, MAX_MULTI_SERIES);
+    for (let i = 0; i < count; i++) {
       const pts = buildLinePoints(
         s[i].data,
         displays[i] ?? s[i].value,

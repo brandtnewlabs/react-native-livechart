@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Multi-series drawing worklets now scale with the active series count.**
+  Stroke, dot, live-value label, and optional value-line slots no longer mount
+  the fixed 12-series capacity. A three-series chart registers 36 default
+  per-series derived-value mappers instead of 144. Candle tooltips likewise
+  reserve their five actual rows instead of 13. ([#214](https://github.com/brandtnewlabs/react-native-livechart/issues/214))
+
 ## [4.10.0] - 2026-07-16
 
 ### Added

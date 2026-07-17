@@ -1,7 +1,6 @@
 import { Circle, Group } from "@shopify/react-native-skia";
 
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import { MAX_MULTI_SERIES } from "../constants";
 import type { ChartPadding } from "../draw/line";
 import type {
   ResolvedDotRingConfig,
@@ -118,6 +117,7 @@ export function MultiSeriesDots({
   color,
   pulse,
   viewEnd,
+  seriesCount,
 }: {
   engine: MultiEngineState;
   padding: ChartPadding;
@@ -132,10 +132,12 @@ export function MultiSeriesDots({
   pulse: ResolvedPulseConfig | null;
   /** Pan/zoom right-edge override — pulse is frozen-out while scrolled back. */
   viewEnd?: SharedValue<number | null>;
+  /** Number of live series slots to mount. */
+  seriesCount: number;
 }) {
   return (
     <Group>
-      {Array.from({ length: MAX_MULTI_SERIES }, (_, i) => (
+      {Array.from({ length: seriesCount }, (_, i) => (
         <SeriesDotAtIndex
           key={i}
           index={i}
