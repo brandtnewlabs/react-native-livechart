@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
 import {
   applyLiveChartEngineFrame,
+  makeEngineFrameScratch,
   type EngineFrameRefs,
   useLiveChartEngine,
 } from "../src/core/useLiveChartEngine";
@@ -33,10 +34,23 @@ describe("applyLiveChartEngineFrame", () => {
       extremaMinTime: { value: NaN },
       extremaMaxTime: { value: NaN },
     };
+    const scratch = makeEngineFrameScratch();
+    const stateIdentity = scratch.state;
+    const inputIdentity = scratch.input;
     applyLiveChartEngineFrame(
       { timeSincePreviousFrame: 16.67 },
       sv as unknown as EngineFrameRefs,
+      scratch,
     );
+    applyLiveChartEngineFrame(
+      { timeSincePreviousFrame: 17 },
+      sv as unknown as EngineFrameRefs,
+      scratch,
+    );
+    expect(scratch.state).toBe(stateIdentity);
+    expect(scratch.input).toBe(inputIdentity);
+    expect(scratch.input.dt).toBe(17);
+    expect(scratch.input.points).toBe(sv.data.value);
     expect(sv.displayValue.value).not.toBe(0);
     // The data point's value + time become the live extrema.
     expect(sv.extremaMinValue.value).toBe(10);

@@ -26,12 +26,18 @@ export function useMultiSeriesLinePaths(
   const poolRef = useRef<{
     empty: SkPath;
     ptsBuf: number[];
+    pathsA: SkPath[];
+    pathsB: SkPath[];
+    pathsTick: boolean;
     scratch: ReturnType<typeof makeSplineScratch>;
   } | null>(null);
   if (poolRef.current === null) {
     poolRef.current = {
       empty: Skia.Path.Make(),
       ptsBuf: [] as number[],
+      pathsA: [] as SkPath[],
+      pathsB: [] as SkPath[],
+      pathsTick: false,
       scratch: makeSplineScratch(),
     };
   }
@@ -41,7 +47,9 @@ export function useMultiSeriesLinePaths(
     const slots = builders.value;
     const s = engine.series.get();
     const displays = engine.displaySeriesValues.get();
-    const out: SkPath[] = [];
+    pool.pathsTick = !pool.pathsTick;
+    const out = pool.pathsTick ? pool.pathsA : pool.pathsB;
+    out.length = 0;
     for (let i = 0; i < MAX_MULTI_SERIES; i++) {
       if (i >= s.length) {
         out.push(pool.empty);

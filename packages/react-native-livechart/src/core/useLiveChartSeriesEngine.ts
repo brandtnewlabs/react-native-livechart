@@ -11,7 +11,11 @@ import {
 } from "react-native-reanimated";
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type { LiveChartPoint, SeriesConfig } from "../types";
-import { tickLiveChartSeriesEngineFrame } from "./liveChartSeriesEngineTick";
+import {
+  tickLiveChartSeriesEngineFrame,
+  type MultiEngineTickInput,
+  type MultiEngineTickMutable,
+} from "./liveChartSeriesEngineTick";
 import type { ChartEngineScroll, MultiEngineState } from "./useLiveChartEngine";
 
 export interface MultiSeriesEngineConfig {
@@ -94,10 +98,10 @@ export interface MultiEngineFrameRefs {
 }
 
 /**
- * Reusable per-frame scratch for {@link applyLiveChartSeriesEngineFrame}. The two
+ * Reusable per-frame scratch for {@link applyLiveChartSeriesEngineFrame}. The
  * output arrays ping-pong so the assigned reference still changes each frame
- * (Reanimated propagates on reference change) without allocating a fresh array
- * per frame. Create one per engine (the React Compiler keeps it stable).
+ * (Reanimated propagates on reference change), while the state/input containers
+ * are mutated in place. Create one per engine.
  */
 export interface MultiSeriesEngineScratch {
   dvA: number[];
@@ -105,6 +109,46 @@ export interface MultiSeriesEngineScratch {
   opA: number[];
   opB: number[];
   tick: boolean;
+  state: MultiEngineTickMutable;
+  input: MultiEngineTickInput;
+}
+
+/** Allocate one multi-series frame scratch. Call once per engine instance. */
+export function makeMultiSeriesEngineScratch(): MultiSeriesEngineScratch {
+  const dvA: number[] = [];
+  const dvB: number[] = [];
+  const opA: number[] = [];
+  const opB: number[] = [];
+  return {
+    dvA,
+    dvB,
+    opA,
+    opB,
+    tick: false,
+    state: {
+      displayMin: 0,
+      displayMax: 1,
+      displayWindow: 0,
+      timestamp: 0,
+      liveEdge: 0,
+      displayValues: dvA,
+      opacities: opA,
+      extremaMinValue: NaN,
+      extremaMaxValue: NaN,
+      extremaMinTime: NaN,
+      extremaMaxTime: NaN,
+    },
+    input: {
+      dt: MS_PER_FRAME_60FPS,
+      canvasWidth: 0,
+      canvasHeight: 0,
+      timeWindow: 0,
+      smoothing: 0,
+      exaggerate: false,
+      referenceValue: undefined,
+      series: [],
+    },
+  };
 }
 
 /**
@@ -113,8 +157,8 @@ export interface MultiSeriesEngineScratch {
  * to lerp per-series display values and opacities. Extracted as a
  * pure function so it can be called from both `useFrameCallback` and tests.
  *
- * Pass `scratch` to reuse the output arrays across frames instead of allocating
- * two via `.slice()` each frame; omit it (tests) to fall back to allocation.
+ * Pass `scratch` to reuse the output arrays plus state/input containers across
+ * frames; omit it (tests) to retain the standalone allocation fallback.
  */
 export function applyLiveChartSeriesEngineFrame(
   frameInfo: { timeSincePreviousFrame?: number | null },
@@ -143,42 +187,63 @@ export function applyLiveChartSeriesEngineFrame(
     displayValues = curDv.slice();
     opacities = curOp.slice();
   }
-  const state = {
-    displayMin: sv.displayMin.value,
-    displayMax: sv.displayMax.value,
-    displayWindow: sv.displayWindow.value,
-    timestamp: sv.timestamp.value,
-    liveEdge: sv.liveEdgeSV?.value ?? 0,
+  const state: MultiEngineTickMutable = scratch?.state ?? {
+    displayMin: 0,
+    displayMax: 1,
+    displayWindow: 0,
+    timestamp: 0,
+    liveEdge: 0,
     displayValues,
     opacities,
-    extremaMinValue: sv.extremaMinValue.value,
-    extremaMaxValue: sv.extremaMaxValue.value,
-    extremaMinTime: sv.extremaMinTime.value,
-    extremaMaxTime: sv.extremaMaxTime.value,
+    extremaMinValue: NaN,
+    extremaMaxValue: NaN,
+    extremaMinTime: NaN,
+    extremaMaxTime: NaN,
   };
-  tickLiveChartSeriesEngineFrame(state, {
+  state.displayMin = sv.displayMin.value;
+  state.displayMax = sv.displayMax.value;
+  state.displayWindow = sv.displayWindow.value;
+  state.timestamp = sv.timestamp.value;
+  state.liveEdge = sv.liveEdgeSV?.value ?? 0;
+  state.displayValues = displayValues;
+  state.opacities = opacities;
+  state.extremaMinValue = sv.extremaMinValue.value;
+  state.extremaMaxValue = sv.extremaMaxValue.value;
+  state.extremaMinTime = sv.extremaMinTime.value;
+  state.extremaMaxTime = sv.extremaMaxTime.value;
+
+  const input: MultiEngineTickInput = scratch?.input ?? {
     dt,
-    canvasWidth: sv.canvasWidth.value,
-    canvasHeight: sv.canvasHeight.value,
-    timeWindow: sv.timeWindow.value,
-    smoothing: sv.smoothing.value,
-    adaptiveSpeedBoost: sv.adaptiveSpeedBoostSV?.value,
-    exaggerate: sv.exaggerateSV.value,
-    referenceValue: sv.referenceValue.value,
-    referenceValues: sv.referenceValues?.value,
-    nonNegative: sv.nonNegativeSV?.value ?? false,
-    maxValue: sv.maxValueSV?.value,
-    nowOverride: sv.nowOverrideSV?.value,
-    windowBuffer: sv.windowBufferSV?.value ?? 0,
+    canvasWidth: 0,
+    canvasHeight: 0,
+    timeWindow: 0,
+    smoothing: 0,
+    exaggerate: false,
+    referenceValue: undefined,
     series: seriesSnap,
-    nowSeconds: Date.now() / 1000,
-    paused: sv.pausedSV.value,
-    snap,
-    viewEnd: sv.viewEndSV?.value,
-    returnT: sv.returnTSV?.value,
-    returnFrom: sv.returnFromSV?.value,
-    viewWindow: sv.viewWindowSV?.value,
-  });
+  };
+  input.dt = dt;
+  input.canvasWidth = sv.canvasWidth.value;
+  input.canvasHeight = sv.canvasHeight.value;
+  input.timeWindow = sv.timeWindow.value;
+  input.smoothing = sv.smoothing.value;
+  input.adaptiveSpeedBoost = sv.adaptiveSpeedBoostSV?.value;
+  input.exaggerate = sv.exaggerateSV.value;
+  input.referenceValue = sv.referenceValue.value;
+  input.referenceValues = sv.referenceValues?.value;
+  input.nonNegative = sv.nonNegativeSV?.value ?? false;
+  input.maxValue = sv.maxValueSV?.value;
+  input.nowOverride = sv.nowOverrideSV?.value;
+  input.windowBuffer = sv.windowBufferSV?.value ?? 0;
+  input.series = seriesSnap;
+  input.nowSeconds = Date.now() / 1000;
+  input.paused = sv.pausedSV.value;
+  input.snap = snap;
+  input.viewEnd = sv.viewEndSV?.value;
+  input.returnT = sv.returnTSV?.value;
+  input.returnFrom = sv.returnFromSV?.value;
+  input.viewWindow = sv.viewWindowSV?.value;
+  tickLiveChartSeriesEngineFrame(state, input);
   sv.displayMin.value = state.displayMin;
   sv.displayMax.value = state.displayMax;
   sv.displayWindow.value = state.displayWindow;
@@ -272,46 +337,48 @@ export function useLiveChartSeriesEngine(
   // Reused per-frame output buffers (ping-ponged) — see applyLiveChartSeriesEngineFrame.
   const scratchRef = useRef<MultiSeriesEngineScratch | null>(null);
   if (scratchRef.current === null) {
-    scratchRef.current = { dvA: [], dvB: [], opA: [], opB: [], tick: false };
+    scratchRef.current = makeMultiSeriesEngineScratch();
   }
+
+  const frameRefs: MultiEngineFrameRefs = {
+    series,
+    displaySeriesValues,
+    seriesOpacities,
+    displayMin,
+    displayMax,
+    displayWindow,
+    timestamp,
+    canvasWidth,
+    canvasHeight,
+    timeWindow,
+    smoothing,
+    adaptiveSpeedBoostSV,
+    exaggerateSV,
+    referenceValue,
+    referenceValues,
+    nonNegativeSV,
+    maxValueSV,
+    nowOverrideSV,
+    windowBufferSV,
+    pausedSV,
+    viewEndSV: viewEnd,
+    returnTSV: returnT,
+    returnFromSV: returnFrom,
+    viewWindowSV: viewWindow,
+    liveEdgeSV: liveEdge,
+    snapSV,
+    extremaMinValue,
+    extremaMaxValue,
+    extremaMinTime,
+    extremaMaxTime,
+  };
 
   useFrameCallback((frameInfo) => {
     "worklet";
     const scratch = scratchRef.current!;
     applyLiveChartSeriesEngineFrame(
       frameInfo,
-      {
-        series,
-        displaySeriesValues,
-        seriesOpacities,
-        displayMin,
-        displayMax,
-        displayWindow,
-        timestamp,
-        canvasWidth,
-        canvasHeight,
-        timeWindow,
-        smoothing,
-        adaptiveSpeedBoostSV,
-        exaggerateSV,
-        referenceValue,
-        referenceValues,
-        nonNegativeSV,
-        maxValueSV,
-        nowOverrideSV,
-        windowBufferSV,
-        pausedSV,
-        viewEndSV: viewEnd,
-        returnTSV: returnT,
-        returnFromSV: returnFrom,
-        viewWindowSV: viewWindow,
-        liveEdgeSV: liveEdge,
-        snapSV,
-        extremaMinValue,
-        extremaMaxValue,
-        extremaMinTime,
-        extremaMaxTime,
-      },
+      frameRefs,
       scratch,
     );
   });

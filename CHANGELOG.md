@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Loading, reveal, engine, multi-series path, marker Atlas, and degen Atlas
+  frame loops now reuse JavaScript scratch containers.** Published arrays
+  ping-pong to preserve Reanimated/Skia invalidation, while immutable paths and
+  dynamic transform/color host values retain their safe ownership model.
+  ([#211](https://github.com/brandtnewlabs/react-native-livechart/issues/211))
+
 ## [4.10.0] - 2026-07-16
 
 ### Added
