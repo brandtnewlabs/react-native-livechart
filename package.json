@@ -23,6 +23,7 @@
     "verify": "npm run typecheck && npm run lint && npm test",
     "verify:coverage": "npm run typecheck && npm run lint && npm run test:coverage",
     "prepare": "husky",
+    "postinstall": "patch-package",
     "doctor": "npx react-doctor@latest",
     "docs": "cd docs && npx mint@latest dev"
   },
@@ -66,6 +67,7 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~57.0.0",
     "husky": "^9.1.7",
+    "patch-package": "^8.0.1",
     "react-doctor": "^0.2.16",
     "react-test-renderer": "19.2.3",
     "typescript": "~6.0.3"

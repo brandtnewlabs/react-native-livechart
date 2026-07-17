@@ -28,6 +28,13 @@ original `EXPO_PUBLIC_MEMORY_PROFILE_MODE=static|live` switch remains available
 as a compatibility override. The ordinary demo index is unchanged when neither
 variable is present.
 
+Set `WORKLETS_BUNDLE_MODE=1` at build time to enable Worklets 0.10 Bundle Mode
+in both Babel and Metro. Omit it (or set it to `0`) for the legacy eval mode.
+The Metro cache key includes this selector so sequential A/B builds cannot reuse
+transforms from the other mode. `npm install` applies the official Worklets 0.10
+patches for Metro 0.84.4 and `metro-runtime`; these are required for generated
+worklet-module indexing and Bundle Mode Fast Refresh.
+
 ## Renderer experiment matrix
 
 `profiling/live-renderer-matrix.json` is the source of truth for controlled
@@ -64,11 +71,61 @@ python3 scripts/run_ios_renderer_matrix.py \
   --run live-linear-sharp
 ```
 
+Compare legacy eval and Bundle Mode with identical phases and renderer inputs:
+
+```sh
+python3 scripts/run_ios_renderer_matrix.py \
+  --device Trooper --udid DEVICE_UDID \
+  --capture both \
+  --run static-control \
+  --worklets-mode legacy \
+  --worklets-mode bundle
+```
+
+The mode is included in every trace, XML, and summary filename. Bundle Mode is
+application-level configuration; published library consumers must configure
+their own Babel and Metro setup. See the official
+[Worklets Bundle Mode setup](https://docs.swmansion.com/react-native-worklets/docs/bundleMode/setup/).
+
 The runner builds a Release bundle for each selection, records the same 65-second
 timeline, exports Activity Monitor XML, and writes one Markdown phase summary
 beside each trace. It refuses to overwrite traces unless `--force` is supplied.
 Metro's transform cache is keyed by the selected run, mode, and cadence so a
 sequential matrix cannot silently reuse the previous run's inlined environment.
+
+## Bundle Mode simulator screen
+
+The initial compatibility screen used Release builds of `static-control` on an
+iPhone 17 simulator (iOS 26.5). It is an A/B/A process-RSS comparison: each app
+was terminated, launched from its embedded bundle, sampled once per second for
+the fixed 60-second route, and rebuilt whenever the Worklets mode changed.
+Means exclude each phase's warm-up samples.
+
+| Build | Baseline mean | Mounted mean | Unmounted mean | Mount delta |
+| --- | ---: | ---: | ---: | ---: |
+| Legacy A1 | 610.67 MiB | 744.88 MiB | 747.07 MiB | 134.21 MiB |
+| Bundle Mode | 529.14 MiB | 552.95 MiB | 554.63 MiB | 23.81 MiB |
+| Legacy A2 | 610.61 MiB | 744.69 MiB | 746.85 MiB | 134.08 MiB |
+
+The two legacy passes agree within 0.2 MiB. Against their mean, Bundle Mode used
+25.8% less RSS while the chart was mounted and reduced the incremental mount
+delta by 82.3% (134.14 MiB to 23.81 MiB). This is a simulator screening result,
+not a physical-device performance claim. It supports continuing the experiment
+but does not replace the physical iOS/Android Activity Monitor, PSS/native-heap,
+startup, CPU, and frame-time measurements required before recommending Bundle
+Mode as the example-app default.
+
+A single clean `expo export --platform ios --clear` per mode produced the
+following build artifacts:
+
+| Build | Metro modules | Hermes bytecode | Export wall time | Bundler max RSS |
+| --- | ---: | ---: | ---: | ---: |
+| Legacy | 2,089 | 5,648,356 B | 10.57 s | 3,154,755,584 B |
+| Bundle Mode | 3,410 | 5,676,999 B | 10.33 s | 2,958,934,016 B |
+
+Bundle Mode added 1,324 generated worklet modules and increased final Hermes
+bytecode by 28,643 bytes (0.51%). The wall-time and bundler-RSS figures are
+single-run diagnostics and should not be treated as benchmark conclusions.
 
 ## Physical footprint
 

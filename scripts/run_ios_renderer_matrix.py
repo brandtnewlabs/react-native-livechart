@@ -72,9 +72,12 @@ def select_runs(
     return [by_id[run_id] for run_id in selected_ids]
 
 
-def trace_path(output_dir: Path, run_id: str, template: str) -> Path:
+def trace_path(
+    output_dir: Path, run_id: str, template: str, worklets_mode: str | None
+) -> Path:
     suffix = "activity" if template == "Activity Monitor" else "allocations"
-    return output_dir / f"{run_id}.{suffix}.trace"
+    mode_suffix = f".{worklets_mode}" if worklets_mode else ""
+    return output_dir / f"{run_id}{mode_suffix}.{suffix}.trace"
 
 
 def remove_output(path: Path) -> None:
@@ -90,10 +93,16 @@ def capture_run(
     run: dict[str, Any],
     *,
     args: argparse.Namespace,
+    worklets_mode: str | None,
 ) -> None:
     run_id = run["id"]
     profile_env = {"EXPO_PUBLIC_MEMORY_PROFILE_RUN": run_id}
-    print(f"\n## {run_id}: {run['description']}", flush=True)
+    if worklets_mode:
+        profile_env["WORKLETS_BUNDLE_MODE"] = (
+            "1" if worklets_mode == "bundle" else "0"
+        )
+    mode_label = f" [{worklets_mode}]" if worklets_mode else ""
+    print(f"\n## {run_id}{mode_label}: {run['description']}", flush=True)
 
     if not args.skip_build:
         run_command(
@@ -118,7 +127,7 @@ def capture_run(
         templates.append("Allocations")
 
     for template in templates:
-        trace = trace_path(args.output_dir, run_id, template)
+        trace = trace_path(args.output_dir, run_id, template, worklets_mode)
         if trace.exists() and not args.force and not args.dry_run:
             raise FileExistsError(f"refusing to overwrite existing trace: {trace}")
         if trace.exists() and args.force and not args.dry_run:
@@ -144,8 +153,9 @@ def capture_run(
 
         if template != "Activity Monitor":
             continue
-        xml = args.output_dir / f"{run_id}.activity.xml"
-        summary = args.output_dir / f"{run_id}.activity.md"
+        mode_suffix = f".{worklets_mode}" if worklets_mode else ""
+        xml = args.output_dir / f"{run_id}{mode_suffix}.activity.xml"
+        summary = args.output_dir / f"{run_id}{mode_suffix}.activity.md"
         if args.force and not args.dry_run:
             remove_output(xml)
             remove_output(summary)
@@ -198,6 +208,16 @@ def main() -> None:
         default=Path("/tmp/livechart-renderer-matrix"),
     )
     parser.add_argument("--skip-build", action="store_true")
+    parser.add_argument(
+        "--worklets-mode",
+        action="append",
+        choices=("legacy", "bundle"),
+        default=[],
+        help=(
+            "Worklets runtime mode; repeat with legacy and bundle for an A/B "
+            "capture. Omit to preserve the historical runner behavior."
+        ),
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--list", action="store_true")
@@ -212,12 +232,16 @@ def main() -> None:
         parser.error("--udid is required unless --list is used")
 
     selected = select_runs(runs, args.run)
-    if args.skip_build and len(selected) != 1:
-        parser.error("--skip-build requires exactly one --run selection")
+    worklets_modes: list[str | None] = args.worklets_mode or [None]
+    if args.skip_build and (len(selected) != 1 or len(worklets_modes) != 1):
+        parser.error(
+            "--skip-build requires exactly one --run and one Worklets mode"
+        )
     if not args.dry_run:
         args.output_dir.mkdir(parents=True, exist_ok=True)
-    for run in selected:
-        capture_run(run, args=args)
+    for worklets_mode in worklets_modes:
+        for run in selected:
+            capture_run(run, args=args, worklets_mode=worklets_mode)
 
 
 if __name__ == "__main__":

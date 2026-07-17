@@ -1,5 +1,6 @@
 // @ts-check
 const { getDefaultConfig } = require("expo/metro-config");
+const { getBundleModeMetroConfig } = require("react-native-worklets/bundleMode");
 const path = require("path");
 
 const projectRoot = __dirname;
@@ -13,6 +14,7 @@ const livechartRoot = path.resolve(
 );
 
 const config = getDefaultConfig(projectRoot);
+const bundleMode = process.env.WORKLETS_BUNDLE_MODE === "1";
 // Expo inlines EXPO_PUBLIC_* values during transformation, but Metro's default
 // cache key does not include those values. Profiling builds run sequentially with
 // different matrix selections, so give each selection its own transform cache;
@@ -21,11 +23,16 @@ const rendererProfileCacheKey = [
   process.env.EXPO_PUBLIC_MEMORY_PROFILE_RUN ?? "default",
   process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE ?? "default",
   process.env.EXPO_PUBLIC_MEMORY_PROFILE_CADENCE ?? "default",
+  bundleMode ? "worklets-bundle" : "worklets-legacy",
 ].join(":");
 
 // Metro types mark `watchFolders` readonly — merge a new object instead of mutating.
-module.exports = {
+const livechartConfig = {
   ...config,
   cacheVersion: `${config.cacheVersion ?? "1"}:renderer-profile:${rendererProfileCacheKey}`,
   watchFolders: [...(config.watchFolders ?? []), livechartRoot],
 };
+
+module.exports = bundleMode
+  ? getBundleModeMetroConfig(livechartConfig)
+  : livechartConfig;

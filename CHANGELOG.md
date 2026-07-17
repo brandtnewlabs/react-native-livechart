@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The example and iOS profiling harness can compare Worklets legacy eval and
+  Bundle Mode builds.** Set `WORKLETS_BUNDLE_MODE=1` to apply matching Babel and
+  Metro configuration; the renderer-matrix runner accepts repeatable
+  `--worklets-mode legacy|bundle` selectors for controlled memory captures.
+  ([#212](https://github.com/brandtnewlabs/react-native-livechart/issues/212))
+
 ## [4.10.0] - 2026-07-16
 
 ### Added
