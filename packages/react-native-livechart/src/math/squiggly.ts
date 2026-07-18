@@ -31,6 +31,7 @@ export function squigglyYAt(
  * Build a flat [x0,y0,x1,y1,...] point array for a standalone squiggly line
  * spanning the full chart area (used in loading / empty state).
  * Points are spaced ~4px apart for smooth curves.
+ * Pass `out` to reuse a caller-owned frame scratch.
  */
 export function buildSquigglyPts(
   canvasWidth: number,
@@ -39,17 +40,22 @@ export function buildSquigglyPts(
   t: number,
   base = 14,
   speed = 1,
+  out?: number[],
 ): number[] {
   "worklet";
+  const pts = out ?? [];
   const leftEdge = padding.left;
   const rightEdge = canvasWidth - padding.right;
   const chartW = rightEdge - leftEdge;
-  if (chartW <= 0 || canvasHeight <= 0) return [];
+  if (chartW <= 0 || canvasHeight <= 0) {
+    pts.length = 0;
+    return pts;
+  }
 
   const centerY = (canvasHeight - padding.bottom + padding.top) / 2;
   const step = 4;
   const count = Math.ceil(chartW / step) + 1;
-  const pts: number[] = new Array(count * 2);
+  pts.length = count * 2;
   for (let i = 0; i < count; i++) {
     const x = leftEdge + Math.min(i * step, chartW);
     pts[i * 2] = x;
@@ -61,6 +67,7 @@ export function buildSquigglyPts(
 /**
  * Given a real flat-pts array (from buildLinePoints), replace each Y with the
  * squiggly Y at the same X. Used during the morph reveal.
+ * Pass `out` to reuse a caller-owned frame scratch.
  */
 export function squigglifyPts(
   flatPts: number[],
@@ -68,15 +75,17 @@ export function squigglifyPts(
   centerY: number,
   base = 14,
   speed = 1,
+  out?: number[],
 ): number[] {
   "worklet";
   const n = flatPts.length;
-  const out: number[] = new Array(n);
+  const target = out ?? [];
+  target.length = n;
   for (let i = 0; i < n; i += 2) {
-    out[i] = flatPts[i];
-    out[i + 1] = squigglyYAt(flatPts[i], centerY, t, base, speed);
+    target[i] = flatPts[i];
+    target[i + 1] = squigglyYAt(flatPts[i], centerY, t, base, speed);
   }
-  return out;
+  return target;
 }
 
 /**
@@ -97,6 +106,7 @@ export function smoothstep(t: number): number {
  *   distFromCentre = |x - chartCentreX| / (chartW / 2)   // 0=centre, 1=edge
  *   weight = smoothstep((morphT - distFromCentre * 0.5) / 0.5)
  *   blendedY = fromY + (toY - fromY) * weight
+ * Pass `out` to reuse a caller-owned frame scratch.
  */
 export function blendPtsY(
   from: number[],
@@ -104,19 +114,26 @@ export function blendPtsY(
   morphT: number,
   padding: ChartPadding,
   canvasWidth: number,
+  out?: number[],
 ): number[] {
   "worklet";
   const n = from.length;
-  if (n === 0) return to;
+  if (n === 0 && !out) return to;
   const chartCentreX = (padding.left + canvasWidth - padding.right) / 2;
   const halfChartW = (canvasWidth - padding.left - padding.right) / 2;
-  const out: number[] = new Array(n);
+  const target = out ?? [];
+  const outputLength = n === 0 ? to.length : n;
+  target.length = outputLength;
+  if (n === 0) {
+    for (let i = 0; i < to.length; i++) target[i] = to[i];
+    return target;
+  }
   for (let i = 0; i < n; i += 2) {
-    out[i] = to[i]; // X always from real pts
+    target[i] = to[i]; // X always from real pts
     const distFromCentre =
       halfChartW > 0 ? Math.abs(from[i] - chartCentreX) / halfChartW : 0;
     const weight = smoothstep((morphT - distFromCentre * 0.5) / 0.5);
-    out[i + 1] = from[i + 1] + (to[i + 1] - from[i + 1]) * weight;
+    target[i + 1] = from[i + 1] + (to[i + 1] - from[i + 1]) * weight;
   }
-  return out;
+  return target;
 }

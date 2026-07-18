@@ -187,6 +187,41 @@ For context, reducing optional and duplicate chart worklets lowered the retained
 to 173.00 MiB (692 regions). It also reduced the original 144 KiB allocation
 volume from 81.14 MiB (577 allocations) to 1.83 MiB (13 allocations).
 
+## JavaScript frame-allocation pooling
+
+A follow-up source inventory isolated the remaining deterministic JavaScript
+containers created at frame cadence. Focused identity tests drive the reusable
+math, particle, and engine helpers repeatedly; the existing loading, reveal,
+multi-series, and marker-variant component suites cover the integration paths.
+Together they verify that caller-owned buffers are reused, truncated when inputs
+shrink, and ping-ponged whenever a new SharedValue reference is required for
+invalidation.
+
+| Frame path | Before | After | Removed at 60 fps |
+| --- | ---: | ---: | ---: |
+| Loading squiggle | 1 number array/frame | 0 | 60 arrays/s |
+| Reveal morph | 2 number arrays/frame | 0 | 120 arrays/s |
+| Single-series engine | state + input objects | 0 | 120 objects/s |
+| Multi-series engine | refs + state + input objects | 0 | 180 objects/s |
+| Multi-series path list | 1 array/frame | 0 | 60 arrays/s |
+| Marker Atlas lists | 2 arrays + result object | 0 | 180 containers/s |
+| Degen Atlas (`N` active) | `N + 5` JS objects/containers + `N` sprite rects/frame | 0 of these classes | `300 + 60N` JS allocations/s + `60N` rects/s |
+
+For example, a 32-particle burst avoids 2,220 JavaScript object/container
+allocations and 1,920 identical sprite-rect host values per second while active.
+The single-series steady engine removes 120 objects per second even with all
+optional overlays disabled. These are exact call-site/identity counts, not
+heap-size or frame-time claims; physical-device allocation rate, GC pauses,
+CPU, and p90/p99 frame time still need to be recaptured.
+
+The pools deliberately do not mutate published buffers in place: numeric and
+Atlas result arrays ping-pong, so Reanimated/Skia still observe a reference
+change while the previous frame remains readable. Immutable `SkPath` instances
+returned by `PathBuilder.detach()` remain per-frame by design. Marker/particle
+`Skia.RSXform` values and per-particle `Skia.Color` values also remain dynamic;
+their contents change every frame and reusing them without an explicit Skia
+ownership guarantee would risk mutating data still consumed by the renderer.
+
 ## Reproduce
 
 Build and install each Release variant:
@@ -222,5 +257,6 @@ python3 scripts/summarize_activity_monitor.py /tmp/livechart.xml
 The next useful experiments are rendering-specific: avoid redraws when geometry
 has not changed, cap the redraw rate below the display refresh rate, reduce path
 or antialiasing complexity, and determine why this workload selects Ganesh's
-software path renderer. Pooling JavaScript or SkPath wrappers is unlikely to
-address the measured mask-pixmap churn.
+software path renderer. The completed JavaScript pooling should reduce secondary
+GC pressure, but it does not address the measured mask-pixmap churn. Pooling
+immutable SkPath wrappers is still unlikely to affect that dominant native cost.

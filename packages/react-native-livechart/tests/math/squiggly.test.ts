@@ -70,6 +70,14 @@ describe("buildSquigglyPts", () => {
     );
     expect(diff).toBe(true);
   });
+
+  it("reuses and truncates a caller-owned output buffer", () => {
+    const out = [1, 2, 3, 4];
+    expect(buildSquigglyPts(400, 300, padding, 0, 14, 1, out)).toBe(out);
+    expect(out.length).toBeGreaterThan(4);
+    expect(buildSquigglyPts(0, 0, padding, 0, 14, 1, out)).toBe(out);
+    expect(out).toEqual([]);
+  });
 });
 
 // ─── squigglifyPts ───────────────────────────────────────────────────────────
@@ -93,6 +101,13 @@ describe("squigglifyPts", () => {
   it("returns same length as input", () => {
     const pts = [10, 20, 30, 40, 50, 60, 70, 80];
     expect(squigglifyPts(pts, 1, 150).length).toBe(8);
+  });
+
+  it("reuses a caller-owned output buffer", () => {
+    const pts = [10, 20, 30, 40];
+    const out: number[] = [];
+    expect(squigglifyPts(pts, 1, 150, 14, 1, out)).toBe(out);
+    expect(out).toHaveLength(pts.length);
   });
 });
 
@@ -160,5 +175,15 @@ describe("blendPtsY", () => {
     const to = [12, 50, 80, 60];
     const result = blendPtsY(from, to, 0.5, padding, zeroW);
     expect(result).toHaveLength(from.length);
+  });
+
+  it("reuses a caller-owned output buffer without aliasing the inputs", () => {
+    const from = [12, 100, 166, 100];
+    const to = [12, 50, 166, 60];
+    const out: number[] = [];
+    expect(blendPtsY(from, to, 0.5, padding, canvasWidth, out)).toBe(out);
+    expect(out).toHaveLength(from.length);
+    expect(out).not.toBe(from);
+    expect(out).not.toBe(to);
   });
 });

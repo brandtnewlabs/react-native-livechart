@@ -47,7 +47,9 @@ describe("buildParticleInstances", () => {
   it("defaults size to 1 when the slot's size field is 0", () => {
     const buf = bufWith(0, 2, { t0: 0, size: 0 });
     // dt=0 → life=1 → r = 1*(0.5+0.5) = 1.
-    const out = buildParticleInstances(buf, 2, 0, burstDur, 1, spriteRadius);
+    const out: ReturnType<typeof buildParticleInstances> = [];
+    const pool: ReturnType<typeof buildParticleInstances> = [];
+    buildParticleInstances(buf, 2, 0, burstDur, 1, spriteRadius, out, pool);
     expect(out[0].scale).toBeCloseTo(1 / spriteRadius, 6);
   });
 
@@ -95,6 +97,35 @@ describe("buildParticleInstances", () => {
     expect(
       buildParticleInstances(new Float64Array(0), 0, 0, burstDur, 1, spriteRadius),
     ).toEqual([]);
+  });
+
+  it("reuses its output array and particle objects, then truncates stale slots", () => {
+    const buf = new Float64Array(2 * DEGEN_STRIDE);
+    for (let i = 0; i < 2; i++) {
+      const b = i * DEGEN_STRIDE;
+      buf[b + 0] = 10 + i;
+      buf[b + 5] = 1;
+      buf[b + 6] = 2;
+    }
+    const out: ReturnType<typeof buildParticleInstances> = [];
+    const pool: ReturnType<typeof buildParticleInstances> = [];
+    buildParticleInstances(buf, 2, 0, burstDur, 1, spriteRadius, out, pool);
+    const first = out[0];
+    const second = out[1];
+
+    buf[0] = 99;
+    buf[DEGEN_STRIDE + 5] = 0;
+    expect(
+      buildParticleInstances(buf, 2, 0, burstDur, 1, spriteRadius, out, pool),
+    ).toBe(out);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toBe(first);
+    expect(out[0].x).toBe(99);
+    expect(out).not.toContain(second);
+
+    buf[DEGEN_STRIDE + 5] = 1;
+    buildParticleInstances(buf, 2, 0, burstDur, 1, spriteRadius, out, pool);
+    expect(out[1]).toBe(second);
   });
 });
 

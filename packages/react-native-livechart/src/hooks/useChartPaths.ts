@@ -55,6 +55,10 @@ export function useChartPaths(
     ptsA: number[];
     ptsB: number[];
     ptsTick: boolean;
+    squigglePts: number[];
+    morphA: number[];
+    morphB: number[];
+    morphTick: boolean;
     scratch: ReturnType<typeof makeSplineScratch>;
   } | null>(null);
   if (cacheRef.current === null) {
@@ -63,6 +67,10 @@ export function useChartPaths(
       ptsA: [] as number[],
       ptsB: [] as number[],
       ptsTick: false,
+      squigglePts: [] as number[],
+      morphA: [] as number[],
+      morphB: [] as number[],
+      morphTick: false,
       scratch: makeSplineScratch(),
     };
   }
@@ -102,15 +110,18 @@ export function useChartPaths(
       centerY,
       squiggleAmplitude,
       squiggleSpeed,
+      cache.squigglePts,
     );
 
     // Blend center-out: centre of chart reveals first, edges last
+    cache.morphTick = !cache.morphTick;
     return blendPtsY(
       squigglyPts,
       realPts,
       t,
       padding,
       engine.canvasWidth.get(),
+      cache.morphTick ? cache.morphA : cache.morphB,
     );
   });
 
