@@ -3,6 +3,7 @@ import { useSharedValue } from "react-native-reanimated";
 import type { SeriesConfig } from "../src/types";
 import {
   applyLiveChartSeriesEngineFrame,
+  makeMultiSeriesEngineScratch,
   type MultiEngineFrameRefs,
   useLiveChartSeriesEngine,
 } from "../src/core/useLiveChartSeriesEngine";
@@ -41,10 +42,30 @@ describe("applyLiveChartSeriesEngineFrame", () => {
       extremaMinTime: { value: NaN },
       extremaMaxTime: { value: NaN },
     };
+    const scratch = makeMultiSeriesEngineScratch();
+    const stateIdentity = scratch.state;
+    const inputIdentity = scratch.input;
     applyLiveChartSeriesEngineFrame(
       { timeSincePreviousFrame: 16.67 },
       sv as unknown as MultiEngineFrameRefs,
+      scratch,
     );
+    const firstOutput = sv.displaySeriesValues.value;
+    applyLiveChartSeriesEngineFrame(
+      { timeSincePreviousFrame: 16.67 },
+      sv as unknown as MultiEngineFrameRefs,
+      scratch,
+    );
+    const secondOutput = sv.displaySeriesValues.value;
+    applyLiveChartSeriesEngineFrame(
+      { timeSincePreviousFrame: 16.67 },
+      sv as unknown as MultiEngineFrameRefs,
+      scratch,
+    );
+    expect(scratch.state).toBe(stateIdentity);
+    expect(scratch.input).toBe(inputIdentity);
+    expect(secondOutput).not.toBe(firstOutput);
+    expect(sv.displaySeriesValues.value).toBe(firstOutput);
     expect(sv.displaySeriesValues.value.length).toBe(1);
     // The single series' lone point becomes the live extrema.
     expect(sv.extremaMinValue.value).toBe(10);

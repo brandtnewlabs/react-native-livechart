@@ -351,6 +351,18 @@ export function MarkerOverlay({
   if (projRef.current === null) {
     projRef.current = { a: [], b: [], tick: false };
   }
+  const atlasFrameRef = useRef<{
+    a: { transforms: SkRSXform[]; sprites: SkRect[] };
+    b: { transforms: SkRSXform[]; sprites: SkRect[] };
+    tick: boolean;
+  } | null>(null);
+  if (atlasFrameRef.current === null) {
+    atlasFrameRef.current = {
+      a: { transforms: [], sprites: [] },
+      b: { transforms: [], sprites: [] },
+      tick: false,
+    };
+  }
 
   // Single per-frame worklet: project all markers, then emit a transform +
   // source rect for each visible atlas marker. Three mappers total regardless
@@ -377,8 +389,13 @@ export function MarkerOverlay({
         lineLinear,
       });
       clusterMarkers(ms, buf, { config: cluster });
-      const transforms: SkRSXform[] = [];
-      const sprites: SkRect[] = [];
+      const atlasFrames = atlasFrameRef.current!;
+      atlasFrames.tick = !atlasFrames.tick;
+      const frame = atlasFrames.tick ? atlasFrames.a : atlasFrames.b;
+      const transforms = frame.transforms;
+      const sprites = frame.sprites;
+      transforms.length = 0;
+      sprites.length = 0;
       for (let i = 0; i < ms.length; i++) {
         const pt = buf[i];
         // Collapsed-cluster members fold into their representative's badge.
@@ -455,7 +472,7 @@ export function MarkerOverlay({
         );
         sprites.push(cell.rect);
       }
-      return { transforms, sprites };
+      return frame;
     },
     [
       cells,
