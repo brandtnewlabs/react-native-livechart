@@ -18,7 +18,11 @@ import {
 } from "react-native-reanimated";
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type { CandlePoint, LiveChartPoint, SeriesConfig } from "../types";
-import { tickLiveChartEngineFrame } from "./liveChartEngineTick";
+import {
+  tickLiveChartEngineFrame,
+  type EngineTickInput,
+  type EngineTickMutable,
+} from "./liveChartEngineTick";
 
 export interface EngineConfig {
   data: SharedValue<LiveChartPoint[]>;
@@ -229,6 +233,42 @@ export interface EngineFrameRefs {
   extremaMaxTime: SharedValue<number>;
 }
 
+/** Stable state/input containers reused by the UI-thread frame callback. */
+export interface EngineFrameScratch {
+  state: EngineTickMutable;
+  input: EngineTickInput;
+}
+
+/** Allocate one single-series frame scratch. Call once per engine instance. */
+export function makeEngineFrameScratch(): EngineFrameScratch {
+  return {
+    state: {
+      displayValue: 0,
+      displayMin: 0,
+      displayMax: 1,
+      displayWindow: 0,
+      timestamp: 0,
+      liveEdge: 0,
+      edgeValue: 0,
+      extremaMinValue: NaN,
+      extremaMaxValue: NaN,
+      extremaMinTime: NaN,
+      extremaMaxTime: NaN,
+    },
+    input: {
+      dt: MS_PER_FRAME_60FPS,
+      canvasWidth: 0,
+      canvasHeight: 0,
+      timeWindow: 0,
+      smoothing: 0,
+      exaggerate: false,
+      referenceValue: undefined,
+      targetValue: 0,
+      points: [],
+    },
+  };
+}
+
 /**
  * Shared between the `useFrameCallback` worklet and unit tests.
  * Mutates shared values from a snapshot tick (`tickLiveChartEngineFrame`).
@@ -236,54 +276,77 @@ export interface EngineFrameRefs {
 export function applyLiveChartEngineFrame(
   frameInfo: { timeSincePreviousFrame?: number | null },
   sv: EngineFrameRefs,
+  scratch?: EngineFrameScratch,
 ): void {
   "worklet";
   const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
   // One-shot settle: a `snapKey` change set this flag; consume it for this tick
   // and clear it below so only this frame snaps (live ticks stay smoothed).
   const snap = sv.snapSV?.value ?? false;
-  const state = {
-    displayValue: sv.displayValue.value,
-    displayMin: sv.displayMin.value,
-    displayMax: sv.displayMax.value,
-    displayWindow: sv.displayWindow.value,
-    timestamp: sv.timestamp.value,
-    liveEdge: sv.liveEdgeSV?.value ?? 0,
-    edgeValue: sv.edgeValueSV?.value ?? 0,
-    extremaMinValue: sv.extremaMinValue.value,
-    extremaMaxValue: sv.extremaMaxValue.value,
-    extremaMinTime: sv.extremaMinTime.value,
-    extremaMaxTime: sv.extremaMaxTime.value,
+  const state: EngineTickMutable = scratch?.state ?? {
+    displayValue: 0,
+    displayMin: 0,
+    displayMax: 1,
+    displayWindow: 0,
+    timestamp: 0,
+    liveEdge: 0,
+    edgeValue: 0,
+    extremaMinValue: NaN,
+    extremaMaxValue: NaN,
+    extremaMinTime: NaN,
+    extremaMaxTime: NaN,
   };
-  tickLiveChartEngineFrame(state, {
+  state.displayValue = sv.displayValue.value;
+  state.displayMin = sv.displayMin.value;
+  state.displayMax = sv.displayMax.value;
+  state.displayWindow = sv.displayWindow.value;
+  state.timestamp = sv.timestamp.value;
+  state.liveEdge = sv.liveEdgeSV?.value ?? 0;
+  state.edgeValue = sv.edgeValueSV?.value ?? 0;
+  state.extremaMinValue = sv.extremaMinValue.value;
+  state.extremaMaxValue = sv.extremaMaxValue.value;
+  state.extremaMinTime = sv.extremaMinTime.value;
+  state.extremaMaxTime = sv.extremaMaxTime.value;
+
+  const input: EngineTickInput = scratch?.input ?? {
     dt,
-    canvasWidth: sv.canvasWidth.value,
-    canvasHeight: sv.canvasHeight.value,
-    timeWindow: sv.timeWindow.value,
-    smoothing: sv.smoothing.value,
-    adaptiveSpeedBoost: sv.adaptiveSpeedBoostSV?.value,
-    exaggerate: sv.exaggerateSV.value,
-    referenceValue: sv.referenceValue.value,
-    referenceValues: sv.referenceValues?.value,
-    thresholdRangePoints: sv.thresholdRangePoints?.value,
-    thresholdRangeExtendToNow: sv.thresholdRangeExtendToNow?.value ?? true,
-    nonNegative: sv.nonNegativeSV?.value ?? false,
-    maxValue: sv.maxValueSV?.value,
-    nowOverride: sv.nowOverrideSV?.value,
-    windowBuffer: sv.windowBufferSV?.value ?? 0,
-    targetValue: sv.value.value,
-    points: sv.data.value,
-    nowSeconds: Date.now() / 1000,
-    paused: sv.pausedSV.value,
-    snap,
-    viewEnd: sv.viewEndSV?.value,
-    returnT: sv.returnTSV?.value,
-    returnFrom: sv.returnFromSV?.value,
-    viewWindow: sv.viewWindowSV?.value,
-    mode: sv.modeSV.value,
-    candles: sv.candles?.value,
-    liveCandle: sv.liveCandle?.value,
-  });
+    canvasWidth: 0,
+    canvasHeight: 0,
+    timeWindow: 0,
+    smoothing: 0,
+    exaggerate: false,
+    referenceValue: undefined,
+    targetValue: 0,
+    points: [],
+  };
+  input.dt = dt;
+  input.canvasWidth = sv.canvasWidth.value;
+  input.canvasHeight = sv.canvasHeight.value;
+  input.timeWindow = sv.timeWindow.value;
+  input.smoothing = sv.smoothing.value;
+  input.adaptiveSpeedBoost = sv.adaptiveSpeedBoostSV?.value;
+  input.exaggerate = sv.exaggerateSV.value;
+  input.referenceValue = sv.referenceValue.value;
+  input.referenceValues = sv.referenceValues?.value;
+  input.thresholdRangePoints = sv.thresholdRangePoints?.value;
+  input.thresholdRangeExtendToNow = sv.thresholdRangeExtendToNow?.value ?? true;
+  input.nonNegative = sv.nonNegativeSV?.value ?? false;
+  input.maxValue = sv.maxValueSV?.value;
+  input.nowOverride = sv.nowOverrideSV?.value;
+  input.windowBuffer = sv.windowBufferSV?.value ?? 0;
+  input.targetValue = sv.value.value;
+  input.points = sv.data.value;
+  input.nowSeconds = Date.now() / 1000;
+  input.paused = sv.pausedSV.value;
+  input.snap = snap;
+  input.viewEnd = sv.viewEndSV?.value;
+  input.returnT = sv.returnTSV?.value;
+  input.returnFrom = sv.returnFromSV?.value;
+  input.viewWindow = sv.viewWindowSV?.value;
+  input.mode = sv.modeSV.value;
+  input.candles = sv.candles?.value;
+  input.liveCandle = sv.liveCandle?.value;
+  tickLiveChartEngineFrame(state, input);
   sv.displayValue.value = state.displayValue;
   sv.displayMin.value = state.displayMin;
   sv.displayMax.value = state.displayMax;
@@ -467,12 +530,16 @@ export function useLiveChartEngine(
     extremaMinTime,
     extremaMaxTime,
   };
+  const frameScratchRef = useRef<EngineFrameScratch | null>(null);
+  if (frameScratchRef.current === null) {
+    frameScratchRef.current = makeEngineFrameScratch();
+  }
 
   // `autostart=false` registers the frame callback without running it — the live
   // loop is fully inert in static mode (the invariant that makes this worth it).
   useFrameCallback((frameInfo) => {
     "worklet";
-    applyLiveChartEngineFrame(frameInfo, frameRefs);
+    applyLiveChartEngineFrame(frameInfo, frameRefs, frameScratchRef.current!);
   }, !config.static);
 
   // When time-scroll is disabled while scrolled back, return the window to the
@@ -532,6 +599,7 @@ export function useLiveChartEngine(
       applyLiveChartEngineFrame(
         { timeSincePreviousFrame: MS_PER_FRAME_60FPS },
         frameRefs,
+        frameScratchRef.current!,
       );
     },
   );

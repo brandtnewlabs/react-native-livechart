@@ -8,6 +8,7 @@ import {
   vec,
   type SkFont,
 } from "@shopify/react-native-skia";
+import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import {
   BADGE_METRICS_DEFAULTS,
@@ -108,6 +109,7 @@ export function LoadingOverlay({
 
   // Squiggly path — built into a reused PathBuilder and detach()-ed each frame.
   const squigglyBuilder = usePathBuilder();
+  const squigglyPtsRef = useRef<number[]>([]);
 
   // Squiggly path — animated each frame via timestamp
   const squigglyPath = useDerivedValue(() => {
@@ -122,6 +124,7 @@ export function LoadingOverlay({
       engine.timestamp.get(),
       waveAmplitude,
       waveSpeed,
+      squigglyPtsRef.current,
     );
     return buildSplineDetached(b, pts);
   });

@@ -62,7 +62,8 @@ export interface ParticleInstance {
  *   scale = r / spriteRadius
  *   alpha = life * particleOpacity
  * Inactive (active <= 0.5), pre-spawn (dt < 0) and fully-faded (life <= 0)
- * slots are skipped.
+ * slots are skipped. Pass distinct `out` and `pool` arrays to retain inactive
+ * instance objects for later bursts while returning only the active prefix.
  */
 export function buildParticleInstances(
   buf: Float64Array,
@@ -71,9 +72,13 @@ export function buildParticleInstances(
   burstDur: number,
   particleOpacity: number,
   spriteRadius: number,
+  out?: ParticleInstance[],
+  pool?: ParticleInstance[],
 ): ParticleInstance[] {
   "worklet";
-  const out: ParticleInstance[] = [];
+  const target = out ?? [];
+  const instances = pool ?? target;
+  let count = 0;
   for (let i = 0; i < slots; i++) {
     const base = i * DEGEN_STRIDE;
     if (!(buf[base + 5] > 0.5)) continue;
@@ -83,13 +88,19 @@ export function buildParticleInstances(
     if (life <= 0) continue;
     const size = buf[base + 6] || 1;
     const r = size * (0.5 + life * 0.5);
-    out.push({
-      x: buf[base + 0],
-      y: buf[base + 1],
-      scale: r / spriteRadius,
-      alpha: life * particleOpacity,
-      colorIndex: Math.max(0, Math.floor(buf[base + 7])),
-    });
+    let instance = instances[count];
+    if (!instance) {
+      instance = { x: 0, y: 0, scale: 0, alpha: 0, colorIndex: 0 };
+      instances[count] = instance;
+    }
+    instance.x = buf[base + 0];
+    instance.y = buf[base + 1];
+    instance.scale = r / spriteRadius;
+    instance.alpha = life * particleOpacity;
+    instance.colorIndex = Math.max(0, Math.floor(buf[base + 7]));
+    target[count] = instance;
+    count += 1;
   }
-  return out;
+  target.length = count;
+  return target;
 }
