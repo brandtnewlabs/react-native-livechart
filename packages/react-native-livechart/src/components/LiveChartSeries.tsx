@@ -643,12 +643,13 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         </Group>
       )}
 
-      {/* Index keys: reference lines are a positional array and two may share
-          value + label (e.g. duplicate working orders at the same price), which a
-          content-derived key would collapse to one. Fade group lets
-          `scrub.hideOverlaysOnScrub` ease the lines out while scrubbing. */}
+      {/* Reference lines are index-addressed throughout the drag/press API, and
+          duplicate working orders may share all visible content. Positional keys
+          keep both orders mounted without collapsing them to one React child.
+          Fade group lets `scrub.hideOverlaysOnScrub` ease the lines out. */}
       <Group opacity={overlayScrubFade}>
         {allRefLines.map((rl, i) => (
+          /* react-doctor-disable-next-line react-doctor/no-array-index-as-key */
           <ReferenceLineOverlay
             key={i}
             engine={engine}
@@ -819,6 +820,7 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
   return (
     <Group transform={degenShakeTransform} opacity={overlayScrubFade}>
       {allRefLines.map((rl, i) => (
+        /* react-doctor-disable-next-line react-doctor/no-array-index-as-key */
         <ReferenceLineOverlay
           key={i}
           engine={engine}
