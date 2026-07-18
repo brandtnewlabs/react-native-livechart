@@ -64,6 +64,66 @@ your Metro + Babel pipeline compiles it.
 If you disabled package exports (`unstable_enablePackageExports: false`), re-enable them or align
 your resolver so resolution matches the published map.
 
+## Optional: Worklets Bundle Mode
+
+LiveChart does not need a separate prop or runtime API for Bundle Mode. The package ships source,
+so enabling Bundle Mode in your app's Babel and Metro configuration also compiles LiveChart's
+worklets in Bundle Mode.
+
+The setup below was verified with **`react-native-worklets` 0.10.0**, Expo 57, and React Native
+0.86. Bundle Mode configuration is app-wide and must be enabled in both Babel and Metro. Check the
+Worklets compatibility and setup docs before applying it to a different toolchain version.
+
+```js babel.config.js
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ["babel-preset-expo"],
+    plugins: [
+      // ...your other plugins
+      [
+        "react-native-worklets/plugin",
+        { bundleMode: true, strictGlobal: true },
+      ], // must be last
+    ],
+  };
+};
+```
+
+For an Expo app, wrap your existing Metro configuration:
+
+```js metro.config.js
+const { getDefaultConfig } = require("expo/metro-config");
+const {
+  getBundleModeMetroConfig,
+} = require("react-native-worklets/bundleMode");
+
+const config = getDefaultConfig(__dirname);
+
+module.exports = getBundleModeMetroConfig(config);
+```
+
+For a bare React Native app, use the React Native Community variant from the
+[official Bundle Mode setup](https://docs.swmansion.com/react-native-worklets/docs/bundleMode/setup/).
+
+<Warning>
+  Worklets 0.10 recommends version-matched patches for `metro` and `metro-runtime`. The Metro patch
+  indexes generated worklet modules synchronously; the `metro-runtime` patch enables Fast Refresh
+  on Worklet Runtimes. Apply the official patches in your app—the LiveChart package cannot safely
+  patch a consumer's toolchain transitively.
+</Warning>
+
+After changing Babel, Metro, or the patches, clear Metro's cache and rebuild the native app:
+
+```bash
+npx expo start --clear
+# React Native Community CLI:
+npm start -- --reset-cache
+```
+
+Legacy Eval Mode remains supported. Remove the Bundle Mode options and wrapper to return to your
+normal Worklets configuration.
+
 ## Gesture handler root
 
 Scrubbing uses Gesture Handler, so wrap your app (or the screen hosting the chart) in a

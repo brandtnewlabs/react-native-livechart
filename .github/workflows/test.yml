@@ -24,3 +24,6 @@ jobs:
 
       - name: Run tests
         run: npm test -- --no-coverage --ci --forceExit
+
+      - name: Verify packed Bundle Mode consumer export
+        run: npm run verify:bundle-mode-consumer

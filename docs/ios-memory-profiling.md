@@ -110,10 +110,10 @@ Means exclude each phase's warm-up samples.
 The two legacy passes agree within 0.2 MiB. Against their mean, Bundle Mode used
 25.8% less RSS while the chart was mounted and reduced the incremental mount
 delta by 82.3% (134.14 MiB to 23.81 MiB). This is a simulator screening result,
-not a physical-device performance claim. It supports continuing the experiment
-but does not replace the physical iOS/Android Activity Monitor, PSS/native-heap,
-startup, CPU, and frame-time measurements required before recommending Bundle
-Mode as the example-app default.
+not a physical-device performance claim. The physical iOS screen below validates
+the direction of the result; Android PSS/native-heap, startup, CPU, and frame-time
+measurements remain open before recommending Bundle Mode as the example-app
+default.
 
 A single clean `expo export --platform ios --clear` per mode produced the
 following build artifacts:
@@ -126,6 +126,31 @@ following build artifacts:
 Bundle Mode added 1,324 generated worklet modules and increased final Hermes
 bytecode by 28,643 bytes (0.51%). The wall-time and bundler-RSS figures are
 single-run diagnostics and should not be treated as benchmark conclusions.
+
+## Bundle Mode physical-device screen
+
+The physical compatibility screen used Release `static-control` builds on an
+iPhone 17 Pro Max (Trooper), iOS 26.6. The phone was connected over USB; each
+mode change rebuilt and reinstalled the app, and Activity Monitor recorded the
+same 65-second fixed-phase route. USB is recommended for physical-device traces
+because Wi-Fi transport delayed launch and trace finalization during the first
+attempt.
+
+| Run | Baseline mean | Mounted mean | Unmounted mean |
+| --- | ---: | ---: | ---: |
+| Bundle A | 99.27 MiB | 165.73 MiB | 124.27 MiB |
+| Legacy B | 281.70 MiB | 350.57 MiB | 309.71 MiB |
+| Bundle A repeat | 116.44 MiB | 153.08 MiB | 116.95 MiB |
+
+Against legacy, Bundle Mode reduced mounted physical memory by 52.7–56.3%.
+Using the mean of the two Bundle passes, mounted memory fell from 350.57 MiB to
+159.41 MiB (54.5%). Post-unmount physical memory fell by 59.9–62.2%. Baseline
+includes startup transients, so mounted and unmounted phases are the more useful
+comparisons.
+
+Functional QA passed through baseline, mounted chart, and unmounted phases with
+no JS, Worklets, fatal, exception, or crash errors. A Bundle Mode Allocations
+trace also completed and saved successfully over USB.
 
 ## Physical footprint
 

@@ -20,6 +20,7 @@
     "build:lib": "npm run build -w react-native-livechart",
     "build:lib:types:watch": "npm run build:types:watch -w react-native-livechart",
     "pack:lib": "npm pack -w react-native-livechart",
+    "verify:bundle-mode-consumer": "node scripts/verify_bundle_mode_consumer.mjs",
     "verify": "npm run typecheck && npm run lint && npm test",
     "verify:coverage": "npm run typecheck && npm run lint && npm run test:coverage",
     "prepare": "husky",
