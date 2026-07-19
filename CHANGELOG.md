@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   positioning, and left / center / right anchoring as `LiveChart`, while preserving
   the reference-line stroke. ([#219](https://github.com/brandtnewlabs/react-native-livechart/issues/219))
 
+### Fixed
+
+- **Scrub-enabled charts no longer block vertical parent scrolling on iOS.**
+  Plain `LiveChart` and `LiveChartSeries` scrubs now wait for clear horizontal
+  intent and fail quickly on vertical movement, without attaching zero-valued
+  pan activation modifiers that could preempt a parent `ScrollView` or list.
+  Scrub-action hold gestures keep their existing behavior. ([#220](https://github.com/brandtnewlabs/react-native-livechart/issues/220))
+
 ### Changed
 
 - **Time-varying threshold shaders select samples in logarithmic time.** The

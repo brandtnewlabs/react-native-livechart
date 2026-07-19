@@ -12,14 +12,26 @@ import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 jest.mock("react-native-gesture-handler", () => {
   const makeGesture = () => {
-    const g: Record<string, unknown> = {};
+    const g: Record<string, unknown> = { config: {} };
     const proxy: typeof g = new Proxy(g, {
-      get: (_t, _k) => () => proxy,
+      get: (target, key) => {
+        if (key in target) return target[key as string];
+        return (...args: unknown[]) => {
+          (target.config as Record<string, unknown[]>)[String(key)] = args;
+          return proxy;
+        };
+      },
     });
     return proxy;
   };
   return { Gesture: { Pan: makeGesture } };
 });
+
+type GestureConfig = Record<string, unknown[]>;
+
+function getGestureConfig(gesture: unknown): GestureConfig {
+  return (gesture as { config: GestureConfig }).config;
+}
 
 const font = {
   getSize: () => 12,
@@ -359,12 +371,42 @@ describe("useCrosshairSeries (hook)", () => {
     expect(onGestureEnd).not.toHaveBeenCalled();
   });
 
-  it("uses Android pan minDistance when Platform.OS is android", () => {
-    const prev = Platform.OS;
-    Object.defineProperty(Platform, "OS", {
-      configurable: true,
-      value: "android",
-    });
+  it.each(["ios", "android"] as const)(
+    "waits for horizontal intent and yields vertical drags on %s",
+    (platform) => {
+      const prev = Platform.OS;
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: platform,
+      });
+      const engine = makeEngine({
+        series: {
+          value: [
+            {
+              id: "a",
+              data: [{ time: 1_700_000_000, value: 5 }],
+              value: 5,
+              color: "#00f",
+            },
+          ],
+        },
+      });
+      const { result } = renderHook(() =>
+        useCrosshairSeries(engine, padding, true),
+      );
+      const config = getGestureConfig(result.current.gesture);
+      expect(config.minDistance).toBeUndefined();
+      expect(config.activateAfterLongPress).toBeUndefined();
+      expect(config.activeOffsetX).toEqual([[-20, 20]]);
+      expect(config.failOffsetY).toEqual([[-10, 10]]);
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: prev,
+      });
+    },
+  );
+
+  it("only configures a long-press modifier for a positive delay", () => {
     const engine = makeEngine({
       series: {
         value: [
@@ -378,12 +420,12 @@ describe("useCrosshairSeries (hook)", () => {
       },
     });
     const { result } = renderHook(() =>
-      useCrosshairSeries(engine, padding, true),
+      useCrosshairSeries(engine, padding, true, undefined, 250),
     );
-    expect(result.current.gesture).toBeDefined();
-    Object.defineProperty(Platform, "OS", {
-      configurable: true,
-      value: prev,
-    });
+    const config = getGestureConfig(result.current.gesture);
+    expect(config.activateAfterLongPress).toEqual([250]);
+    expect(config.minDistance).toBeUndefined();
+    expect(config.activeOffsetX).toEqual([[-20, 20]]);
+    expect(config.failOffsetY).toEqual([[-10, 10]]);
   });
 });

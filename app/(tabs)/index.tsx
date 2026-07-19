@@ -73,6 +73,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "Scrub modes, styled tooltip, onScrub readout, candle OHLC.",
       },
       {
+        href: "/demo/scroll-interaction",
+        title: "Scroll interaction",
+        blurb: "Vertical parent scrolling vs. horizontal scrub, for LiveChart and LiveChartSeries.",
+      },
+      {
         href: "/demo/candle-scrub",
         title: "Candle scrub",
         blurb: "Brokerage-style: OHLC header above the chart, time pinned to the top edge, crosshair kept.",

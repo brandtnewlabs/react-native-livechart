@@ -20,14 +20,26 @@ import {
 
 jest.mock("react-native-gesture-handler", () => {
   const makeGesture = () => {
-    const g: Record<string, unknown> = {};
+    const g: Record<string, unknown> = { config: {} };
     const proxy: typeof g = new Proxy(g, {
-      get: (_t, _k) => () => proxy,
+      get: (target, key) => {
+        if (key in target) return target[key as string];
+        return (...args: unknown[]) => {
+          (target.config as Record<string, unknown[]>)[String(key)] = args;
+          return proxy;
+        };
+      },
     });
     return proxy;
   };
   return { Gesture: { Pan: makeGesture, Tap: makeGesture } };
 });
+
+type GestureConfig = Record<string, unknown[]>;
+
+function getGestureConfig(gesture: unknown): GestureConfig {
+  return (gesture as { config: GestureConfig }).config;
+}
 
 const palette = resolveTheme("#3b82f6", "dark");
 
@@ -875,12 +887,39 @@ describe("useCrosshair (hook)", () => {
     expect(onGestureEnd).not.toHaveBeenCalled();
   });
 
-  it("uses Android pan minDistance when Platform.OS is android", () => {
-    const prev = Platform.OS;
-    Object.defineProperty(Platform, "OS", {
-      configurable: true,
-      value: "android",
-    });
+  it.each(["ios", "android"] as const)(
+    "waits for horizontal intent and yields vertical drags on %s",
+    (platform) => {
+      const prev = Platform.OS;
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: platform,
+      });
+      const engine = makeEngine();
+      const { result } = renderHook(() =>
+        useCrosshair(
+          engine,
+          padding,
+          palette,
+          formatValue,
+          formatTime,
+          font,
+          true,
+        ),
+      );
+      const config = getGestureConfig(result.current.gesture);
+      expect(config.minDistance).toBeUndefined();
+      expect(config.activateAfterLongPress).toBeUndefined();
+      expect(config.activeOffsetX).toEqual([[-20, 20]]);
+      expect(config.failOffsetY).toEqual([[-10, 10]]);
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: prev,
+      });
+    },
+  );
+
+  it("only configures a long-press modifier for a positive delay", () => {
     const engine = makeEngine();
     const { result } = renderHook(() =>
       useCrosshair(
@@ -891,13 +930,16 @@ describe("useCrosshair (hook)", () => {
         formatTime,
         font,
         true,
+        undefined,
+        undefined,
+        250,
       ),
     );
-    expect(result.current.gesture).toBeDefined();
-    Object.defineProperty(Platform, "OS", {
-      configurable: true,
-      value: prev,
-    });
+    const config = getGestureConfig(result.current.gesture);
+    expect(config.activateAfterLongPress).toEqual([250]);
+    expect(config.minDistance).toBeUndefined();
+    expect(config.activeOffsetX).toEqual([[-20, 20]]);
+    expect(config.failOffsetY).toEqual([[-10, 10]]);
   });
 
   it("does not build a tap gesture or lock state without scrubAction", () => {
@@ -940,6 +982,11 @@ describe("useCrosshair (hook)", () => {
     expect(result.current.lockPrice?.value).toBeNull();
     expect(result.current.actionBadge?.value.visible).toBe(false);
     expect(result.current.tapGesture).toBeDefined();
+    const config = getGestureConfig(result.current.gesture);
+    expect(config.activateAfterLongPress).toEqual([200]);
+    expect(config.minDistance).toEqual([0]);
+    expect(config.activeOffsetX).toBeUndefined();
+    expect(config.failOffsetY).toBeUndefined();
     // The callback fires only from the UI-thread tap worklet (istanbul-ignored).
     expect(onScrubAction).not.toHaveBeenCalled();
   });

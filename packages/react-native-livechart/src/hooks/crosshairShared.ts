@@ -14,6 +14,11 @@ const TOOLTIP_EDGE_GAP = 4;
 const TOOLTIP_TOP_MARGIN = 8;
 const FADE_ZONE = 4;
 
+/** Horizontal travel required before a plain scrub claims the touch. */
+export const SCRUB_ACTIVATE_X_PX = 20;
+/** Vertical travel that fails a plain scrub so a parent scroll gesture can win. */
+export const SCRUB_FAIL_Y_PX = 10;
+
 /** Measure rendered text so the pill and its content share the same centre. */
 function measureTooltipTextWidth(
   font: SkFont,

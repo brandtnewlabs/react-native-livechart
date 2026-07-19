@@ -1,4 +1,3 @@
-import { Platform } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
@@ -18,6 +17,8 @@ import {
   computeScrubDotY,
   computeScrubTime,
   HIDDEN_TOOLTIP,
+  SCRUB_ACTIVATE_X_PX,
+  SCRUB_FAIL_Y_PX,
   type CrosshairState,
 } from "./crosshairShared";
 import {
@@ -165,8 +166,6 @@ export function useCrosshairSeries(
   );
 
   let gesture = Gesture.Pan()
-    .minDistance(Platform.OS === "android" ? 10 : 0)
-    .activateAfterLongPress(panGestureDelay)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
     .onTouchesDown(
@@ -228,10 +227,16 @@ export function useCrosshairSeries(
       },
     );
 
-  /* istanbul ignore next */
-  if (Platform.OS === "android") {
-    gesture = gesture.activeOffsetX([-25, 25]).failOffsetY([-25, 25]);
+  // Omit zero-valued activation modifiers so RNGH can classify direction before
+  // the pan activates on iOS. A vertical drag then remains available to a parent
+  // ScrollView/list, while a clear horizontal drag starts scrubbing.
+  if (panGestureDelay > 0) {
+    gesture = gesture.activateAfterLongPress(panGestureDelay);
   }
+
+  gesture = gesture
+    .activeOffsetX([-SCRUB_ACTIVATE_X_PX, SCRUB_ACTIVATE_X_PX])
+    .failOffsetY([-SCRUB_FAIL_Y_PX, SCRUB_FAIL_Y_PX]);
 
   return {
     scrubX,
