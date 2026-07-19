@@ -256,6 +256,14 @@ function useLiveChartSeriesController({
     setSeriesSnapshot(series.get().slice());
   }, [series]);
 
+  // Mount per-series drawing worklets only for real series. The previous fixed
+  // 12-slot render kept 144 derived-value mappers alive for the default stroke,
+  // dot, and value-label layers even when a chart contained only one line.
+  const activeSeriesCount = Math.min(
+    seriesSnapshot.length,
+    MAX_MULTI_SERIES,
+  );
+
   const maxSeriesLabelWidth = dotCfg.valueLabel
     ? Math.max(
         0,
@@ -336,7 +344,11 @@ function useLiveChartSeriesController({
     nowOverride,
   });
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
-  const linePaths = useMultiSeriesLinePaths(engine, effectivePadding);
+  const linePaths = useMultiSeriesLinePaths(
+    engine,
+    effectivePadding,
+    activeSeriesCount,
+  );
 
   // Per-series colors and stroke styles, derived from the off-render snapshot
   // (React state — so no Reanimated read-during-render). The reaction below
@@ -540,6 +552,7 @@ function useLiveChartSeriesController({
     layoutHeight,
     onLayout,
     linePaths,
+    activeSeriesCount,
     lineColors,
     lineStyles,
     degenPack,
@@ -610,6 +623,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     loadingStrokeWidth,
     loadingAmplitude,
     loadingSpeed,
+    activeSeriesCount,
   } = model;
 
   return (
@@ -629,12 +643,13 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         </Group>
       )}
 
-      {/* Index keys: reference lines are a positional array and two may share
-          value + label (e.g. duplicate working orders at the same price), which a
-          content-derived key would collapse to one. Fade group lets
-          `scrub.hideOverlaysOnScrub` ease the lines out while scrubbing. */}
+      {/* Reference lines are index-addressed throughout the drag/press API, and
+          duplicate working orders may share all visible content. Positional keys
+          keep both orders mounted without collapsing them to one React child.
+          Fade group lets `scrub.hideOverlaysOnScrub` ease the lines out. */}
       <Group opacity={overlayScrubFade}>
         {allRefLines.map((rl, i) => (
+          /* react-doctor-disable-next-line react-doctor/no-array-index-as-key */
           <ReferenceLineOverlay
             key={i}
             engine={engine}
@@ -654,12 +669,13 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
             padding={effectivePadding}
             colors={lineColors}
             config={dotCfg.valueLine}
+            seriesCount={activeSeriesCount}
           />
         </Group>
       )}
 
       <Group opacity={reveal.lineOpacity}>
-        {Array.from({ length: MAX_MULTI_SERIES }, (_, i) => (
+        {Array.from({ length: activeSeriesCount }, (_, i) => (
           <MultiSeriesStroke
             key={i}
             index={i}
@@ -694,6 +710,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
             color={dotCfg.color}
             pulse={dotCfg.pulse}
             viewEnd={engine.viewEnd}
+            seriesCount={activeSeriesCount}
           />
         </Group>
       )}
@@ -767,6 +784,7 @@ function SeriesValueLabelLayer({ model }: { model: LiveChartSeriesModel }) {
     skiaFont,
     reveal,
     degenShakeTransform,
+    activeSeriesCount,
   } = model;
   if (!dotCfg.valueLabel) return null;
   return (
@@ -778,6 +796,7 @@ function SeriesValueLabelLayer({ model }: { model: LiveChartSeriesModel }) {
           colors={lineColors}
           font={skiaFont}
           dotRadius={dotOuterRadius}
+          seriesCount={activeSeriesCount}
         />
       </Group>
     </Group>
@@ -801,6 +820,7 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
   return (
     <Group transform={degenShakeTransform} opacity={overlayScrubFade}>
       {allRefLines.map((rl, i) => (
+        /* react-doctor-disable-next-line react-doctor/no-array-index-as-key */
         <ReferenceLineOverlay
           key={i}
           engine={engine}

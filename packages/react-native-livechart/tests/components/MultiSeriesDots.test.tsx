@@ -45,6 +45,7 @@ describe("MultiSeriesDots", () => {
           ringColor="#ffffff"
           color={undefined}
           pulse={null}
+          seriesCount={1}
         />
       );
     }
@@ -88,6 +89,7 @@ describe("MultiSeriesDots", () => {
           ringColor="#ffffff"
           color={undefined}
           pulse={null}
+          seriesCount={1}
         />
       );
     }
@@ -131,6 +133,7 @@ describe("MultiSeriesDots", () => {
           ringColor="#ffffff"
           color={undefined}
           pulse={null}
+          seriesCount={1}
         />
       );
     }

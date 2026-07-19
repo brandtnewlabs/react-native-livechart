@@ -5,7 +5,6 @@ import {
 } from "@shopify/react-native-skia";
 import { useDerivedValue } from "react-native-reanimated";
 
-import { MAX_MULTI_SERIES } from "../constants";
 import type { ChartPadding } from "../draw/line";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
 
@@ -78,16 +77,19 @@ export function MultiSeriesValueLabels({
   colors,
   font,
   dotRadius,
+  seriesCount,
 }: {
   engine: MultiEngineState;
   padding: ChartPadding;
   colors: string[];
   font: SkFont;
   dotRadius: number;
+  /** Number of live series slots to mount. */
+  seriesCount: number;
 }) {
   return (
     <Group>
-      {Array.from({ length: MAX_MULTI_SERIES }, (_, i) => (
+      {Array.from({ length: seriesCount }, (_, i) => (
         <SeriesValueLabelAtIndex
           key={i}
           index={i}

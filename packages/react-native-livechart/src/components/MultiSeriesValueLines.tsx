@@ -1,7 +1,6 @@
 import { DashPathEffect, Group, Path } from "@shopify/react-native-skia";
 
 import { useDerivedValue } from "react-native-reanimated";
-import { MAX_MULTI_SERIES } from "../constants";
 import type { ChartPadding } from "../draw/line";
 import type { ResolvedValueLineConfig } from "../core/resolveConfig";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
@@ -72,15 +71,18 @@ export function MultiSeriesValueLines({
   padding,
   colors,
   config,
+  seriesCount,
 }: {
   engine: MultiEngineState;
   padding: ChartPadding;
   colors: string[];
   config: ResolvedValueLineConfig;
+  /** Number of live series slots to mount. */
+  seriesCount: number;
 }) {
   return (
     <Group>
-      {Array.from({ length: MAX_MULTI_SERIES }, (_, i) => (
+      {Array.from({ length: seriesCount }, (_, i) => (
         <SeriesValueLineAtIndex
           key={i}
           index={i}

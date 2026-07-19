@@ -86,6 +86,7 @@ function EngineHarness({
         padding={DEFAULT_PADDING}
         colors={lineColors}
         config={config}
+        seriesCount={series.length}
       />
     </Canvas>
   );
