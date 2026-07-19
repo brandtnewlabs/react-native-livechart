@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Scrub-enabled charts no longer block vertical parent scrolling on iOS.**
+  Plain `LiveChart` and `LiveChartSeries` scrubs now wait for clear horizontal
+  intent and fail quickly on vertical movement, without attaching zero-valued
+  pan activation modifiers that could preempt a parent `ScrollView` or list.
+  Scrub-action hold gestures keep their existing behavior. ([#220](https://github.com/brandtnewlabs/react-native-livechart/issues/220))
+
 ### Changed
 
 - **Multi-series drawing worklets now scale with the active series count.**

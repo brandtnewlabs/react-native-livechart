@@ -1,5 +1,4 @@
 import { type SkFont } from "@shopify/react-native-skia";
-import { Platform } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
@@ -33,6 +32,8 @@ import {
   HIDDEN_TIME_BADGE,
   HIDDEN_TOOLTIP,
   pointInRect,
+  SCRUB_ACTIVATE_X_PX,
+  SCRUB_FAIL_Y_PX,
   snapPrice,
   type CrosshairState,
 } from "./crosshairShared";
@@ -501,12 +502,6 @@ export function useCrosshair(
       : panGestureDelay;
 
   let gesture = Gesture.Pan()
-    // Scrub-action: minDistance 0 — the press-hold above is the sole activator
-    // (movement during the hold fails the pan), so the crosshair never appears
-    // from a tap's travel. The Tap (maxDistance SCRUB_ACTION_TAP_SLOP) owns quick
-    // gestures; only a held press becomes a scrub/adjust drag.
-    .minDistance(!hasScrubAction && Platform.OS === "android" ? 10 : 0)
-    .activateAfterLongPress(longPressMs)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
     .onTouchesDown(
@@ -620,11 +615,22 @@ export function useCrosshair(
       },
     );
 
-  /* istanbul ignore next -- Android-only gesture axis config */
-  if (Platform.OS === "android" && !hasScrubAction) {
+  // Passing zero-valued activation modifiers lets RNGH's iOS pan recognizer
+  // activate before the axis constraints classify the drag. Only configure a
+  // hold when one is requested, and reserve minDistance(0) for scrub-action's
+  // deliberate press-hold interaction.
+  if (longPressMs > 0) {
+    gesture = gesture.activateAfterLongPress(longPressMs);
+  }
+
+  if (hasScrubAction) {
+    gesture = gesture.minDistance(0);
+  } else {
     // Lock mode needs free vertical drag (Y = price), so the failOffsetY clamp —
     // which would kill a vertical adjust — is applied only outside scrub-action.
-    gesture = gesture.activeOffsetX([-25, 25]).failOffsetY([-25, 25]);
+    gesture = gesture
+      .activeOffsetX([-SCRUB_ACTIVATE_X_PX, SCRUB_ACTIVATE_X_PX])
+      .failOffsetY([-SCRUB_FAIL_Y_PX, SCRUB_FAIL_Y_PX]);
   }
 
   // Axis-drag time-scroll: carve the bottom "time ruler" band out of the scrub's
