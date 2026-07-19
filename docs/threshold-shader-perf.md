@@ -58,3 +58,53 @@ RuntimeEffect compilation (about 1.22 ms versus 0.09–0.22 ms for the loop in t
 recorded A/B/A compile run). Compilation happens once at module initialization,
 not per frame; the benchmark reports it separately so the startup trade-off stays
 visible.
+
+## Physical-device validation
+
+Release builds were compared on 2026-07-19 on a wired iPhone 16 (iPhone17,3),
+iOS 26.5.2, with a 60 Hz display. Each run used a 3-second warmup followed by a
+12-second Reanimated UI-frame capture. The builds were installed in alternating
+legacy/tree order, and their embedded Hermes bundles were checked before the run
+to confirm that each contained the intended shader.
+
+At the normal one-layer workload, both implementations remained comfortably
+within the frame budget:
+
+| Run | Intervals | Mean | Maximum | Delayed / estimated missed |
+| --- | ---: | ---: | ---: | ---: |
+| Legacy A | 722 | 16.64 ms | 16.64 ms | 0 / 0 |
+| Branch tree B | 722 | 16.64 ms | 16.64 ms | 0 / 0 |
+| Legacy C | 722 | 16.64 ms | 16.78 ms | 0 / 0 |
+
+This means the optimization does not produce a user-visible FPS change for one
+ordinary full-screen threshold fill on this device: both versions are already
+locked to 60 Hz.
+
+To make shader cost observable without creating a broad device/series matrix,
+one amplified condition stacked eight identical full-screen threshold fills.
+All other inputs stayed fixed:
+
+| Run | Intervals | Mean | Maximum | >1.25x | Estimated missed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Legacy A | 722 | 16.64 ms | 16.64 ms | 0.00% | 0 (0.00%) |
+| Branch tree B | 722 | 16.64 ms | 16.77 ms | 0.00% | 0 (0.00%) |
+| Legacy C | 706 | 17.02 ms | 49.92 ms | 1.13% | 15 (2.08%) |
+| Branch tree D | 722 | 16.64 ms | 16.77 ms | 0.00% | 0 (0.00%) |
+| Legacy E | 534 | 22.50 ms | 49.92 ms | 17.98% | 187 (25.94%) |
+| Branch tree F | 722 | 16.64 ms | 16.77 ms | 0.00% | 0 (0.00%) |
+
+The amplified condition is an isolation test, not a recommendation to stack
+eight charts. It shows that the branch tree retains frame-budget headroom under
+heavy fragment load: every optimized repeat stayed locked to 60 Hz, while two
+of three legacy repeats missed frames. Together with the byte-identical output
+checks, this supports keeping the branch-tree implementation.
+
+The regular threshold demo was also opened directly on the same physical device.
+The live line crossed the benchmark repeatedly; above/below colors, fill
+boundaries, marker line and label, and chart edges rendered without visible
+banding or clipping.
+
+These are UI-frame-callback results, not direct GPU timings. Instruments could
+not attach to this device through `xctrace`, so the results must not be presented
+as per-frame GPU duration. The on-screen “missed” value is an estimate derived
+from elapsed capture time and the detected 60 Hz interval.
