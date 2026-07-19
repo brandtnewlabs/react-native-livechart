@@ -23,6 +23,7 @@ const rendererProfileCacheKey = [
   process.env.EXPO_PUBLIC_MEMORY_PROFILE_RUN ?? "default",
   process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE ?? "default",
   process.env.EXPO_PUBLIC_MEMORY_PROFILE_CADENCE ?? "default",
+  process.env.EXPO_PUBLIC_THRESHOLD_SHADER_PROFILE_MODE ?? "default",
   bundleMode ? "worklets-bundle" : "worklets-legacy",
 ].join(":");
 

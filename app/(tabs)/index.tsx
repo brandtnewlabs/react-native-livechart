@@ -223,6 +223,9 @@ const Footer = () => (
 
 export default function Index() {
   const insets = useSafeAreaInsets();
+  if (process.env.EXPO_PUBLIC_THRESHOLD_SHADER_PROFILE_MODE) {
+    return <Redirect href={"/threshold-shader-profile" as Href} />;
+  }
   if (
     process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE ||
     process.env.EXPO_PUBLIC_MEMORY_PROFILE_RUN
