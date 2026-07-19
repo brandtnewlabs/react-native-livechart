@@ -97,14 +97,16 @@ function CustomReferenceLineView({
   engine: ChartEngineLayout;
   padding: ChartPadding;
   formatValue: (v: number) => string;
-  dragValues: SharedValue<number[]>;
-  dragActive: SharedValue<boolean[]>;
+  /** Optional live overrides used by draggable single-series lines. */
+  dragValues?: SharedValue<number[]>;
+  /** Optional drag state used by draggable single-series lines. */
+  dragActive?: SharedValue<boolean[]>;
 }) {
   const staticValue = line.value ?? 0;
 
   // Live value: a drag override (if present) else the static prop value.
   const value = useDerivedValue<number>(() => {
-    const dv = dragValues.get()[index];
+    const dv = dragValues?.get()[index];
     return dv != null ? dv : staticValue;
   });
   const valueStr = useDerivedValue(() => formatValue(value.get()));
@@ -116,7 +118,9 @@ function CustomReferenceLineView({
     ),
   );
   const inRange = useDerivedValue(() => edge.get() === "in");
-  const dragging = useDerivedValue(() => dragActive.get()[index] === true);
+  const dragging = useDerivedValue(
+    () => dragActive?.get()[index] === true,
+  );
 
   // Canvas Y of the value (the element's vertical center). Off-screen values pin
   // to the nearest plot edge (inset), matching the built-in off-axis badge.
@@ -215,8 +219,10 @@ export function CustomReferenceLineOverlay({
   engine: ChartEngineLayout;
   padding: ChartPadding;
   formatValue: (v: number) => string;
-  dragValues: SharedValue<number[]>;
-  dragActive: SharedValue<boolean[]>;
+  /** Optional live overrides used by draggable single-series lines. */
+  dragValues?: SharedValue<number[]>;
+  /** Optional drag state used by draggable single-series lines. */
+  dragActive?: SharedValue<boolean[]>;
 }) {
   const children: React.ReactElement[] = [];
   for (let i = 0; i < lines.length; i++) {

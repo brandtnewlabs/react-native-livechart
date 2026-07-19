@@ -110,8 +110,9 @@ band around each draggable line is reserved for the drag.
 
 ## Custom tags (`renderReferenceLine`)
 
-Replace a line's built-in pill / gutter label with any **React Native** view — the same model as
-`renderMarker` / `renderTooltip`. The chart floats your element over the canvas and pins it to the
+On both `LiveChart` and `LiveChartSeries`, replace a line's built-in pill / gutter label with any
+**React Native** view — the same model as `renderMarker` / `renderTooltip`. The chart floats your
+element over the canvas and pins it to the
 line's value (vertically centered, horizontally at the badge / label position), tracking the
 rescaling axis and any drag without JS re-renders. Called per Form-A line; return `null` to keep
 that line's built-in tag (works with `badge: false` too). Bind the `ctx.value` / `ctx.valueStr`
@@ -131,6 +132,30 @@ renderReferenceLine={(ctx) =>
 
 `ctx` ([`ReferenceLineRenderProps`](/api-reference/types#annotations)) also carries `y`, `inRange`,
 `edge` (`"above"` / `"in"` / `"below"`, for a directional chevron), and `dragging` as SharedValues.
+
+For example, a multi-series market chart can use the app's native icon and localized target copy
+while leaving any other line on the built-in renderer:
+
+```tsx
+<LiveChartSeries
+  series={series}
+  referenceLines={[
+    { value: 0.66, label: "Target", badge: { position: "right" } },
+    { value: 0.5, label: "Midpoint", badge: { position: "center" } },
+  ]}
+  renderReferenceLine={({ line }) =>
+    line.label === "Target" ? (
+      <View style={styles.targetTag}>
+        <SolidUpIcon />
+        <Text>{t("market.target", { value: line.value })}</Text>
+      </View>
+    ) : null
+  }
+/>
+```
+
+The custom target owns only its tag: its dashed line still draws, while the midpoint keeps its
+built-in badge. The React Native tag is layered above the left-edge fade and scrub overlay.
 
 ## Grouping near-value lines (`referenceLineGrouping`)
 

@@ -123,6 +123,22 @@ describe("CustomReferenceLineOverlay", () => {
     expect(queryByTestId("rl-1")).toBeNull();
   });
 
+  it("uses the static line value when no drag state is provided", () => {
+    const { getByText } = render(
+      <CustomReferenceLineOverlay
+        lines={[{ value: 66 }]}
+        renderReferenceLine={({ value, dragging }) => (
+          <Text>{`${value.get()}:${dragging.get()}`}</Text>
+        )}
+        custom={[true]}
+        engine={engine()}
+        padding={DEFAULT_PADDING}
+        formatValue={fmt}
+      />,
+    );
+    expect(getByText("66:false")).toBeTruthy();
+  });
+
   it("pins across left / center / right anchors and an off-screen value", () => {
     const { getByTestId } = render(
       <Fixture

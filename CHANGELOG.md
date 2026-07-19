@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`LiveChartSeries` now supports custom React Native reference-line tags.**
+  `renderReferenceLine` provides the same per-line built-in fallback, live Y / off-axis
+  positioning, and left / center / right anchoring as `LiveChart`, while preserving
+  the reference-line stroke. ([#219](https://github.com/brandtnewlabs/react-native-livechart/issues/219))
+
 ### Changed
 
 - **Multi-series drawing worklets now scale with the active series count.**

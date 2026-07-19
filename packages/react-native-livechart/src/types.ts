@@ -249,8 +249,9 @@ export interface ReferenceLineBadgeConfig extends BadgeStyleConfig {
 }
 
 /**
- * Context passed to a custom {@link LiveChartProps.renderReferenceLine}. The chart
- * floats the element you return over the canvas and pins it to the line's value on
+ * Context passed to a custom {@link LiveChartProps.renderReferenceLine} or
+ * {@link LiveChartSeriesProps.renderReferenceLine}. The chart floats the element
+ * you return over the canvas and pins it to the line's value on
  * the UI thread (vertically centered on the line, horizontally at the badge /
  * label position) — so it tracks the rescaling axis and any drag smoothly without
  * JS re-renders, just like {@link TooltipRenderProps}. Replaces the built-in pill
@@ -2177,6 +2178,18 @@ export interface LiveChartProps extends LiveChartCoreProps {
 export interface LiveChartSeriesProps extends LiveChartCoreProps {
   /** Array of series definitions. Must be a SharedValue for UI-thread reads. */
   series: SharedValue<SeriesConfig[]>;
+  /**
+   * Render a Form-A reference line's tag as a custom **React Native** element
+   * instead of the built-in Skia pill / gutter label. The chart pins the returned
+   * element to the line's live Y position on the UI thread (see
+   * {@link ReferenceLineRenderProps}), including off-axis edge pinning. Return
+   * `null`/`undefined` to keep that line's built-in tag. The line stroke always
+   * remains visible, and `badge.position` / `labelPosition` controls the custom
+   * tag's left, center, or right anchor.
+   */
+  renderReferenceLine?: (
+    ctx: ReferenceLineRenderProps,
+  ) => ReactElement | null | undefined;
   /** Called when a series toggle chip is tapped. */
   onSeriesToggle?: (id: string, visible: boolean) => void;
   /**

@@ -83,6 +83,10 @@ import {
   labelConnector,
 } from "./ExtremaConnectorOverlay";
 import { CustomMarkerOverlay } from "./CustomMarkerOverlay";
+import {
+  CustomReferenceLineOverlay,
+  customReferenceLineFlags,
+} from "./CustomReferenceLineOverlay";
 import { CrosshairLine } from "./CrosshairLine";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
@@ -172,6 +176,7 @@ function useLiveChartSeriesController({
   markerHitRadius = 16,
   markerCluster,
   renderMarker,
+  renderReferenceLine,
   leftEdgeFade = true,
 }: LiveChartSeriesProps) {
   const emptyMarkers = useSharedValue<Marker[]>([]);
@@ -224,6 +229,13 @@ function useLiveChartSeriesController({
 
   const allRefLines = referenceLines ?? [];
   const refValues = collectReferenceValues(allRefLines);
+  // Form-A lines a custom renderer owns keep their line stroke but suppress the
+  // built-in Skia tag. The callback is probed per line on the JS thread, matching
+  // LiveChart and CustomMarkerOverlay's per-item fallback model.
+  const refLineCustom = customReferenceLineFlags(
+    allRefLines,
+    renderReferenceLine,
+  );
 
   const palette = applyPaletteOverride(
     resolveTheme(accentColor, theme),
@@ -531,6 +543,7 @@ function useLiveChartSeriesController({
     degenCfg,
     metricsCfg,
     allRefLines,
+    refLineCustom,
     leftEdgeFadeCfg,
     // theme / layout / fonts
     palette,
@@ -568,6 +581,7 @@ function useLiveChartSeriesController({
     markerGroupOpacity,
     overlayScrubFade,
     renderMarker,
+    renderReferenceLine,
     // selection dot: resolved config + fallback color (the leading series' color)
     selectionDot: selectionDotCfg,
     selectionColor: lineColors[0],
@@ -808,6 +822,7 @@ function SeriesValueLabelLayer({ model }: { model: LiveChartSeriesModel }) {
 function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
   const {
     allRefLines,
+    refLineCustom,
     engine,
     effectivePadding,
     palette,
@@ -830,6 +845,7 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
           formatValue={formatValue}
           font={skiaFont}
           badgeLayer
+          suppressTag={refLineCustom[i]}
         />
       ))}
     </Group>
@@ -868,6 +884,9 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     markersSV,
     markerClusterCfg,
     renderMarker,
+    renderReferenceLine,
+    allRefLines,
+    refLineCustom,
     overlayScrubFade,
   } = model;
 
@@ -972,23 +991,36 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
             padding={effectivePadding}
           />
 
-          {/* Custom-rendered markers — RN views floated over the canvas
-              (non-Skia), pinned to each marker's live position. Box-none fade
-              wrapper so `scrub.hideOverlaysOnScrub` hides them with the Skia
-              markers (full-bleed; children keep their own absolute positions). */}
-          {markersActive && renderMarker && (
+          {/* Custom annotations — RN views floated over the canvas (non-Skia),
+              pinned to their live positions. As a post-Canvas sibling they render
+              above the left-edge fade and scrub overlay. The box-none fade wrapper
+              keeps `scrub.hideOverlaysOnScrub` behavior aligned with Skia. */}
+          {((markersActive && renderMarker) ||
+            (renderReferenceLine && allRefLines.length > 0)) && (
             <Animated.View
               pointerEvents="box-none"
               style={[StyleSheet.absoluteFill, overlayFadeStyle]}
             >
-              <CustomMarkerOverlay
-                markers={markersSV}
-                renderMarker={renderMarker}
-                engine={engine}
-                padding={effectivePadding}
-                series={series}
-                cluster={markerClusterCfg}
-              />
+              {markersActive && renderMarker && (
+                <CustomMarkerOverlay
+                  markers={markersSV}
+                  renderMarker={renderMarker}
+                  engine={engine}
+                  padding={effectivePadding}
+                  series={series}
+                  cluster={markerClusterCfg}
+                />
+              )}
+              {renderReferenceLine && allRefLines.length > 0 && (
+                <CustomReferenceLineOverlay
+                  lines={allRefLines}
+                  renderReferenceLine={renderReferenceLine}
+                  custom={refLineCustom}
+                  engine={engine}
+                  padding={effectivePadding}
+                  formatValue={formatValue}
+                />
+              )}
             </Animated.View>
           )}
         </View>

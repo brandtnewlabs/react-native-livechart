@@ -5,6 +5,7 @@ import { useSharedValue } from "react-native-reanimated";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import { LiveChartSeries } from "../src/components/LiveChartSeries";
+import { ReferenceLineOverlay } from "../src/components/ReferenceLineOverlay";
 import { DefaultSelectionDot } from "../src/components/SelectionDot";
 import type { SeriesConfig } from "../src/types";
 
@@ -92,6 +93,47 @@ describe("LiveChartSeries", () => {
     fireEvent(layoutView, "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
+  });
+
+  it("renders custom reference-line tags with per-line built-in fallback", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return (
+        <LiveChartSeries
+          series={series}
+          referenceLines={[
+            { value: 11, label: "Target", badge: { position: "right" } },
+            { value: 12, label: "Built in", badge: { position: "center" } },
+          ]}
+          renderReferenceLine={({ line }) =>
+            line.label === "Target" ? <View testID="series-target" /> : null
+          }
+        />
+      );
+    }
+
+    const screen = render(<H />);
+    await waitFor(() => expect(screen.getByTestId("series-target")).toBeTruthy());
+
+    const badgePass = screen
+      .UNSAFE_getAllByType(ReferenceLineOverlay)
+      .filter((overlay) => overlay.props.badgeLayer);
+    expect(badgePass.map((overlay) => overlay.props.suppressTag)).toEqual([
+      true,
+      false,
+    ]);
   });
 
   it("renders with per-series value lines", async () => {

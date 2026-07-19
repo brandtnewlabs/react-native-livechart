@@ -14,6 +14,17 @@ accepts all the shared theming, axis, range, layout, and text props from
 `timeWindow`, `smoothing`, [`snapKey`](/api-reference/livechart#param-snap-key), `yAxis`,
 `referenceLines`, `formatValue`, …), plus the multi-series props below.
 
+## Reference-line tags
+
+<ParamField body="renderReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
+  Replace a Form-A reference line's built-in Skia badge or gutter label with any
+  React Native element. Return `null` or `undefined` for per-line fallback to the
+  built-in tag. The custom view tracks the line's live Y position, pins to the
+  nearest plot edge when off-axis, and respects left, center, and right badge
+  positions. The reference-line stroke remains visible. See
+  [Reference lines and bands](/guides/reference-lines-and-bands#custom-tags-renderreferenceline).
+</ParamField>
+
 ## Series data
 
 <ParamField body="series" type="SharedValue<SeriesConfig[]>" required>
