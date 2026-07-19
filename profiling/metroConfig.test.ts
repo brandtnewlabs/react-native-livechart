@@ -9,6 +9,8 @@ function loadCacheVersion(
   cadence: string,
   workletsBundleMode = "0",
   thresholdShaderMode = "default",
+  thresholdShaderLabel = "default",
+  thresholdShaderLayers = "default",
 ): string {
   return execFileSync(
     process.execPath,
@@ -25,6 +27,8 @@ function loadCacheVersion(
         EXPO_PUBLIC_MEMORY_PROFILE_MODE: mode,
         EXPO_PUBLIC_MEMORY_PROFILE_CADENCE: cadence,
         EXPO_PUBLIC_THRESHOLD_SHADER_PROFILE_MODE: thresholdShaderMode,
+        EXPO_PUBLIC_THRESHOLD_SHADER_PROFILE_LABEL: thresholdShaderLabel,
+        EXPO_PUBLIC_THRESHOLD_SHADER_PROFILE_LAYERS: thresholdShaderLayers,
         WORKLETS_BUNDLE_MODE: workletsBundleMode,
       },
     },
@@ -51,12 +55,27 @@ describe("renderer profiling Metro cache", () => {
       loadCacheVersion("static-control", "static", "display", "1"),
     ).not.toBe(baseline);
     expect(
+      loadCacheVersion("static-control", "static", "display", "0", "fill"),
+    ).not.toBe(baseline);
+    expect(
       loadCacheVersion(
         "static-control",
         "static",
         "display",
         "0",
-        "fill",
+        "default",
+        "legacy",
+      ),
+    ).not.toBe(baseline);
+    expect(
+      loadCacheVersion(
+        "static-control",
+        "static",
+        "display",
+        "0",
+        "default",
+        "default",
+        "8",
       ),
     ).not.toBe(baseline);
   });
