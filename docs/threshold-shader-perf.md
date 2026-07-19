@@ -102,7 +102,11 @@ checks, this supports keeping the branch-tree implementation.
 The regular threshold demo was also opened directly on the same physical device.
 The live line crossed the benchmark repeatedly; above/below colors, fill
 boundaries, marker line and label, and chart edges rendered without visible
-banding or clipping.
+banding or clipping. A test-only deterministic build then moved both the price
+and threshold series around the same center. That exercised the optimized
+time-varying-series shader through several red/green fill crossings; the
+interpolated boundaries and left/right clipping also rendered cleanly. The
+crossing dataset was not committed.
 
 These are UI-frame-callback results, not direct GPU timings. Instruments could
 not attach to this device through `xctrace`, so the results must not be presented
