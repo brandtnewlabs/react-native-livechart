@@ -44,6 +44,10 @@ export type FontWeight =
 /** Color scheme for the chart background, grid, and derived palette colors. */
 export type ThemeMode = "light" | "dark";
 
+/** Skia canvas composition mode. Android uses TextureView for `"transparent"`
+ * and an opaque SurfaceView for `"opaque"`. */
+export type CanvasMode = "transparent" | "opaque";
+
 /**
  * Badge pill style.
  * - `"default"` — accent-colored background with white text.
@@ -1123,7 +1127,8 @@ export interface TradeEvent {
 }
 
 /** Built-in marker glyph kinds drawn into the chart canvas. */
-export type MarkerKind = "trade" | "boost" | "graduation" | "winner" | "clawback";
+export type MarkerKind =
+  "trade" | "boost" | "graduation" | "winner" | "clawback";
 
 /**
  * A marker rendered into the chart at `(time, y)`. Exactly one of `seriesId`
@@ -1749,6 +1754,18 @@ export interface LiveChartCoreProps {
   insets?: ChartInsets;
   /** Container View style. */
   style?: ViewStyle;
+  /**
+   * Canvas composition mode. `"transparent"` keeps Skia's default compositing
+   * path (TextureView on Android) and can reveal content behind the chart.
+   * `"opaque"` makes the canvas own and paint its palette background; on Android
+   * this selects SurfaceView and may reduce RenderThread work, but it cannot be
+   * used when the chart must reveal content behind it. Default `"transparent"`.
+   *
+   * @experimental Profile on representative physical Android hardware before
+   * enabling broadly; SurfaceView ordering, clipping, transforms, screenshots,
+   * and parent scrolling should be validated in the consuming layout.
+   */
+  canvasMode?: CanvasMode;
   /** Visible time window in seconds. Default `30`. */
   timeWindow?: number;
   /** Freeze chart scrolling. Resume catches up to real time. Default `false`. */

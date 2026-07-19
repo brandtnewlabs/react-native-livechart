@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Experimental opaque Skia canvas rendering.** `LiveChart` and `LiveChartSeries` accept
+  `canvasMode="opaque"`, which selects SurfaceView on Android, explicitly paints the palette
+  background, and uses opaque-safe alternatives for the left-edge fade, scrub dim, and loading
+  gap. The existing transparent TextureView path remains the default and fallback for charts
+  that reveal content behind them. Includes a visual demo and controlled release profiling
+  harness. ([#215](https://github.com/brandtnewlabs/react-native-livechart/issues/215))
+
 - **`LiveChartSeries` now supports custom React Native reference-line tags.**
   `renderReferenceLine` provides the same per-line built-in fallback, live Y / off-axis
   positioning, and left / center / right anchoring as `LiveChart`, while preserving

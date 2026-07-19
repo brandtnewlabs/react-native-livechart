@@ -16,6 +16,14 @@ the most-used shapes are reproduced here.
 ## Data
 
 ```ts
+type CanvasMode = "transparent" | "opaque";
+```
+
+`CanvasMode` controls whether the Skia canvas participates in transparent composition or owns its
+background. On Android, opaque mode selects SurfaceView. See
+[Android surface rendering](/guides/android-surface-rendering).
+
+```ts
 interface LiveChartPoint {
   time: number;  // unix seconds
   value: number;

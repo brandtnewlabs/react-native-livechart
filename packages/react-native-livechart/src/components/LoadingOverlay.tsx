@@ -68,6 +68,7 @@ export function LoadingOverlay({
   lineStrokeWidth,
   waveAmplitude = 14,
   waveSpeed = 1,
+  opaqueCanvas = false,
 }: {
   engine: ChartEngineLayout;
   padding: ChartPadding;
@@ -87,6 +88,8 @@ export function LoadingOverlay({
   waveAmplitude?: number;
   /** Breathing-wave speed multiplier. */
   waveSpeed?: number;
+  /** Paint the owned background instead of erasing destination alpha. */
+  opaqueCanvas?: boolean;
   /** Mirror the badge prop so labels align with GridOverlay's label positions. */
   badge?: boolean;
   /** Whether the badge tail spike is shown; affects the left inset used for skeleton alignment. */
@@ -100,12 +103,22 @@ export function LoadingOverlay({
 }) {
   // Same left-inset formula as GridOverlay (only used when badge=true)
   const leftInset =
-    badgeMetrics.dotGap + badgeTailAndCap(font.getSize(), badgeTail, badgeMetrics);
+    badgeMetrics.dotGap +
+    badgeTailAndCap(font.getSize(), badgeTail, badgeMetrics);
 
   // Loading-shell color (squiggle + skeleton placeholders) and squiggle stroke,
   // both overridable via `loading={{ color, strokeWidth }}`.
   const loadingColor = lineColor ?? palette.gridLine;
   const loadingStroke = lineStrokeWidth ?? strokeWidth;
+  const [bgR, bgG, bgB] = palette.bgRgb;
+  const gapMaskColors = opaqueCanvas
+    ? [
+        `rgba(${bgR},${bgG},${bgB},0)`,
+        `rgb(${bgR},${bgG},${bgB})`,
+        `rgb(${bgR},${bgG},${bgB})`,
+        `rgba(${bgR},${bgG},${bgB},0)`,
+      ]
+    : ["rgba(0,0,0,0)", "rgba(0,0,0,1)", "rgba(0,0,0,1)", "rgba(0,0,0,0)"];
 
   // Squiggly path — built into a reused PathBuilder and detach()-ed each frame.
   const squigglyBuilder = usePathBuilder();
@@ -257,17 +270,15 @@ export function LoadingOverlay({
       />
 
       {/* Erase a soft horizontal band through the squiggle for the label (dstOut) */}
-      <Group opacity={showGapGroup} blendMode="dstOut">
+      <Group
+        opacity={showGapGroup}
+        blendMode={opaqueCanvas ? undefined : "dstOut"}
+      >
         <Rect x={gapLeft} y={gapTop} width={gapWidth} height={gapHeight}>
           <LinearGradient
             start={vec(0, 0)}
             end={gapGradEnd}
-            colors={[
-              "rgba(0,0,0,0)",
-              "rgba(0,0,0,1)",
-              "rgba(0,0,0,1)",
-              "rgba(0,0,0,0)",
-            ]}
+            colors={gapMaskColors}
             positions={gapGradientPositions}
           />
         </Rect>
@@ -282,7 +293,7 @@ export function LoadingOverlay({
             width={RECT_W}
             height={RECT_H}
             r={RECT_R}
-        color={loadingColor}
+            color={loadingColor}
           />
           <RoundedRect
             x={lx}
@@ -290,7 +301,7 @@ export function LoadingOverlay({
             width={RECT_W}
             height={RECT_H}
             r={RECT_R}
-        color={loadingColor}
+            color={loadingColor}
           />
           <RoundedRect
             x={lx}
@@ -298,7 +309,7 @@ export function LoadingOverlay({
             width={RECT_W}
             height={RECT_H}
             r={RECT_R}
-        color={loadingColor}
+            color={loadingColor}
           />
           <RoundedRect
             x={lx}
@@ -306,7 +317,7 @@ export function LoadingOverlay({
             width={RECT_W}
             height={RECT_H}
             r={RECT_R}
-        color={loadingColor}
+            color={loadingColor}
           />
         </>
       ) : null}

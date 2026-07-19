@@ -43,6 +43,7 @@ export function CrosshairOverlay({
   tooltipBorderRadius = 5,
   tooltipShowValue = true,
   tooltipShowTime = true,
+  opaqueCanvas = false,
 }: {
   scrubX: SharedValue<number>;
   crosshairOpacity: SharedValue<number>;
@@ -94,6 +95,8 @@ export function CrosshairOverlay({
   tooltipShowValue?: boolean;
   /** Draw the time row of the default tooltip body. Default true. */
   tooltipShowTime?: boolean;
+  /** Paint the owned background instead of erasing destination alpha. */
+  opaqueCanvas?: boolean;
 }) {
   // Explicit dependency arrays: with React Compiler enabled, Reanimated's
   // auto-detected worklet dependencies can change array size between renders
@@ -101,18 +104,15 @@ export function CrosshairOverlay({
   // React's "final argument changed size between renders" error. Listing the
   // captured plain values keeps the dependency array a constant size. SharedValue
   // reads stay reactive regardless of this list.
-  const p1 = useDerivedValue(
-    () => {
-      // A top-pinned custom tooltip pushes the line's start down to its measured
-      // bottom (lineTop) so the line stops at the label; -1 → no top tooltip.
-      const lt = lineTop?.value ?? -1;
-      return {
-        x: scrubX.value,
-        y: lt >= 0 ? lt : padding.top,
-      };
-    },
-    [scrubX, padding.top, lineTop],
-  );
+  const p1 = useDerivedValue(() => {
+    // A top-pinned custom tooltip pushes the line's start down to its measured
+    // bottom (lineTop) so the line stops at the label; -1 → no top tooltip.
+    const lt = lineTop?.value ?? -1;
+    return {
+      x: scrubX.value,
+      y: lt >= 0 ? lt : padding.top,
+    };
+  }, [scrubX, padding.top, lineTop]);
   const p2 = useDerivedValue(
     () => ({
       x: scrubX.value,
@@ -153,6 +153,11 @@ export function CrosshairOverlay({
     () => `rgba(0,0,0,${(1 - dimOpacity) * crosshairOpacity.value})`,
     [dimOpacity, crosshairOpacity],
   );
+  const opaqueDimOpacity = useDerivedValue(
+    () => (1 - dimOpacity) * crosshairOpacity.value,
+    [dimOpacity, crosshairOpacity],
+  );
+  const backgroundColor = `rgb(${palette.bgRgb[0]},${palette.bgRgb[1]},${palette.bgRgb[2]})`;
 
   return (
     <>
@@ -167,6 +172,15 @@ export function CrosshairOverlay({
             color={crosshairDimColor}
           />
         </Group>
+      ) : dimOpacity < 1 && opaqueCanvas ? (
+        <Rect
+          x={scrubX}
+          y={padding.top}
+          width={dimWidth}
+          height={dimHeight}
+          color={backgroundColor}
+          opacity={opaqueDimOpacity}
+        />
       ) : dimOpacity < 1 ? (
         // Erase the trailing content's alpha so it fades to the real background
         // (works on any background color, unlike a colored mask).
@@ -203,29 +217,28 @@ export function CrosshairOverlay({
         />
 
         {showTooltip && (
-        <>
-          <RoundedRect
-            x={tipX}
-            y={tipY}
-            width={tipW}
-            height={tipH}
-            r={tooltipBorderRadius}
-            color={tooltipBackground ?? palette.tooltipBg}
-          />
+          <>
+            <RoundedRect
+              x={tipX}
+              y={tipY}
+              width={tipW}
+              height={tipH}
+              r={tooltipBorderRadius}
+              color={tooltipBackground ?? palette.tooltipBg}
+            />
 
-          <RoundedRect
-            x={tipX}
-            y={tipY}
-            width={tipW}
-            height={tipH}
-            r={tooltipBorderRadius}
-            color={tooltipBorderColor ?? palette.tooltipBorder}
-            style="stroke"
-            strokeWidth={1}
-          />
+            <RoundedRect
+              x={tipX}
+              y={tipY}
+              width={tipW}
+              height={tipH}
+              r={tooltipBorderRadius}
+              color={tooltipBorderColor ?? palette.tooltipBorder}
+              style="stroke"
+              strokeWidth={1}
+            />
 
-          {children ??
-            renderTooltip?.() ?? (
+            {children ?? renderTooltip?.() ?? (
               <Group>
                 {tooltipShowValue && (
                   <SkiaText
@@ -247,8 +260,8 @@ export function CrosshairOverlay({
                 )}
               </Group>
             )}
-        </>
-      )}
+          </>
+        )}
       </Group>
     </>
   );

@@ -450,6 +450,13 @@ provided; everything else has a default.
 
 ## Theming & layout
 
+<ParamField body="canvasMode" type='"transparent" | "opaque"' default='"transparent"'>
+  Experimental canvas composition mode. On Android, `"transparent"` uses Skia's default
+  TextureView path; `"opaque"` owns and paints the palette background and selects SurfaceView.
+  Keep the default when content behind the chart must remain visible. Profile release builds on
+  physical hardware before enabling broadly. See [Android surface rendering](/guides/android-surface-rendering).
+</ParamField>
+
 <ParamField body="theme" type='"light" | "dark"' default='"dark"'>
   Color scheme.
 </ParamField>

@@ -169,6 +169,48 @@ describe("LiveChart", () => {
     });
   });
 
+  it("opts into an opaque canvas and replaces destination-alpha masks", () => {
+    const screen = render(
+      <Harness canvasMode="opaque" theme="light" loading />,
+    );
+    let views = screen.UNSAFE_getAllByType(View);
+
+    expect(views.some((view) => view.props.opaque === true)).toBe(true);
+    expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(false);
+    expect(
+      views.some(
+        (view) =>
+          typeof view.props.color === "string" &&
+          view.props.color.includes("250, 250, 250"),
+      ),
+    ).toBe(true);
+
+    screen.rerender(
+      <Harness
+        canvasMode="opaque"
+        theme="dark"
+        palette={{ bgRgb: [12, 34, 56] }}
+      />,
+    );
+    views = screen.UNSAFE_getAllByType(View);
+    expect(
+      views.some(
+        (view) =>
+          typeof view.props.color === "string" &&
+          view.props.color.includes("12, 34, 56"),
+      ),
+    ).toBe(true);
+    expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(false);
+  });
+
+  it("keeps the transparent canvas and destination-alpha masks as the fallback", () => {
+    const screen = render(<Harness canvasMode="transparent" />);
+    const views = screen.UNSAFE_getAllByType(View);
+
+    expect(views.some((view) => view.props.opaque === false)).toBe(true);
+    expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(true);
+  });
+
   it("supports gradient off and overlays off", () => {
     render(<Harness gradient={false} yAxis={false} badge={false} />);
   });

@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -27,6 +21,7 @@ import {
   Group,
   LinearGradient,
   Path,
+  Rect,
   vec,
 } from "@shopify/react-native-skia";
 
@@ -253,6 +248,7 @@ function useLiveChartController({
   font: fontProp,
   insets,
   style,
+  canvasMode = "transparent",
 
   // ── Candlestick ─────────────────────────────────────────────────────────
   mode = "line",
@@ -1204,6 +1200,7 @@ function useLiveChartController({
   return {
     // passthrough props the render needs
     style,
+    canvasMode,
     accessibilityLabel,
     accessibilityRole,
     emptyText,
@@ -1362,9 +1359,7 @@ function ChartWithDegen({
     onDegenShake,
     isStatic,
   );
-  return (
-    <ChartView model={model} yAxisEntries={yAxisEntries} degen={state} />
-  );
+  return <ChartView model={model} yAxisEntries={yAxisEntries} degen={state} />;
 }
 
 /**
@@ -1721,6 +1716,7 @@ function ChartStack({
     loadingStrokeWidth,
     loadingAmplitude,
     loadingSpeed,
+    canvasMode,
   } = model;
   return (
     <Group transform={degen?.shakeTransform}>
@@ -1939,6 +1935,7 @@ function ChartStack({
         lineStrokeWidth={loadingStrokeWidth}
         waveAmplitude={loadingAmplitude}
         waveSpeed={loadingSpeed}
+        opaqueCanvas={canvasMode === "opaque"}
       />
     </Group>
   );
@@ -2003,6 +2000,7 @@ function ChartScrubLayer({
     selectionDot,
     selectionColor,
     renderTooltip,
+    canvasMode,
   } = model;
   // A custom tooltip is an RN overlay (sibling of <Canvas>), so the built-in
   // Skia tooltip is suppressed here while it's active — the line pill in line
@@ -2047,6 +2045,7 @@ function ChartScrubLayer({
           tooltipBorderRadius={scrubCfg.tooltipBorderRadius}
           tooltipShowValue={scrubCfg.tooltipShowValue}
           tooltipShowTime={scrubCfg.tooltipShowTime}
+          opaqueCanvas={canvasMode === "opaque"}
         >
           {/* Candle charts render a multi-line OHLC tooltip; the line
               chart falls back to CrosshairOverlay's default value/time
@@ -2364,6 +2363,7 @@ function ChartView({
     extremaTimeOffset,
     topConnector,
     bottomConnector,
+    canvasMode,
   } = model;
 
   return (
@@ -2375,7 +2375,21 @@ function ChartView({
         accessibilityLabel={accessibilityLabel}
         accessibilityRole={accessibilityRole}
       >
-        <Canvas style={{ flex: 1 }}>
+        {/* Skia chooses TextureView vs SurfaceView when the native Canvas mounts. */}
+        <Canvas
+          key={canvasMode}
+          style={{ flex: 1 }}
+          opaque={canvasMode === "opaque"}
+        >
+          {canvasMode === "opaque" && (
+            <Rect
+              x={0}
+              y={0}
+              width={engine.canvasWidth}
+              height={engine.canvasHeight}
+              color={backgroundColor}
+            />
+          )}
           {/* Background fills first, then the left-edge fade (a canvas-space sibling
               so dstOut blends correctly), then the line stack on top — so the fade
               softens only the fills and the line stays crisp at the left edge. */}
@@ -2392,15 +2406,14 @@ function ChartView({
               startColor={leftEdgeFadeCfg.startColor}
               endColor={leftEdgeFadeCfg.endColor}
               engine={engine}
+              opaqueBackgroundRgb={
+                canvasMode === "opaque" ? palette.bgRgb : undefined
+              }
             />
           )}
 
           {/* Line stack above the fade so the line stays crisp at the left edge. */}
-          <ChartStack
-            model={model}
-            yAxisEntries={yAxisEntries}
-            degen={degen}
-          />
+          <ChartStack model={model} yAxisEntries={yAxisEntries} degen={degen} />
 
           {/* "extrema-edge" connector lines (dot → edge readout), above the chart
               content so the dashed guide reads over the line / candles. */}
