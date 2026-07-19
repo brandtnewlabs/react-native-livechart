@@ -28,9 +28,22 @@
       "cadence": "fixed30"
     },
     {
+      "id": "live-monotone-round-adaptive-10s",
+      "description": "Adaptive cadence with a 10-second window; expected 60 fps.",
+      "cadence": "adaptive",
+      "timeWindowSeconds": 10
+    },
+    {
+      "id": "live-monotone-round-adaptive-20s",
+      "description": "Adaptive cadence with a 20-second window; expected 40 fps.",
+      "cadence": "adaptive",
+      "timeWindowSeconds": 20
+    },
+    {
       "id": "live-monotone-round-adaptive",
-      "description": "Uses visible pixel velocity to choose a 30–60 fps cadence.",
-      "cadence": "adaptive"
+      "description": "Adaptive cadence with a 30-second window; expected 30 fps.",
+      "cadence": "adaptive",
+      "timeWindowSeconds": 30
     },
     {
       "id": "live-monotone-sharp",

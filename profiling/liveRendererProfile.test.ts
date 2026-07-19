@@ -40,6 +40,11 @@ describe("live renderer profile matrix", () => {
     expect(
       resolveLiveRendererProfile("live-monotone-round-adaptive").cadence,
     ).toBe("adaptive");
+    expect(
+      LIVE_RENDERER_PROFILES.filter(
+        (profile) => profile.cadence === "adaptive",
+      ).map((profile) => profile.timeWindowSeconds),
+    ).toEqual([10, 20, 30]);
   });
 
   it("keeps the original static/live environment variable as an override", () => {

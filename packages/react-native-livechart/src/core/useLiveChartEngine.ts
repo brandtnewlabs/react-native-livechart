@@ -24,8 +24,11 @@ import {
   type EngineTickMutable,
 } from "./liveChartEngineTick";
 import {
-  renderCadenceIntervalMs,
+  makeRenderCadenceSchedulerState,
+  resolveRenderCadencePublicationCounter,
   resolveRenderCadenceProfileOverride,
+  scheduleRenderCadenceFrame,
+  type RenderCadenceSchedulerState,
 } from "./renderCadence";
 
 export interface EngineConfig {
@@ -241,6 +244,7 @@ export interface EngineFrameRefs {
 export interface EngineFrameScratch {
   state: EngineTickMutable;
   input: EngineTickInput;
+  cadence: RenderCadenceSchedulerState;
 }
 
 /** Allocate one single-series frame scratch. Call once per engine instance. */
@@ -270,6 +274,7 @@ export function makeEngineFrameScratch(): EngineFrameScratch {
       targetValue: 0,
       points: [],
     },
+    cadence: makeRenderCadenceSchedulerState(),
   };
 }
 
@@ -377,6 +382,8 @@ export function useLiveChartEngine(
   // The example app can select a bundle-time experiment without making Node's
   // `process` global part of the publishable library's declaration build.
   const profileRenderCadence = resolveRenderCadenceProfileOverride();
+  const profilePublicationCounter =
+    resolveRenderCadencePublicationCounter();
   // Pinch-zoom window-width override (null = follow the configured window).
   // Declared first so `timeWindow` below can fold it in. Defaults to null so
   // charts without `zoom` behave exactly as before.
@@ -467,11 +474,6 @@ export function useLiveChartEngine(
   // the live edge over that progress. `returnT` rests at 1 (no glide in flight).
   const returnT = useSharedValue(1);
   const returnFrom = useSharedValue(0);
-  // Time accumulated while an experiment coalesces adjacent display frames.
-  // This SharedValue has no renderer subscriber, so updating it does not request
-  // a Skia redraw. The full elapsed time is passed to the next engine tick.
-  const cadenceElapsedMs = useSharedValue(0);
-
   // Live data extrema (value + time of the visible high / low). NaN until the
   // first tick finds data — the extrema label stays hidden until then.
   const extremaMinValue = useSharedValue(NaN);
@@ -545,35 +547,38 @@ export function useLiveChartEngine(
   if (frameScratchRef.current === null) {
     frameScratchRef.current = makeEngineFrameScratch();
   }
-
   // `autostart=false` registers the frame callback without running it — the live
   // loop is fully inert in static mode (the invariant that makes this worth it).
   useFrameCallback((frameInfo) => {
     "worklet";
+    // Production charts take this branch: no profiling SharedValue reads and no
+    // cadence calculation are added to the normal display-rate callback.
+    if (profileRenderCadence === "display") {
+      applyLiveChartEngineFrame(frameInfo, frameRefs, frameScratchRef.current!);
+      if (profilePublicationCounter) {
+        profilePublicationCounter.set(profilePublicationCounter.get() + 1);
+      }
+      return;
+    }
+
     const frameMs =
       frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
-    const intervalMs = renderCadenceIntervalMs(
+    const elapsedMs = scheduleRenderCadenceFrame(
+      frameScratchRef.current!.cadence,
       profileRenderCadence,
+      frameMs,
       canvasWidth.get(),
       displayWindow.get(),
     );
-    if (intervalMs > 0) {
-      const elapsedMs = cadenceElapsedMs.get() + frameMs;
-      // Small tolerance avoids a 120 Hz device needing a fifth frame because
-      // four reported deltas sum a few floating-point microseconds below 1/30s.
-      if (elapsedMs + 0.01 < intervalMs) {
-        cadenceElapsedMs.set(elapsedMs);
-        return;
-      }
-      cadenceElapsedMs.set(0);
-      applyLiveChartEngineFrame(
-        { timeSincePreviousFrame: elapsedMs },
-        frameRefs,
-        frameScratchRef.current!,
-      );
-      return;
+    if (elapsedMs === null) return;
+    applyLiveChartEngineFrame(
+      { timeSincePreviousFrame: elapsedMs },
+      frameRefs,
+      frameScratchRef.current!,
+    );
+    if (profilePublicationCounter) {
+      profilePublicationCounter.set(profilePublicationCounter.get() + 1);
     }
-    applyLiveChartEngineFrame(frameInfo, frameRefs, frameScratchRef.current!);
   }, !config.static);
 
   // When time-scroll is disabled while scrolled back, return the window to the

@@ -47,7 +47,9 @@ dimension:
 | `static-control` | How much cost remains without the continuous chart loop? |
 | `live-monotone-round` | What is the current production live baseline? |
 | `live-monotone-round-30fps` | How much churn disappears at a fixed 30 fps? |
-| `live-monotone-round-adaptive` | Can visible pixel velocity retain 60 fps only where it matters? |
+| `live-monotone-round-adaptive-10s` | Does adaptive retain 60 fps for fast 10-second windows? |
+| `live-monotone-round-adaptive-20s` | Does adaptive choose an intermediate 40 fps for 20-second windows? |
+| `live-monotone-round-adaptive` | Does adaptive settle at 30 fps for slow 30-second windows? |
 | `live-monotone-sharp` | Do round caps and joins drive mask churn? |
 | `live-linear-round` | Do cubic path verbs drive mask churn? |
 | `live-linear-sharp` | What does the simplest built-in stroke cost? |
@@ -103,9 +105,16 @@ existing frame callback. `fixed30` accumulates adjacent display-frame deltas and
 publishes the engine at 30 fps. `adaptive` waits for one half-pixel of horizontal
 movement, clamped between 30 and 60 fps. The accumulated elapsed time is passed
 to the next tick, so easing duration is unchanged; only expensive publication
-and redraw frequency differs. With the canonical 400-point-wide, 30-second
-window, adaptive cadence resolves to 33.3 ms: one publication for every two
-60 Hz display callbacks, or about half as many steady-state redraw requests.
+and redraw frequency differs. Cadence phase remainder is retained separately so
+the 25 ms intermediate target alternates one- and two-frame gaps on a 60 Hz
+display instead of quantizing down to 30 fps. The profiling route counts actual
+engine publications during the mounted phase, logs the result, and shows it in
+the unmounted phase. At 400 points wide, the 10-, 20-, and 30-second adaptive
+runs target 60, 40, and 30 publications per second respectively.
+
+This remains a single-series `LiveChart` experiment, not a supported public API
+or a shipped optimization. Productionizing it would require an explicit API,
+multi-series behavior, public docs, and a changelog entry in a separate change.
 
 ## Bundle Mode simulator screen
 
