@@ -75,6 +75,30 @@ If you omit Worklets or reorder plugins, worklets in the chart may fail at build
 
 From **Expo SDK 53+**, Metro resolves `import` using `package.json` **`exports`**, including the **`react-native`** condition (see [Expo Metro: ES Module resolution](https://docs.expo.dev/versions/latest/config/metro/#es-module-resolution)). This library's runtime entry is **`src/index.ts`** under that condition. If you disabled package exports (`unstable_enablePackageExports: false`), align your resolver or re-enable exports so resolution matches the published map.
 
+### Optional: Worklets Bundle Mode
+
+Bundle Mode is app-level build configuration—there is no LiveChart prop to enable. Because the package ships source, your app automatically compiles LiveChart's worklets in Bundle Mode when Babel and Metro are configured for it. The setup below was verified with **`react-native-worklets` 0.10.0**, Expo 57, and React Native 0.86; check Worklets compatibility before applying it to a different stack.
+
+```js
+// babel.config.js — Worklets must remain the last plugin
+plugins: [
+  [
+    "react-native-worklets/plugin",
+    { bundleMode: true, strictGlobal: true },
+  ],
+];
+```
+
+```js
+// metro.config.js (Expo)
+const { getDefaultConfig } = require("expo/metro-config");
+const { getBundleModeMetroConfig } = require("react-native-worklets/bundleMode");
+
+module.exports = getBundleModeMetroConfig(getDefaultConfig(__dirname));
+```
+
+Follow the [official Bundle Mode setup](https://docs.swmansion.com/react-native-worklets/docs/bundleMode/setup/) to apply the version-matched `metro` and `metro-runtime` patches, then clear Metro's cache and rebuild. Those patches belong in the consuming app; this package does not mutate a consumer's toolchain during installation. Legacy Eval Mode remains supported.
+
 ## Quick start
 
 ```tsx

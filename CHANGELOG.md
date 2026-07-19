@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the fixed 12-series capacity. A three-series chart registers 36 default
   per-series derived-value mappers instead of 144. Candle tooltips likewise
   reserve their five actual rows instead of 13. ([#214](https://github.com/brandtnewlabs/react-native-livechart/issues/214))
+- **The example and iOS profiling harness can compare Worklets legacy eval and
+  Bundle Mode builds.** Set `WORKLETS_BUNDLE_MODE=1` to apply matching Babel and
+  Metro configuration; the renderer-matrix runner accepts repeatable
+  `--worklets-mode legacy|bundle` selectors for controlled memory captures.
+  Public installation docs now include the opt-in consumer setup, and CI verifies
+  that a packed npm artifact completes a clean Bundle Mode production export.
+  ([#212](https://github.com/brandtnewlabs/react-native-livechart/issues/212))
+
 - **Loading, reveal, engine, multi-series path, marker Atlas, and degen Atlas
   frame loops now reuse JavaScript scratch containers.** Published arrays
   ping-pong to preserve Reanimated/Skia invalidation, while immutable paths and

@@ -7,6 +7,7 @@ function loadCacheVersion(
   run: string,
   mode: string,
   cadence: string,
+  workletsBundleMode = "0",
 ): string {
   return execFileSync(
     process.execPath,
@@ -22,6 +23,7 @@ function loadCacheVersion(
         EXPO_PUBLIC_MEMORY_PROFILE_RUN: run,
         EXPO_PUBLIC_MEMORY_PROFILE_MODE: mode,
         EXPO_PUBLIC_MEMORY_PROFILE_CADENCE: cadence,
+        WORKLETS_BUNDLE_MODE: workletsBundleMode,
       },
     },
   ).trim();
@@ -43,5 +45,8 @@ describe("renderer profiling Metro cache", () => {
     expect(loadCacheVersion("static-control", "static", "adaptive")).not.toBe(
       baseline,
     );
+    expect(
+      loadCacheVersion("static-control", "static", "display", "1"),
+    ).not.toBe(baseline);
   });
 });
