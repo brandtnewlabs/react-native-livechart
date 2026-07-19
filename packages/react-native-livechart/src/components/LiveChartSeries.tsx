@@ -4,7 +4,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { Canvas, Group } from "@shopify/react-native-skia";
+import { Canvas, Group, Rect } from "@shopify/react-native-skia";
 import { useLayoutEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -132,6 +132,7 @@ function useLiveChartSeriesController({
   font: fontProp,
   insets,
   style,
+  canvasMode = "transparent",
   timeWindow = 30,
   paused = false,
   loading = false,
@@ -271,10 +272,7 @@ function useLiveChartSeriesController({
   // Mount per-series drawing worklets only for real series. The previous fixed
   // 12-slot render kept 144 derived-value mappers alive for the default stroke,
   // dot, and value-label layers even when a chart contained only one line.
-  const activeSeriesCount = Math.min(
-    seriesSnapshot.length,
-    MAX_MULTI_SERIES,
-  );
+  const activeSeriesCount = Math.min(seriesSnapshot.length, MAX_MULTI_SERIES);
 
   const maxSeriesLabelWidth = dotCfg.valueLabel
     ? Math.max(
@@ -527,6 +525,7 @@ function useLiveChartSeriesController({
     // passthrough props the render needs
     series,
     style,
+    canvasMode,
     accessibilityLabel,
     accessibilityRole,
     emptyText,
@@ -637,6 +636,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     loadingStrokeWidth,
     loadingAmplitude,
     loadingSpeed,
+    canvasMode,
     activeSeriesCount,
   } = model;
 
@@ -780,6 +780,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         lineStrokeWidth={loadingStrokeWidth}
         waveAmplitude={loadingAmplitude}
         waveSpeed={loadingSpeed}
+        opaqueCanvas={canvasMode === "opaque"}
       />
     </Group>
   );
@@ -830,6 +831,7 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
     skiaFont,
     degenShakeTransform,
     overlayScrubFade,
+    canvasMode,
   } = model;
   if (allRefLines.length === 0) return null;
   return (
@@ -888,6 +890,7 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     allRefLines,
     refLineCustom,
     overlayScrubFade,
+    canvasMode,
   } = model;
 
   // Mirror the Skia overlay fade onto the RN custom-marker sibling so
@@ -930,7 +933,21 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
           else points map into a taller area and the x-axis draws past the edge. */}
       <GestureDetector gesture={rootGesture}>
         <View style={{ flex: 1 }} onLayout={onLayout}>
-          <Canvas style={{ flex: 1, minHeight: layoutHeight || 1 }}>
+          {/* Skia chooses TextureView vs SurfaceView when the native Canvas mounts. */}
+          <Canvas
+            key={canvasMode}
+            style={{ flex: 1, minHeight: layoutHeight || 1 }}
+            opaque={canvasMode === "opaque"}
+          >
+            {canvasMode === "opaque" && (
+              <Rect
+                x={0}
+                y={0}
+                width={engine.canvasWidth}
+                height={engine.canvasHeight}
+                color={backgroundColor}
+              />
+            )}
             <SeriesChartStack model={model} />
 
             {/* "extrema-edge" connector lines (dot → edge readout). Outside the
@@ -949,6 +966,9 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 startColor={leftEdgeFadeCfg.startColor}
                 endColor={leftEdgeFadeCfg.endColor}
                 engine={engine}
+                opaqueBackgroundRgb={
+                  canvasMode === "opaque" ? palette.bgRgb : undefined
+                }
               />
             )}
 
@@ -971,6 +991,7 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 crosshairLineColor={scrubCfg.crosshairLineColor}
                 crosshairDash={scrubCfg.crosshairDash}
                 crosshairDimColor={scrubCfg.crosshairDimColor}
+                opaqueCanvas={canvasMode === "opaque"}
               />
             )}
 

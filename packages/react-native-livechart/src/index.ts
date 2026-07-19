@@ -40,6 +40,7 @@ export type {
   BadgeVariant,
   CandleMetrics,
   CandlePoint,
+  CanvasMode,
   ChartInsets,
   ChartOverlayContext,
   ChartPlotRect,

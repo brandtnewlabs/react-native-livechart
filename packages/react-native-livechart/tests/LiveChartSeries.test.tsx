@@ -10,6 +10,31 @@ import { DefaultSelectionDot } from "../src/components/SelectionDot";
 import type { SeriesConfig } from "../src/types";
 
 describe("LiveChartSeries", () => {
+  it("opts into an opaque canvas and replaces destination-alpha masks", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return <LiveChartSeries series={series} canvasMode="opaque" />;
+    }
+
+    const screen = render(<H />);
+    await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
+    const views = screen.UNSAFE_getAllByType(View);
+    expect(views.some((view) => view.props.opaque === true)).toBe(true);
+    expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(false);
+  });
+
   it("renders with default scrub when scrub prop is omitted", async () => {
     const initial: SeriesConfig[] = [
       {

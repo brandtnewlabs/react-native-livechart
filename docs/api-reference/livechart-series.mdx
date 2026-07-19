@@ -11,8 +11,12 @@ import { LiveChartSeries } from "react-native-livechart";
 `LiveChartSeries` draws several line series sharing an axis, time window, and crosshair. It
 accepts all the shared theming, axis, range, layout, and text props from
 [`LiveChart`](/api-reference/livechart) (`theme`, `accentColor`, `palette`, `metrics`, `font`,
-`timeWindow`, `smoothing`, [`snapKey`](/api-reference/livechart#param-snap-key), `yAxis`,
+`canvasMode`, `timeWindow`, `smoothing`, [`snapKey`](/api-reference/livechart#param-snap-key), `yAxis`,
 `referenceLines`, `formatValue`, …), plus the multi-series props below.
+
+On Android, the shared experimental `canvasMode="opaque"` option selects an opaque SurfaceView and
+paints the palette background inside the canvas. See
+[Android surface rendering](/guides/android-surface-rendering) for constraints and profiling guidance.
 
 ## Reference-line tags
 

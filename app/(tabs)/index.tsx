@@ -163,6 +163,11 @@ const SECTIONS: DemoSection[] = [
         title: "Extrema labels",
         blurb: 'topLabel / bottomLabel at the actual high / low point (position="extrema").',
       },
+      {
+        href: "/demo/android-surface-rendering",
+        title: "Android surface rendering",
+        blurb: "Experimental TextureView vs opaque SurfaceView rendering and mask fallbacks.",
+      },
     ],
   },
   {
@@ -230,6 +235,9 @@ export default function Index() {
   const insets = useSafeAreaInsets();
   if (process.env.EXPO_PUBLIC_THRESHOLD_SHADER_PROFILE_MODE) {
     return <Redirect href={"/threshold-shader-profile" as Href} />;
+  }
+  if (process.env.EXPO_PUBLIC_ANDROID_SURFACE_PROFILE_MODE) {
+    return <Redirect href={"/android-surface-profile" as Href} />;
   }
   if (
     process.env.EXPO_PUBLIC_MEMORY_PROFILE_MODE ||

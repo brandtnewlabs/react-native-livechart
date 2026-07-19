@@ -80,7 +80,8 @@
               "guides/theming",
               "guides/badge-styling",
               "guides/axes-and-grid",
-              "guides/extrema-labels"
+              "guides/extrema-labels",
+              "guides/android-surface-rendering"
             ]
           },
           {

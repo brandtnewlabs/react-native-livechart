@@ -25,6 +25,7 @@ export function CrosshairLine({
   crosshairLineColor,
   crosshairDash,
   crosshairDimColor,
+  opaqueCanvas = false,
 }: {
   scrubX: SharedValue<number>;
   crosshairOpacity: SharedValue<number>;
@@ -52,6 +53,8 @@ export function CrosshairLine({
   /** Dash intervals `[on, off, …]` for the crosshair line; omit → solid. */
   crosshairDash?: number[];
   crosshairDimColor?: string;
+  /** Paint the owned background instead of erasing destination alpha. */
+  opaqueCanvas?: boolean;
 }) {
   // Explicit dependency arrays: with React Compiler enabled, Reanimated's
   // auto-detected worklet dependencies can change array size between renders
@@ -89,6 +92,11 @@ export function CrosshairLine({
     () => `rgba(0,0,0,${(1 - dimOpacity) * crosshairOpacity.value})`,
     [dimOpacity, crosshairOpacity],
   );
+  const opaqueDimOpacity = useDerivedValue(
+    () => (1 - dimOpacity) * crosshairOpacity.value,
+    [dimOpacity, crosshairOpacity],
+  );
+  const backgroundColor = `rgb(${palette.bgRgb[0]},${palette.bgRgb[1]},${palette.bgRgb[2]})`;
 
   return (
     <>
@@ -103,6 +111,15 @@ export function CrosshairLine({
             color={crosshairDimColor}
           />
         </Group>
+      ) : dimOpacity < 1 && opaqueCanvas ? (
+        <Rect
+          x={scrubX}
+          y={padding.top}
+          width={dimWidth}
+          height={dimHeight}
+          color={backgroundColor}
+          opacity={opaqueDimOpacity}
+        />
       ) : dimOpacity < 1 ? (
         // Erase the trailing content's alpha so it fades to the real background.
         <Group blendMode="dstOut">

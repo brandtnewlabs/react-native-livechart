@@ -1,0 +1,76 @@
+---
+title: Android surface rendering
+icon: "mobile-screen"
+description: "Profile the experimental opaque SurfaceView canvas and know when to keep TextureView."
+---
+
+`LiveChart` and `LiveChartSeries` use Skia's transparent canvas mode by default. On Android,
+that is backed by a `TextureView`, which composes naturally with content behind the chart.
+
+For an opaque chart, you can profile Skia's `SurfaceView` path:
+
+```tsx
+<LiveChart data={data} value={value} canvasMode="opaque" />
+```
+
+`canvasMode="opaque"` is experimental and opt-in. The chart paints the resolved palette
+background as the first canvas draw, then uses background-color composites for the left-edge
+fade, scrub dim, and loading/empty label gap. This preserves those effects without relying on
+destination alpha.
+
+## When to keep the default
+
+Keep `canvasMode="transparent"` when the chart must reveal an image, gradient, blur, video, or
+other content behind it. It is also the fallback if a consuming layout shows SurfaceView-specific
+problems with sibling ordering, clipping, transforms, parent scrolling, gestures, screenshots,
+or accessibility overlays.
+
+The mode name describes composition, not the theme: opaque mode supports both light and dark
+palettes and responds to palette changes. A custom `style.backgroundColor` does not replace the
+canvas-owned background; set `theme` or `palette.bgRgb` so the painted background and surrounding
+container agree.
+
+## Profiling
+
+Do not choose SurfaceView from emulator timings. Compare identical release builds on representative
+physical Android devices and hold the workload, refresh rate, temperature, and power mode constant.
+Capture at least:
+
+- frame-time p90/p99 and missed frames;
+- `dumpsys gfxinfo`;
+- Perfetto RenderThread and GPU/compositor slices;
+- SurfaceFlinger layers;
+- visual screenshots while scrubbing and loading.
+
+This repository includes a fixed workload at `app/android-surface-profile.tsx`. Select the backing
+view at bundle time with `EXPO_PUBLIC_ANDROID_SURFACE_PROFILE_MODE=transparent` or `opaque`.
+
+## Physical-device result
+
+The controlled harness was captured on a physical Samsung Galaxy S24 (`SM-S921B`) at 120 Hz using
+release builds, 10,000 retained points, a 120-second visible window, and 30 incoming updates per
+second. Each row is normalized to the active Perfetto animation span so the two trace lengths do not
+skew the comparison.
+
+| Metric | Transparent TextureView | Opaque SurfaceView |
+| --- | ---: | ---: |
+| Animation callbacks per second | 119.75 | 101.35 |
+| Animation slice p90 / p99 | 6.51 / 7.77 ms | 10.51 / 12.30 ms |
+| Animation slices over the 8.33 ms budget | 0.3% | 99.5% |
+| App scheduled CPU | 1,601 ms/s | 1,318 ms/s |
+| Main-thread scheduled CPU | 746 ms/s | 981 ms/s |
+| Android RenderThread scheduled CPU | 438 ms/s | 0 ms/s |
+| SurfaceFlinger scheduled CPU | 471 ms/s | 404 ms/s |
+
+SurfaceView eliminated the Android RenderThread composition pass and reduced total app scheduled CPU
+by about 18%, but moved rendering onto the main thread and failed the 120 Hz frame budget. The
+transparent run's `dumpsys gfxinfo` window reported p90 / p99 of 10 / 11 ms and no modern frame
+deadline misses. Android does not include the separately composed SurfaceView's chart frames in that
+counter, so the opaque row uses Perfetto rather than treating its zero-frame `gfxinfo` report as a
+performance result.
+
+SurfaceFlinger confirmed a separate, device-composed, opaque layer for SurfaceView. Physical
+screenshots also preserved the chart, rounded clipping, and a React Native sibling overlay. The
+result supports keeping `"transparent"` as the default and exposing `"opaque"` only as a profiled,
+layout-specific opt-in. Repeat the matrix on the consuming app's representative devices before
+enabling it broadly.
