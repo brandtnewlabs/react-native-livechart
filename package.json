@@ -17,6 +17,7 @@
     "test:watch": "jest --watch",
     "test:lib": "jest packages/react-native-livechart",
     "test:coverage": "jest --coverage",
+    "benchmark:threshold-shader": "node scripts/benchmark-threshold-shader.mjs",
     "build:lib": "npm run build -w react-native-livechart",
     "build:lib:types:watch": "npm run build:types:watch -w react-native-livechart",
     "pack:lib": "npm pack -w react-native-livechart",
