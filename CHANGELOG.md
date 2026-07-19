@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`LiveChartSeries` now supports custom React Native reference-line tags.**
+  `renderReferenceLine` provides the same per-line built-in fallback, live Y / off-axis
+  positioning, and left / center / right anchoring as `LiveChart`, while preserving
+  the reference-line stroke. ([#219](https://github.com/brandtnewlabs/react-native-livechart/issues/219))
+
 ### Fixed
 
 - **Scrub-enabled charts no longer block vertical parent scrolling on iOS.**
@@ -17,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Time-varying threshold shaders select samples in logarithmic time.** The
+  stroke and profit/loss fill shader now reaches one of its 63 sample segments
+  through at most six constant-index comparisons instead of walking every
+  segment for every covered fragment. The sampled boundary and public API are
+  unchanged. ([#213](https://github.com/brandtnewlabs/react-native-livechart/issues/213))
 - **Multi-series drawing worklets now scale with the active series count.**
   Stroke, dot, live-value label, and optional value-line slots no longer mount
   the fixed 12-series capacity. A three-series chart registers 36 default

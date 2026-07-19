@@ -1,10 +1,12 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
-import { TextInput } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import {
   formatTime,
   LiveChartSeries,
   type LegendConfig,
   type MultiSeriesDotConfig,
+  type ReferenceLineRenderProps,
   type SeriesConfig,
 } from "react-native-livechart";
 import Animated, {
@@ -22,6 +24,17 @@ import { APP_THEME } from "../../demo-lib/theme";
 export const options = { title: "Multi-series" };
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+function CustomTargetTag({ ctx }: { ctx: ReferenceLineRenderProps }) {
+  return (
+    <View style={styles.targetTag}>
+      <Ionicons name="arrow-up-circle" size={14} color="#86efac" />
+      <Text style={styles.targetTagText}>
+        {ctx.line.label}: {ctx.line.value?.toFixed(1)}%
+      </Text>
+    </View>
+  );
+}
 
 const DATA_OPTIONS: { value: boolean; label: string }[] = [
   { value: false, label: "Simulated series" },
@@ -213,7 +226,36 @@ export default function MultiSeriesScreen() {
             exaggerate={exaggerate}
             degen={degen ? true : undefined}
             referenceLines={
-              showRef ? [{ value: 33.3, label: "even" }] : undefined
+              showRef
+                ? [
+                    {
+                      value: 33.3,
+                      label: "Target",
+                      excludeFromRange: true,
+                      badge: { position: "right" },
+                    },
+                    {
+                      value: 35,
+                      label: "Built-in fallback",
+                      excludeFromRange: true,
+                      badge: { position: "center" },
+                    },
+                    {
+                      value: 110,
+                      label: "Above range",
+                      excludeFromRange: true,
+                      badge: { position: "left" },
+                    },
+                  ]
+                : undefined
+            }
+            renderReferenceLine={
+              showRef
+                ? (ctx) =>
+                    ctx.line.label === "Built-in fallback" ? null : (
+                      <CustomTargetTag ctx={ctx} />
+                    )
+                : undefined
             }
             yAxis={yOn}
             xAxis={xOn}
@@ -374,3 +416,22 @@ export default function MultiSeriesScreen() {
     </DemoScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  targetTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#22c55e",
+    backgroundColor: "#14532d",
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+  targetTagText: {
+    color: "#f0fdf4",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+});

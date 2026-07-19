@@ -123,6 +123,22 @@ describe("CustomReferenceLineOverlay", () => {
     expect(queryByTestId("rl-1")).toBeNull();
   });
 
+  it("uses the static line value when no drag state is provided", () => {
+    const { getByText } = render(
+      <CustomReferenceLineOverlay
+        lines={[{ value: 66 }]}
+        renderReferenceLine={({ value, dragging }) => (
+          <Text>{`${value.get()}:${dragging.get()}`}</Text>
+        )}
+        custom={[true]}
+        engine={engine()}
+        padding={DEFAULT_PADDING}
+        formatValue={fmt}
+      />,
+    );
+    expect(getByText("66:false")).toBeTruthy();
+  });
+
   it("pins across left / center / right anchors and an off-screen value", () => {
     const { getByTestId } = render(
       <Fixture
@@ -131,19 +147,26 @@ describe("CustomReferenceLineOverlay", () => {
           { value: 50, badge: { position: "center" } },
           { value: 70, badge: { position: "right" } },
           { value: 150 }, // off-screen above → pinned to the top edge
+          { value: -50 }, // off-screen below → pinned to the bottom edge
         ]}
-        render={({ index }) => (
-          <View testID={`rl-${index}`} style={{ width: 40, height: 16 }} />
+        render={({ index, y }) => (
+          <View
+            testID={`rl-${index}`}
+            accessibilityLabel={`y:${y.get()}`}
+            style={{ width: 40, height: 16 }}
+          />
         )}
       />,
     );
     // Drive onLayout so the measure + transform branches execute for each anchor.
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       fireEvent(getByTestId(`rl-${i}`).parent!, "layout", {
         nativeEvent: { layout: { x: 0, y: 0, width: 40, height: 16 } },
       });
       expect(getByTestId(`rl-${i}`)).toBeTruthy();
     }
+    expect(getByTestId("rl-3").props.accessibilityLabel).toBe("y:24");
+    expect(getByTestId("rl-4").props.accessibilityLabel).toBe("y:260");
   });
 
   it("hides the element when the canvas is not laid out", () => {

@@ -12,8 +12,8 @@ import type { LiveChartPoint } from "../types";
  * projected to this many evenly-spaced pixel-Y values across the plot, which the
  * shader linearly interpolates between. ~one sample per 6px on a phone plot —
  * fine enough that the line's crossing point is coloured accurately. The shader
- * walks these in an unrolled loop (`THRESHOLD_SAMPLE_COUNT - 1` iterations), so
- * keep it modest to stay within SkSL's unroll limits.
+ * selects between them through a balanced constant-index branch tree, so 64
+ * samples require at most six comparisons per covered fragment.
  */
 export const THRESHOLD_SAMPLE_COUNT = 64;
 
