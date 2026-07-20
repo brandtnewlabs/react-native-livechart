@@ -418,8 +418,8 @@ interface YAxisConfig {
   // Place labels in a shared left-aligned column whose right edge sits this
   // many px from the canvas edge. Omit for the centered-gutter placement.
   labelRightMargin?: number;
-  // Gap between each grid-line end and the shared label column. Only
-  // applies with labelRightMargin. Default 0.
+  // Gap between the shared label column and each grid/plain-reference-line end.
+  // Only applies with labelRightMargin. Default 0.
   gridEndGap?: number;
   // Float the price axis over a full-width plot instead of reserving a right
   // gutter — the line/candles run to the edge and the labels float on top.

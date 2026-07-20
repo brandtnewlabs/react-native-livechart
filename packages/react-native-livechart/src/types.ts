@@ -654,8 +654,9 @@ export interface YAxisConfig {
    */
   labelRightMargin?: number;
   /**
-   * Gap (px) between the end of each grid line and the shared price-label
-   * column. Only applies when {@link labelRightMargin} is set. Default `0`.
+   * Gap (px) between the shared price-label column and the end of each grid or
+   * plain reference line. Only applies when {@link labelRightMargin} is set.
+   * Default `0`.
    */
   gridEndGap?: number;
   /**

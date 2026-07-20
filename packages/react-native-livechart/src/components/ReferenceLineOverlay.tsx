@@ -9,6 +9,7 @@ import {
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
+import type { YAxisEntry } from "../draw/grid";
 import type { ChartPadding } from "../draw/line";
 import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
 import { usePathBuilder } from "../hooks/usePathBuilder";
@@ -85,6 +86,12 @@ type ReferenceLineOverlayProps = {
   dragValues?: SharedValue<number[]>;
   /** This line's index into {@link dragValues}. */
   index?: number;
+  /** Y-axis entries used to match a right-anchored grid endpoint. */
+  yAxisEntries?: SharedValue<YAxisEntry[]>;
+  /** Enables clipping to the right-anchored Y-axis label column. */
+  labelRightMargin?: number;
+  /** Gap between the drawn line endpoint and the label column. */
+  gridEndGap?: number;
 };
 
 export function ReferenceLineOverlay({
@@ -102,6 +109,9 @@ export function ReferenceLineOverlay({
   groupHidden,
   dragValues,
   index = 0,
+  yAxisEntries,
+  labelRightMargin,
+  gridEndGap,
 }: ReferenceLineOverlayProps) {
   const form = referenceLineForm(line);
   const isBand = form === "value-band" || form === "time-band";
@@ -141,6 +151,10 @@ export function ReferenceLineOverlay({
     badgeFont,
     dragValues,
     index,
+    yAxisEntries,
+    labelRightMargin,
+    gridEndGap,
+    font,
   );
 
   const labelColor =

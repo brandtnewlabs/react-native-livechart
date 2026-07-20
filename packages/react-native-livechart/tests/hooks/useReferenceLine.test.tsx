@@ -1,6 +1,8 @@
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { EngineState } from "../../src/core/useLiveChartEngine";
+import type { YAxisEntry } from "../../src/draw/grid";
 import { renderHook } from "@testing-library/react-native";
+import type { SharedValue } from "react-native-reanimated";
 import {
   computeReferenceBadgeRect,
   useReferenceLine,
@@ -12,9 +14,21 @@ const font = {
   getMetrics: () => ({ ascent: -9.6, descent: 2.4, leading: 0 }),
 } as never;
 
+const widerYAxisFont = {
+  getSize: () => 12,
+  measureText: (s: string) => ({ x: 0, y: 0, width: s.length * 10, height: 12 }),
+  getMetrics: () => ({ ascent: -9.6, descent: 2.4, leading: 0 }),
+} as never;
+
 // padding: top=12, right=80, bottom=28, left=12 → chartH = 300-12-28 = 260
 const PADDING = { top: 12, right: 80, bottom: 28, left: 12 };
 const fmt = (v: number) => v.toFixed(2);
+const rightAnchoredYAxisEntries = {
+  value: [
+    { y: 40, label: "10", alpha: 1 },
+    { y: 80, label: "100000", alpha: 1 },
+  ],
+} as SharedValue<YAxisEntry[]>;
 
 function engine(
   partial: Partial<{
@@ -132,6 +146,89 @@ describe("useReferenceLine", () => {
     expect(l.drawLine).toBe(true);
     expect(l.lineX1).toBe(PADDING.left);
     expect(l.lineX2).toBe(400 - PADDING.right);
+  });
+
+  it("clips a plain line before the right-anchored Y-axis label column", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50 },
+        fmt,
+        font,
+        undefined,
+        0,
+        rightAnchoredYAxisEntries,
+        8,
+        6,
+      ),
+    );
+    const l = result.current.value;
+
+    // 400 canvas - 8 edge margin - 42 widest label - 6 grid gap = 344.
+    expect(l.lineX2).toBe(344);
+    // Badge/label anchors remain at the plot edge.
+    expect(l.x2).toBe(320);
+    expect(l.labelX).toBe(324);
+  });
+
+  it("uses the Y-axis font when the reference badge font differs", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50 },
+        fmt,
+        font,
+        undefined,
+        0,
+        rightAnchoredYAxisEntries,
+        8,
+        6,
+        widerYAxisFont,
+      ),
+    );
+
+    // 400 canvas - 8 edge margin - 60 widest Y label - 6 grid gap = 326.
+    expect(result.current.value.lineX2).toBe(326);
+  });
+
+  it("does not clip a full-width line to the Y-axis column", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { value: 50, fullWidth: true },
+        fmt,
+        font,
+        undefined,
+        0,
+        rightAnchoredYAxisEntries,
+        8,
+        6,
+      ),
+    );
+
+    expect(result.current.value.lineX2).toBe(400);
+  });
+
+  it("does not clip a value band to the Y-axis column", () => {
+    const { result } = renderHook(() =>
+      useReferenceLine(
+        engine(),
+        PADDING,
+        { valueFrom: 20, valueTo: 60 },
+        fmt,
+        font,
+        undefined,
+        0,
+        rightAnchoredYAxisEntries,
+        8,
+        6,
+      ),
+    );
+
+    expect(result.current.value.lineX2).toBe(320);
   });
 
   it("extends the line edge-to-edge through the gutter when fullWidth", () => {

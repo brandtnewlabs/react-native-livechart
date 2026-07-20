@@ -1025,6 +1025,36 @@ describe("ReferenceLineOverlay", () => {
     renderLine({ value: 5, label: "mid" });
   });
 
+  it("clips a plain line to the right-anchored Y-axis column", () => {
+    const makeBuilder = Skia.PathBuilder.Make as jest.Mock;
+    const resultIndex = makeBuilder.mock.results.length;
+
+    function Fixture() {
+      const yAxisEntries = useSharedValue([
+        { y: 40, label: "10", alpha: 1 },
+        { y: 80, label: "100000", alpha: 1 },
+      ]);
+      return (
+        <ReferenceLineOverlay
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          line={{ value: 5, label: "mid" }}
+          palette={palette}
+          formatValue={fmt}
+          font={font}
+          yAxisEntries={yAxisEntries}
+          labelRightMargin={8}
+          gridEndGap={6}
+        />
+      );
+    }
+
+    render(<Fixture />);
+
+    const lineBuilder = makeBuilder.mock.results[resultIndex].value;
+    expect(lineBuilder.lineTo).toHaveBeenCalledWith(344, 142);
+  });
+
   it("renders a full-width Form-A line (edge to edge through the gutter)", () => {
     renderLine({ value: 5, label: "mid", fullWidth: true });
   });

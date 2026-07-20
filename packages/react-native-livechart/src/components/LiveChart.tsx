@@ -1849,6 +1849,9 @@ function ChartStack({
             fontProp={fontProp}
             dragValues={dragValues}
             index={i}
+            yAxisEntries={yAxisEntries}
+            labelRightMargin={yAxisCfg?.labelRightMargin}
+            gridEndGap={yAxisCfg?.gridEndGap}
           />
         ))}
       </Group>
@@ -2288,6 +2291,8 @@ function ChartRefBadgeLayer({
     formatValue,
     skiaFont,
     fontProp,
+    yAxisCfg,
+    yAxisEntries,
     overlayScrubFade,
   } = model;
   if (allRefLines.length === 0) return null;
@@ -2310,6 +2315,9 @@ function ChartRefBadgeLayer({
           suppressTagWhenOffAxis={refLineOffAxisCustom[i]}
           customTagWidths={refLineCustomTagWidths}
           groupHidden={refGroupingActive ? groupHidden : undefined}
+          yAxisEntries={yAxisEntries}
+          labelRightMargin={yAxisCfg?.labelRightMargin}
+          gridEndGap={yAxisCfg?.gridEndGap}
         />
       ))}
       {/* Collapsed count handles for grouped (near-value) lines. */}

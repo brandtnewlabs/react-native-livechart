@@ -7,7 +7,10 @@ import {
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { BADGE_METRICS_DEFAULTS, MAX_Y_LABELS } from "../constants";
 import type { ResolvedGridStyleConfig } from "../core/resolveConfig";
-import type { YAxisEntry } from "../draw/grid";
+import {
+  rightAnchoredYAxisColumnLayout,
+  type YAxisEntry,
+} from "../draw/grid";
 import {
   badgeTailAndCap,
   gutterCenteredTextLeftX,
@@ -107,20 +110,13 @@ export function YAxisOverlay({
 
   const rightAnchoredColumn = useDerivedValue(() => {
     if (labelRightMargin === undefined) return null;
-    const items = entries.get();
-    let maxTextW = 0;
-    for (let i = 0; i < items.length; i++) {
-      maxTextW = Math.max(
-        maxTextW,
-        measureFontTextWidth(font, items[i].label),
-      );
-    }
-    const rightX = engine.canvasWidth.get() - labelRightMargin;
-    const labelX = rightX - maxTextW;
-    return {
-      labelX,
-      gridEndX: labelX - gridEndGap,
-    };
+    return rightAnchoredYAxisColumnLayout(
+      engine.canvasWidth.get(),
+      entries.get(),
+      font,
+      labelRightMargin,
+      gridEndGap,
+    );
   });
 
   const gridLinesPath = useDerivedValue(() => {

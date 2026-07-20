@@ -1,4 +1,6 @@
 import { GRID_METRICS_DEFAULTS, MAX_Y_LABELS } from "../constants";
+import type { SkFont } from "@shopify/react-native-skia";
+import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { lerp } from "../math/lerp";
 import type { GridMetrics } from "../types";
 
@@ -6,6 +8,37 @@ export interface YAxisEntry {
   y: number;
   label: string;
   alpha: number;
+}
+
+export interface RightAnchoredYAxisColumnLayout {
+  /** Shared left X for every label in the column. */
+  labelX: number;
+  /** Grid/reference-line end X immediately before the column gap. */
+  gridEndX: number;
+}
+
+/**
+ * Measure the widest Y-axis label and anchor the shared left-aligned column to
+ * a fixed canvas-edge margin. Shared by the axis and reference-line worklets so
+ * their right edges cannot drift apart.
+ */
+export function rightAnchoredYAxisColumnLayout(
+  canvasWidth: number,
+  entries: readonly YAxisEntry[],
+  font: SkFont,
+  labelRightMargin: number,
+  gridEndGap = 0,
+): RightAnchoredYAxisColumnLayout {
+  "worklet";
+  let maxTextW = 0;
+  for (let i = 0; i < entries.length; i++) {
+    maxTextW = Math.max(
+      maxTextW,
+      measureFontTextWidth(font, entries[i].label),
+    );
+  }
+  const labelX = canvasWidth - labelRightMargin - maxTextW;
+  return { labelX, gridEndX: labelX - gridEndGap };
 }
 
 /**
