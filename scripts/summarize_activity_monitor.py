@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize physical-footprint phases from an xctrace Activity Monitor export."""
+"""Summarize physical-footprint and CPU phases from Activity Monitor XML."""
 
 from __future__ import annotations
 
@@ -21,10 +21,10 @@ def parse_phase(value: str) -> tuple[str, float, float]:
         ) from error
 
 
-def load_samples(path: Path) -> list[tuple[float, float]]:
+def load_samples(path: Path) -> list[tuple[float, float, float]]:
     root = ET.parse(path).getroot()
     referenced_values: dict[str, str | None] = {}
-    samples: list[tuple[float, float]] = []
+    samples: list[tuple[float, float, float]] = []
 
     for row in root.findall(".//row"):
         values: list[str | None] = []
@@ -37,10 +37,22 @@ def load_samples(path: Path) -> list[tuple[float, float]]:
                     referenced_values[identifier] = value
             values.append(value)
 
-        # activity-monitor-process-live column 0 is start time and column 10 is
-        # physical footprint. Values are nanoseconds and bytes respectively.
-        if len(values) > 10 and values[0] is not None and values[10] is not None:
-            samples.append((int(values[0]) / 1_000_000_000, int(values[10]) / MIB))
+        # activity-monitor-process-live columns 0, 6, and 10 are start time,
+        # CPU percentage, and physical footprint. The first sample has no CPU
+        # percentage, so omit it; measured phases begin after the warmup.
+        if (
+            len(values) > 10
+            and values[0] is not None
+            and values[6] is not None
+            and values[10] is not None
+        ):
+            samples.append(
+                (
+                    int(values[0]) / 1_000_000_000,
+                    int(values[10]) / MIB,
+                    float(values[6]),
+                )
+            )
 
     if not samples:
         raise ValueError(f"no Activity Monitor samples found in {path}")
@@ -65,16 +77,23 @@ def main() -> None:
     ]
     samples = load_samples(args.xml)
 
-    print("| Phase | Samples | Mean | Min | Max | Last |")
-    print("| --- | ---: | ---: | ---: | ---: | ---: |")
+    print(
+        "| Phase | Samples | Footprint mean | Footprint min | Footprint max "
+        "| Footprint last | CPU mean | CPU max |"
+    )
+    print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     for name, start, end in phases:
-        footprints = [value for time, value in samples if start <= time <= end]
-        if not footprints:
+        phase_samples = [sample for sample in samples if start <= sample[0] <= end]
+        if not phase_samples:
             raise ValueError(f"phase {name!r} has no samples between {start}s and {end}s")
+        footprints = [sample[1] for sample in phase_samples]
+        cpu_percentages = [sample[2] for sample in phase_samples]
         print(
-            f"| {name} | {len(footprints)} | {statistics.fmean(footprints):.2f} MiB "
+            f"| {name} | {len(phase_samples)} | {statistics.fmean(footprints):.2f} MiB "
             f"| {min(footprints):.2f} MiB | {max(footprints):.2f} MiB "
-            f"| {footprints[-1]:.2f} MiB |"
+            f"| {footprints[-1]:.2f} MiB "
+            f"| {statistics.fmean(cpu_percentages):.2f}% "
+            f"| {max(cpu_percentages):.2f}% |"
         )
 
 

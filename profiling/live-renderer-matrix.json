@@ -28,10 +28,20 @@
       "cadence": "fixed30"
     },
     {
+      "id": "live-monotone-round-10s",
+      "description": "Display-cadence control for the adaptive 10-second window.",
+      "timeWindowSeconds": 10
+    },
+    {
       "id": "live-monotone-round-adaptive-10s",
       "description": "Adaptive cadence with a 10-second window; expected 60 fps.",
       "cadence": "adaptive",
       "timeWindowSeconds": 10
+    },
+    {
+      "id": "live-monotone-round-20s",
+      "description": "Display-cadence control for the adaptive 20-second window.",
+      "timeWindowSeconds": 20
     },
     {
       "id": "live-monotone-round-adaptive-20s",

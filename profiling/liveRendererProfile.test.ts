@@ -45,6 +45,17 @@ describe("live renderer profile matrix", () => {
         (profile) => profile.cadence === "adaptive",
       ).map((profile) => profile.timeWindowSeconds),
     ).toEqual([10, 20, 30]);
+    for (const adaptive of LIVE_RENDERER_PROFILES.filter(
+      (profile) => profile.cadence === "adaptive",
+    )) {
+      expect(
+        LIVE_RENDERER_PROFILES.some(
+          (profile) =>
+            profile.cadence === "display" &&
+            profile.timeWindowSeconds === adaptive.timeWindowSeconds,
+        ),
+      ).toBe(true);
+    }
   });
 
   it("keeps the original static/live environment variable as an override", () => {
