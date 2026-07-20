@@ -174,6 +174,12 @@ const SECTIONS: DemoSection[] = [
     title: "Live data & engine",
     data: [
       {
+        href: "/demo/loading-data-on-scroll",
+        title: "Loading data on scroll",
+        blurb:
+          "REST history pages prepend as you pan left while a live subscription keeps appending.",
+      },
+      {
         href: "/demo/playback",
         title: "Playback",
         blurb: "timeWindow, paused, smoothing, exaggerate, range clamps.",

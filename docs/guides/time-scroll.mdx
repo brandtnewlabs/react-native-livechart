@@ -133,6 +133,10 @@ To lazily page in history as the user scrolls/zooms back, two callbacks report t
   the next page of older data. When the fetched data extends `data` / `candles` further back, it can
   fire again as you keep scrolling.
 
+For a complete REST pagination controller, cursor and concurrency guards, websocket point updates,
+candlestick rollovers, and an infinite-query example, see
+[Loading data on scroll](/guides/loading-data-on-scroll).
+
 ## Full-width plot while scrolled (`yAxis.float`)
 
 A normal chart reserves a right gutter for the price axis, so candles stop short of the edge. Pair
