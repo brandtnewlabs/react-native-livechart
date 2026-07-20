@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Added an end-to-end guide and runnable example for loading older REST history while time-scrolling,
+  including cursor draining, chronological deduplication, request and retention guards, realtime
+  line updates, candlestick rollovers, and infinite-query integration.
+
 ## [4.11.0] - 2026-07-20
 
 ### Added

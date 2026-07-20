@@ -87,6 +87,7 @@
           {
             "group": "Live data & engine",
             "pages": [
+              "guides/loading-data-on-scroll",
               "guides/playback",
               "guides/historical-data",
               "guides/states-and-formatting",
