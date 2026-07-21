@@ -33,6 +33,31 @@ describe("live renderer profile matrix", () => {
     );
   });
 
+  it("selects fixed and adaptive cadence runs", () => {
+    expect(resolveLiveRendererProfile("live-monotone-round-30fps").cadence).toBe(
+      "fixed30",
+    );
+    expect(
+      resolveLiveRendererProfile("live-monotone-round-adaptive").cadence,
+    ).toBe("adaptive");
+    expect(
+      LIVE_RENDERER_PROFILES.filter(
+        (profile) => profile.cadence === "adaptive",
+      ).map((profile) => profile.timeWindowSeconds),
+    ).toEqual([10, 20, 30]);
+    for (const adaptive of LIVE_RENDERER_PROFILES.filter(
+      (profile) => profile.cadence === "adaptive",
+    )) {
+      expect(
+        LIVE_RENDERER_PROFILES.some(
+          (profile) =>
+            profile.cadence === "display" &&
+            profile.timeWindowSeconds === adaptive.timeWindowSeconds,
+        ),
+      ).toBe(true);
+    }
+  });
+
   it("keeps the original static/live environment variable as an override", () => {
     expect(
       resolveLiveRendererProfile("live-linear-sharp", "static"),

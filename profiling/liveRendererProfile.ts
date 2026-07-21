@@ -1,6 +1,7 @@
 import matrix from "./live-renderer-matrix.json";
 
 export type RendererProfileMode = "static" | "live";
+export type RendererProfileCadence = "display" | "fixed30" | "adaptive";
 export type RendererProfileCurve = "monotone" | "linear";
 export type RendererProfileJoin = "round" | "miter" | "bevel";
 export type RendererProfileCap = "round" | "butt" | "square";
@@ -9,6 +10,7 @@ export interface RendererProfile {
   id: string;
   description: string;
   mode: RendererProfileMode;
+  cadence: RendererProfileCadence;
   curve: RendererProfileCurve;
   join: RendererProfileJoin;
   cap: RendererProfileCap;

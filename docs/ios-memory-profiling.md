@@ -46,6 +46,12 @@ dimension:
 | --- | --- |
 | `static-control` | How much cost remains without the continuous chart loop? |
 | `live-monotone-round` | What is the current production live baseline? |
+| `live-monotone-round-30fps` | How much churn disappears at a fixed 30 fps? |
+| `live-monotone-round-10s` | Display-cadence control for the 10-second adaptive run. |
+| `live-monotone-round-adaptive-10s` | Does adaptive retain 60 fps for fast 10-second windows? |
+| `live-monotone-round-20s` | Display-cadence control for the 20-second adaptive run. |
+| `live-monotone-round-adaptive-20s` | Does adaptive choose an intermediate 40 fps for 20-second windows? |
+| `live-monotone-round-adaptive` | Does adaptive settle at 30 fps for slow 30-second windows? |
 | `live-monotone-sharp` | Do round caps and joins drive mask churn? |
 | `live-linear-round` | Do cubic path verbs drive mask churn? |
 | `live-linear-sharp` | What does the simplest built-in stroke cost? |
@@ -92,6 +98,79 @@ timeline, exports Activity Monitor XML, and writes one Markdown phase summary
 beside each trace. It refuses to overwrite traces unless `--force` is supplied.
 Metro's transform cache is keyed by the selected run, mode, and cadence so a
 sequential matrix cannot silently reuse the previous run's inlined environment.
+
+Use a physical iOS device: simulator Activity Monitor recordings do not produce
+a valid Instruments trace for this workflow.
+
+The cadence variants are profiling-only bundle switches. `display` preserves the
+existing frame callback. `fixed30` accumulates adjacent display-frame deltas and
+publishes the engine at 30 fps. `adaptive` waits for one half-pixel of horizontal
+movement, clamped between 30 and 60 fps. The accumulated elapsed time is passed
+to the next tick, so easing duration is unchanged; only expensive publication
+and redraw frequency differs. Cadence phase remainder is retained separately so
+the 25 ms intermediate target alternates one- and two-frame gaps on a 60 Hz
+display instead of quantizing down to 30 fps. The profiling route counts actual
+engine publications during the mounted phase, logs the result, and shows it in
+the unmounted phase. At 400 points wide, the 10-, 20-, and 30-second adaptive
+runs target 60, 40, and 30 publications per second respectively. Each adaptive
+window has a matched display-cadence control so window size and visible path
+complexity are held constant within the comparison.
+
+This remains a single-series `LiveChart` experiment, not a supported public API
+or a shipped optimization. Productionizing it would require an explicit API,
+multi-series behavior, public docs, and a changelog entry in a separate change.
+
+## Adaptive cadence physical-device screen
+
+The cadence experiment was screened in Release Bundle Mode on the physical
+iPhone described above. Activity Monitor used the same fixed phases and sample
+windows as the other physical-device runs. Display-cadence 30-second runs were
+recorded A/B/A around the fixed-30 run; the 10- and 20-second adaptive runs use
+the matched display controls from the renderer matrix.
+
+| Run | Mounted footprint mean | Mounted CPU mean | Unmounted footprint last |
+| --- | ---: | ---: | ---: |
+| Display 30 s, A1 | 323.42 MiB | 50.74% | 353.63 MiB |
+| Fixed 30 fps, 30 s | 241.31 MiB | 19.35% | 232.55 MiB |
+| Display 30 s, A2 | 317.25 MiB | 39.61% | 317.14 MiB |
+| Display 10 s | 292.80 MiB | 39.17% | 306.34 MiB |
+| Adaptive 10 s | 247.85 MiB | 18.26% | 235.75 MiB |
+| Display 20 s | 280.01 MiB | 32.18% | 267.00 MiB |
+| Adaptive 20 s | 232.73 MiB | 24.59% | 194.99 MiB |
+| Adaptive 30 s | 237.79 MiB | 19.32% | 224.31 MiB |
+
+Against its matched display control, adaptive cadence reduced mounted physical
+footprint by 15.4% at 10 seconds and 16.9% at 20 seconds, while mounted CPU fell
+by 53.4% and 23.6% respectively. Adaptive 30 seconds reduced footprint by 25.8%
+and CPU by 57.2% against the mean of the two display A passes. It closely matched
+the fixed-30 run, as expected because the adaptive formula reaches its 30 fps
+floor at that window. The display A CPU passes differ materially, so these are
+directional screening results rather than benchmark-precision estimates.
+
+The on-screen publication counter independently confirmed that the scheduler
+selected distinct tiers on the phone's 120 Hz display:
+
+| Run | Publications in mounted 30 s | Observed rate |
+| --- | ---: | ---: |
+| Display 10 s | 3,592 | 119.7/s |
+| Adaptive 10 s | 1,797 | 59.9/s |
+| Adaptive 20 s | 1,246 | 41.5/s |
+| Adaptive 30 s | 898 | 29.9/s |
+
+The intermediate rate is slightly above the 40/s example because the physical
+canvas was about 416 points wide. This counter evidence fixes the original
+30-second-only matrix flaw: the adaptive experiment now demonstrates 60, about
+40, and 30 publications per second rather than comparing two equivalent 30 fps
+runs.
+
+Allocations traces completed for both display A passes, fixed 30 fps, adaptive
+20 seconds, and adaptive 30 seconds. Each saved trace package passes TOC
+validation with `xctrace export`; allocation-volume and lifetime comparison
+still requires manual inspection in Instruments. Animation Hitches produced an
+incomplete trace with a dylib-overlap finalization warning, and two Game
+Performance retries timed out while attaching to the connected phone. Frame
+pacing and hitch evidence is therefore still open, and this experiment should
+remain a draft rather than be treated as a merge-ready production optimization.
 
 ## Bundle Mode simulator screen
 
@@ -154,9 +233,9 @@ trace also completed and saved successfully over USB.
 
 ## Physical footprint
 
-The table uses samples from 5–15 seconds for baseline, 20–44 seconds for the
-mounted phase, and 50–64 seconds for the unmounted phase. Values are the process
-physical footprint reported by Activity Monitor.
+The summary uses samples from 5–15 seconds for baseline, 20–44 seconds for the
+mounted phase, and 50–64 seconds for the unmounted phase. It reports both the
+process physical footprint and CPU percentage from Activity Monitor.
 
 | Variant | Baseline mean | Mounted mean |    Mounted max/last | Unmounted mean | Unmounted last |
 | ------- | ------------: | -----------: | ------------------: | -------------: | -------------: |

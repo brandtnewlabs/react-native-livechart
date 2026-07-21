@@ -23,6 +23,13 @@ import {
   type EngineTickInput,
   type EngineTickMutable,
 } from "./liveChartEngineTick";
+import {
+  makeRenderCadenceSchedulerState,
+  resolveRenderCadencePublicationCounter,
+  resolveRenderCadenceProfileOverride,
+  scheduleRenderCadenceFrame,
+  type RenderCadenceSchedulerState,
+} from "./renderCadence";
 
 export interface EngineConfig {
   data: SharedValue<LiveChartPoint[]>;
@@ -237,6 +244,7 @@ export interface EngineFrameRefs {
 export interface EngineFrameScratch {
   state: EngineTickMutable;
   input: EngineTickInput;
+  cadence: RenderCadenceSchedulerState;
 }
 
 /** Allocate one single-series frame scratch. Call once per engine instance. */
@@ -266,6 +274,7 @@ export function makeEngineFrameScratch(): EngineFrameScratch {
       targetValue: 0,
       points: [],
     },
+    cadence: makeRenderCadenceSchedulerState(),
   };
 }
 
@@ -370,6 +379,11 @@ export function applyLiveChartEngineFrame(
 export function useLiveChartEngine(
   config: EngineConfig,
 ): SingleEngineState & ChartEngineScroll & ChartEngineEdge {
+  // The example app can select a bundle-time experiment without making Node's
+  // `process` global part of the publishable library's declaration build.
+  const profileRenderCadence = resolveRenderCadenceProfileOverride();
+  const profilePublicationCounter =
+    resolveRenderCadencePublicationCounter();
   // Pinch-zoom window-width override (null = follow the configured window).
   // Declared first so `timeWindow` below can fold it in. Defaults to null so
   // charts without `zoom` behave exactly as before.
@@ -460,7 +474,6 @@ export function useLiveChartEngine(
   // the live edge over that progress. `returnT` rests at 1 (no glide in flight).
   const returnT = useSharedValue(1);
   const returnFrom = useSharedValue(0);
-
   // Live data extrema (value + time of the visible high / low). NaN until the
   // first tick finds data — the extrema label stays hidden until then.
   const extremaMinValue = useSharedValue(NaN);
@@ -534,12 +547,38 @@ export function useLiveChartEngine(
   if (frameScratchRef.current === null) {
     frameScratchRef.current = makeEngineFrameScratch();
   }
-
   // `autostart=false` registers the frame callback without running it — the live
   // loop is fully inert in static mode (the invariant that makes this worth it).
   useFrameCallback((frameInfo) => {
     "worklet";
-    applyLiveChartEngineFrame(frameInfo, frameRefs, frameScratchRef.current!);
+    // Production charts take this branch: no profiling SharedValue reads and no
+    // cadence calculation are added to the normal display-rate callback.
+    if (profileRenderCadence === "display") {
+      applyLiveChartEngineFrame(frameInfo, frameRefs, frameScratchRef.current!);
+      if (profilePublicationCounter) {
+        profilePublicationCounter.set(profilePublicationCounter.get() + 1);
+      }
+      return;
+    }
+
+    const frameMs =
+      frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
+    const elapsedMs = scheduleRenderCadenceFrame(
+      frameScratchRef.current!.cadence,
+      profileRenderCadence,
+      frameMs,
+      canvasWidth.get(),
+      displayWindow.get(),
+    );
+    if (elapsedMs === null) return;
+    applyLiveChartEngineFrame(
+      { timeSincePreviousFrame: elapsedMs },
+      frameRefs,
+      frameScratchRef.current!,
+    );
+    if (profilePublicationCounter) {
+      profilePublicationCounter.set(profilePublicationCounter.get() + 1);
+    }
   }, !config.static);
 
   // When time-scroll is disabled while scrolled back, return the window to the

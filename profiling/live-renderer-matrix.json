@@ -1,6 +1,7 @@
 {
   "defaults": {
     "mode": "live",
+    "cadence": "display",
     "curve": "monotone",
     "join": "round",
     "cap": "round",
@@ -20,6 +21,39 @@
     {
       "id": "live-monotone-round",
       "description": "Current production line renderer and canonical live baseline."
+    },
+    {
+      "id": "live-monotone-round-30fps",
+      "description": "Coalesces steady engine publications to a fixed 30 fps.",
+      "cadence": "fixed30"
+    },
+    {
+      "id": "live-monotone-round-10s",
+      "description": "Display-cadence control for the adaptive 10-second window.",
+      "timeWindowSeconds": 10
+    },
+    {
+      "id": "live-monotone-round-adaptive-10s",
+      "description": "Adaptive cadence with a 10-second window; expected 60 fps.",
+      "cadence": "adaptive",
+      "timeWindowSeconds": 10
+    },
+    {
+      "id": "live-monotone-round-20s",
+      "description": "Display-cadence control for the adaptive 20-second window.",
+      "timeWindowSeconds": 20
+    },
+    {
+      "id": "live-monotone-round-adaptive-20s",
+      "description": "Adaptive cadence with a 20-second window; expected 40 fps.",
+      "cadence": "adaptive",
+      "timeWindowSeconds": 20
+    },
+    {
+      "id": "live-monotone-round-adaptive",
+      "description": "Adaptive cadence with a 30-second window; expected 30 fps.",
+      "cadence": "adaptive",
+      "timeWindowSeconds": 30
     },
     {
       "id": "live-monotone-sharp",
