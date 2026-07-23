@@ -2,6 +2,12 @@ import type { VolatilityMode } from "../sim/generators";
 
 export const ACCENT = "#3323E6";
 
+/** Uneven widths make shared Y-axis label columns easy to inspect. */
+export function formatWholeValue(v: number): string {
+  "worklet";
+  return String(Math.round(v));
+}
+
 export const TIME_WINDOWS: { label: string; secs: number }[] = [
   { label: "30s", secs: 30 },
   { label: "1m", secs: 60 },

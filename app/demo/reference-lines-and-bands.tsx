@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { LiveChart, type ReferenceLine } from "react-native-livechart";
+import {
+  LiveChart,
+  LiveChartSeries,
+  type ReferenceLine,
+} from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
-import { ACCENT } from "../../demo-lib/shared";
+import { ACCENT, formatWholeValue } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
@@ -11,7 +15,15 @@ export const options = { title: "Reference lines & bands" };
 
 const START = 100;
 
+type ChartKind = "single" | "multi";
+
+const CHART_OPTIONS: { value: ChartKind; label: string }[] = [
+  { value: "single", label: "LiveChart" },
+  { value: "multi", label: "LiveChartSeries" },
+];
+
 export default function ReferenceLinesScreen() {
+  const [chartKind, setChartKind] = useState<ChartKind>("single");
   const [lines, setLines] = useState(true);
   const [valueBand, setValueBand] = useState(false);
   const [timeBand, setTimeBand] = useState(false);
@@ -29,9 +41,11 @@ export default function ReferenceLinesScreen() {
   >("left");
   // text:false → icon-only pill (just the chevron glyph, no label/value text).
   const [badgeIconOnly, setBadgeIconOnly] = useState(false);
+  const [alignedYAxis, setAlignedYAxis] = useState(true);
+  const referenceCenter = chartKind === "multi" ? 33.3 : START;
 
-  const { data, value } = useSimulatedChartData({
-    multiSeries: false,
+  const { data, value, series } = useSimulatedChartData({
+    multiSeries: chartKind === "multi",
     candleAggregation: false,
     tradeStream: false,
     startValue: START,
@@ -62,13 +76,13 @@ export default function ReferenceLinesScreen() {
   const referenceLines: ReferenceLine[] = [];
   if (lines) {
     referenceLines.push({
-      value: START * 1.05,
+      value: referenceCenter * 1.05,
       label: "+5%",
       color: "#34d399",
       fullWidth,
     });
     referenceLines.push({
-      value: START * 0.95,
+      value: referenceCenter * 0.95,
       label: "-5%",
       color: "#f87171",
       strokeWidth: 2,
@@ -78,8 +92,8 @@ export default function ReferenceLinesScreen() {
   }
   if (valueBand) {
     referenceLines.push({
-      valueFrom: START * 0.98,
-      valueTo: START * 1.02,
+      valueFrom: referenceCenter * 0.98,
+      valueTo: referenceCenter * 1.02,
       color: "#fbbf24",
       label: "±2% band",
       // strokeWidth adds a dashed border; fillOpacity tunes the fill alpha.
@@ -101,7 +115,7 @@ export default function ReferenceLinesScreen() {
   }
   if (offAxis) {
     referenceLines.push({
-      value: START * 1.5,
+      value: referenceCenter * 1.5,
       label: "Target",
       excludeFromRange: true,
       color: "#a855f7",
@@ -131,23 +145,56 @@ export default function ReferenceLinesScreen() {
     });
   }
 
+  const yAxis = alignedYAxis
+    ? { labelRightMargin: 20, gridEndGap: 12 }
+    : true;
+
   return (
     <DemoScreen
       title="Reference lines & bands"
       docs="guides/reference-lines-and-bands"
       description="referenceLines array — lines, value bands, time bands, off-axis badge"
       chart={
-        <LiveChart
-          data={data}
-          value={value}
-          accentColor={ACCENT}
-          theme={APP_THEME}
-          referenceLines={referenceLines}
-          valueLine={valueLine}
-          scrub={false}
-        />
+        chartKind === "single" ? (
+          <LiveChart
+            data={data}
+            value={value}
+            accentColor={ACCENT}
+            theme={APP_THEME}
+            referenceLines={referenceLines}
+            valueLine={valueLine}
+            scrub={false}
+            yAxis={yAxis}
+            formatValue={formatWholeValue}
+          />
+        ) : (
+          <LiveChartSeries
+            series={series}
+            accentColor={ACCENT}
+            theme={APP_THEME}
+            referenceLines={referenceLines}
+            dot={{ valueLine }}
+            legend={false}
+            scrub={false}
+            yAxis={yAxis}
+            formatValue={formatWholeValue}
+          />
+        )
       }
     >
+      <ChipRow
+        label="Chart"
+        options={CHART_OPTIONS}
+        value={chartKind}
+        onChange={setChartKind}
+      />
+      <ControlRow label="Contribution preview">
+        <ToggleChip
+          label="Aligned Y column (20 / 12 px)"
+          value={alignedYAxis}
+          onChange={setAlignedYAxis}
+        />
+      </ControlRow>
       <ControlRow label="Reference forms">
         <ToggleChip label="Lines (±5%)" value={lines} onChange={setLines} />
         <ToggleChip
