@@ -61,7 +61,7 @@ const Y_AXIS_COLUMN_OPTIONS: {
 }[] = [
   { value: "off", label: "Legacy" },
   { value: "tight", label: "8 / 4 px" },
-  { value: "wide", label: "20 / 12 px" },
+  { value: "wide", label: "24 / 12 px" },
 ];
 
 // `gridStyle` is a GridStyleConfig: `intervals: [1, 3]` dashes the lines,
@@ -101,7 +101,7 @@ export default function AxesGridScreen() {
   if (gap === "wide") yAxisCfg.minGap = 72;
   if (yCountVal > 0) yAxisCfg.count = yCountVal;
   if (yAxisColumn !== "off") {
-    yAxisCfg.labelRightMargin = yAxisColumn === "tight" ? 8 : 20;
+    yAxisCfg.labelRightMargin = yAxisColumn === "tight" ? 8 : 24;
     yAxisCfg.gridEndGap = yAxisColumn === "tight" ? 4 : 12;
   }
   const yAxis = !yOn

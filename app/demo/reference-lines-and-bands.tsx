@@ -146,7 +146,7 @@ export default function ReferenceLinesScreen() {
   }
 
   const yAxis = alignedYAxis
-    ? { labelRightMargin: 20, gridEndGap: 12 }
+    ? { labelRightMargin: 24, gridEndGap: 12 }
     : true;
 
   return (
@@ -190,7 +190,7 @@ export default function ReferenceLinesScreen() {
       />
       <ControlRow label="Contribution preview">
         <ToggleChip
-          label="Aligned Y column (20 / 12 px)"
+          label="Aligned Y column (24 / 12 px)"
           value={alignedYAxis}
           onChange={setAlignedYAxis}
         />
