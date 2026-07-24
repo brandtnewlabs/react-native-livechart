@@ -151,6 +151,12 @@ export interface ResolvedScrubConfig {
   dimOpacity: number;
   /** undefined → palette.crosshairLine */
   crosshairLineColor: string | undefined;
+  /** Vertical crosshair line width in px. */
+  crosshairStrokeWidth: number;
+  /** Extension past each vertical plot edge in px. */
+  crosshairOvershoot: number;
+  /** Fade the crosshair near the live edge. */
+  crosshairFade: boolean;
   /** Dash intervals `[on, off, …]` for the crosshair line; undefined → solid. */
   crosshairDash: number[] | undefined;
   /** undefined → palette.crosshairDim */
@@ -664,6 +670,9 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   seriesTooltip: null,
   dimOpacity: 0.3,
   crosshairLineColor: undefined,
+  crosshairStrokeWidth: 1,
+  crosshairOvershoot: 0,
+  crosshairFade: true,
   crosshairDash: undefined,
   crosshairDimColor: undefined,
   tooltipBackground: undefined,

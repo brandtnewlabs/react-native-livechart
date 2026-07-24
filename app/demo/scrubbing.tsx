@@ -158,6 +158,10 @@ export default function ScrubbingScreen() {
   const [timeRow, setTimeRow] = useState(true);
   const [roundedTip, setRoundedTip] = useState(false);
   const [crosshairDash, setCrosshairDash] = useState(false);
+  const [thickCrosshair, setThickCrosshair] = useState(false);
+  const [crosshairOvershootEnabled, setCrosshairOvershootEnabled] =
+    useState(false);
+  const [crosshairFade, setCrosshairFade] = useState(true);
   const [dimOpacity, setDimOpacity] = useState(0.3);
   const [dotMode, setDotMode] = useState<DotMode>("default");
   const [holdToScrub, setHoldToScrub] = useState(false);
@@ -247,6 +251,9 @@ export default function ScrubbingScreen() {
           // `true` → default [4,4] dash; pass explicit [on, off] intervals for
           // finer control. Omit / `false` → solid.
           crosshairDash: crosshairDash ? [3, 4] : false,
+          crosshairStrokeWidth: thickCrosshair ? 3 : 1,
+          crosshairOvershoot: crosshairOvershootEnabled ? 6 : 0,
+          crosshairFade,
           // The "Styled" toggle recolors the built-in pill + crosshair line.
           ...(styledTooltip
             ? {
@@ -385,11 +392,26 @@ export default function ScrubbingScreen() {
         onChange={setDotMode}
       />
       <ControlRow label="Crosshair">
-        {/* Dashed line via `scrub.crosshairDash` ([3,4] intervals here). */}
+        {/* Geometry and edge-fade controls live together for visual QA. */}
         <ToggleChip
           label="Dashed"
           value={crosshairDash}
           onChange={setCrosshairDash}
+        />
+        <ToggleChip
+          label="3px wide"
+          value={thickCrosshair}
+          onChange={setThickCrosshair}
+        />
+        <ToggleChip
+          label="6px overshoot"
+          value={crosshairOvershootEnabled}
+          onChange={setCrosshairOvershootEnabled}
+        />
+        <ToggleChip
+          label="Edge fade"
+          value={crosshairFade}
+          onChange={setCrosshairFade}
         />
       </ControlRow>
       <ControlRow label="Gesture">

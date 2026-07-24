@@ -1065,7 +1065,12 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                   seriesTooltipCfg?.guideColor ??
                   scrubCfg.crosshairLineColor
                 }
-                crosshairLineWidth={seriesTooltipCfg?.guideWidth}
+                crosshairStrokeWidth={
+                  seriesTooltipCfg?.guideWidth ??
+                  scrubCfg.crosshairStrokeWidth
+                }
+                crosshairOvershoot={scrubCfg.crosshairOvershoot}
+                crosshairFade={scrubCfg.crosshairFade}
                 crosshairDash={
                   seriesTooltipCfg
                     ? seriesTooltipCfg.guideDashPattern

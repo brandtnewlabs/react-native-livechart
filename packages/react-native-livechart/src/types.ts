@@ -831,6 +831,19 @@ export interface ScrubConfig {
   dimOpacity?: number;
   /** Vertical crosshair line stroke. Omit to use theme `crosshairLine`. */
   crosshairLineColor?: string;
+  /** Vertical crosshair line width in px. Default `1`. */
+  crosshairStrokeWidth?: number;
+  /**
+   * Extend the vertical crosshair line past the plot's top and bottom edges by
+   * this many px. Default `0`.
+   */
+  crosshairOvershoot?: number;
+  /**
+   * Fade the crosshair as it approaches the live edge. Set `false` to keep the
+   * line, selection dot, and tooltip fully opaque while scrubbing. The trailing
+   * content dim keeps its own edge fade. Default `true`.
+   */
+  crosshairFade?: boolean;
   /**
    * Dash the vertical crosshair line. `true` → a default `[4, 4]` dash; an array
    * sets explicit Skia dash intervals `[on, off, …]` in px. Omit / `false` → a
