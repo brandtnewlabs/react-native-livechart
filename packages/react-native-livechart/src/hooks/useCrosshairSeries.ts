@@ -24,7 +24,9 @@ import {
   HIDDEN_TOOLTIP,
   SCRUB_ACTIVATE_X_PX,
   SCRUB_FAIL_Y_PX,
+  startPlainScrub,
   type CrosshairState,
+  updatePlainScrub,
 } from "./crosshairShared";
 import {
   delayedPanTouchCancelled,
@@ -65,6 +67,11 @@ export function useCrosshairSeries(
    */
   scrollActive?: SharedValue<boolean>,
   tooltip?: CrosshairSeriesTooltipOptions,
+  /**
+   * Reject scrub starts beyond either horizontal plot edge and clamp active
+   * drags to those bounds. Default `false`.
+   */
+  clampToPlot = false,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -290,9 +297,16 @@ export function useCrosshairSeries(
         )
           return;
         if (!enabled) return;
-        scrubX.set(e.x);
-        scrubActive.set(true);
-        gestureStarted.set(true);
+        const didStart = startPlainScrub(
+          e.x,
+          padding,
+          engine.canvasWidth.get(),
+          clampToPlot,
+          scrubX,
+          scrubActive,
+          gestureStarted,
+        );
+        if (!didStart) return;
         if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
       },
     )
@@ -300,7 +314,14 @@ export function useCrosshairSeries(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;
-        scrubX.set(e.x);
+        updatePlainScrub(
+          e.x,
+          padding,
+          engine.canvasWidth.get(),
+          clampToPlot,
+          scrubX,
+          scrubActive,
+        );
       },
     )
     .onFinalize(

@@ -31,6 +31,25 @@ Disable it with `scrub={false}`, or configure the crosshair and tooltip:
 />
 ```
 
+## Keeping scrubs inside the plot
+
+Set `clampToPlot` to keep the crosshair out of the Y-axis gutter and other
+horizontal padding:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  scrub={{ clampToPlot: true }}
+/>
+```
+
+A gesture that starts left or right of the plot is ignored and does not fire
+`onGestureStart`. A gesture that starts within its horizontal bounds stays
+active when the pointer moves beyond either edge; its crosshair remains clamped
+to the nearest plot edge. The option works on `LiveChart` and
+`LiveChartSeries` and defaults to `false` for backwards compatibility.
+
 ## Customizing the tooltip
 
 The default pill shows the value on the first row and the time on the second, offset to the side of

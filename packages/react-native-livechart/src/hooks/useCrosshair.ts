@@ -20,6 +20,7 @@ import type {
   ScrubPoint,
 } from "../types";
 import {
+  clampPlotX,
   computeActionBadgeLayout,
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
@@ -35,7 +36,9 @@ import {
   SCRUB_ACTIVATE_X_PX,
   SCRUB_FAIL_Y_PX,
   snapPrice,
+  startPlainScrub,
   type CrosshairState,
+  updatePlainScrub,
 } from "./crosshairShared";
 import {
   delayedPanTouchCancelled,
@@ -63,18 +66,6 @@ const SCRUB_ACTION_TAP_SLOP = 10;
  * it. Overridden by an explicit `scrub.panGestureDelay`.
  */
 const SCRUB_ACTION_PRESS_HOLD_MS = 200;
-
-/** Clamp an X pixel to the plot's horizontal bounds. */
-/* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
-function clampPlotX(
-  x: number,
-  padLeft: number,
-  canvasWidth: number,
-  padRight: number,
-): number {
-  "worklet";
-  return Math.min(canvasWidth - padRight, Math.max(padLeft, x));
-}
 
 /** Clamp a Y pixel to the plot's vertical bounds. */
 /* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
@@ -159,6 +150,11 @@ export function useCrosshair(
    * mature into a scrub (see `delayedPanGuard.shouldStartDelayedPan`).
    */
   scrollActive?: SharedValue<boolean>,
+  /**
+   * Reject scrub starts beyond either horizontal plot edge and clamp active
+   * drags to those bounds. Default `false`.
+   */
+  clampToPlot = false,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -618,9 +614,16 @@ export function useCrosshair(
         // also keeps a follow-on drag from showing a crosshair — no `onUpdate`
         // guard needed. (Plain-scrub counterpart of the scrub-action tap defer.)
         if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
-        scrubX.set(e.x);
-        scrubActive.set(true);
-        gestureStarted.set(true);
+        const didStart = startPlainScrub(
+          e.x,
+          padding,
+          engine.canvasWidth.get(),
+          clampToPlot,
+          scrubX,
+          scrubActive,
+          gestureStarted,
+        );
+        if (!didStart) return;
         if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
       },
     )
@@ -647,7 +650,14 @@ export function useCrosshair(
           }
           return;
         }
-        scrubX.set(e.x);
+        updatePlainScrub(
+          e.x,
+          padding,
+          engine.canvasWidth.get(),
+          clampToPlot,
+          scrubX,
+          scrubActive,
+        );
       },
     )
     .onFinalize(

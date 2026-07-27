@@ -19,6 +19,64 @@ export const SCRUB_ACTIVATE_X_PX = 20;
 /** Vertical travel that fails a plain scrub so a parent scroll gesture can win. */
 export const SCRUB_FAIL_Y_PX = 10;
 
+/** Clamp an X pixel to the plot's horizontal bounds. */
+export function clampPlotX(
+  x: number,
+  padLeft: number,
+  canvasWidth: number,
+  padRight: number,
+): number {
+  "worklet";
+  return Math.min(canvasWidth - padRight, Math.max(padLeft, x));
+}
+
+interface ScrubGestureValue<T> {
+  get(): T;
+  set(value: T): void;
+}
+
+/** Start plain scrubbing, rejecting a horizontally outside press when clamped. */
+export function startPlainScrub(
+  x: number,
+  padding: ChartPadding,
+  canvasWidth: number,
+  clampToPlot: boolean,
+  scrubX: ScrubGestureValue<number>,
+  scrubActive: ScrubGestureValue<boolean>,
+  gestureStarted: ScrubGestureValue<boolean>,
+): boolean {
+  "worklet";
+  if (clampToPlot) {
+    const plotRight = canvasWidth - padding.right;
+    if (x < padding.left || x > plotRight) return false;
+    scrubX.set(clampPlotX(x, padding.left, canvasWidth, padding.right));
+  } else {
+    scrubX.set(x);
+  }
+  scrubActive.set(true);
+  gestureStarted.set(true);
+  return true;
+}
+
+/** Track plain scrubbing, clamping only gestures that were accepted in-plot. */
+export function updatePlainScrub(
+  x: number,
+  padding: ChartPadding,
+  canvasWidth: number,
+  clampToPlot: boolean,
+  scrubX: ScrubGestureValue<number>,
+  scrubActive: ScrubGestureValue<boolean>,
+): void {
+  "worklet";
+  if (clampToPlot) {
+    // RNGH may still send updates after an outside start was rejected.
+    if (!scrubActive.get()) return;
+    scrubX.set(clampPlotX(x, padding.left, canvasWidth, padding.right));
+  } else {
+    scrubX.set(x);
+  }
+}
+
 /** Measure rendered text so the pill and its content share the same centre. */
 function measureTooltipTextWidth(
   font: SkFont,

@@ -1,12 +1,17 @@
 import { type SkFont } from "@shopify/react-native-skia";
-import { renderHook } from "@testing-library/react-native";
+import { act, renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
 import { interpolateAtTime } from "../../src/math/interpolate";
 import { resolveTheme } from "../../src/theme";
 import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 import { resolveScrubAction } from "../../src/core/resolveConfig";
-import { computeScrubDotY } from "../../src/hooks/crosshairShared";
+import {
+  clampPlotX,
+  computeScrubDotY,
+  startPlainScrub,
+  updatePlainScrub,
+} from "../../src/hooks/crosshairShared";
 import {
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
@@ -19,26 +24,52 @@ import {
 } from "../../src/hooks/useCrosshair";
 
 jest.mock("react-native-gesture-handler", () => {
-  const makeGesture = () => {
-    const g: Record<string, unknown> = { config: {} };
+  let lastPanCalls: Record<string, unknown[]>;
+  const makeGesture = (
+    capture?: (calls: Record<string, unknown[]>) => void,
+  ) => {
+    const calls: Record<string, unknown[]> = {};
+    capture?.(calls);
+    const g: Record<string, unknown> = { config: calls };
     const proxy: typeof g = new Proxy(g, {
       get: (target, key) => {
         if (key in target) return target[key as string];
         return (...args: unknown[]) => {
-          (target.config as Record<string, unknown[]>)[String(key)] = args;
+          calls[String(key)] = args;
           return proxy;
         };
       },
     });
     return proxy;
   };
-  return { Gesture: { Pan: makeGesture, Tap: makeGesture } };
+  return {
+    Gesture: {
+      Pan: () => makeGesture((calls) => {
+        lastPanCalls = calls;
+      }),
+      Tap: () => makeGesture(),
+    },
+    __getLastPanCalls: () => lastPanCalls,
+  };
 });
 
 type GestureConfig = Record<string, unknown[]>;
 
 function getGestureConfig(gesture: unknown): GestureConfig {
   return (gesture as { config: GestureConfig }).config;
+}
+
+function getLastPanHandlers() {
+  const calls = (
+    jest.requireMock("react-native-gesture-handler") as {
+      __getLastPanCalls: () => Record<string, unknown[]>;
+    }
+  ).__getLastPanCalls();
+  return (
+    Object.fromEntries(
+      Object.entries(calls).map(([key, args]) => [key, args[0]]),
+    ) as Record<string, (event?: { x: number; y: number }) => void>
+  );
 }
 
 const palette = resolveTheme("#3b82f6", "dark");
@@ -105,6 +136,98 @@ describe("computeScrubTime", () => {
   it("handles scrubX before the left edge (extrapolates)", () => {
     const result = computeScrubTime(true, 0, padding, 400, 1000, 30);
     expect(result).toBeLessThan(970);
+  });
+});
+
+describe("clampPlotX", () => {
+  it("clamps to the left and right plot edges", () => {
+    expect(clampPlotX(-20, padding.left, 400, padding.right)).toBe(padding.left);
+    expect(clampPlotX(390, padding.left, 400, padding.right)).toBe(
+      400 - padding.right,
+    );
+  });
+
+  it("preserves an X inside the plot", () => {
+    expect(clampPlotX(100, padding.left, 400, padding.right)).toBe(100);
+  });
+});
+
+describe("plain scrub gesture bounds", () => {
+  const mutable = <T,>(initial: T) => {
+    let value = initial;
+    return {
+      get: () => value,
+      set: (next: T) => {
+        value = next;
+      },
+    };
+  };
+
+  it("preserves legacy outside coordinates when clamping is disabled", () => {
+    const scrubX = mutable(-1);
+    const scrubActive = mutable(false);
+    const gestureStarted = mutable(false);
+
+    expect(
+      startPlainScrub(
+        0,
+        padding,
+        400,
+        false,
+        scrubX,
+        scrubActive,
+        gestureStarted,
+      ),
+    ).toBe(true);
+    expect(scrubX.get()).toBe(0);
+    expect(scrubActive.get()).toBe(true);
+    expect(gestureStarted.get()).toBe(true);
+  });
+
+  it("rejects outside starts and ignores their follow-on updates", () => {
+    const scrubX = mutable(-1);
+    const scrubActive = mutable(false);
+    const gestureStarted = mutable(false);
+
+    expect(
+      startPlainScrub(
+        390,
+        padding,
+        400,
+        true,
+        scrubX,
+        scrubActive,
+        gestureStarted,
+      ),
+    ).toBe(false);
+    updatePlainScrub(100, padding, 400, true, scrubX, scrubActive);
+
+    expect(scrubX.get()).toBe(-1);
+    expect(scrubActive.get()).toBe(false);
+    expect(gestureStarted.get()).toBe(false);
+  });
+
+  it("clamps a scrub started inside to both plot edges", () => {
+    const scrubX = mutable(-1);
+    const scrubActive = mutable(false);
+    const gestureStarted = mutable(false);
+
+    expect(
+      startPlainScrub(
+        100,
+        padding,
+        400,
+        true,
+        scrubX,
+        scrubActive,
+        gestureStarted,
+      ),
+    ).toBe(true);
+    updatePlainScrub(-20, padding, 400, true, scrubX, scrubActive);
+    expect(scrubX.get()).toBe(padding.left);
+
+    updatePlainScrub(390, padding, 400, true, scrubX, scrubActive);
+    expect(scrubX.get()).toBe(400 - padding.right);
   });
 });
 
@@ -918,6 +1041,42 @@ describe("useCrosshair (hook)", () => {
       });
     },
   );
+
+  it("rejects outside starts when plot clamping is enabled", () => {
+    const onGestureStart = jest.fn();
+    const engine = makeEngine();
+    renderHook(() =>
+      useCrosshair(
+        engine,
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+        undefined,
+        undefined,
+        0,
+        onGestureStart,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "side",
+        true,
+        true,
+        8,
+        0,
+        undefined,
+        true,
+      ),
+    );
+    const handlers = getLastPanHandlers();
+
+    act(() => handlers.onStart?.({ x: 0, y: 100 }));
+    expect(onGestureStart).not.toHaveBeenCalled();
+  });
 
   it("only configures a long-press modifier for a positive delay", () => {
     const engine = makeEngine();

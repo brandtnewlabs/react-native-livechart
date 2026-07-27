@@ -531,6 +531,7 @@ describe("resolveScrub", () => {
       tooltipShowTime: true,
       panGestureDelay: 0,
       hideOverlaysOnScrub: false,
+      clampToPlot: false,
     });
   });
 
@@ -546,6 +547,7 @@ describe("resolveScrub", () => {
       tooltipShowTime: true,
       panGestureDelay: 0,
       hideOverlaysOnScrub: false,
+      clampToPlot: false,
     });
   });
 
@@ -561,6 +563,7 @@ describe("resolveScrub", () => {
       tooltipShowTime: true,
       panGestureDelay: 0,
       hideOverlaysOnScrub: false,
+      clampToPlot: false,
     });
   });
 
@@ -586,6 +589,7 @@ describe("resolveScrub", () => {
       tooltipShowTime: true,
       panGestureDelay: 300,
       hideOverlaysOnScrub: false,
+      clampToPlot: false,
     });
   });
 
@@ -594,6 +598,11 @@ describe("resolveScrub", () => {
     expect(
       resolveScrub({ hideOverlaysOnScrub: true })?.hideOverlaysOnScrub,
     ).toBe(true);
+  });
+
+  it("defaults clampToPlot to false and carries it when set", () => {
+    expect(resolveScrub(true)?.clampToPlot).toBe(false);
+    expect(resolveScrub({ clampToPlot: true })?.clampToPlot).toBe(true);
   });
 
   it("carries a custom tooltipBorderRadius", () => {

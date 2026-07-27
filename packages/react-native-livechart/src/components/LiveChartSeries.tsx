@@ -463,6 +463,7 @@ function useLiveChartSeriesController({
           maxTime: tooltipMaxTime,
         }
       : undefined,
+    scrubCfg?.clampToPlot ?? false,
   );
 
   // Capture only the shared value in the worklets below. Referencing

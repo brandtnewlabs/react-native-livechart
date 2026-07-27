@@ -1,5 +1,5 @@
 import { type SkFont } from "@shopify/react-native-skia";
-import { renderHook } from "@testing-library/react-native";
+import { act, renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
 import { MAX_MULTI_SERIES } from "../../src/constants";
 import type { MultiEngineState } from "../../src/core/useLiveChartEngine";
@@ -19,26 +19,45 @@ import { useCrosshairSeries } from "../../src/hooks/useCrosshairSeries";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 jest.mock("react-native-gesture-handler", () => {
+  let lastPanCalls: Record<string, unknown[]>;
   const makeGesture = () => {
-    const g: Record<string, unknown> = { config: {} };
+    const calls: Record<string, unknown[]> = {};
+    lastPanCalls = calls;
+    const g: Record<string, unknown> = { config: calls };
     const proxy: typeof g = new Proxy(g, {
       get: (target, key) => {
         if (key in target) return target[key as string];
         return (...args: unknown[]) => {
-          (target.config as Record<string, unknown[]>)[String(key)] = args;
+          calls[String(key)] = args;
           return proxy;
         };
       },
     });
     return proxy;
   };
-  return { Gesture: { Pan: makeGesture } };
+  return {
+    Gesture: { Pan: makeGesture },
+    __getLastPanCalls: () => lastPanCalls,
+  };
 });
 
 type GestureConfig = Record<string, unknown[]>;
 
 function getGestureConfig(gesture: unknown): GestureConfig {
   return (gesture as { config: GestureConfig }).config;
+}
+
+function getLastPanHandlers() {
+  const calls = (
+    jest.requireMock("react-native-gesture-handler") as {
+      __getLastPanCalls: () => Record<string, unknown[]>;
+    }
+  ).__getLastPanCalls();
+  return (
+    Object.fromEntries(
+      Object.entries(calls).map(([key, args]) => [key, args[0]]),
+    ) as Record<string, (event?: { x: number; y: number }) => void>
+  );
 }
 
 const font = {
@@ -593,6 +612,29 @@ describe("useCrosshairSeries (hook)", () => {
       });
     },
   );
+
+  it("rejects outside starts when plot clamping is enabled", () => {
+    const onGestureStart = jest.fn();
+    const engine = makeEngine();
+    renderHook(() =>
+      useCrosshairSeries(
+        engine,
+        padding,
+        true,
+        undefined,
+        0,
+        onGestureStart,
+        undefined,
+        undefined,
+        undefined,
+        true,
+      ),
+    );
+    const handlers = getLastPanHandlers();
+
+    act(() => handlers.onStart?.({ x: 390, y: 100 }));
+    expect(onGestureStart).not.toHaveBeenCalled();
+  });
 
   it("only configures a long-press modifier for a positive delay", () => {
     const engine = makeEngine({
