@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   each rendered line's identity; existing lines fall back to a deterministic
   visual-config key.
 
+- **Candles no longer vanish with `transitions={false}`.** `transitions={false}` resolves to a
+  candle-width lerp speed of `1`, and the frame-rate-independent lerp evaluated
+  `0 ** (dt / frame)` — `Infinity` for a negative frame delta. When the current and target
+  widths matched, the resulting `0 * -Infinity` turned the shared candle width into a
+  permanent `NaN`, so every body and wick drew at `NaN` width. `lerp` now snaps straight to
+  the target at `speed >= 1`.
+
 ### Documentation
 
 - Added an end-to-end guide and runnable example for loading older REST history while time-scrolling,
