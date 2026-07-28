@@ -835,7 +835,9 @@ export interface ScrubConfig {
   crosshairStrokeWidth?: number;
   /**
    * Extend the vertical crosshair line past the plot's top and bottom edges by
-   * this many px. Negative values are clamped to `0`. Default `0`.
+   * this many px. A measured top custom-tooltip stop remains unchanged so the
+   * line does not draw through the tooltip. Negative values are clamped to `0`.
+   * Default `0`.
    */
   crosshairOvershoot?: number;
   /**
