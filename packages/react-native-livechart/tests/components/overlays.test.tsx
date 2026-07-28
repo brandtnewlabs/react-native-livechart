@@ -154,20 +154,15 @@ describe("YAxisOverlay", () => {
 });
 
 describe("DotOverlay", () => {
-  it("renders pulse ring when pulse is on and timestamp is in active segment", () => {
+  it("renders pulse ring when pulse is on", () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
-      const eng = withSharedValueAccessors({
-        ...engine(),
-        timestamp: { value: 0 },
-      }) as unknown as EngineState;
       return (
         <DotOverlay
           dotX={dotX}
           dotY={dotY}
           palette={palette}
-          engine={eng}
           radius={3.5}
           ring={{ color: undefined, width: 2.5 }}
           color={undefined}
@@ -183,16 +178,11 @@ describe("DotOverlay", () => {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
       const viewEnd = useSharedValue<number | null>(900); // scrolled back
-      const eng = withSharedValueAccessors({
-        ...engine(),
-        timestamp: { value: 0 }, // would otherwise sit in the active pulse segment
-      }) as unknown as EngineState;
       return (
         <DotOverlay
           dotX={dotX}
           dotY={dotY}
           palette={palette}
-          engine={eng}
           radius={3.5}
           ring={{ color: undefined, width: 2.5 }}
           color={undefined}
@@ -208,16 +198,11 @@ describe("DotOverlay", () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
-      const eng = withSharedValueAccessors({
-        ...engine(),
-        timestamp: { value: 0 },
-      }) as unknown as EngineState;
       return (
         <DotOverlay
           dotX={dotX}
           dotY={dotY}
           palette={palette}
-          engine={eng}
           radius={3.5}
           ring={null}
           color={undefined}
@@ -232,13 +217,11 @@ describe("DotOverlay", () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
-      const eng = engine();
       return (
         <DotOverlay
           dotX={dotX}
           dotY={dotY}
           palette={palette}
-          engine={eng}
           radius={3.5}
           ring={null}
           color={undefined}
@@ -258,35 +241,10 @@ describe("DotOverlay", () => {
           dotX={dotX}
           dotY={dotY}
           palette={palette}
-          engine={engine()}
           radius={3.5}
           ring={{ color: undefined, width: 2.5 }}
           color="#abcdef"
           pulse={null}
-        />
-      );
-    }
-    render(<Fixture />);
-  });
-
-  it("zeros pulse radius when the cycle is past the active window", () => {
-    function Fixture() {
-      const dotX = useSharedValue(100);
-      const dotY = useSharedValue(120);
-      const eng = withSharedValueAccessors({
-        ...engine(),
-        timestamp: { value: 1 },
-      }) as unknown as EngineState;
-      return (
-        <DotOverlay
-          dotX={dotX}
-          dotY={dotY}
-          palette={palette}
-          engine={eng}
-          radius={3.5}
-          ring={{ color: undefined, width: 2.5 }}
-          color={undefined}
-          pulse={PULSE_ON}
         />
       );
     }

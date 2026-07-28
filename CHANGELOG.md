@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The live-dot pulse no longer freezes when `nowOverride` is pinned.** The pulse
+  animation clocked off the engine timestamp, which `nowOverride` holds still between data
+  updates — so the pulse stalled mid-ring instead of breathing. The pulse now runs off a
+  wall-clock frame callback that is only active while a pulse is configured.
+
+- **A drag can no longer scroll the chart and engage the scrub crosshair at once.**
+  The time-scroll pan and the hold-to-scrub pan are composed with `Gesture.Race`, which adds
+  no relation between its children — both could recognize on the same touch, so a scroll
+  drag whose hold timer fired mid-drag also placed a crosshair, and an engaged scrub let the
+  window keep sliding underneath the reticle. The two pans now arbitrate through shared
+  latches: an active scroll blocks scrub activation, an engaged scrub makes scrolling inert,
+  and a pending hold is cancelled outright once the finger drifts more than 12 px
+  (`HOLD_MAX_DRIFT_PX`) or the long-press timer fires implausibly early for the current
+  touch (a stale timer from a previous tap).
+
 - **Custom off-axis reference tags no longer suppress the normal in-range tag.**
   `renderOffAxisReferenceLine` on `LiveChart` and `LiveChartSeries` swaps only the
   edge-pinned tag, keeps the built-in tag in range, and retains a left- or
