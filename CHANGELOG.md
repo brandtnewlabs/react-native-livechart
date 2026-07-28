@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.12.0] - 2026-07-28
+
 ### Added
 
 - **`LiveChartSeries` can render Morfi-style per-series scrub tooltips.**
@@ -999,6 +1001,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.12.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.12.0
 [4.11.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.11.0
 [3.10.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.10.0
 [3.9.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v3.9.0
