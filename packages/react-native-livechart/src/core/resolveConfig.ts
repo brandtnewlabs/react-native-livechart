@@ -153,7 +153,7 @@ export interface ResolvedScrubConfig {
   crosshairLineColor: string | undefined;
   /** Vertical crosshair line width in px. */
   crosshairStrokeWidth: number;
-  /** Extension past each vertical plot edge in px. */
+  /** Extension past the plot's top and bottom edges in px. */
   crosshairOvershoot: number;
   /** Fade the crosshair near the live edge. */
   crosshairFade: boolean;
