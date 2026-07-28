@@ -345,7 +345,10 @@ interface ValueLineConfig { strokeWidth?: number; intervals?: [number, number]; 
 // Shared styling for a straight line (the connector, valueLine, …). Omit `intervals` for solid.
 interface LineStyleConfig { color?: string; strokeWidth?: number; intervals?: [number, number] }
 interface ScrubConfig {
-  tooltip?: boolean;
+  tooltip?: boolean; // existing master tooltip switch; false also suppresses seriesTooltip
+  // LiveChartSeries only: opt-in Morfi-style time + per-series value pills.
+  // false/omitted preserves the existing guide-only default.
+  seriesTooltip?: boolean | PerSeriesTooltipConfig;
   dimOpacity?: number; // opacity of content right of the crosshair; default 0.3 (1 = off)
   crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
   crosshairDash?: number[] | boolean; // dash the crosshair line; true = [4,4], or explicit [on, off, …] px
@@ -356,6 +359,30 @@ interface ScrubConfig {
   tooltipShowValue?: boolean; tooltipShowTime?: boolean; // default both true; drop a row (e.g. date-only)
   panGestureDelay?: number; // press-and-hold ms before scrubbing activates; default 0
   hideOverlaysOnScrub?: boolean; // fade markers + reference lines out while scrubbing; default false
+}
+interface PerSeriesTooltipConfig {
+  alwaysShow?: boolean;      // pin value pills to visible endpoints while idle; default false
+  bucketSeconds?: number;    // omit to infer from the first visible series
+  formatSeriesValue?: (value: number, seriesId: string) => string; // UI-thread worklet
+  formatTimeRange?: (from: number, to: number) => string;          // UI-thread worklet
+  maxLabelChars?: number;    // ellipsis truncation; default 14
+
+  guideColor?: string;
+  guideWidth?: number;       // default 1
+  guideDashPattern?: boolean | number[]; // default [3,3]; false = solid
+
+  timePillBackground?: string; timePillColor?: string; timePillBorderColor?: string;
+  timePillRadius?: number; timePillPaddingX?: number; timePillPaddingY?: number;
+
+  seriesPillBackground?: string;
+  seriesPillLabelColor?: string;
+  seriesPillValueColor?: string;
+  seriesPillBorderColor?: string;
+  seriesPillRadius?: number;
+  seriesPillPaddingX?: number; seriesPillPaddingY?: number;
+  seriesPillDotSize?: number; seriesPillDotGap?: number;
+  seriesPillLabelValueGap?: number;
+  intersectionDotSize?: number;
 }
 // Order-ticket mode (scrubAction). Opt-in — default off.
 interface ScrubActionConfig {
@@ -374,7 +401,7 @@ interface SelectionDotRingConfig {
   width?: number; // ring thickness past the dot, default 2
 }
 // The scrub-intersection dot (selectionDot). Default ON for LiveChart,
-// OFF for LiveChartSeries (the crosshair + tooltips mark the scrub point there).
+// OFF for LiveChartSeries (the crosshair + opt-in per-series tooltip dots mark it).
 interface SelectionDotConfig {
   size?: number; // dot radius, default 4
   color?: string; // dot color, defaults to the line / leading-series color

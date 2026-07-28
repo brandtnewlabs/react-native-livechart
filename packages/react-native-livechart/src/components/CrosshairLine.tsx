@@ -23,6 +23,7 @@ export function CrosshairLine({
   dimOpacity = 0.3,
   liveDotExtent = 0,
   crosshairLineColor,
+  crosshairLineWidth = 1,
   crosshairDash,
   crosshairDimColor,
   opaqueCanvas = false,
@@ -50,6 +51,8 @@ export function CrosshairLine({
    *  the gutter reserves beyond them bright. Default 0. */
   liveDotExtent?: number;
   crosshairLineColor?: string;
+  /** Vertical guide stroke width in px. Default 1. */
+  crosshairLineWidth?: number;
   /** Dash intervals `[on, off, …]` for the crosshair line; omit → solid. */
   crosshairDash?: number[];
   crosshairDimColor?: string;
@@ -138,7 +141,7 @@ export function CrosshairLine({
           p1={p1}
           p2={p2}
           color={crosshairLineColor ?? palette.crosshairLine}
-          strokeWidth={1}
+          strokeWidth={crosshairLineWidth}
         >
           {crosshairDash ? <DashPathEffect intervals={crosshairDash} /> : null}
         </Line>

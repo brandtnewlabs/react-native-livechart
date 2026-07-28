@@ -122,6 +122,9 @@ export default function MultiSeriesScreen() {
   const [exaggerate, setExaggerate] = useState(false);
   const [degen, setDegen] = useState(false);
   const [scrubDim, setScrubDim] = useState(0.3);
+  const [seriesTooltip, setSeriesTooltip] = useState(true);
+  const [tooltipAlwaysShow, setTooltipAlwaysShow] = useState(false);
+  const [styledTooltip, setStyledTooltip] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">(APP_THEME);
   // Keep this on by default: it is the visual QA case for a custom left-pinned
   // reference tag. Its dashed connector must start at the native tag's right
@@ -274,7 +277,36 @@ export default function MultiSeriesScreen() {
             emptyText="No series"
             dot={dotConfig}
             legend={legendConfig}
-            scrub={{ dimOpacity: scrubDim }}
+            scrub={{
+              dimOpacity: scrubDim,
+              seriesTooltip: seriesTooltip
+                ? {
+                    alwaysShow: tooltipAlwaysShow,
+                    formatSeriesValue: (value) => {
+                      "worklet";
+                      return `${value.toFixed(2)}%`;
+                    },
+                    formatTimeRange: (from, to) => {
+                      "worklet";
+                      return `${formatTime(from)} – ${formatTime(to)}`;
+                    },
+                    ...(styledTooltip
+                      ? {
+                          guideColor: "#f59e0b",
+                          guideDashPattern: [2, 4],
+                          timePillBackground: "#1e293b",
+                          timePillColor: "#fbbf24",
+                          timePillBorderColor: "#f59e0b",
+                          seriesPillBackground: "#1e293b",
+                          seriesPillLabelColor: "#94a3b8",
+                          seriesPillValueColor: "#f8fafc",
+                          seriesPillBorderColor: "#334155",
+                          seriesPillRadius: 10,
+                        }
+                      : null),
+                  }
+                : false,
+            }}
             onSeriesToggle={
               empty
                 ? undefined
@@ -378,6 +410,24 @@ export default function MultiSeriesScreen() {
         value={scrubDim}
         onChange={setScrubDim}
       />
+
+      <ControlRow label="Series scrub tooltip">
+        <ToggleChip
+          label="Pills"
+          value={seriesTooltip}
+          onChange={setSeriesTooltip}
+        />
+        <ToggleChip
+          label="Pin while idle"
+          value={tooltipAlwaysShow}
+          onChange={setTooltipAlwaysShow}
+        />
+        <ToggleChip
+          label="Styled"
+          value={styledTooltip}
+          onChange={setStyledTooltip}
+        />
+      </ControlRow>
 
       <ControlRow label="Playback & theme">
         <ToggleChip

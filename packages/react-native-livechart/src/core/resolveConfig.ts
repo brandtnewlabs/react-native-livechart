@@ -24,6 +24,7 @@ import type {
   ReferenceLine,
   ScrubActionConfig,
   ScrubConfig,
+  PerSeriesTooltipConfig,
   SelectionDotConfig,
   SelectionDotProps,
   SelectionDotRingConfig,
@@ -144,6 +145,8 @@ export interface ResolvedXAxisConfig {
 
 export interface ResolvedScrubConfig {
   tooltip: boolean;
+  /** Opt-in per-series pill tooltip for LiveChartSeries; null keeps guide-only behavior. */
+  seriesTooltip: ResolvedPerSeriesTooltipConfig | null;
   /** Opacity of content right of the crosshair while scrubbing (dstOut fade). */
   dimOpacity: number;
   /** undefined → palette.crosshairLine */
@@ -172,6 +175,36 @@ export interface ResolvedScrubConfig {
   panGestureDelay: number;
   /** Fade markers + reference lines out while scrubbing. */
   hideOverlaysOnScrub: boolean;
+}
+
+export interface ResolvedPerSeriesTooltipConfig {
+  alwaysShow: boolean;
+  bucketSeconds: number | undefined;
+  formatSeriesValue:
+    | ((value: number, seriesId: string) => string)
+    | undefined;
+  formatTimeRange: ((from: number, to: number) => string) | undefined;
+  maxLabelChars: number;
+  guideColor: string | undefined;
+  guideWidth: number;
+  guideDashPattern: number[] | undefined;
+  timePillBackground: string | undefined;
+  timePillColor: string | undefined;
+  timePillBorderColor: string | undefined;
+  timePillRadius: number;
+  timePillPaddingX: number;
+  timePillPaddingY: number;
+  seriesPillBackground: string | undefined;
+  seriesPillLabelColor: string | undefined;
+  seriesPillValueColor: string | undefined;
+  seriesPillBorderColor: string | undefined;
+  seriesPillRadius: number;
+  seriesPillPaddingX: number;
+  seriesPillPaddingY: number;
+  seriesPillDotSize: number;
+  seriesPillDotGap: number;
+  seriesPillLabelValueGap: number;
+  intersectionDotSize: number;
 }
 
 export interface ResolvedScrubActionConfig {
@@ -628,6 +661,7 @@ export function resolveXAxis(
 
 const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltip: true,
+  seriesTooltip: null,
   dimOpacity: 0.3,
   crosshairLineColor: undefined,
   crosshairDash: undefined,
@@ -644,6 +678,55 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   hideOverlaysOnScrub: false,
 };
 
+const PER_SERIES_TOOLTIP_DEFAULTS: ResolvedPerSeriesTooltipConfig = {
+  alwaysShow: false,
+  bucketSeconds: undefined,
+  formatSeriesValue: undefined,
+  formatTimeRange: undefined,
+  maxLabelChars: 14,
+  guideColor: undefined,
+  guideWidth: 1,
+  guideDashPattern: [3, 3],
+  timePillBackground: undefined,
+  timePillColor: undefined,
+  timePillBorderColor: undefined,
+  timePillRadius: 6,
+  timePillPaddingX: 8,
+  timePillPaddingY: 4,
+  seriesPillBackground: undefined,
+  seriesPillLabelColor: undefined,
+  seriesPillValueColor: undefined,
+  seriesPillBorderColor: undefined,
+  seriesPillRadius: 6,
+  seriesPillPaddingX: 8,
+  seriesPillPaddingY: 4,
+  seriesPillDotSize: 8,
+  seriesPillDotGap: 6,
+  seriesPillLabelValueGap: 6,
+  intersectionDotSize: 8,
+};
+
+function resolvePerSeriesTooltip(
+  prop: boolean | PerSeriesTooltipConfig | undefined,
+): ResolvedPerSeriesTooltipConfig | null {
+  const resolved = resolveToggle(
+    prop,
+    PER_SERIES_TOOLTIP_DEFAULTS,
+    false,
+  );
+  if (!resolved) return null;
+  const dash = typeof prop === "object" ? prop.guideDashPattern : undefined;
+  if (dash !== undefined) {
+    resolved.guideDashPattern = dash === true ? [3, 3] : dash || undefined;
+  }
+  resolved.maxLabelChars = Math.max(1, Math.floor(resolved.maxLabelChars));
+  resolved.bucketSeconds =
+    resolved.bucketSeconds !== undefined && resolved.bucketSeconds > 0
+      ? resolved.bucketSeconds
+      : undefined;
+  return resolved;
+}
+
 /**
  * Resolves `scrub` prop to a fully-typed config or null (disabled).
  * `true` → defaults, object → merged with defaults, falsy → null.
@@ -657,6 +740,9 @@ export function resolveScrub(
     // through, anything falsy → solid (undefined).
     const dash = typeof prop === "object" ? prop.crosshairDash : undefined;
     resolved.crosshairDash = dash === true ? [4, 4] : dash || undefined;
+    const seriesTooltip =
+      typeof prop === "object" ? prop.seriesTooltip : undefined;
+    resolved.seriesTooltip = resolvePerSeriesTooltip(seriesTooltip);
   }
   return resolved;
 }

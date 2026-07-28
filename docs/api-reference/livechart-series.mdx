@@ -97,14 +97,22 @@ default off.
 
 <ParamField body="scrub" type="boolean | ScrubConfig" default="true">
   Crosshair scrubbing on drag. **As of v2 this defaults to `true`** (it previously
-  defaulted to `false`); pass `scrub={false}` to disable.
+  defaulted to `false`); pass `scrub={false}` to disable. The existing default is
+  a guide/dim layer. Omitting `seriesTooltip` (or setting it to `false`) preserves
+  that behavior. Set `scrub.seriesTooltip` to opt into the Morfi-style
+  time-range pill, one colour/value pill and intersection dot per visible series,
+  collision stacking, and edge flipping. `seriesTooltip.alwaysShow` keeps value
+  pills pinned to the visible endpoints while idle without showing the guide or
+  time pill. The existing `scrub.tooltip={false}` switch remains the master
+  tooltip control and also suppresses the per-series pills. See
+  [Multi-series tooltips](/guides/multi-series#per-series-scrub-tooltip).
 </ParamField>
 
 <ParamField body="selectionDot" type="boolean | SelectionDotConfig" default="false">
   Dot drawn at the scrub intersection while scrubbing. **Hidden by default on
   `LiveChartSeries`** (unlike `LiveChart`): with multiple lines the dot can only
-  track the leading series, so the crosshair + per-series tooltips mark the
-  scrub point instead. Pass `true` to opt in (it anchors to the leading series),
+  track the leading series, so the crosshair and the opt-in tooltip's per-series
+  intersection dots mark the scrub point instead. Pass `true` to opt in (it anchors to the leading series),
   a config to set `size` / `color` / `ring`, or `{ component }` for a fully
   custom Skia dot. See [Scrubbing](/guides/scrubbing#selection-dot).
 </ParamField>

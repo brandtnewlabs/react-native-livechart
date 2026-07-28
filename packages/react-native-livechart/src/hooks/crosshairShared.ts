@@ -1,6 +1,6 @@
 import { type SkFont } from "@shopify/react-native-skia";
 import { type Gesture } from "react-native-gesture-handler";
-import type { SharedValue } from "react-native-reanimated";
+import type { DerivedValue, SharedValue } from "react-native-reanimated";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { type ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
@@ -48,6 +48,37 @@ export interface TooltipLayout {
     baselineY: number;
     dim: boolean;
   }[];
+  /** LiveChartSeries' opt-in Morfi-style time pill + per-series value pills. */
+  perSeries?: {
+    /** Idle endpoint mode: value pills only, with no guide or time pill. */
+    pinned: boolean;
+    timePill?: {
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      text: string;
+      textX: number;
+      baselineY: number;
+    };
+    pills: {
+      id: string;
+      color: string;
+      anchorX: number;
+      anchorY: number;
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      dotX: number;
+      dotY: number;
+      label: string;
+      labelX: number;
+      value: string;
+      valueX: number;
+      baselineY: number;
+    }[];
+  };
 }
 
 export const HIDDEN_TOOLTIP: TooltipLayout = {
@@ -62,6 +93,7 @@ export const HIDDEN_TOOLTIP: TooltipLayout = {
   line1Y: 0,
   line2Y: 0,
   stackedLines: undefined,
+  perSeries: undefined,
 };
 
 export interface CrosshairState {
@@ -70,7 +102,9 @@ export interface CrosshairState {
   scrubTime: SharedValue<number>;
   scrubValue: SharedValue<number | null>;
   crosshairOpacity: SharedValue<number>;
-  tooltipLayout: SharedValue<TooltipLayout>;
+  tooltipLayout:
+    | SharedValue<TooltipLayout>
+    | DerivedValue<TooltipLayout>;
   /** Scrub intersection Y in canvas px; -1 when there's no dot to draw
    *  (inactive / no value / degenerate range). See {@link computeScrubDotY}. */
   scrubDotY: SharedValue<number>;

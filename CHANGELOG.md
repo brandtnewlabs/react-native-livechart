@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`LiveChartSeries` can render Morfi-style per-series scrub tooltips.**
+  Enable `scrub.seriesTooltip` for a dashed guide, clamped time-range pill,
+  per-series colour/value pills and intersection dots. Pills flip at the right
+  edge, stack to avoid collisions, omit hidden series, and can stay pinned to
+  live endpoints with `alwaysShow`. Formatting and pill styling remain on the
+  UI thread, and the existing guide-only multi-series default is unchanged.
+  Includes controls in the multi-series demo. ([#228](https://github.com/brandtnewlabs/react-native-livechart/issues/228))
+
 ### Fixed
 
 - **The live-dot pulse no longer freezes when `nowOverride` is pinned.** The pulse

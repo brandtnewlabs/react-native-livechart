@@ -77,6 +77,7 @@ export type {
   MomentumConfig,
   MotionMetrics,
   MultiSeriesDotConfig,
+  PerSeriesTooltipConfig,
   PulseConfig,
   ReferenceLine,
   ReferenceLineBadgeConfig,

@@ -100,6 +100,7 @@ import { MultiSeriesDots } from "./MultiSeriesDots";
 import { MultiSeriesStroke } from "./MultiSeriesStroke";
 import { MultiSeriesValueLabels } from "./MultiSeriesValueLabels";
 import { MultiSeriesValueLines } from "./MultiSeriesValueLines";
+import { PerSeriesTooltipOverlay } from "./PerSeriesTooltipOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
 import { SeriesToggleChips } from "./SeriesToggleChips";
 import { XAxisOverlay } from "./XAxisOverlay";
@@ -196,6 +197,10 @@ function useLiveChartSeriesController({
   const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const scrubCfg = resolveScrub(scrub);
   const scrubEnabled = scrubCfg !== null;
+  // Opt-in and subordinate to the existing master `tooltip` switch. Keeping
+  // this null by default preserves LiveChartSeries' historical guide-only scrub.
+  const seriesTooltipCfg =
+    scrubCfg?.tooltip === true ? scrubCfg.seriesTooltip : null;
 
   // Time-scroll + pinch-zoom (mirrors LiveChart). LiveChartSeries has no static
   // mode, so these gate on the props alone. `holdToScrub` requires the scrub
@@ -222,8 +227,8 @@ function useLiveChartSeriesController({
 
   // Multi-series defaults the scrub selection dot OFF: it can only track one
   // line (the leading series), which reads as a bug next to the other series.
-  // The crosshair line + per-series tooltip stack already mark the scrub point.
-  // Passing `selectionDot` explicitly (true / config) still opts it in.
+  // The crosshair line (and the opt-in tooltip's per-series intersection dots)
+  // mark the scrub point. Passing `selectionDot` explicitly still opts it in.
   const selectionDotCfg = resolveSelectionDot(selectionDot ?? false);
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
@@ -432,6 +437,12 @@ function useLiveChartSeriesController({
   // long-press guard) makes "the scroll already won" a hard fact; `scrubActive`
   // (written by the crosshair, read by the scroll pan) is the mirror image.
   const scrollActive = useSharedValue(false);
+  // `liveEdge` includes the optional right breathing-room buffer. The time pill
+  // must clamp against the real "now" anchor so its live bucket never ends in
+  // that future buffer.
+  const tooltipMaxTime = useDerivedValue(
+    () => engine.liveEdge.get() - windowBuffer * timeWindow,
+  );
 
   const crosshair = useCrosshairSeries(
     engine,
@@ -442,6 +453,16 @@ function useLiveChartSeriesController({
     onGestureStart,
     onGestureEnd,
     scrollActive,
+    seriesTooltipCfg
+      ? {
+          config: seriesTooltipCfg,
+          formatValue,
+          formatTime,
+          font: skiaFont,
+          colors: lineColors,
+          maxTime: tooltipMaxTime,
+        }
+      : undefined,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -566,6 +587,7 @@ function useLiveChartSeriesController({
     yAxisCfg,
     xAxisCfg,
     scrubCfg,
+    seriesTooltipCfg,
     gridStyleCfg,
     dotCfg,
     dotOuterRadius,
@@ -915,6 +937,7 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     effectivePadding,
     engine,
     scrubCfg,
+    seriesTooltipCfg,
     crosshair,
     palette,
     dotCfg,
@@ -939,6 +962,8 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     refLineCustomTagWidths,
     overlayScrubFade,
     canvasMode,
+    activeSeriesCount,
+    skiaFont,
   } = model;
 
   // Mirror the Skia overlay fade onto the RN custom-marker sibling so
@@ -1036,8 +1061,16 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 selectionColor={selectionColor}
                 dimOpacity={scrubCfg.dimOpacity}
                 liveDotExtent={liveDotExtent}
-                crosshairLineColor={scrubCfg.crosshairLineColor}
-                crosshairDash={scrubCfg.crosshairDash}
+                crosshairLineColor={
+                  seriesTooltipCfg?.guideColor ??
+                  scrubCfg.crosshairLineColor
+                }
+                crosshairLineWidth={seriesTooltipCfg?.guideWidth}
+                crosshairDash={
+                  seriesTooltipCfg
+                    ? seriesTooltipCfg.guideDashPattern
+                    : scrubCfg.crosshairDash
+                }
                 crosshairDimColor={scrubCfg.crosshairDimColor}
                 opaqueCanvas={canvasMode === "opaque"}
               />
@@ -1046,6 +1079,19 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
             {/* Per-series value labels on top of the scrub dim so the dim never
                 clips them (they track each series' live value, not the scrub). */}
             <SeriesValueLabelLayer model={model} />
+
+            {seriesTooltipCfg && (
+              <PerSeriesTooltipOverlay
+                layout={crosshair.tooltipLayout}
+                font={skiaFont}
+                palette={palette}
+                config={seriesTooltipCfg}
+                seriesCount={activeSeriesCount}
+                tooltipBackground={scrubCfg?.tooltipBackground}
+                tooltipColor={scrubCfg?.tooltipColor}
+                tooltipBorderColor={scrubCfg?.tooltipBorderColor}
+              />
+            )}
           </Canvas>
 
           {/* RN labels floated over the canvas (sibling of <Canvas>, an RN
