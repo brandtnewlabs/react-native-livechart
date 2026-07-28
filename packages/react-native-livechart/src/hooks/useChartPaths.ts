@@ -1,12 +1,27 @@
 import { Skia, type SkPath } from "@shopify/react-native-skia";
 import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import type { SingleEngineState } from "../core/useLiveChartEngine";
+import type {
+  ChartEngineEdge,
+  ChartEngineScroll,
+  SingleEngineState,
+} from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { drawSpline, makeSplineScratch } from "../math/spline";
 import { sampleThresholdYAt, thresholdSampleSpanX } from "../math/threshold";
 import { blendPtsY, squigglifyPts } from "../math/squiggly";
 import { usePathBuilder } from "./usePathBuilder";
+
+/** Selects the synthetic right-edge line tip without coupling chart geometry
+ * to badge or live-indicator presentation options. */
+export function resolveLineTipValue(
+  displayValue: number,
+  edgeValue: number,
+  viewEnd: number | null,
+): number {
+  "worklet";
+  return viewEnd == null ? displayValue : edgeValue;
+}
 
 /**
  * Builds the `linePath` / `fillPath` with `Skia.PathBuilder`s reused across
@@ -20,7 +35,7 @@ import { usePathBuilder } from "./usePathBuilder";
  * fillPath.
  */
 export function useChartPaths(
-  engine: SingleEngineState,
+  engine: SingleEngineState & ChartEngineScroll & ChartEngineEdge,
   padding: ChartPadding,
   morphT?: SharedValue<number>,
   /** When set, also build `thresholdFillPath` — the band between the line and this
@@ -28,14 +43,6 @@ export function useChartPaths(
   thresholdY?: SharedValue<number>,
   /** Draw the line/fill as a straight polyline instead of the monotone cubic. */
   linear = false,
-  /**
-   * Value at the visible window's right edge (engine `edgeValue`). With
-   * `followViewEdge`, the line's right-edge tip uses this instead of the live
-   * `displayValue` — so while time-scrolled the line ends at the last visible
-   * price rather than dropping to the (off-screen) live value.
-   */
-  edgeValue?: SharedValue<number>,
-  followViewEdge = false,
   /** Loading squiggle wave amplitude (px) for the reveal morph. Default 14. */
   squiggleAmplitude = 14,
   /** Loading squiggle wave speed multiplier for the reveal morph. Default 1. */
@@ -79,11 +86,14 @@ export function useChartPaths(
     const cache = cacheRef.current!;
     cache.ptsTick = !cache.ptsTick;
     const buf = cache.ptsTick ? cache.ptsA : cache.ptsB;
-    // While scrolled back with `followViewEdge`, tip the line at the view-edge
-    // price (engine `edgeValue`) instead of the live value — otherwise the line
-    // drops from the last visible point to the off-screen live value at the edge.
-    const tipValue =
-      followViewEdge && edgeValue ? edgeValue.get() : engine.displayValue.get();
+    // A historical window must end at its own right-edge price. Badge and
+    // live-indicator options affect overlays only; they must not distort the
+    // plotted series by connecting history to the off-screen live value.
+    const tipValue = resolveLineTipValue(
+      engine.displayValue.get(),
+      engine.edgeValue.get(),
+      engine.viewEnd.get(),
+    );
     const realPts = buildLinePoints(
       engine.data.get(),
       tipValue,

@@ -169,6 +169,10 @@ price you can see — and snap back to the live value when you return to the liv
 dot and value line pinned at the off-screen live price instead (the pre-4.12 behavior), set
 `timeScroll={{ hideLiveOnScrollBack: false }}`.
 
+The plotted line is independent of those overlay settings: while scrolled back, it always ends
+at the visible window's right-edge value and never connects the historical window to the current
+live price.
+
 ## Notes
 
 - **Both charts.** `timeScroll` and `zoom` are wired into `LiveChart` and `LiveChartSeries`. In

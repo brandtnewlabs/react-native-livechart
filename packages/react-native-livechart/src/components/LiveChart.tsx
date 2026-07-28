@@ -888,11 +888,8 @@ function useLiveChartController({
     // polyline passed as the last arg below).
     thresholdCfg?.fill && !thresholdIsSeries ? thresholdGeom.lineY : undefined,
     lineIsLinear,
-    // Tip the line at the view-edge price (not the live value) while scrolled,
-    // matching the live dot — so the right edge doesn't drop to the off-screen
-    // live value when `followViewEdge` tracks the scrolled-back window.
-    engine.edgeValue,
-    badgeCfg?.followViewEdge ?? false,
+    // The plotted line independently selects the visible edge while historical;
+    // badge/live-indicator options affect overlays only.
     // Match the standalone loading squiggle's wave during the reveal morph.
     loadingCfg?.amplitude,
     loadingCfg?.speed,

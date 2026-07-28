@@ -143,12 +143,12 @@ export default function TimeScrollScreen() {
     >
       <ControlRow label="Live indicator behavior">
         <ToggleChip
-          label="badge.followViewEdge"
+          label="Follow visible edge"
           value={followViewEdge}
           onChange={setFollowViewEdge}
         />
         <ToggleChip
-          label="hideLiveOnScrollBack"
+          label="Hide on scroll back"
           value={hideLiveOnScrollBack}
           onChange={setHideLiveOnScrollBack}
         />

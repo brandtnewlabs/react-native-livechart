@@ -41,7 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the visible window — and the dashed value line drew at that same Y. Both are now hidden
   while scrolled back and reappear on return to the live edge. `badge.followViewEdge` keeps
   its behavior (there the dot tracks the visible edge price, which is in view). Opt out with
-  the new `timeScroll.hideLiveOnScrollBack: false`.
+  the new `timeScroll.hideLiveOnScrollBack: false`. In line mode, the plotted series now
+  always ends at the historical window's visible-edge value instead of extending to the
+  off-screen live price; badge and indicator options no longer alter line geometry.
 
 ### Documentation
 
