@@ -62,4 +62,31 @@ describe("detectMomentum", () => {
     }));
     expect(detectMomentum(pts, 100)).toBe("up");
   });
+
+  it("detects momentum at an inclusive historical cutoff", () => {
+    const pts = [
+      { time: 0, value: 100 },
+      { time: 1, value: 100 },
+      { time: 2, value: 100 },
+      { time: 3, value: 100 },
+      { time: 4, value: 120 },
+      { time: 5, value: 120 },
+      { time: 6, value: 120 },
+      { time: 7, value: 120 },
+      { time: 8, value: 120 },
+      { time: 9, value: 80 },
+    ];
+
+    expect(detectMomentum(pts)).toBe("down");
+    expect(detectMomentum(pts, 20, 0.12, 4)).toBe("up");
+  });
+
+  it("returns flat when fewer than five points precede the cutoff", () => {
+    const pts = Array.from({ length: 8 }, (_, time) => ({
+      time,
+      value: time,
+    }));
+
+    expect(detectMomentum(pts, 20, 0.12, 3)).toBe("flat");
+  });
 });

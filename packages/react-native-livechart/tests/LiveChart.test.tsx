@@ -969,7 +969,7 @@ describe("LiveChart", () => {
   it("mounts the live indicators across time-scroll visibility configs", () => {
     // Behavioral opacity coverage lives in liveIndicatorVisibility.test.ts.
     // This integration check ensures each public config form wires into the
-    // complete chart without disrupting the mounted dot or value line.
+    // complete chart without disrupting the mounted badge, dot, or value line.
     for (const props of [
       { timeScroll: true as const },
       { timeScroll: { hideLiveOnScrollBack: false } },

@@ -599,7 +599,9 @@ export interface BadgeConfig extends BadgeStyleConfig {
    * When the chart is scrolled back (see `timeScroll`), move the live-price
    * indicators — the badge, the value line, and the live dot — to the price at
    * the visible window's right edge instead of the live price, so they track the
-   * last visible price as you pan. Default `false`.
+   * last visible price as you pan. The badge's momentum color is derived at that
+   * same historical edge, so incoming live ticks do not recolor it. Default
+   * `false`.
    *
    * @experimental
    */
@@ -1629,12 +1631,12 @@ export interface TimeScrollConfig {
    */
   scrubHoldMs?: number;
   /**
-   * Hide the live dot and the dashed value line while scrolled back through
-   * history. Default `true`: both mark the LIVE price, which is off-screen once
-   * the window is frozen behind the live edge, so they'd point at a price that
-   * isn't in view. Set `false` to keep them visible while scrolled back.
-   * Ignored when `badge.followViewEdge` is on — there the dot tracks the visible
-   * edge price, which IS in view.
+   * Hide the live badge, dot, and dashed value line while scrolled back through
+   * history. Default `true`: all three mark the LIVE price, which is off-screen
+   * once the window is frozen behind the live edge, so they'd point at a price
+   * that isn't in view. Set `false` to keep them visible while scrolled back.
+   * Ignored when `badge.followViewEdge` is on — there the group tracks the
+   * visible edge price, which IS in view.
    */
   hideLiveOnScrollBack?: boolean;
 }

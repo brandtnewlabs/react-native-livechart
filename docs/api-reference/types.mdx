@@ -334,7 +334,8 @@ interface BadgeConfig {
   offsetX?: number;         // nudge the whole badge horizontally (px); default 0
   offsetY?: number;         // nudge the whole badge vertically (px); default 0
   followViewEdge?: boolean; // while time-scrolled, track the price at the visible
-                            // window's right edge (badge + value line + dot); default false
+                            // window's right edge (badge value/color + value line + dot);
+                            // default false
 }
 interface PulseConfig {
   interval?: number; duration?: number; maxRadius?: number;
@@ -406,7 +407,7 @@ interface VolumeConfig {
 interface TimeScrollConfig {
   gesture?: "holdToScrub" | "axisDrag"; // activation; default "holdToScrub"
   scrubHoldMs?: number; // holdToScrub: press-hold (ms) before scrub engages; default 500
-  hideLiveOnScrollBack?: boolean; // hide live dot + value line while scrolled back (they mark the off-screen live price); default true. Ignored with badge.followViewEdge
+  hideLiveOnScrollBack?: boolean; // hide live badge + dot + value line while scrolled back (they mark the off-screen live price); default true. Ignored with badge.followViewEdge
 }
 // Tunes the return-to-live glide (the `returnToLive` prop). @experimental
 interface ReturnToLiveConfig {

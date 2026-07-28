@@ -135,6 +135,7 @@ describe("YAxisOverlay", () => {
     function Fixture() {
       const entries = useSharedValue([{ y: 40, label: "10", alpha: 1 }]);
       const badgeCenterY = useSharedValue(40);
+      const badgeOpacity = useSharedValue(0);
       return (
         <YAxisOverlay
           entries={entries}
@@ -146,6 +147,7 @@ describe("YAxisOverlay", () => {
           badgeCenterY={badgeCenterY}
           badgeFontSize={12}
           badgeOffsetY={2}
+          badgeOpacity={badgeOpacity}
         />
       );
     }

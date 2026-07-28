@@ -15,7 +15,7 @@ export function resolveHideLiveOnScrollBack(
   return hide && !followViewEdge;
 }
 
-/** Worklet-safe opacity gate shared by the live dot and dashed value line. */
+/** Worklet-safe opacity gate shared by the live badge, dot, and dashed value line. */
 export function liveIndicatorScrollOpacity(
   hideLiveOnScrollBack: boolean,
   viewEnd: number | null,
