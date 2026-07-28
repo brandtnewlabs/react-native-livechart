@@ -56,7 +56,7 @@ export function CrosshairLine({
   crosshairLineColor?: string;
   /** Vertical crosshair line width in px. Default 1. */
   crosshairStrokeWidth?: number;
-  /** Resolved extension past each vertical plot edge in px. Default 0. */
+  /** Resolved extension past the top and bottom plot edges in px. Default 0. */
   crosshairOvershoot?: number;
   /** Fade the crosshair near the live edge. Default true. */
   crosshairFade?: boolean;
