@@ -238,7 +238,8 @@ through to the parent gesture, while a deliberate hold begins scrubbing.
 A dot is drawn at the scrub intersection — where the crosshair meets the line. On `LiveChart` it's
 **on by default**, so you get it for free with `scrub`. On `LiveChartSeries` it's **off by
 default** — with multiple lines the dot can only track the leading series, so the crosshair +
-per-series tooltips mark the scrub point instead; pass `selectionDot` explicitly to opt in.
+the opt-in per-series tooltip dots mark the scrub point instead; pass `selectionDot` explicitly
+to opt in.
 
 Turn it off, or tweak its look, with the `boolean | SelectionDotConfig` `selectionDot` prop:
 

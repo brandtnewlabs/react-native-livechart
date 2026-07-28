@@ -522,6 +522,7 @@ describe("resolveScrub", () => {
   it("returns defaults for true", () => {
     expect(resolveScrub(true)).toEqual({
       tooltip: true,
+      seriesTooltip: null,
       dimOpacity: 0.3,
       tooltipBorderRadius: 5,
       tooltipPlacement: "side",
@@ -536,6 +537,7 @@ describe("resolveScrub", () => {
   it("merges partial config with defaults", () => {
     expect(resolveScrub({ tooltip: false })).toEqual({
       tooltip: false,
+      seriesTooltip: null,
       dimOpacity: 0.3,
       tooltipBorderRadius: 5,
       tooltipPlacement: "side",
@@ -550,6 +552,7 @@ describe("resolveScrub", () => {
   it("accepts a custom dimOpacity", () => {
     expect(resolveScrub({ dimOpacity: 0.5 })).toEqual({
       tooltip: true,
+      seriesTooltip: null,
       dimOpacity: 0.5,
       tooltipBorderRadius: 5,
       tooltipPlacement: "side",
@@ -574,6 +577,7 @@ describe("resolveScrub", () => {
   it("carries a custom panGestureDelay (press-and-hold to scrub)", () => {
     expect(resolveScrub({ panGestureDelay: 300 })).toEqual({
       tooltip: true,
+      seriesTooltip: null,
       dimOpacity: 0.3,
       tooltipBorderRadius: 5,
       tooltipPlacement: "side",
@@ -617,6 +621,45 @@ describe("resolveScrub", () => {
     expect(resolveScrub({ tooltipShowValue: false })).toMatchObject({
       tooltipShowValue: false,
       tooltipShowTime: true,
+    });
+  });
+
+  it("resolves the opt-in per-series tooltip and normalizes its inputs", () => {
+    const resolved = resolveScrub({
+      seriesTooltip: {
+        alwaysShow: true,
+        bucketSeconds: -10,
+        maxLabelChars: 4.9,
+        guideDashPattern: false,
+        seriesPillRadius: 12,
+      },
+    })?.seriesTooltip;
+
+    expect(resolved).toMatchObject({
+      alwaysShow: true,
+      bucketSeconds: undefined,
+      maxLabelChars: 4,
+      guideDashPattern: undefined,
+      guideWidth: 1,
+      timePillRadius: 6,
+      seriesPillRadius: 12,
+      intersectionDotSize: 8,
+    });
+  });
+
+  it("enables per-series tooltip defaults and normalizes dash shorthand", () => {
+    expect(resolveScrub({ seriesTooltip: true })?.seriesTooltip).toMatchObject({
+      alwaysShow: false,
+      maxLabelChars: 14,
+      guideDashPattern: [3, 3],
+    });
+    expect(
+      resolveScrub({
+        seriesTooltip: { guideDashPattern: true, bucketSeconds: 60 },
+      })?.seriesTooltip,
+    ).toMatchObject({
+      guideDashPattern: [3, 3],
+      bucketSeconds: 60,
     });
   });
 });

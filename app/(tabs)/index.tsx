@@ -50,7 +50,7 @@ const SECTIONS: DemoSection[] = [
       {
         href: "/demo/multi-series",
         title: "Multi-series",
-        blurb: "LiveChartSeries: per-series style, legend, dots, scrub.",
+        blurb: "LiveChartSeries: legend, dots, and Morfi-style scrub tooltip pills.",
       },
       {
         href: "/demo/sparklines",

@@ -1,15 +1,19 @@
+import type { SkFont } from "@shopify/react-native-skia";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
+  type DerivedValue,
   type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
+import type { ResolvedPerSeriesTooltipConfig } from "../core/resolveConfig";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
 import { type ChartPadding } from "../draw/line";
 import type { ScrubPointMulti } from "../types";
 import {
+  computePerSeriesTooltipLayout,
   deriveScrubValueSeries,
   interpolateSeriesAtTime,
 } from "./crosshairSeries";
@@ -32,9 +36,19 @@ import {
 } from "./delayedPanGuard";
 
 /**
- * LiveChartSeries crosshair + scrub. No tooltip — data is delivered via
- * `onScrub` worklet callback on the UI thread.
+ * LiveChartSeries crosshair + scrub. The optional per-series tooltip is
+ * calculated on the UI thread alongside the callback payload.
  */
+interface CrosshairSeriesTooltipOptions {
+  config: ResolvedPerSeriesTooltipConfig;
+  formatValue: (value: number) => string;
+  formatTime: (time: number) => string;
+  font: SkFont;
+  colors: string[];
+  /** Current-time anchor used to clamp the live bucket's range end. */
+  maxTime: SharedValue<number> | DerivedValue<number>;
+}
+
 export function useCrosshairSeries(
   engine: MultiEngineState,
   padding: ChartPadding,
@@ -50,6 +64,7 @@ export function useCrosshairSeries(
    * mature into a scrub (see `delayedPanGuard.shouldStartDelayedPan`).
    */
   scrollActive?: SharedValue<boolean>,
+  tooltip?: CrosshairSeriesTooltipOptions,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -114,7 +129,27 @@ export function useCrosshairSeries(
     ),
   );
 
-  const tooltipLayout = useSharedValue(HIDDEN_TOOLTIP);
+  const tooltipLayout = useDerivedValue(() => {
+    if (!tooltip) return HIDDEN_TOOLTIP;
+    return computePerSeriesTooltipLayout(
+      scrubActive.get(),
+      scrubX.get(),
+      scrubTime.get(),
+      engine.series.get(),
+      engine.displaySeriesValues.get(),
+      tooltip.colors,
+      engine.displayMin.get(),
+      engine.displayMax.get(),
+      padding,
+      engine.canvasWidth.get(),
+      engine.canvasHeight.get(),
+      tooltip.maxTime.get(),
+      tooltip.formatValue,
+      tooltip.formatTime,
+      tooltip.font,
+      tooltip.config,
+    );
+  });
 
   /* istanbul ignore next */
   function handleGestureStart() {

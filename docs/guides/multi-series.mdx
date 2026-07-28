@@ -96,3 +96,83 @@ Tune or turn off the halo, hide the dots, or override the fill color:
 ```
 
 See the full prop list in the [`LiveChartSeries` reference](/api-reference/livechart-series).
+
+## Per-series scrub tooltip
+
+`LiveChartSeries` keeps its historical guide-only scrub by default. Opt into the
+Morfi market-detail readout with `scrub.seriesTooltip`: a dashed vertical guide,
+a top-centred bucket range, and one pill plus intersection dot for every visible
+series. Close values stack instead of overlapping, wide pills flip to the
+guide's left near the right edge, and hidden legend series are omitted.
+
+<Note>
+  This feature is opt-in and backward compatible. `scrub={true}`,
+  `scrub={{}}`, and `scrub={{ seriesTooltip: false }}` all keep the existing
+  guide-only multi-series behavior. The existing `scrub.tooltip` property is
+  still the master switch; setting it to `false` also suppresses the per-series
+  pills.
+</Note>
+
+Enable the default tooltip treatment with:
+
+```tsx
+<LiveChartSeries
+  series={series}
+  scrub={{ seriesTooltip: true }}
+/>
+```
+
+Pass an object instead of `true` to customize formatting and appearance:
+
+```tsx
+<LiveChartSeries
+  series={series}
+  scrub={{
+    seriesTooltip: {
+      formatSeriesValue: (value, seriesId) => {
+        "worklet";
+        return seriesId.startsWith("probability")
+          ? `${(value * 100).toFixed(1)}%`
+          : `$${value.toFixed(2)}`;
+      },
+      formatTimeRange: (from, to) => {
+        "worklet";
+        return `${formatTime(from)} – ${formatTime(to)}`;
+      },
+      maxLabelChars: 14,
+    },
+  }}
+/>
+```
+
+`formatSeriesValue` and `formatTimeRange` run on the UI thread; keep them
+worklet-safe, just like the chart's `formatValue` and `formatTime`. Omit
+`bucketSeconds` to infer the range width from the first visible series. The
+range end is always clamped to the chart's current-time anchor, so an
+in-progress live bucket never displays a future end time.
+
+Set `alwaysShow` to keep the value pills at the visible endpoints while the
+user is not touching the chart. Idle mode deliberately hides the guide and
+time pill; scrubbing restores the full readout.
+
+```tsx
+<LiveChartSeries
+  series={series}
+  scrub={{
+    seriesTooltip: {
+      alwaysShow: true,
+      guideColor: "#f59e0b",
+      guideDashPattern: [3, 3],
+      timePillBackground: "#1e293b",
+      seriesPillBackground: "#1e293b",
+      seriesPillLabelColor: "#94a3b8",
+      seriesPillValueColor: "#f8fafc",
+      seriesPillRadius: 10,
+      intersectionDotSize: 8,
+    },
+  }}
+/>
+```
+
+The [multi-series demo](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/multi-series.tsx)
+has live toggles for the pills, pinned mode, and styling.

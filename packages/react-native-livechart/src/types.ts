@@ -725,10 +725,102 @@ export interface XAxisConfig {
   minGap?: number;
 }
 
+/**
+ * Morfi-style on-canvas tooltip for {@link LiveChartSeries}: a time-range pill
+ * above the guide plus one value pill at every visible series intersection.
+ *
+ * Enable it with `scrub={{ seriesTooltip: true }}` or pass this object to style
+ * and format the readout. It is ignored by the single-series {@link LiveChart}.
+ */
+export interface PerSeriesTooltipConfig {
+  /**
+   * Keep the value pills pinned to the visible series endpoints while idle.
+   * The guide and time pill remain hidden until a scrub starts. Default `false`.
+   */
+  alwaysShow?: boolean;
+  /**
+   * Bucket width used by the time-range pill, in seconds. Omit to infer it from
+   * the latest positive interval in the first visible series.
+   */
+  bucketSeconds?: number;
+  /**
+   * Format a value pill. The second argument identifies the series so one chart
+   * can dispatch to different unit formatters. Defaults to the chart's
+   * `formatValue`.
+   *
+   * Runs on the UI thread and must be worklet-safe.
+   */
+  formatSeriesValue?: (value: number, seriesId: string) => string;
+  /**
+   * Format the time pill from the bucket's start/end unix seconds. The end is
+   * clamped to the chart's current-time anchor, so the live bucket never claims
+   * to end in the future. Defaults to two chart `formatTime` labels joined by
+   * an en dash.
+   *
+   * Runs on the UI thread and must be worklet-safe.
+   */
+  formatTimeRange?: (from: number, to: number) => string;
+  /** Truncate labels longer than this many characters with `…`. Default `14`. */
+  maxLabelChars?: number;
+
+  /** Guide color. Omit to use `scrub.crosshairLineColor`, then the theme. */
+  guideColor?: string;
+  /** Guide stroke width in px. Default `1`. */
+  guideWidth?: number;
+  /**
+   * Guide dash pattern. `true` uses `[3, 3]`; an array supplies explicit Skia
+   * dash intervals; `false` draws a solid guide. Default `[3, 3]`.
+   */
+  guideDashPattern?: boolean | number[];
+
+  /** Time-pill background. Omit to use `scrub.tooltipBackground`, then the theme. */
+  timePillBackground?: string;
+  /** Time-pill text color. Omit to use `scrub.tooltipColor`, then the theme. */
+  timePillColor?: string;
+  /** Time-pill border color. Omit to use `scrub.tooltipBorderColor`, then the theme. */
+  timePillBorderColor?: string;
+  /** Time-pill corner radius in px. Default `6`. */
+  timePillRadius?: number;
+  /** Time-pill horizontal padding in px. Default `8`. */
+  timePillPaddingX?: number;
+  /** Time-pill vertical padding in px. Default `4`. */
+  timePillPaddingY?: number;
+
+  /** Series-pill background. Omit to use `scrub.tooltipBackground`, then the theme. */
+  seriesPillBackground?: string;
+  /** Series label color. Omit to use the theme tooltip text. */
+  seriesPillLabelColor?: string;
+  /** Formatted series value color. Omit to use `seriesPillLabelColor`. */
+  seriesPillValueColor?: string;
+  /** Series-pill border color. Omit to use `scrub.tooltipBorderColor`, then the theme. */
+  seriesPillBorderColor?: string;
+  /** Series-pill corner radius in px. Default `6`. */
+  seriesPillRadius?: number;
+  /** Series-pill horizontal padding in px. Default `8`. */
+  seriesPillPaddingX?: number;
+  /** Series-pill vertical padding in px. Default `4`. */
+  seriesPillPaddingY?: number;
+  /** Diameter of the series-colour dot inside each pill, in px. Default `8`. */
+  seriesPillDotSize?: number;
+  /** Gap between the colour dot and label, in px. Default `6`. */
+  seriesPillDotGap?: number;
+  /** Gap between the label and formatted value, in px. Default `6`. */
+  seriesPillLabelValueGap?: number;
+  /** Diameter of the dot drawn at each line/guide intersection. Default `8`. */
+  intersectionDotSize?: number;
+}
+
 /** Crosshair scrub configuration. */
 export interface ScrubConfig {
   /** Show the value/time tooltip pill while scrubbing. Default `true`. */
   tooltip?: boolean;
+  /**
+   * Opt into the Morfi-style per-series pill tooltip on `LiveChartSeries`.
+   * `true` uses defaults; an object enables and configures it; `false`/omitted
+   * preserves the existing guide-only multi-series scrub. Ignored by
+   * single-series `LiveChart`. Default `false`.
+   */
+  seriesTooltip?: boolean | PerSeriesTooltipConfig;
   /**
    * Opacity of the chart content to the *right* of the crosshair (the "future")
    * while scrubbing — `0` fully fades it out, `1` disables the dim. Implemented
@@ -2027,8 +2119,9 @@ export interface LiveChartCoreProps {
    *
    * Defaults differ per chart: `LiveChart` shows it (`true`); `LiveChartSeries`
    * hides it (`false`) — with multiple lines the dot can only track the leading
-   * series, so the crosshair + per-series tooltips mark the scrub point instead.
-   * Pass `true` / a config to opt a multi-series chart in.
+   * series. The crosshair — and, when enabled, the per-series tooltip's own
+   * intersection dots — mark the scrub point instead. Pass `true` / a config to
+   * opt a multi-series chart in.
    */
   selectionDot?: boolean | SelectionDotConfig;
   /** Called once when the user starts scrubbing/panning the chart. */

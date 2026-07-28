@@ -2,10 +2,17 @@ import { type SkFont } from "@shopify/react-native-skia";
 import { renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
 import type { MultiEngineState } from "../../src/core/useLiveChartEngine";
+import { resolveScrub } from "../../src/core/resolveConfig";
+import type {
+  PerSeriesTooltipConfig,
+  SeriesConfig,
+} from "../../src/types";
 import {
-  computeSeriesScrubTooltipLayout,
+  computePerSeriesTooltipLayout,
   deriveScrubValueSeries,
+  estimateSeriesBucketSeconds,
   interpolateSeriesAtTime,
+  truncateSeriesTooltipLabel,
 } from "../../src/hooks/crosshairSeries";
 import { useCrosshairSeries } from "../../src/hooks/useCrosshairSeries";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
@@ -44,6 +51,12 @@ const padding = { top: 12, right: 80, bottom: 28, left: 12 };
 const formatValue = (v: number) => v.toFixed(2);
 const formatTime = (t: number) =>
   new Date(t * 1000).toISOString().slice(11, 19);
+
+function tooltipConfig(
+  overrides: true | PerSeriesTooltipConfig = true,
+) {
+  return resolveScrub({ seriesTooltip: overrides })!.seriesTooltip!;
+}
 
 function makeEngine(
   overrides: Partial<Record<keyof MultiEngineState, { value: unknown }>> = {},
@@ -87,103 +100,232 @@ describe("deriveScrubValueSeries", () => {
   });
 });
 
-describe("computeSeriesScrubTooltipLayout", () => {
-  it("returns hidden when scrub is inactive", () => {
-    const layout = computeSeriesScrubTooltipLayout(
+describe("computePerSeriesTooltipLayout", () => {
+  const visibleSeries = [
+    {
+      id: "alpha",
+      label: "Alpha outcome with a long label",
+      data: [
+        { time: 900, value: 10 },
+        { time: 960, value: 30 },
+      ],
+      value: 30,
+      color: "#2563eb",
+    },
+    {
+      id: "beta",
+      label: "Beta",
+      data: [
+        { time: 900, value: 11 },
+        { time: 960, value: 31 },
+      ],
+      value: 31,
+      color: "#dc2626",
+    },
+    {
+      id: "hidden",
+      label: "Hidden",
+      visible: false,
+      data: [
+        { time: 900, value: 80 },
+        { time: 960, value: 90 },
+      ],
+      value: 90,
+      color: "#16a34a",
+    },
+  ] satisfies SeriesConfig[];
+
+  it("stays hidden until scrub or alwaysShow is active", () => {
+    const layout = computePerSeriesTooltipLayout(
       false,
-      50,
-      985,
-      [
-        {
-          id: "a",
-          data: [{ time: 970, value: 1 }],
-          value: 1,
-          color: "#00f",
-        },
-      ],
+      -1,
+      -1,
+      visibleSeries,
+      [30, 31, 90],
+      ["#2563eb", "#dc2626", "#16a34a"],
+      0,
+      100,
       padding,
       400,
-      formatValue,
-      formatTime,
-      font,
-    );
-    expect(layout.x).toBeLessThan(0);
-  });
-
-  it("returns hidden when no primary value", () => {
-    const layout = computeSeriesScrubTooltipLayout(
-      true,
-      50,
+      300,
       1000,
-      [
-        {
-          id: "a",
-          visible: false,
-          data: [{ time: 1000, value: 1 }],
-          value: 1,
-          color: "#00f",
-        },
-      ],
-      padding,
-      400,
       formatValue,
       formatTime,
       font,
+      tooltipConfig(),
     );
     expect(layout.x).toBeLessThan(0);
+    expect(layout.perSeries).toBeUndefined();
   });
 
-  it("builds stacked tooltip rows for visible series", () => {
-    const layout = computeSeriesScrubTooltipLayout(
+  it("formats and clamps the time range, truncates labels, filters hidden series, and flips left", () => {
+    const formatSeriesValue = jest.fn((value: number, id: string) =>
+      `${id}=${value.toFixed(1)}`,
+    );
+    const formatTimeRange = jest.fn(
+      (from: number, to: number) => `${from}-${to}`,
+    );
+    const layout = computePerSeriesTooltipLayout(
       true,
-      50,
-      985,
-      [
-        {
-          id: "a",
-          label: "A",
-          data: [
-            { time: 970, value: 10 },
-            { time: 1000, value: 30 },
-          ],
-          value: 30,
-          color: "#00f",
-        },
-      ],
+      315,
+      990,
+      visibleSeries,
+      [30, 31, 90],
+      ["#2563eb", "#dc2626", "#16a34a"],
+      0,
+      100,
       padding,
       400,
+      300,
+      1000,
       formatValue,
       formatTime,
       font,
+      tooltipConfig({
+        bucketSeconds: 60,
+        maxLabelChars: 5,
+        formatSeriesValue,
+        formatTimeRange,
+      }),
     );
-    expect(layout.stackedLines?.length).toBeGreaterThanOrEqual(2);
+
+    expect(layout.perSeries?.pills.map((pill) => pill.id)).toEqual([
+      "alpha",
+      "beta",
+    ]);
+    expect(layout.perSeries?.pills[0].label).toBe("Alph…");
+    expect(layout.perSeries?.pills[0].value).toBe("alpha=30.0");
+    expect(layout.perSeries?.pills.every((pill) => pill.x < 315)).toBe(true);
+    expect(layout.perSeries?.timePill?.text).toBe("990-1000");
+    expect(formatTimeRange).toHaveBeenCalledWith(990, 1000);
+    expect(formatSeriesValue).toHaveBeenCalledTimes(2);
+  });
+
+  it("stacks near-identical values without overlap and keeps pills inside a short plot", () => {
+    const clustered = visibleSeries.slice(0, 2).map((item, index) => ({
+      ...item,
+      data: [
+        { time: 900, value: 50 + index * 0.01 },
+        { time: 960, value: 50 + index * 0.01 },
+      ],
+    }));
+    const layout = computePerSeriesTooltipLayout(
+      true,
+      160,
+      930,
+      clustered,
+      [50, 50.01],
+      ["#2563eb", "#dc2626"],
+      0,
+      100,
+      padding,
+      240,
+      110,
+      1000,
+      formatValue,
+      formatTime,
+      font,
+      tooltipConfig({ bucketSeconds: 60 }),
+    );
+    const pills = [...(layout.perSeries?.pills ?? [])].sort(
+      (a, b) => a.y - b.y,
+    );
+    expect(pills).toHaveLength(2);
+    expect(pills[1].y).toBeGreaterThanOrEqual(pills[0].y + pills[0].h);
+    expect(pills.every((pill) => pill.y >= padding.top)).toBe(true);
+    expect(
+      pills.every((pill) => pill.y + pill.h <= 110 - padding.bottom),
+    ).toBe(true);
+  });
+
+  it("pins only value pills to live endpoints while idle", () => {
+    const layout = computePerSeriesTooltipLayout(
+      false,
+      -1,
+      -1,
+      visibleSeries,
+      [42, 43, 90],
+      ["#2563eb", "#dc2626", "#16a34a"],
+      0,
+      100,
+      padding,
+      400,
+      300,
+      1000,
+      formatValue,
+      formatTime,
+      font,
+      tooltipConfig({ alwaysShow: true }),
+    );
+
+    expect(layout.perSeries?.pinned).toBe(true);
+    expect(layout.perSeries?.timePill).toBeUndefined();
+    expect(layout.perSeries?.pills.map((pill) => pill.value)).toEqual([
+      "42.00",
+      "43.00",
+    ]);
+    expect(
+      layout.perSeries?.pills.every(
+        (pill) => pill.anchorX === 400 - padding.right,
+      ),
+    ).toBe(true);
+  });
+
+  it("clips oversized pill geometry into both horizontal plot edges", () => {
+    const layout = computePerSeriesTooltipLayout(
+      true,
+      padding.left,
+      930,
+      [visibleSeries[0]],
+      [30],
+      ["#2563eb"],
+      0,
+      100,
+      padding,
+      125,
+      100,
+      1000,
+      () => "a very long formatted value",
+      formatTime,
+      font,
+      tooltipConfig({ maxLabelChars: 40 }),
+    );
+    const pill = layout.perSeries!.pills[0];
+    expect(pill.x).toBeGreaterThanOrEqual(padding.left + 4);
+    expect(pill.x + pill.w).toBeLessThanOrEqual(125 - padding.right - 4);
   });
 });
 
-describe("series scrub tooltip layout vs single path", () => {
-  it("produces stacked lines for series scrub tooltip", () => {
-    const layout = computeSeriesScrubTooltipLayout(
-      true,
-      50,
-      985,
-      [
+describe("per-series tooltip helpers", () => {
+  it("infers the latest positive bucket interval from visible series", () => {
+    expect(
+      estimateSeriesBucketSeconds([
         {
-          id: "a",
+          id: "hidden",
+          visible: false,
           data: [
-            { time: 970, value: 10 },
-            { time: 1000, value: 30 },
+            { time: 0, value: 0 },
+            { time: 100, value: 1 },
           ],
-          value: 30,
-          color: "#00f",
+          value: 1,
         },
-      ],
-      padding,
-      400,
-      formatValue,
-      formatTime,
-      font,
-    );
-    expect(layout.stackedLines?.length).toBeGreaterThan(0);
+        {
+          id: "shown",
+          data: [
+            { time: 0, value: 0 },
+            { time: 30, value: 1 },
+            { time: 90, value: 2 },
+          ],
+          value: 2,
+        },
+      ]),
+    ).toBe(60);
+    expect(estimateSeriesBucketSeconds([])).toBe(0);
+  });
+
+  it("truncates only labels over the configured limit", () => {
+    expect(truncateSeriesTooltipLabel("Beta", 5)).toBe("Beta");
+    expect(truncateSeriesTooltipLabel("Outcome", 5)).toBe("Outc…");
   });
 });
 

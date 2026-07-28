@@ -5,6 +5,7 @@ import { useSharedValue } from "react-native-reanimated";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import { LiveChartSeries } from "../src/components/LiveChartSeries";
+import { PerSeriesTooltipOverlay } from "../src/components/PerSeriesTooltipOverlay";
 import { ReferenceLineOverlay } from "../src/components/ReferenceLineOverlay";
 import { DefaultSelectionDot } from "../src/components/SelectionDot";
 import type { ChartOverlayContext, SeriesConfig } from "../src/types";
@@ -118,6 +119,37 @@ describe("LiveChartSeries", () => {
     fireEvent(layoutView, "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
+  });
+
+  it("mounts the opt-in per-series tooltip and respects the master tooltip switch", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H({ tooltip = true }: { tooltip?: boolean }) {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return (
+        <LiveChartSeries
+          series={series}
+          scrub={{ tooltip, seriesTooltip: { alwaysShow: true } }}
+        />
+      );
+    }
+
+    const screen = render(<H />);
+    await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
+    expect(screen.UNSAFE_getAllByType(PerSeriesTooltipOverlay)).toHaveLength(1);
+
+    screen.rerender(<H tooltip={false} />);
+    expect(screen.UNSAFE_queryAllByType(PerSeriesTooltipOverlay)).toHaveLength(0);
   });
 
   it("renders custom reference-line tags with per-line built-in fallback", async () => {
