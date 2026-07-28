@@ -193,6 +193,7 @@ export function useCrosshair(
   // tracks the price as the axis rescales instead of drifting under a fixed pixel.
   const lockPriceValue = useSharedValue<number | null>(null);
   const hasScrubAction = scrubAction != null;
+  const clampPlainScrubToPlot = clampToPlot && !hasScrubAction;
   const hasOnScrubAction = onScrubAction != null;
   const dismissOnTapOutside = scrubAction?.dismissOnTapOutside ?? false;
   const dismissOnAction = scrubAction?.dismissOnAction ?? false;
@@ -620,7 +621,7 @@ export function useCrosshair(
           e.x,
           padding,
           engine.canvasWidth.get(),
-          clampToPlot,
+          clampPlainScrubToPlot,
           scrubX,
           scrubActive,
           gestureStarted,
@@ -655,7 +656,7 @@ export function useCrosshair(
           e.x,
           padding,
           engine.canvasWidth.get(),
-          clampToPlot,
+          clampPlainScrubToPlot,
           scrubX,
           scrubActive,
         );
@@ -702,7 +703,7 @@ export function useCrosshair(
   // `shouldCancelWhenOutside(false)` keeps tracking beyond these bounds.
   const scrubHitSlop = resolveScrubHitSlop(
     padding,
-    clampToPlot && !hasScrubAction,
+    clampPlainScrubToPlot,
     scrubBottomExclude,
   );
   if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);
