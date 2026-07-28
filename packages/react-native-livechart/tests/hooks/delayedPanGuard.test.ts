@@ -40,7 +40,7 @@ function touchEvent(x: number, y: number, numberOfTouches = 1) {
 
 /** Rewind `downAtMs` so the guard sees a fully elapsed hold. */
 function elapseHold(g: ReturnType<typeof makeGuard>, delayMs: number) {
-  g.downAtMs.set(performance.now() - delayMs);
+  g.downAtMs.set(Date.now() - delayMs);
 }
 
 describe("delayed pan guard", () => {
@@ -367,7 +367,7 @@ describe("delayed pan guard", () => {
     );
     // Fast successive taps: the previous touch's timer fires only ~100ms into
     // this touch — far less than delayMs - HOLD_TIMER_SLACK_MS.
-    g.downAtMs.set(performance.now() - 100);
+    g.downAtMs.set(Date.now() - 100);
     expect(
       shouldStartDelayedPan(
         400,
@@ -393,7 +393,7 @@ describe("delayed pan guard", () => {
       g.downAtMs,
       g.holdBroken,
     );
-    g.downAtMs.set(performance.now() - (400 - HOLD_TIMER_SLACK_MS));
+    g.downAtMs.set(Date.now() - (400 - HOLD_TIMER_SLACK_MS));
     expect(
       shouldStartDelayedPan(
         400,

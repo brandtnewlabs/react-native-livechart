@@ -4,6 +4,7 @@ import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { LiveChart } from "../src/components/LiveChart";
+import { ReferenceLineOverlay } from "../src/components/ReferenceLineOverlay";
 import * as badgeHooks from "../src/hooks/useBadge";
 import * as candlePathHooks from "../src/hooks/useCandlePaths";
 import * as chartOverlayHooks from "../src/hooks/useChartOverlayContext";
@@ -418,6 +419,37 @@ describe("LiveChart", () => {
     );
     // The custom-rendered tag is floated as an RN view (built-in tag suppressed).
     expect(screen.queryByTestId("custom-ref")).toBeTruthy();
+  });
+
+  it("replaces only an off-axis reference-line tag", () => {
+    const screen = render(
+      <Harness
+        referenceLines={[
+          {
+            value: 99,
+            label: "Target",
+            excludeFromRange: true,
+            badge: { position: "right" },
+          },
+          { value: 50, label: "Built in", badge: { position: "center" } },
+        ]}
+        renderOffAxisReferenceLine={({ line }) =>
+          line.label === "Target" ? <View testID="off-axis-target" /> : null
+        }
+      />,
+    );
+    expect(screen.getByTestId("off-axis-target")).toBeTruthy();
+
+    const badgePass = screen
+      .UNSAFE_getAllByType(ReferenceLineOverlay)
+      .filter((overlay) => overlay.props.badgeLayer);
+    expect(badgePass.map((overlay) => overlay.props.suppressTag)).toEqual([
+      false,
+      false,
+    ]);
+    expect(
+      badgePass.map((overlay) => overlay.props.suppressTagWhenOffAxis),
+    ).toEqual([true, false]);
   });
 
   it("accepts a boolean referenceLineGrouping and a non-draggable custom line", () => {

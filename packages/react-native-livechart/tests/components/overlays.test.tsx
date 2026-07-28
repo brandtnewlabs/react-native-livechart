@@ -8,11 +8,10 @@ import type { EngineState } from "../../src/core/useLiveChartEngine";
 import { LoadingOverlay } from "../../src/components/LoadingOverlay";
 import { MultiSeriesTooltipStack } from "../../src/components/MultiSeriesTooltipStack";
 import React from "react";
-import type { ReferenceLine } from "../../src/types";
+import type { ReferenceLine, SelectionDotProps } from "../../src/types";
 import { ReferenceLineOverlay } from "../../src/components/ReferenceLineOverlay";
 import { Circle, Skia } from "@shopify/react-native-skia";
 import type { TooltipLayout } from "../../src/hooks/crosshairShared";
-import type { SelectionDotProps } from "../../src/types";
 import { ValueLineOverlay } from "../../src/components/ValueLineOverlay";
 import { XAxisOverlay } from "../../src/components/XAxisOverlay";
 import {
@@ -1101,6 +1100,85 @@ describe("ReferenceLineOverlay", () => {
         radius: 6,
       },
     });
+  });
+
+  it("keeps a custom badge's connector and starts it after its measured edge", () => {
+    type MockBuilder = { moveTo: jest.Mock; lineTo: jest.Mock };
+    const make = Skia.PathBuilder.Make as unknown as jest.Mock;
+    make.mockClear();
+    const tagWidth = 80;
+    const y =
+      DEFAULT_PADDING.top +
+      ((10 - 5) / 10) * (300 - DEFAULT_PADDING.top - DEFAULT_PADDING.bottom);
+    function Fixture() {
+      const customTagWidths = useSharedValue([tagWidth]);
+      return (
+        <ReferenceLineOverlay
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          line={{ value: 5, badge: true }}
+          palette={palette}
+          formatValue={fmt}
+          font={font}
+          badgeLayer
+          suppressTag
+          customTagWidths={customTagWidths}
+        />
+      );
+    }
+
+    render(<Fixture />);
+    const builders = make.mock.results.map(
+      ({ value }) => value as unknown as MockBuilder,
+    );
+    const connector = builders.find((builder) =>
+      builder.moveTo.mock.calls.some(
+        ([x, lineY]) =>
+          x === DEFAULT_PADDING.left + 2 + tagWidth + 4 && lineY === y,
+      ),
+    );
+    expect(connector).toBeDefined();
+    expect(connector?.lineTo).toHaveBeenCalledWith(
+      400 - DEFAULT_PADDING.right,
+      y,
+    );
+    make.mockClear();
+  });
+
+  it("uses the custom connector edge only while an off-axis tag is active", () => {
+    type MockBuilder = { moveTo: jest.Mock; lineTo: jest.Mock };
+    const make = Skia.PathBuilder.Make as unknown as jest.Mock;
+    make.mockClear();
+    const tagWidth = 80;
+    function Fixture() {
+      const customTagWidths = useSharedValue([tagWidth]);
+      return (
+        <ReferenceLineOverlay
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          line={{ value: 99, badge: true }}
+          palette={palette}
+          formatValue={fmt}
+          font={font}
+          badgeLayer
+          suppressTagWhenOffAxis
+          customTagWidths={customTagWidths}
+        />
+      );
+    }
+
+    render(<Fixture />);
+    const builders = make.mock.results.map(
+      ({ value }) => value as unknown as MockBuilder,
+    );
+    expect(
+      builders.some((builder) =>
+        builder.moveTo.mock.calls.some(
+          ([x]) => x === DEFAULT_PADDING.left + 2 + tagWidth + 4,
+        ),
+      ),
+    ).toBe(true);
+    make.mockClear();
   });
 
   it("renders a right-pinned, icon-only badge", () => {

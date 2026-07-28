@@ -51,7 +51,7 @@ export function delayedPanTouchDown(
     downX.set(t.x);
     downY.set(t.y);
   }
-  downAtMs.set(performance.now());
+  downAtMs.set(Date.now());
   holdBroken.set(false);
 }
 
@@ -160,7 +160,7 @@ export function shouldStartDelayedPan(
     panActivated.set(false);
     return false;
   }
-  if (performance.now() - downAtMs.get() < delayMs - HOLD_TIMER_SLACK_MS) {
+  if (Date.now() - downAtMs.get() < delayMs - HOLD_TIMER_SLACK_MS) {
     panActivated.set(false);
     return false;
   }

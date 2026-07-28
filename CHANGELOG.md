@@ -19,6 +19,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`HOLD_MAX_DRIFT_PX`) or the long-press timer fires implausibly early for the current
   touch (a stale timer from a previous tap).
 
+- **Custom off-axis reference tags no longer suppress the normal in-range tag.**
+  `renderOffAxisReferenceLine` on `LiveChart` and `LiveChartSeries` swaps only the
+  edge-pinned tag, keeps the built-in tag in range, and retains a left- or
+  right-pinned native connector from the measured custom badge edge.
+  ([#227](https://github.com/brandtnewlabs/react-native-livechart/issues/227))
+
+- **`LiveChartSeries` now exposes the layout-aware `renderOverlay` bridge.**
+  Custom off-axis reference-line tags and connectors can read the live resolved
+  plot bounds, preserving the chart's actual axis inset instead of guessing at a
+  full-width overlay. ([#227](https://github.com/brandtnewlabs/react-native-livechart/issues/227))
+
+- **Custom reference-line badges retain their dashed connector.** `LiveChart`
+  and `LiveChartSeries` now measure a custom `renderReferenceLine` tag and start
+  the left- or right-pinned connector at its outer edge. ([#227](https://github.com/brandtnewlabs/react-native-livechart/issues/227))
+
+- **Reference lines accept stable `id`s.** Reordering `referenceLines` now keeps
+  each rendered line's identity; existing lines fall back to a deterministic
+  visual-config key.
+
+- **Candles no longer vanish with `transitions={false}`.** `transitions={false}` resolves to a
+  candle-width lerp speed of `1`, and the frame-rate-independent lerp evaluated
+  `0 ** (dt / frame)` — `Infinity` for a negative frame delta. When the current and target
+  widths matched, the resulting `0 * -Infinity` turned the shared candle width into a
+  permanent `NaN`, so every body and wick drew at `NaN` width. `lerp` now snaps straight to
+  the target at `speed >= 1`.
+
 ### Documentation
 
 - Added an end-to-end guide and runnable example for loading older REST history while time-scrolling,
