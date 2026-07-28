@@ -152,8 +152,9 @@ export function useCrosshair(
    */
   scrollActive?: SharedValue<boolean>,
   /**
-   * Reject scrub starts beyond either horizontal plot edge and clamp active
-   * drags to those bounds. Default `false`.
+   * Reject plain-scrub starts beyond either horizontal plot edge and clamp
+   * active drags to those bounds. Scrub-action behavior is unchanged.
+   * Default `false`.
    */
   clampToPlot = false,
 ): CrosshairState {
@@ -615,7 +616,7 @@ export function useCrosshair(
         // also keeps a follow-on drag from showing a crosshair — no `onUpdate`
         // guard needed. (Plain-scrub counterpart of the scrub-action tap defer.)
         if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
-        const didStart = startPlainScrub(
+        startPlainScrub(
           e.x,
           padding,
           engine.canvasWidth.get(),
@@ -624,7 +625,6 @@ export function useCrosshair(
           scrubActive,
           gestureStarted,
         );
-        if (!didStart) return;
         if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
       },
     )
@@ -702,7 +702,7 @@ export function useCrosshair(
   // `shouldCancelWhenOutside(false)` keeps tracking beyond these bounds.
   const scrubHitSlop = resolveScrubHitSlop(
     padding,
-    clampToPlot,
+    clampToPlot && !hasScrubAction,
     scrubBottomExclude,
   );
   if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);

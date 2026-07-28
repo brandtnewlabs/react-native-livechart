@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Optional plot-bound scrub gestures.** `ScrubConfig.clampToPlot` (default
-  `false`) ignores gestures that start in the Y-axis gutter or beyond either
-  horizontal plot edge, then clamps an active crosshair to the left and right
-  plot edges. Supported by `LiveChart` and `LiveChartSeries`.
+  `false`) makes plain scrub ignore gestures that start in the Y-axis gutter or
+  beyond either horizontal plot edge, then clamps an active crosshair to the
+  left and right plot edges. Supported by `LiveChart` and `LiveChartSeries`.
 
 ## [4.12.0] - 2026-07-28
 

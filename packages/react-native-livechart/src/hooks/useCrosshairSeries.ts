@@ -298,7 +298,7 @@ export function useCrosshairSeries(
         )
           return;
         if (!enabled) return;
-        const didStart = startPlainScrub(
+        startPlainScrub(
           e.x,
           padding,
           engine.canvasWidth.get(),
@@ -307,7 +307,6 @@ export function useCrosshairSeries(
           scrubActive,
           gestureStarted,
         );
-        if (!didStart) return;
         if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
       },
     )

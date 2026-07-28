@@ -44,12 +44,13 @@ horizontal padding:
 />
 ```
 
-A gesture that starts left or right of the plot is rejected before activation,
-remains available to competing or parent gestures, and does not fire
-`onGestureStart`. A gesture that starts within its horizontal bounds stays
+A plain-scrub gesture that starts left or right of the plot is rejected before
+activation, remains available to competing or parent gestures, and does not
+fire `onGestureStart`. A gesture that starts within its horizontal bounds stays
 active when the pointer moves beyond either edge; its crosshair remains clamped
-to the nearest plot edge. The option works on `LiveChart` and `LiveChartSeries`
-and defaults to `false` for backwards compatibility.
+to the nearest plot edge. Scrub-action gestures retain their existing behavior.
+The option works on `LiveChart` and `LiveChartSeries` and defaults to `false`
+for backwards compatibility.
 
 ## Customizing the tooltip
 

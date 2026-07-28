@@ -175,17 +175,15 @@ describe("plain scrub gesture bounds", () => {
     const scrubActive = mutable(false);
     const gestureStarted = mutable(false);
 
-    expect(
-      startPlainScrub(
-        0,
-        padding,
-        400,
-        false,
-        scrubX,
-        scrubActive,
-        gestureStarted,
-      ),
-    ).toBe(true);
+    startPlainScrub(
+      0,
+      padding,
+      400,
+      false,
+      scrubX,
+      scrubActive,
+      gestureStarted,
+    );
     expect(scrubX.get()).toBe(0);
     expect(scrubActive.get()).toBe(true);
     expect(gestureStarted.get()).toBe(true);
@@ -196,17 +194,15 @@ describe("plain scrub gesture bounds", () => {
     const scrubActive = mutable(false);
     const gestureStarted = mutable(false);
 
-    expect(
-      startPlainScrub(
-        390,
-        padding,
-        400,
-        true,
-        scrubX,
-        scrubActive,
-        gestureStarted,
-      ),
-    ).toBe(true);
+    startPlainScrub(
+      390,
+      padding,
+      400,
+      true,
+      scrubX,
+      scrubActive,
+      gestureStarted,
+    );
     expect(scrubX.get()).toBe(400 - padding.right);
     expect(scrubActive.get()).toBe(true);
     expect(gestureStarted.get()).toBe(true);
@@ -217,17 +213,15 @@ describe("plain scrub gesture bounds", () => {
     const scrubActive = mutable(false);
     const gestureStarted = mutable(false);
 
-    expect(
-      startPlainScrub(
-        100,
-        padding,
-        400,
-        true,
-        scrubX,
-        scrubActive,
-        gestureStarted,
-      ),
-    ).toBe(true);
+    startPlainScrub(
+      100,
+      padding,
+      400,
+      true,
+      scrubX,
+      scrubActive,
+      gestureStarted,
+    );
     updatePlainScrub(-20, padding, 400, true, scrubX, scrubActive);
     expect(scrubX.get()).toBe(padding.left);
 
@@ -1156,7 +1150,7 @@ describe("useCrosshair (hook)", () => {
     expect(onScrubAction).not.toHaveBeenCalled();
   });
 
-  it("keeps the action gutter tappable while excluding the bottom band", () => {
+  it("keeps action Pan and Tap gutter-accessible while excluding the bottom band", () => {
     const engine = makeEngine();
     renderHook(() =>
       useCrosshair(
@@ -1185,6 +1179,7 @@ describe("useCrosshair (hook)", () => {
       ),
     );
 
+    expect(getLastPanCalls().hitSlop?.[0]).toEqual({ bottom: -24 });
     expect(getLastTapCalls().hitSlop?.[0]).toEqual({ bottom: -24 });
   });
 });

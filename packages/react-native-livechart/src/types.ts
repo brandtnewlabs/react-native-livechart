@@ -899,10 +899,11 @@ export interface ScrubConfig {
    */
   hideOverlaysOnScrub?: boolean;
   /**
-   * Keep scrubbing inside the horizontal plot bounds. A gesture that starts in
-   * the Y-axis gutter (or beyond either horizontal edge) is ignored; one that
-   * starts inside remains active and clamps to the nearest plot edge while
-   * dragging. Default `false`.
+   * Keep plain scrubbing inside the horizontal plot bounds. A gesture that
+   * starts in the Y-axis gutter (or beyond either horizontal edge) is ignored;
+   * one that starts inside remains active and clamps to the nearest plot edge
+   * while dragging. Scrub-action gestures retain their existing behavior.
+   * Default `false`.
    */
   clampToPlot?: boolean;
 }

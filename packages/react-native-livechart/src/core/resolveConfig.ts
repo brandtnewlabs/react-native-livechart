@@ -175,7 +175,7 @@ export interface ResolvedScrubConfig {
   panGestureDelay: number;
   /** Fade markers + reference lines out while scrubbing. */
   hideOverlaysOnScrub: boolean;
-  /** Reject horizontally outside starts and clamp active scrub X to the plot. */
+  /** Reject outside plain-scrub starts and clamp active scrub X to the plot. */
   clampToPlot: boolean;
 }
 

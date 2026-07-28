@@ -65,7 +65,7 @@ export function startPlainScrub(
   scrubX: ScrubGestureValue<number>,
   scrubActive: ScrubGestureValue<boolean>,
   gestureStarted: ScrubGestureValue<boolean>,
-): boolean {
+): void {
   "worklet";
   if (clampToPlot) {
     scrubX.set(clampPlotX(x, padding.left, canvasWidth, padding.right));
@@ -74,7 +74,6 @@ export function startPlainScrub(
   }
   scrubActive.set(true);
   gestureStarted.set(true);
-  return true;
 }
 
 /** Track plain scrubbing, clamping gestures accepted by the recognizer. */
