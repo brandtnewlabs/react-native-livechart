@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The live-dot pulse no longer freezes when `nowOverride` is pinned.** The pulse
+  animation clocked off the engine timestamp, which `nowOverride` holds still between data
+  updates — so the pulse stalled mid-ring instead of breathing. The pulse now runs off a
+  wall-clock frame callback that is only active while a pulse is configured.
+
 - **A drag can no longer scroll the chart and engage the scrub crosshair at once.**
   The time-scroll pan and the hold-to-scrub pan are composed with `Gesture.Race`, which adds
   no relation between its children — both could recognize on the same touch, so a scroll

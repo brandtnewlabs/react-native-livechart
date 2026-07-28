@@ -1891,7 +1891,6 @@ function ChartStack({
             dotX={dotX}
             dotY={dotY}
             palette={palette}
-            engine={engine}
             pulse={pulseCfg}
             radius={dotCfg.radius}
             ring={dotCfg.ring}
