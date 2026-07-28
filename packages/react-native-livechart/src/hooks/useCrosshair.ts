@@ -40,6 +40,7 @@ import {
 import {
   delayedPanTouchCancelled,
   delayedPanTouchDown,
+  delayedPanTouchMove,
   delayedPanTouchUp,
   resetDelayedPanGuard,
   shouldStartDelayedPan,
@@ -152,6 +153,12 @@ export function useCrosshair(
    * exclusion (the default; scrub covers the whole plot).
    */
   scrubBottomExclude = 0,
+  /**
+   * True while the time-scroll pan owns the touch. The hold-to-scrub pan refuses
+   * to activate while set, so a drag that already started scrolling can never
+   * mature into a scrub (see `delayedPanGuard.shouldStartDelayedPan`).
+   */
+  scrollActive?: SharedValue<boolean>,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -162,6 +169,18 @@ export function useCrosshair(
   // lifecycle helpers are also used by LiveChartSeries and unit-tested directly.
   const fingerDown = useSharedValue(false);
   const panActivated = useSharedValue(false);
+  // Where and when the current touch went down, for the stationary-hold and
+  // stale-timer guards (see delayedPanGuard).
+  const downX = useSharedValue(0);
+  const downY = useSharedValue(0);
+  const downAtMs = useSharedValue(0);
+  // Latched once the finger leaves the hold slop: this touch is a drag, so its
+  // long-press timer must not be honored even if it still fires.
+  const holdBroken = useSharedValue(false);
+  // Inert stand-in so the guard always has a latch to read when the controller
+  // wires no time-scroll (hooks must be created unconditionally).
+  const noScrollActive = useSharedValue(false);
+  const scrollActiveSV = scrollActive ?? noScrollActive;
   // Where the crosshair line should start (canvas Y) so it stops at a top-pinned
   // custom tooltip instead of running through it. -1 = no top tooltip → the line
   // starts at padding.top. Written by CustomTooltipOverlay, read by CrosshairOverlay.
@@ -505,9 +524,33 @@ export function useCrosshair(
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
     .onTouchesDown(
-      /* istanbul ignore next */ () => {
+      /* istanbul ignore next */ (e) => {
         "worklet";
-        delayedPanTouchDown(longPressMs, fingerDown);
+        delayedPanTouchDown(
+          longPressMs,
+          e,
+          fingerDown,
+          downX,
+          downY,
+          downAtMs,
+          holdBroken,
+        );
+      },
+    )
+    // Stationary hold: drift beyond the slop while the long-press is still
+    // pending fails the pan, so a drag can never mature into a scrub.
+    .onTouchesMove(
+      /* istanbul ignore next */ (e, manager) => {
+        "worklet";
+        delayedPanTouchMove(
+          longPressMs,
+          e,
+          manager,
+          panActivated,
+          downX,
+          downY,
+          holdBroken,
+        );
       },
     )
     .onTouchesUp(
@@ -535,7 +578,17 @@ export function useCrosshair(
     .onStart(
       /* istanbul ignore next */ (e) => {
         "worklet";
-        if (!shouldStartDelayedPan(longPressMs, fingerDown, panActivated)) return;
+        if (
+          !shouldStartDelayedPan(
+            longPressMs,
+            fingerDown,
+            panActivated,
+            downAtMs,
+            holdBroken,
+            scrollActiveSV,
+          )
+        )
+          return;
         if (!enabled) return;
         // Scrub-action: once a reticle is placed, drag adjusts it (2D — the Y is
         // the price). The ephemeral live-scrub never engages, so scrubActive
@@ -600,7 +653,7 @@ export function useCrosshair(
     .onFinalize(
       /* istanbul ignore next */ () => {
         "worklet";
-        resetDelayedPanGuard(fingerDown, panActivated);
+        resetDelayedPanGuard(fingerDown, panActivated, holdBroken);
         // A lock-adjust drag leaves the reticle in place (scrubActive was never
         // set); a live-scrub clears its crosshair. Always clear scrubActive so a
         // stray scrub can never linger behind a placed reticle.
