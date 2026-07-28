@@ -1,5 +1,11 @@
+import { useEffect } from "react";
 import { Circle, Group } from "@shopify/react-native-skia";
-import { useDerivedValue, type SharedValue } from "react-native-reanimated";
+import {
+  useDerivedValue,
+  useFrameCallback,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
 import type {
   ResolvedDotRingConfig,
   ResolvedPulseConfig,
@@ -46,10 +52,23 @@ export function DotOverlay({
 }) {
   const dotColor = color ?? palette.line;
 
+  // Pulse clock: wall time, not `engine.timestamp` — a `nowOverride` freezes
+  // the engine clock between data updates, which freezes the pulse with it.
+  // Runs only while a pulse is configured (resolvePulse returns null when the
+  // chart is static, so a suspended chart burns no frames here).
+  const pulseClockMs = useSharedValue(0);
+  /* istanbul ignore next -- frame-callback worklet runs on the UI thread, not in Jest */
+  const pulseClock = useFrameCallback((frame) => {
+    pulseClockMs.value = frame.timestamp;
+  }, pulse != null);
+  useEffect(() => {
+    pulseClock.setActive(pulse != null);
+  }, [pulse, pulseClock]);
+
   const pulseRadius = useDerivedValue(() => {
     if (!pulse) return 0;
     if (viewEnd?.value != null) return 0; // scrolled back — no live pulse
-    const nowMs = engine.timestamp.value * 1000;
+    const nowMs = pulseClockMs.value;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
     return MIN_PULSE_RADIUS + t * (pulse.maxRadius - MIN_PULSE_RADIUS);
@@ -58,7 +77,7 @@ export function DotOverlay({
   const pulseOpacity = useDerivedValue(() => {
     if (!pulse) return 0;
     if (viewEnd?.value != null) return 0; // scrolled back — no live pulse
-    const nowMs = engine.timestamp.value * 1000;
+    const nowMs = pulseClockMs.value;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
     return pulse.opacity * (1 - t);
