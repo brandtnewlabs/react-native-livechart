@@ -21,7 +21,8 @@ plain React Native that stays glued to the auto-rescaling axis.
 
 The callback receives a [`ChartOverlayContext`](/api-reference/types#chartoverlaycontext).
 The returned tree mounts full-bleed over the canvas with `pointerEvents="box-none"`,
-so empty areas still scrub.
+so empty areas still scrub. `renderOverlay` is available on both `LiveChart` and
+`LiveChartSeries`; the same context reports each chart's resolved plot rectangle.
 
 ## The easy path — `usePriceY` / `useTimeX`
 
@@ -76,4 +77,7 @@ function PriceTag({ ctx, price }) {
 
 These are the same projections the engine uses internally for the live dot, the
 scrub crosshair, and the [order-ticket drag](/guides/order-ticket)
-— so a custom overlay lines up pixel-for-pixel with the chart. Single-series only.
+— so a custom overlay lines up pixel-for-pixel with the chart. On a multi-series
+chart, use `s.plot.left` / `s.plot.right` for a custom off-axis badge or connector:
+those values already account for the chart's actual Y-axis gutter and any `insets`
+override.

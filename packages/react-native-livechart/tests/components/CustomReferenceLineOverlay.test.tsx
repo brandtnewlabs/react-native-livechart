@@ -1,7 +1,7 @@
 import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import { Text, View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import {
   CustomReferenceLineOverlay,
@@ -50,6 +50,16 @@ describe("customReferenceLineFlags", () => {
   it("exposes readable ctx SharedValue stubs to the probe", () => {
     const flags = customReferenceLineFlags([{ value: 42 }], (ctx) =>
       ctx.value.get() === 42 && ctx.edge.get() === "in" ? <Text>ok</Text> : null,
+    );
+    expect(flags).toEqual([true]);
+  });
+
+  it("uses an off-axis sentinel when selecting an off-axis renderer", () => {
+    const flags = customReferenceLineFlags(
+      [{ value: 42 }],
+      (ctx) =>
+        !ctx.inRange.get() && ctx.edge.get() === "above" ? <Text>ok</Text> : null,
+      "off-axis",
     );
     expect(flags).toEqual([true]);
   });
@@ -123,6 +133,33 @@ describe("CustomReferenceLineOverlay", () => {
     expect(queryByTestId("rl-1")).toBeNull();
   });
 
+  it("publishes the measured custom-tag width for the Skia connector", () => {
+    let tagWidths: SharedValue<number[]> | undefined;
+    function WidthFixture() {
+      const widths = useSharedValue<number[]>([]);
+      tagWidths = widths;
+      return (
+        <CustomReferenceLineOverlay
+          lines={[{ value: 30, badge: true }]}
+          renderReferenceLine={({ index }) => (
+            <View testID={`rl-${index}`} style={{ width: 52, height: 16 }} />
+          )}
+          custom={[true]}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          formatValue={fmt}
+          tagWidths={widths}
+        />
+      );
+    }
+
+    const { getByTestId } = render(<WidthFixture />);
+    fireEvent(getByTestId("rl-0").parent!, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 52, height: 16 } },
+    });
+    expect(tagWidths?.get()).toEqual([52]);
+  });
+
   it("uses the static line value when no drag state is provided", () => {
     const { getByText } = render(
       <CustomReferenceLineOverlay
@@ -179,5 +216,22 @@ describe("CustomReferenceLineOverlay", () => {
     );
     // Still mounted (opacity 0), exercising the raw < 0 branch.
     expect(getByTestId("rl-0")).toBeTruthy();
+  });
+
+  it("keeps an off-axis renderer mounted with its live edge context", () => {
+    const { getByText } = render(
+      <CustomReferenceLineOverlay
+        lines={[{ value: 150, badge: true }]}
+        renderReferenceLine={({ edge, inRange }) => (
+          <Text>{`${edge.get()}:${inRange.get()}`}</Text>
+        )}
+        custom={[true]}
+        engine={engine()}
+        padding={DEFAULT_PADDING}
+        formatValue={fmt}
+        offAxisOnly
+      />,
+    );
+    expect(getByText("above:false")).toBeTruthy();
   });
 });

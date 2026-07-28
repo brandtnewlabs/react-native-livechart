@@ -57,6 +57,20 @@ export interface UsePanScrollOptions {
    * a stray scrub doesn't linger behind the pan.
    */
   onScrollStart?: () => void;
+  /**
+   * Set true for as long as this gesture owns the touch, cleared on finalize.
+   * The hold-to-scrub pan reads it and refuses to activate mid-scroll — RNGH's
+   * `Gesture.Race` declares no relation between the two pans, so this latch is
+   * the only thing stopping the scrub's long-press timer from firing while the
+   * chart is already being dragged. See `delayedPanGuard.shouldStartDelayedPan`.
+   */
+  scrollActive?: SharedValue<boolean>;
+  /**
+   * True while the scrub crosshair owns the touch. Scrolling is inert while set,
+   * so an engaged scrub locks the chart in place and the finger only moves the
+   * price indicator. Cleared when the finger lifts (the scrub pan's finalize).
+   */
+  scrubActive?: SharedValue<boolean>;
 }
 
 /**
@@ -134,6 +148,8 @@ export function usePanScroll({
   enabled,
   mode = "holdToScrub",
   onScrollStart,
+  scrollActive,
+  scrubActive,
 }: UsePanScrollOptions): ReturnType<typeof Gesture.Pan> {
   const { viewEnd, liveEdge, displayWindow, canvasWidth, canvasHeight } = engine;
   const padLeft = padding.left;
@@ -150,7 +166,17 @@ export function usePanScroll({
     /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
     () => {
       "worklet";
+      // Stop an in-flight fling FIRST. `withDecay` keeps writing `viewEnd` after
+      // the finger lifts, and `Gesture.Race` declares no relation between the two
+      // pans, so this can run while a scrub is already engaged. Bailing out below
+      // without cancelling left the decay sliding the window underneath the
+      // crosshair — the opposite of the lock the scrub is meant to hold.
       cancelAnimation(viewEnd);
+      // An engaged scrub locks the chart: the finger moves the price indicator
+      // across a fixed window, so a scroll that activates underneath it must do
+      // nothing further (and must not claim the touch via `scrollActive`).
+      if (scrubActive?.get()) return;
+      scrollActive?.set(true);
       // Anchor at the current right edge so the first delta is relative to where
       // the window sits (the live edge when we were following).
       if (viewEnd.get() == null) viewEnd.set(liveEdge.get());
@@ -161,6 +187,7 @@ export function usePanScroll({
     /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
     (e: { changeX: number }) => {
       "worklet";
+      if (scrubActive?.get()) return;
       const win = displayWindow.get();
       const chartW = canvasWidth.get() - padLeft - padRight;
       if (chartW <= 0) return;
@@ -174,6 +201,7 @@ export function usePanScroll({
     /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
     (e: { velocityX: number }) => {
       "worklet";
+      if (scrubActive?.get()) return;
       if (viewEnd.get() == null) return;
       const win = displayWindow.get();
       const chartW = canvasWidth.get() - padLeft - padRight;
@@ -192,6 +220,16 @@ export function usePanScroll({
           }
         }),
       );
+    };
+
+  // Release the touch claim on every terminal state (END, FAIL, CANCEL), not just
+  // onEnd — a scroll that fails its offset clamps never reaches onEnd, and a
+  // stuck `scrollActive` would block scrub for the rest of the session.
+  const onFinalize =
+    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+    () => {
+      "worklet";
+      scrollActive?.set(false);
     };
 
   if (mode === "axisDrag") {
@@ -235,7 +273,8 @@ export function usePanScroll({
       )
       .onStart(onStart)
       .onChange(onChange)
-      .onEnd(onEnd);
+      .onEnd(onEnd)
+      .onFinalize(onFinalize);
   }
 
   // holdToScrub (default): a one-finger drag anywhere scrolls. Activate on
@@ -249,5 +288,6 @@ export function usePanScroll({
     .failOffsetY([-HOLD_SCRUB_FAIL_Y_PX, HOLD_SCRUB_FAIL_Y_PX])
     .onStart(onStart)
     .onChange(onChange)
-    .onEnd(onEnd);
+    .onEnd(onEnd)
+    .onFinalize(onFinalize);
 }

@@ -11,6 +11,7 @@ import {
 } from "react-native-livechart";
 import Animated, {
   useAnimatedProps,
+  useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
 import { ACCENT, TIME_WINDOWS } from "../../demo-lib/shared";
@@ -21,14 +22,18 @@ import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
 
-export const options = { title: "Multi-series" };
-
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 function CustomTargetTag({ ctx }: { ctx: ReferenceLineRenderProps }) {
+  const caretStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: ctx.edge.get() === "below" ? "180deg" : "0deg" }],
+  }));
+
   return (
     <View style={styles.targetTag}>
-      <Ionicons name="arrow-up-circle" size={14} color="#86efac" />
+      <Animated.View style={caretStyle}>
+        <Ionicons name="arrow-up-circle" size={14} color="#86efac" />
+      </Animated.View>
       <Text style={styles.targetTagText}>
         {ctx.line.label}: {ctx.line.value?.toFixed(1)}%
       </Text>
@@ -96,6 +101,14 @@ const CURVE_OPTIONS: { value: "monotone" | "linear"; label: string }[] = [
   { value: "linear", label: "Linear" },
 ];
 
+// Values straddling the simulated data range (~33–34). This lets the QA demo
+// exercise the same reference line above the plot, within it, and below it.
+const QA_REFERENCE_EDGE_OPTIONS: { value: number; label: string }[] = [
+  { value: 66.7, label: "Above" },
+  { value: 33.8, label: "In range" },
+  { value: 0, label: "Below" },
+];
+
 export default function MultiSeriesScreen() {
   const seriesVisibilityRef = useRef<Record<string, boolean>>({});
   const emptySeries = useSharedValue<SeriesConfig[]>([]);
@@ -110,7 +123,11 @@ export default function MultiSeriesScreen() {
   const [degen, setDegen] = useState(false);
   const [scrubDim, setScrubDim] = useState(0.3);
   const [theme, setTheme] = useState<"dark" | "light">(APP_THEME);
-  const [showRef, setShowRef] = useState(false);
+  // Keep this on by default: it is the visual QA case for a custom left-pinned
+  // reference tag. Its dashed connector must start at the native tag's right
+  // edge and continue across the plot.
+  const [showRef, setShowRef] = useState(true);
+  const [qaReferenceValue, setQaReferenceValue] = useState(66.7);
   const [axisVis, setAxisVis] = useState<"both" | "noY" | "noX" | "none">(
     "both",
   );
@@ -202,7 +219,7 @@ export default function MultiSeriesScreen() {
     <DemoScreen
       title="Multi-series"
       docs="guides/multi-series"
-      description="series, onSeriesToggle, scrub, axis visibility. Chart stays empty until at least one series has ≥2 points (toggle No series for shell)."
+      description="series, onSeriesToggle, scrub, axis visibility. Use the QA reference buttons to move one line above, into, or below the plot: the custom tag takes over only off-axis, its caret flips with the edge, and its dashed connector continues right from the badge edge. Chart stays empty until at least one series has ≥2 points (toggle No series for shell)."
       chartWrapperStyle={{ height: 360 }}
       chart={
         <>
@@ -229,32 +246,25 @@ export default function MultiSeriesScreen() {
               showRef
                 ? [
                     {
-                      value: 33.3,
-                      label: "Target",
-                      excludeFromRange: true,
-                      badge: { position: "right" },
-                    },
-                    {
-                      value: 35,
-                      label: "Built-in fallback",
-                      excludeFromRange: true,
-                      badge: { position: "center" },
-                    },
-                    {
-                      value: 110,
-                      label: "Above range",
-                      excludeFromRange: true,
+                      // The controls below move this one line through all three
+                      // states so QA can observe the off-axis tag hand back to
+                      // the native, in-range tag.
+                      id: "qa-custom-connector",
+                      value: qaReferenceValue,
+                      label: "QA custom",
+                      color: "#22c55e",
                       badge: { position: "left" },
+                      excludeFromRange: true,
                     },
                   ]
                 : undefined
             }
-            renderReferenceLine={
+            renderOffAxisReferenceLine={
               showRef
                 ? (ctx) =>
-                    ctx.line.label === "Built-in fallback" ? null : (
+                    ctx.line.label === "QA custom" ? (
                       <CustomTargetTag ctx={ctx} />
-                    )
+                    ) : null
                 : undefined
             }
             yAxis={yOn}
@@ -395,7 +405,7 @@ export default function MultiSeriesScreen() {
           }}
         />
         <ToggleChip
-          label="Ref line"
+          label="QA connector"
           value={showRef}
           onChange={() => setShowRef((r) => !r)}
         />
@@ -405,6 +415,12 @@ export default function MultiSeriesScreen() {
           onChange={() => setPanZoom((p) => !p)}
         />
       </ControlRow>
+      <ChipRow
+        label="QA reference edge"
+        options={QA_REFERENCE_EDGE_OPTIONS}
+        value={qaReferenceValue}
+        onChange={setQaReferenceValue}
+      />
       <ChipRow options={THEME_OPTIONS} value={theme} onChange={setTheme} />
 
       <ChipRow

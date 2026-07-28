@@ -28,7 +28,6 @@ import {
   lineStyleSignatureFromArray,
   resolveMultiSeriesLineColorsSnapshot,
   resolveMultiSeriesLineStylesSnapshot,
-  type SeriesLineStyle,
 } from "../core/multiSeriesLayout";
 import {
   resolveAxisLabel,
@@ -53,6 +52,7 @@ import { pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useCanvasLayout } from "../hooks/useCanvasLayout";
 import { useChartReveal } from "../hooks/useChartReveal";
+import { useChartOverlayContext } from "../hooks/useChartOverlayContext";
 import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
 import { useCrosshairSeries } from "../hooks/useCrosshairSeries";
 import { useMarkers } from "../hooks/useMarkers";
@@ -70,7 +70,10 @@ import {
 } from "../lib/format";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
-import { collectReferenceValues } from "../math/referenceLines";
+import {
+  collectReferenceValues,
+  referenceLineReactKeys,
+} from "../math/referenceLines";
 import {
   applyPaletteOverride,
   leftEdgeFadeColorsFromBgRgb,
@@ -78,6 +81,7 @@ import {
 } from "../theme";
 import type { LiveChartSeriesProps, Marker, SeriesConfig } from "../types";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
+import { ChartOverlayLayer } from "./ChartOverlayLayer";
 import {
   ExtremaConnectorOverlay,
   labelConnector,
@@ -177,7 +181,9 @@ function useLiveChartSeriesController({
   markerHitRadius = 16,
   markerCluster,
   renderMarker,
+  renderOverlay,
   renderReferenceLine,
+  renderOffAxisReferenceLine,
   leftEdgeFade = true,
 }: LiveChartSeriesProps) {
   const emptyMarkers = useSharedValue<Marker[]>([]);
@@ -237,6 +243,17 @@ function useLiveChartSeriesController({
     allRefLines,
     renderReferenceLine,
   );
+  // A full custom tag owns both states, so it takes precedence over an
+  // off-axis-only renderer for the same line.
+  const refLineOffAxisCustom = customReferenceLineFlags(
+    allRefLines,
+    renderOffAxisReferenceLine,
+    "off-axis",
+  ).map((custom, index) => custom && !refLineCustom[index]);
+  const refLineKeys = referenceLineReactKeys(allRefLines);
+  // RN custom tags report their measured widths here so the Skia connector can
+  // start after the native badge instead of the hidden built-in pill.
+  const refLineCustomTagWidths = useSharedValue<number[]>([]);
 
   const palette = applyPaletteOverride(
     resolveTheme(accentColor, theme),
@@ -266,6 +283,7 @@ function useLiveChartSeriesController({
     // render scope for memoization, which trips Reanimated's strict-mode warning;
     // it leaves the `.get()` method call inside the effect.
     // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- Reanimated: seeding from a SharedValue off render is the warning-free path
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reanimated: seed from the SharedValue outside render to avoid strict-mode access warnings
     setSeriesSnapshot(series.get().slice());
   }, [series]);
 
@@ -407,6 +425,14 @@ function useLiveChartSeriesController({
     skiaFont,
   );
 
+  // Cross-gesture arbitration for the one-finger touch. `Gesture.Race` below is
+  // NOT arbitration — RNGH's Race adds no relation between its children, so both
+  // pans recognize independently and each can activate while the other already
+  // owns the touch. This latch (written by the scroll pan, read by the scrub's
+  // long-press guard) makes "the scroll already won" a hard fact; `scrubActive`
+  // (written by the crosshair, read by the scroll pan) is the mirror image.
+  const scrollActive = useSharedValue(false);
+
   const crosshair = useCrosshairSeries(
     engine,
     effectivePadding,
@@ -415,6 +441,7 @@ function useLiveChartSeriesController({
     scrubHoldMs,
     onGestureStart,
     onGestureEnd,
+    scrollActive,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -458,6 +485,10 @@ function useLiveChartSeriesController({
     minTime: scrollMinTime,
     enabled: timeScrollEnabled,
     mode: scrollGestureMode,
+    scrollActive,
+    // Once a scrub is engaged the chart is locked: scrolling goes inert so the
+    // finger only moves the price indicator across a fixed window.
+    scrubActive: crosshairScrubActive,
     onScrollStart: () => {
       "worklet";
       crosshairScrubActive.set(false);
@@ -542,7 +573,10 @@ function useLiveChartSeriesController({
     degenCfg,
     metricsCfg,
     allRefLines,
+    refLineKeys,
     refLineCustom,
+    refLineOffAxisCustom,
+    refLineCustomTagWidths,
     leftEdgeFadeCfg,
     // theme / layout / fonts
     palette,
@@ -580,7 +614,9 @@ function useLiveChartSeriesController({
     markerGroupOpacity,
     overlayScrubFade,
     renderMarker,
+    renderOverlay,
     renderReferenceLine,
+    renderOffAxisReferenceLine,
     // selection dot: resolved config + fallback color (the leading series' color)
     selectionDot: selectionDotCfg,
     selectionColor: lineColors[0],
@@ -638,6 +674,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     loadingSpeed,
     canvasMode,
     activeSeriesCount,
+    refLineKeys,
   } = model;
 
   return (
@@ -657,15 +694,12 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         </Group>
       )}
 
-      {/* Reference lines are index-addressed throughout the drag/press API, and
-          duplicate working orders may share all visible content. Positional keys
-          keep both orders mounted without collapsing them to one React child.
-          Fade group lets `scrub.hideOverlaysOnScrub` ease the lines out. */}
+      {/* Fade group lets `scrub.hideOverlaysOnScrub` ease the lines out. Explicit
+          ids keep each reference line mounted when the caller reorders it. */}
       <Group opacity={overlayScrubFade}>
         {allRefLines.map((rl, i) => (
-          /* react-doctor-disable-next-line react-doctor/no-array-index-as-key */
           <ReferenceLineOverlay
-            key={i}
+            key={refLineKeys[i]}
             engine={engine}
             padding={effectivePadding}
             line={rl}
@@ -823,7 +857,10 @@ function SeriesValueLabelLayer({ model }: { model: LiveChartSeriesModel }) {
 function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
   const {
     allRefLines,
+    refLineKeys,
     refLineCustom,
+    refLineOffAxisCustom,
+    refLineCustomTagWidths,
     engine,
     effectivePadding,
     palette,
@@ -831,15 +868,13 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
     skiaFont,
     degenShakeTransform,
     overlayScrubFade,
-    canvasMode,
   } = model;
   if (allRefLines.length === 0) return null;
   return (
     <Group transform={degenShakeTransform} opacity={overlayScrubFade}>
       {allRefLines.map((rl, i) => (
-        /* react-doctor-disable-next-line react-doctor/no-array-index-as-key */
         <ReferenceLineOverlay
-          key={i}
+          key={refLineKeys[i]}
           engine={engine}
           padding={effectivePadding}
           line={rl}
@@ -848,10 +883,19 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
           font={skiaFont}
           badgeLayer
           suppressTag={refLineCustom[i]}
+          suppressTagWhenOffAxis={refLineOffAxisCustom[i]}
+          customTagWidths={refLineCustomTagWidths}
         />
       ))}
     </Group>
   );
+}
+
+/** Owns the price/time projection worklets for the multi-series custom overlay. */
+function SeriesCustomConsumerOverlay({ model }: { model: LiveChartSeriesModel }) {
+  const { engine, effectivePadding, renderOverlay } = model;
+  const overlayContext = useChartOverlayContext(engine, effectivePadding);
+  return <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />;
 }
 
 export function LiveChartSeries(props: LiveChartSeriesProps) {
@@ -886,9 +930,13 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     markersSV,
     markerClusterCfg,
     renderMarker,
+    renderOverlay,
     renderReferenceLine,
+    renderOffAxisReferenceLine,
     allRefLines,
     refLineCustom,
+    refLineOffAxisCustom,
+    refLineCustomTagWidths,
     overlayScrubFade,
     canvasMode,
   } = model;
@@ -1017,7 +1065,8 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
               above the left-edge fade and scrub overlay. The box-none fade wrapper
               keeps `scrub.hideOverlaysOnScrub` behavior aligned with Skia. */}
           {((markersActive && renderMarker) ||
-            (renderReferenceLine && allRefLines.length > 0)) && (
+            ((renderReferenceLine || renderOffAxisReferenceLine) &&
+              allRefLines.length > 0)) && (
             <Animated.View
               pointerEvents="box-none"
               style={[StyleSheet.absoluteFill, overlayFadeStyle]}
@@ -1040,10 +1089,27 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                   engine={engine}
                   padding={effectivePadding}
                   formatValue={formatValue}
+                  tagWidths={refLineCustomTagWidths}
+                />
+              )}
+              {renderOffAxisReferenceLine && allRefLines.length > 0 && (
+                <CustomReferenceLineOverlay
+                  lines={allRefLines}
+                  renderReferenceLine={renderOffAxisReferenceLine}
+                  custom={refLineOffAxisCustom}
+                  engine={engine}
+                  padding={effectivePadding}
+                  formatValue={formatValue}
+                  tagWidths={refLineCustomTagWidths}
+                  offAxisOnly
                 />
               )}
             </Animated.View>
           )}
+
+          {/* Custom consumer overlay — topmost RN sibling with the live plot
+              rect, including this multi-series chart's resolved axis inset. */}
+          {renderOverlay && <SeriesCustomConsumerOverlay model={model} />}
         </View>
       </GestureDetector>
       {legendCfg.position === "bottom" ? legend : null}

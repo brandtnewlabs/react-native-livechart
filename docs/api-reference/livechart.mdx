@@ -210,8 +210,8 @@ provided; everything else has a default.
   in the worklet, then feed the snapshot to the mappings.) Return any RN view tree
   (order / avg-entry / liquidation price tags, custom level lines); return
   `null`/`undefined` for no overlay. The tree mounts full-bleed with
-  `pointerEvents="box-none"` so empty areas still scrub. **Single-series only.** See
-  [Overlay bridge](/guides/overlay-bridge).
+  `pointerEvents="box-none"` so empty areas still scrub. Available on both
+  `LiveChart` and `LiveChartSeries`. See [Overlay bridge](/guides/overlay-bridge).
 </ParamField>
 
 <ParamField body="referenceLines" type="ReferenceLine[]">
@@ -229,7 +229,18 @@ provided; everything else has a default.
   [`ReferenceLineRenderProps`](/api-reference/types#annotations)), so it tracks the
   rescaling axis and any drag without JS re-renders. Called per Form-A line; return
   `null` to keep that line's built-in tag (works with `badge: false` too).
-  Single-series only.
+  A left- or right-pinned badge keeps its built-in dashed connector, which starts
+  after the measured custom view. Single-series only.
+</ParamField>
+
+<ParamField body="renderOffAxisReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
+  Replace only a Form-A line's **off-axis** tag with a React Native element. The
+  standard Skia tag or gutter label remains visible in range; the custom view takes
+  over only when the value is pinned above or below the plot. A left- or
+  right-pinned `badge` (or legacy `offAxisBadge`) keeps its native dashed connector,
+  beginning after the measured custom view. Return `null` for lines that opt out;
+  use `ctx.edge` inside the returned component to animate a directional caret. See
+  [Reference lines](/guides/reference-lines-and-bands#off-axis-only-custom-tags-renderoffaxisreferenceline).
 </ParamField>
 
 <ParamField body="referenceLineGrouping" type="boolean | ReferenceLineGroupingConfig" default="false">

@@ -58,7 +58,7 @@ import {
   resolveYAxis,
 } from "../core/resolveConfig";
 import type { ResolvedThresholdConfig } from "../core/resolveConfig";
-import { resolveSegment } from "../core/resolveSegment";
+import { resolveSegment, type ResolvedSegment } from "../core/resolveSegment";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import { pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
@@ -105,6 +105,7 @@ import {
 import {
   collectReferenceValues,
   referenceLineForm,
+  referenceLineReactKeys,
   resolveReferenceGroupBadge,
 } from "../math/referenceLines";
 import {
@@ -311,6 +312,7 @@ function useLiveChartController({
   renderTooltip,
   renderOverlay,
   renderReferenceLine,
+  renderOffAxisReferenceLine,
   referenceLineGrouping,
   leftEdgeFade = true,
 
@@ -387,18 +389,18 @@ function useLiveChartController({
   const seededRef = useRef<(number | undefined)[]>([]);
   const refValueSig = allRefLines.map((l) => l.value ?? "_").join(",");
   useEffect(() => {
-    const active = dragActive.value;
-    const cur = dragValues.value;
+    const active = dragActive.get();
+    const cur = dragValues.get();
     const seeded = seededRef.current;
-    dragValues.value = allRefLines.map((l, i) => {
+    dragValues.set(allRefLines.map((l, i) => {
       const prop = l.value ?? 0;
       if (active[i]) return cur[i] ?? prop; // mid-drag → keep the dragged value
       if (l.value !== seeded[i]) return prop; // prop changed → adopt (controlled)
       return cur[i] ?? prop; // unchanged → keep current (uncontrolled persist)
-    });
+    }));
     seededRef.current = allRefLines.map((l) => l.value);
-    if (dragActive.value.length !== allRefLines.length) {
-      dragActive.value = allRefLines.map((_, i) => active[i] ?? false);
+    if (dragActive.get().length !== allRefLines.length) {
+      dragActive.set(allRefLines.map((_, i) => active[i] ?? false));
     }
     // allRefLines is rebuilt every render; key off the value signature + length.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -410,6 +412,17 @@ function useLiveChartController({
     allRefLines,
     renderReferenceLine,
   );
+  // An off-axis renderer replaces only the edge-pinned tag. A full custom tag
+  // takes precedence for the same line to avoid mounting two native tags.
+  const refLineOffAxisCustom = customReferenceLineFlags(
+    allRefLines,
+    renderOffAxisReferenceLine,
+    "off-axis",
+  ).map((custom, index) => custom && !refLineCustom[index]);
+  const refLineKeys = referenceLineReactKeys(allRefLines);
+  // RN custom tags report their measured widths here so the Skia connector can
+  // start after the native badge instead of the hidden built-in pill.
+  const refLineCustomTagWidths = useSharedValue<number[]>([]);
 
   // Live Y values of the *draggable* Form-A lines, folded into the engine's
   // axis-range fit so dragging a line toward / past the visible edge expands the
@@ -421,13 +434,17 @@ function useLiveChartController({
   // contributes its live value; a series contributes its window min/max
   // (respecting `extendToNow`), so an off-range break-even expands the axis and
   // stays on-plot like a reference line would.
-  const draggableRefIdx = allRefLines
-    .map((l, i) =>
-      l.draggable && !l.excludeFromRange && referenceLineForm(l) === "line"
-        ? i
-        : -1,
-    )
-    .filter((i) => i >= 0);
+  const draggableRefIdx: number[] = [];
+  for (let i = 0; i < allRefLines.length; i++) {
+    const line = allRefLines[i];
+    if (
+      line.draggable &&
+      !line.excludeFromRange &&
+      referenceLineForm(line) === "line"
+    ) {
+      draggableRefIdx.push(i);
+    }
+  }
   const thresholdInRange = thresholdCfg?.includeInRange === true;
   // Constant benchmark → its live value rides this channel. A series threshold
   // is folded inside the engine tick instead (`thresholdRangePoints`), which
@@ -572,6 +589,7 @@ function useLiveChartController({
   // react-doctor-disable-next-line react-doctor/no-derived-state-effect -- Reanimated: must read the SharedValue off the render path
   useLayoutEffect(() => {
     // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- Reanimated: seeding from a SharedValue off render is the warning-free path
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reanimated: seed from the SharedValue outside render to avoid strict-mode access warnings
     setValueLayoutSample(value.get());
   }, [value]);
 
@@ -721,7 +739,7 @@ function useLiveChartController({
       if (
         referenceLineForm(l) !== "line" ||
         l.value === undefined ||
-        refLineCustom[i]
+        refLineCustom[i] || refLineOffAxisCustom[i]
       ) {
         ys.push(-1);
         continue;
@@ -997,6 +1015,14 @@ function useLiveChartController({
       ? (timeScrollHoldMs ?? (scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS))
       : (scrubCfg?.panGestureDelay ?? 0);
 
+  // Cross-gesture arbitration for the one-finger touch. `Gesture.Race` below is
+  // NOT arbitration — RNGH's Race adds no relation between its children, so both
+  // pans recognize independently and each can activate while the other already
+  // owns the touch. This latch (written by the scroll pan, read by the scrub's
+  // long-press guard) makes "the scroll already won" a hard fact; `scrubActive`
+  // (written by the crosshair, read by the scroll pan) is the mirror image.
+  const scrollActive = useSharedValue(false);
+
   const crosshair = useCrosshair(
     engine,
     effectivePadding,
@@ -1026,6 +1052,7 @@ function useLiveChartController({
     timeScrollEnabled && scrollGestureMode === "axisDrag"
       ? Math.max(effectivePadding.bottom, AXIS_GRAB_MIN_PX)
       : 0,
+    scrollActive,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -1048,6 +1075,10 @@ function useLiveChartController({
     minTime: scrollMinTime,
     enabled: timeScrollEnabled,
     mode: scrollGestureMode,
+    scrollActive,
+    // Once a scrub is engaged the chart is locked: scrolling goes inert so the
+    // finger only moves the price indicator across a fixed window.
+    scrubActive: crosshairScrubActive,
     // Clear any live crosshair when a scroll drag takes over.
     onScrollStart: () => {
       "worklet";
@@ -1235,10 +1266,14 @@ function useLiveChartController({
     leftEdgeFadeCfg,
     metricsCfg,
     allRefLines,
+    refLineKeys,
     refLineCustom,
+    refLineOffAxisCustom,
+    refLineCustomTagWidths,
     dragValues,
     dragActive,
     renderReferenceLine,
+    renderOffAxisReferenceLine,
     refGroupingActive: refGroupingRadius != null,
     refGroupResult,
     groupHidden,
@@ -1672,6 +1707,7 @@ function ChartStack({
     valueLineCfg,
     dotY,
     allRefLines,
+    refLineKeys,
     dragValues,
     resolvedSegments,
     hasRecolorSegments,
@@ -1722,9 +1758,9 @@ function ChartStack({
     <Group transform={degen?.shakeTransform}>
       {/* Segment dividers + labels (behind the line). The scrub-focus emphasis is
           painted on the line stroke itself, below — this overlay draws no fill. */}
-      {resolvedSegments.map((seg, i) => (
+      {resolvedSegments.map((seg) => (
         <SegmentDividerOverlay
-          key={`seg-${seg.from ?? "start"}-${seg.to ?? "end"}-${i}`}
+          key={segmentReactKey(seg)}
           engine={engine}
           padding={effectivePadding}
           segment={seg}
@@ -1746,14 +1782,12 @@ function ChartStack({
         </Group>
       )}
 
-      {/* Index keys: reference lines are a positional array and two may share
-          value + label (e.g. duplicate working orders at the same price), which a
-          content-derived key would collapse to one. Wrapped in a fade group so
-          `scrub.hideOverlaysOnScrub` can ease the lines out while scrubbing. */}
+      {/* Wrapped in a fade group so `scrub.hideOverlaysOnScrub` can ease lines
+          out while scrubbing. Explicit ids keep lines stable when reordered. */}
       <Group opacity={overlayScrubFade}>
         {allRefLines.map((rl, i) => (
           <ReferenceLineOverlay
-            key={i}
+            key={refLineKeys[i]}
             engine={engine}
             padding={effectivePadding}
             line={rl}
@@ -1857,7 +1891,6 @@ function ChartStack({
             dotX={dotX}
             dotY={dotY}
             palette={palette}
-            engine={engine}
             pulse={pulseCfg}
             radius={dotCfg.radius}
             ring={dotCfg.ring}
@@ -2064,6 +2097,19 @@ function ChartScrubLayer({
   );
 }
 
+/** A segment's time range and presentation uniquely identify its divider view. */
+function segmentReactKey(segment: ResolvedSegment): string {
+  return [
+    "seg",
+    segment.from ?? "start",
+    segment.to ?? "end",
+    segment.divider,
+    segment.dividerColor,
+    segment.label ?? "",
+    segment.labelPosition,
+  ].join(":");
+}
+
 /** Live-value text drawn as its own canvas layer, above both the area gradient
  *  and the left-edge fade, so the large number stays crisp at the left edge
  *  instead of being washed out by the fade's `dstOut` blend. */
@@ -2173,7 +2219,10 @@ function ChartRefBadgeLayer({
 }) {
   const {
     allRefLines,
+    refLineKeys,
     refLineCustom,
+    refLineOffAxisCustom,
+    refLineCustomTagWidths,
     dragValues,
     groupHidden,
     refGroupResult,
@@ -2194,7 +2243,7 @@ function ChartRefBadgeLayer({
     <Group transform={degen?.shakeTransform} opacity={overlayScrubFade}>
       {allRefLines.map((rl, i) => (
         <ReferenceLineOverlay
-          key={i}
+          key={refLineKeys[i]}
           engine={engine}
           padding={effectivePadding}
           line={rl}
@@ -2206,6 +2255,8 @@ function ChartRefBadgeLayer({
           dragValues={dragValues}
           index={i}
           suppressTag={refLineCustom[i]}
+          suppressTagWhenOffAxis={refLineOffAxisCustom[i]}
+          customTagWidths={refLineCustomTagWidths}
           groupHidden={refGroupingActive ? groupHidden : undefined}
         />
       ))}
@@ -2276,8 +2327,11 @@ function ChartCustomAnnotations({ model }: { model: LiveChartModel }) {
     markerClusterCfg,
     renderMarker,
     renderReferenceLine,
+    renderOffAxisReferenceLine,
     allRefLines,
     refLineCustom,
+    refLineOffAxisCustom,
+    refLineCustomTagWidths,
     dragValues,
     dragActive,
     engine,
@@ -2316,6 +2370,21 @@ function ChartCustomAnnotations({ model }: { model: LiveChartModel }) {
           formatValue={formatValue}
           dragValues={dragValues}
           dragActive={dragActive}
+          tagWidths={refLineCustomTagWidths}
+        />
+      )}
+      {renderOffAxisReferenceLine && allRefLines.length > 0 && (
+        <CustomReferenceLineOverlay
+          lines={allRefLines}
+          renderReferenceLine={renderOffAxisReferenceLine}
+          custom={refLineOffAxisCustom}
+          engine={engine}
+          padding={effectivePadding}
+          formatValue={formatValue}
+          dragValues={dragValues}
+          dragActive={dragActive}
+          tagWidths={refLineCustomTagWidths}
+          offAxisOnly
         />
       )}
     </Animated.View>
@@ -2357,6 +2426,7 @@ function ChartView({
     renderTooltip,
     renderOverlay,
     renderReferenceLine,
+    renderOffAxisReferenceLine,
     allRefLines,
     scrubCfg,
     crosshair,
@@ -2466,7 +2536,8 @@ function ChartView({
             Skia markers (the wrapper is full-bleed; children keep their own
             absolute positions). */}
         {((markersActive && renderMarker) ||
-          (renderReferenceLine && allRefLines.length > 0)) && (
+          ((renderReferenceLine || renderOffAxisReferenceLine) &&
+            allRefLines.length > 0)) && (
           <ChartCustomAnnotations model={model} />
         )}
 

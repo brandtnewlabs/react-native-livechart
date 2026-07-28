@@ -11,7 +11,6 @@ import type {
   ResolvedPulseConfig,
 } from "../core/resolveConfig";
 import type { LiveChartPalette } from "../types";
-import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 const MIN_PULSE_RADIUS = 9;
 
@@ -25,7 +24,6 @@ export function DotOverlay({
   dotX,
   dotY,
   palette,
-  engine,
   pulse,
   radius,
   ring,
@@ -35,7 +33,6 @@ export function DotOverlay({
   dotX: SharedValue<number>;
   dotY: SharedValue<number>;
   palette: LiveChartPalette;
-  engine: ChartEngineLayout;
   pulse: ResolvedPulseConfig | null;
   /** Radius of the color-filled dot in pixels. */
   radius: number;
@@ -45,8 +42,8 @@ export function DotOverlay({
   color: string | undefined;
   /**
    * Time-scroll right edge (`null` = following live). While scrolled back the
-   * pulse is suppressed — it's driven by the (now frozen) view timestamp, so it
-   * would stick or flicker, and a "live" heartbeat on a historical point is wrong.
+   * pulse is suppressed because a "live" heartbeat on a historical point is
+   * misleading.
    */
   viewEnd?: SharedValue<number | null>;
 }) {
