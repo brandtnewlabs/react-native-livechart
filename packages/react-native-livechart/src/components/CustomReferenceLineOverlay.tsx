@@ -12,6 +12,7 @@ import { computeScrubDotY } from "../hooks/crosshairShared";
 import {
   classifyReferenceEdge,
   referenceLineForm,
+  referenceLineReactKeys,
   resolveReferenceBadge,
 } from "../math/referenceLines";
 import type { ReferenceLine, ReferenceLineRenderProps } from "../types";
@@ -39,20 +40,24 @@ function stub<T>(v: T): SharedValue<T> {
   return { value: v, get: () => v } as unknown as SharedValue<T>;
 }
 
+/** Whether a custom tag owns every state or only an off-axis tag. */
+export type CustomReferenceLineMode = "always" | "off-axis";
+
 /**
- * Which Form-A reference lines a `renderReferenceLine` returns an element for —
- * the set whose built-in Skia tag is suppressed (so there's no double-draw). The
- * render fn is probed with placeholder SharedValues; it must decide null-ness from
- * `line` / `index`, not from live values (mirrors how `renderMarker` is probed for
- * the marker-atlas exclusion set). Index-aligned with `lines`.
+ * Which Form-A reference lines a custom renderer returns an element for. This
+ * initial probe determines a line's static eligibility only; `"off-axis"` still
+ * switches the built-in tag and the RN tag on the UI thread as the edge changes.
+ * Index-aligned with `lines`.
  */
 export function customReferenceLineFlags(
   lines: ReferenceLine[],
   render?: (
     ctx: ReferenceLineRenderProps,
   ) => React.ReactElement | null | undefined,
+  mode: CustomReferenceLineMode = "always",
 ): boolean[] {
   if (!render) return lines.map(() => false);
+  const offAxisOnly = mode === "off-axis";
   return lines.map((line, index) => {
     if (referenceLineForm(line) !== "line") return false;
     return (
@@ -62,8 +67,10 @@ export function customReferenceLineFlags(
         value: stub(line.value ?? 0),
         valueStr: stub(""),
         y: stub(-1),
-        inRange: stub(true),
-        edge: stub<"above" | "in" | "below">("in"),
+        inRange: stub(!offAxisOnly),
+        edge: stub<"above" | "in" | "below">(
+          offAxisOnly ? "above" : "in",
+        ),
         dragging: stub(false),
       }) != null
     );
@@ -88,6 +95,8 @@ function CustomReferenceLineView({
   formatValue,
   dragValues,
   dragActive,
+  tagWidths,
+  offAxisOnly,
 }: {
   line: ReferenceLine;
   index: number;
@@ -101,6 +110,10 @@ function CustomReferenceLineView({
   dragValues?: SharedValue<number[]>;
   /** Optional drag state used by draggable single-series lines. */
   dragActive?: SharedValue<boolean[]>;
+  /** Measured custom-tag widths, index-aligned for the Skia connector. */
+  tagWidths?: SharedValue<number[]>;
+  /** Show this custom tag only while its line is pinned above or below the plot. */
+  offAxisOnly: boolean;
 }) {
   const staticValue = line.value ?? 0;
 
@@ -147,7 +160,14 @@ function CustomReferenceLineView({
   const size = useSharedValue({ width: 0, height: 0 });
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    size.value = { width, height };
+    size.set({ width, height });
+    if (tagWidths) {
+      const previous = tagWidths.get();
+      if (previous[index] === width) return;
+      const widths = previous.slice();
+      widths[index] = width;
+      tagWidths.set(widths);
+    }
   };
 
   const anchor = resolveAnchor(line);
@@ -155,7 +175,7 @@ function CustomReferenceLineView({
     const yy = y.get();
     const s = size.get();
     const w = engine.canvasWidth.get();
-    const visible = yy >= 0 && w > 0;
+    const visible = yy >= 0 && w > 0 && (!offAxisOnly || edge.get() !== "in");
     const x1 = padding.left;
     const x2 = w - padding.right;
     let tx: number;
@@ -195,9 +215,9 @@ function CustomReferenceLineView({
  * React Native overlay (NOT Skia) that floats `renderReferenceLine` elements over
  * the canvas, one per Form-A line the consumer customizes. Rendered as a sibling
  * of `<Canvas>` (like {@link CustomMarkerOverlay}) so the tags can be any RN view
- * and stay crisp at native resolution. Lines whose render returns an element have
- * their built-in Skia tag suppressed upstream (see {@link customReferenceLineFlags}),
- * so there's no double-draw.
+ * and stay crisp at native resolution. Lines whose render returns an element hide
+ * their built-in pill / label upstream (see {@link customReferenceLineFlags}); a
+ * badged line's Skia connector remains, measured against the native tag's width.
  */
 export function CustomReferenceLineOverlay({
   lines,
@@ -208,6 +228,8 @@ export function CustomReferenceLineOverlay({
   formatValue,
   dragValues,
   dragActive,
+  tagWidths,
+  offAxisOnly = false,
 }: {
   lines: ReferenceLine[];
   renderReferenceLine: (
@@ -226,13 +248,18 @@ export function CustomReferenceLineOverlay({
   dragValues?: SharedValue<number[]>;
   /** Optional drag state used by draggable single-series lines. */
   dragActive?: SharedValue<boolean[]>;
+  /** Measured custom-tag widths, index-aligned for the Skia connector. */
+  tagWidths?: SharedValue<number[]>;
+  /** Keep the built-in in-range tag and show this RN tag only off-axis. */
+  offAxisOnly?: boolean;
 }) {
   const children: React.ReactElement[] = [];
+  const lineKeys = referenceLineReactKeys(lines);
   for (let i = 0; i < lines.length; i++) {
     if (!custom[i]) continue;
     children.push(
       <CustomReferenceLineView
-        key={i}
+        key={lineKeys[i]}
         line={lines[i]}
         index={i}
         render={renderReferenceLine}
@@ -241,6 +268,8 @@ export function CustomReferenceLineOverlay({
         formatValue={formatValue}
         dragValues={dragValues}
         dragActive={dragActive}
+        tagWidths={tagWidths}
+        offAxisOnly={offAxisOnly}
       />,
     );
   }

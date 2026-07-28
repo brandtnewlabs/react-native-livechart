@@ -45,6 +45,44 @@ export function collectReferenceValues(lines: ReferenceLine[]): number[] {
 }
 
 /**
+ * Stable React keys for an ordered reference-line list. A caller-supplied `id`
+ * keeps the key stable across reordering; the visual config is a deterministic
+ * fallback for legacy lines. Equal fallback signatures receive a suffix so they
+ * remain distinct siblings.
+ */
+export function referenceLineReactKeys(
+  lines: readonly ReferenceLine[],
+): string[] {
+  const occurrences = new Map<string, number>();
+  const keys: string[] = [];
+  for (const line of lines) {
+    const base = line.id ?? stableReferenceLineSignature(line);
+    const occurrence = occurrences.get(base) ?? 0;
+    occurrences.set(base, occurrence + 1);
+    keys.push(`${base}:${occurrence}`);
+  }
+  return keys;
+}
+
+/** Serializes render-relevant config without callback identity churn. */
+function stableReferenceLineSignature(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableReferenceLineSignature).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const entries: string[] = [];
+    for (const key of Object.keys(record).sort()) {
+      const entry = record[key];
+      if (typeof entry === "function" || entry === undefined) continue;
+      entries.push(`${key}:${stableReferenceLineSignature(entry)}`);
+    }
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
+
+/**
  * Fully-resolved badge **style/shape** + anchor — the resolved counterpart of
  * {@link BadgeStyleConfig} (`position` / `icon` / `showText` plus the style knobs).
  * Shared by the reference-line badge ({@link ResolvedReferenceBadge}) and the

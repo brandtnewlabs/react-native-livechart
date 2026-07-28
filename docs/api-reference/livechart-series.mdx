@@ -18,6 +18,16 @@ On Android, the shared experimental `canvasMode="opaque"` option selects an opaq
 paints the palette background inside the canvas. See
 [Android surface rendering](/guides/android-surface-rendering) for constraints and profiling guidance.
 
+## Custom overlays
+
+<ParamField body="renderOverlay" type="(ctx: ChartOverlayContext) => ReactElement | null">
+  Render a full-bleed custom React Native overlay with the live price↔pixel /
+  time↔pixel bridge. [`ChartOverlayContext`](/api-reference/types#chartoverlaycontext)
+  includes the resolved plot rectangle, so custom off-axis tags and connectors can
+  stop at the same axis inset as the chart. Return `null` or `undefined` for no
+  overlay. See [Overlay bridge](/guides/overlay-bridge).
+</ParamField>
+
 ## Reference-line tags
 
 <ParamField body="renderReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
@@ -25,8 +35,19 @@ paints the palette background inside the canvas. See
   React Native element. Return `null` or `undefined` for per-line fallback to the
   built-in tag. The custom view tracks the line's live Y position, pins to the
   nearest plot edge when off-axis, and respects left, center, and right badge
-  positions. The reference-line stroke remains visible. See
+  positions. A left- or right-pinned badge keeps its dashed connector, beginning
+  after the measured custom view. The reference-line stroke remains visible. See
   [Reference lines and bands](/guides/reference-lines-and-bands#custom-tags-renderreferenceline).
+</ParamField>
+
+<ParamField body="renderOffAxisReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
+  Replace only an off-axis Form-A tag. The standard Skia tag or gutter label stays
+  in range, while the custom React Native view takes over when the line is pinned
+  above or below the plot. A left- or right-pinned `badge` (or legacy
+  `offAxisBadge`) retains its dashed connector from the custom view's measured
+  edge. Return `null` for lines that opt out, and use `ctx.edge` inside the
+  returned component for a directional caret. See
+  [Reference lines and bands](/guides/reference-lines-and-bands#off-axis-only-custom-tags-renderoffaxisreferenceline).
 </ParamField>
 
 ## Series data
