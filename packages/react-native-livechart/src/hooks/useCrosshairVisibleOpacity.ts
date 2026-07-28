@@ -9,15 +9,26 @@ import {
  */
 export function useCrosshairVisibleOpacity(
   edgeOpacity: SharedValue<number>,
-  active: SharedValue<number> | SharedValue<boolean> | undefined,
+  active: SharedValue<number> | SharedValue<boolean>,
   fade: boolean,
 ) {
   return useDerivedValue(
-    () => {
-      if (fade) return edgeOpacity.get();
-      if (active === undefined) return edgeOpacity.get() > 0 ? 1 : 0;
-      return active.get() ? 1 : 0;
-    },
+    () =>
+      resolveCrosshairVisibleOpacity(
+        edgeOpacity.get(),
+        Boolean(active.get()),
+        fade,
+      ),
     [fade, edgeOpacity, active],
   );
+}
+
+export function resolveCrosshairVisibleOpacity(
+  edgeOpacity: number,
+  active: boolean,
+  fade: boolean,
+): number {
+  "worklet";
+  if (fade) return edgeOpacity;
+  return active ? 1 : 0;
 }

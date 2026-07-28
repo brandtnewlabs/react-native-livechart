@@ -752,6 +752,7 @@ export function resolveScrub(
     const seriesTooltip =
       typeof prop === "object" ? prop.seriesTooltip : undefined;
     resolved.seriesTooltip = resolvePerSeriesTooltip(seriesTooltip);
+    resolved.crosshairOvershoot = Math.max(0, resolved.crosshairOvershoot);
   }
   return resolved;
 }

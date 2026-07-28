@@ -221,7 +221,8 @@ Pairs with `crosshairLineColor` for the stroke color, and works on `LiveChartSer
 ## Crosshair width, overshoot, and edge fade
 
 Use `crosshairStrokeWidth` to change the line width and `crosshairOvershoot` to extend it past both
-vertical plot edges. Both values are pixels; their defaults are `1` and `0`.
+vertical plot edges. Both values are pixels; their defaults are `1` and `0`. Negative overshoot
+values are clamped to `0`.
 
 The crosshair fades as it approaches the live edge by default. Set `crosshairFade: false` when the
 chart has no live dot or the crosshair should remain fully visible. This only affects the line,

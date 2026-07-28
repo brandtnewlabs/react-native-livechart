@@ -597,6 +597,10 @@ describe("resolveScrub", () => {
     });
   });
 
+  it("clamps negative crosshair overshoot to zero", () => {
+    expect(resolveScrub({ crosshairOvershoot: -6 })?.crosshairOvershoot).toBe(0);
+  });
+
   it("carries a custom tooltipBorderRadius", () => {
     expect(resolveScrub({ tooltipBorderRadius: 12 })).toMatchObject({
       tooltipBorderRadius: 12,

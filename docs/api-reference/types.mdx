@@ -352,7 +352,7 @@ interface ScrubConfig {
   dimOpacity?: number; // opacity of content right of the crosshair; default 0.3 (1 = off)
   crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
   crosshairStrokeWidth?: number; // line width in px; default 1
-  crosshairOvershoot?: number; // extend past each vertical plot edge in px; default 0
+  crosshairOvershoot?: number; // extend past each vertical plot edge in px; negatives clamp to 0; default 0
   crosshairFade?: boolean; // fade near the live edge; default true
   crosshairDash?: number[] | boolean; // dash the crosshair line; true = [4,4], or explicit [on, off, …] px
   tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;

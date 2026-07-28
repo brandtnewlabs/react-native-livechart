@@ -74,7 +74,7 @@ export function CrosshairOverlay({
   /** Scrub intersection Y in canvas px (the value the dot marks); -1 hides it. */
   selectionY?: SharedValue<number>;
   /** Whether scrubbing is active (passed through to a custom dot). */
-  scrubActive?: SharedValue<number> | SharedValue<boolean>;
+  scrubActive: SharedValue<number> | SharedValue<boolean>;
   /** Fallback selection-dot color (accent / leading-series color), used when the
    *  config's own `color` is unset. */
   selectionColor?: string;
@@ -89,7 +89,7 @@ export function CrosshairOverlay({
   crosshairLineColor?: string;
   /** Vertical crosshair line width in px. Default 1. */
   crosshairStrokeWidth?: number;
-  /** Extension past each vertical plot edge in px. Default 0. */
+  /** Resolved extension past each vertical plot edge in px. Default 0. */
   crosshairOvershoot?: number;
   /** Fade the crosshair near the live edge. Default true. */
   crosshairFade?: boolean;

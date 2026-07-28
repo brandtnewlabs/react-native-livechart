@@ -428,6 +428,7 @@ describe("CrosshairOverlay", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
       const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
       return (
         <CrosshairOverlay
@@ -438,6 +439,7 @@ describe("CrosshairOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+          scrubActive={scrubActive}
         />
       );
     }
@@ -448,6 +450,7 @@ describe("CrosshairOverlay", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
       const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
       return (
         <CrosshairOverlay
@@ -458,6 +461,7 @@ describe("CrosshairOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+          scrubActive={scrubActive}
           crosshairDash={[4, 4]}
         />
       );
@@ -522,6 +526,7 @@ describe("CrosshairOverlay", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
       const tooltipLayout = useSharedValue<TooltipLayout>({
         x: 110,
         y: 20,
@@ -544,6 +549,7 @@ describe("CrosshairOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+          scrubActive={scrubActive}
           showTooltip
         />
       );
@@ -555,6 +561,7 @@ describe("CrosshairOverlay", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
       const tooltipLayout = useSharedValue<TooltipLayout>({
         x: 110,
         y: 20,
@@ -577,6 +584,7 @@ describe("CrosshairOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+          scrubActive={scrubActive}
           showTooltip
           tooltipShowValue={false}
           tooltipBorderRadius={9}
@@ -633,6 +641,7 @@ describe("CrosshairOverlay", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
       const tooltipLayout = useSharedValue<TooltipLayout>({
         x: 110,
         y: 20,
@@ -658,6 +667,7 @@ describe("CrosshairOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+          scrubActive={scrubActive}
           showTooltip
         >
           <MultiSeriesTooltipStack
@@ -675,6 +685,7 @@ describe("CrosshairOverlay", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(0.5);
+      const scrubActive = useSharedValue(true);
       const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
       return (
         <CrosshairOverlay
@@ -685,6 +696,7 @@ describe("CrosshairOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+          scrubActive={scrubActive}
           showTooltip={false}
         />
       );
@@ -857,6 +869,7 @@ describe("CrosshairOverlay", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
       const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
       return (
         <CrosshairOverlay
@@ -867,6 +880,7 @@ describe("CrosshairOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+          scrubActive={scrubActive}
           showTooltip
           renderTooltip={() => <Circle cx={1} cy={2} r={3} color="#fff" />}
         />
@@ -877,10 +891,11 @@ describe("CrosshairOverlay", () => {
 });
 
 describe("CrosshairLine", () => {
-  it("stays visible without scrubActive when edge opacity is positive", () => {
+  it("stays visible at zero edge opacity when fade is disabled", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
-      const crosshairOpacity = useSharedValue(0.25);
+      const crosshairOpacity = useSharedValue(0);
+      const scrubActive = useSharedValue(true);
       return (
         <CrosshairLine
           scrubX={scrubX}
@@ -888,6 +903,7 @@ describe("CrosshairLine", () => {
           engine={engine()}
           padding={DEFAULT_PADDING}
           palette={palette}
+          scrubActive={scrubActive}
           crosshairFade={false}
         />
       );
@@ -942,10 +958,11 @@ describe("CrosshairLine", () => {
     render(<Fixture />);
   });
 
-  it("renders nothing for the dot when scrubActive is absent (early return)", () => {
+  it("renders nothing for the dot when selectionY is absent", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
       return (
         <CrosshairLine
           scrubX={scrubX}
@@ -954,6 +971,7 @@ describe("CrosshairLine", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           selectionDot={resolveSelectionDot(true)}
+          scrubActive={scrubActive}
         />
       );
     }
