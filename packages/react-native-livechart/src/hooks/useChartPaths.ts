@@ -1,7 +1,10 @@
 import { Skia, type SkPath } from "@shopify/react-native-skia";
 import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import type { SingleEngineState } from "../core/useLiveChartEngine";
+import type {
+  ChartEngineScroll,
+  SingleEngineState,
+} from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { drawSpline, makeSplineScratch } from "../math/spline";
 import { sampleThresholdYAt, thresholdSampleSpanX } from "../math/threshold";
@@ -20,7 +23,12 @@ import { usePathBuilder } from "./usePathBuilder";
  * fillPath.
  */
 export function useChartPaths(
-  engine: SingleEngineState,
+  /**
+   * `viewEnd` comes from {@link ChartEngineScroll}, which `useLiveChartEngine`
+   * intersects onto the returned state but which `SingleEngineState` itself does
+   * not declare — the live-tip gate below reads it, so ask for it explicitly.
+   */
+  engine: SingleEngineState & Pick<ChartEngineScroll, "viewEnd">,
   padding: ChartPadding,
   morphT?: SharedValue<number>,
   /** When set, also build `thresholdFillPath` — the band between the line and this
@@ -84,6 +92,16 @@ export function useChartPaths(
     // drops from the last visible point to the off-screen live value at the edge.
     const tipValue =
       followViewEdge && edgeValue ? edgeValue.get() : engine.displayValue.get();
+    // Without `followViewEdge` there is no in-view price to tip at, so drop the
+    // tip entirely: `buildLinePoints` pins it to the plot's right edge, which is
+    // `viewEnd` (not the live edge) while scrolled back, so the live price would
+    // be drawn at a time it doesn't belong to — a near-vertical run from the last
+    // visible sample up to an off-screen value. The line now simply ends at the
+    // last loaded sample in view. Same `viewEnd != null` gate the live dot and
+    // value line already use (see `liveDotOpacity` / `valueLineOpacity`), and the
+    // same end state candle mode reaches by positioning the live candle from its
+    // own timestamp.
+    const appendLiveTip = followViewEdge || engine.viewEnd.get() == null;
     const realPts = buildLinePoints(
       engine.data.get(),
       tipValue,
@@ -95,6 +113,7 @@ export function useChartPaths(
       engine.canvasHeight.get(),
       padding,
       buf,
+      appendLiveTip,
     );
 
     // Skip blending when fully revealed or no morphT provided

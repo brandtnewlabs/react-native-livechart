@@ -233,6 +233,84 @@ describe("buildLinePoints", () => {
     const n = out.length >> 1;
     expect(n).toBeGreaterThan(0);
   });
+
+  it("closes at the right edge with the interpolated data value when appendLiveTip is false", () => {
+    // Window [70, 100] falls entirely inside the gap between the two samples.
+    // Without the edge close this emits ONE point (the pre-window sample kept
+    // for left-edge entry) — a run every consumer discards, so nothing draws.
+    const now = 100;
+    const data = [
+      { time: 0, value: 1 },
+      { time: 500, value: 3 },
+    ];
+    const out = buildLinePoints(
+      data,
+      99, // live value — must NOT be drawn
+      now,
+      30,
+      0,
+      10,
+      200,
+      120,
+      pad,
+      undefined,
+      false,
+    );
+    expect(out.length).toBe(4);
+    const exitX = pad.left + (200 - pad.left - pad.right);
+    expect(out[2]).toBe(exitX);
+    // Interpolated data value at now: 1 + (100/500) * (3 - 1) = 1.4
+    const chartH = 120 - pad.top - pad.bottom;
+    expect(out[3]).toBeCloseTo(pad.top + ((10 - 1.4) / 10) * chartH);
+  });
+
+  it("holds the last value to the edge when scrolled past the newest sample", () => {
+    // No sample after the window: nothing to interpolate towards, so the last
+    // known value extends to the right edge instead of reading off the array.
+    const now = 100;
+    const data = [{ time: 50, value: 4 }];
+    const out = buildLinePoints(
+      data,
+      99,
+      now,
+      100,
+      0,
+      10,
+      200,
+      120,
+      pad,
+      undefined,
+      false,
+    );
+    expect(out.length).toBe(4);
+    const chartH = 120 - pad.top - pad.bottom;
+    expect(out[3]).toBeCloseTo(pad.top + ((10 - 4) / 10) * chartH);
+  });
+
+  it("skips the edge close when the last sample already sits on the edge", () => {
+    // A duplicated x would make drawSpline treat the interval as flat.
+    const now = 100;
+    const data = [
+      { time: 90, value: 2 },
+      { time: 100, value: 5 },
+    ];
+    const out = buildLinePoints(
+      data,
+      99,
+      now,
+      30,
+      0,
+      10,
+      200,
+      120,
+      pad,
+      undefined,
+      false,
+    );
+    const xs = [];
+    for (let i = 0; i < out.length; i += 2) xs.push(out[i]);
+    expect(new Set(xs).size).toBe(xs.length);
+  });
 });
 
 describe("badge geometry metrics overrides", () => {

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Line mode no longer draws an empty chart when the visible window lands in a data gap.**
+  While time-scrolled, a window whose whole span fell between two samples emitted a single
+  point, which every consumer discards — grid and axes rendered with no line, fill, or
+  threshold band. The line is now closed at the plot's right edge with the value the data
+  itself has there (linearly interpolated between the bracketing samples), which also removes
+  the "breathing" gap between the last sample and the right edge while dragging.
+
 ### Documentation
 
 - Added an end-to-end guide and runnable example for loading older REST history while time-scrolling,

@@ -1,14 +1,14 @@
 import { DEFAULT_PADDING } from "../../src/draw/line";
-import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
 import { useChartPaths } from "../../src/hooks/useChartPaths";
 import { useSharedValue } from "react-native-reanimated";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
-function makeEngine(
-  overrides: Partial<SingleEngineState> = {},
-): SingleEngineState {
+type PathsEngine = Parameters<typeof useChartPaths>[0];
+
+function makeEngine(overrides: Partial<PathsEngine> = {}): PathsEngine {
   const base = {
+    viewEnd: { value: null },
     data: { value: [{ time: 1000, value: 1 }] },
     value: { value: 1 },
     displayValue: { value: 1 },
@@ -22,7 +22,7 @@ function makeEngine(
   return withSharedValueAccessors({
     ...base,
     ...overrides,
-  }) as unknown as SingleEngineState;
+  }) as unknown as PathsEngine;
 }
 
 describe("useChartPaths", () => {
@@ -41,7 +41,7 @@ describe("useChartPaths", () => {
           data: { value: [{ time: 1000, value: 1 }] },
           displayMin: { value: 0 },
           displayMax: { value: 0 },
-        } as unknown as Partial<SingleEngineState>),
+        } as unknown as Partial<PathsEngine>),
         DEFAULT_PADDING,
       ),
     );
@@ -60,7 +60,7 @@ describe("useChartPaths", () => {
               { time: 1000, value: 2 },
             ],
           },
-        } as unknown as Partial<SingleEngineState>),
+        } as unknown as Partial<PathsEngine>),
         DEFAULT_PADDING,
         undefined,
         thresholdY,
@@ -86,7 +86,7 @@ describe("useChartPaths", () => {
               { time: 1000, value: 2 },
             ],
           },
-        } as unknown as Partial<SingleEngineState>),
+        } as unknown as Partial<PathsEngine>),
         DEFAULT_PADDING,
         undefined, // morphT
         undefined, // thresholdY (constant) — superseded by the samples below
@@ -113,7 +113,7 @@ describe("useChartPaths", () => {
               { time: 1000, value: 2 },
             ],
           },
-        } as unknown as Partial<SingleEngineState>),
+        } as unknown as Partial<PathsEngine>),
         DEFAULT_PADDING,
         morphT,
       );
@@ -137,7 +137,7 @@ describe("useChartPaths", () => {
               { time: 1000, value: 2 },
             ],
           },
-        } as unknown as Partial<SingleEngineState>),
+        } as unknown as Partial<PathsEngine>),
         DEFAULT_PADDING,
         undefined,
         undefined,

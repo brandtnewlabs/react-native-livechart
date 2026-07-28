@@ -207,7 +207,9 @@ export function resolvePadding(
 /**
  * Build screen-space points as a flat number array [x0, y0, x1, y1, ...].
  * Includes one point before the window for smooth left-edge entry,
- * and appends a live tip at (now, displayValue).
+ * and appends a live tip at (now, displayValue) unless `appendLiveTip` is false —
+ * in which case the line is instead closed at the right edge with the
+ * interpolated *data* value there (see below).
  *
  * Flat layout avoids ~150 tuple object allocations per frame.
  *
@@ -217,6 +219,20 @@ export function resolvePadding(
  * busy / wide-window charts. Callers that pool `out` must ping-pong two buffers
  * so the returned reference still changes each frame (Reanimated's value-equality
  * check skips notifying subscribers when the reference is unchanged).
+ *
+ * The live tip is pinned to the plot's RIGHT EDGE (x = left + chartW), not to a
+ * time — it is only in the right place while the window follows the live edge
+ * (`now === liveEdge`). Pass `appendLiveTip: false` when the window is frozen
+ * behind the live edge, otherwise the tip drags the line from the last visible
+ * sample to an off-screen price. Candle mode needs no such flag: a candle is
+ * positioned from its own `time` and `appendCandleShapes` drops it once it
+ * leaves the window, so the live candle disappears on its own.
+ *
+ * With `appendLiveTip: false` the line is still closed at the right edge, but
+ * with the value the data itself has at `now` (linearly interpolated between the
+ * samples bracketing it) instead of the live price. That keeps the line reaching
+ * the edge while scrolled back, and keeps a window that lands inside a data gap
+ * from collapsing to a single point (which every consumer discards).
  */
 export function buildLinePoints(
   data: LiveChartPoint[],
@@ -229,6 +245,7 @@ export function buildLinePoints(
   canvasHeight: number,
   padding: ChartPadding,
   out?: number[],
+  appendLiveTip = true,
 ): number[] {
   "worklet";
   const pts: number[] = out ?? [];
@@ -329,10 +346,59 @@ export function buildLinePoints(
   }
 
   // Live tip at current time with smoothed value
-  pts.push(
-    padding.left + chartW,
-    padding.top + ((displayMax - displayValue) / valRange) * chartH,
-  );
+  if (appendLiveTip) {
+    pts.push(
+      padding.left + chartW,
+      padding.top + ((displayMax - displayValue) / valRange) * chartH,
+    );
+  } else if (pts.length >= 2) {
+    // No live tip: the window is frozen behind the live edge. Close the line at
+    // the plot's right edge with the value the DATA has at `now`, linearly
+    // interpolated between the two samples bracketing it. This is not the live
+    // tip in disguise — the tip draws the live (off-screen) price at the edge,
+    // this draws the price the frozen right edge actually points at, which is the
+    // correct value while scrolled back. It fixes two symptoms:
+    //  - A window whose whole span falls inside a data gap emits exactly ONE
+    //    point (the pre-window sample kept for left-edge entry). Every consumer
+    //    discards a run shorter than two points, so the chart drew grid and axes
+    //    with no line, no gradient fill and no threshold band at all.
+    //  - Otherwise the line stops at the last sample <= `now`, up to one bucket
+    //    short of the right edge, and that shortfall shrinks and grows as the
+    //    window slides — a gap that visibly breathes while dragging.
+    const exitX = padding.left + chartW;
+    // Skip a zero-width segment when the last emitted sample already sits on the
+    // edge (`data[endIdx - 1].time === now`): a duplicated x makes `drawSpline`
+    // treat the interval as flat and zero the final tangent on both ends of it.
+    if (exitX - pts[pts.length - 2] > 1e-3) {
+      // Reaching here means the loop above emitted at least one point, so
+      // `endIdx > startIdx >= 0` and `data[endIdx - 1]` is in bounds.
+      const a = data[endIdx - 1];
+      // `endIdx` is the first index after `now`; at or past the end of the array
+      // there is no later sample to interpolate towards (the window is scrolled
+      // past the newest data), so hold the last known value out to the edge
+      // instead of reading off the end.
+      const b = endIdx < data.length ? data[endIdx] : a;
+      const span = b.time - a.time;
+      // `frac` is clamped so the result can only ever be a convex blend of `a` and
+      // `b`, never an extrapolation into a spike off the plot.
+      //
+      // It cannot currently fire: `elo` reaches `endIdx` only via `elo = emid + 1`
+      // with `emid === endIdx - 1`, on the branch that tested
+      // `data[endIdx - 1].time <= now`; and `ehi` reaches `endIdx` only via
+      // `ehi = emid` with `emid === endIdx`, on the branch that tested
+      // `data[endIdx].time > now`. So `a.time <= now < b.time` — hence `span > 0`
+      // and `frac` in [0, 1) — holds for ANY input, sorted or not. The clamp keeps
+      // that a local, obvious invariant rather than a three-step argument about
+      // the index math above, so refactoring that search can't silently turn this
+      // interpolation into an extrapolation.
+      //
+      // `span === 0` only happens when `b === a` (no sample after the window), and
+      // then `frac = 0` holds `a`'s own value out to the edge.
+      const frac = span > 0 ? Math.min(1, Math.max(0, (now - a.time) / span)) : 0;
+      const exitValue = a.value + frac * (b.value - a.value);
+      pts.push(exitX, padding.top + (displayMax - exitValue) * yScale);
+    }
+  }
 
   return pts;
 }
