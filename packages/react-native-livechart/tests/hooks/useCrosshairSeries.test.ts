@@ -1,5 +1,5 @@
 import { type SkFont } from "@shopify/react-native-skia";
-import { act, renderHook } from "@testing-library/react-native";
+import { renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
 import { MAX_MULTI_SERIES } from "../../src/constants";
 import type { MultiEngineState } from "../../src/core/useLiveChartEngine";
@@ -47,17 +47,12 @@ function getGestureConfig(gesture: unknown): GestureConfig {
   return (gesture as { config: GestureConfig }).config;
 }
 
-function getLastPanHandlers() {
-  const calls = (
+function getLastPanCalls() {
+  return (
     jest.requireMock("react-native-gesture-handler") as {
       __getLastPanCalls: () => Record<string, unknown[]>;
     }
   ).__getLastPanCalls();
-  return (
-    Object.fromEntries(
-      Object.entries(calls).map(([key, args]) => [key, args[0]]),
-    ) as Record<string, (event?: { x: number; y: number }) => void>
-  );
 }
 
 const font = {
@@ -613,8 +608,7 @@ describe("useCrosshairSeries (hook)", () => {
     },
   );
 
-  it("rejects outside starts when plot clamping is enabled", () => {
-    const onGestureStart = jest.fn();
+  it("restricts scrub recognition to horizontal plot bounds", () => {
     const engine = makeEngine();
     renderHook(() =>
       useCrosshairSeries(
@@ -623,17 +617,18 @@ describe("useCrosshairSeries (hook)", () => {
         true,
         undefined,
         0,
-        onGestureStart,
+        undefined,
         undefined,
         undefined,
         undefined,
         true,
       ),
     );
-    const handlers = getLastPanHandlers();
 
-    act(() => handlers.onStart?.({ x: 390, y: 100 }));
-    expect(onGestureStart).not.toHaveBeenCalled();
+    expect(getLastPanCalls().hitSlop?.[0]).toEqual({
+      left: -padding.left,
+      right: -padding.right,
+    });
   });
 
   it("only configures a long-press modifier for a positive delay", () => {

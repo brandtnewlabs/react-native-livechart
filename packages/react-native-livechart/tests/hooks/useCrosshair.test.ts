@@ -1,5 +1,5 @@
 import { type SkFont } from "@shopify/react-native-skia";
-import { act, renderHook } from "@testing-library/react-native";
+import { renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
 import { interpolateAtTime } from "../../src/math/interpolate";
 import { resolveTheme } from "../../src/theme";
@@ -25,6 +25,7 @@ import {
 
 jest.mock("react-native-gesture-handler", () => {
   let lastPanCalls: Record<string, unknown[]>;
+  let lastTapCalls: Record<string, unknown[]>;
   const makeGesture = (
     capture?: (calls: Record<string, unknown[]>) => void,
   ) => {
@@ -47,9 +48,12 @@ jest.mock("react-native-gesture-handler", () => {
       Pan: () => makeGesture((calls) => {
         lastPanCalls = calls;
       }),
-      Tap: () => makeGesture(),
+      Tap: () => makeGesture((calls) => {
+        lastTapCalls = calls;
+      }),
     },
     __getLastPanCalls: () => lastPanCalls,
+    __getLastTapCalls: () => lastTapCalls,
   };
 });
 
@@ -59,17 +63,20 @@ function getGestureConfig(gesture: unknown): GestureConfig {
   return (gesture as { config: GestureConfig }).config;
 }
 
-function getLastPanHandlers() {
-  const calls = (
+function getLastPanCalls() {
+  return (
     jest.requireMock("react-native-gesture-handler") as {
       __getLastPanCalls: () => Record<string, unknown[]>;
     }
   ).__getLastPanCalls();
+}
+
+function getLastTapCalls() {
   return (
-    Object.fromEntries(
-      Object.entries(calls).map(([key, args]) => [key, args[0]]),
-    ) as Record<string, (event?: { x: number; y: number }) => void>
-  );
+    jest.requireMock("react-native-gesture-handler") as {
+      __getLastTapCalls: () => Record<string, unknown[]>;
+    }
+  ).__getLastTapCalls();
 }
 
 const palette = resolveTheme("#3b82f6", "dark");
@@ -184,7 +191,7 @@ describe("plain scrub gesture bounds", () => {
     expect(gestureStarted.get()).toBe(true);
   });
 
-  it("rejects outside starts and ignores their follow-on updates", () => {
+  it("clamps an activation outside after its touch-down was accepted", () => {
     const scrubX = mutable(-1);
     const scrubActive = mutable(false);
     const gestureStarted = mutable(false);
@@ -199,12 +206,10 @@ describe("plain scrub gesture bounds", () => {
         scrubActive,
         gestureStarted,
       ),
-    ).toBe(false);
-    updatePlainScrub(100, padding, 400, true, scrubX, scrubActive);
-
-    expect(scrubX.get()).toBe(-1);
-    expect(scrubActive.get()).toBe(false);
-    expect(gestureStarted.get()).toBe(false);
+    ).toBe(true);
+    expect(scrubX.get()).toBe(400 - padding.right);
+    expect(scrubActive.get()).toBe(true);
+    expect(gestureStarted.get()).toBe(true);
   });
 
   it("clamps a scrub started inside to both plot edges", () => {
@@ -1042,8 +1047,7 @@ describe("useCrosshair (hook)", () => {
     },
   );
 
-  it("rejects outside starts when plot clamping is enabled", () => {
-    const onGestureStart = jest.fn();
+  it("combines horizontal plot and bottom-band recognition bounds", () => {
     const engine = makeEngine();
     renderHook(() =>
       useCrosshair(
@@ -1057,7 +1061,7 @@ describe("useCrosshair (hook)", () => {
         undefined,
         undefined,
         0,
-        onGestureStart,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1067,15 +1071,17 @@ describe("useCrosshair (hook)", () => {
         true,
         true,
         8,
-        0,
+        24,
         undefined,
         true,
       ),
     );
-    const handlers = getLastPanHandlers();
 
-    act(() => handlers.onStart?.({ x: 0, y: 100 }));
-    expect(onGestureStart).not.toHaveBeenCalled();
+    expect(getLastPanCalls().hitSlop?.[0]).toEqual({
+      left: -padding.left,
+      right: -padding.right,
+      bottom: -24,
+    });
   });
 
   it("only configures a long-press modifier for a positive delay", () => {
@@ -1148,6 +1154,38 @@ describe("useCrosshair (hook)", () => {
     expect(config.failOffsetY).toBeUndefined();
     // The callback fires only from the UI-thread tap worklet (istanbul-ignored).
     expect(onScrubAction).not.toHaveBeenCalled();
+  });
+
+  it("keeps the action gutter tappable while excluding the bottom band", () => {
+    const engine = makeEngine();
+    renderHook(() =>
+      useCrosshair(
+        engine,
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+        undefined,
+        undefined,
+        0,
+        undefined,
+        undefined,
+        resolveScrubAction(true),
+        undefined,
+        undefined,
+        undefined,
+        "side",
+        true,
+        true,
+        8,
+        24,
+        true,
+      ),
+    );
+
+    expect(getLastTapCalls().hitSlop?.[0]).toEqual({ bottom: -24 });
   });
 });
 

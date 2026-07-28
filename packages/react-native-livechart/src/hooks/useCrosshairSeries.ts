@@ -22,6 +22,7 @@ import {
   computeScrubDotY,
   computeScrubTime,
   HIDDEN_TOOLTIP,
+  resolveScrubHitSlop,
   SCRUB_ACTIVATE_X_PX,
   SCRUB_FAIL_Y_PX,
   startPlainScrub,
@@ -346,6 +347,12 @@ export function useCrosshairSeries(
   gesture = gesture
     .activeOffsetX([-SCRUB_ACTIVATE_X_PX, SCRUB_ACTIVATE_X_PX])
     .failOffsetY([-SCRUB_FAIL_Y_PX, SCRUB_FAIL_Y_PX]);
+
+  // Gate by touch-down position so outside starts fail before activation and
+  // remain available to competing/parent gestures. Accepted pans keep tracking
+  // outside because `shouldCancelWhenOutside(false)` is set above.
+  const scrubHitSlop = resolveScrubHitSlop(padding, clampToPlot);
+  if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);
 
   return {
     scrubX,

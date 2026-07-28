@@ -30,12 +30,33 @@ export function clampPlotX(
   return Math.min(canvasWidth - padRight, Math.max(padLeft, x));
 }
 
+export interface ScrubHitSlop {
+  left?: number;
+  right?: number;
+  bottom?: number;
+}
+
+/** Build touch-down bounds for a scrub recognizer. */
+export function resolveScrubHitSlop(
+  padding: ChartPadding,
+  clampToPlot: boolean,
+  bottomExclude = 0,
+): ScrubHitSlop | undefined {
+  if (!clampToPlot && bottomExclude <= 0) return undefined;
+  return {
+    ...(clampToPlot
+      ? { left: -padding.left, right: -padding.right }
+      : {}),
+    ...(bottomExclude > 0 ? { bottom: -bottomExclude } : {}),
+  };
+}
+
 interface ScrubGestureValue<T> {
   get(): T;
   set(value: T): void;
 }
 
-/** Start plain scrubbing, rejecting a horizontally outside press when clamped. */
+/** Start plain scrubbing; the recognizer gates out-of-plot touch origins. */
 export function startPlainScrub(
   x: number,
   padding: ChartPadding,
@@ -47,8 +68,6 @@ export function startPlainScrub(
 ): boolean {
   "worklet";
   if (clampToPlot) {
-    const plotRight = canvasWidth - padding.right;
-    if (x < padding.left || x > plotRight) return false;
     scrubX.set(clampPlotX(x, padding.left, canvasWidth, padding.right));
   } else {
     scrubX.set(x);
@@ -58,7 +77,7 @@ export function startPlainScrub(
   return true;
 }
 
-/** Track plain scrubbing, clamping only gestures that were accepted in-plot. */
+/** Track plain scrubbing, clamping gestures accepted by the recognizer. */
 export function updatePlainScrub(
   x: number,
   padding: ChartPadding,
@@ -69,7 +88,6 @@ export function updatePlainScrub(
 ): void {
   "worklet";
   if (clampToPlot) {
-    // RNGH may still send updates after an outside start was rejected.
     if (!scrubActive.get()) return;
     scrubX.set(clampPlotX(x, padding.left, canvasWidth, padding.right));
   } else {

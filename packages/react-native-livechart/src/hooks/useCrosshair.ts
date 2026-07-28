@@ -33,6 +33,7 @@ import {
   HIDDEN_TIME_BADGE,
   HIDDEN_TOOLTIP,
   pointInRect,
+  resolveScrubHitSlop,
   SCRUB_ACTIVATE_X_PX,
   SCRUB_FAIL_Y_PX,
   snapPrice,
@@ -696,13 +697,15 @@ export function useCrosshair(
       .failOffsetY([-SCRUB_FAIL_Y_PX, SCRUB_FAIL_Y_PX]);
   }
 
-  // Axis-drag time-scroll: carve the bottom "time ruler" band out of the scrub's
-  // hit area so a drag starting there scrolls (the pan-scroll gesture owns it)
-  // and never trips the crosshair. `shouldCancelWhenOutside(false)` above keeps a
-  // scrub that *started* in the plot tracking on into the band.
-  if (scrubBottomExclude > 0) {
-    gesture = gesture.hitSlop({ bottom: -scrubBottomExclude });
-  }
+  // Restrict recognition by touch-down position. This rejects before ACTIVE,
+  // leaving outside starts to competing/parent gestures. Once accepted,
+  // `shouldCancelWhenOutside(false)` keeps tracking beyond these bounds.
+  const scrubHitSlop = resolveScrubHitSlop(
+    padding,
+    clampToPlot,
+    scrubBottomExclude,
+  );
+  if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);
 
   // Tap: place/move the reticle, press the action badge, or dismiss the lock.
   // Composed ahead of the pan by the controller, so a tap is never swallowed.
@@ -777,11 +780,15 @@ export function useCrosshair(
         .maxDistance(SCRUB_ACTION_TAP_SLOP)
         .onEnd(handleActionTap)
     : undefined;
-  // Keep the axis-drag band scroll-only for taps too — a tap there shouldn't
-  // drop an order-ticket reticle.
-  if (tapGesture && scrubBottomExclude > 0) {
-    tapGesture = tapGesture.hitSlop({ bottom: -scrubBottomExclude });
-  }
+  // Keep the bottom axis scroll-only. Do not apply horizontal plot bounds here:
+  // the action badge is intentionally tappable in the right gutter.
+  const tapHitSlop = resolveScrubHitSlop(
+    padding,
+    false,
+    scrubBottomExclude,
+  );
+  if (tapGesture && tapHitSlop)
+    tapGesture = tapGesture.hitSlop(tapHitSlop);
 
   return {
     scrubX,
