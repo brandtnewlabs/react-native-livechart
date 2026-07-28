@@ -1,6 +1,7 @@
 import { type SkFont } from "@shopify/react-native-skia";
 import { renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
+import { MAX_MULTI_SERIES } from "../../src/constants";
 import type { MultiEngineState } from "../../src/core/useLiveChartEngine";
 import { resolveScrub } from "../../src/core/resolveConfig";
 import type {
@@ -293,6 +294,51 @@ describe("computePerSeriesTooltipLayout", () => {
     const pill = layout.perSeries!.pills[0];
     expect(pill.x).toBeGreaterThanOrEqual(padding.left + 4);
     expect(pill.x + pill.w).toBeLessThanOrEqual(125 - padding.right - 4);
+  });
+
+  it("only lays out pills for series slots the chart can render", () => {
+    const overLimit = Array.from(
+      { length: MAX_MULTI_SERIES + 1 },
+      (_, index): SeriesConfig => ({
+        id: `series-${index}`,
+        label: `Series ${index}`,
+        visible: index !== 0,
+        data: [
+          { time: 900, value: index + 1 },
+          { time: 960, value: index + 2 },
+        ],
+        value: index + 2,
+        color: `hsl(${index * 20}, 80%, 50%)`,
+      }),
+    );
+    const layout = computePerSeriesTooltipLayout(
+      true,
+      160,
+      930,
+      overLimit,
+      overLimit.map((item) => item.value),
+      overLimit.map((item) => item.color!),
+      0,
+      100,
+      padding,
+      400,
+      600,
+      1000,
+      formatValue,
+      formatTime,
+      font,
+      tooltipConfig(),
+    );
+
+    expect(layout.perSeries?.pills.map((pill) => pill.id)).toEqual(
+      Array.from(
+        { length: MAX_MULTI_SERIES - 1 },
+        (_, index) => `series-${index + 1}`,
+      ),
+    );
+    expect(layout.perSeries?.pills).not.toContainEqual(
+      expect.objectContaining({ id: `series-${MAX_MULTI_SERIES}` }),
+    );
   });
 });
 

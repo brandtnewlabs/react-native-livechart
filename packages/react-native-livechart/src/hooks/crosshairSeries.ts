@@ -1,4 +1,5 @@
 import { type SkFont } from "@shopify/react-native-skia";
+import { MAX_MULTI_SERIES } from "../constants";
 import type { ResolvedPerSeriesTooltipConfig } from "../core/resolveConfig";
 import { type ChartPadding } from "../draw/line";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
@@ -120,7 +121,8 @@ export function computePerSeriesTooltipLayout(
     NonNullable<TooltipLayout["perSeries"]>["pills"]
   > = [];
   const preferredY: number[] = [];
-  for (let i = 0; i < series.length; i++) {
+  const renderedSeriesCount = Math.min(series.length, MAX_MULTI_SERIES);
+  for (let i = 0; i < renderedSeriesCount; i++) {
     const item = series[i];
     if (item.visible === false || item.data.length === 0) continue;
     const value = pinned
