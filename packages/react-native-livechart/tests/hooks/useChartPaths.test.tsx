@@ -1,17 +1,28 @@
 import { DEFAULT_PADDING } from "../../src/draw/line";
-import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
+import type {
+  ChartEngineEdge,
+  ChartEngineScroll,
+  SingleEngineState,
+} from "../../src/core/useLiveChartEngine";
 import { renderHook } from "@testing-library/react-native";
-import { useChartPaths } from "../../src/hooks/useChartPaths";
+import {
+  resolveLineTipValue,
+  useChartPaths,
+} from "../../src/hooks/useChartPaths";
 import { useSharedValue } from "react-native-reanimated";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
+type ChartPathsEngine = SingleEngineState & ChartEngineScroll & ChartEngineEdge;
+
 function makeEngine(
-  overrides: Partial<SingleEngineState> = {},
-): SingleEngineState {
+  overrides: Partial<ChartPathsEngine> = {},
+): ChartPathsEngine {
   const base = {
     data: { value: [{ time: 1000, value: 1 }] },
     value: { value: 1 },
     displayValue: { value: 1 },
+    edgeValue: { value: 1 },
+    viewEnd: { value: null },
     displayMin: { value: 0 },
     displayMax: { value: 2 },
     displayWindow: { value: 30 },
@@ -22,7 +33,7 @@ function makeEngine(
   return withSharedValueAccessors({
     ...base,
     ...overrides,
-  }) as unknown as SingleEngineState;
+  }) as unknown as ChartPathsEngine;
 }
 
 describe("useChartPaths", () => {
@@ -41,7 +52,7 @@ describe("useChartPaths", () => {
           data: { value: [{ time: 1000, value: 1 }] },
           displayMin: { value: 0 },
           displayMax: { value: 0 },
-        } as unknown as Partial<SingleEngineState>),
+        } as unknown as Partial<ChartPathsEngine>),
         DEFAULT_PADDING,
       ),
     );
@@ -60,7 +71,7 @@ describe("useChartPaths", () => {
               { time: 1000, value: 2 },
             ],
           },
-        } as unknown as Partial<SingleEngineState>),
+        } as unknown as Partial<ChartPathsEngine>),
         DEFAULT_PADDING,
         undefined,
         thresholdY,
@@ -86,13 +97,11 @@ describe("useChartPaths", () => {
               { time: 1000, value: 2 },
             ],
           },
-        } as unknown as Partial<SingleEngineState>),
+        } as unknown as Partial<ChartPathsEngine>),
         DEFAULT_PADDING,
         undefined, // morphT
         undefined, // thresholdY (constant) — superseded by the samples below
         false, // linear
-        undefined, // edgeValue
-        false, // followViewEdge
         undefined, // squiggleAmplitude
         undefined, // squiggleSpeed
         thresholdSamples, // time-varying band bottom
@@ -113,7 +122,7 @@ describe("useChartPaths", () => {
               { time: 1000, value: 2 },
             ],
           },
-        } as unknown as Partial<SingleEngineState>),
+        } as unknown as Partial<ChartPathsEngine>),
         DEFAULT_PADDING,
         morphT,
       );
@@ -122,10 +131,17 @@ describe("useChartPaths", () => {
     expect(result.current.fillPath.value).toBeDefined();
   });
 
-  it("tips the line at edgeValue when followViewEdge is on (time-scroll)", () => {
-    // While scrolled back, the right-edge tip should use the view-edge price
-    // (edgeValue), not the live displayValue — so the line doesn't drop to the
-    // off-screen live value.
+  it("tips a live window at displayValue", () => {
+    expect(resolveLineTipValue(9, 4, null)).toBe(9);
+  });
+
+  it("tips a historical window at edgeValue independently of indicator options", () => {
+    // No badge.followViewEdge or hideLiveOnScrollBack input exists here:
+    // presentation flags cannot change the plotted series geometry.
+    expect(resolveLineTipValue(9, 4, 1_000)).toBe(4);
+  });
+
+  it("builds a historical line using the engine edge value", () => {
     const { result } = renderHook(() => {
       const edgeValue = useSharedValue(1.5);
       return useChartPaths(
@@ -137,13 +153,11 @@ describe("useChartPaths", () => {
               { time: 1000, value: 2 },
             ],
           },
-        } as unknown as Partial<SingleEngineState>),
+          displayValue: { value: 999 },
+          edgeValue,
+          viewEnd: { value: 1_000 },
+        } as unknown as Partial<ChartPathsEngine>),
         DEFAULT_PADDING,
-        undefined,
-        undefined,
-        false,
-        edgeValue,
-        true, // followViewEdge → tip uses edgeValue
       );
     });
     expect(result.current.linePath.value).toBeDefined();

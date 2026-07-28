@@ -58,6 +58,10 @@ import {
   resolveYAxis,
 } from "../core/resolveConfig";
 import type { ResolvedThresholdConfig } from "../core/resolveConfig";
+import {
+  liveIndicatorScrollOpacity,
+  resolveHideLiveOnScrollBack,
+} from "../core/liveIndicatorVisibility";
 import { resolveSegment, type ResolvedSegment } from "../core/resolveSegment";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import { pulseRadialOutset } from "../draw/line";
@@ -78,7 +82,10 @@ import { useMarkers } from "../hooks/useMarkers";
 import { useReferenceDrag } from "../hooks/useReferenceDrag";
 import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
 import { useModeBlend } from "../hooks/useModeBlend";
-import { useMomentum } from "../hooks/useMomentum";
+import {
+  resolveMomentumProp,
+  useMomentum,
+} from "../hooks/useMomentum";
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { usePinchZoom } from "../hooks/usePinchZoom";
 import { useVisibleRange } from "../hooks/useVisibleRange";
@@ -884,11 +891,8 @@ function useLiveChartController({
     // polyline passed as the last arg below).
     thresholdCfg?.fill && !thresholdIsSeries ? thresholdGeom.lineY : undefined,
     lineIsLinear,
-    // Tip the line at the view-edge price (not the live value) while scrolled,
-    // matching the live dot — so the right edge doesn't drop to the off-screen
-    // live value when `followViewEdge` tracks the scrolled-back window.
-    engine.edgeValue,
-    badgeCfg?.followViewEdge ?? false,
+    // The plotted line independently selects the visible edge while historical;
+    // badge/live-indicator options affect overlays only.
     // Match the standalone loading squiggle's wave during the reveal morph.
     loadingCfg?.amplitude,
     loadingCfg?.speed,
@@ -924,6 +928,15 @@ function useLiveChartController({
   );
 
   const momentumSV = useMomentum(engine, momentum);
+  // A follow-edge badge must derive its color from the same historical point
+  // as its value and position. While following live, reuse the normal momentum
+  // result; while scrolled back, detect against the data prefix ending at the
+  // visible right-edge timestamp so incoming live ticks cannot change the pill.
+  const badgeMomentumSV = useDerivedValue(() =>
+    badgeCfg?.followViewEdge && engine.viewEnd.value !== null
+      ? resolveMomentumProp(momentum, engine.data.value, engine.timestamp.value)
+      : momentumSV.value,
+  );
 
   // ── Overlay hooks ─────────────────────────────────────────────────────
   // Scrub/crosshair must see the same stash-backed candles as the engine.
@@ -1203,10 +1216,40 @@ function useLiveChartController({
   // point instead — otherwise both dots show at once. Applies on static charts
   // too, now that they're scrubbable.
   const selectionDotDuringScrub = scrubCfg !== null && selectionDotCfg !== null;
+  // While scrolled back, the badge, dot, and value line still point at the live
+  // price even though the window is showing history. Hide that live-priced group
+  // together. `badge.followViewEdge` opts back in because all three then track
+  // the visible edge price; `hideLiveOnScrollBack: false` keeps the legacy group.
+  const hideLiveOnScrollBack = resolveHideLiveOnScrollBack(
+    timeScroll,
+    badgeCfg?.followViewEdge ?? false,
+  );
   const liveDotOpacity = useDerivedValue(
     () =>
       reveal.dotOpacity.value *
-      (selectionDotDuringScrub && crosshairScrubActive.value ? 0 : 1),
+      (selectionDotDuringScrub && crosshairScrubActive.value ? 0 : 1) *
+      liveIndicatorScrollOpacity(
+        hideLiveOnScrollBack,
+        engine.viewEnd.value,
+      ),
+  );
+  // Same scrolled-back gating for the value line: it would draw a dashed line
+  // at the live value's Y — a price that isn't in the scrolled-back view.
+  const valueLineOpacity = useDerivedValue(
+    () =>
+      reveal.lineOpacity.value *
+      liveIndicatorScrollOpacity(
+        hideLiveOnScrollBack,
+        engine.viewEnd.value,
+      ),
+  );
+  const liveBadgeOpacity = useDerivedValue(
+    () =>
+      reveal.badgeOpacity.value *
+      liveIndicatorScrollOpacity(
+        hideLiveOnScrollBack,
+        engine.viewEnd.value,
+      ),
   );
 
   // Fade the annotation overlays (markers + reference lines) out while scrubbing
@@ -1346,9 +1389,12 @@ function useLiveChartController({
     dotX,
     dotY,
     liveDotOpacity,
+    valueLineOpacity,
+    liveBadgeOpacity,
     overlayScrubFade,
     markerGroupOpacity,
     momentumSV,
+    badgeMomentumSV,
     onDegenShake,
     crosshair,
     rootGesture,
@@ -1449,6 +1495,7 @@ function ChartYAxisLayer({
     metricsCfg,
     gridStyleCfg,
     yAxisFloat,
+    liveBadgeOpacity,
   } = model;
   return (
     <Group opacity={reveal.yAxisOpacity}>
@@ -1466,6 +1513,7 @@ function ChartYAxisLayer({
         badgeCenterY={badgeUsesRightGutter ? dotY : undefined}
         badgeFontSize={badgeUsesRightGutter ? badgeFont.getSize() : undefined}
         badgeOffsetY={badgeCfg?.offsetY ?? 0}
+        badgeOpacity={badgeUsesRightGutter ? liveBadgeOpacity : undefined}
         gridStyle={gridStyleCfg}
       />
     </Group>
@@ -1705,6 +1753,7 @@ function ChartStack({
     fontProp,
     badgeCfg,
     valueLineCfg,
+    valueLineOpacity,
     dotY,
     allRefLines,
     refLineKeys,
@@ -1770,7 +1819,7 @@ function ChartStack({
 
       {/* Value line + reference line (behind chart line) */}
       {valueLineCfg && (
-        <Group opacity={reveal.lineOpacity}>
+        <Group opacity={valueLineOpacity}>
           <ValueLineOverlay
             dotY={dotY}
             engine={engine}
@@ -2161,14 +2210,14 @@ function ChartBadgeLayer({
 }) {
   const {
     badgeFont,
-    reveal,
     engine,
     effectivePadding,
     palette,
     formatValue,
-    momentumSV,
+    badgeMomentumSV,
     metricsCfg,
     yAxisFloat,
+    liveBadgeOpacity,
   } = model;
   const badgeCfg = model.badgeCfg!;
   const badgeData = useBadge(
@@ -2179,7 +2228,7 @@ function ChartBadgeLayer({
     badgeFont,
     badgeCfg.variant,
     badgeCfg.tail,
-    momentumSV,
+    badgeMomentumSV,
     badgeCfg.position,
     badgeCfg.background,
     metricsCfg.badge,
@@ -2192,7 +2241,7 @@ function ChartBadgeLayer({
   );
   return (
     <Group transform={degen?.shakeTransform}>
-      <Group opacity={reveal.badgeOpacity}>
+      <Group opacity={liveBadgeOpacity}>
         <BadgeOverlay
           badge={badgeData}
           font={badgeFont}

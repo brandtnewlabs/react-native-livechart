@@ -64,6 +64,8 @@ export default function TimeScrollScreen() {
   const [gesture, setGesture] = useState<Gesture>("holdToScrub");
   const [holdMs, setHoldMs] = useState(500);
   const [enabled, setEnabled] = useState(true);
+  const [followViewEdge, setFollowViewEdge] = useState(true);
+  const [hideLiveOnScrollBack, setHideLiveOnScrollBack] = useState(true);
   const [returnMode, setReturnMode] = useState<ReturnMode>("glide");
   const [zoomOn, setZoomOn] = useState(true);
   const [scrub, setScrub] = useState(true);
@@ -113,9 +115,12 @@ export default function TimeScrollScreen() {
           theme={APP_THEME}
           timeWindow={WINDOW_SECS}
           yAxis={{ float: floatAxis }}
-          // Pill tracks the last visible price as you scroll back.
-          badge={{ followViewEdge: true }}
-          timeScroll={enabled ? { gesture, scrubHoldMs: holdMs } : false}
+          badge={{ followViewEdge }}
+          timeScroll={
+            enabled
+              ? { gesture, scrubHoldMs: holdMs, hideLiveOnScrollBack }
+              : false
+          }
           returnToLive={RETURN_TO_LIVE[returnMode]}
           zoom={zoomOn}
           // Paging callbacks (Phase 3): log the visible range (~1 Hz) and show an
@@ -136,6 +141,19 @@ export default function TimeScrollScreen() {
         />
       }
     >
+      <ControlRow label="Live indicator behavior">
+        <ToggleChip
+          label="Follow visible edge"
+          value={followViewEdge}
+          onChange={setFollowViewEdge}
+        />
+        <ToggleChip
+          label="Hide on scroll back"
+          value={hideLiveOnScrollBack}
+          onChange={setHideLiveOnScrollBack}
+        />
+      </ControlRow>
+
       <ChipRow
         label="Chart type"
         options={MODE_OPTIONS}

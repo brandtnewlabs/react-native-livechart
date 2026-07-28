@@ -13,16 +13,23 @@ import type { Momentum, MomentumConfig } from "../types";
 export function resolveMomentumProp(
   prop: boolean | Momentum | MomentumConfig,
   data: readonly { time: number; value: number }[],
+  endTime?: number,
 ): Momentum {
   "worklet";
   if (prop === false) return "flat";
   if (prop === true)
-    return detectMomentum(data as { time: number; value: number }[]);
+    return detectMomentum(
+      data as { time: number; value: number }[],
+      undefined,
+      undefined,
+      endTime,
+    );
   if (typeof prop === "object")
     return detectMomentum(
       data as { time: number; value: number }[],
       prop.lookback,
       prop.threshold,
+      endTime,
     );
   return prop;
 }

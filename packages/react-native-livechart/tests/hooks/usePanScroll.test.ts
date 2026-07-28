@@ -28,6 +28,12 @@ describe("nextViewEnd", () => {
     expect(nextViewEnd(997, -20, 200, 30, 1000, 930)).toBeNull();
   });
 
+  it("keeps a forward overdrag from the live edge in follow mode", () => {
+    // onChange resolves a null viewEnd to the live edge (1000); dragging toward
+    // the future must remain null instead of entering a transient scroll state.
+    expect(nextViewEnd(1000, -20, 200, 30, 1000, 930)).toBeNull();
+  });
+
   it("clamps to the lower bound (oldest history)", () => {
     // 940 - (200/200)*30 = 910, below lo 930 ⇒ 930.
     expect(nextViewEnd(940, 200, 200, 30, 1000, 930)).toBe(930);

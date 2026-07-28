@@ -177,9 +177,10 @@ export function usePanScroll({
       // nothing further (and must not claim the touch via `scrollActive`).
       if (scrubActive?.get()) return;
       scrollActive?.set(true);
-      // Anchor at the current right edge so the first delta is relative to where
-      // the window sits (the live edge when we were following).
-      if (viewEnd.get() == null) viewEnd.set(liveEdge.get());
+      // Keep `null` while following live. `onChange` resolves it to the current
+      // live edge before applying the first delta. Materializing that same edge
+      // here would falsely signal "scrolled back" between start and change,
+      // briefly collapsing the floating-axis gutter on a forward-only overdrag.
       onScrollStart?.();
     };
 

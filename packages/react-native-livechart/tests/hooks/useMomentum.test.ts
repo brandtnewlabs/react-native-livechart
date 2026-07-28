@@ -45,6 +45,15 @@ describe("resolveMomentumProp", () => {
       resolveMomentumProp({ lookback: 5, threshold: 0.5 }, data),
     ).toBeDefined();
   });
+
+  it("auto-detects from the data prefix at a historical edge", () => {
+    const data = makeData([
+      100, 100, 100, 100, 120, 120, 120, 120, 120, 80,
+    ]);
+
+    expect(resolveMomentumProp(true, data)).toBe("down");
+    expect(resolveMomentumProp(true, data, data[4].time)).toBe("up");
+  });
 });
 
 function engineWithData(data: LiveChartPoint[]): SingleEngineState {

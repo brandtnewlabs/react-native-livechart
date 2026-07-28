@@ -52,6 +52,7 @@ export function YAxisOverlay({
   badgeCenterY,
   badgeFontSize,
   badgeOffsetY = 0,
+  badgeOpacity,
   seriesLabelInset = 0,
   gridStyle,
   variant = "all",
@@ -74,6 +75,8 @@ export function YAxisOverlay({
   badgeFontSize?: number;
   /** Configured live badge Y offset. */
   badgeOffsetY?: number;
+  /** Live badge opacity. A fully hidden badge does not suppress an axis label. */
+  badgeOpacity?: SharedValue<number>;
   /** When > 0, series labels occupy the left portion of the gutter; Y-axis labels right-align. */
   seriesLabelInset?: number;
   /** Grid-line styling overrides. Omit for the legacy solid 1px line. */
@@ -118,7 +121,8 @@ export function YAxisOverlay({
     const fm = font.getMetrics();
     const baselineOffset = (fm.ascent + fm.descent) / 2;
     const labelHeight = fm.descent - fm.ascent;
-    const resolvedBadgeCenterY = badgeCenterY
+    const badgeIsVisible = badgeOpacity === undefined || badgeOpacity.get() > 0;
+    const resolvedBadgeCenterY = badgeCenterY && badgeIsVisible
       ? badgeCenterY.get() + badgeOffsetY
       : null;
     const badgeHeight =
