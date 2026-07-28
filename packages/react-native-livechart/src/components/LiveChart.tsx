@@ -997,6 +997,14 @@ function useLiveChartController({
       ? (timeScrollHoldMs ?? (scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS))
       : (scrubCfg?.panGestureDelay ?? 0);
 
+  // Cross-gesture arbitration for the one-finger touch. `Gesture.Race` below is
+  // NOT arbitration — RNGH's Race adds no relation between its children, so both
+  // pans recognize independently and each can activate while the other already
+  // owns the touch. This latch (written by the scroll pan, read by the scrub's
+  // long-press guard) makes "the scroll already won" a hard fact; `scrubActive`
+  // (written by the crosshair, read by the scroll pan) is the mirror image.
+  const scrollActive = useSharedValue(false);
+
   const crosshair = useCrosshair(
     engine,
     effectivePadding,
@@ -1026,6 +1034,7 @@ function useLiveChartController({
     timeScrollEnabled && scrollGestureMode === "axisDrag"
       ? Math.max(effectivePadding.bottom, AXIS_GRAB_MIN_PX)
       : 0,
+    scrollActive,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -1048,6 +1057,10 @@ function useLiveChartController({
     minTime: scrollMinTime,
     enabled: timeScrollEnabled,
     mode: scrollGestureMode,
+    scrollActive,
+    // Once a scrub is engaged the chart is locked: scrolling goes inert so the
+    // finger only moves the price indicator across a fixed window.
+    scrubActive: crosshairScrubActive,
     // Clear any live crosshair when a scroll drag takes over.
     onScrollStart: () => {
       "worklet";
