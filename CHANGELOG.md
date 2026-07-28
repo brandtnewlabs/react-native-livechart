@@ -35,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   permanent `NaN`, so every body and wick drew at `NaN` width. `lerp` now snaps straight to
   the target at `speed >= 1`.
 
+- **The live dot and value line no longer mark an off-screen price while scrolled back.**
+  With `timeScroll`, panning back through history froze the window behind the live edge, but
+  the live dot stayed pinned to the plot's right edge at the live value's Y — a price not in
+  the visible window — and the dashed value line drew at that same Y. Both are now hidden
+  while scrolled back and reappear on return to the live edge. `badge.followViewEdge` keeps
+  its behavior (there the dot tracks the visible edge price, which is in view). Opt out with
+  the new `timeScroll.hideLiveOnScrollBack: false`.
+
 ### Documentation
 
 - Added an end-to-end guide and runnable example for loading older REST history while time-scrolling,

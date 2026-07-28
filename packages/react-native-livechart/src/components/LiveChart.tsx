@@ -58,6 +58,10 @@ import {
   resolveYAxis,
 } from "../core/resolveConfig";
 import type { ResolvedThresholdConfig } from "../core/resolveConfig";
+import {
+  liveIndicatorScrollOpacity,
+  resolveHideLiveOnScrollBack,
+} from "../core/liveIndicatorVisibility";
 import { resolveSegment, type ResolvedSegment } from "../core/resolveSegment";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import { pulseRadialOutset } from "../draw/line";
@@ -1190,10 +1194,33 @@ function useLiveChartController({
   // point instead — otherwise both dots show at once. Applies on static charts
   // too, now that they're scrubbable.
   const selectionDotDuringScrub = scrubCfg !== null && selectionDotCfg !== null;
+  // While scrolled back the live tip is off-screen but dotX stays pinned to the
+  // plot's right edge, so the dot would mark a price that isn't in view — hide
+  // it (like the pulse). `badge.followViewEdge` opts back in: there the dot
+  // tracks the visible edge price, which IS in view. `hideLiveOnScrollBack:
+  // false` opts out of the hiding entirely.
+  const hideLiveOnScrollBack = resolveHideLiveOnScrollBack(
+    timeScroll,
+    badgeCfg?.followViewEdge ?? false,
+  );
   const liveDotOpacity = useDerivedValue(
     () =>
       reveal.dotOpacity.value *
-      (selectionDotDuringScrub && crosshairScrubActive.value ? 0 : 1),
+      (selectionDotDuringScrub && crosshairScrubActive.value ? 0 : 1) *
+      liveIndicatorScrollOpacity(
+        hideLiveOnScrollBack,
+        engine.viewEnd.value,
+      ),
+  );
+  // Same scrolled-back gating for the value line: it would draw a dashed line
+  // at the live value's Y — a price that isn't in the scrolled-back view.
+  const valueLineOpacity = useDerivedValue(
+    () =>
+      reveal.lineOpacity.value *
+      liveIndicatorScrollOpacity(
+        hideLiveOnScrollBack,
+        engine.viewEnd.value,
+      ),
   );
 
   // Fade the annotation overlays (markers + reference lines) out while scrubbing
@@ -1333,6 +1360,7 @@ function useLiveChartController({
     dotX,
     dotY,
     liveDotOpacity,
+    valueLineOpacity,
     overlayScrubFade,
     markerGroupOpacity,
     momentumSV,
@@ -1692,6 +1720,7 @@ function ChartStack({
     fontProp,
     badgeCfg,
     valueLineCfg,
+    valueLineOpacity,
     dotY,
     allRefLines,
     refLineKeys,
@@ -1757,7 +1786,7 @@ function ChartStack({
 
       {/* Value line + reference line (behind chart line) */}
       {valueLineCfg && (
-        <Group opacity={reveal.lineOpacity}>
+        <Group opacity={valueLineOpacity}>
           <ValueLineOverlay
             dotY={dotY}
             engine={engine}

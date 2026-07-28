@@ -966,6 +966,23 @@ describe("LiveChart", () => {
     });
   });
 
+  it("mounts the live indicators across time-scroll visibility configs", () => {
+    // Behavioral opacity coverage lives in liveIndicatorVisibility.test.ts.
+    // This integration check ensures each public config form wires into the
+    // complete chart without disrupting the mounted dot or value line.
+    for (const props of [
+      { timeScroll: true as const },
+      { timeScroll: { hideLiveOnScrollBack: false } },
+      { timeScroll: true as const, badge: { followViewEdge: true } },
+    ]) {
+      const screen = render(<Harness {...props} valueLine dot />);
+      const views = screen.UNSAFE_getAllByType(View);
+      fireEvent(views[0], "layout", {
+        nativeEvent: { layout: { width: 400, height: 200 } },
+      });
+    }
+  });
+
   it("composes the hold-to-scrub (one-finger drag) gesture", () => {
     // Default hold (no scrubHoldMs) and an explicit override both render cleanly.
     for (const ts of [

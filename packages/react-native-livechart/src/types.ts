@@ -1628,6 +1628,15 @@ export interface TimeScrollConfig {
    * if set, otherwise `500`.
    */
   scrubHoldMs?: number;
+  /**
+   * Hide the live dot and the dashed value line while scrolled back through
+   * history. Default `true`: both mark the LIVE price, which is off-screen once
+   * the window is frozen behind the live edge, so they'd point at a price that
+   * isn't in view. Set `false` to keep them visible while scrolled back.
+   * Ignored when `badge.followViewEdge` is on — there the dot tracks the visible
+   * edge price, which IS in view.
+   */
+  hideLiveOnScrollBack?: boolean;
 }
 
 /**
