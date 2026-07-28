@@ -135,6 +135,7 @@ interface TradeEvent {
 }
 
 interface ReferenceLine {
+  id?: string;                   // stable identity; supply when lines may reorder
   // Form A — horizontal line:
   value?: number;
   // Form B — horizontal band:
@@ -201,6 +202,9 @@ interface ReferenceLineRenderProps {
   edge: SharedValue<"above" | "in" | "below">; // for a directional off-axis chevron
   dragging: SharedValue<boolean>; // whether this line is currently being dragged
 }
+
+// `renderReferenceLine` replaces a tag in every state. `renderOffAxisReferenceLine`
+// keeps the built-in in-range tag and shows the custom element only for edge !== "in".
 
 interface ReferenceLineGroupingConfig {
   radius?: number;             // collapse lines whose value-Y are within this many px; default 18
@@ -541,8 +545,9 @@ interface TooltipRenderProps {
 ## ChartOverlayContext
 
 The price↔pixel / time↔pixel bridge passed to a custom
-[`renderOverlay`](/api-reference/livechart#renderoverlay). It hands you a single
-per-frame `scale` `SharedValue` plus pure mapping worklets.
+[`renderOverlay`](/api-reference/livechart#renderoverlay) on `LiveChart` or
+`LiveChartSeries`. It hands you a single per-frame `scale` `SharedValue` plus pure
+mapping worklets.
 
 ```ts
 interface ChartOverlayContext {

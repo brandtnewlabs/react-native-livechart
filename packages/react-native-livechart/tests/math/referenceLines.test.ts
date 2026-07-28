@@ -2,6 +2,7 @@ import {
   classifyReferenceEdge,
   collectReferenceValues,
   referenceLineForm,
+  referenceLineReactKeys,
   resolveReferenceBadge,
   resolveReferenceGroupBadge,
 } from "../../src/math/referenceLines";
@@ -236,6 +237,28 @@ describe("collectReferenceValues", () => {
 
   it("returns an empty array for no lines", () => {
     expect(collectReferenceValues([])).toEqual([]);
+  });
+});
+
+describe("referenceLineReactKeys", () => {
+  it("uses an explicit id as a stable key across reordering", () => {
+    const buy = { id: "buy", value: 98, label: "Buy" };
+    const sell = { id: "sell", value: 102, label: "Sell" };
+
+    expect(referenceLineReactKeys([buy, sell])).toEqual(["buy:0", "sell:0"]);
+    expect(referenceLineReactKeys([sell, buy])).toEqual(["sell:0", "buy:0"]);
+  });
+
+  it("derives distinct deterministic fallback keys for legacy lines", () => {
+    expect(
+      referenceLineReactKeys([
+        { value: 10, label: "Target", badge: true },
+        { value: 10, label: "Target", badge: true },
+      ]),
+    ).toEqual([
+      "{badge:true,label:\"Target\",value:10}:0",
+      "{badge:true,label:\"Target\",value:10}:1",
+    ]);
   });
 });
 

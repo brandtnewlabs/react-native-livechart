@@ -7,7 +7,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { LiveChartSeries } from "../src/components/LiveChartSeries";
 import { ReferenceLineOverlay } from "../src/components/ReferenceLineOverlay";
 import { DefaultSelectionDot } from "../src/components/SelectionDot";
-import type { SeriesConfig } from "../src/types";
+import type { ChartOverlayContext, SeriesConfig } from "../src/types";
 
 describe("LiveChartSeries", () => {
   it("opts into an opaque canvas and replaces destination-alpha masks", async () => {
@@ -159,6 +159,100 @@ describe("LiveChartSeries", () => {
       true,
       false,
     ]);
+  });
+
+  it("replaces only an off-axis tag while preserving the in-range fallback", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return (
+        <LiveChartSeries
+          series={series}
+          referenceLines={[
+            {
+              value: 99,
+              label: "Target",
+              excludeFromRange: true,
+              badge: { position: "left" },
+            },
+            { value: 11, label: "Built in", badge: { position: "center" } },
+          ]}
+          renderOffAxisReferenceLine={({ line }) =>
+            line.label === "Target" ? <View testID="series-off-axis-target" /> : null
+          }
+        />
+      );
+    }
+
+    const screen = render(<H />);
+    await waitFor(() =>
+      expect(screen.getByTestId("series-off-axis-target")).toBeTruthy(),
+    );
+
+    const badgePass = screen
+      .UNSAFE_getAllByType(ReferenceLineOverlay)
+      .filter((overlay) => overlay.props.badgeLayer);
+    expect(badgePass.map((overlay) => overlay.props.suppressTag)).toEqual([
+      false,
+      false,
+    ]);
+    expect(
+      badgePass.map((overlay) => overlay.props.suppressTagWhenOffAxis),
+    ).toEqual([true, false]);
+  });
+
+  it("passes a custom overlay the multi-series chart's resolved plot inset", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    let overlayContext: ChartOverlayContext | undefined;
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return (
+        <LiveChartSeries
+          series={series}
+          insets={{ left: 31, top: 7, right: 53, bottom: 19 }}
+          renderOverlay={(ctx) => {
+            overlayContext = ctx;
+            return <View testID="series-overlay" />;
+          }}
+        />
+      );
+    }
+
+    const screen = render(<H />);
+    await waitFor(() => expect(screen.getByTestId("series-overlay")).toBeTruthy());
+    // The canvas is unmeasured in the renderer fixture, but the bridge already
+    // carries the resolved per-side inset. `useChartOverlayContext` separately
+    // verifies the same bridge against a nonzero canvas.
+    expect(overlayContext?.scale.get().plot).toEqual({
+      left: 31,
+      top: 7,
+      right: -53,
+      bottom: -19,
+      width: 0,
+      height: 0,
+    });
   });
 
   it("renders with per-series value lines", async () => {

@@ -63,6 +63,11 @@ export type BadgeVariant = "default" | "minimal";
  * - **Form C** — vertical time band between `from` and `to` (unix seconds).
  */
 export interface ReferenceLine {
+  /**
+   * Stable identifier for this line. Supply a unique value when `referenceLines`
+   * may be reordered so the chart preserves the line's rendered identity.
+   */
+  id?: string;
   /** Form A — the Y-axis value where the horizontal line is drawn. */
   value?: number;
   /** Form B — horizontal band lower Y bound (paired with `valueTo`). */
@@ -254,14 +259,16 @@ export interface ReferenceLineBadgeConfig extends BadgeStyleConfig {
 
 /**
  * Context passed to a custom {@link LiveChartProps.renderReferenceLine} or
- * {@link LiveChartSeriesProps.renderReferenceLine}. The chart floats the element
- * you return over the canvas and pins it to the line's value on
- * the UI thread (vertically centered on the line, horizontally at the badge /
- * label position) — so it tracks the rescaling axis and any drag smoothly without
- * JS re-renders, just like {@link TooltipRenderProps}. Replaces the built-in pill
- * badge / gutter label for that line; return `null`/`undefined` to keep the
- * built-in. Bind the SharedValues to animated text (e.g. an animated `TextInput`)
- * for the value to update on the UI thread too.
+ * {@link LiveChartProps.renderOffAxisReferenceLine} (and their
+ * `LiveChartSeries` counterparts). The chart floats the element you return over
+ * the canvas and pins it to the line's value on the UI thread (vertically centered
+ * on the line, horizontally at the badge / label position) — so it tracks the
+ * rescaling axis and any drag smoothly without JS re-renders, just like
+ * {@link TooltipRenderProps}. `renderReferenceLine` replaces the built-in pill /
+ * gutter label in every state; `renderOffAxisReferenceLine` replaces it only while
+ * the value is pinned above or below the visible plot. Bind the SharedValues to
+ * animated text (e.g. an animated `TextInput`) for the value to update on the UI
+ * thread too.
  */
 export interface ReferenceLineRenderProps {
   /** The reference line being rendered. */
@@ -965,7 +972,8 @@ export interface ChartScale {
 
 /**
  * The price↔pixel / time↔pixel bridge handed to a custom
- * {@link LiveChartProps.renderOverlay}.
+ * {@link LiveChartProps.renderOverlay} or
+ * {@link LiveChartSeriesProps.renderOverlay}.
  *
  * **Easiest path — the `usePriceY` / `useTimeX` hooks.** They project a price / time
  * to a `SharedValue<number>` that tracks the live axis for you; just read it in
@@ -2161,9 +2169,25 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * pins it to the line's value on the UI thread (see {@link ReferenceLineRenderProps}),
    * so it tracks the rescaling axis and any drag without JS re-renders. Called per
    * Form-A line; return `null`/`undefined` to keep that line's built-in tag. Works
-   * with `badge: false` too (replace the plain gutter label). Single-series only.
+   * with `badge: false` too (replace the plain gutter label). For a left- or
+   * right-pinned `badge`, the chart retains the dashed connector and measures the
+   * custom tag so the connector starts at its outer edge. Single-series only.
    */
   renderReferenceLine?: (
+    ctx: ReferenceLineRenderProps,
+  ) => ReactElement | null | undefined;
+  /**
+   * Render only a Form-A line's **off-axis** tag as a custom React Native element.
+   * The chart keeps the standard Skia tag / gutter label while the value is in
+   * range, then switches to this element when it pins above or below the plot.
+   * With a left- or right-pinned `badge` (or legacy `offAxisBadge`), its dashed
+   * connector stays native and begins after the measured custom tag. Return
+   * `null`/`undefined` to opt a line out based on its static `line` / `index`;
+   * use the `edge` SharedValue inside the returned element to animate a caret.
+   * `renderReferenceLine` takes precedence if both callbacks handle one line.
+   * Single-series only.
+   */
+  renderOffAxisReferenceLine?: (
     ctx: ReferenceLineRenderProps,
   ) => ReactElement | null | undefined;
   /**
@@ -2171,9 +2195,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * single count handle (e.g. a stack of working orders at adjacent prices reads
    * as one "×3" tag). `true` = defaults, `false`/omitted = off, or pass a
    * {@link ReferenceLineGroupingConfig} to tune the proximity radius. Lines a
-   * {@link LiveChartProps.renderReferenceLine} owns are excluded (their custom tag
-   * draws itself), so the count reflects only collapsed built-in tags. Single-series
-   * only. Default off.
+   * {@link LiveChartProps.renderReferenceLine} or
+   * {@link LiveChartProps.renderOffAxisReferenceLine} owns are excluded (their
+   * custom tag draws itself), so the count reflects only collapsed built-in tags.
+   * Single-series only. Default off.
    */
   referenceLineGrouping?: boolean | ReferenceLineGroupingConfig;
   /**
@@ -2196,15 +2221,36 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
   /** Array of series definitions. Must be a SharedValue for UI-thread reads. */
   series: SharedValue<SeriesConfig[]>;
   /**
+   * Render a custom overlay floated over the canvas, handed the live
+   * price↔pixel / time↔pixel {@link ChartOverlayContext}. Use its `scale` snapshot
+   * and mapping worklets to position React Native UI against this chart's resolved
+   * plot bounds (including any axis or explicit inset). The tree mounts full-bleed
+   * with `pointerEvents="box-none"`; return `null`/`undefined` for no overlay.
+   */
+  renderOverlay?: (ctx: ChartOverlayContext) => ReactElement | null | undefined;
+  /**
    * Render a Form-A reference line's tag as a custom **React Native** element
    * instead of the built-in Skia pill / gutter label. The chart pins the returned
    * element to the line's live Y position on the UI thread (see
    * {@link ReferenceLineRenderProps}), including off-axis edge pinning. Return
    * `null`/`undefined` to keep that line's built-in tag. The line stroke always
-   * remains visible, and `badge.position` / `labelPosition` controls the custom
-   * tag's left, center, or right anchor.
+   * remains visible; a left- or right-pinned badge also keeps its dashed connector,
+   * starting after the measured custom tag. `badge.position` / `labelPosition`
+   * controls the custom tag's left, center, or right anchor.
    */
   renderReferenceLine?: (
+    ctx: ReferenceLineRenderProps,
+  ) => ReactElement | null | undefined;
+  /**
+   * Render only a Form-A line's **off-axis** tag as a custom React Native element.
+   * The normal in-range Skia tag / gutter label stays visible, while an edge-pinned
+   * custom tag replaces it above or below the plot. A left- or right-pinned
+   * `badge` (or legacy `offAxisBadge`) retains its native dashed connector, measured
+   * against the custom tag. Return `null`/`undefined` to opt a static `line` /
+   * `index` out; use the `edge` SharedValue inside the returned element to animate
+   * its caret. `renderReferenceLine` takes precedence for the same line.
+   */
+  renderOffAxisReferenceLine?: (
     ctx: ReferenceLineRenderProps,
   ) => ReactElement | null | undefined;
   /** Called when a series toggle chip is tapped. */

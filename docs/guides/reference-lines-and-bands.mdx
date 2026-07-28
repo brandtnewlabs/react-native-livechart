@@ -35,6 +35,8 @@ description: "Draw horizontal lines, value/time bands, pill badges, and draggabl
 
 Lines support labels, dashes (`intervals`), and excluding their value from the axis range
 (`excludeFromRange`). See the [types reference](/api-reference/types) for every field.
+When the array can reorder (for example, a dynamic order book), give each line a unique `id`
+so its rendered identity follows that line instead of its array position.
 
 ## Full-width lines (`fullWidth`)
 
@@ -132,6 +134,9 @@ renderReferenceLine={(ctx) =>
 
 `ctx` ([`ReferenceLineRenderProps`](/api-reference/types#annotations)) also carries `y`, `inRange`,
 `edge` (`"above"` / `"in"` / `"below"`, for a directional chevron), and `dragging` as SharedValues.
+For a left- or right-pinned `badge`, the built-in dashed connector stays in place
+behind the native tag and starts after the tag's measured edge; a center badge has
+no connector by design.
 
 For example, a multi-series market chart can use the app's native icon and localized target copy
 while leaving any other line on the built-in renderer:
@@ -154,8 +159,41 @@ while leaving any other line on the built-in renderer:
 />
 ```
 
-The custom target owns only its tag: its dashed line still draws, while the midpoint keeps its
+The custom target owns only its tag: its dashed connector still draws from the
+native tag's measured edge to the plot boundary, while the midpoint keeps its
 built-in badge. The React Native tag is layered above the left-edge fade and scrub overlay.
+
+## Off-axis-only custom tags (`renderOffAxisReferenceLine`)
+
+Use `renderOffAxisReferenceLine` when the regular label should remain in range but an
+edge-pinned target needs custom chrome. The chart switches the two tags on the UI thread:
+the built-in tag remains in range, and the custom element appears only above or below the
+plot. Give the line a left- or right-pinned `badge` (or legacy `offAxisBadge`) to retain
+the native dashed connector; it begins after the custom tag's measured edge.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  referenceLines={[
+    {
+      id: "take-profit",
+      value: 142.5,
+      label: "Target",
+      excludeFromRange: true,
+      badge: { position: "left" },
+    },
+  ]}
+  renderOffAxisReferenceLine={({ line, edge }) => (
+    <OffAxisTargetTag label={line.label} edge={edge} />
+  )}
+/>
+```
+
+`OffAxisTargetTag` stays mounted so it can read the live `edge` SharedValue in an animated
+style and flip its caret between `"above"` and `"below"`. Return `null` from the callback
+only to opt a static `line` / `index` out; do not branch on `edge.get()` while rendering the
+callback itself. `renderReferenceLine` takes precedence if both callbacks handle one line.
 
 ## Grouping near-value lines (`referenceLineGrouping`)
 
@@ -175,8 +213,8 @@ referenceLineGrouping={{
 
 The clustered lines' individual tags are suppressed and replaced by one "count" pill at the
 cluster's center; the lines themselves still draw. Lines you render with `renderReferenceLine`
-are excluded from grouping (their custom tag draws itself), so the count reflects only collapsed
-built-in tags. The count pill takes the same style/shape config as a per-line badge
+or `renderOffAxisReferenceLine` are excluded from grouping (their custom tag draws itself), so
+the count reflects only collapsed built-in tags. The count pill takes the same style/shape config as a per-line badge
 ([`ReferenceLineBadgeConfig`](/api-reference/types#annotations)) via `badge`, plus a `format` fn
 for the count label.
 
