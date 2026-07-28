@@ -61,7 +61,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   always ends at the historical window's visible-edge value instead of extending to the
   off-screen live price; badge and indicator options no longer alter line geometry. A
   follow-edge badge's momentum color is also derived at that historical edge, so incoming
-  live ticks no longer recolor a stationary historical badge.
+  live ticks no longer recolor a stationary historical badge. Dragging toward the future
+  while already at the live edge also stays in follow mode throughout the gesture, avoiding
+  a transient floating-axis gutter collapse that drew chart content beneath the Y-axis.
 
 ### Documentation
 
