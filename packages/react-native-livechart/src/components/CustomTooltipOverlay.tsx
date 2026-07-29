@@ -47,6 +47,7 @@ export function CustomTooltipOverlay({
   padding,
   placement,
   margin = 8,
+  crosshairFade = true,
   lineTop,
   scrubDotY,
 }: {
@@ -64,6 +65,8 @@ export function CustomTooltipOverlay({
   placement: "side" | "top" | "bottom" | "point";
   /** Gap (px) between the pill and the plot edge it's pinned to. Default 8. */
   margin?: number;
+  /** Fade the tooltip near the live edge. Default true. */
+  crosshairFade?: boolean;
   /** When `placement` is `"top"`, the overlay publishes the label's bottom edge
    *  (canvas Y) here so {@link CrosshairOverlay} can stop the crosshair line at
    *  the label instead of running through it; -1 when not top-pinned/active. */
@@ -154,7 +157,7 @@ export function CustomTooltipOverlay({
     }
 
     return {
-      opacity: active ? crosshairOpacity.get() : 0,
+      opacity: active ? (crosshairFade ? crosshairOpacity.get() : 1) : 0,
       transform: [{ translateX: x }, { translateY: y }],
     };
   });

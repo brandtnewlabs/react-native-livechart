@@ -463,6 +463,7 @@ function useLiveChartSeriesController({
           maxTime: tooltipMaxTime,
         }
       : undefined,
+    scrubCfg?.clampToPlot ?? false,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -1075,7 +1076,12 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                   seriesTooltipCfg?.guideColor ??
                   scrubCfg.crosshairLineColor
                 }
-                crosshairLineWidth={seriesTooltipCfg?.guideWidth}
+                crosshairStrokeWidth={
+                  seriesTooltipCfg?.guideWidth ??
+                  scrubCfg.crosshairStrokeWidth
+                }
+                crosshairOvershoot={scrubCfg.crosshairOvershoot}
+                crosshairFade={scrubCfg.crosshairFade}
                 crosshairDash={
                   seriesTooltipCfg
                     ? seriesTooltipCfg.guideDashPattern

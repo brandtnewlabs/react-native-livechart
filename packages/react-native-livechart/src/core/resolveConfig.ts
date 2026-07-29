@@ -155,6 +155,12 @@ export interface ResolvedScrubConfig {
   dimOpacity: number;
   /** undefined → palette.crosshairLine */
   crosshairLineColor: string | undefined;
+  /** Vertical crosshair line width in px. */
+  crosshairStrokeWidth: number;
+  /** Extension past the plot's top and bottom edges in px. */
+  crosshairOvershoot: number;
+  /** Fade the crosshair near the live edge. */
+  crosshairFade: boolean;
   /** Dash intervals `[on, off, …]` for the crosshair line; undefined → solid. */
   crosshairDash: number[] | undefined;
   /** undefined → palette.crosshairDim */
@@ -179,6 +185,8 @@ export interface ResolvedScrubConfig {
   panGestureDelay: number;
   /** Fade markers + reference lines out while scrubbing. */
   hideOverlaysOnScrub: boolean;
+  /** Reject outside plain-scrub starts and clamp active scrub X to the plot. */
+  clampToPlot: boolean;
 }
 
 export interface ResolvedPerSeriesTooltipConfig {
@@ -670,6 +678,9 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   seriesTooltip: null,
   dimOpacity: 0.3,
   crosshairLineColor: undefined,
+  crosshairStrokeWidth: 1,
+  crosshairOvershoot: 0,
+  crosshairFade: true,
   crosshairDash: undefined,
   crosshairDimColor: undefined,
   tooltipBackground: undefined,
@@ -682,6 +693,7 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltipShowTime: true,
   panGestureDelay: 0,
   hideOverlaysOnScrub: false,
+  clampToPlot: false,
 };
 
 const PER_SERIES_TOOLTIP_DEFAULTS: ResolvedPerSeriesTooltipConfig = {
@@ -749,6 +761,7 @@ export function resolveScrub(
     const seriesTooltip =
       typeof prop === "object" ? prop.seriesTooltip : undefined;
     resolved.seriesTooltip = resolvePerSeriesTooltip(seriesTooltip);
+    resolved.crosshairOvershoot = Math.max(0, resolved.crosshairOvershoot);
   }
   return resolved;
 }
