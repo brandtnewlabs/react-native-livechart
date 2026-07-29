@@ -603,6 +603,7 @@ describe("CrosshairOverlay", () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
       const tooltipLayout = useSharedValue<TooltipLayout>({
         x: 110,
         y: 20,
@@ -625,6 +626,7 @@ describe("CrosshairOverlay", () => {
           padding={DEFAULT_PADDING}
           palette={palette}
           font={font}
+          scrubActive={scrubActive}
           showTooltip
           tooltipShowValue={false}
           tooltipShowTime={false}
