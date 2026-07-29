@@ -6,7 +6,12 @@ import { resolveTheme } from "../../src/theme";
 import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 import { resolveScrubAction } from "../../src/core/resolveConfig";
-import { computeScrubDotY } from "../../src/hooks/crosshairShared";
+import {
+  clampPlotX,
+  computeScrubDotY,
+  startPlainScrub,
+  updatePlainScrub,
+} from "../../src/hooks/crosshairShared";
 import {
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
@@ -19,26 +24,59 @@ import {
 } from "../../src/hooks/useCrosshair";
 
 jest.mock("react-native-gesture-handler", () => {
-  const makeGesture = () => {
-    const g: Record<string, unknown> = { config: {} };
+  let lastPanCalls: Record<string, unknown[]>;
+  let lastTapCalls: Record<string, unknown[]>;
+  const makeGesture = (
+    capture?: (calls: Record<string, unknown[]>) => void,
+  ) => {
+    const calls: Record<string, unknown[]> = {};
+    capture?.(calls);
+    const g: Record<string, unknown> = { config: calls };
     const proxy: typeof g = new Proxy(g, {
       get: (target, key) => {
         if (key in target) return target[key as string];
         return (...args: unknown[]) => {
-          (target.config as Record<string, unknown[]>)[String(key)] = args;
+          calls[String(key)] = args;
           return proxy;
         };
       },
     });
     return proxy;
   };
-  return { Gesture: { Pan: makeGesture, Tap: makeGesture } };
+  return {
+    Gesture: {
+      Pan: () => makeGesture((calls) => {
+        lastPanCalls = calls;
+      }),
+      Tap: () => makeGesture((calls) => {
+        lastTapCalls = calls;
+      }),
+    },
+    __getLastPanCalls: () => lastPanCalls,
+    __getLastTapCalls: () => lastTapCalls,
+  };
 });
 
 type GestureConfig = Record<string, unknown[]>;
 
 function getGestureConfig(gesture: unknown): GestureConfig {
   return (gesture as { config: GestureConfig }).config;
+}
+
+function getLastPanCalls() {
+  return (
+    jest.requireMock("react-native-gesture-handler") as {
+      __getLastPanCalls: () => Record<string, unknown[]>;
+    }
+  ).__getLastPanCalls();
+}
+
+function getLastTapCalls() {
+  return (
+    jest.requireMock("react-native-gesture-handler") as {
+      __getLastTapCalls: () => Record<string, unknown[]>;
+    }
+  ).__getLastTapCalls();
 }
 
 const palette = resolveTheme("#3b82f6", "dark");
@@ -105,6 +143,90 @@ describe("computeScrubTime", () => {
   it("handles scrubX before the left edge (extrapolates)", () => {
     const result = computeScrubTime(true, 0, padding, 400, 1000, 30);
     expect(result).toBeLessThan(970);
+  });
+});
+
+describe("clampPlotX", () => {
+  it("clamps to the left and right plot edges", () => {
+    expect(clampPlotX(-20, padding.left, 400, padding.right)).toBe(padding.left);
+    expect(clampPlotX(390, padding.left, 400, padding.right)).toBe(
+      400 - padding.right,
+    );
+  });
+
+  it("preserves an X inside the plot", () => {
+    expect(clampPlotX(100, padding.left, 400, padding.right)).toBe(100);
+  });
+});
+
+describe("plain scrub gesture bounds", () => {
+  const mutable = <T,>(initial: T) => {
+    let value = initial;
+    return {
+      get: () => value,
+      set: (next: T) => {
+        value = next;
+      },
+    };
+  };
+
+  it("preserves legacy outside coordinates when clamping is disabled", () => {
+    const scrubX = mutable(-1);
+    const scrubActive = mutable(false);
+    const gestureStarted = mutable(false);
+
+    startPlainScrub(
+      0,
+      padding,
+      400,
+      false,
+      scrubX,
+      scrubActive,
+      gestureStarted,
+    );
+    expect(scrubX.get()).toBe(0);
+    expect(scrubActive.get()).toBe(true);
+    expect(gestureStarted.get()).toBe(true);
+  });
+
+  it("clamps an activation outside after its touch-down was accepted", () => {
+    const scrubX = mutable(-1);
+    const scrubActive = mutable(false);
+    const gestureStarted = mutable(false);
+
+    startPlainScrub(
+      390,
+      padding,
+      400,
+      true,
+      scrubX,
+      scrubActive,
+      gestureStarted,
+    );
+    expect(scrubX.get()).toBe(400 - padding.right);
+    expect(scrubActive.get()).toBe(true);
+    expect(gestureStarted.get()).toBe(true);
+  });
+
+  it("clamps a scrub started inside to both plot edges", () => {
+    const scrubX = mutable(-1);
+    const scrubActive = mutable(false);
+    const gestureStarted = mutable(false);
+
+    startPlainScrub(
+      100,
+      padding,
+      400,
+      true,
+      scrubX,
+      scrubActive,
+      gestureStarted,
+    );
+    updatePlainScrub(-20, padding, 400, true, scrubX, scrubActive);
+    expect(scrubX.get()).toBe(padding.left);
+
+    updatePlainScrub(390, padding, 400, true, scrubX, scrubActive);
+    expect(scrubX.get()).toBe(400 - padding.right);
   });
 });
 
@@ -919,6 +1041,43 @@ describe("useCrosshair (hook)", () => {
     },
   );
 
+  it("combines horizontal plot and bottom-band recognition bounds", () => {
+    const engine = makeEngine();
+    renderHook(() =>
+      useCrosshair(
+        engine,
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+        undefined,
+        undefined,
+        0,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "side",
+        true,
+        true,
+        8,
+        24,
+        undefined,
+        true,
+      ),
+    );
+
+    expect(getLastPanCalls().hitSlop?.[0]).toEqual({
+      left: -padding.left,
+      right: -padding.right,
+      bottom: -24,
+    });
+  });
+
   it("only configures a long-press modifier for a positive delay", () => {
     const engine = makeEngine();
     const { result } = renderHook(() =>
@@ -989,6 +1148,40 @@ describe("useCrosshair (hook)", () => {
     expect(config.failOffsetY).toBeUndefined();
     // The callback fires only from the UI-thread tap worklet (istanbul-ignored).
     expect(onScrubAction).not.toHaveBeenCalled();
+  });
+
+  it("keeps action Pan and Tap gutter-accessible while excluding the bottom band", () => {
+    const engine = makeEngine();
+    renderHook(() =>
+      useCrosshair(
+        engine,
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+        undefined,
+        undefined,
+        0,
+        undefined,
+        undefined,
+        resolveScrubAction(true),
+        undefined,
+        undefined,
+        undefined,
+        "side",
+        true,
+        true,
+        8,
+        24,
+        undefined,
+        true,
+      ),
+    );
+
+    expect(getLastPanCalls().hitSlop?.[0]).toEqual({ bottom: -24 });
+    expect(getLastTapCalls().hitSlop?.[0]).toEqual({ bottom: -24 });
   });
 });
 

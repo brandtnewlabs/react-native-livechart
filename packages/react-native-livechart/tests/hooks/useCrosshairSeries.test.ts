@@ -19,26 +19,40 @@ import { useCrosshairSeries } from "../../src/hooks/useCrosshairSeries";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 jest.mock("react-native-gesture-handler", () => {
+  let lastPanCalls: Record<string, unknown[]>;
   const makeGesture = () => {
-    const g: Record<string, unknown> = { config: {} };
+    const calls: Record<string, unknown[]> = {};
+    lastPanCalls = calls;
+    const g: Record<string, unknown> = { config: calls };
     const proxy: typeof g = new Proxy(g, {
       get: (target, key) => {
         if (key in target) return target[key as string];
         return (...args: unknown[]) => {
-          (target.config as Record<string, unknown[]>)[String(key)] = args;
+          calls[String(key)] = args;
           return proxy;
         };
       },
     });
     return proxy;
   };
-  return { Gesture: { Pan: makeGesture } };
+  return {
+    Gesture: { Pan: makeGesture },
+    __getLastPanCalls: () => lastPanCalls,
+  };
 });
 
 type GestureConfig = Record<string, unknown[]>;
 
 function getGestureConfig(gesture: unknown): GestureConfig {
   return (gesture as { config: GestureConfig }).config;
+}
+
+function getLastPanCalls() {
+  return (
+    jest.requireMock("react-native-gesture-handler") as {
+      __getLastPanCalls: () => Record<string, unknown[]>;
+    }
+  ).__getLastPanCalls();
 }
 
 const font = {
@@ -593,6 +607,29 @@ describe("useCrosshairSeries (hook)", () => {
       });
     },
   );
+
+  it("restricts scrub recognition to horizontal plot bounds", () => {
+    const engine = makeEngine();
+    renderHook(() =>
+      useCrosshairSeries(
+        engine,
+        padding,
+        true,
+        undefined,
+        0,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        true,
+      ),
+    );
+
+    expect(getLastPanCalls().hitSlop?.[0]).toEqual({
+      left: -padding.left,
+      right: -padding.right,
+    });
+  });
 
   it("only configures a long-press modifier for a positive delay", () => {
     const engine = makeEngine({

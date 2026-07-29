@@ -181,6 +181,8 @@ export interface ResolvedScrubConfig {
   panGestureDelay: number;
   /** Fade markers + reference lines out while scrubbing. */
   hideOverlaysOnScrub: boolean;
+  /** Reject outside plain-scrub starts and clamp active scrub X to the plot. */
+  clampToPlot: boolean;
 }
 
 export interface ResolvedPerSeriesTooltipConfig {
@@ -685,6 +687,7 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltipShowTime: true,
   panGestureDelay: 0,
   hideOverlaysOnScrub: false,
+  clampToPlot: false,
 };
 
 const PER_SERIES_TOOLTIP_DEFAULTS: ResolvedPerSeriesTooltipConfig = {

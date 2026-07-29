@@ -165,6 +165,7 @@ export default function ScrubbingScreen() {
   const [dimOpacity, setDimOpacity] = useState(0.3);
   const [dotMode, setDotMode] = useState<DotMode>("default");
   const [holdToScrub, setHoldToScrub] = useState(false);
+  const [clampToPlot, setClampToPlot] = useState(true);
   // Fade markers + reference lines out while scrubbing (scrub.hideOverlaysOnScrub).
   const [hideOverlays, setHideOverlays] = useState(true);
   // onGestureStart/onGestureEnd are JS-thread callbacks, so plain React state
@@ -238,6 +239,7 @@ export default function ScrubbingScreen() {
           tooltip: scrubMode !== "noTooltip",
           dimOpacity,
           panGestureDelay,
+          clampToPlot,
           hideOverlaysOnScrub: hideOverlays,
           // Tooltip layout knobs — apply to the built-in pill and the custom
           // render alike (placement + margin position either one).
@@ -419,6 +421,11 @@ export default function ScrubbingScreen() {
           label="Hold to scrub (250ms)"
           value={holdToScrub}
           onChange={setHoldToScrub}
+        />
+        <ToggleChip
+          label="Clamp to plot"
+          value={clampToPlot}
+          onChange={setClampToPlot}
         />
       </ControlRow>
       <ControlRow label="Overlays">

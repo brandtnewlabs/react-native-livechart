@@ -20,6 +20,7 @@ import type {
   ScrubPoint,
 } from "../types";
 import {
+  clampPlotX,
   computeActionBadgeLayout,
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
@@ -32,10 +33,13 @@ import {
   HIDDEN_TIME_BADGE,
   HIDDEN_TOOLTIP,
   pointInRect,
+  resolveScrubHitSlop,
   SCRUB_ACTIVATE_X_PX,
   SCRUB_FAIL_Y_PX,
   snapPrice,
+  startPlainScrub,
   type CrosshairState,
+  updatePlainScrub,
 } from "./crosshairShared";
 import {
   delayedPanTouchCancelled,
@@ -63,18 +67,6 @@ const SCRUB_ACTION_TAP_SLOP = 10;
  * it. Overridden by an explicit `scrub.panGestureDelay`.
  */
 const SCRUB_ACTION_PRESS_HOLD_MS = 200;
-
-/** Clamp an X pixel to the plot's horizontal bounds. */
-/* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
-function clampPlotX(
-  x: number,
-  padLeft: number,
-  canvasWidth: number,
-  padRight: number,
-): number {
-  "worklet";
-  return Math.min(canvasWidth - padRight, Math.max(padLeft, x));
-}
 
 /** Clamp a Y pixel to the plot's vertical bounds. */
 /* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
@@ -159,6 +151,12 @@ export function useCrosshair(
    * mature into a scrub (see `delayedPanGuard.shouldStartDelayedPan`).
    */
   scrollActive?: SharedValue<boolean>,
+  /**
+   * Reject plain-scrub starts beyond either horizontal plot edge and clamp
+   * active drags to those bounds. Scrub-action behavior is unchanged.
+   * Default `false`.
+   */
+  clampToPlot = false,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -195,6 +193,7 @@ export function useCrosshair(
   // tracks the price as the axis rescales instead of drifting under a fixed pixel.
   const lockPriceValue = useSharedValue<number | null>(null);
   const hasScrubAction = scrubAction != null;
+  const clampPlainScrubToPlot = clampToPlot && !hasScrubAction;
   const hasOnScrubAction = onScrubAction != null;
   const dismissOnTapOutside = scrubAction?.dismissOnTapOutside ?? false;
   const dismissOnAction = scrubAction?.dismissOnAction ?? false;
@@ -618,9 +617,15 @@ export function useCrosshair(
         // also keeps a follow-on drag from showing a crosshair — no `onUpdate`
         // guard needed. (Plain-scrub counterpart of the scrub-action tap defer.)
         if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
-        scrubX.set(e.x);
-        scrubActive.set(true);
-        gestureStarted.set(true);
+        startPlainScrub(
+          e.x,
+          padding,
+          engine.canvasWidth.get(),
+          clampPlainScrubToPlot,
+          scrubX,
+          scrubActive,
+          gestureStarted,
+        );
         if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
       },
     )
@@ -647,7 +652,14 @@ export function useCrosshair(
           }
           return;
         }
-        scrubX.set(e.x);
+        updatePlainScrub(
+          e.x,
+          padding,
+          engine.canvasWidth.get(),
+          clampPlainScrubToPlot,
+          scrubX,
+          scrubActive,
+        );
       },
     )
     .onFinalize(
@@ -686,13 +698,15 @@ export function useCrosshair(
       .failOffsetY([-SCRUB_FAIL_Y_PX, SCRUB_FAIL_Y_PX]);
   }
 
-  // Axis-drag time-scroll: carve the bottom "time ruler" band out of the scrub's
-  // hit area so a drag starting there scrolls (the pan-scroll gesture owns it)
-  // and never trips the crosshair. `shouldCancelWhenOutside(false)` above keeps a
-  // scrub that *started* in the plot tracking on into the band.
-  if (scrubBottomExclude > 0) {
-    gesture = gesture.hitSlop({ bottom: -scrubBottomExclude });
-  }
+  // Restrict recognition by touch-down position. This rejects before ACTIVE,
+  // leaving outside starts to competing/parent gestures. Once accepted,
+  // `shouldCancelWhenOutside(false)` keeps tracking beyond these bounds.
+  const scrubHitSlop = resolveScrubHitSlop(
+    padding,
+    clampPlainScrubToPlot,
+    scrubBottomExclude,
+  );
+  if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);
 
   // Tap: place/move the reticle, press the action badge, or dismiss the lock.
   // Composed ahead of the pan by the controller, so a tap is never swallowed.
@@ -767,11 +781,15 @@ export function useCrosshair(
         .maxDistance(SCRUB_ACTION_TAP_SLOP)
         .onEnd(handleActionTap)
     : undefined;
-  // Keep the axis-drag band scroll-only for taps too — a tap there shouldn't
-  // drop an order-ticket reticle.
-  if (tapGesture && scrubBottomExclude > 0) {
-    tapGesture = tapGesture.hitSlop({ bottom: -scrubBottomExclude });
-  }
+  // Keep the bottom axis scroll-only. Do not apply horizontal plot bounds here:
+  // the action badge is intentionally tappable in the right gutter.
+  const tapHitSlop = resolveScrubHitSlop(
+    padding,
+    false,
+    scrubBottomExclude,
+  );
+  if (tapGesture && tapHitSlop)
+    tapGesture = tapGesture.hitSlop(tapHitSlop);
 
   return {
     scrubX,

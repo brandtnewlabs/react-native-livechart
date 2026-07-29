@@ -22,9 +22,12 @@ import {
   computeScrubDotY,
   computeScrubTime,
   HIDDEN_TOOLTIP,
+  resolveScrubHitSlop,
   SCRUB_ACTIVATE_X_PX,
   SCRUB_FAIL_Y_PX,
+  startPlainScrub,
   type CrosshairState,
+  updatePlainScrub,
 } from "./crosshairShared";
 import {
   delayedPanTouchCancelled,
@@ -65,6 +68,11 @@ export function useCrosshairSeries(
    */
   scrollActive?: SharedValue<boolean>,
   tooltip?: CrosshairSeriesTooltipOptions,
+  /**
+   * Reject scrub starts beyond either horizontal plot edge and clamp active
+   * drags to those bounds. Default `false`.
+   */
+  clampToPlot = false,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -290,9 +298,15 @@ export function useCrosshairSeries(
         )
           return;
         if (!enabled) return;
-        scrubX.set(e.x);
-        scrubActive.set(true);
-        gestureStarted.set(true);
+        startPlainScrub(
+          e.x,
+          padding,
+          engine.canvasWidth.get(),
+          clampToPlot,
+          scrubX,
+          scrubActive,
+          gestureStarted,
+        );
         if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
       },
     )
@@ -300,7 +314,14 @@ export function useCrosshairSeries(
       /* istanbul ignore next */ (e) => {
         "worklet";
         if (!enabled) return;
-        scrubX.set(e.x);
+        updatePlainScrub(
+          e.x,
+          padding,
+          engine.canvasWidth.get(),
+          clampToPlot,
+          scrubX,
+          scrubActive,
+        );
       },
     )
     .onFinalize(
@@ -325,6 +346,12 @@ export function useCrosshairSeries(
   gesture = gesture
     .activeOffsetX([-SCRUB_ACTIVATE_X_PX, SCRUB_ACTIVATE_X_PX])
     .failOffsetY([-SCRUB_FAIL_Y_PX, SCRUB_FAIL_Y_PX]);
+
+  // Gate by touch-down position so outside starts fail before activation and
+  // remain available to competing/parent gestures. Accepted pans keep tracking
+  // outside because `shouldCancelWhenOutside(false)` is set above.
+  const scrubHitSlop = resolveScrubHitSlop(padding, clampToPlot);
+  if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);
 
   return {
     scrubX,

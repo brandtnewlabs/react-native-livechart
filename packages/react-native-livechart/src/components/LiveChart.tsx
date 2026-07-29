@@ -1066,6 +1066,7 @@ function useLiveChartController({
       ? Math.max(effectivePadding.bottom, AXIS_GRAB_MIN_PX)
       : 0,
     scrollActive,
+    scrubCfg?.clampToPlot ?? false,
   );
 
   // Capture only the shared value in the worklets below. Referencing

@@ -531,6 +531,7 @@ describe("resolveScrub", () => {
     tooltipShowTime: true,
     panGestureDelay: 0,
     hideOverlaysOnScrub: false,
+    clampToPlot: false,
   };
 
   it("returns null for undefined", () => {
@@ -599,6 +600,11 @@ describe("resolveScrub", () => {
 
   it("clamps negative crosshair overshoot to zero", () => {
     expect(resolveScrub({ crosshairOvershoot: -6 })?.crosshairOvershoot).toBe(0);
+  });
+
+  it("defaults clampToPlot to false and carries it when set", () => {
+    expect(resolveScrub(true)?.clampToPlot).toBe(false);
+    expect(resolveScrub({ clampToPlot: true })?.clampToPlot).toBe(true);
   });
 
   it("carries a custom tooltipBorderRadius", () => {
