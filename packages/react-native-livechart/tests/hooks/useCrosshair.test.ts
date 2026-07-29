@@ -1175,6 +1175,7 @@ describe("useCrosshair (hook)", () => {
         true,
         8,
         24,
+        undefined,
         true,
       ),
     );
