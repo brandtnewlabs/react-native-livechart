@@ -4,6 +4,7 @@ import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { LiveChart } from "../src/components/LiveChart";
+import { CrosshairOverlay } from "../src/components/CrosshairOverlay";
 import { ReferenceLineOverlay } from "../src/components/ReferenceLineOverlay";
 import * as badgeHooks from "../src/hooks/useBadge";
 import * as candlePathHooks from "../src/hooks/useCandlePaths";
@@ -548,6 +549,17 @@ describe("LiveChart", () => {
     fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
+  });
+
+  it("forwards configurable crosshair fade distance and line cap", () => {
+    const screen = render(
+      <Harness
+        scrub={{ crosshairFadeDistance: 12, crosshairLineCap: "square" }}
+      />,
+    );
+    const crosshair = screen.UNSAFE_getByType(CrosshairOverlay);
+    expect(crosshair.props.crosshairFadeDistance).toBe(12);
+    expect(crosshair.props.crosshairLineCap).toBe("square");
   });
 
   it("accepts config objects for badge, grid, scrub, valueLine", () => {

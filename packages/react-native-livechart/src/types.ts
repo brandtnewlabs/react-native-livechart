@@ -859,6 +859,18 @@ export interface ScrubConfig {
    */
   crosshairFade?: boolean;
   /**
+   * Distance in px over which the visible crosshair fades as it approaches the
+   * live edge. Applies to the line, selection dot, and tooltip when
+   * `crosshairFade` is enabled; the trailing-content dim keeps its existing
+   * fade. Negative values are clamped to `0`. Default `4`.
+   */
+  crosshairFadeDistance?: number;
+  /**
+   * Cap style for the vertical crosshair line. Omit to preserve the existing
+   * Skia default.
+   */
+  crosshairLineCap?: "butt" | "round" | "square";
+  /**
    * Dash the vertical crosshair line. `true` → a default `[4, 4]` dash; an array
    * sets explicit Skia dash intervals `[on, off, …]` in px. Omit / `false` → a
    * solid line.

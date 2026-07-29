@@ -9,6 +9,7 @@ import Animated, {
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import type { TooltipLayout } from "../hooks/crosshairShared";
+import { resolveCrosshairVisibleOpacity } from "../hooks/useCrosshairVisibleOpacity";
 import type { CandlePoint, TooltipRenderProps } from "../types";
 
 // Mirror the Skia tooltip's offsets (see crosshairShared.ts) so a custom pill
@@ -41,13 +42,13 @@ export function CustomTooltipOverlay({
   scrubTime,
   scrubActive,
   scrubCandle,
-  crosshairOpacity,
   tooltipLayout,
   engine,
   padding,
   placement,
   margin = 8,
   crosshairFade = true,
+  crosshairFadeDistance = 4,
   lineTop,
   scrubDotY,
 }: {
@@ -58,7 +59,6 @@ export function CustomTooltipOverlay({
   scrubActive: SharedValue<boolean>;
   /** OHLC candle under the crosshair (candle mode); omitted/`null` in line mode. */
   scrubCandle?: SharedValue<CandlePoint | null>;
-  crosshairOpacity: SharedValue<number>;
   tooltipLayout: SharedValue<TooltipLayout>;
   engine: ChartEngineLayout;
   padding: ChartPadding;
@@ -67,6 +67,8 @@ export function CustomTooltipOverlay({
   margin?: number;
   /** Fade the tooltip near the live edge. Default true. */
   crosshairFade?: boolean;
+  /** Tooltip fade distance near the live edge in px. Default 4. */
+  crosshairFadeDistance?: number;
   /** When `placement` is `"top"`, the overlay publishes the label's bottom edge
    *  (canvas Y) here so {@link CrosshairOverlay} can stop the crosshair line at
    *  the label instead of running through it; -1 when not top-pinned/active. */
@@ -157,7 +159,14 @@ export function CustomTooltipOverlay({
     }
 
     return {
-      opacity: active ? (crosshairFade ? crosshairOpacity.get() : 1) : 0,
+      opacity: resolveCrosshairVisibleOpacity(
+        active,
+        sx,
+        cw,
+        padding.right,
+        crosshairFade,
+        crosshairFadeDistance,
+      ),
       transform: [{ translateX: x }, { translateY: y }],
     };
   });

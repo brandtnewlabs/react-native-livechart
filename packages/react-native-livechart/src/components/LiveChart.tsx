@@ -2129,6 +2129,8 @@ function ChartScrubLayer({
           crosshairStrokeWidth={scrubCfg.crosshairStrokeWidth}
           crosshairOvershoot={scrubCfg.crosshairOvershoot}
           crosshairFade={scrubCfg.crosshairFade}
+          crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
+          crosshairLineCap={scrubCfg.crosshairLineCap}
           crosshairDash={scrubCfg.crosshairDash}
           crosshairDimColor={scrubCfg.crosshairDimColor}
           tooltipBackground={scrubCfg.tooltipBackground}
@@ -2621,13 +2623,13 @@ function ChartView({
             scrubTime={crosshair.scrubTime}
             scrubActive={crosshair.scrubActive}
             scrubCandle={crosshair.scrubCandle}
-            crosshairOpacity={crosshair.crosshairOpacity}
             tooltipLayout={crosshair.tooltipLayout}
             engine={engine}
             padding={effectivePadding}
             placement={scrubCfg.tooltipPlacement}
             margin={scrubCfg.tooltipMargin}
             crosshairFade={scrubCfg.crosshairFade}
+            crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
             lineTop={crosshair.tooltipLineTop}
             scrubDotY={crosshair.scrubDotY}
           />

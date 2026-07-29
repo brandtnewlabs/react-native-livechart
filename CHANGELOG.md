@@ -17,10 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Configurable scrub crosshair geometry and edge fade.** `ScrubConfig` now
   accepts `crosshairStrokeWidth` (default `1`), `crosshairOvershoot` (default
-  `0`; negative values clamp to `0`), and `crosshairFade` (default `true`) on
-  `LiveChart` and `LiveChartSeries`. Disabling the crosshair fade keeps the line,
-  selection dot, and tooltip opaque near the live edge without changing the
-  trailing-content dim fade.
+  `0`; negative values clamp to `0`), `crosshairFade` (default `true`),
+  `crosshairFadeDistance` (default `4`; negative values clamp to `0`), and
+  `crosshairLineCap` (`"butt" | "round" | "square"`) on `LiveChart` and
+  `LiveChartSeries`. The distance applies to the visible line, selection dot,
+  and tooltip without changing the trailing-content dim fade; omitting the cap
+  preserves existing rendering.
 
 - **Optional plot-bound scrub gestures.** `ScrubConfig.clampToPlot` (default
   `false`) makes plain scrub ignore gestures that start in the Y-axis gutter or

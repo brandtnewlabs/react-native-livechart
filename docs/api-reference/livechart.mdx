@@ -273,7 +273,10 @@ provided; everything else has a default.
 ## Scrubbing
 
 <ParamField body="scrub" type="boolean | ScrubConfig" default="true">
-  Crosshair scrubbing on drag.
+  Crosshair scrubbing on drag. `crosshairFadeDistance` controls the visible
+  line/dot/tooltip fade near the live edge, and `crosshairLineCap` selects a
+  `"butt"`, `"round"`, or `"square"` vertical-line cap. See
+  [Scrubbing](/guides/scrubbing#crosshair-width-line-cap-overshoot-and-edge-fade).
 </ParamField>
 
 <ParamField body="selectionDot" type="boolean | SelectionDotConfig" default="true">

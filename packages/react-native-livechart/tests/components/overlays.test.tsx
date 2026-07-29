@@ -60,6 +60,7 @@ function engine(): EngineState {
 function expectConfiguredCrosshair(tree: unknown) {
   const serialized = JSON.stringify(tree);
   expect(serialized).toContain('"strokeWidth":3');
+  expect(serialized).toContain('"strokeCap":"round"');
   expect(serialized).toContain(`\\"y\\":${DEFAULT_PADDING.top - 6}`);
   expect(serialized).toContain(
     `\\"y\\":${300 - DEFAULT_PADDING.bottom + 6}`,
@@ -534,11 +535,40 @@ describe("CrosshairOverlay", () => {
           crosshairStrokeWidth={3}
           crosshairOvershoot={6}
           crosshairFade={false}
+          crosshairLineCap="round"
         />
       );
     }
     const { toJSON } = render(<Fixture />);
     expectConfiguredCrosshair(toJSON());
+  });
+
+  it("uses the configured visible fade without changing the trailing dim ramp", () => {
+    function Fixture() {
+      const scrubX = useSharedValue(
+        400 - DEFAULT_PADDING.right - 2,
+      );
+      // This stays on the controller's original 4 px fade: 2 / 4 = 0.5.
+      const crosshairOpacity = useSharedValue(0.5);
+      const scrubActive = useSharedValue(true);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          scrubActive={scrubActive}
+          crosshairFadeDistance={8}
+        />
+      );
+    }
+    const tree = JSON.stringify(render(<Fixture />).toJSON());
+    expect(tree).toContain('"opacity":"0.25"');
+    expect(tree).toContain("rgba(0,0,0,0.35)");
   });
 
   it("keeps a custom top-tooltip line stop when overshoot is set", () => {
@@ -1094,6 +1124,7 @@ describe("CrosshairLine", () => {
           crosshairStrokeWidth={3}
           crosshairOvershoot={6}
           crosshairFade={false}
+          crosshairLineCap="round"
         />
       );
     }

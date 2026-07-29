@@ -541,6 +541,8 @@ describe("resolveScrub", () => {
     crosshairStrokeWidth: 1,
     crosshairOvershoot: 0,
     crosshairFade: true,
+    crosshairFadeDistance: 4,
+    crosshairLineCap: undefined,
     crosshairDash: undefined,
     crosshairDimColor: undefined,
     tooltipBackground: undefined,
@@ -606,22 +608,29 @@ describe("resolveScrub", () => {
     ).toBe(true);
   });
 
-  it("carries crosshair stroke, overshoot, and fade overrides", () => {
+  it("carries crosshair geometry and fade overrides", () => {
     expect(
       resolveScrub({
         crosshairStrokeWidth: 3,
         crosshairOvershoot: 6,
         crosshairFade: false,
+        crosshairFadeDistance: 12,
+        crosshairLineCap: "round",
       }),
     ).toMatchObject({
       crosshairStrokeWidth: 3,
       crosshairOvershoot: 6,
       crosshairFade: false,
+      crosshairFadeDistance: 12,
+      crosshairLineCap: "round",
     });
   });
 
-  it("clamps negative crosshair overshoot to zero", () => {
+  it("clamps negative crosshair distances to zero", () => {
     expect(resolveScrub({ crosshairOvershoot: -6 })?.crosshairOvershoot).toBe(0);
+    expect(
+      resolveScrub({ crosshairFadeDistance: -8 })?.crosshairFadeDistance,
+    ).toBe(0);
   });
 
   it("defaults clampToPlot to false and carries it when set", () => {

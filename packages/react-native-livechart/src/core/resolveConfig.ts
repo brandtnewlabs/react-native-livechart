@@ -161,6 +161,10 @@ export interface ResolvedScrubConfig {
   crosshairOvershoot: number;
   /** Fade the crosshair near the live edge. */
   crosshairFade: boolean;
+  /** Visible-crosshair fade distance near the live edge in px. */
+  crosshairFadeDistance: number;
+  /** undefined preserves the existing Skia line-cap default. */
+  crosshairLineCap: "butt" | "round" | "square" | undefined;
   /** Dash intervals `[on, off, …]` for the crosshair line; undefined → solid. */
   crosshairDash: number[] | undefined;
   /** undefined → palette.crosshairDim */
@@ -681,6 +685,8 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   crosshairStrokeWidth: 1,
   crosshairOvershoot: 0,
   crosshairFade: true,
+  crosshairFadeDistance: 4,
+  crosshairLineCap: undefined,
   crosshairDash: undefined,
   crosshairDimColor: undefined,
   tooltipBackground: undefined,
@@ -762,6 +768,10 @@ export function resolveScrub(
       typeof prop === "object" ? prop.seriesTooltip : undefined;
     resolved.seriesTooltip = resolvePerSeriesTooltip(seriesTooltip);
     resolved.crosshairOvershoot = Math.max(0, resolved.crosshairOvershoot);
+    resolved.crosshairFadeDistance = Math.max(
+      0,
+      resolved.crosshairFadeDistance,
+    );
   }
   return resolved;
 }
