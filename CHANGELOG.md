@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Right-anchored Y-axis label columns.** `yAxis.labelRightMargin` pins a
+  shared left-aligned column to a fixed canvas-edge margin; `yAxis.gridEndGap`
+  leaves a deterministic gap between grid/plain reference lines and the widest
+  label. Omitting `labelRightMargin` preserves the centered-gutter layout;
+  `fullWidth` reference lines and bands keep their existing extents.
+
 - **Configurable scrub crosshair geometry and edge fade.** `ScrubConfig` now
   accepts `crosshairStrokeWidth` (default `1`), `crosshairOvershoot` (default
   `0`; negative values clamp to `0`), and `crosshairFade` (default `true`) on

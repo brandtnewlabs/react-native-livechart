@@ -43,6 +43,27 @@ the values track the live range each frame (they aren't rounded to nice numbers)
 `minGap` still acts as a floor: if `count` labels won't fit at least `minGap` px apart, the count
 drops to what fits. The count is clamped to at most 15.
 
+## Right-anchored price label column
+
+Set `labelRightMargin` to place every Y-axis label at the same left X in a column whose right edge
+is measured from the canvas edge. Add `gridEndGap` to keep a fixed gap between the grid-line end
+and that column:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  yAxis={{ labelRightMargin: 8, gridEndGap: 6 }}
+/>
+```
+
+Without `labelRightMargin`, labels keep their default centered-gutter placement and `gridEndGap`
+has no effect. When combined with `yAxis.float`, `labelRightMargin` overrides the floating axis's
+default edge margin.
+
+Plain horizontal `referenceLines` stop at the same X as the grid, keeping the gap consistent.
+`fullWidth` reference lines and value/time bands keep their existing extents.
+
 ## Axis edge labels
 
 `topLabel` and `bottomLabel` float a value at the top / bottom edge of the plot — the

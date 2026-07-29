@@ -45,6 +45,10 @@ By default a line/band stops at the plot's right edge. Set `fullWidth: true` to 
 (like a price tag). Only the line/band extends — any `label` or `badge` stays anchored inside
 the plot. For a Form-A line with a `badge`, the full-width line replaces the dashed connector.
 
+When `yAxis.labelRightMargin` is set, a plain non-`fullWidth` line stops at the same X as the grid,
+honoring `yAxis.gridEndGap`. Badge/label anchors, `fullWidth` lines, and value/time bands are
+unchanged.
+
 ```tsx
 referenceLines={[
   { value: 142.5, label: "Avg entry", fullWidth: true }, // runs through the gutter

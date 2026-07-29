@@ -10,7 +10,7 @@ import {
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
-import { ACCENT } from "../../demo-lib/shared";
+import { ACCENT, formatWholeValue } from "../../demo-lib/shared";
 import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
@@ -22,6 +22,7 @@ type AxisVis = "both" | "noY" | "noX" | "none";
 type GapPreset = "default" | "wide";
 type YCountPreset = "auto" | "3" | "5" | "7";
 type GridLineStyle = "default" | "dotted" | "solid" | "blue";
+type YAxisColumnPreset = "off" | "tight" | "wide";
 
 const CHART_OPTIONS: { value: ChartKind; label: string }[] = [
   { value: "single", label: "LiveChart" },
@@ -54,6 +55,15 @@ const GRID_OPTIONS: { value: GridLineStyle; label: string }[] = [
   { value: "blue", label: "Blue solid" },
 ];
 
+const Y_AXIS_COLUMN_OPTIONS: {
+  value: YAxisColumnPreset;
+  label: string;
+}[] = [
+  { value: "off", label: "Legacy" },
+  { value: "tight", label: "8 / 4 px" },
+  { value: "wide", label: "24 / 12 px" },
+];
+
 // `gridStyle` is a GridStyleConfig: `intervals: [1, 3]` dashes the lines,
 // `intervals: []` forces solid; `color` / `opacity` recolor them. `undefined`
 // keeps the chart's built-in dotted default.
@@ -74,6 +84,7 @@ export default function AxesGridScreen() {
   const [flushBottom, setFlushBottom] = useState(false);
   const [gridLine, setGridLine] = useState<GridLineStyle>("default");
   const [edgeFade, setEdgeFade] = useState(false);
+  const [yAxisColumn, setYAxisColumn] = useState<YAxisColumnPreset>("wide");
 
   const gridStyle = GRID_STYLES[gridLine];
   // A wider-than-default fade band (default is 40px) makes the soft left erase
@@ -89,6 +100,10 @@ export default function AxesGridScreen() {
   const yAxisCfg: YAxisConfig = {};
   if (gap === "wide") yAxisCfg.minGap = 72;
   if (yCountVal > 0) yAxisCfg.count = yCountVal;
+  if (yAxisColumn !== "off") {
+    yAxisCfg.labelRightMargin = yAxisColumn === "tight" ? 8 : 24;
+    yAxisCfg.gridEndGap = yAxisColumn === "tight" ? 4 : 12;
+  }
   const yAxis = !yOn
     ? false
     : Object.keys(yAxisCfg).length > 0
@@ -144,6 +159,7 @@ export default function AxesGridScreen() {
             scrub
             topLabel={topLabel}
             bottomLabel={bottomLabel}
+            formatValue={formatWholeValue}
           />
         ) : (
           <LiveChartSeries
@@ -158,6 +174,7 @@ export default function AxesGridScreen() {
             scrub
             topLabel={topLabel}
             bottomLabel={bottomLabel}
+            formatValue={formatWholeValue}
           />
         )
       }
@@ -185,6 +202,12 @@ export default function AxesGridScreen() {
         options={Y_COUNT_OPTIONS}
         value={yCount}
         onChange={setYCount}
+      />
+      <ChipRow
+        label="Y label column (right margin / grid gap)"
+        options={Y_AXIS_COLUMN_OPTIONS}
+        value={yAxisColumn}
+        onChange={setYAxisColumn}
       />
       <ChipRow
         label="Grid lines (gridStyle)"

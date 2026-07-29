@@ -554,7 +554,7 @@ describe("LiveChart", () => {
     render(
       <Harness
         badge={{ variant: "minimal", tail: false }}
-        yAxis={{ minGap: 48 }}
+        yAxis={{ minGap: 48, labelRightMargin: 8, gridEndGap: 6 }}
         scrub={{ tooltip: false }}
         valueLine={{ strokeWidth: 2, intervals: [6, 3] }}
       />,

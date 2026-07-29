@@ -2,6 +2,10 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { SkFont } from "@shopify/react-native-skia";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
+import {
+  rightAnchoredYAxisColumnLayout,
+  type YAxisEntry,
+} from "../draw/grid";
 import type { ChartPadding } from "../draw/line";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import {
@@ -293,6 +297,14 @@ export function useReferenceLine(
    */
   dragValues?: SharedValue<number[]>,
   index = 0,
+  /** Y-axis labels used to match the right-anchored grid endpoint. */
+  yAxisEntries?: SharedValue<YAxisEntry[]>,
+  /** Enables clipping when set; matches {@link YAxisConfig.labelRightMargin}. */
+  labelRightMargin?: number,
+  /** Gap before the label column; matches {@link YAxisConfig.gridEndGap}. */
+  gridEndGap = 0,
+  /** Font used by the Y-axis labels; badge font overrides must not move the line. */
+  yAxisFont: SkFont = font,
 ): SharedValue<ReferenceLineLayout> {
   const form = line ? referenceLineForm(line) : "none";
   // Badge presentation depends only on the (stable) line props — resolve once.
@@ -314,7 +326,20 @@ export function useReferenceLine(
     // the badge/label anchor (x1/x2) stays at the plot edges either way.
     const fullWidth = line.fullWidth ?? false;
     const lineX1 = fullWidth ? 0 : x1;
-    const lineX2 = fullWidth ? w : x2;
+    const yAxisColumn =
+      form === "line" &&
+      !fullWidth &&
+      yAxisEntries !== undefined &&
+      labelRightMargin !== undefined
+        ? rightAnchoredYAxisColumnLayout(
+            w,
+            yAxisEntries.value,
+            yAxisFont,
+            labelRightMargin,
+            gridEndGap,
+          )
+        : null;
+    const lineX2 = fullWidth ? w : (yAxisColumn?.gridEndX ?? x2);
 
     const fm = font.getMetrics();
     const baselineOffset = (fm.ascent + fm.descent) / 2;

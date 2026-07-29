@@ -713,6 +713,8 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
             badge={false}
             seriesLabelInset={seriesLabelInset}
             gridStyle={gridStyleCfg}
+            labelRightMargin={yAxisCfg.labelRightMargin}
+            gridEndGap={yAxisCfg.gridEndGap}
           />
         </Group>
       )}
@@ -729,6 +731,9 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
             palette={palette}
             formatValue={formatValue}
             font={skiaFont}
+            yAxisEntries={yAxisEntries}
+            labelRightMargin={yAxisCfg?.labelRightMargin}
+            gridEndGap={yAxisCfg?.gridEndGap}
           />
         ))}
       </Group>
@@ -889,6 +894,8 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
     palette,
     formatValue,
     skiaFont,
+    yAxisCfg,
+    yAxisEntries,
     degenShakeTransform,
     overlayScrubFade,
   } = model;
@@ -908,6 +915,9 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
           suppressTag={refLineCustom[i]}
           suppressTagWhenOffAxis={refLineOffAxisCustom[i]}
           customTagWidths={refLineCustomTagWidths}
+          yAxisEntries={yAxisEntries}
+          labelRightMargin={yAxisCfg?.labelRightMargin}
+          gridEndGap={yAxisCfg?.gridEndGap}
         />
       ))}
     </Group>

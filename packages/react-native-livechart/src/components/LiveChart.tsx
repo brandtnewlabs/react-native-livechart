@@ -1496,6 +1496,7 @@ function ChartYAxisLayer({
     metricsCfg,
     gridStyleCfg,
     yAxisFloat,
+    yAxisCfg,
     liveBadgeOpacity,
   } = model;
   return (
@@ -1516,6 +1517,8 @@ function ChartYAxisLayer({
         badgeOffsetY={badgeCfg?.offsetY ?? 0}
         badgeOpacity={badgeUsesRightGutter ? liveBadgeOpacity : undefined}
         gridStyle={gridStyleCfg}
+        labelRightMargin={yAxisCfg?.labelRightMargin}
+        gridEndGap={yAxisCfg?.gridEndGap}
       />
     </Group>
   );
@@ -1847,6 +1850,9 @@ function ChartStack({
             fontProp={fontProp}
             dragValues={dragValues}
             index={i}
+            yAxisEntries={yAxisEntries}
+            labelRightMargin={yAxisCfg?.labelRightMargin}
+            gridEndGap={yAxisCfg?.gridEndGap}
           />
         ))}
       </Group>
@@ -2266,9 +2272,11 @@ function ChartBadgeLayer({
 function ChartRefBadgeLayer({
   model,
   degen,
+  yAxisEntries,
 }: {
   model: LiveChartModel;
   degen: DegenState | null;
+  yAxisEntries: YAxisEntries | null;
 }) {
   const {
     allRefLines,
@@ -2289,6 +2297,7 @@ function ChartRefBadgeLayer({
     formatValue,
     skiaFont,
     fontProp,
+    yAxisCfg,
     overlayScrubFade,
   } = model;
   if (allRefLines.length === 0) return null;
@@ -2311,6 +2320,9 @@ function ChartRefBadgeLayer({
           suppressTagWhenOffAxis={refLineOffAxisCustom[i]}
           customTagWidths={refLineCustomTagWidths}
           groupHidden={refGroupingActive ? groupHidden : undefined}
+          yAxisEntries={yAxisEntries}
+          labelRightMargin={yAxisCfg?.labelRightMargin}
+          gridEndGap={yAxisCfg?.gridEndGap}
         />
       ))}
       {/* Collapsed count handles for grouped (near-value) lines. */}
@@ -2551,7 +2563,11 @@ function ChartView({
           )}
 
           {/* Reference-line badges + labels above the fade so they stay crisp. */}
-          <ChartRefBadgeLayer model={model} degen={degen} />
+          <ChartRefBadgeLayer
+            model={model}
+            degen={degen}
+            yAxisEntries={yAxisEntries}
+          />
 
           <ChartValueOverlay model={model} degen={degen} />
 

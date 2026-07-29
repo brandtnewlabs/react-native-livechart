@@ -89,6 +89,10 @@ export interface ResolvedYAxisConfig {
   minGap: number;
   /** Fixed label count (≥ 2), or 0 for the dynamic nice-interval grid. */
   count: number;
+  /** undefined → keep the default centered-gutter label placement. */
+  labelRightMargin: number | undefined;
+  /** undefined → no gap; inert unless labelRightMargin is set. */
+  gridEndGap: number | undefined;
   /** Float the axis over a full-width plot (no reserved right gutter). */
   float: boolean;
 }
@@ -473,6 +477,8 @@ export function resolveBadge(
 const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
   minGap: 36,
   count: 0,
+  labelRightMargin: undefined,
+  gridEndGap: undefined,
   float: false,
 };
 
