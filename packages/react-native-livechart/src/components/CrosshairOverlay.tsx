@@ -39,6 +39,8 @@ export function CrosshairOverlay({
   crosshairStrokeWidth = 1,
   crosshairOvershoot = 0,
   crosshairFade = true,
+  crosshairFadeDistance = 4,
+  crosshairLineCap,
   crosshairDash,
   crosshairDimColor,
   tooltipBackground,
@@ -93,6 +95,10 @@ export function CrosshairOverlay({
   crosshairOvershoot?: number;
   /** Fade the crosshair near the live edge. Default true. */
   crosshairFade?: boolean;
+  /** Visible-crosshair fade distance near the live edge in px. Default 4. */
+  crosshairFadeDistance?: number;
+  /** Cap style for the vertical crosshair line. */
+  crosshairLineCap?: "butt" | "round" | "square";
   /** Dash intervals `[on, off, …]` for the crosshair line; omit → solid. */
   crosshairDash?: number[];
   crosshairDimColor?: string;
@@ -176,11 +182,14 @@ export function CrosshairOverlay({
   const backgroundColor = `rgb(${palette.bgRgb[0]},${palette.bgRgb[1]},${palette.bgRgb[2]})`;
 
   // Keep the trailing dim on its original edge fade. Only the visible
-  // crosshair group (line, dot, tooltip) opts out when crosshairFade is false.
+  // crosshair group (line, dot, tooltip) uses the configurable distance.
   const visibleOpacity = useCrosshairVisibleOpacity(
-    crosshairOpacity,
+    scrubX,
+    engine.canvasWidth,
+    padding.right,
     scrubActive,
     crosshairFade,
+    crosshairFadeDistance,
   );
 
   return (
@@ -225,6 +234,7 @@ export function CrosshairOverlay({
           p2={p2}
           color={crosshairLineColor ?? palette.crosshairLine}
           strokeWidth={crosshairStrokeWidth}
+          strokeCap={crosshairLineCap}
         >
           {crosshairDash ? <DashPathEffect intervals={crosshairDash} /> : null}
         </Line>

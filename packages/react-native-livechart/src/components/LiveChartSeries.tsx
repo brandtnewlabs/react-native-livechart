@@ -55,6 +55,7 @@ import { useChartReveal } from "../hooks/useChartReveal";
 import { useChartOverlayContext } from "../hooks/useChartOverlayContext";
 import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
 import { useCrosshairSeries } from "../hooks/useCrosshairSeries";
+import { useCrosshairVisibleOpacity } from "../hooks/useCrosshairVisibleOpacity";
 import { useMarkers } from "../hooks/useMarkers";
 import { useMultiSeriesDegen } from "../hooks/useMultiSeriesDegen";
 import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
@@ -931,6 +932,53 @@ function SeriesCustomConsumerOverlay({ model }: { model: LiveChartSeriesModel })
   return <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />;
 }
 
+/** Keeps the extra fade mapper opt-in with the per-series tooltip itself. */
+function SeriesTooltipLayer({
+  model,
+  config,
+}: {
+  model: LiveChartSeriesModel;
+  config: NonNullable<LiveChartSeriesModel["seriesTooltipCfg"]>;
+}) {
+  const {
+    crosshair,
+    engine,
+    effectivePadding,
+    scrubCfg,
+    skiaFont,
+    palette,
+    activeSeriesCount,
+  } = model;
+  const activeOpacity = useCrosshairVisibleOpacity(
+    crosshair.scrubX,
+    engine.canvasWidth,
+    effectivePadding.right,
+    crosshair.scrubActive,
+    scrubCfg?.crosshairFade ?? true,
+    scrubCfg?.crosshairFadeDistance ?? 4,
+  );
+  const scrubActive = crosshair.scrubActive;
+  const alwaysShow = config.alwaysShow;
+  const opacity = useDerivedValue(
+    () => (scrubActive.get() ? activeOpacity.get() : alwaysShow ? 1 : 0),
+    [scrubActive, activeOpacity, alwaysShow],
+  );
+
+  return (
+    <PerSeriesTooltipOverlay
+      layout={crosshair.tooltipLayout}
+      font={skiaFont}
+      palette={palette}
+      config={config}
+      seriesCount={activeSeriesCount}
+      opacity={opacity}
+      tooltipBackground={scrubCfg?.tooltipBackground}
+      tooltipColor={scrubCfg?.tooltipColor}
+      tooltipBorderColor={scrubCfg?.tooltipBorderColor}
+    />
+  );
+}
+
 export function LiveChartSeries(props: LiveChartSeriesProps) {
   const model = useLiveChartSeriesController(props);
   const {
@@ -973,8 +1021,6 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
     refLineCustomTagWidths,
     overlayScrubFade,
     canvasMode,
-    activeSeriesCount,
-    skiaFont,
   } = model;
 
   // Mirror the Skia overlay fade onto the RN custom-marker sibling so
@@ -1082,6 +1128,8 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 }
                 crosshairOvershoot={scrubCfg.crosshairOvershoot}
                 crosshairFade={scrubCfg.crosshairFade}
+                crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
+                crosshairLineCap={scrubCfg.crosshairLineCap}
                 crosshairDash={
                   seriesTooltipCfg
                     ? seriesTooltipCfg.guideDashPattern
@@ -1097,16 +1145,7 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
             <SeriesValueLabelLayer model={model} />
 
             {seriesTooltipCfg && (
-              <PerSeriesTooltipOverlay
-                layout={crosshair.tooltipLayout}
-                font={skiaFont}
-                palette={palette}
-                config={seriesTooltipCfg}
-                seriesCount={activeSeriesCount}
-                tooltipBackground={scrubCfg?.tooltipBackground}
-                tooltipColor={scrubCfg?.tooltipColor}
-                tooltipBorderColor={scrubCfg?.tooltipBorderColor}
-              />
+              <SeriesTooltipLayer model={model} config={seriesTooltipCfg} />
             )}
           </Canvas>
 

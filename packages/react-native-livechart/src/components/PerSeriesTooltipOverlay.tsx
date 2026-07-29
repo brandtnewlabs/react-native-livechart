@@ -232,6 +232,7 @@ export function PerSeriesTooltipOverlay({
   palette,
   config,
   seriesCount,
+  opacity,
   tooltipBackground,
   tooltipColor,
   tooltipBorderColor,
@@ -241,6 +242,8 @@ export function PerSeriesTooltipOverlay({
   palette: LiveChartPalette;
   config: ResolvedPerSeriesTooltipConfig;
   seriesCount: number;
+  /** Active crosshair opacity; idle `alwaysShow` pills stay fully visible. */
+  opacity?: SharedValue<number> | DerivedValue<number>;
   tooltipBackground?: string;
   tooltipColor?: string;
   tooltipBorderColor?: string;
@@ -258,7 +261,7 @@ export function PerSeriesTooltipOverlay({
     config.seriesPillBorderColor ?? tooltipBorderColor;
 
   return (
-    <Group>
+    <Group opacity={opacity}>
       <TimePill
         layout={layout}
         font={font}

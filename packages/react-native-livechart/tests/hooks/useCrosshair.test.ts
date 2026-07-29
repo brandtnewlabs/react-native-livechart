@@ -272,6 +272,21 @@ describe("computeCrosshairOpacity", () => {
       computeCrosshairOpacity(true, dotX - 4, canvasWidth, paddingRight),
     ).toBeCloseTo(1);
   });
+
+  it("supports a custom fade distance", () => {
+    expect(
+      computeCrosshairOpacity(true, dotX - 2, canvasWidth, paddingRight, 8),
+    ).toBeCloseTo(0.25);
+  });
+
+  it("removes the ramp when the fade distance is zero", () => {
+    expect(
+      computeCrosshairOpacity(true, dotX - 1, canvasWidth, paddingRight, 0),
+    ).toBe(1);
+    expect(
+      computeCrosshairOpacity(true, dotX, canvasWidth, paddingRight, 0),
+    ).toBe(0);
+  });
 });
 
 // ─── computeScrubDotY ────────────────────────────────────────────────────────

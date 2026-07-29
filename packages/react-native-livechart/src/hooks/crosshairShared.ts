@@ -12,7 +12,6 @@ const TOOLTIP_LINE_GAP = 4;
 const TOOLTIP_OFFSET_X = 12;
 const TOOLTIP_EDGE_GAP = 4;
 const TOOLTIP_TOP_MARGIN = 8;
-const FADE_ZONE = 4;
 
 /** Horizontal travel required before a plain scrub claims the touch. */
 export const SCRUB_ACTIVATE_X_PX = 20;
@@ -292,20 +291,23 @@ export function computeScrubTime(
 }
 
 /**
- * Crosshair opacity: fades 1→0 over FADE_ZONE px as the crosshair
- * approaches the live dot at the right chart edge.
+ * Crosshair opacity: fades 1→0 over `fadeDistance` px as the crosshair
+ * approaches the live dot at the right chart edge. A zero distance removes
+ * the ramp while keeping the crosshair hidden at and beyond the live edge.
  */
 export function computeCrosshairOpacity(
   scrubActive: boolean,
   scrubX: number,
   canvasWidth: number,
   paddingRight: number,
+  fadeDistance = 4,
 ): number {
   "worklet";
   if (!scrubActive) return 0;
   const dotX = canvasWidth - paddingRight;
   const dist = dotX - scrubX;
-  return Math.min(1, Math.max(0, dist / FADE_ZONE));
+  if (fadeDistance <= 0) return dist > 0 ? 1 : 0;
+  return Math.min(1, Math.max(0, dist / fadeDistance));
 }
 
 /**

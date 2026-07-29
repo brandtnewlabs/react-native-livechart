@@ -354,6 +354,8 @@ interface ScrubConfig {
   crosshairStrokeWidth?: number; // line width in px; default 1
   crosshairOvershoot?: number; // extend past top/bottom in px; preserves a custom top-tooltip stop; negatives clamp to 0; default 0
   crosshairFade?: boolean; // fade near the live edge; default true
+  crosshairFadeDistance?: number; // visible line/dot/tooltip fade distance in px; negatives clamp to 0; default 4
+  crosshairLineCap?: "butt" | "round" | "square"; // omit to preserve the existing Skia default
   crosshairDash?: number[] | boolean; // dash the crosshair line; true = [4,4], or explicit [on, off, …] px
   tooltipBackground?: string; tooltipColor?: string; tooltipBorderColor?: string;
   tooltipBorderRadius?: number; // pill corner radius; default 5

@@ -43,7 +43,8 @@ function Fixture({
   captureLineTop,
   scrubDotY,
   crosshairFade,
-  crosshairOpacityValue = 1,
+  crosshairFadeDistance,
+  scrubXValue = 100,
 }: {
   renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
   placement?: "side" | "top" | "bottom" | "point";
@@ -51,13 +52,13 @@ function Fixture({
   captureLineTop?: (lineTop: SharedValue<number>) => void;
   scrubDotY?: number;
   crosshairFade?: boolean;
-  crosshairOpacityValue?: number;
+  crosshairFadeDistance?: number;
+  scrubXValue?: number;
 }) {
-  const scrubX = useSharedValue(100);
+  const scrubX = useSharedValue(scrubXValue);
   const scrubValue = useSharedValue<number | null>(42);
   const scrubTime = useSharedValue(985);
   const scrubActive = useSharedValue(true);
-  const crosshairOpacity = useSharedValue(crosshairOpacityValue);
   const tooltipLayout = useSharedValue<TooltipLayout>(LAYOUT);
   const scrubCandle = useSharedValue<CandlePoint | null>(candle ?? null);
   const lineTop = useSharedValue(-1);
@@ -73,12 +74,12 @@ function Fixture({
       // Only wire scrubCandle when a candle is supplied, so the line-mode tests
       // also exercise the `?? nullCandle` fallback (candle prop omitted).
       scrubCandle={candle === undefined ? undefined : scrubCandle}
-      crosshairOpacity={crosshairOpacity}
       tooltipLayout={tooltipLayout}
       engine={engine()}
       padding={DEFAULT_PADDING}
       placement={placement}
       crosshairFade={crosshairFade}
+      crosshairFadeDistance={crosshairFadeDistance}
       lineTop={lineTop}
       scrubDotY={scrubDotYSV}
     />
@@ -97,11 +98,22 @@ describe("CustomTooltipOverlay", () => {
     const { toJSON } = render(
       <Fixture
         crosshairFade={false}
-        crosshairOpacityValue={0.25}
+        scrubXValue={400 - DEFAULT_PADDING.right}
         renderTooltip={() => <Text testID="custom-tip">tip</Text>}
       />,
     );
     expect(JSON.stringify(toJSON())).toContain('"opacity":1');
+  });
+
+  it("uses the configured edge-fade distance", () => {
+    const { toJSON } = render(
+      <Fixture
+        crosshairFadeDistance={8}
+        scrubXValue={400 - DEFAULT_PADDING.right - 2}
+        renderTooltip={() => <Text testID="custom-tip">tip</Text>}
+      />,
+    );
+    expect(JSON.stringify(toJSON())).toContain('"opacity":0.25');
   });
 
   it("measures the element via onLayout without throwing", () => {

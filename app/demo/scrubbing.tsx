@@ -39,6 +39,8 @@ const SCRUB_OPTIONS: { value: ScrubMode; label: string }[] = [
 ];
 
 type TooltipPlacement = NonNullable<ScrubConfig["tooltipPlacement"]>;
+type CrosshairLineCap = NonNullable<ScrubConfig["crosshairLineCap"]>;
+type CrosshairLineCapChoice = "default" | CrosshairLineCap;
 
 // Placement applies to BOTH the built-in pill and a custom `renderTooltip` —
 // the chart positions either one on the UI thread per `tooltipPlacement`.
@@ -55,6 +57,22 @@ const MARGIN_OPTIONS: { value: number; label: string }[] = [
   { value: 8, label: "8" },
   { value: 24, label: "24" },
   { value: 48, label: "48" },
+];
+
+const FADE_DISTANCE_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: "0px" },
+  { value: 4, label: "4px (default)" },
+  { value: 12, label: "12px" },
+];
+
+const LINE_CAP_OPTIONS: {
+  value: CrosshairLineCapChoice;
+  label: string;
+}[] = [
+  { value: "default", label: "Default" },
+  { value: "butt", label: "Butt" },
+  { value: "round", label: "Round" },
+  { value: "square", label: "Square" },
 ];
 
 type DisplayMode = "line" | "candle";
@@ -162,6 +180,9 @@ export default function ScrubbingScreen() {
   const [crosshairOvershootEnabled, setCrosshairOvershootEnabled] =
     useState(false);
   const [crosshairFade, setCrosshairFade] = useState(true);
+  const [crosshairFadeDistance, setCrosshairFadeDistance] = useState(4);
+  const [crosshairLineCap, setCrosshairLineCap] =
+    useState<CrosshairLineCapChoice>("default");
   const [dimOpacity, setDimOpacity] = useState(0.3);
   const [dotMode, setDotMode] = useState<DotMode>("default");
   const [holdToScrub, setHoldToScrub] = useState(false);
@@ -256,6 +277,9 @@ export default function ScrubbingScreen() {
           crosshairStrokeWidth: thickCrosshair ? 3 : 1,
           crosshairOvershoot: crosshairOvershootEnabled ? 6 : 0,
           crosshairFade,
+          crosshairFadeDistance,
+          crosshairLineCap:
+            crosshairLineCap === "default" ? undefined : crosshairLineCap,
           // The "Styled" toggle recolors the built-in pill + crosshair line.
           ...(styledTooltip
             ? {
@@ -416,6 +440,18 @@ export default function ScrubbingScreen() {
           onChange={setCrosshairFade}
         />
       </ControlRow>
+      <ChipRow
+        label="Crosshair fade distance"
+        options={FADE_DISTANCE_OPTIONS}
+        value={crosshairFadeDistance}
+        onChange={setCrosshairFadeDistance}
+      />
+      <ChipRow
+        label="Crosshair line cap"
+        options={LINE_CAP_OPTIONS}
+        value={crosshairLineCap}
+        onChange={setCrosshairLineCap}
+      />
       <ControlRow label="Gesture">
         <ToggleChip
           label="Hold to scrub (250ms)"
