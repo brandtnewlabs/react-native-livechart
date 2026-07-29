@@ -27,6 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   beyond either horizontal plot edge, then clamps an active crosshair to the
   left and right plot edges. Supported by `LiveChart` and `LiveChartSeries`.
 
+### Fixed
+
+- **Per-series scrub tooltips now stay above custom reference-line tags.**
+  `LiveChartSeries` renders the UI-thread tooltip in a transparent top layer so
+  translucent `renderReferenceLine` and `renderOffAxisReferenceLine` views no
+  longer expose a mixed stacking order between the time pill, connector, and
+  badge.
+
 ## [4.12.0] - 2026-07-28
 
 ### Added

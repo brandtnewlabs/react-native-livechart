@@ -194,6 +194,51 @@ describe("LiveChartSeries", () => {
     ]);
   });
 
+  it("renders the per-series tooltip above custom reference-line tags", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return (
+        <LiveChartSeries
+          series={series}
+          scrub={{ seriesTooltip: { alwaysShow: true } }}
+          referenceLines={[
+            {
+              value: 99,
+              label: "Target",
+              excludeFromRange: true,
+            },
+          ]}
+          renderReferenceLine={() => <View testID="series-target" />}
+        />
+      );
+    }
+
+    const screen = render(<H />);
+    await screen.findByTestId("series-target");
+    const tooltipCanvas = screen.getByTestId(
+      "live-chart-series-tooltip-overlay",
+    );
+    const tree = JSON.stringify(screen.toJSON());
+
+    expect(tree.indexOf("series-target")).toBeLessThan(
+      tree.indexOf("live-chart-series-tooltip-overlay"),
+    );
+    expect(tooltipCanvas.props.pointerEvents).toBe("none");
+    expect(screen.UNSAFE_getAllByType(PerSeriesTooltipOverlay)).toHaveLength(1);
+  });
+
   it("replaces only an off-axis tag while preserving the in-range fallback", async () => {
     const initial: SeriesConfig[] = [
       {
