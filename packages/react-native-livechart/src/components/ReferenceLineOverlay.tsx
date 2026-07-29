@@ -87,7 +87,7 @@ type ReferenceLineOverlayProps = {
   /** This line's index into {@link dragValues}. */
   index?: number;
   /** Y-axis entries used to match a right-anchored grid endpoint. */
-  yAxisEntries?: SharedValue<YAxisEntry[]>;
+  yAxisEntries?: SharedValue<YAxisEntry[]> | null;
   /** Enables clipping to the right-anchored Y-axis label column. */
   labelRightMargin?: number;
   /** Gap between the drawn line endpoint and the label column. */
@@ -151,7 +151,7 @@ export function ReferenceLineOverlay({
     badgeFont,
     dragValues,
     index,
-    yAxisEntries,
+    yAxisEntries ?? undefined,
     labelRightMargin,
     gridEndGap,
     font,

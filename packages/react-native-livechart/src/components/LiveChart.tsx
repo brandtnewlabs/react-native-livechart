@@ -2268,9 +2268,11 @@ function ChartBadgeLayer({
 function ChartRefBadgeLayer({
   model,
   degen,
+  yAxisEntries,
 }: {
   model: LiveChartModel;
   degen: DegenState | null;
+  yAxisEntries: YAxisEntries | null;
 }) {
   const {
     allRefLines,
@@ -2292,7 +2294,6 @@ function ChartRefBadgeLayer({
     skiaFont,
     fontProp,
     yAxisCfg,
-    yAxisEntries,
     overlayScrubFade,
   } = model;
   if (allRefLines.length === 0) return null;
@@ -2558,7 +2559,11 @@ function ChartView({
           )}
 
           {/* Reference-line badges + labels above the fade so they stay crisp. */}
-          <ChartRefBadgeLayer model={model} degen={degen} />
+          <ChartRefBadgeLayer
+            model={model}
+            degen={degen}
+            yAxisEntries={yAxisEntries}
+          />
 
           <ChartValueOverlay model={model} degen={degen} />
 
