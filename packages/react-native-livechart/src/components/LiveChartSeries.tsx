@@ -1095,19 +1095,6 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
             {/* Per-series value labels on top of the scrub dim so the dim never
                 clips them (they track each series' live value, not the scrub). */}
             <SeriesValueLabelLayer model={model} />
-
-            {seriesTooltipCfg && (
-              <PerSeriesTooltipOverlay
-                layout={crosshair.tooltipLayout}
-                font={skiaFont}
-                palette={palette}
-                config={seriesTooltipCfg}
-                seriesCount={activeSeriesCount}
-                tooltipBackground={scrubCfg?.tooltipBackground}
-                tooltipColor={scrubCfg?.tooltipColor}
-                tooltipBorderColor={scrubCfg?.tooltipBorderColor}
-              />
-            )}
           </Canvas>
 
           {/* RN labels floated over the canvas (sibling of <Canvas>, an RN
@@ -1167,6 +1154,31 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 />
               )}
             </Animated.View>
+          )}
+
+          {/* A dedicated transparent Canvas keeps the UI-thread tooltip above
+              custom RN annotations. Rendering it in the primary Canvas would
+              put every post-Canvas `renderReferenceLine` sibling above it and
+              produce mixed stacking through translucent custom tags. */}
+          {seriesTooltipCfg && (
+            <View
+              testID="live-chart-series-tooltip-overlay"
+              pointerEvents="none"
+              style={StyleSheet.absoluteFill}
+            >
+              <Canvas style={StyleSheet.absoluteFill}>
+                <PerSeriesTooltipOverlay
+                  layout={crosshair.tooltipLayout}
+                  font={skiaFont}
+                  palette={palette}
+                  config={seriesTooltipCfg}
+                  seriesCount={activeSeriesCount}
+                  tooltipBackground={scrubCfg?.tooltipBackground}
+                  tooltipColor={scrubCfg?.tooltipColor}
+                  tooltipBorderColor={scrubCfg?.tooltipBorderColor}
+                />
+              </Canvas>
+            </View>
           )}
 
           {/* Custom consumer overlay — topmost RN sibling with the live plot
