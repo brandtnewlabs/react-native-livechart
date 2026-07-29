@@ -2120,6 +2120,9 @@ function ChartScrubLayer({
           dimOpacity={scrubCfg.dimOpacity}
           liveDotExtent={liveDotExtent}
           crosshairLineColor={scrubCfg.crosshairLineColor}
+          crosshairStrokeWidth={scrubCfg.crosshairStrokeWidth}
+          crosshairOvershoot={scrubCfg.crosshairOvershoot}
+          crosshairFade={scrubCfg.crosshairFade}
           crosshairDash={scrubCfg.crosshairDash}
           crosshairDimColor={scrubCfg.crosshairDimColor}
           tooltipBackground={scrubCfg.tooltipBackground}
@@ -2608,6 +2611,7 @@ function ChartView({
             padding={effectivePadding}
             placement={scrubCfg.tooltipPlacement}
             margin={scrubCfg.tooltipMargin}
+            crosshairFade={scrubCfg.crosshairFade}
             lineTop={crosshair.tooltipLineTop}
             scrubDotY={crosshair.scrubDotY}
           />

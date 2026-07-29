@@ -511,6 +511,29 @@ describe("resolveAxisLabel", () => {
 // ─── resolveScrub ─────────────────────────────────────────────────────────────
 
 describe("resolveScrub", () => {
+  const DEFAULTS = {
+    tooltip: true,
+    seriesTooltip: null,
+    dimOpacity: 0.3,
+    crosshairLineColor: undefined,
+    crosshairStrokeWidth: 1,
+    crosshairOvershoot: 0,
+    crosshairFade: true,
+    crosshairDash: undefined,
+    crosshairDimColor: undefined,
+    tooltipBackground: undefined,
+    tooltipColor: undefined,
+    tooltipBorderColor: undefined,
+    tooltipBorderRadius: 5,
+    tooltipPlacement: "side",
+    tooltipMargin: 8,
+    tooltipShowValue: true,
+    tooltipShowTime: true,
+    panGestureDelay: 0,
+    hideOverlaysOnScrub: false,
+    clampToPlot: false,
+  };
+
   it("returns null for undefined", () => {
     expect(resolveScrub(undefined)).toBeNull();
   });
@@ -520,50 +543,20 @@ describe("resolveScrub", () => {
   });
 
   it("returns defaults for true", () => {
-    expect(resolveScrub(true)).toEqual({
-      tooltip: true,
-      seriesTooltip: null,
-      dimOpacity: 0.3,
-      tooltipBorderRadius: 5,
-      tooltipPlacement: "side",
-      tooltipMargin: 8,
-      tooltipShowValue: true,
-      tooltipShowTime: true,
-      panGestureDelay: 0,
-      hideOverlaysOnScrub: false,
-      clampToPlot: false,
-    });
+    expect(resolveScrub(true)).toEqual(DEFAULTS);
   });
 
   it("merges partial config with defaults", () => {
     expect(resolveScrub({ tooltip: false })).toEqual({
+      ...DEFAULTS,
       tooltip: false,
-      seriesTooltip: null,
-      dimOpacity: 0.3,
-      tooltipBorderRadius: 5,
-      tooltipPlacement: "side",
-      tooltipMargin: 8,
-      tooltipShowValue: true,
-      tooltipShowTime: true,
-      panGestureDelay: 0,
-      hideOverlaysOnScrub: false,
-      clampToPlot: false,
     });
   });
 
   it("accepts a custom dimOpacity", () => {
     expect(resolveScrub({ dimOpacity: 0.5 })).toEqual({
-      tooltip: true,
-      seriesTooltip: null,
+      ...DEFAULTS,
       dimOpacity: 0.5,
-      tooltipBorderRadius: 5,
-      tooltipPlacement: "side",
-      tooltipMargin: 8,
-      tooltipShowValue: true,
-      tooltipShowTime: true,
-      panGestureDelay: 0,
-      hideOverlaysOnScrub: false,
-      clampToPlot: false,
     });
   });
 
@@ -579,17 +572,8 @@ describe("resolveScrub", () => {
 
   it("carries a custom panGestureDelay (press-and-hold to scrub)", () => {
     expect(resolveScrub({ panGestureDelay: 300 })).toEqual({
-      tooltip: true,
-      seriesTooltip: null,
-      dimOpacity: 0.3,
-      tooltipBorderRadius: 5,
-      tooltipPlacement: "side",
-      tooltipMargin: 8,
-      tooltipShowValue: true,
-      tooltipShowTime: true,
+      ...DEFAULTS,
       panGestureDelay: 300,
-      hideOverlaysOnScrub: false,
-      clampToPlot: false,
     });
   });
 
@@ -598,6 +582,24 @@ describe("resolveScrub", () => {
     expect(
       resolveScrub({ hideOverlaysOnScrub: true })?.hideOverlaysOnScrub,
     ).toBe(true);
+  });
+
+  it("carries crosshair stroke, overshoot, and fade overrides", () => {
+    expect(
+      resolveScrub({
+        crosshairStrokeWidth: 3,
+        crosshairOvershoot: 6,
+        crosshairFade: false,
+      }),
+    ).toMatchObject({
+      crosshairStrokeWidth: 3,
+      crosshairOvershoot: 6,
+      crosshairFade: false,
+    });
+  });
+
+  it("clamps negative crosshair overshoot to zero", () => {
+    expect(resolveScrub({ crosshairOvershoot: -6 })?.crosshairOvershoot).toBe(0);
   });
 
   it("defaults clampToPlot to false and carries it when set", () => {

@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { type ChartPadding } from "../draw/line";
 import { type TooltipLayout } from "../hooks/crosshairShared";
+import { useCrosshairVisibleOpacity } from "../hooks/useCrosshairVisibleOpacity";
 import type { LiveChartPalette } from "../types";
 import type { ResolvedSelectionDotConfig } from "../core/resolveConfig";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
@@ -35,6 +36,9 @@ export function CrosshairOverlay({
   dimOpacity = 0.3,
   liveDotExtent = 0,
   crosshairLineColor,
+  crosshairStrokeWidth = 1,
+  crosshairOvershoot = 0,
+  crosshairFade = true,
   crosshairDash,
   crosshairDimColor,
   tooltipBackground,
@@ -70,7 +74,7 @@ export function CrosshairOverlay({
   /** Scrub intersection Y in canvas px (the value the dot marks); -1 hides it. */
   selectionY?: SharedValue<number>;
   /** Whether scrubbing is active (passed through to a custom dot). */
-  scrubActive?: SharedValue<number> | SharedValue<boolean>;
+  scrubActive: SharedValue<number> | SharedValue<boolean>;
   /** Fallback selection-dot color (accent / leading-series color), used when the
    *  config's own `color` is unset. */
   selectionColor?: string;
@@ -83,6 +87,12 @@ export function CrosshairOverlay({
    *  reserves beyond it. Default 0. */
   liveDotExtent?: number;
   crosshairLineColor?: string;
+  /** Vertical crosshair line width in px. Default 1. */
+  crosshairStrokeWidth?: number;
+  /** Resolved extension past the top and bottom plot edges in px. Default 0. */
+  crosshairOvershoot?: number;
+  /** Fade the crosshair near the live edge. Default true. */
+  crosshairFade?: boolean;
   /** Dash intervals `[on, off, …]` for the crosshair line; omit → solid. */
   crosshairDash?: number[];
   crosshairDimColor?: string;
@@ -104,21 +114,27 @@ export function CrosshairOverlay({
   // React's "final argument changed size between renders" error. Listing the
   // captured plain values keeps the dependency array a constant size. SharedValue
   // reads stay reactive regardless of this list.
-  const p1 = useDerivedValue(() => {
-    // A top-pinned custom tooltip pushes the line's start down to its measured
-    // bottom (lineTop) so the line stops at the label; -1 → no top tooltip.
-    const lt = lineTop?.value ?? -1;
-    return {
-      x: scrubX.value,
-      y: lt >= 0 ? lt : padding.top,
-    };
-  }, [scrubX, padding.top, lineTop]);
+  const p1 = useDerivedValue(
+    () => {
+      // A top-pinned custom tooltip pushes the line's start down to its measured
+      // bottom (lineTop) so the line stops at the label; -1 → no top tooltip.
+      const lt = lineTop?.value ?? -1;
+      return {
+        x: scrubX.value,
+        y: lt >= 0 ? lt : padding.top - crosshairOvershoot,
+      };
+    },
+    [scrubX, padding.top, lineTop, crosshairOvershoot],
+  );
   const p2 = useDerivedValue(
     () => ({
       x: scrubX.value,
-      y: engine.canvasHeight.value - padding.bottom,
+      y:
+        engine.canvasHeight.value -
+        padding.bottom +
+        crosshairOvershoot,
     }),
-    [scrubX, engine.canvasHeight, padding.bottom],
+    [scrubX, engine.canvasHeight, padding.bottom, crosshairOvershoot],
   );
 
   const dimWidth = useDerivedValue(() => {
@@ -159,6 +175,14 @@ export function CrosshairOverlay({
   );
   const backgroundColor = `rgb(${palette.bgRgb[0]},${palette.bgRgb[1]},${palette.bgRgb[2]})`;
 
+  // Keep the trailing dim on its original edge fade. Only the visible
+  // crosshair group (line, dot, tooltip) opts out when crosshairFade is false.
+  const visibleOpacity = useCrosshairVisibleOpacity(
+    crosshairOpacity,
+    scrubActive,
+    crosshairFade,
+  );
+
   return (
     <>
       {crosshairDimColor !== undefined ? (
@@ -195,12 +219,12 @@ export function CrosshairOverlay({
         </Group>
       ) : null}
 
-      <Group opacity={crosshairOpacity}>
+      <Group opacity={visibleOpacity}>
         <Line
           p1={p1}
           p2={p2}
           color={crosshairLineColor ?? palette.crosshairLine}
-          strokeWidth={1}
+          strokeWidth={crosshairStrokeWidth}
         >
           {crosshairDash ? <DashPathEffect intervals={crosshairDash} /> : null}
         </Line>
@@ -212,7 +236,7 @@ export function CrosshairOverlay({
           x={scrubX}
           y={selectionY}
           active={scrubActive}
-          opacity={crosshairOpacity}
+          opacity={visibleOpacity}
           color={selectionColor ?? palette.line}
         />
 

@@ -42,18 +42,22 @@ function Fixture({
   candle,
   captureLineTop,
   scrubDotY,
+  crosshairFade,
+  crosshairOpacityValue = 1,
 }: {
   renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
   placement?: "side" | "top" | "bottom" | "point";
   candle?: CandlePoint | null;
   captureLineTop?: (lineTop: SharedValue<number>) => void;
   scrubDotY?: number;
+  crosshairFade?: boolean;
+  crosshairOpacityValue?: number;
 }) {
   const scrubX = useSharedValue(100);
   const scrubValue = useSharedValue<number | null>(42);
   const scrubTime = useSharedValue(985);
   const scrubActive = useSharedValue(true);
-  const crosshairOpacity = useSharedValue(1);
+  const crosshairOpacity = useSharedValue(crosshairOpacityValue);
   const tooltipLayout = useSharedValue<TooltipLayout>(LAYOUT);
   const scrubCandle = useSharedValue<CandlePoint | null>(candle ?? null);
   const lineTop = useSharedValue(-1);
@@ -74,6 +78,7 @@ function Fixture({
       engine={engine()}
       padding={DEFAULT_PADDING}
       placement={placement}
+      crosshairFade={crosshairFade}
       lineTop={lineTop}
       scrubDotY={scrubDotYSV}
     />
@@ -86,6 +91,17 @@ describe("CustomTooltipOverlay", () => {
       <Fixture renderTooltip={() => <Text testID="custom-tip">tip</Text>} />,
     );
     expect(getByTestId("custom-tip")).toBeTruthy();
+  });
+
+  it("keeps the custom tooltip opaque when edge fade is disabled", () => {
+    const { toJSON } = render(
+      <Fixture
+        crosshairFade={false}
+        crosshairOpacityValue={0.25}
+        renderTooltip={() => <Text testID="custom-tip">tip</Text>}
+      />,
+    );
+    expect(JSON.stringify(toJSON())).toContain('"opacity":1');
   });
 
   it("measures the element via onLayout without throwing", () => {

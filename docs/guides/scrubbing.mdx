@@ -239,6 +239,31 @@ finer control. Omitting it (or `false`) keeps the solid line.
 
 Pairs with `crosshairLineColor` for the stroke color, and works on `LiveChartSeries` too.
 
+## Crosshair width, overshoot, and edge fade
+
+Use `crosshairStrokeWidth` to change the line width and `crosshairOvershoot` to extend it past the
+plot's top and bottom edges. Both values are pixels; their defaults are `1` and `0`. Negative
+overshoot values are clamped to `0`. A custom top tooltip's measured line stop is preserved so
+overshoot never draws the crosshair through the tooltip.
+
+The crosshair fades as it approaches the live edge by default. Set `crosshairFade: false` when the
+chart has no live dot or the crosshair should remain fully visible. This only affects the line,
+selection dot, and tooltip; the trailing-content dim keeps its own fade.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  scrub={{
+    crosshairStrokeWidth: 2,
+    crosshairOvershoot: 6,
+    crosshairFade: false,
+  }}
+/>
+```
+
+These options also work on `LiveChartSeries`.
+
 ## Press-and-hold to scrub (`panGestureDelay`)
 
 By default scrubbing starts the moment the user drags. When the chart sits inside a horizontally

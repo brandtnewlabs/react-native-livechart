@@ -4,6 +4,7 @@ import { type ChartPadding } from "../draw/line";
 import type { LiveChartPalette } from "../types";
 import type { ResolvedSelectionDotConfig } from "../core/resolveConfig";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
+import { useCrosshairVisibleOpacity } from "../hooks/useCrosshairVisibleOpacity";
 import { SelectionDotSlot } from "./SelectionDot";
 
 /**
@@ -23,7 +24,9 @@ export function CrosshairLine({
   dimOpacity = 0.3,
   liveDotExtent = 0,
   crosshairLineColor,
-  crosshairLineWidth = 1,
+  crosshairStrokeWidth = 1,
+  crosshairOvershoot = 0,
+  crosshairFade = true,
   crosshairDash,
   crosshairDimColor,
   opaqueCanvas = false,
@@ -39,7 +42,7 @@ export function CrosshairLine({
   /** Scrub intersection Y in canvas px (the value the dot marks); -1 hides it. */
   selectionY?: SharedValue<number>;
   /** Whether scrubbing is active (passed through to a custom dot). */
-  scrubActive?: SharedValue<number> | SharedValue<boolean>;
+  scrubActive: SharedValue<number> | SharedValue<boolean>;
   /** Fallback selection-dot color (leading-series color), used when the config's
    *  own `color` is unset. */
   selectionColor?: string;
@@ -51,8 +54,12 @@ export function CrosshairLine({
    *  the gutter reserves beyond them bright. Default 0. */
   liveDotExtent?: number;
   crosshairLineColor?: string;
-  /** Vertical guide stroke width in px. Default 1. */
-  crosshairLineWidth?: number;
+  /** Vertical crosshair line width in px. Default 1. */
+  crosshairStrokeWidth?: number;
+  /** Resolved extension past the top and bottom plot edges in px. Default 0. */
+  crosshairOvershoot?: number;
+  /** Fade the crosshair near the live edge. Default true. */
+  crosshairFade?: boolean;
   /** Dash intervals `[on, off, …]` for the crosshair line; omit → solid. */
   crosshairDash?: number[];
   crosshairDimColor?: string;
@@ -68,16 +75,19 @@ export function CrosshairLine({
   const p1 = useDerivedValue(
     () => ({
       x: scrubX.value,
-      y: padding.top,
+      y: padding.top - crosshairOvershoot,
     }),
-    [scrubX, padding.top],
+    [scrubX, padding.top, crosshairOvershoot],
   );
   const p2 = useDerivedValue(
     () => ({
       x: scrubX.value,
-      y: engine.canvasHeight.value - padding.bottom,
+      y:
+        engine.canvasHeight.value -
+        padding.bottom +
+        crosshairOvershoot,
     }),
-    [scrubX, engine.canvasHeight, padding.bottom],
+    [scrubX, engine.canvasHeight, padding.bottom, crosshairOvershoot],
   );
 
   const dimWidth = useDerivedValue(() => {
@@ -100,6 +110,13 @@ export function CrosshairLine({
     [dimOpacity, crosshairOpacity],
   );
   const backgroundColor = `rgb(${palette.bgRgb[0]},${palette.bgRgb[1]},${palette.bgRgb[2]})`;
+
+  // The trailing dim deliberately keeps the original edge fade.
+  const visibleOpacity = useCrosshairVisibleOpacity(
+    crosshairOpacity,
+    scrubActive,
+    crosshairFade,
+  );
 
   return (
     <>
@@ -136,12 +153,12 @@ export function CrosshairLine({
         </Group>
       ) : null}
 
-      <Group opacity={crosshairOpacity}>
+      <Group opacity={visibleOpacity}>
         <Line
           p1={p1}
           p2={p2}
           color={crosshairLineColor ?? palette.crosshairLine}
-          strokeWidth={crosshairLineWidth}
+          strokeWidth={crosshairStrokeWidth}
         >
           {crosshairDash ? <DashPathEffect intervals={crosshairDash} /> : null}
         </Line>
@@ -153,7 +170,7 @@ export function CrosshairLine({
           x={scrubX}
           y={selectionY}
           active={scrubActive}
-          opacity={crosshairOpacity}
+          opacity={visibleOpacity}
           color={selectionColor ?? palette.line}
         />
       </Group>
