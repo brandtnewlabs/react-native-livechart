@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Scrubbing a chart with `segments` no longer crashes the app.** The scrub-focus
+  line gradient handed Skia `colors` and `positions` as two separate derived
+  values, so a frame could pair a fresh `colors` with a stale `positions`. The
+  emitted stop count changes with the visible span count, so a scrub crossing a
+  segment boundary could make the two disagree in length — which Skia's Reanimated
+  recorder raises as a C++ throw on the UI thread inside `recorder.play()`: an
+  unhandled exception that kills the process, not a catchable JS error. Both arrays
+  are now padded to a stop count fixed by the segment list alone, so a torn frame
+  stays equal-length. If the segment list changes that count at runtime, the
+  gradient remounts both stop arrays together. The padding is inert (base color,
+  at position 1).
+
 ## [4.13.0] - 2026-07-29
 
 ### Added

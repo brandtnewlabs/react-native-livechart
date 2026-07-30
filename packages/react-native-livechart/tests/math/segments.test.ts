@@ -1,5 +1,10 @@
 import type { ResolvedSegment } from "../../src/core/resolveSegment";
-import { segmentBandX, segmentLineGradient } from "../../src/math/segments";
+import {
+  padGradientStops,
+  segmentBandX,
+  segmentGradientStopCount,
+  segmentLineGradient,
+} from "../../src/math/segments";
 
 // Window [100, 130] (winStart=100, win=30) projected into plot [x1=10, x2=210].
 const WIN_START = 100;
@@ -409,5 +414,68 @@ describe("segmentLineGradient", () => {
     )!;
     expect(g).not.toBeNull();
     expect(nonDecreasing(g.positions)).toBe(true);
+  });
+});
+
+describe("padGradientStops / segmentGradientStopCount", () => {
+  const CW = 220;
+  const PL = 10;
+  const PR = 210;
+  const BASE = "#0000ff";
+  const A = () => mkSeg({ from: 105, to: 115, mutedColor: "#aaaaaa" });
+  const B = () => mkSeg({ from: 115, to: 125, mutedColor: "#bbbbbb" });
+
+  const frame = (segments: ResolvedSegment[], scrubX: number) =>
+    segmentLineGradient(segments, WIN_START, WIN, CW, PL, PR, BASE, true, scrubX);
+
+  it("pads by repeating the last stop and truncates an over-long one", () => {
+    expect(padGradientStops(["a", "b"], 4)).toEqual(["a", "b", "b", "b"]);
+    expect(padGradientStops([0, 1], 4)).toEqual([0, 1, 1, 1]);
+    expect(padGradientStops([0, 0.5, 1], 3)).toEqual([0, 0.5, 1]);
+    expect(padGradientStops([0, 0.5, 1], 2)).toEqual([0, 0.5]);
+    expect(padGradientStops([], 3)).toEqual([]);
+  });
+
+  it("counts only recolorLine segments, at their own stop width", () => {
+    expect(segmentGradientStopCount([])).toBe(2);
+    expect(segmentGradientStopCount([A()])).toBe(6);
+    expect(segmentGradientStopCount([A(), B()])).toBe(10);
+    expect(segmentGradientStopCount([A(), mkSeg({ recolorLine: false })])).toBe(6);
+    expect(
+      segmentGradientStopCount([mkSeg({ mutedColors: ["#a", "#b", "#c"] })]),
+    ).toBe(7);
+  });
+
+  it("keeps any torn colors/positions pair equal in length", () => {
+    const segments = [A(), B()];
+    const count = segmentGradientStopCount(segments);
+    const frames = [70, 150, 20].map((x) => frame(segments, x)!);
+    expect(new Set(frames.map((f) => f.colors.length)).size).toBeGreaterThan(1);
+
+    for (const a of frames) {
+      for (const b of frames) {
+        expect(padGradientStops(a.colors, count)).toHaveLength(
+          padGradientStops(b.positions, count).length,
+        );
+      }
+      expect(padGradientStops(a.colors, count)).toHaveLength(
+        padGradientStops([0, 1], count).length,
+      );
+      expect(padGradientStops([BASE, BASE], count)).toHaveLength(
+        padGradientStops(a.positions, count).length,
+      );
+    }
+  });
+
+  it("pads with inert stops — the base color, at position 1", () => {
+    const segments = [A(), B()];
+    const count = segmentGradientStopCount(segments);
+    const g = frame(segments, 70)!;
+    expect(padGradientStops(g.colors, count).slice(g.colors.length)).toEqual(
+      new Array(count - g.colors.length).fill(BASE),
+    );
+    expect(
+      padGradientStops(g.positions, count).slice(g.positions.length),
+    ).toEqual(new Array(count - g.positions.length).fill(1));
   });
 });

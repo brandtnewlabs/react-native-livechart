@@ -171,3 +171,29 @@ export function segmentLineGradient(
 
   return { colors, positions };
 }
+
+/** Stops {@link segmentLineGradient} can emit for `segments` — no per-frame state. */
+export function segmentGradientStopCount(segments: ResolvedSegment[]): number {
+  "worklet";
+  let n = 2;
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    if (!seg.recolorLine) continue;
+    const cols =
+      seg.mutedColors && seg.mutedColors.length >= 2
+        ? seg.mutedColors.length
+        : 2;
+    n += cols + 2;
+  }
+  return n;
+}
+
+/** Resize `stops` to `count` by repeating its last entry. */
+export function padGradientStops<T>(stops: T[], count: number): T[] {
+  "worklet";
+  if (stops.length === count || stops.length === 0) return stops;
+  const out = stops.slice(0, count);
+  const last = stops[stops.length - 1];
+  while (out.length < count) out.push(last);
+  return out;
+}

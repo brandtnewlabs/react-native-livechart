@@ -4,7 +4,11 @@ import { vec } from "@shopify/react-native-skia";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ResolvedSegment } from "../core/resolveSegment";
 import type { ChartPadding } from "../draw/line";
-import { segmentLineGradient } from "../math/segments";
+import {
+  padGradientStops,
+  segmentGradientStopCount,
+  segmentLineGradient,
+} from "../math/segments";
 
 const FALLBACK_POSITIONS = [0, 1];
 
@@ -43,11 +47,15 @@ export function useSegmentLineGradient(
     );
   });
 
-  const colors = useDerivedValue(
-    () => data.value?.colors ?? [baseColor, baseColor],
+  // Fixed stop count: `colors`/`positions` tear independently and Skia treats a
+  // length mismatch as a fatal UI-thread throw.
+  const stopCount = segmentGradientStopCount(segments);
+
+  const colors = useDerivedValue(() =>
+    padGradientStops(data.value?.colors ?? [baseColor, baseColor], stopCount),
   );
-  const positions = useDerivedValue(
-    () => data.value?.positions ?? FALLBACK_POSITIONS,
+  const positions = useDerivedValue(() =>
+    padGradientStops(data.value?.positions ?? FALLBACK_POSITIONS, stopCount),
   );
   const gradientEnd = useDerivedValue(() =>
     vec(Math.max(1, engine.canvasWidth.value), 0),

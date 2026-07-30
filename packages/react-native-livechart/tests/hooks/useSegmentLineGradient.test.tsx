@@ -62,8 +62,41 @@ describe("useSegmentLineGradient", () => {
         scrubActive,
       ),
     );
-    expect(result.current.colors.value).toEqual([BASE, BASE]);
-    expect(result.current.positions.value).toEqual([0, 1]);
+    // Padded stops repeat base@1, so this still paints as a flat base line.
+    expect(result.current.colors.value).toEqual(new Array(6).fill(BASE));
+    expect(result.current.positions.value).toEqual([0, 1, 1, 1, 1, 1]);
+  });
+
+  it("pads colors and positions to one stop count across scrub states", () => {
+    const segments = [
+      resolveSegment({ from: 105, to: 115, mutedColor: "#aaa" }, DEFAULTS),
+      resolveSegment({ from: 115, to: 125, mutedColor: "#bbb" }, DEFAULTS),
+    ];
+    const lengths = [
+      scrub(-1, false), // at rest → fallback stops
+      scrub(150, true), // one span dimmed
+      scrub(50, true), // both dimmed
+    ].map(({ scrubX, scrubActive }) => {
+      const { result } = renderHook(() =>
+        useSegmentLineGradient(
+          engine(),
+          segments,
+          PADDING,
+          BASE,
+          scrubX,
+          scrubActive,
+        ),
+      );
+      return [
+        result.current.colors.value.length,
+        result.current.positions.value.length,
+      ];
+    });
+    expect(lengths).toEqual([
+      [10, 10],
+      [10, 10],
+      [10, 10],
+    ]);
   });
 
   it("keeps the gradient end at least 1px wide before layout", () => {
