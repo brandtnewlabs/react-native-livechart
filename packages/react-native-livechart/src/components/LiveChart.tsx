@@ -89,7 +89,6 @@ import {
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { usePinchZoom } from "../hooks/usePinchZoom";
 import { useVisibleRange } from "../hooks/useVisibleRange";
-import { useSegmentLineGradient } from "../hooks/useSegmentLineGradient";
 import { useSingleChartReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import {
   useThreshold,
@@ -162,6 +161,7 @@ import { ReferenceLineGroupOverlay } from "./ReferenceLineGroupOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
 import { ScrubActionOverlay } from "./ScrubActionOverlay";
 import { SegmentDividerOverlay } from "./SegmentDividerOverlay";
+import { SegmentLineGradient } from "./SegmentLineGradient";
 import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
@@ -1200,19 +1200,6 @@ function useLiveChartController({
     effectivePadding,
   );
 
-  // Scrub-focus gradient painted onto the line stroke: uniform at rest, and while
-  // scrubbing (or with an `active` segment) the focused segment stays full while
-  // the others are de-emphasized. Declared after `crosshair` so it can read the
-  // live scrub state.
-  const segmentGradient = useSegmentLineGradient(
-    engine,
-    resolvedSegments,
-    effectivePadding,
-    lineProp?.color ?? palette.line,
-    crosshair.scrubX,
-    crosshair.scrubActive,
-  );
-
   // Hide the live dot while scrubbing when a selection dot is marking the scrub
   // point instead — otherwise both dots show at once. Applies on static charts
   // too, now that they're scrubbable.
@@ -1326,7 +1313,6 @@ function useLiveChartController({
     refGroupFormat,
     resolvedSegments,
     hasRecolorSegments,
-    segmentGradient,
     thresholdCfg,
     thresholdGeom,
     thresholdStrokeColors: thresholdStopColors?.stroke ?? null,
@@ -1764,7 +1750,7 @@ function ChartStack({
     dragValues,
     resolvedSegments,
     hasRecolorSegments,
-    segmentGradient,
+    crosshair,
     thresholdCfg,
     thresholdGeom,
     thresholdStrokeColors,
@@ -1905,11 +1891,13 @@ function ChartStack({
               positions={thresholdGeom.splitPositions}
             />
           ) : hasRecolorSegments ? (
-            <LinearGradient
-              start={vec(0, 0)}
-              end={segmentGradient.gradientEnd}
-              colors={segmentGradient.colors}
-              positions={segmentGradient.positions}
+            <SegmentLineGradient
+              engine={engine}
+              segments={resolvedSegments}
+              padding={effectivePadding}
+              baseColor={lineProp?.color ?? palette.line}
+              scrubX={crosshair.scrubX}
+              scrubActive={crosshair.scrubActive}
             />
           ) : lineProp?.colors?.length ? (
             <LinearGradient

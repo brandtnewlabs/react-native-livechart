@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recorder raises as a C++ throw on the UI thread inside `recorder.play()`: an
   unhandled exception that kills the process, not a catchable JS error. Both arrays
   are now padded to a stop count fixed by the segment list alone, so a torn frame
-  stays equal-length. The padding is inert (base color, at position 1).
+  stays equal-length. If the segment list changes that count at runtime, the
+  gradient remounts both stop arrays together. The padding is inert (base color,
+  at position 1).
 
 ## [4.13.0] - 2026-07-29
 
