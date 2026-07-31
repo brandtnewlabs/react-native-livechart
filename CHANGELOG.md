@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Configurable candle-body gaps.** `metrics.candle.minGapPx` (default `2`)
+  controls the minimum horizontal gap between adjacent candle bodies and their
+  aligned volume bars. Set it to `0` to let `bodyWidthRatio` keep bodies
+  proportional on dense charts. The default preserves existing rendering.
+
 ## [4.13.1] - 2026-07-30
 
 ### Fixed

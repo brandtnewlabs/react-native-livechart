@@ -64,11 +64,14 @@ Bullish/bearish body and wick colors come from the palette derived from `accentC
 Override them precisely via the [`palette`](/guides/theming) prop (`candleUp`, `candleDown`,
 `wickUp`, `wickDown`).
 
-## Body & wick shape
+## Body size, spacing & wick shape
 
-The candle body radius and wick thickness live in the `metrics.candle`
-[sizing tokens](/api-reference/types#metrics). Round the body corners with `bodyRadius`
-(clamped to half the body so thin candles stay sane) and set the wick stroke with `wickWidth`:
+Candlestick geometry lives in the `metrics.candle`
+[sizing tokens](/api-reference/types#metrics). Body width is the smallest of
+`bodyWidthRatio × slot width`, `slot width - minGapPx`, and `maxBodyPx`, with a 1px floor.
+`minGapPx` defaults to `2`, preserving a visible gap between adjacent bodies. On dense charts,
+set it to `0` to let `bodyWidthRatio` keep bodies proportional instead of collapsing them to the
+1px floor:
 
 ```tsx
 <LiveChart
@@ -76,13 +79,21 @@ The candle body radius and wick thickness live in the `metrics.candle`
   candles={candles}
   liveCandle={liveCandle}
   candleWidth={60}
-  metrics={{ candle: { bodyRadius: 3, wickWidth: 2 } }}
+  metrics={{
+    candle: {
+      bodyWidthRatio: 0.9,
+      minGapPx: 0,
+      bodyRadius: 3,
+      wickWidth: 2,
+    },
+  }}
 />
 ```
 
-`bodyRadius` defaults to `0` (sharp corners); `wickWidth` defaults to `1`. Width/spacing tokens
-(`bodyWidthRatio`, `maxBodyPx`, `minBodyPx`) live in the same namespace — see
-[`CandleMetrics`](/api-reference/types#metrics).
+The 1px body floor takes precedence when a slot is too narrow to preserve the configured gap.
+Volume bars automatically use the same body width and spacing. `bodyRadius` defaults to `0`
+(sharp corners), and `wickWidth` defaults to `1`. See
+[`CandleMetrics`](/api-reference/types#metrics) for every sizing token and default.
 
 ## Volume bars
 

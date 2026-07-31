@@ -296,4 +296,49 @@ describe("buildVolumeGeometry", () => {
     );
     expect(r.bars[0].w).toBe(20); // 40 * 0.5
   });
+
+  it("lets minGapPx: 0 keep bars proportional on tiny slots", () => {
+    // chartW = 60 - 20 = 40, windowSecs 800 → slotPx = 3.
+    const def = buildVolumeGeometry(
+      [vc(0, 1, 2, 0, 1, 5)],
+      null,
+      pad,
+      60,
+      100,
+      0,
+      800,
+      20,
+      60,
+      {
+        minBodyPx: 1,
+        maxBodyPx: 40,
+        bodyWidthRatio: 0.9,
+        minGapPx: 2,
+        bodyRadius: 0,
+        wickWidth: 1,
+      },
+    );
+    expect(def.bars[0].w).toBe(1); // min(3 * 0.9, 3 - 2, 40)
+
+    const dense = buildVolumeGeometry(
+      [vc(0, 1, 2, 0, 1, 5)],
+      null,
+      pad,
+      60,
+      100,
+      0,
+      800,
+      20,
+      60,
+      {
+        minBodyPx: 1,
+        maxBodyPx: 40,
+        bodyWidthRatio: 0.9,
+        minGapPx: 0,
+        bodyRadius: 0,
+        wickWidth: 1,
+      },
+    );
+    expect(dense.bars[0].w).toBeCloseTo(2.7, 5); // 3 * 0.9
+  });
 });
