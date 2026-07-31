@@ -105,6 +105,10 @@ export function useChartPaths(
       engine.canvasHeight.get(),
       padding,
       buf,
+      // Only a live-following chart may extend the line to the right edge; a
+      // parked (scrolled-back / overscrolled) window ends at its last real
+      // point rather than fabricating a flat line into dataless space.
+      engine.viewEnd.get() != null,
     );
 
     // Skip blending when fully revealed or no morphT provided

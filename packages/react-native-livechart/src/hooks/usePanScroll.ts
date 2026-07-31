@@ -1,6 +1,8 @@
 import { Gesture } from "react-native-gesture-handler";
 import {
   cancelAnimation,
+  useAnimatedReaction,
+  useDerivedValue,
   useSharedValue,
   withDecay,
   type SharedValue,
@@ -71,26 +73,85 @@ export interface UsePanScrollOptions {
    * price indicator. Cleared when the finger lifts (the scrub pan's finalize).
    */
   scrubActive?: SharedValue<boolean>;
+  /**
+   * Fraction of the visible window (0–1) the pan may travel past the data
+   * bounds — into blank future space beyond the live edge and blank history
+   * before the oldest point (TradingView-style free dragging). `0` (default)
+   * keeps the classic hard stops at the data. Resolved from
+   * `timeScroll.overscroll` (see `resolveOverscroll`).
+   */
+  overscroll?: number;
 }
+
+/**
+ * Snap-to-follow zone around the live edge, as a fraction of the window. With
+ * overscroll a released drag/fling that settles within this zone re-attaches to
+ * live; anything further out stays parked where it stopped.
+ */
+export const FOLLOW_SNAP = 0.02;
 
 /**
  * Smallest valid right-edge time: keeps the window's left edge
  * (`rightEdge - window`) from passing `minTime`, and never exceeds the live edge
- * so the `[lo, liveEdge]` clamp range stays valid when history is short.
+ * so the `[lo, liveEdge]` clamp range stays valid when history is short. With
+ * `overscroll` the left edge may pass `minTime` by that fraction of the window,
+ * exposing blank space before the oldest data.
  */
 export function panLowerBound(
   minTime: number,
   windowSecs: number,
   liveEdge: number,
+  overscroll: number = 0,
 ): number {
   "worklet";
-  return Math.min(minTime + windowSecs, liveEdge);
+  return Math.min(minTime + windowSecs * (1 - overscroll), liveEdge);
+}
+
+/**
+ * Largest valid right-edge time: the live edge, pushed past it by `overscroll`
+ * (a fraction of the window) so the latest data can be dragged toward the middle
+ * of the plot, leaving blank future space on the right. `0` = the live edge.
+ */
+export function panUpperBound(
+  windowSecs: number,
+  liveEdge: number,
+  overscroll: number,
+): number {
+  "worklet";
+  return liveEdge + windowSecs * overscroll;
+}
+
+/**
+ * Re-clamp a parked right edge after the overscroll setting changes. Reducing
+ * the allowance must not leave a stale future/history position outside the new
+ * bounds; at the classic live-edge hard stop, `null` resumes following live.
+ */
+export function clampViewEndForOverscroll(
+  viewEnd: number,
+  minTime: number,
+  windowSecs: number,
+  liveEdge: number,
+  overscroll: number,
+): number | null {
+  "worklet";
+  const lo = panLowerBound(minTime, windowSecs, liveEdge, overscroll);
+  if (viewEnd < lo) return lo;
+  const hi = panUpperBound(windowSecs, liveEdge, overscroll);
+  if (viewEnd >= hi) return overscroll > 0 ? hi : null;
+  return viewEnd;
 }
 
 /**
  * Next right-edge time after dragging `changeX` px (drag right ⇒ reveal earlier
- * time ⇒ smaller right edge), clamped to `[lo, liveEdge]`. Returns `null` once
- * the drag reaches the live edge — the signal to resume following.
+ * time ⇒ smaller right edge), clamped to `[lo, panUpperBound]`. Without
+ * overscroll, returns `null` once the drag reaches the live edge — the signal to
+ * resume following.
+ *
+ * With overscroll it must NOT return `null` mid-drag: the pan's `onChange`
+ * re-derives `cur` from `viewEnd ?? liveEdge` each frame, so snapping to follow
+ * re-anchors every per-frame delta at the live edge and the drag can't escape it
+ * in either direction. Re-attaching to live happens only in the release decay
+ * callback (see `usePanScroll`), inside the {@link FOLLOW_SNAP} zone.
  */
 export function nextViewEnd(
   cur: number,
@@ -99,10 +160,16 @@ export function nextViewEnd(
   windowSecs: number,
   liveEdge: number,
   lo: number,
+  overscroll: number = 0,
 ): number | null {
   "worklet";
   let next = cur - (changeX / chartW) * windowSecs;
   if (next < lo) next = lo;
+  if (overscroll > 0) {
+    const hi = panUpperBound(windowSecs, liveEdge, overscroll);
+    if (next > hi) next = hi;
+    return next;
+  }
   if (next > liveEdge) next = liveEdge;
   return next >= liveEdge ? null : next;
 }
@@ -150,6 +217,7 @@ export function usePanScroll({
   onScrollStart,
   scrollActive,
   scrubActive,
+  overscroll = 0,
 }: UsePanScrollOptions): ReturnType<typeof Gesture.Pan> {
   const { viewEnd, liveEdge, displayWindow, canvasWidth, canvasHeight } = engine;
   const padLeft = padding.left;
@@ -161,6 +229,31 @@ export function usePanScroll({
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const armed = useSharedValue(false);
+  const overscrollSV = useDerivedValue(() => overscroll);
+
+  // A runtime config change (the demo exposes Off / 50% / 90%) applies to an
+  // already parked window immediately. Without this, disabling overscroll while
+  // parked in the future leaves a numeric `viewEnd`; re-enabling it later revives
+  // that stale future position and makes the chart jump without a gesture.
+  useAnimatedReaction(
+    () => overscrollSV.value,
+    /* istanbul ignore next -- UI-thread config reaction; pure clamp is unit-tested */
+    (nextOverscroll) => {
+      const cur = viewEnd.get();
+      if (cur == null) return;
+      const next = clampViewEndForOverscroll(
+        cur,
+        minTime.get(),
+        displayWindow.get(),
+        liveEdge.get(),
+        nextOverscroll,
+      );
+      if (next !== cur) {
+        cancelAnimation(viewEnd);
+        viewEnd.set(next);
+      }
+    },
+  );
 
   const onStart =
     /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
@@ -194,8 +287,8 @@ export function usePanScroll({
       if (chartW <= 0) return;
       const edge = liveEdge.get();
       const cur = viewEnd.get() ?? edge;
-      const lo = panLowerBound(minTime.get(), win, edge);
-      viewEnd.set(nextViewEnd(cur, e.changeX, chartW, win, edge, lo));
+      const lo = panLowerBound(minTime.get(), win, edge, overscroll);
+      viewEnd.set(nextViewEnd(cur, e.changeX, chartW, win, edge, lo, overscroll));
     };
 
   const onEnd =
@@ -208,15 +301,20 @@ export function usePanScroll({
       const chartW = canvasWidth.get() - padLeft - padRight;
       if (chartW <= 0) return;
       const edge = liveEdge.get();
-      const lo = panLowerBound(minTime.get(), win, edge);
+      const lo = panLowerBound(minTime.get(), win, edge, overscroll);
+      const hi = overscroll > 0 ? panUpperBound(win, edge, overscroll) : edge;
+      // With overscroll the snap-to-follow zone widens from the exact live edge
+      // to FOLLOW_SNAP of the window around it — this release callback is the
+      // ONLY place that re-attaches to live (never mid-drag, see nextViewEnd).
+      const snapZone = overscroll > 0 ? win * FOLLOW_SNAP : 1e-3;
       const velocity = flingVelocity(e.velocityX, chartW, win);
       cancelAnimation(viewEnd);
       viewEnd.set(
-        withDecay({ velocity, clamp: [lo, edge] }, (finished) => {
+        withDecay({ velocity, clamp: [lo, hi] }, (finished) => {
           "worklet";
-          // Landed on the live-edge clamp → resume following; stopped short →
-          // stay frozen where inertia died.
-          if (finished && (viewEnd.get() ?? edge) >= edge - 1e-3) {
+          // Landed near the live edge → resume following; stopped short (or
+          // past, with overscroll) → stay frozen where inertia died.
+          if (finished && Math.abs((viewEnd.get() ?? edge) - edge) <= snapZone) {
             viewEnd.set(null);
           }
         }),

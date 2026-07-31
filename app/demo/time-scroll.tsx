@@ -43,6 +43,12 @@ const HOLD_OPTIONS: { value: number; label: string }[] = [
   { value: 750, label: "750ms" },
 ];
 
+const OVERSCROLL_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: "Off" },
+  { value: 0.5, label: "50%" },
+  { value: 0.9, label: "90%" },
+];
+
 // `returnToLive` controls how the window goes back to live when timeScroll is
 // switched off mid-scroll: glide (default), instant snap, or a slower glide.
 type ReturnMode = "glide" | "instant" | "slow";
@@ -63,6 +69,7 @@ export default function TimeScrollScreen() {
   const [mode, setMode] = useState<"candle" | "line">("candle");
   const [gesture, setGesture] = useState<Gesture>("holdToScrub");
   const [holdMs, setHoldMs] = useState(500);
+  const [overscroll, setOverscroll] = useState(0);
   const [enabled, setEnabled] = useState(true);
   const [followViewEdge, setFollowViewEdge] = useState(true);
   const [hideLiveOnScrollBack, setHideLiveOnScrollBack] = useState(true);
@@ -118,7 +125,12 @@ export default function TimeScrollScreen() {
           badge={{ followViewEdge }}
           timeScroll={
             enabled
-              ? { gesture, scrubHoldMs: holdMs, hideLiveOnScrollBack }
+              ? {
+                  gesture,
+                  scrubHoldMs: holdMs,
+                  hideLiveOnScrollBack,
+                  overscroll,
+                }
               : false
           }
           returnToLive={RETURN_TO_LIVE[returnMode]}
@@ -180,6 +192,13 @@ export default function TimeScrollScreen() {
       <ControlRow label="Pan to scroll">
         <ToggleChip label="timeScroll" value={enabled} onChange={setEnabled} />
       </ControlRow>
+
+      <ChipRow
+        label="Overscroll (visible-window fraction)"
+        options={OVERSCROLL_OPTIONS}
+        value={overscroll}
+        onChange={setOverscroll}
+      />
 
       <ChipRow
         label="Return to live (toggle timeScroll off while scrolled back)"

@@ -1780,6 +1780,17 @@ export interface TimeScrollConfig {
    * visible edge price, which IS in view.
    */
   hideLiveOnScrollBack?: boolean;
+  /**
+   * How far pan / fling / pinch may travel past the data bounds, as a fraction
+   * of the visible window (`0`–`1`). With overscroll you can drag the latest
+   * candle toward the middle of the plot (blank future space on the right) or
+   * pan left past the oldest point into blank history — TradingView-style free
+   * dragging. A released drag that settles within a small zone of the live edge
+   * re-attaches to live. Default `0`: the window hard-stops at the oldest data
+   * and the live edge (the classic behavior). Values outside `[0, 1)` are
+   * clamped. Applies to the pinch-zoom (`zoom`) clamps too.
+   */
+  overscroll?: number;
 }
 
 /**

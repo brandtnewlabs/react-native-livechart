@@ -229,6 +229,7 @@ export function buildLinePoints(
   canvasHeight: number,
   padding: ChartPadding,
   out?: number[],
+  omitTipBeyondData = false,
 ): number[] {
   "worklet";
   const pts: number[] = out ?? [];
@@ -326,6 +327,18 @@ export function buildLinePoints(
         padding.top + (displayMax - data[b].value) * yScale,
       );
     }
+  }
+
+  // A scrolled-back / overscrolled window can end after the last data point;
+  // the synthetic tip would then fabricate a flat segment from that point to
+  // the right edge. Callers pass `omitTipBeyondData` to end the line at the
+  // last real point instead.
+  if (
+    omitTipBeyondData &&
+    endIdx === data.length &&
+    data[endIdx - 1].time < now
+  ) {
+    return pts;
   }
 
   // Live tip at current time with smoothed value

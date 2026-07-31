@@ -677,6 +677,41 @@ describe("tickLiveChartEngineFrame", () => {
       expect(s.timestamp).toBe(1000);
     });
 
+    // timeScroll.overscroll: with allowFutureViewEnd the gestures may park the
+    // right edge past the live edge (blank future space) and the engine must
+    // honor it — without the flag a future edge falls through to following.
+    it("freezes at a future viewEnd when allowFutureViewEnd is set", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({ viewEnd: 1100, allowFutureViewEnd: true }),
+      );
+      expect(s.timestamp).toBe(1100); // parked past live
+      expect(s.liveEdge).toBe(1000); // live edge keeps tracking "now"
+    });
+
+    it("ignores a future viewEnd when allowFutureViewEnd is off", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({ viewEnd: 1100, allowFutureViewEnd: false }),
+      );
+      expect(s.timestamp).toBe(1000); // classic clamp: follow live
+    });
+
+    it("keeps the strand-guard with allowFutureViewEnd (edge before first point)", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          allowFutureViewEnd: true,
+          points: [{ time: 980, value: 1 }],
+        }),
+      );
+      expect(s.timestamp).toBe(1000); // 950 < firstTime 980 ⇒ follow live
+    });
+
     it("lets viewEnd override paused (pan wins over freeze)", () => {
       const s = { ...baseState(), timestamp: 999 };
       tickLiveChartEngineFrame(s, input({ viewEnd: 950, paused: true }));

@@ -15,6 +15,7 @@ import {
   resolvePulse,
   resolveReferenceLineConfig,
   resolveLoading,
+  resolveOverscroll,
   resolveReturnToLiveMs,
   resolveTransitions,
   resolveScrub,
@@ -317,6 +318,37 @@ describe("resolveZoom", () => {
       minTimeWindow: 5,
       maxTimeWindow: 600,
     });
+  });
+});
+
+// ─── resolveOverscroll ───────────────────────────────────────────────────────
+
+describe("resolveOverscroll", () => {
+  it("is 0 for undefined and the boolean forms of timeScroll", () => {
+    expect(resolveOverscroll(undefined)).toBe(0);
+    expect(resolveOverscroll(true)).toBe(0);
+    expect(resolveOverscroll(false)).toBe(0);
+  });
+
+  it("is 0 when omitted from the config object", () => {
+    expect(resolveOverscroll({})).toBe(0);
+    expect(resolveOverscroll({ gesture: "axisDrag" })).toBe(0);
+  });
+
+  it("passes a valid fraction through", () => {
+    expect(resolveOverscroll({ overscroll: 0.5 })).toBe(0.5);
+    expect(resolveOverscroll({ overscroll: 0.9 })).toBe(0.9);
+  });
+
+  it("clamps non-positive and NaN values to 0", () => {
+    expect(resolveOverscroll({ overscroll: 0 })).toBe(0);
+    expect(resolveOverscroll({ overscroll: -0.5 })).toBe(0);
+    expect(resolveOverscroll({ overscroll: NaN })).toBe(0);
+  });
+
+  it("clamps values at or above 1 to just under 1", () => {
+    expect(resolveOverscroll({ overscroll: 1 })).toBe(0.99);
+    expect(resolveOverscroll({ overscroll: 5 })).toBe(0.99);
   });
 });
 

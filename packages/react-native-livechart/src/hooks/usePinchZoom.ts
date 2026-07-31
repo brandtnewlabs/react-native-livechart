@@ -6,7 +6,7 @@ import {
 } from "react-native-reanimated";
 
 import type { ChartPadding } from "../draw/line";
-import { panLowerBound } from "./usePanScroll";
+import { FOLLOW_SNAP, panLowerBound, panUpperBound } from "./usePanScroll";
 
 /** Engine SharedValues the pinch-zoom gesture reads/writes. */
 export interface PinchZoomEngineRefs {
@@ -44,6 +44,13 @@ export interface UsePinchZoomOptions {
   maxTimeWindow?: number;
   /** Worklet fired when a pinch activates — e.g. to clear a lingering crosshair. */
   onZoomStart?: () => void;
+  /**
+   * Fraction of the visible window (0–1) the zoomed window may travel past the
+   * data bounds — blank future space beyond the live edge, blank history before
+   * the oldest point. `0` (default) keeps the classic hard stops. Shared with
+   * {@link usePanScroll} (resolved from `timeScroll.overscroll`).
+   */
+  overscroll?: number;
 }
 
 /** Clamp a window width to `[minWin, maxWin]`. */
@@ -131,6 +138,7 @@ export function usePinchZoom({
   minTimeWindow,
   maxTimeWindow,
   onZoomStart,
+  overscroll = 0,
 }: UsePinchZoomOptions): ReturnType<typeof Gesture.Pinch> {
   const { viewWindow, viewEnd, liveEdge, displayWindow, canvasWidth } = engine;
   const padLeft = padding.left;
@@ -175,14 +183,27 @@ export function usePinchZoom({
       // doesn't compound; the right edge then keeps it under the (live) focal.
       const focalT = focalTime(e.focalX, padLeft, chartW, sEnd - sWin, sWin);
       let newEnd = zoomViewEnd(focalT, e.focalX, padLeft, chartW, newWin);
-      const lo = panLowerBound(minTime.get(), newWin, edge);
+      const lo = panLowerBound(minTime.get(), newWin, edge, overscroll);
       if (newEnd < lo) newEnd = lo;
-      if (newEnd > edge) newEnd = edge;
+      const hi = overscroll > 0 ? panUpperBound(newWin, edge, overscroll) : edge;
+      if (newEnd > hi) newEnd = hi;
       viewWindow.set(newWin);
       // Track the displayed window 1:1 (bypass the frame-loop lerp lag) so the
       // focal anchor is pixel-accurate during the gesture.
       displayWindow.set(newWin);
-      viewEnd.set(newEnd >= edge ? null : newEnd);
+      // Unlike the pan (see nextViewEnd), snapping to `null` mid-gesture is safe
+      // here: the pinch maps cumulative scale/focal from a gesture-START snapshot
+      // (`startViewEnd`), not per-frame deltas, so a snap can't re-anchor it.
+      // With overscroll, snap within the FOLLOW_SNAP zone; without, at the edge.
+      viewEnd.set(
+        overscroll > 0
+          ? Math.abs(newEnd - edge) <= newWin * FOLLOW_SNAP
+            ? null
+            : newEnd
+          : newEnd >= edge
+            ? null
+            : newEnd,
+      );
     };
 
   return Gesture.Pinch().enabled(enabled).onStart(onStart).onChange(onChange);
