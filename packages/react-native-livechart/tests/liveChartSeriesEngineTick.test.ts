@@ -676,6 +676,38 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       expect(s.timestamp).toBe(1000);
     });
 
+    // timeScroll.overscroll: with allowFutureViewEnd a right edge parked past
+    // the live edge (blank future space) is honored instead of following live.
+    it("freezes at a future viewEnd when allowFutureViewEnd is set", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        s,
+        input({ viewEnd: 1200, allowFutureViewEnd: true }),
+      );
+      expect(s.timestamp).toBe(1200);
+      expect(s.liveEdge).toBe(1000);
+    });
+
+    it("keeps the strand-guard with allowFutureViewEnd (edge before first point)", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        s,
+        input({
+          viewEnd: 950,
+          allowFutureViewEnd: true,
+          series: [
+            {
+              id: "a",
+              color: "#00f",
+              value: 5,
+              data: [{ time: 980, value: 5 }],
+            },
+          ],
+        }),
+      );
+      expect(s.timestamp).toBe(1000); // 950 < firstTime 980 ⇒ follow live
+    });
+
     it("lets viewEnd override paused", () => {
       const s = { ...baseMulti(), timestamp: 999 };
       tickLiveChartSeriesEngineFrame(s, input({ viewEnd: 950, paused: true }));

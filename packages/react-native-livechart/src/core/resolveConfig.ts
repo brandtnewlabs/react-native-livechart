@@ -30,6 +30,7 @@ import type {
   SelectionDotRingConfig,
   ReturnToLiveConfig,
   ThresholdConfig,
+  TimeScrollConfig,
   ThresholdLineConfig,
   TradeEvent,
   TransitionConfig,
@@ -558,6 +559,27 @@ export function resolveReturnToLiveMs(
   const d = prop.duration;
   if (d == null) return RETURN_TO_LIVE_MS;
   return d > 0 ? d : 0;
+}
+
+/**
+ * Overscroll ceiling — `overscroll: 1` would let the window scroll fully past
+ * the data (an all-blank plot), so the fraction clamps just short of it.
+ */
+const MAX_OVERSCROLL = 0.99;
+
+/**
+ * Resolves `timeScroll.overscroll` to a clamped `[0, 1)` fraction of the
+ * visible window that pan / fling / pinch may travel past the data bounds.
+ * `0` (booleans, omitted, or non-positive values) keeps the classic hard
+ * stops at the oldest data and the live edge. See {@link TimeScrollConfig}.
+ */
+export function resolveOverscroll(
+  prop: boolean | TimeScrollConfig | undefined,
+): number {
+  if (prop == null || typeof prop === "boolean") return 0;
+  const v = prop.overscroll;
+  if (v == null || !(v > 0)) return 0;
+  return v < MAX_OVERSCROLL ? v : MAX_OVERSCROLL;
 }
 
 /**

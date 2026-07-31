@@ -68,6 +68,13 @@ export interface MultiEngineTickInput {
    */
   viewEnd?: number | null;
   /**
+   * Honor a {@link viewEnd} parked at or past the live edge (blank future space)
+   * instead of falling through to following live. Set when `timeScroll.overscroll`
+   * is active. The `viewEnd >= firstDataTime` strand-guard applies in both modes.
+   * Default `false` (classic behavior: only a past `viewEnd` freezes).
+   */
+  allowFutureViewEnd?: boolean;
+  /**
    * "Return to live" glide (see #164). When time-scroll is disabled while scrolled
    * back, the hook clears {@link viewEnd} and animates {@link returnT} `0`→`1`;
    * each frame the right edge interpolates from {@link returnFrom} to the *current*
@@ -113,8 +120,12 @@ export function tickLiveChartSeriesEngineFrame(
   // edge AND that edge still sits within the data; a stranded edge falls through
   // to following live. When time-scroll is disabled the hook clears `viewEnd` and
   // kicks off the glide below, so a stale edge can't keep the window frozen. #164.
+  // With `allowFutureViewEnd` (timeScroll.overscroll) an edge parked past live is
+  // honored too — the data-overlap strand-guard stays in both modes.
   const scrolledBack =
-    viewEnd != null && viewEnd < liveEdge && viewEnd >= firstDataTime;
+    viewEnd != null &&
+    viewEnd >= firstDataTime &&
+    (viewEnd < liveEdge || input.allowFutureViewEnd === true);
   if (scrolledBack) {
     state.timestamp = viewEnd;
   } else if (!input.paused) {

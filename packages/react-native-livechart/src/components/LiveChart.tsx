@@ -46,6 +46,7 @@ import {
   resolveScrub,
   resolveScrubAction,
   resolveTransitions,
+  resolveOverscroll,
   resolveReturnToLiveMs,
   resolveSelectionDot,
   resolveThreshold,
@@ -607,6 +608,11 @@ function useLiveChartController({
   // Glide duration for the return-to-live animation (0 = instant). A sibling of
   // `timeScroll` so it survives `timeScroll={false}` (the disable that triggers it).
   const returnToLiveMs = resolveReturnToLiveMs(returnToLive);
+  // Overscroll fraction ([0, 1)) — how far pan/zoom may travel past the data
+  // bounds into blank space. 0 (the default) keeps the classic hard stops.
+  const timeScrollOverscroll = timeScrollEnabled
+    ? resolveOverscroll(timeScroll)
+    : 0;
   const zoomCfg = resolveZoom(zoom);
   const zoomEnabled = zoomCfg !== null && !isStatic;
 
@@ -677,6 +683,7 @@ function useLiveChartController({
     static: isStatic,
     snapKey,
     scrollEnabled: timeScrollEnabled,
+    allowFutureViewEnd: timeScrollOverscroll > 0,
     returnToLiveMs,
     smoothing,
     adaptiveSpeedBoost: metricsCfg.motion.adaptiveSpeedBoost,
@@ -1089,6 +1096,7 @@ function useLiveChartController({
     minTime: scrollMinTime,
     enabled: timeScrollEnabled,
     mode: scrollGestureMode,
+    overscroll: timeScrollOverscroll,
     scrollActive,
     // Once a scrub is engaged the chart is locked: scrolling goes inert so the
     // finger only moves the price indicator across a fixed window.
@@ -1111,6 +1119,7 @@ function useLiveChartController({
     enabled: zoomEnabled,
     minTimeWindow: zoomCfg?.minTimeWindow,
     maxTimeWindow: zoomCfg?.maxTimeWindow,
+    overscroll: timeScrollOverscroll,
     onZoomStart: () => {
       "worklet";
       crosshairScrubActive.set(false);

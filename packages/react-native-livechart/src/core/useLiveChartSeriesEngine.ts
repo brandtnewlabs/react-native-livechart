@@ -40,6 +40,12 @@ export interface MultiSeriesEngineConfig {
    */
   scrollEnabled?: boolean;
   /**
+   * Honor a `viewEnd` parked at or past the live edge — set when
+   * `timeScroll.overscroll` is active so the pan/pinch gestures can drag into
+   * blank future space. See {@link MultiEngineTickInput.allowFutureViewEnd}.
+   */
+  allowFutureViewEnd?: boolean;
+  /**
    * Duration (ms) of the return-to-live glide when {@link scrollEnabled} flips to
    * `false` while scrolled back. `0` snaps instantly. Defaults to
    * {@link RETURN_TO_LIVE_MS}. Resolved from `timeScroll.returnToLive`. See #164.
@@ -77,6 +83,8 @@ export interface MultiEngineFrameRefs {
   pausedSV: SharedValue<boolean>;
   /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
   viewEndSV?: SharedValue<number | null>;
+  /** Honor a `viewEnd` past the live edge (timeScroll.overscroll). Optional. */
+  allowFutureViewEndSV?: SharedValue<boolean>;
   /** "Return to live" glide progress (0→1); the right edge eases to live. Optional. */
   returnTSV?: SharedValue<number>;
   /** Frozen right-edge time the return glide starts from. Optional. */
@@ -240,6 +248,7 @@ export function applyLiveChartSeriesEngineFrame(
   input.paused = sv.pausedSV.value;
   input.snap = snap;
   input.viewEnd = sv.viewEndSV?.value;
+  input.allowFutureViewEnd = sv.allowFutureViewEndSV?.value ?? false;
   input.returnT = sv.returnTSV?.value;
   input.returnFrom = sv.returnFromSV?.value;
   input.viewWindow = sv.viewWindowSV?.value;
@@ -287,6 +296,10 @@ export function useLiveChartSeriesEngine(
   // Whether time-scroll is active — drives the return-to-live reaction below.
   // Defaults to enabled (legacy behavior).
   const scrollEnabledSV = useDerivedValue(() => config.scrollEnabled ?? true);
+  // Honor a viewEnd parked past the live edge (timeScroll.overscroll).
+  const allowFutureViewEndSV = useDerivedValue(
+    () => config.allowFutureViewEnd ?? false,
+  );
   // Return-to-live glide duration (ms); 0 = instant snap. Read by the reaction.
   const returnToLiveMsSV = useDerivedValue(
     () => config.returnToLiveMs ?? RETURN_TO_LIVE_MS,
@@ -362,6 +375,7 @@ export function useLiveChartSeriesEngine(
     windowBufferSV,
     pausedSV,
     viewEndSV: viewEnd,
+    allowFutureViewEndSV,
     returnTSV: returnT,
     returnFromSV: returnFrom,
     viewWindowSV: viewWindow,

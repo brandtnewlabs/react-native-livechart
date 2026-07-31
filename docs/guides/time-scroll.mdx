@@ -86,6 +86,22 @@ scrolls instead). Higher = more deliberate scrub, fewer accidental scrubs while 
 />
 ```
 
+### Overscroll (`overscroll`)
+
+By default the window hard-stops at the data: the oldest point on the left, the live edge on the
+right. Set `overscroll` to a fraction of the visible window (`0`–`1`) to drag **past** those bounds
+into blank space, TradingView-style — pull the latest candle toward the middle to leave room on the
+right, or pan left past loaded history (pairs well with `onVisibleRangeChange` paging while older
+data lazy-loads in).
+
+```tsx
+<LiveChart data={data} value={value} timeScroll={{ overscroll: 0.9 }} />
+```
+
+A released drag or fling that settles close to the live edge (within 2% of the window) re-attaches
+to live; anything further out stays parked where it stopped. The same bounds apply to pinch-to-zoom.
+Default `0` (hard stops).
+
 ## Pinch-to-zoom (`zoom`)
 
 Enable `zoom` for **two-finger pinch-to-zoom** of the visible window. Pinch out to zoom in (a
