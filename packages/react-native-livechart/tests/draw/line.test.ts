@@ -233,6 +233,53 @@ describe("buildLinePoints", () => {
     const n = out.length >> 1;
     expect(n).toBeGreaterThan(0);
   });
+
+  it("omitTipBeyondData cuts the line at the last point when the window ends after the data", () => {
+    const now = 100;
+    const data = [
+      { time: now - 25, value: 2 },
+      { time: now - 20, value: 4 },
+    ];
+    const withTip = buildLinePoints(data, 4, now, 30, 0, 10, 200, 120, pad);
+    const cut = buildLinePoints(
+      data,
+      4,
+      now,
+      30,
+      0,
+      10,
+      200,
+      120,
+      pad,
+      undefined,
+      true,
+    );
+    // The tip (pinned to the right plot edge) is dropped; nothing else changes.
+    expect(cut).toEqual(withTip.slice(0, -2));
+  });
+
+  it("omitTipBeyondData keeps the tip when data continues past the window end", () => {
+    const now = 100;
+    const data = [
+      { time: now - 5, value: 1 },
+      { time: now + 10, value: 99 },
+    ];
+    const out = buildLinePoints(
+      data,
+      1,
+      now,
+      30,
+      0,
+      10,
+      200,
+      120,
+      pad,
+      undefined,
+      true,
+    );
+    const plain = buildLinePoints(data, 1, now, 30, 0, 10, 200, 120, pad);
+    expect(out).toEqual(plain);
+  });
 });
 
 describe("badge geometry metrics overrides", () => {
