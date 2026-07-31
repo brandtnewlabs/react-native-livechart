@@ -707,6 +707,7 @@ interface CandleMetrics {
   minBodyPx: number;      // min body height so dojis stay visible, default 1
   maxBodyPx: number;      // max body width, default 40
   bodyWidthRatio: number; // body width as a fraction of the slot, default 0.8
+  minGapPx: number;       // min gap (px) between adjacent bodies; 0 = ratio-only, default 2
   bodyRadius: number;     // body corner radius (px); 0 = sharp, default 0
   wickWidth: number;      // wick (high–low line) stroke width (px), default 1
 }
