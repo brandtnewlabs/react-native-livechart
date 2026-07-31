@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   aligned volume bars. Set it to `0` to let `bodyWidthRatio` keep bodies
   proportional on dense charts. The default preserves existing rendering.
 
+- **TradingView-style time-scroll overscroll.** `TimeScrollConfig.overscroll`
+  lets `LiveChart` and `LiveChartSeries` pan, fling, and pinch past the oldest
+  data and live edge into blank space by a configurable fraction of the visible
+  window. It defaults to `0` (the existing hard stops), clamps to `[0, 0.99]`,
+  and re-attaches to live when a released gesture settles near the live edge.
+  Runtime setting changes immediately clamp an already parked window to the new
+  bounds. The Time scroll demo now includes `Off`, `50%`, and `90%` controls.
+
 ## [4.13.1] - 2026-07-30
 
 ### Fixed

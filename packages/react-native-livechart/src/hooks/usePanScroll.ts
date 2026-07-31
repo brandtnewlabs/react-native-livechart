@@ -1,6 +1,8 @@
 import { Gesture } from "react-native-gesture-handler";
 import {
   cancelAnimation,
+  useAnimatedReaction,
+  useDerivedValue,
   useSharedValue,
   withDecay,
   type SharedValue,
@@ -120,6 +122,26 @@ export function panUpperBound(
 }
 
 /**
+ * Re-clamp a parked right edge after the overscroll setting changes. Reducing
+ * the allowance must not leave a stale future/history position outside the new
+ * bounds; at the classic live-edge hard stop, `null` resumes following live.
+ */
+export function clampViewEndForOverscroll(
+  viewEnd: number,
+  minTime: number,
+  windowSecs: number,
+  liveEdge: number,
+  overscroll: number,
+): number | null {
+  "worklet";
+  const lo = panLowerBound(minTime, windowSecs, liveEdge, overscroll);
+  if (viewEnd < lo) return lo;
+  const hi = panUpperBound(windowSecs, liveEdge, overscroll);
+  if (viewEnd >= hi) return overscroll > 0 ? hi : null;
+  return viewEnd;
+}
+
+/**
  * Next right-edge time after dragging `changeX` px (drag right ⇒ reveal earlier
  * time ⇒ smaller right edge), clamped to `[lo, panUpperBound]`. Without
  * overscroll, returns `null` once the drag reaches the live edge — the signal to
@@ -207,6 +229,31 @@ export function usePanScroll({
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const armed = useSharedValue(false);
+  const overscrollSV = useDerivedValue(() => overscroll);
+
+  // A runtime config change (the demo exposes Off / 50% / 90%) applies to an
+  // already parked window immediately. Without this, disabling overscroll while
+  // parked in the future leaves a numeric `viewEnd`; re-enabling it later revives
+  // that stale future position and makes the chart jump without a gesture.
+  useAnimatedReaction(
+    () => overscrollSV.value,
+    /* istanbul ignore next -- UI-thread config reaction; pure clamp is unit-tested */
+    (nextOverscroll) => {
+      const cur = viewEnd.get();
+      if (cur == null) return;
+      const next = clampViewEndForOverscroll(
+        cur,
+        minTime.get(),
+        displayWindow.get(),
+        liveEdge.get(),
+        nextOverscroll,
+      );
+      if (next !== cur) {
+        cancelAnimation(viewEnd);
+        viewEnd.set(next);
+      }
+    },
+  );
 
   const onStart =
     /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */

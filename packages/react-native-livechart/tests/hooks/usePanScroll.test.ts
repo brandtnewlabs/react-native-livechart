@@ -1,5 +1,6 @@
 import {
   axisBandTop,
+  clampViewEndForOverscroll,
   flingVelocity,
   nextViewEnd,
   panLowerBound,
@@ -35,6 +36,24 @@ describe("panUpperBound", () => {
 
   it("extends past the live edge by the overscroll fraction of the window", () => {
     expect(panUpperBound(30, 1000, 0.5)).toBe(1015);
+  });
+});
+
+describe("clampViewEndForOverscroll", () => {
+  it("resumes live when overscroll is disabled from a future position", () => {
+    expect(clampViewEndForOverscroll(1027, 900, 30, 1000, 0)).toBeNull();
+  });
+
+  it("clamps a future position to a reduced overscroll allowance", () => {
+    expect(clampViewEndForOverscroll(1027, 900, 30, 1000, 0.5)).toBe(1015);
+  });
+
+  it("clamps a history position to the new lower bound", () => {
+    expect(clampViewEndForOverscroll(905, 900, 30, 1000, 0)).toBe(930);
+  });
+
+  it("keeps a position already inside the new bounds", () => {
+    expect(clampViewEndForOverscroll(980, 900, 30, 1000, 0.5)).toBe(980);
   });
 });
 
