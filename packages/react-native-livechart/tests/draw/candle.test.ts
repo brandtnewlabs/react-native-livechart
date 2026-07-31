@@ -214,6 +214,7 @@ describe("candle geometry metrics overrides", () => {
       minBodyPx: 1,
       maxBodyPx: 20,
       bodyWidthRatio: 0.8,
+      minGapPx: 2,
       bodyRadius: 0,
       wickWidth: 1,
     });
@@ -228,10 +229,33 @@ describe("candle geometry metrics overrides", () => {
       minBodyPx: 1,
       maxBodyPx: 40,
       bodyWidthRatio: 0.5,
+      minGapPx: 2,
       bodyRadius: 0,
       wickWidth: 1,
     });
     expect(thin.bodies[0].w).toBe(20); // 40 * 0.5
+  });
+
+  it("lets minGapPx: 0 keep bodies proportional on tiny slots", () => {
+    // chartW = 60 - 20 = 40, windowSecs 800 → slotPx = 3; slotPx - 2 clamps to the 1px floor.
+    const def = buildCandleGeometry(c, null, pad, 60, 210, 0, 800, 90, 110, 60, {
+      minBodyPx: 1,
+      maxBodyPx: 40,
+      bodyWidthRatio: 0.9,
+      minGapPx: 2,
+      bodyRadius: 0,
+      wickWidth: 1,
+    });
+    expect(def.bodies[0].w).toBe(1); // min(3 * 0.9, 3 - 2, 40)
+    const dense = buildCandleGeometry(c, null, pad, 60, 210, 0, 800, 90, 110, 60, {
+      minBodyPx: 1,
+      maxBodyPx: 40,
+      bodyWidthRatio: 0.9,
+      minGapPx: 0,
+      bodyRadius: 0,
+      wickWidth: 1,
+    });
+    expect(dense.bodies[0].w).toBeCloseTo(2.7, 5); // 3 * 0.9
   });
 
   it("floors body height at minBodyPx for a doji", () => {
@@ -242,6 +266,7 @@ describe("candle geometry metrics overrides", () => {
       minBodyPx: 6,
       maxBodyPx: 40,
       bodyWidthRatio: 0.8,
+      minGapPx: 2,
       bodyRadius: 0,
       wickWidth: 1,
     });

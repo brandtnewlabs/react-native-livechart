@@ -289,6 +289,7 @@ describe("buildVolumeGeometry", () => {
         minBodyPx: 1,
         maxBodyPx: 40,
         bodyWidthRatio: 0.5,
+        minGapPx: 2,
         bodyRadius: 0,
         wickWidth: 1,
       },

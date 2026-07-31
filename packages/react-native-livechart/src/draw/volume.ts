@@ -113,7 +113,11 @@ export function buildVolumeGeometry(
   const slotPx = (candleWidthSecs / windowSecs) * chartW;
   const bodyW = Math.max(
     1,
-    Math.min(slotPx * metrics.bodyWidthRatio, slotPx - 2, metrics.maxBodyPx),
+    Math.min(
+      slotPx * metrics.bodyWidthRatio,
+      slotPx - metrics.minGapPx,
+      metrics.maxBodyPx,
+    ),
   );
 
   const winEnd = winStart + windowSecs;

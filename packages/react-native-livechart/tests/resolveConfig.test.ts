@@ -1529,6 +1529,7 @@ describe("resolveMetrics", () => {
       minBodyPx: 1,
       maxBodyPx: 40,
       bodyWidthRatio: 0.8,
+      minGapPx: 2,
       bodyRadius: 0,
       wickWidth: 1,
     });
@@ -1570,6 +1571,7 @@ describe("resolveMetrics", () => {
       minBodyPx: 1,
       maxBodyPx: 12,
       bodyWidthRatio: 0.8,
+      minGapPx: 2,
       bodyRadius: 0,
       wickWidth: 1,
     });
