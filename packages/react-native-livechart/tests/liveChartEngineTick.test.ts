@@ -1,6 +1,9 @@
-import { tickLiveChartEngineFrame } from "../src/core/liveChartEngineTick";
+import {
+  tickLiveChartEngineFrame,
+  type EngineTickMutable,
+} from "../src/core/liveChartEngineTick";
 
-function baseState() {
+function baseState(): EngineTickMutable {
   return {
     displayValue: 0,
     displayMin: 0,

@@ -11,12 +11,23 @@ import { LiveChartSeries } from "react-native-livechart";
 `LiveChartSeries` draws several line series sharing an axis, time window, and crosshair. It
 accepts all the shared theming, axis, range, layout, and text props from
 [`LiveChart`](/api-reference/livechart) (`theme`, `accentColor`, `palette`, `metrics`, `font`,
-`canvasMode`, `timeWindow`, `smoothing`, [`snapKey`](/api-reference/livechart#param-snap-key), `yAxis`,
+`canvasMode`, `timeWindow`, `smoothing`, [`snapKey`](/api-reference/livechart#param-snap-key),
+[`yRangeScale`](/guides/y-range-scale), `yAxis`,
 `referenceLines`, `formatValue`, …), plus the multi-series props below.
 
 On Android, the shared experimental `canvasMode="opaque"` option selects an opaque SurfaceView and
 paints the palette background inside the canvas. See
 [Android surface rendering](/guides/android-surface-rendering) for constraints and profiling guidance.
+
+## Manual Y-range scaling
+
+<ParamField body="yRangeScale" type="SharedValue<number>" default="1">
+  Multiplies the shared fitted Y-range around its midpoint. Drive it from a
+  price-gutter gesture to stretch or compress every visible series together;
+  hidden series remain excluded from the underlying fit. Values must be positive
+  and finite, and invalid values safely behave as `1`. Read on the UI thread each
+  frame. **@experimental.** See [Manual Y-range scaling](/guides/y-range-scale).
+</ParamField>
 
 ## Custom overlays
 

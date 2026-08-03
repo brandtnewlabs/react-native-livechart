@@ -5,8 +5,9 @@ description: "Drive TradingView-style price-axis scaling from your own gesture."
 ---
 
 <Warning>
-  **Experimental.** `yRangeScale` is available on `LiveChart` (line and candle modes). The
-  library owns the scale math, while your app owns the gesture and reset behavior.
+  **Experimental.** `yRangeScale` is available on `LiveChart` (line and candle modes) and
+  `LiveChartSeries`. The library owns the scale math, while your app owns the gesture and reset
+  behavior.
 </Warning>
 
 `LiveChart` normally fits its Y-axis to the visible data. Pass a `SharedValue<number>` through
@@ -16,7 +17,8 @@ description: "Drive TradingView-style price-axis scaling from your own gesture."
 <Note>
   **Live example:**
   [`app/demo/y-range-scale.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/y-range-scale.tsx)
-  includes line/candle toggles, preset buttons, a draggable price gutter, and double-tap reset.
+  includes line/candle/multi-series toggles, preset buttons, a draggable price gutter, and
+  double-tap reset.
 </Note>
 
 ```tsx
@@ -45,15 +47,19 @@ const reset = () => {
 };
 
 <LiveChart data={data} value={value} yRangeScale={yRangeScale} />;
+
+// The same SharedValue scales every visible series around their shared fit.
+<LiveChartSeries series={series} yRangeScale={yRangeScale} />;
 ```
 
 Mount `priceScalePan` on your own axis-gutter view with `GestureDetector`. Keeping that gesture
-outside `LiveChart` lets you choose its hit area and compose it with the rest of your screen.
+outside the chart lets you choose its hit area and compose it with the rest of your screen.
 
 ## Behavior
 
 - The multiplier is applied after the normal margin and minimum-range fit, so auto-fit continues
   tracking the visible data while scaled.
+- On `LiveChartSeries`, the multiplier applies to the shared range after hidden series are excluded.
 - While the SharedValue changes, the displayed range tracks it without frame-lag. Once it stops,
   ordinary live-data changes use the chart's configured `smoothing` again.
 - Reset with an animation such as `withTiming(1)` for the same smooth result whether the current

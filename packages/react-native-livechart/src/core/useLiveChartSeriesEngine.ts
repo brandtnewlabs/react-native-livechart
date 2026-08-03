@@ -29,6 +29,8 @@ export interface MultiSeriesEngineConfig {
   referenceValues?: number[];
   nonNegative?: boolean;
   maxValue?: number;
+  /** Positive, finite live Y-range multiplier (1 = auto-fit); read each frame. */
+  yRangeScale?: SharedValue<number>;
   nowOverride?: number;
   windowBuffer?: number;
   paused?: boolean;
@@ -78,6 +80,7 @@ export interface MultiEngineFrameRefs {
   referenceValues?: SharedValue<number[] | undefined>;
   nonNegativeSV?: SharedValue<boolean>;
   maxValueSV?: SharedValue<number | undefined>;
+  yRangeScaleSV?: SharedValue<number>;
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
@@ -241,6 +244,7 @@ export function applyLiveChartSeriesEngineFrame(
   input.referenceValues = sv.referenceValues?.value;
   input.nonNegative = sv.nonNegativeSV?.value ?? false;
   input.maxValue = sv.maxValueSV?.value;
+  input.yRangeScale = sv.yRangeScaleSV?.value ?? 1;
   input.nowOverride = sv.nowOverrideSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
   input.series = seriesSnap;
@@ -371,6 +375,7 @@ export function useLiveChartSeriesEngine(
     referenceValues,
     nonNegativeSV,
     maxValueSV,
+    yRangeScaleSV: config.yRangeScale,
     nowOverrideSV,
     windowBufferSV,
     pausedSV,

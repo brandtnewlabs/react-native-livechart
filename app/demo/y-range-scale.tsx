@@ -10,7 +10,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { LiveChart } from "react-native-livechart";
+import { LiveChart, LiveChartSeries } from "react-native-livechart";
 
 import { Chip, ChipRow, ControlRow } from "../../demo-lib/ChipRow";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -22,11 +22,12 @@ export const options = { title: "Y-range scale" };
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
-type Mode = "line" | "candle";
+type Mode = "line" | "candle" | "series";
 
 const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: "line", label: "Line" },
   { value: "candle", label: "Candles" },
+  { value: "series", label: "Series" },
 ];
 
 const SCALE_MIN = 0.25;
@@ -40,8 +41,8 @@ export default function YRangeScaleScreen() {
   const dragStartScale = useSharedValue(1);
   const dragStartY = useSharedValue(0);
   const dragActive = useSharedValue(false);
-  const { data, value, candles, liveCandle } = useSimulatedChartData({
-    multiSeries: false,
+  const { data, value, candles, liveCandle, series } = useSimulatedChartData({
+    multiSeries: true,
     candleAggregation: true,
     tradeStream: false,
     candleWidth: 3,
@@ -111,6 +112,7 @@ export default function YRangeScaleScreen() {
   // Race prevents the losing recognizer from holding the winning one open.
   const axisGesture = Gesture.Race(axisPan, axisDoubleTap);
   const isCandle = mode === "candle";
+  const isSeries = mode === "series";
   const scaleReadoutProps = useAnimatedProps(() => {
     const text = `${yRangeScale.get().toFixed(2)}×`;
     return { text, defaultValue: text };
@@ -120,25 +122,39 @@ export default function YRangeScaleScreen() {
     <DemoScreen
       title="Y-range scale"
       docs="guides/y-range-scale"
-      description="Drag the right price-axis gutter vertically to stretch or compress the fitted Y-range. Double-tap the gutter to reset to auto-fit."
+      description="Drag the right price-axis gutter vertically to stretch or compress the fitted Y-range for line, candle, and multi-series charts. Double-tap the gutter to reset to auto-fit."
       chart={
         <View style={styles.chart}>
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-            <LiveChart
-              style={styles.chart}
-              data={data}
-              value={value}
-              mode={mode}
-              candles={isCandle ? candles : undefined}
-              liveCandle={isCandle ? liveCandle : undefined}
-              candleWidth={3}
-              accentColor={ACCENT}
-              theme={APP_THEME}
-              timeWindow={60}
-              yAxis
-              yRangeScale={yRangeScale}
-              scrub={false}
-            />
+            {isSeries ? (
+              <LiveChartSeries
+                style={styles.chart}
+                series={series}
+                accentColor={ACCENT}
+                theme={APP_THEME}
+                timeWindow={60}
+                yAxis
+                yRangeScale={yRangeScale}
+                scrub={false}
+                legend={false}
+              />
+            ) : (
+              <LiveChart
+                style={styles.chart}
+                data={data}
+                value={value}
+                mode={mode}
+                candles={isCandle ? candles : undefined}
+                liveCandle={isCandle ? liveCandle : undefined}
+                candleWidth={3}
+                accentColor={ACCENT}
+                theme={APP_THEME}
+                timeWindow={60}
+                yAxis
+                yRangeScale={yRangeScale}
+                scrub={false}
+              />
+            )}
           </View>
           <GestureDetector gesture={axisGesture}>
             <Animated.View

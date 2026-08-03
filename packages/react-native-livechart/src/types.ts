@@ -2011,7 +2011,9 @@ export interface LiveChartCoreProps {
    * Drive it from a gesture (e.g. dragging the price axis) to stretch or
    * compress the price scale TradingView-style; the auto-fit keeps tracking
    * the visible window underneath. Values must be positive and finite; invalid
-   * values fall back to `1`. Read on the UI thread each frame.
+   * values fall back to `1`. Read on the UI thread each frame. Supported by
+   * both `LiveChart` and `LiveChartSeries`. Default `1`.
+   *
    * @experimental
    */
   yRangeScale?: SharedValue<number>;

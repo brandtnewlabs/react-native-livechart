@@ -1,19 +1,10 @@
-import { tickLiveChartSeriesEngineFrame } from "../src/core/liveChartSeriesEngineTick";
+import {
+  tickLiveChartSeriesEngineFrame,
+  type MultiEngineTickMutable,
+} from "../src/core/liveChartSeriesEngineTick";
 
 describe("tickLiveChartSeriesEngineFrame", () => {
-  function baseMulti(): {
-    displayMin: number;
-    displayMax: number;
-    displayWindow: number;
-    timestamp: number;
-    liveEdge: number;
-    displayValues: number[];
-    opacities: number[];
-    extremaMinValue: number;
-    extremaMaxValue: number;
-    extremaMinTime: number;
-    extremaMaxTime: number;
-  } {
+  function baseMulti(): MultiEngineTickMutable {
     return {
       displayMin: 0,
       displayMax: 100,
@@ -909,6 +900,141 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       expect(s.displayValues[0]).toBeLessThan(20); // ...but not yet at the target
       expect(s.displayWindow).toBeGreaterThan(30);
       expect(s.displayMax).toBeGreaterThan(200);
+    });
+
+    describe("yRangeScale", () => {
+      const scaleInput = (
+        over: Partial<
+          Parameters<typeof tickLiveChartSeriesEngineFrame>[1]
+        > = {},
+      ) => ({
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.3,
+        exaggerate: false,
+        referenceValue: undefined,
+        series: seriesAB,
+        nowSeconds: 1000,
+        ...over,
+      });
+
+      it("stretches the shared fitted range around its midpoint", () => {
+        const auto = baseMulti();
+        tickLiveChartSeriesEngineFrame(auto, scaleInput({ snap: true }));
+        const scaled = baseMulti();
+        tickLiveChartSeriesEngineFrame(
+          scaled,
+          scaleInput({ snap: true, yRangeScale: 2 }),
+        );
+        expect(scaled.displayMax - scaled.displayMin).toBeCloseTo(
+          2 * (auto.displayMax - auto.displayMin),
+        );
+        expect((scaled.displayMin + scaled.displayMax) / 2).toBeCloseTo(
+          (auto.displayMin + auto.displayMax) / 2,
+        );
+      });
+
+      it("snaps to the scaled range while the scale is moving", () => {
+        const auto = baseMulti();
+        tickLiveChartSeriesEngineFrame(auto, scaleInput({ snap: true }));
+        const shrunk = baseMulti();
+        tickLiveChartSeriesEngineFrame(
+          shrunk,
+          scaleInput({ snap: true, yRangeScale: 0.5 }),
+        );
+        const s = {
+          ...baseMulti(),
+          displayValues: [20, 60],
+          opacities: [1, 1],
+          displayMin: auto.displayMin,
+          displayMax: auto.displayMax,
+        };
+        tickLiveChartSeriesEngineFrame(s, scaleInput({ yRangeScale: 0.5 }));
+        expect(s.displayMin).toBeCloseTo(shrunk.displayMin);
+        expect(s.displayMax).toBeCloseTo(shrunk.displayMax);
+      });
+
+      it("eases the fit while the scale is parked", () => {
+        const shrunk = baseMulti();
+        tickLiveChartSeriesEngineFrame(
+          shrunk,
+          scaleInput({ snap: true, yRangeScale: 0.5 }),
+        );
+        const narrower = scaleInput({
+          yRangeScale: 0.5,
+          series: [
+            {
+              id: "a",
+              data: [
+                { time: 990, value: 45 },
+                { time: 995, value: 55 },
+              ],
+              value: 50,
+              color: "#00f",
+            },
+          ],
+        });
+        const target = baseMulti();
+        tickLiveChartSeriesEngineFrame(target, { ...narrower, snap: true });
+        const s = {
+          ...baseMulti(),
+          displayValues: [50],
+          opacities: [1],
+          displayMin: shrunk.displayMin,
+          displayMax: shrunk.displayMax,
+          lastYRangeScale: 0.5,
+        };
+        tickLiveChartSeriesEngineFrame(s, narrower);
+        expect(s.displayMin).toBeGreaterThan(shrunk.displayMin);
+        expect(s.displayMin).toBeLessThan(target.displayMin);
+      });
+
+      it("eases back to auto-fit on reset to 1", () => {
+        const auto = baseMulti();
+        tickLiveChartSeriesEngineFrame(auto, scaleInput({ snap: true }));
+        const scaled = baseMulti();
+        tickLiveChartSeriesEngineFrame(
+          scaled,
+          scaleInput({ snap: true, yRangeScale: 2 }),
+        );
+        const s = {
+          ...baseMulti(),
+          displayValues: [20, 60],
+          opacities: [1, 1],
+          displayMin: scaled.displayMin,
+          displayMax: scaled.displayMax,
+          lastYRangeScale: 2,
+        };
+        tickLiveChartSeriesEngineFrame(s, scaleInput({ yRangeScale: 1 }));
+        expect(s.displayMax).toBeLessThan(scaled.displayMax);
+        expect(s.displayMax).toBeGreaterThan(auto.displayMax);
+      });
+
+      it.each([
+        0,
+        -1,
+        NaN,
+        Infinity,
+        -Infinity,
+        Number.MIN_VALUE,
+        Number.MAX_VALUE,
+      ])("falls back to auto-fit for an invalid scale (%s)", (yRangeScale) => {
+        const auto = baseMulti();
+        tickLiveChartSeriesEngineFrame(auto, scaleInput({ snap: true }));
+        const invalid = baseMulti();
+        tickLiveChartSeriesEngineFrame(
+          invalid,
+          scaleInput({ snap: true, yRangeScale }),
+        );
+        expect(invalid.displayMin).toBe(auto.displayMin);
+        expect(invalid.displayMax).toBe(auto.displayMax);
+        expect(invalid.displayMax).toBeGreaterThan(invalid.displayMin);
+        expect(Number.isFinite(invalid.displayMin)).toBe(true);
+        expect(Number.isFinite(invalid.displayMax)).toBe(true);
+        expect(invalid.lastYRangeScale).toBe(1);
+      });
     });
   });
 });
