@@ -64,7 +64,7 @@ Follow the Skia, Reanimated, and Gesture Handler install docs for your toolchain
 
 ### React Native architecture
 
-`react-native-livechart` supports both React Native's New Architecture and the legacy architecture. The library itself is TypeScript/JavaScript and has no native module or Codegen surface; it uses the native integrations provided by its Skia, Reanimated, and Gesture Handler peer dependencies. The Expo example in this repository runs with the New Architecture enabled.
+`react-native-livechart` currently targets React Native's New Architecture. The package requires `react-native-reanimated` `>=4.0.0`, and Reanimated 4 supports only the New Architecture (Fabric). The library itself is TypeScript/JavaScript and has no native module or Codegen surface, but its required animation runtime determines architecture compatibility. The Expo example in this repository runs with the New Architecture enabled.
 
 ### Babel (required)
 
