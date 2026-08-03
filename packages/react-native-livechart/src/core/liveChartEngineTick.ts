@@ -38,6 +38,8 @@ export interface EngineTickMutable {
   extremaMaxValue: number;
   extremaMinTime: number;
   extremaMaxTime: number;
+  /** Previous frame's yRangeScale — detects an in-flight scale drag. */
+  lastYRangeScale?: number;
 }
 
 export interface EngineTickInput {
@@ -65,6 +67,8 @@ export interface EngineTickInput {
   nonNegative?: boolean;
   /** Hard cap for the computed upper bound. */
   maxValue?: number;
+  /** Manual Y-range multiplier around the fitted midpoint (1 = auto-fit). */
+  yRangeScale?: number;
   targetValue: number;
   points: LiveChartPoint[];
   /** Seconds since Unix epoch; defaults to `Date.now() / 1000` */
@@ -356,17 +360,29 @@ export function tickLiveChartEngineFrame(
       tMax += margin;
     }
 
+    const yScale = input.yRangeScale ?? 1;
+    // Snap only while the scale is actively moving, so the drag tracks the
+    // finger but a parked scale (and the reset back to 1) keeps the eased fit.
+    const yScaleDragging = yScale !== 1 && yScale !== state.lastYRangeScale;
+    state.lastYRangeScale = yScale;
+    if (yScale !== 1) {
+      const scaledMid = (tMin + tMax) / 2;
+      const scaledHalf = ((tMax - tMin) / 2) * yScale;
+      tMin = scaledMid - scaledHalf;
+      tMax = scaledMid + scaledHalf;
+    }
+
     if (input.nonNegative && tMin < 0) tMin = 0;
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
-    if (snap || tMin < state.displayMin) {
+    if (snap || yScaleDragging || tMin < state.displayMin) {
       state.displayMin = tMin;
     } else {
       state.displayMin = lerp(state.displayMin, tMin, speed, input.dt);
     }
 
-    if (snap || tMax > state.displayMax) {
+    if (snap || yScaleDragging || tMax > state.displayMax) {
       state.displayMax = tMax;
     } else {
       state.displayMax = lerp(state.displayMax, tMax, speed, input.dt);

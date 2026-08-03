@@ -460,6 +460,13 @@ provided; everything else has a default.
   Hard upper bound for the Y-axis range.
 </ParamField>
 
+<ParamField body="yRangeScale" type="SharedValue<number>">
+  Manual Y-range multiplier around the fitted midpoint (`1` = auto-fit). Drive
+  it from a gesture (e.g. dragging the price axis) to stretch or compress the
+  price scale TradingView-style; the auto-fit keeps tracking the visible window
+  underneath. Read on the UI thread each frame. **@experimental.**
+</ParamField>
+
 <ParamField body="windowBuffer" type="number" default="0">
   Right-edge buffer as a fraction of `timeWindow`.
 </ParamField>

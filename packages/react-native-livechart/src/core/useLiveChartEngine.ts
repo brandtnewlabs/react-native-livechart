@@ -54,6 +54,8 @@ export interface EngineConfig {
   thresholdRangeExtendToNow?: boolean;
   nonNegative?: boolean;
   maxValue?: number;
+  /** Live manual Y-range multiplier (1 = auto-fit); read on the UI thread each frame. */
+  yRangeScale?: SharedValue<number>;
   nowOverride?: number;
   windowBuffer?: number;
   paused?: boolean;
@@ -209,6 +211,7 @@ export interface EngineFrameRefs {
   thresholdRangeExtendToNow?: SharedValue<boolean>;
   nonNegativeSV?: SharedValue<boolean>;
   maxValueSV?: SharedValue<number | undefined>;
+  yRangeScaleSV?: SharedValue<number>;
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
@@ -340,6 +343,7 @@ export function applyLiveChartEngineFrame(
   input.thresholdRangeExtendToNow = sv.thresholdRangeExtendToNow?.value ?? true;
   input.nonNegative = sv.nonNegativeSV?.value ?? false;
   input.maxValue = sv.maxValueSV?.value;
+  input.yRangeScale = sv.yRangeScaleSV?.value ?? 1;
   input.nowOverride = sv.nowOverrideSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
   input.targetValue = sv.value.value;
@@ -525,6 +529,7 @@ export function useLiveChartEngine(
     thresholdRangeExtendToNow,
     nonNegativeSV,
     maxValueSV,
+    yRangeScaleSV: config.yRangeScale,
     nowOverrideSV,
     windowBufferSV,
     pausedSV,
