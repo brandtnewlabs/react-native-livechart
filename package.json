@@ -75,7 +75,7 @@
     "typescript": "~6.0.3"
   },
   "overrides": {
-    "@react-native/jest-preset": "0.86.0"
+    "@react-native/jest-preset": "0.86.2"
   },
   "expo": {
     "install": {
