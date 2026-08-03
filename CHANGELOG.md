@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Manual Y-range scaling.** `LiveChart.yRangeScale` accepts a live
+  `SharedValue<number>` multiplier around the fitted range midpoint (`1` =
+  auto-fit), enabling app-owned price-gutter drag and animated reset gestures in
+  line and candle modes. The engine tracks scale changes without frame-lag,
+  returns to normal range smoothing when parked, and safely treats non-positive,
+  non-finite, or numerically overflowing values as auto-fit. A dedicated guide
+  and demo cover gesture composition, presets, and double-tap reset.
+
 ## [4.14.0] - 2026-07-31
 
 ### Added

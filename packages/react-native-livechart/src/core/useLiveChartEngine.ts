@@ -54,7 +54,7 @@ export interface EngineConfig {
   thresholdRangeExtendToNow?: boolean;
   nonNegative?: boolean;
   maxValue?: number;
-  /** Live manual Y-range multiplier (1 = auto-fit); read on the UI thread each frame. */
+  /** Positive, finite live Y-range multiplier (1 = auto-fit); read each frame. */
   yRangeScale?: SharedValue<number>;
   nowOverride?: number;
   windowBuffer?: number;

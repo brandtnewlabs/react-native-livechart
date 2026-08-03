@@ -67,7 +67,7 @@ export interface EngineTickInput {
   nonNegative?: boolean;
   /** Hard cap for the computed upper bound. */
   maxValue?: number;
-  /** Manual Y-range multiplier around the fitted midpoint (1 = auto-fit). */
+  /** Positive, finite Y-range multiplier around the fitted midpoint (1 = auto-fit). */
   yRangeScale?: number;
   targetValue: number;
   points: LiveChartPoint[];
@@ -360,17 +360,37 @@ export function tickLiveChartEngineFrame(
       tMax += margin;
     }
 
-    const yScale = input.yRangeScale ?? 1;
+    // Treat malformed gesture output as auto-fit. A zero/negative multiplier
+    // collapses or inverts the range; a non-finite/overflowing one poisons every
+    // downstream price-to-Y projection. Keep the guard here on the UI thread so
+    // callers can write the SharedValue directly without a JS round-trip.
+    const requestedYScale = input.yRangeScale ?? 1;
+    let yScale =
+      requestedYScale > 0 && Number.isFinite(requestedYScale)
+        ? requestedYScale
+        : 1;
+    if (yScale !== 1) {
+      const scaledMid = (tMin + tMax) / 2;
+      const scaledHalf = ((tMax - tMin) / 2) * yScale;
+      const scaledMin = scaledMid - scaledHalf;
+      const scaledMax = scaledMid + scaledHalf;
+      // Reject multiplication overflow and subnormal scales that round the two
+      // final bounds onto the same number.
+      if (
+        Number.isFinite(scaledMin) &&
+        Number.isFinite(scaledMax) &&
+        scaledMin < scaledMax
+      ) {
+        tMin = scaledMin;
+        tMax = scaledMax;
+      } else {
+        yScale = 1;
+      }
+    }
     // Snap only while the scale is actively moving, so the drag tracks the
     // finger but a parked scale (and the reset back to 1) keeps the eased fit.
     const yScaleDragging = yScale !== 1 && yScale !== state.lastYRangeScale;
     state.lastYRangeScale = yScale;
-    if (yScale !== 1) {
-      const scaledMid = (tMin + tMax) / 2;
-      const scaledHalf = ((tMax - tMin) / 2) * yScale;
-      tMin = scaledMid - scaledHalf;
-      tMax = scaledMid + scaledHalf;
-    }
 
     if (input.nonNegative && tMin < 0) tMin = 0;
     const maxV = input.maxValue;

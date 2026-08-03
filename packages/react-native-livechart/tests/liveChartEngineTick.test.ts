@@ -1359,5 +1359,24 @@ describe("tickLiveChartEngineFrame — snap (one-shot settle)", () => {
       expect(s.displayMax).toBeLessThan(scaled.displayMax);
       expect(s.displayMax).toBeGreaterThan(auto.displayMax);
     });
+
+    it.each([0, -1, NaN, Infinity, -Infinity, Number.MIN_VALUE, Number.MAX_VALUE])(
+      "falls back to auto-fit for an invalid scale (%s)",
+      (yRangeScale) => {
+        const auto = baseState();
+        tickLiveChartEngineFrame(auto, scaleInput({ snap: true }));
+        const invalid = baseState();
+        tickLiveChartEngineFrame(
+          invalid,
+          scaleInput({ snap: true, yRangeScale }),
+        );
+        expect(invalid.displayMin).toBe(auto.displayMin);
+        expect(invalid.displayMax).toBe(auto.displayMax);
+        expect(invalid.displayMax).toBeGreaterThan(invalid.displayMin);
+        expect(Number.isFinite(invalid.displayMin)).toBe(true);
+        expect(Number.isFinite(invalid.displayMax)).toBe(true);
+        expect(invalid.lastYRangeScale).toBe(1);
+      },
+    );
   });
 });
