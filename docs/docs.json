@@ -55,7 +55,8 @@
             "pages": [
               "guides/scrubbing",
               "guides/order-ticket",
-              "guides/time-scroll"
+              "guides/time-scroll",
+              "guides/y-range-scale"
             ]
           },
           {

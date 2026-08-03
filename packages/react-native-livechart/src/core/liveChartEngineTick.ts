@@ -38,6 +38,8 @@ export interface EngineTickMutable {
   extremaMaxValue: number;
   extremaMinTime: number;
   extremaMaxTime: number;
+  /** Previous frame's yRangeScale — detects an in-flight scale drag. */
+  lastYRangeScale?: number;
 }
 
 export interface EngineTickInput {
@@ -65,6 +67,8 @@ export interface EngineTickInput {
   nonNegative?: boolean;
   /** Hard cap for the computed upper bound. */
   maxValue?: number;
+  /** Positive, finite Y-range multiplier around the fitted midpoint (1 = auto-fit). */
+  yRangeScale?: number;
   targetValue: number;
   points: LiveChartPoint[];
   /** Seconds since Unix epoch; defaults to `Date.now() / 1000` */
@@ -356,17 +360,49 @@ export function tickLiveChartEngineFrame(
       tMax += margin;
     }
 
+    // Treat malformed gesture output as auto-fit. A zero/negative multiplier
+    // collapses or inverts the range; a non-finite/overflowing one poisons every
+    // downstream price-to-Y projection. Keep the guard here on the UI thread so
+    // callers can write the SharedValue directly without a JS round-trip.
+    const requestedYScale = input.yRangeScale ?? 1;
+    let yScale =
+      requestedYScale > 0 && Number.isFinite(requestedYScale)
+        ? requestedYScale
+        : 1;
+    if (yScale !== 1) {
+      const scaledMid = (tMin + tMax) / 2;
+      const scaledHalf = ((tMax - tMin) / 2) * yScale;
+      const scaledMin = scaledMid - scaledHalf;
+      const scaledMax = scaledMid + scaledHalf;
+      // Reject multiplication overflow and subnormal scales that round the two
+      // final bounds onto the same number.
+      if (
+        Number.isFinite(scaledMin) &&
+        Number.isFinite(scaledMax) &&
+        scaledMin < scaledMax
+      ) {
+        tMin = scaledMin;
+        tMax = scaledMax;
+      } else {
+        yScale = 1;
+      }
+    }
+    // Snap only while the scale is actively moving, so the drag tracks the
+    // finger but a parked scale (and the reset back to 1) keeps the eased fit.
+    const yScaleDragging = yScale !== 1 && yScale !== state.lastYRangeScale;
+    state.lastYRangeScale = yScale;
+
     if (input.nonNegative && tMin < 0) tMin = 0;
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
-    if (snap || tMin < state.displayMin) {
+    if (snap || yScaleDragging || tMin < state.displayMin) {
       state.displayMin = tMin;
     } else {
       state.displayMin = lerp(state.displayMin, tMin, speed, input.dt);
     }
 
-    if (snap || tMax > state.displayMax) {
+    if (snap || yScaleDragging || tMax > state.displayMax) {
       state.displayMax = tMax;
     } else {
       state.displayMax = lerp(state.displayMax, tMax, speed, input.dt);

@@ -25,6 +25,8 @@ export interface MultiEngineTickMutable {
   extremaMaxValue: number;
   extremaMinTime: number;
   extremaMaxTime: number;
+  /** Previous frame's yRangeScale — detects an in-flight scale drag. */
+  lastYRangeScale?: number;
 }
 
 export interface MultiEngineTickInput {
@@ -43,6 +45,8 @@ export interface MultiEngineTickInput {
   nonNegative?: boolean;
   /** Hard cap for the computed upper bound. */
   maxValue?: number;
+  /** Positive, finite Y-range multiplier around the fitted midpoint (1 = auto-fit). */
+  yRangeScale?: number;
   series: SeriesConfig[];
   nowSeconds?: number;
   /** Override the engine's "now" (unix seconds). */
@@ -292,17 +296,45 @@ export function tickLiveChartSeriesEngineFrame(
       tMax += margin;
     }
 
+    // Keep this behavior in parity with the single-series engine: malformed
+    // gesture output must never collapse, invert, or poison the shared axis.
+    const requestedYScale = input.yRangeScale ?? 1;
+    let yScale =
+      requestedYScale > 0 && Number.isFinite(requestedYScale)
+        ? requestedYScale
+        : 1;
+    if (yScale !== 1) {
+      const scaledMid = (tMin + tMax) / 2;
+      const scaledHalf = ((tMax - tMin) / 2) * yScale;
+      const scaledMin = scaledMid - scaledHalf;
+      const scaledMax = scaledMid + scaledHalf;
+      if (
+        Number.isFinite(scaledMin) &&
+        Number.isFinite(scaledMax) &&
+        scaledMin < scaledMax
+      ) {
+        tMin = scaledMin;
+        tMax = scaledMax;
+      } else {
+        yScale = 1;
+      }
+    }
+    // Track a changing multiplier without frame-lag. Once parked (including a
+    // reset to 1), ordinary range contraction resumes the configured easing.
+    const yScaleDragging = yScale !== 1 && yScale !== state.lastYRangeScale;
+    state.lastYRangeScale = yScale;
+
     if (input.nonNegative && tMin < 0) tMin = 0;
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
-    if (snap || tMin < state.displayMin) {
+    if (snap || yScaleDragging || tMin < state.displayMin) {
       state.displayMin = tMin;
     } else {
       state.displayMin = lerp(state.displayMin, tMin, speed, input.dt);
     }
 
-    if (snap || tMax > state.displayMax) {
+    if (snap || yScaleDragging || tMax > state.displayMax) {
       state.displayMax = tMax;
     } else {
       state.displayMax = lerp(state.displayMax, tMax, speed, input.dt);

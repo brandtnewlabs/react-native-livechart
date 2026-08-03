@@ -149,6 +149,7 @@ function useLiveChartSeriesController({
   exaggerate = false,
   nonNegative = false,
   maxValue,
+  yRangeScale,
   windowBuffer = 0,
   nowOverride,
   accessibilityLabel,
@@ -381,6 +382,7 @@ function useLiveChartSeriesController({
     referenceValues: refValues,
     nonNegative,
     maxValue,
+    yRangeScale,
     windowBuffer,
     nowOverride,
   });

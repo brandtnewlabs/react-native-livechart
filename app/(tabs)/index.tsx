@@ -92,6 +92,11 @@ const SECTIONS: DemoSection[] = [
         title: "Time scroll",
         blurb: "timeScroll: one-finger drag to pan back through candle history; release at the live edge to resume.",
       },
+      {
+        href: "/demo/y-range-scale" as Href,
+        title: "Y-range scale",
+        blurb: "yRangeScale: drag the price gutter to stretch or compress the fitted Y-axis range.",
+      },
     ],
   },
   {

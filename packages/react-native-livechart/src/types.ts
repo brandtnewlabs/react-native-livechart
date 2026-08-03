@@ -2007,6 +2007,17 @@ export interface LiveChartCoreProps {
    */
   maxValue?: number;
   /**
+   * Live manual Y-range multiplier around the fitted midpoint (`1` = auto-fit).
+   * Drive it from a gesture (e.g. dragging the price axis) to stretch or
+   * compress the price scale TradingView-style; the auto-fit keeps tracking
+   * the visible window underneath. Values must be positive and finite; invalid
+   * values fall back to `1`. Read on the UI thread each frame. Supported by
+   * both `LiveChart` and `LiveChartSeries`. Default `1`.
+   *
+   * @experimental
+   */
+  yRangeScale?: SharedValue<number>;
+  /**
    * Label in the empty state when `loading` is false and there are fewer than
    * two samples (line points or committed candles). Default `"No data"`.
    */

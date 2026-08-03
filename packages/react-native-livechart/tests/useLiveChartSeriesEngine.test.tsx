@@ -33,6 +33,7 @@ describe("applyLiveChartSeriesEngineFrame", () => {
       smoothing: { value: 0.5 },
       exaggerateSV: { value: false },
       referenceValue: { value: undefined as number | undefined },
+      yRangeScaleSV: { value: 0.5 },
       // Pin "now" to the point's time so it falls inside the live window.
       nowOverrideSV: { value: 1000 },
       windowBufferSV: { value: 0 },
@@ -64,6 +65,8 @@ describe("applyLiveChartSeriesEngineFrame", () => {
     );
     expect(scratch.state).toBe(stateIdentity);
     expect(scratch.input).toBe(inputIdentity);
+    expect(scratch.input.yRangeScale).toBe(0.5);
+    expect(scratch.state.lastYRangeScale).toBe(0.5);
     expect(secondOutput).not.toBe(firstOutput);
     expect(sv.displaySeriesValues.value).toBe(firstOutput);
     expect(sv.displaySeriesValues.value.length).toBe(1);

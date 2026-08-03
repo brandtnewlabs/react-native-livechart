@@ -23,6 +23,7 @@ describe("applyLiveChartEngineFrame", () => {
       smoothing: { value: 0.5 },
       exaggerateSV: { value: false },
       referenceValue: { value: undefined as number | undefined },
+      yRangeScaleSV: { value: 0.5 },
       // Pin "now" to the point's time so it falls inside the live window
       // (otherwise the real-clock default scrolls it out and extrema go NaN).
       nowOverrideSV: { value: 1700000000 },
@@ -51,6 +52,8 @@ describe("applyLiveChartEngineFrame", () => {
     expect(scratch.input).toBe(inputIdentity);
     expect(scratch.input.dt).toBe(17);
     expect(scratch.input.points).toBe(sv.data.value);
+    expect(scratch.input.yRangeScale).toBe(0.5);
+    expect(scratch.state.lastYRangeScale).toBe(0.5);
     expect(sv.displayValue.value).not.toBe(0);
     // The data point's value + time become the live extrema.
     expect(sv.extremaMinValue.value).toBe(10);

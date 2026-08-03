@@ -1,6 +1,9 @@
-import { tickLiveChartEngineFrame } from "../src/core/liveChartEngineTick";
+import {
+  tickLiveChartEngineFrame,
+  type EngineTickMutable,
+} from "../src/core/liveChartEngineTick";
 
-function baseState() {
+function baseState(): EngineTickMutable {
   return {
     displayValue: 0,
     displayMin: 0,
@@ -1267,5 +1270,116 @@ describe("tickLiveChartEngineFrame — snap (one-shot settle)", () => {
     });
     expect(s.timestamp).toBe(985);
     expect(s.edgeValue).toBe(40);
+  });
+
+  describe("yRangeScale", () => {
+    const scaleInput = (over: Record<string, unknown> = {}) => ({
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.3,
+      exaggerate: false,
+      referenceValue: undefined,
+      targetValue: 50,
+      points: [
+        { time: 990, value: 40 },
+        { time: 995, value: 60 },
+      ],
+      nowSeconds: 1000,
+      ...over,
+    });
+
+    it("stretches the fitted range around its midpoint", () => {
+      const auto = baseState();
+      tickLiveChartEngineFrame(auto, scaleInput({ snap: true }));
+      const scaled = baseState();
+      tickLiveChartEngineFrame(scaled, scaleInput({ snap: true, yRangeScale: 2 }));
+      expect(scaled.displayMax - scaled.displayMin).toBeCloseTo(
+        2 * (auto.displayMax - auto.displayMin),
+      );
+      expect((scaled.displayMin + scaled.displayMax) / 2).toBeCloseTo(
+        (auto.displayMin + auto.displayMax) / 2,
+      );
+    });
+
+    it("snaps to the scaled range while the scale is moving", () => {
+      const auto = baseState();
+      tickLiveChartEngineFrame(auto, scaleInput({ snap: true }));
+      const shrunk = baseState();
+      tickLiveChartEngineFrame(shrunk, scaleInput({ snap: true, yRangeScale: 0.5 }));
+      // Contracting from the auto fit would normally lerp; a moving scale
+      // (lastYRangeScale unset) must track the finger exactly.
+      const s = {
+        ...baseState(),
+        displayValue: 50,
+        displayMin: auto.displayMin,
+        displayMax: auto.displayMax,
+      };
+      tickLiveChartEngineFrame(s, scaleInput({ yRangeScale: 0.5 }));
+      expect(s.displayMin).toBeCloseTo(shrunk.displayMin);
+      expect(s.displayMax).toBeCloseTo(shrunk.displayMax);
+    });
+
+    it("eases the fit while the scale is parked", () => {
+      const shrunk = baseState();
+      tickLiveChartEngineFrame(shrunk, scaleInput({ snap: true, yRangeScale: 0.5 }));
+      const narrower = scaleInput({
+        yRangeScale: 0.5,
+        points: [
+          { time: 990, value: 45 },
+          { time: 995, value: 55 },
+        ],
+        targetValue: 50,
+      });
+      const target = baseState();
+      tickLiveChartEngineFrame(target, { ...narrower, snap: true });
+      const s = {
+        ...baseState(),
+        displayValue: 50,
+        displayMin: shrunk.displayMin,
+        displayMax: shrunk.displayMax,
+        lastYRangeScale: 0.5,
+      };
+      tickLiveChartEngineFrame(s, narrower);
+      expect(s.displayMin).toBeGreaterThan(shrunk.displayMin);
+      expect(s.displayMin).toBeLessThan(target.displayMin);
+    });
+
+    it("eases back to the auto fit on reset to 1", () => {
+      const auto = baseState();
+      tickLiveChartEngineFrame(auto, scaleInput({ snap: true }));
+      const scaled = baseState();
+      tickLiveChartEngineFrame(scaled, scaleInput({ snap: true, yRangeScale: 2 }));
+      const s = {
+        ...baseState(),
+        displayValue: 50,
+        displayMin: scaled.displayMin,
+        displayMax: scaled.displayMax,
+        lastYRangeScale: 2,
+      };
+      tickLiveChartEngineFrame(s, scaleInput({ yRangeScale: 1 }));
+      expect(s.displayMax).toBeLessThan(scaled.displayMax);
+      expect(s.displayMax).toBeGreaterThan(auto.displayMax);
+    });
+
+    it.each([0, -1, NaN, Infinity, -Infinity, Number.MIN_VALUE, Number.MAX_VALUE])(
+      "falls back to auto-fit for an invalid scale (%s)",
+      (yRangeScale) => {
+        const auto = baseState();
+        tickLiveChartEngineFrame(auto, scaleInput({ snap: true }));
+        const invalid = baseState();
+        tickLiveChartEngineFrame(
+          invalid,
+          scaleInput({ snap: true, yRangeScale }),
+        );
+        expect(invalid.displayMin).toBe(auto.displayMin);
+        expect(invalid.displayMax).toBe(auto.displayMax);
+        expect(invalid.displayMax).toBeGreaterThan(invalid.displayMin);
+        expect(Number.isFinite(invalid.displayMin)).toBe(true);
+        expect(Number.isFinite(invalid.displayMax)).toBe(true);
+        expect(invalid.lastYRangeScale).toBe(1);
+      },
+    );
   });
 });
