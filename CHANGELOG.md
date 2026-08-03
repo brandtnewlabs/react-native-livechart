@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.15.0] - 2026-08-03
+
 ### Added
 
 - **Manual Y-range scaling.** `yRangeScale` on `LiveChart` and
@@ -1077,6 +1079,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.15.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.15.0
 [4.13.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.13.1
 [4.13.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.13.0
 [4.12.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.12.0
