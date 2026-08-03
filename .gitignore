@@ -50,8 +50,8 @@ app-example
 
 *.tgz
 
-# Generated at pack time from the repo-root README (single source of truth)
-/packages/react-native-livechart/README.md
+# The package README is committed so monorepo metadata tools can discover it.
+# `prepack` refreshes the mirror from the repo-root README before publishing.
 
 # Mintlify (local dev cache)
 .mint/
