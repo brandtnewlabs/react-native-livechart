@@ -163,8 +163,14 @@ export function usePinchZoom({
 
   const onChange =
     /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-    (e: { scale: number; focalX: number }) => {
+    (e: { scale: number; focalX: number; numberOfPointers: number }) => {
       "worklet";
+      // When a finger lifts at the end of the pinch, the recognizer's focal
+      // point jumps from the two-finger midpoint to the remaining finger. A
+      // change event computed from that jumped focal throws the window
+      // sideways (and can even snap it back to following live). Ignore
+      // change events once fewer than two pointers remain.
+      if (e.numberOfPointers < 2) return;
       const chartW = canvasWidth.get() - padLeft - padRight;
       if (chartW <= 0 || e.scale <= 0) return;
       const edge = liveEdge.get();
