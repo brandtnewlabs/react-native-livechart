@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.15.1] - 2026-08-09
+
+### Fixed
+
+- **Pinch zoom no longer jumps sideways when a finger lifts.** A final
+  one-pointer gesture update could move the focal point from the two-finger
+  midpoint to the remaining finger and shift the visible window — sometimes
+  snapping it back to the live edge. Pinch zoom now ignores those post-lift
+  updates, keeping the chart anchored beneath the gesture.
+
 ## [4.15.0] - 2026-08-03
 
 ### Added
