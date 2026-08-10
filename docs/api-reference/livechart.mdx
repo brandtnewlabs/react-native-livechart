@@ -463,7 +463,9 @@ provided; everything else has a default.
 </ParamField>
 
 <ParamField body="nonNegative" type="boolean" default="false">
-  Clamp the Y-axis lower bound at 0.
+  Clamp the Y-axis lower bound at 0. When [`yRangeScale`](#param-y-range-scale)
+  zooms out, expansion stops when that floor is reached, keeping the data
+  centered rather than growing only upward.
 </ParamField>
 
 <ParamField body="maxValue" type="number">
@@ -475,7 +477,8 @@ provided; everything else has a default.
   it from a gesture (e.g. dragging the price axis) to stretch or compress the
   price scale TradingView-style; the auto-fit keeps tracking the visible window
   underneath. Values must be positive and finite; invalid values safely fall
-  back to `1`. Read on the UI thread each frame. Shared with `LiveChartSeries`.
+  back to `1`. On a `nonNegative` chart, zoom-out stops at the zero floor.
+  Read on the UI thread each frame. Shared with `LiveChartSeries`.
   **@experimental.** See
   [Manual Y-range scaling](/guides/y-range-scale).
 </ParamField>
