@@ -17,33 +17,25 @@ import { usePathBuilder } from "./usePathBuilder";
 const CANDLE_WIDTH_LERP_SPEED = 0.08;
 
 /**
- * Candle paths (up/down bodies + up/down wicks). Each is built into a reused
- * `Skia.PathBuilder` and finalized with `detach()` each frame — a fresh
- * immutable `SkPath`, so Skia repaints without a per-curve ping-pong and no
- * mutable `SkPath` is retained across frames.
+ * Bridges the `candleWidth` prop to the UI thread and eases the displayed
+ * width toward it each frame. Must be called from the chart's OUTER component
+ * (the controller), not from inside the Skia canvas: canvas children render
+ * through Skia's own reconciler one commit behind the outer tree, so a width
+ * bridged in there lands one frame after the engine's framing targets — a
+ * timeframe switch then draws one frame of new data at the old width. See #176.
  */
-export function useCandlePaths(
-  engine: SingleEngineState,
-  padding: ChartPadding,
-  candles: SharedValue<CandlePoint[]> | undefined,
-  liveCandle: SharedValue<CandlePoint | null> | undefined,
+export function useCandleWidthLerp(
   candleWidthSecs: number,
-  active: boolean,
-  candleMetrics: CandleMetrics = CANDLE_METRICS_DEFAULTS,
-  /** Reserved volume-band height (px). `0` = no volume bars. */
-  volumeBandHeight = 0,
-  /** Corner radius (px) of the volume bars. */
-  volumeRadius = 0,
-  /** Static charts run no loops: register without starting. Default `true`. */
-  autostart = true,
   /**
    * Per-frame lerp speed (0–1) for the candle-body width as it eases toward
    * `candleWidthSecs`. `1` snaps in one frame (no "fat → thin" slide on a
    * timeframe / bucket change); `undefined` uses {@link CANDLE_WIDTH_LERP_SPEED}.
    * Resolved from `transitions.candleLerpSpeed`. See #176.
    */
-  candleLerpSpeed?: number,
-) {
+  candleLerpSpeed: number | undefined,
+  /** Static charts run no loops: register without starting. */
+  autostart: boolean,
+): SharedValue<number> {
   const targetCandleWidth = useDerivedValue(() => candleWidthSecs);
   const displayCandleWidth = useSharedValue(candleWidthSecs);
   // `transitions.candleLerpSpeed` overrides the built-in speed (0–1, already
@@ -54,16 +46,8 @@ export function useCandlePaths(
     () => candleLerpSpeed ?? CANDLE_WIDTH_LERP_SPEED,
   );
 
-  const upBodiesBuilder = usePathBuilder();
-  const downBodiesBuilder = usePathBuilder();
-  const upWicksBuilder = usePathBuilder();
-  const downWicksBuilder = usePathBuilder();
-  const upBarsBuilder = usePathBuilder();
-  const downBarsBuilder = usePathBuilder();
-
   useFrameCallback((frameInfo) => {
     "worklet";
-    if (!active) return;
     const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
     displayCandleWidth.set(
       lerp(
@@ -74,6 +58,36 @@ export function useCandlePaths(
       ),
     );
   }, autostart);
+
+  return displayCandleWidth;
+}
+
+/**
+ * Candle paths (up/down bodies + up/down wicks). Each is built into a reused
+ * `Skia.PathBuilder` and finalized with `detach()` each frame — a fresh
+ * immutable `SkPath`, so Skia repaints without a per-curve ping-pong and no
+ * mutable `SkPath` is retained across frames.
+ */
+export function useCandlePaths(
+  engine: SingleEngineState,
+  padding: ChartPadding,
+  candles: SharedValue<CandlePoint[]> | undefined,
+  liveCandle: SharedValue<CandlePoint | null> | undefined,
+  /** Displayed bucket width from {@link useCandleWidthLerp} (outer component). */
+  displayCandleWidth: SharedValue<number>,
+  active: boolean,
+  candleMetrics: CandleMetrics = CANDLE_METRICS_DEFAULTS,
+  /** Reserved volume-band height (px). `0` = no volume bars. */
+  volumeBandHeight = 0,
+  /** Corner radius (px) of the volume bars. */
+  volumeRadius = 0,
+) {
+  const upBodiesBuilder = usePathBuilder();
+  const downBodiesBuilder = usePathBuilder();
+  const upWicksBuilder = usePathBuilder();
+  const downWicksBuilder = usePathBuilder();
+  const upBarsBuilder = usePathBuilder();
+  const downBarsBuilder = usePathBuilder();
 
   /* istanbul ignore next -- worklet */
   const geometry = useDerivedValue(() => {

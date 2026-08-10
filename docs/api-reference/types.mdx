@@ -452,6 +452,13 @@ interface YAxisConfig {
   float?: boolean;
 }
 interface XAxisConfig { minGap?: number } // default 60
+// Fades both axes while LiveChart is idle. @experimental
+interface AxisAutoHideConfig {
+  fadeInMs?: number;    // interaction-start fade duration; default 60
+  fadeOutMs?: number;   // fade back to idle; default 250
+  idleOpacity?: number; // axes' resting opacity (0 = hidden); default 0
+  hideAfterMs?: number; // idle delay before fade-out; default 3000
+}
 // Volume bars below the candles (candle mode only). Bars normalize to the largest
 // visible volume; the candle plot shrinks by `maxHeight` to make room. @see CandlePoint.volume
 interface VolumeConfig {

@@ -56,7 +56,8 @@
               "guides/scrubbing",
               "guides/order-ticket",
               "guides/time-scroll",
-              "guides/y-range-scale"
+              "guides/y-range-scale",
+              "guides/axis-auto-hide"
             ]
           },
           {

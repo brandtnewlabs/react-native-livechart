@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   finger's release point; a release in the live-edge snap zone still resumes
   auto-following. The Time scroll demo now exposes a **Fling inertia** switch.
 
+- **Experimental axis auto-hide.** `LiveChart.axisAutoHide` fades the X and Y
+  axes (grid, ticks, and labels) while idle, then restores them for scrubbing,
+  panning, fling momentum, and pinch zoom. Use `true` for the defaults or
+  `AxisAutoHideConfig` to tune the fade timings, idle opacity, and delay. The
+  example app and guide include an interactive configuration demo.
+
 ## [4.16.0] - 2026-08-10
 
 ### Added

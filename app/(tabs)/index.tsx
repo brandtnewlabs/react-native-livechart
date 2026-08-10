@@ -97,6 +97,11 @@ const SECTIONS: DemoSection[] = [
         title: "Y-range scale",
         blurb: "yRangeScale: drag the price gutter to stretch or compress the fitted Y-axis range.",
       },
+      {
+        href: "/demo/axis-auto-hide" as Href,
+        title: "Axis auto-hide",
+        blurb: "axisAutoHide: fade X/Y axes while idle and restore them as you interact.",
+      },
     ],
   },
   {
