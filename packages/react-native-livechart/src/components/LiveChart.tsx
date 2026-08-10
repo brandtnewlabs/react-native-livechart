@@ -71,7 +71,7 @@ import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import { pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
-import { useCandlePaths } from "../hooks/useCandlePaths";
+import { useCandlePaths, useCandleWidthLerp } from "../hooks/useCandlePaths";
 import { useCanvasLayout } from "../hooks/useCanvasLayout";
 import { useChartColors } from "../hooks/useChartColors";
 import { useChartOverlayContext } from "../hooks/useChartOverlayContext";
@@ -954,6 +954,15 @@ function useLiveChartController({
       : momentumSV.value,
   );
 
+  // Width bridge lives here (outer tree), not in ChartCandleLayer: canvas
+  // children commit one frame behind, which would lag the width target behind
+  // the engine's framing snap on a timeframe switch. See useCandleWidthLerp.
+  const displayCandleWidth = useCandleWidthLerp(
+    candleWidth,
+    transitionsCfg.candleLerpSpeed,
+    !isStatic && isCandle,
+  );
+
   // ── Overlay hooks ─────────────────────────────────────────────────────
   // Scrub/crosshair must see the same stash-backed candles as the engine.
   const candleOpts = isCandle
@@ -1453,6 +1462,7 @@ function useLiveChartController({
     candlesEngine,
     liveEngine,
     candleWidth,
+    displayCandleWidth,
     transitionsCfg,
     layoutWidth,
     onLayout,
@@ -1764,12 +1774,10 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     effectivePadding,
     candlesEngine,
     liveEngine,
-    candleWidth,
+    displayCandleWidth,
     metricsCfg,
     volumeBandHeight,
     volumeCfg,
-    isStatic,
-    transitionsCfg,
     candleGroupOpacity,
     seriesOpacity,
     palette,
@@ -1789,13 +1797,11 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     effectivePadding,
     candlesEngine,
     liveEngine,
-    candleWidth,
+    displayCandleWidth,
     true,
     metricsCfg.candle,
     volumeBandHeight,
     volumeCfg?.radius ?? 0,
-    !isStatic,
-    transitionsCfg.candleLerpSpeed,
   );
 
   return (

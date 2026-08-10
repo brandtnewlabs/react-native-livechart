@@ -5,7 +5,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   cancelAnimation,
   Easing,
@@ -497,7 +497,11 @@ export function useLiveChartEngine(
   // Compare against the previous key (not a "first render" flag) so React 18
   // StrictMode's double-invoked mount effect can't fire a spurious snap.
   const lastSnapKey = useRef(config.snapKey);
-  useEffect(() => {
+  // Layout effect, not passive: a passive effect runs after the commit has
+  // painted, so the frame between them draws the new data/candleWidth against
+  // the OLD framing (a one-frame squeeze on a timeframe switch). Flipping the
+  // flag before paint lets the first frame with the new props consume the snap.
+  useLayoutEffect(() => {
     if (config.snapKey === lastSnapKey.current) return;
     lastSnapKey.current = config.snapKey;
     snapSV.set(true);
