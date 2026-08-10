@@ -87,11 +87,18 @@ export function useChartReveal(
         return;
       }
       if (prev !== chartVisible) {
+        // Collapse (live → loading/empty) snaps: the data is already gone, so
+        // animating would draw the stale line morphing flat over the loading
+        // shell.
+        if (!chartVisible) {
+          morphT.set(0);
+          return;
+        }
         // 0ms → withTiming resolves on the next frame (effectively a snap), so an
         // explicit `transitions={{ reveal: 0 }}` / `transitions={false}` removes
         // the grow-in without a special-case branch.
         morphT.set(
-          withTiming(chartVisible ? 1 : 0, {
+          withTiming(1, {
             duration: revealDuration,
             easing: Easing.out(Easing.cubic),
           }),
