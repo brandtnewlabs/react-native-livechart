@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   cancelAnimation,
   Easing,
@@ -343,7 +343,9 @@ export function useLiveChartSeriesEngine(
   // changes, consumed + cleared by the next frame (mirrors useLiveChartEngine).
   const snapSV = useSharedValue(false);
   const lastSnapKey = useRef(config.snapKey);
-  useEffect(() => {
+  // Layout effect so the snap flag lands before the commit paints — a passive
+  // effect leaves one frame of new data in the old framing (mirrors useLiveChartEngine).
+  useLayoutEffect(() => {
     if (config.snapKey === lastSnapKey.current) return;
     lastSnapKey.current = config.snapKey;
     snapSV.set(true);
