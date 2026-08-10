@@ -474,6 +474,7 @@ interface TimeScrollConfig {
   scrubHoldMs?: number; // holdToScrub: press-hold (ms) before scrub engages; default 500
   hideLiveOnScrollBack?: boolean; // hide live badge + dot + value line while scrolled back (they mark the off-screen live price); default true. Ignored with badge.followViewEdge
   overscroll?: number; // fraction of the window (0–1) pan/zoom may travel past the data bounds into blank space (TradingView-style); default 0 (hard stops at the oldest data / live edge)
+  fling?: boolean; // keep release momentum after a fast drag; false stops exactly where the finger lifts. Default true.
 }
 // Tunes the return-to-live glide (the `returnToLive` prop). @experimental
 interface ReturnToLiveConfig {

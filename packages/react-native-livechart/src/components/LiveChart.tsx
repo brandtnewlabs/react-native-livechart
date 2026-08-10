@@ -49,6 +49,7 @@ import {
   resolveScrub,
   resolveScrubAction,
   resolveTransitions,
+  resolveFling,
   resolveOverscroll,
   resolveReturnToLiveMs,
   resolveSelectionDot,
@@ -621,6 +622,8 @@ function useLiveChartController({
   const timeScrollOverscroll = timeScrollEnabled
     ? resolveOverscroll(timeScroll)
     : 0;
+  // Release inertia (fling) — `timeScroll.fling: false` stops the pan dead.
+  const timeScrollFling = resolveFling(timeScroll);
   const zoomCfg = resolveZoom(zoom);
   const zoomEnabled = zoomCfg !== null && !isStatic;
 
@@ -1115,6 +1118,7 @@ function useLiveChartController({
     enabled: timeScrollEnabled,
     mode: scrollGestureMode,
     overscroll: timeScrollOverscroll,
+    fling: timeScrollFling,
     scrollActive,
     // Once a scrub is engaged the chart is locked: scrolling goes inert so the
     // finger only moves the price indicator across a fixed window.
