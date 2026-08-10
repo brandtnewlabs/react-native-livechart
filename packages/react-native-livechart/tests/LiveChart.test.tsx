@@ -230,6 +230,23 @@ describe("LiveChart", () => {
     render(<Harness gradient={false} yAxis={false} badge={false} />);
   });
 
+  it("renders with axisAutoHide enabled (defaults and config object)", () => {
+    const screen = render(<Harness axisAutoHide />);
+    screen.rerender(
+      <Harness
+        axisAutoHide={{
+          fadeInMs: 50,
+          fadeOutMs: 100,
+          idleOpacity: 0.2,
+          hideAfterMs: 1000,
+        }}
+      />,
+    );
+    // `useSharedValue` keeps its initial value, so runtime configuration changes
+    // need to reset the axis group opacity instead of leaving the axes stuck.
+    screen.rerender(<Harness axisAutoHide={false} />);
+  });
+
   it("does not register disabled optional subsystem worklets", () => {
     const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
     const candlePathSpy = jest.spyOn(candlePathHooks, "useCandlePaths");

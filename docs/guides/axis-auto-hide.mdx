@@ -1,0 +1,69 @@
+---
+title: Axis auto-hide
+icon: "eye-slash"
+description: "Keep a LiveChart minimal at rest while preserving axes during interaction."
+---
+
+<Note>
+  **Live example:**
+  [`app/demo/axis-auto-hide.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/axis-auto-hide.tsx)
+  in the example app.
+</Note>
+
+`axisAutoHide` keeps the chart uncluttered at rest: its X and Y axes — grid,
+ticks, and labels — are faded to an idle opacity. They fade back in when a user
+scrubs, time-scrolls, flings, or pinch-zooms, then return to their idle opacity
+after interaction has settled.
+
+```tsx
+<LiveChart data={data} value={value} axisAutoHide />
+```
+
+The feature is opt-in and experimental. It currently applies to `LiveChart`,
+not `LiveChartSeries`; it has no effect on an axis already disabled with
+`xAxis={false}` or `yAxis={false}`.
+
+## Configure the idle state
+
+Pass an `AxisAutoHideConfig` to tune the transition. All durations are in
+milliseconds. These are the defaults used by `axisAutoHide`:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  axisAutoHide={{
+    fadeInMs: 60,
+    fadeOutMs: 250,
+    idleOpacity: 0,
+    hideAfterMs: 3000,
+  }}
+/>
+```
+
+- `fadeInMs` — duration to reveal the axes when interaction begins.
+- `fadeOutMs` — duration to return to the idle state.
+- `idleOpacity` — resting opacity from `0` (hidden) to `1` (fully visible).
+- `hideAfterMs` — delay after interaction settles before the fade-out begins.
+
+The axes continue to calculate their latest values while hidden, so the labels
+are current the instant they reappear. Toggle the feature at runtime if needed:
+passing `false` immediately restores fully visible axes; enabling it starts at
+the configured idle opacity.
+
+## Time scroll and zoom
+
+Time-scroll momentum and pinch zoom count as interaction even after no finger
+is held down. Pair the feature with these optional gestures for a compact
+brokerage-style chart that exposes its scale exactly when a user needs it:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  axisAutoHide={{ idleOpacity: 0.2, hideAfterMs: 1500 }}
+  timeScroll
+  zoom
+  scrub
+/>
+```

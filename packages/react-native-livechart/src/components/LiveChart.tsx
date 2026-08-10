@@ -2,10 +2,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  cancelAnimation,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
+  withDelay,
+  withSequence,
   withTiming,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -46,6 +49,7 @@ import {
   resolveScrub,
   resolveScrubAction,
   resolveTransitions,
+  resolveFling,
   resolveOverscroll,
   resolveReturnToLiveMs,
   resolveSelectionDot,
@@ -68,7 +72,7 @@ import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import { pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
-import { useCandlePaths } from "../hooks/useCandlePaths";
+import { useCandlePaths, useCandleWidthLerp } from "../hooks/useCandlePaths";
 import { useCanvasLayout } from "../hooks/useCanvasLayout";
 import { useChartColors } from "../hooks/useChartColors";
 import { useChartOverlayContext } from "../hooks/useChartOverlayContext";
@@ -294,6 +298,7 @@ function useLiveChartController({
   // ── Overlays ────────────────────────────────────────────────────────────
   yAxis = true,
   xAxis = true,
+  axisAutoHide = false,
   topLabel,
   bottomLabel,
   badge = true,
@@ -617,6 +622,8 @@ function useLiveChartController({
   const timeScrollOverscroll = timeScrollEnabled
     ? resolveOverscroll(timeScroll)
     : 0;
+  // Release inertia (fling) — `timeScroll.fling: false` stops the pan dead.
+  const timeScrollFling = resolveFling(timeScroll);
   const zoomCfg = resolveZoom(zoom);
   const zoomEnabled = zoomCfg !== null && !isStatic;
 
@@ -950,6 +957,15 @@ function useLiveChartController({
       : momentumSV.value,
   );
 
+  // Width bridge lives here (outer tree), not in ChartCandleLayer: canvas
+  // children commit one frame behind, which would lag the width target behind
+  // the engine's framing snap on a timeframe switch. See useCandleWidthLerp.
+  const displayCandleWidth = useCandleWidthLerp(
+    candleWidth,
+    transitionsCfg.candleLerpSpeed,
+    !isStatic && isCandle,
+  );
+
   // ── Overlay hooks ─────────────────────────────────────────────────────
   // Scrub/crosshair must see the same stash-backed candles as the engine.
   const candleOpts = isCandle
@@ -1102,6 +1118,7 @@ function useLiveChartController({
     enabled: timeScrollEnabled,
     mode: scrollGestureMode,
     overscroll: timeScrollOverscroll,
+    fling: timeScrollFling,
     scrollActive,
     // Once a scrub is engaged the chart is locked: scrolling goes inert so the
     // finger only moves the price indicator across a fixed window.
@@ -1130,6 +1147,78 @@ function useLiveChartController({
       crosshairScrubActive.set(false);
     },
   });
+
+  // Axis auto-hide: fade both axes out at rest and back in while the user
+  // interacts. Any movement — scrub / time-scroll touch, or a viewEnd /
+  // viewWindow change (fling momentum, pinch-zoom) — shows the axes; once the
+  // touch lifts and the view settles, they fade back out after `hideAfterMs`.
+  // Only the axis groups' opacity animates; the axis worklets keep running
+  // underneath so a fade-in shows current labels.
+  const axisAutoHideCfg =
+    axisAutoHide === true ? {} : axisAutoHide === false ? null : axisAutoHide;
+  const axisIdleOpacity = axisAutoHideCfg?.idleOpacity ?? 0;
+  const axisFadeInMs = axisAutoHideCfg?.fadeInMs ?? 60;
+  const axisFadeOutMs = axisAutoHideCfg?.fadeOutMs ?? 250;
+  const axisHideAfterMs = axisAutoHideCfg?.hideAfterMs ?? 3000;
+  const axisAutoHideOpacity = useSharedValue(
+    axisAutoHideCfg ? axisIdleOpacity : 1,
+  );
+  const axisAutoHideEnabled = axisAutoHideCfg !== null;
+  const lastAxisAutoHide = useRef({
+    enabled: axisAutoHideEnabled,
+    idleOpacity: axisIdleOpacity,
+  });
+  // `useSharedValue` only reads its initial value on mount. Keep prop changes
+  // in sync as well: turning auto-hide off must immediately restore the axes,
+  // and turning it on starts from the configured idle opacity.
+  useEffect(() => {
+    if (
+      lastAxisAutoHide.current.enabled === axisAutoHideEnabled &&
+      lastAxisAutoHide.current.idleOpacity === axisIdleOpacity
+    ) {
+      return;
+    }
+    lastAxisAutoHide.current = {
+      enabled: axisAutoHideEnabled,
+      idleOpacity: axisIdleOpacity,
+    };
+    cancelAnimation(axisAutoHideOpacity);
+    axisAutoHideOpacity.value = axisAutoHideEnabled ? axisIdleOpacity : 1;
+  }, [axisAutoHideEnabled, axisAutoHideOpacity, axisIdleOpacity]);
+  useAnimatedReaction(
+    () => ({
+      gesture: scrollActive.value || crosshairScrubActive.value,
+      viewEnd: engine.viewEnd.value,
+      viewWindow: engine.viewWindow.value,
+    }),
+    (curr, prev) => {
+      if (!axisAutoHideEnabled || prev === null) return;
+      const moved =
+        curr.gesture !== prev.gesture ||
+        curr.viewEnd !== prev.viewEnd ||
+        curr.viewWindow !== prev.viewWindow;
+      if (!moved) return;
+      cancelAnimation(axisAutoHideOpacity);
+      axisAutoHideOpacity.value = curr.gesture
+        ? withTiming(1, { duration: axisFadeInMs })
+        : // Movement without a held touch (gesture end, fling, pinch): show,
+          // then fade back out once the chart goes untouched for a while.
+          withSequence(
+            withTiming(1, { duration: axisFadeInMs }),
+            withDelay(
+              axisHideAfterMs,
+              withTiming(axisIdleOpacity, { duration: axisFadeOutMs }),
+            ),
+          );
+    },
+    [
+      axisAutoHideEnabled,
+      axisIdleOpacity,
+      axisFadeInMs,
+      axisFadeOutMs,
+      axisHideAfterMs,
+    ],
+  );
 
   // Paging callbacks: report the visible range / proximity to the oldest data so
   // a host can lazily load history. Inert unless a callback is supplied.
@@ -1358,6 +1447,7 @@ function useLiveChartController({
     // engine + reveal
     engine,
     reveal,
+    axisAutoHideOpacity,
     // loading shell styling (null → not loading)
     loadingLineColor: loadingCfg?.color,
     loadingStrokeWidth: loadingCfg?.strokeWidth,
@@ -1376,6 +1466,7 @@ function useLiveChartController({
     candlesEngine,
     liveEngine,
     candleWidth,
+    displayCandleWidth,
     transitionsCfg,
     layoutWidth,
     onLayout,
@@ -1502,9 +1593,15 @@ function ChartYAxisLayer({
     yAxisFloat,
     yAxisCfg,
     liveBadgeOpacity,
+    axisAutoHideOpacity,
   } = model;
+  // Fold the axis auto-hide fade into the reveal opacity (1 when the feature
+  // is off).
+  const yAxisGroupOpacity = useDerivedValue(
+    () => reveal.yAxisOpacity.value * axisAutoHideOpacity.value,
+  );
   return (
-    <Group opacity={reveal.yAxisOpacity}>
+    <Group opacity={yAxisGroupOpacity}>
       <YAxisOverlay
         variant={variant}
         float={variant === "labels" && yAxisFloat}
@@ -1545,14 +1642,17 @@ function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
     skiaFont,
   );
   return (
-    <XAxisOverlay
-      entries={xAxisEntries}
-      engine={engine}
-      padding={effectivePadding}
-      palette={palette}
-      font={skiaFont}
-      volumeBandHeight={volumeBandHeight}
-    />
+    // Axis auto-hide fade (1 when the feature is off).
+    <Group opacity={model.axisAutoHideOpacity}>
+      <XAxisOverlay
+        entries={xAxisEntries}
+        engine={engine}
+        padding={effectivePadding}
+        palette={palette}
+        font={skiaFont}
+        volumeBandHeight={volumeBandHeight}
+      />
+    </Group>
   );
 }
 
@@ -1678,12 +1778,10 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     effectivePadding,
     candlesEngine,
     liveEngine,
-    candleWidth,
+    displayCandleWidth,
     metricsCfg,
     volumeBandHeight,
     volumeCfg,
-    isStatic,
-    transitionsCfg,
     candleGroupOpacity,
     seriesOpacity,
     palette,
@@ -1703,13 +1801,11 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     effectivePadding,
     candlesEngine,
     liveEngine,
-    candleWidth,
+    displayCandleWidth,
     true,
     metricsCfg.candle,
     volumeBandHeight,
     volumeCfg?.radius ?? 0,
-    !isStatic,
-    transitionsCfg.candleLerpSpeed,
   );
 
   return (

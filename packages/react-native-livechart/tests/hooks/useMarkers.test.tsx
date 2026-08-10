@@ -57,6 +57,7 @@ describe("useMarkers", () => {
           overlap: 0.6,
           gap: 2,
           maxBeforeGroup: 5,
+          maxVisible: Number.MAX_SAFE_INTEGER,
           groupBadge: "count",
           showGroupCount: false,
         },

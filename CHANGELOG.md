@@ -14,6 +14,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upper bound and pinning values to the bottom. The Y-range scaling demo and
   guide include an interactive example.
 
+### Added
+
+- **Vertical marker-column caps.** `MarkerClusterConfig.maxVisible` keeps only
+  the oldest glyphs in a vertical stack and hides newer overflow, preventing a
+  busy timestamp from growing beyond the plot. It defaults to unbounded; the
+  Markers demo and guide include an interactive example.
+
+- **Optional time-scroll release momentum.** `TimeScrollConfig.fling` on
+  `LiveChart` and `LiveChartSeries` defaults to `true`, preserving decaying
+  release momentum. Set it to `false` for a deliberate hard stop at the
+  finger's release point; a release in the live-edge snap zone still resumes
+  auto-following. The Time scroll demo now exposes a **Fling inertia** switch.
+
+- **Experimental axis auto-hide.** `LiveChart.axisAutoHide` fades the X and Y
+  axes (grid, ticks, and labels) while idle, then restores them for scrubbing,
+  panning, fling momentum, and pinch zoom. Use `true` for the defaults or
+  `AxisAutoHideConfig` to tune the fade timings, idle opacity, and delay. The
+  example app and guide include an interactive configuration demo.
 ## [4.16.0] - 2026-08-10
 
 ### Added

@@ -583,6 +583,18 @@ export function resolveOverscroll(
 }
 
 /**
+ * Resolves `timeScroll.fling`: `false` disables release inertia so the window
+ * stops dead where the finger lifts. Booleans / omitted keep the default (on).
+ * See {@link TimeScrollConfig}.
+ */
+export function resolveFling(
+  prop: boolean | TimeScrollConfig | undefined,
+): boolean {
+  if (prop == null || typeof prop === "boolean") return true;
+  return prop.fling ?? true;
+}
+
+/**
  * Resolved transition durations. `undefined` for a field means "use the
  * component's built-in default" (so we don't duplicate the default constants
  * here); a number is an explicit duration in ms (clamped to ≥ 0).
@@ -875,6 +887,7 @@ export function resolveMarkerCluster(
       overlap: clamp01(prop.overlap ?? MARKER_CLUSTER_OVERLAP),
       gap: MARKER_CLUSTER_GAP,
       maxBeforeGroup: prop.maxBeforeGroup ?? MARKER_CLUSTER_MAX_BEFORE_GROUP,
+      maxVisible: prop.maxVisible ?? Number.MAX_SAFE_INTEGER,
       groupBadge: prop.groupBadge ?? "count",
       showGroupCount: prop.showGroupCount ?? false,
     };
@@ -885,6 +898,7 @@ export function resolveMarkerCluster(
     overlap: MARKER_CLUSTER_OVERLAP,
     gap: MARKER_CLUSTER_GAP,
     maxBeforeGroup: MARKER_CLUSTER_MAX_BEFORE_GROUP,
+    maxVisible: Number.MAX_SAFE_INTEGER,
     groupBadge: "count",
     showGroupCount: false,
   };
