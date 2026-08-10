@@ -15,14 +15,14 @@ describe("useChartSkiaFont", () => {
     mockMatchFont.mockClear();
   });
 
-  it("passes Metro require() module id and resolved fontSize to useFont", () => {
+  it("passes Metro require() module id and resolved fontSize to useFont", async () => {
     const fontFromAsset = { tag: "from-useFont" } as unknown as SkFont;
     mockUseFont.mockReturnValue(fontFromAsset);
 
     /** Simulates `require('./Font.ttf')` — a numeric asset module id in RN / Metro. */
     const metroModuleId = 91011;
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useChartSkiaFont({ typeface: metroModuleId, fontSize: 13 }, "Menlo", 11),
     );
 
@@ -30,11 +30,11 @@ describe("useChartSkiaFont", () => {
     expect(result.current).toBe(fontFromAsset);
   });
 
-  it("forwards require(assets/fonts/GoogleSansCode-Regular.ttf) to useFont", () => {
+  it("forwards require(assets/fonts/GoogleSansCode-Regular.ttf) to useFont", async () => {
     const fontFromAsset = { tag: "googleSansCode" } as unknown as SkFont;
     mockUseFont.mockReturnValue(fontFromAsset);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useChartSkiaFont(
         { typeface: googleSansCodeRegular, fontSize: 14 },
         "Menlo",
@@ -46,21 +46,21 @@ describe("useChartSkiaFont", () => {
     expect(result.current).toBe(fontFromAsset);
   });
 
-  it("calls useFont with null when typeface is omitted", () => {
+  it("calls useFont with null when typeface is omitted", async () => {
     mockUseFont.mockReturnValue({} as SkFont);
 
-    renderHook(() => useChartSkiaFont({ fontSize: 12 }, "Courier", 11));
+    await renderHook(() => useChartSkiaFont({ fontSize: 12 }, "Courier", 11));
 
     expect(mockUseFont).toHaveBeenCalledWith(null, 12);
   });
 
-  it("falls back to matchFont when typeface is set but useFont is still null", () => {
+  it("falls back to matchFont when typeface is set but useFont is still null", async () => {
     const fallback = { tag: "fallback" } as unknown as SkFont;
     mockUseFont.mockReturnValue(null as unknown as SkFont);
     mockMatchFont.mockReturnValue(fallback);
 
     const metroModuleId = 42;
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useChartSkiaFont({ typeface: metroModuleId }, "Menlo", 11),
     );
 

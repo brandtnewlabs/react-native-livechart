@@ -45,12 +45,12 @@ const seg = (s: ChartSegment) =>
   resolveSegment(s, { muted: "#9aa0a6", divider: "#5b5b5b", label: "#cccccc" });
 
 describe("SegmentDividerOverlay", () => {
-  it("renders a divider", () => {
-    render(<Fixture segment={seg({ from: 110, to: 120, divider: true })} />);
+  it("renders a divider", async () => {
+    await render(<Fixture segment={seg({ from: 110, to: 120, divider: true })} />);
   });
 
-  it("renders a divider and a label", () => {
-    render(
+  it("renders a divider and a label", async () => {
+    await render(
       <Fixture
         segment={seg({
           from: 110,
@@ -62,9 +62,9 @@ describe("SegmentDividerOverlay", () => {
     );
   });
 
-  it("hides the label when there is no divider", () => {
+  it("hides the label when there is no divider", async () => {
     // The label captions the divider, so without a divider it must not render.
-    const screen = render(
+    const screen = await render(
       <Fixture
         segment={seg({ from: 110, to: 120, divider: false, label: "After hours" })}
       />,
@@ -72,13 +72,13 @@ describe("SegmentDividerOverlay", () => {
     expect(screen.queryByText("After hours")).toBeNull();
   });
 
-  it("renders nothing for a segment without a divider", () => {
+  it("renders nothing for a segment without a divider", async () => {
     // No divider, no label — the segment contributes only the line recolor
     // (drawn elsewhere), so this overlay is empty but must not throw.
-    render(<Fixture segment={seg({ from: 110, to: 120 })} />);
+    await render(<Fixture segment={seg({ from: 110, to: 120 })} />);
   });
 
-  it("renders nothing visible when the segment is off-screen", () => {
-    render(<Fixture segment={seg({ from: 110, to: 120, divider: true })} canvasWidth={0} />);
+  it("renders nothing visible when the segment is off-screen", async () => {
+    await render(<Fixture segment={seg({ from: 110, to: 120, divider: true })} canvasWidth={0} />);
   });
 });

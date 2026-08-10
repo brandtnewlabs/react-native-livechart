@@ -13,8 +13,8 @@ function useMakeEngine() {
 }
 
 describe("useDegen", () => {
-  it("returns pack and shake shared values", () => {
-    const { result } = renderHook(() => {
+  it("returns pack and shake shared values", async () => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(80);
@@ -27,8 +27,8 @@ describe("useDegen", () => {
     expect(result.current.shakeTransform).toBeDefined();
   });
 
-  it("returns zeroed pack when cfg is null", () => {
-    const { result } = renderHook(() => {
+  it("returns zeroed pack when cfg is null", async () => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(80);
@@ -39,8 +39,8 @@ describe("useDegen", () => {
     expect(result.current.pack.value).toBeInstanceOf(Float64Array);
   });
 
-  it("accepts shake: false config", () => {
-    const { result } = renderHook(() => {
+  it("accepts shake: false config", async () => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(80);
@@ -57,8 +57,8 @@ describe("useDegen", () => {
     expect(result.current.shakeTransform).toBeDefined();
   });
 
-  it("accepts downMomentum: true config", () => {
-    const { result } = renderHook(() => {
+  it("accepts downMomentum: true config", async () => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(80);
@@ -75,9 +75,9 @@ describe("useDegen", () => {
     expect(result.current.pack).toBeDefined();
   });
 
-  it("accepts optional onShake callback", () => {
+  it("accepts optional onShake callback", async () => {
     const onShake = jest.fn();
-    const { result } = renderHook(() => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(80);

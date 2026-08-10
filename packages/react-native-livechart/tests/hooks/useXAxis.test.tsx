@@ -39,8 +39,8 @@ function makeEngine(
 }
 
 /** Sorted set of label texts currently rendered — the X-axis tick "cadence". */
-function tickLabels(eng: EngineState): string[] {
-  const { result } = renderHook(() =>
+async function tickLabels(eng: EngineState): Promise<string[]> {
+  const { result } = await renderHook(() =>
     useXAxis(eng, DEFAULT_PADDING, (t) => `t${Math.round(t)}`, font),
   );
   return result.current.xAxisEntries.value
@@ -49,9 +49,9 @@ function tickLabels(eng: EngineState): string[] {
 }
 
 describe("useXAxis", () => {
-  it("returns empty when chart width is non-positive", () => {
+  it("returns empty when chart width is non-positive", async () => {
     const eng = makeEngine(100, 200, 30);
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useXAxis(
         eng,
         { ...DEFAULT_PADDING, left: 80, right: 80 },
@@ -62,15 +62,15 @@ describe("useXAxis", () => {
     expect(result.current.xAxisEntries.value).toEqual([]);
   });
 
-  it("returns empty when canvas not ready", () => {
-    const { result } = renderHook(() =>
+  it("returns empty when canvas not ready", async () => {
+    const { result } = await renderHook(() =>
       useXAxis(makeEngine(0, 0, 30), DEFAULT_PADDING, (t) => String(t), font),
     );
     expect(result.current.xAxisEntries.value).toEqual([]);
   });
 
-  it("returns x-axis entries when laid out", () => {
-    const { result } = renderHook(() =>
+  it("returns x-axis entries when laid out", async () => {
+    const { result } = await renderHook(() =>
       useXAxis(
         makeEngine(400, 200, 120),
         DEFAULT_PADDING,
@@ -88,20 +88,20 @@ describe("useXAxis", () => {
   // values land on opposite sides of a `niceTimeInterval` bucket boundary (the
   // round window values sit exactly on the boundaries), so the old code that
   // bucketed `displayWindow` produced a different number of ticks per path.
-  it("tick cadence is independent of the window animated from (#126)", () => {
-    const direct = tickLabels(makeEngine(400, 200, 3600, 3600));
+  it("tick cadence is independent of the window animated from (#126)", async () => {
+    const direct = await tickLabels(makeEngine(400, 200, 3600, 3600));
     // Settled from above (came from 24h): displayWindow rests just over target.
-    const fromAbove = tickLabels(makeEngine(400, 200, 3600.001, 3600));
+    const fromAbove = await tickLabels(makeEngine(400, 200, 3600.001, 3600));
     // Settled from below (came from 1m): displayWindow rests just under target.
-    const fromBelow = tickLabels(makeEngine(400, 200, 3599.999, 3600));
+    const fromBelow = await tickLabels(makeEngine(400, 200, 3599.999, 3600));
 
     expect(fromAbove).toEqual(direct);
     expect(fromBelow).toEqual(direct);
     expect(direct.length).toBeGreaterThan(2);
   });
 
-  it("widens interval until label spacing target met", () => {
-    const { result } = renderHook(() =>
+  it("widens interval until label spacing target met", async () => {
+    const { result } = await renderHook(() =>
       useXAxis(
         makeEngine(800, 200, 600),
         { ...DEFAULT_PADDING, left: 12, right: 12 },
@@ -112,31 +112,31 @@ describe("useXAxis", () => {
     expect(Array.isArray(result.current.xAxisEntries.value)).toBe(true);
   });
 
-  it("drops labels when they leave the target window", () => {
+  it("drops labels when they leave the target window", async () => {
     const eng = makeEngine(400, 200, 30);
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       useXAxis(eng, DEFAULT_PADDING, (t) => `lbl${Math.floor(t)}`, font),
     );
     const initialCount = result.current.xAxisEntries.value.length;
-    act(() => {
+    await act(async () => {
       eng.timestamp.value = eng.timestamp.value + 1_000_000;
       eng.displayWindow.value = 5;
-      rerender(undefined);
+      await rerender(undefined);
     });
     expect(result.current.xAxisEntries.value.length).toBeLessThanOrEqual(
       initialCount + 50,
     );
   });
 
-  it("updates when timestamp advances", () => {
+  it("updates when timestamp advances", async () => {
     const eng = makeEngine(400, 200, 120);
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       useXAxis(eng, DEFAULT_PADDING, (t) => `t${Math.floor(t)}`, font),
     );
     const first = result.current.xAxisEntries.value.length;
-    act(() => {
+    await act(async () => {
       eng.timestamp.value = eng.timestamp.value + 5000;
-      rerender(undefined);
+      await rerender(undefined);
     });
     expect(result.current.xAxisEntries.value.length).toBeGreaterThanOrEqual(0);
     expect(first).toBeGreaterThanOrEqual(0);
@@ -170,17 +170,15 @@ describe("useXAxis", () => {
     expect(cache[kA].text).toBe("A1699999920");
   });
 
-  it("re-runs the relabel effect without error when formatTime changes", () => {
+  it("re-runs the relabel effect without error when formatTime changes", async () => {
     const eng = makeEngine(400, 200, 120);
-    const { rerender } = renderHook(
+    const { rerender } = await renderHook(
       ({ f }: { f: (t: number) => string }) =>
         useXAxis(eng, DEFAULT_PADDING, f, font),
       { initialProps: { f: (t: number) => `A${Math.floor(t)}` } },
     );
-    expect(() =>
-      act(() => {
-        rerender({ f: (t: number) => `B${Math.floor(t)}` });
-      }),
-    ).not.toThrow();
+    await act(async () => {
+      await rerender({ f: (t: number) => `B${Math.floor(t)}` });
+    });
   });
 });

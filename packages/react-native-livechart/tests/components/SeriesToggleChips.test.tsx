@@ -87,10 +87,10 @@ describe("seriesMetaSig", () => {
 describe("SeriesToggleChips", () => {
   it("renders a chip per series and toggles visibility off", async () => {
     const onToggle = jest.fn();
-    const screen = render(<ChipsHarness onToggle={onToggle} />);
+    const screen = await render(<ChipsHarness onToggle={onToggle} />);
     await flushScheduleOnRN();
     expect(screen.getByText("Alpha")).toBeTruthy();
-    fireEvent.press(screen.getByText("Alpha"));
+    await fireEvent.press(screen.getByText("Alpha"));
     await flushScheduleOnRN();
     expect(onToggle).toHaveBeenCalledWith("a", false);
   });
@@ -99,11 +99,11 @@ describe("SeriesToggleChips", () => {
   // (see jest-setup.js native proxy). First toggle is covered above.
   it.skip("second press restores visibility and calls onSeriesToggle with true", async () => {
     const onToggle = jest.fn();
-    const screen = render(<ChipsHarness onToggle={onToggle} />);
+    const screen = await render(<ChipsHarness onToggle={onToggle} />);
     await flushScheduleOnRN();
-    fireEvent.press(screen.getByText("Alpha"));
+    await fireEvent.press(screen.getByText("Alpha"));
     await flushScheduleOnRN();
-    fireEvent.press(screen.getByText("Alpha"));
+    await fireEvent.press(screen.getByText("Alpha"));
     await flushScheduleOnRN();
     expect(onToggle).toHaveBeenCalledWith("a", true);
   });
@@ -115,14 +115,14 @@ describe("SeriesToggleChips", () => {
       ]);
       return <SeriesToggleChips series={series} legend={DEFAULT_LEGEND} />;
     }
-    const screen = render(<IdOnlyHarness />);
+    const screen = await render(<IdOnlyHarness />);
     await flushScheduleOnRN();
     expect(screen.getByText("idOnly")).toBeTruthy();
   });
 
   it("accepts compact layout", async () => {
     const onToggle = jest.fn();
-    render(<ChipsHarness onToggle={onToggle} compact />);
+    await render(<ChipsHarness onToggle={onToggle} compact />);
     await flushScheduleOnRN();
   });
 
@@ -153,9 +153,9 @@ describe("SeriesToggleChips", () => {
         />
       );
     }
-    const screen = render(<TwoHarness />);
+    const screen = await render(<TwoHarness />);
     await flushScheduleOnRN();
-    fireEvent.press(screen.getByText("B"));
+    await fireEvent.press(screen.getByText("B"));
     await flushScheduleOnRN();
     expect(onToggle).toHaveBeenCalledWith("b", false);
   });
@@ -172,7 +172,7 @@ describe("SeriesToggleChips", () => {
       ]);
       return <SeriesToggleChips series={series} legend={DEFAULT_LEGEND} />;
     }
-    const screen = render(<NoColorHarness />);
+    const screen = await render(<NoColorHarness />);
     await flushScheduleOnRN();
     expect(screen.getByText("Plain")).toBeTruthy();
   });
@@ -206,7 +206,7 @@ describe("SeriesToggleChips", () => {
         />
       );
     }
-    const screen = render(<StyledHarness />);
+    const screen = await render(<StyledHarness />);
     await flushScheduleOnRN();
     // valueLabel renders as a nested <Text>, so the chip's text node reads
     // "Yes 62%" — match with regexes rather than exact strings.

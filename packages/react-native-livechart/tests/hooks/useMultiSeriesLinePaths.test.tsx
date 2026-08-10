@@ -5,8 +5,8 @@ import { useMultiSeriesLinePaths } from "../../src/hooks/useMultiSeriesLinePaths
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 describe("useMultiSeriesLinePaths", () => {
-  it("returns path array derived value", () => {
-    const { result } = renderHook(() => {
+  it("returns path array derived value", async () => {
+    const { result } = await renderHook(() => {
       const series = useSharedValue([
         {
           id: "a",
@@ -40,8 +40,8 @@ describe("useMultiSeriesLinePaths", () => {
     expect(result.current.value).toHaveLength(1);
   });
 
-  it("builds a straight-polyline path for a series with curve: \"linear\"", () => {
-    const { result } = renderHook(() => {
+  it("builds a straight-polyline path for a series with curve: \"linear\"", async () => {
+    const { result } = await renderHook(() => {
       const series = useSharedValue([
         {
           id: "a",

@@ -75,13 +75,13 @@ function useChartRevealTestSetup(
 }
 
 describe("useChartReveal (hook)", () => {
-  it("morphT starts at 0 when loading=true", () => {
-    const { result } = renderHook(() => useChartRevealTestSetup(true, true));
+  it("morphT starts at 0 when loading=true", async () => {
+    const { result } = await renderHook(() => useChartRevealTestSetup(true, true));
     expect(result.current.morphT.value).toBe(0);
   });
 
-  it("morphT starts at 1 when loading=false and hasData", () => {
-    const { result } = renderHook(() =>
+  it("morphT starts at 1 when loading=false and hasData", async () => {
+    const { result } = await renderHook(() =>
       useChartRevealTestSetup(false, true),
     );
     expect(result.current.morphT.value).toBe(1);
@@ -91,58 +91,58 @@ describe("useChartReveal (hook)", () => {
   // executes on the UI thread (a Reanimated mapper) — Jest's Worklets mock doesn't
   // run it, so morphT keeps its best-guess initial (loading ? 0 : 1 → 1 here). On
   // device the reaction sets it to 0 before paint.
-  it.skip("morphT starts at 0 when loading=false and no hasData", () => {
-    const { result } = renderHook(() =>
+  it.skip("morphT starts at 0 when loading=false and no hasData", async () => {
+    const { result } = await renderHook(() =>
       useChartRevealTestSetup(false, false),
     );
     expect(result.current.morphT.value).toBe(0);
   });
 
-  it("isLoading is true when loading=true", () => {
-    const { result } = renderHook(() =>
+  it("isLoading is true when loading=true", async () => {
+    const { result } = await renderHook(() =>
       useChartRevealTestSetup(true, false),
     );
     expect(result.current.isLoading.value).toBe(true);
   });
 
-  it("isLoading is false when loading=false", () => {
-    const { result } = renderHook(() =>
+  it("isLoading is false when loading=false", async () => {
+    const { result } = await renderHook(() =>
       useChartRevealTestSetup(false, true),
     );
     expect(result.current.isLoading.value).toBe(false);
   });
 
-  it("isEmpty when not loading and no hasData", () => {
-    const { result } = renderHook(() =>
+  it("isEmpty when not loading and no hasData", async () => {
+    const { result } = await renderHook(() =>
       useChartRevealTestSetup(false, false),
     );
     expect(result.current.isEmpty.value).toBe(true);
   });
 
-  it("isEmpty false when loading even if no hasData", () => {
-    const { result } = renderHook(() =>
+  it("isEmpty false when loading even if no hasData", async () => {
+    const { result } = await renderHook(() =>
       useChartRevealTestSetup(true, false),
     );
     expect(result.current.isEmpty.value).toBe(false);
   });
 
-  it("isEmpty false when hasData", () => {
-    const { result } = renderHook(() =>
+  it("isEmpty false when hasData", async () => {
+    const { result } = await renderHook(() =>
       useChartRevealTestSetup(false, true),
     );
     expect(result.current.isEmpty.value).toBe(false);
   });
 
-  it("all stagger opacities are 0 when morphT=0", () => {
-    const { result } = renderHook(() => useChartRevealTestSetup(true, true));
+  it("all stagger opacities are 0 when morphT=0", async () => {
+    const { result } = await renderHook(() => useChartRevealTestSetup(true, true));
     expect(result.current.yAxisOpacity.value).toBe(0);
     expect(result.current.fillOpacity.value).toBe(0);
     expect(result.current.dotOpacity.value).toBe(0);
     expect(result.current.badgeOpacity.value).toBe(0);
   });
 
-  it("all stagger opacities are 1 when morphT=1", () => {
-    const { result } = renderHook(() =>
+  it("all stagger opacities are 1 when morphT=1", async () => {
+    const { result } = await renderHook(() =>
       useChartRevealTestSetup(false, true),
     );
     expect(result.current.yAxisOpacity.value).toBeCloseTo(1);
@@ -155,8 +155,8 @@ describe("useChartReveal (hook)", () => {
   // that Jest's Worklets mock doesn't run, so it keeps its best-guess initial and
   // the derived opacities stay at revealRamp(1)=1. On device the reaction sets
   // morphT to 0 and the opacities recompute to 0 before paint.
-  it.skip("opacities stay 0 when loading=false but no hasData", () => {
-    const { result } = renderHook(() =>
+  it.skip("opacities stay 0 when loading=false but no hasData", async () => {
+    const { result } = await renderHook(() =>
       useChartRevealTestSetup(false, false),
     );
     expect(result.current.yAxisOpacity.value).toBe(0);
@@ -165,8 +165,8 @@ describe("useChartReveal (hook)", () => {
 
   // Skipped: Jest uses a minimal Worklets native proxy (see repo jest-setup.js) so
   // `useSharedValue` writes from `useLayoutEffect` do not round-trip like on device.
-  it.skip("updates isLoading when loading prop changes", () => {
-    const { result, rerender } = renderHook(
+  it.skip("updates isLoading when loading prop changes", async () => {
+    const { result, rerender } = await renderHook(
       (props: { loading: boolean }) => {
         const hasData = useSharedValue(true);
         return useChartReveal(props.loading, hasData);
@@ -174,12 +174,12 @@ describe("useChartReveal (hook)", () => {
       { initialProps: { loading: true } },
     );
     expect(result.current.isLoading.value).toBe(true);
-    rerender({ loading: false });
+    await rerender({ loading: false });
     expect(result.current.isLoading.value).toBe(false);
   });
 
-  it.skip("resets to loading shell when loading becomes true again", () => {
-    const { result, rerender } = renderHook(
+  it.skip("resets to loading shell when loading becomes true again", async () => {
+    const { result, rerender } = await renderHook(
       (props: { loading: boolean }) => {
         const hasData = useSharedValue(true);
         return useChartReveal(props.loading, hasData);
@@ -187,7 +187,7 @@ describe("useChartReveal (hook)", () => {
       { initialProps: { loading: false } },
     );
     expect(result.current.morphT.value).toBe(1);
-    rerender({ loading: true });
+    await rerender({ loading: true });
     expect(result.current.isLoading.value).toBe(true);
     expect(result.current.isEmpty.value).toBe(false);
   });

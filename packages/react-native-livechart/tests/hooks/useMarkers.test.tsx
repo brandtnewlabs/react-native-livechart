@@ -12,8 +12,8 @@ function useMakeEngine() {
 }
 
 describe("useMarkers", () => {
-  it("returns a projected buffer and a tap gesture when active", () => {
-    const { result } = renderHook(() => {
+  it("returns a projected buffer and a tap gesture when active", async () => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       const markers = useSharedValue<Marker[]>([
         { id: "a", time: 1_700_000_000, kind: "trade", value: 50 },
@@ -24,8 +24,8 @@ describe("useMarkers", () => {
     expect(result.current.tapGesture).toBeDefined();
   });
 
-  it("works when inactive and without an onMarkerPress callback", () => {
-    const { result } = renderHook(() => {
+  it("works when inactive and without an onMarkerPress callback", async () => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       const markers = useSharedValue<Marker[]>([]);
       return useMarkers(engine, DEFAULT_PADDING, markers, false, 16);
@@ -33,8 +33,8 @@ describe("useMarkers", () => {
     expect(result.current.projected.value).toEqual([]);
   });
 
-  it("accepts a stacked cluster config and exposes a hit-test", () => {
-    const { result } = renderHook(() => {
+  it("accepts a stacked cluster config and exposes a hit-test", async () => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       const markers = useSharedValue<Marker[]>([
         { id: "a", time: 1_700_000_000, kind: "trade", value: 50, side: "above" },

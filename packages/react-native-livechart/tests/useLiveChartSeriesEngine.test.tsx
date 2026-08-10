@@ -119,8 +119,8 @@ describe("applyLiveChartSeriesEngineFrame", () => {
 });
 
 describe("useLiveChartSeriesEngine", () => {
-  it("returns engine state with series arrays", () => {
-    const { result } = renderHook(() => {
+  it("returns engine state with series arrays", async () => {
+    const { result } = await renderHook(() => {
       const series = useSharedValue<SeriesConfig[]>([
         {
           id: "a",
@@ -140,10 +140,10 @@ describe("useLiveChartSeriesEngine", () => {
     expect(result.current.series).toBeDefined();
   });
 
-  it("requests a one-shot snap when snapKey changes (and not on a stable key)", () => {
+  it("requests a one-shot snap when snapKey changes (and not on a stable key)", async () => {
     // snapSV is internal — assert the effect wiring is exercised across the
     // no-change / change paths without throwing (snap math covered above).
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ k }: { k: number }) => {
         const series = useSharedValue<SeriesConfig[]>([
           {
@@ -162,8 +162,8 @@ describe("useLiveChartSeriesEngine", () => {
       },
       { initialProps: { k: 0 } },
     );
-    rerender({ k: 0 }); // unchanged → no snap
-    rerender({ k: 1 }); // changed → snap requested
+    await rerender({ k: 0 }); // unchanged → no snap
+    await rerender({ k: 1 }); // changed → snap requested
     expect(result.current.displayMin.value).toBeDefined();
   });
 });

@@ -18,11 +18,11 @@ function makeEngine(): EngineState {
 }
 
 describe("useCanvasLayout", () => {
-  it("writes layout dimensions to engine and state", () => {
+  it("writes layout dimensions to engine and state", async () => {
     const engine = makeEngine();
-    const { result } = renderHook(() => useCanvasLayout(engine));
+    const { result } = await renderHook(() => useCanvasLayout(engine));
 
-    act(() => {
+    await act(() => {
       result.current.onLayout({
         nativeEvent: { layout: { width: 320, height: 240 } },
       } as never);

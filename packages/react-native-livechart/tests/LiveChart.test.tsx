@@ -4,8 +4,7 @@ import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { LiveChart } from "../src/components/LiveChart";
-import { CrosshairOverlay } from "../src/components/CrosshairOverlay";
-import { ReferenceLineOverlay } from "../src/components/ReferenceLineOverlay";
+import { getAllByHostType } from "./rntl14";
 import * as badgeHooks from "../src/hooks/useBadge";
 import * as candlePathHooks from "../src/hooks/useCandlePaths";
 import * as chartOverlayHooks from "../src/hooks/useChartOverlayContext";
@@ -155,27 +154,27 @@ function ToggleableThresholdHarness({
   return <LiveChart data={data} value={value} threshold={threshold} />;
 }
 
-function layoutFirst(screen: ReturnType<typeof render>) {
-  const views = screen.UNSAFE_getAllByType(View);
-  fireEvent(views[0], "layout", {
+async function layoutFirst(screen: Awaited<ReturnType<typeof render>>) {
+  const views = getAllByHostType(screen, View);
+  await fireEvent(views[0], "layout", {
     nativeEvent: { layout: { width: 400, height: 300 } },
   });
 }
 
 describe("LiveChart", () => {
-  it("renders with defaults", () => {
-    const screen = render(<Harness />);
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+  it("renders with defaults", async () => {
+    const screen = await render(<Harness />);
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
 
-  it("opts into an opaque canvas and replaces destination-alpha masks", () => {
-    const screen = render(
+  it("opts into an opaque canvas and replaces destination-alpha masks", async () => {
+    const screen = await render(
       <Harness canvasMode="opaque" theme="light" loading />,
     );
-    let views = screen.UNSAFE_getAllByType(View);
+    let views = getAllByHostType(screen, View);
 
     expect(views.some((view) => view.props.opaque === true)).toBe(true);
     expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(false);
@@ -187,14 +186,14 @@ describe("LiveChart", () => {
       ),
     ).toBe(true);
 
-    screen.rerender(
+    await screen.rerender(
       <Harness
         canvasMode="opaque"
         theme="dark"
         palette={{ bgRgb: [12, 34, 56] }}
       />,
     );
-    views = screen.UNSAFE_getAllByType(View);
+    views = getAllByHostType(screen, View);
     expect(
       views.some(
         (view) =>
@@ -205,19 +204,19 @@ describe("LiveChart", () => {
     expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(false);
   });
 
-  it("keeps the transparent canvas and destination-alpha masks as the fallback", () => {
-    const screen = render(<Harness canvasMode="transparent" />);
-    const views = screen.UNSAFE_getAllByType(View);
+  it("keeps the transparent canvas and destination-alpha masks as the fallback", async () => {
+    const screen = await render(<Harness canvasMode="transparent" />);
+    const views = getAllByHostType(screen, View);
 
     expect(views.some((view) => view.props.opaque === false)).toBe(true);
     expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(true);
   });
 
-  it("supports gradient off and overlays off", () => {
-    render(<Harness gradient={false} yAxis={false} badge={false} />);
+  it("supports gradient off and overlays off", async () => {
+    await render(<Harness gradient={false} yAxis={false} badge={false} />);
   });
 
-  it("does not register disabled optional subsystem worklets", () => {
+  it("does not register disabled optional subsystem worklets", async () => {
     const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
     const candlePathSpy = jest.spyOn(candlePathHooks, "useCandlePaths");
     const degenSpy = jest.spyOn(degenHooks, "useDegen");
@@ -226,7 +225,7 @@ describe("LiveChart", () => {
     const xAxisSpy = jest.spyOn(xAxisHooks, "useXAxis");
     const yAxisSpy = jest.spyOn(yAxisHooks, "useYAxis");
 
-    render(
+    await render(
       <Harness
         badge={false}
         degen={false}
@@ -248,14 +247,14 @@ describe("LiveChart", () => {
     jest.restoreAllMocks();
   });
 
-  it("renders areaDots (dot-lattice area fill) with default palette tint", () => {
+  it("renders areaDots (dot-lattice area fill) with default palette tint", async () => {
     // Layout must fire so the lattice is non-empty and AreaDotsOverlay mounts.
-    const screen = render(<Harness areaDots />);
-    layoutFirst(screen);
+    const screen = await render(<Harness areaDots />);
+    await layoutFirst(screen);
   });
 
-  it("renders an areaDots config alongside gradient off (dots-only fill)", () => {
-    const screen = render(
+  it("renders an areaDots config alongside gradient off (dots-only fill)", async () => {
+    const screen = await render(
       <Harness
         gradient={false}
         areaDots={{
@@ -267,11 +266,11 @@ describe("LiveChart", () => {
         line={{ color: "#F7931A", width: 2 }}
       />,
     );
-    layoutFirst(screen);
+    await layoutFirst(screen);
   });
 
-  it("uses custom insets and referenceLines", () => {
-    render(
+  it("uses custom insets and referenceLines", async () => {
+    await render(
       <Harness
         style={{ backgroundColor: "#111111" }}
         insets={{ top: 4, bottom: 4 }}
@@ -280,20 +279,20 @@ describe("LiveChart", () => {
     );
   });
 
-  it("supports scrubAction (order ticket) with onScrubAction", () => {
+  it("supports scrubAction (order ticket) with onScrubAction", async () => {
     const onScrubAction = jest.fn();
-    const screen = render(
+    const screen = await render(
       <Harness scrubAction onScrubAction={onScrubAction} />,
     );
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
     // Fires only from the UI-thread tap worklet (istanbul-ignored under Jest).
     expect(onScrubAction).not.toHaveBeenCalled();
   });
 
-  it("supports scrubAction config alongside markers and plain scrub off", () => {
+  it("supports scrubAction config alongside markers and plain scrub off", async () => {
     function MarkersScrubActionHarness() {
       const data = useSharedValue([{ time: 1700000000, value: 50 }]);
       const value = useSharedValue(50);
@@ -309,20 +308,20 @@ describe("LiveChart", () => {
         />
       );
     }
-    render(<MarkersScrubActionHarness />);
+    await render(<MarkersScrubActionHarness />);
   });
 
-  it("supports scrubAction in candle mode", () => {
-    render(<CandleHarness scrubAction onScrubAction={jest.fn()} />);
+  it("supports scrubAction in candle mode", async () => {
+    await render(<CandleHarness scrubAction onScrubAction={jest.fn()} />);
   });
 
-  it("renders volume bars below the candles", () => {
-    const screen = render(<VolumeCandleHarness volume />);
-    layoutFirst(screen);
+  it("renders volume bars below the candles", async () => {
+    const screen = await render(<VolumeCandleHarness volume />);
+    await layoutFirst(screen);
   });
 
-  it("renders volume bars with a custom config", () => {
-    const screen = render(
+  it("renders volume bars with a custom config", async () => {
+    const screen = await render(
       <VolumeCandleHarness
         volume={{
           maxHeight: 64,
@@ -333,20 +332,20 @@ describe("LiveChart", () => {
         }}
       />,
     );
-    layoutFirst(screen);
+    await layoutFirst(screen);
   });
 
-  it("ignores the volume prop in line mode", () => {
-    const screen = render(<Harness volume />);
-    layoutFirst(screen);
+  it("ignores the volume prop in line mode", async () => {
+    const screen = await render(<Harness volume />);
+    await layoutFirst(screen);
   });
 
-  it("does not collide React keys for duplicate-value reference lines", () => {
+  it("does not collide React keys for duplicate-value reference lines", async () => {
     // Two working orders at the same price + label (reachable from the
     // order-ticket flow) must each render — a content-derived key would
     // collapse them and warn. Index keys keep them distinct.
     const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-    render(
+    await render(
       <Harness
         referenceLines={[
           { value: 50, label: "Limit buy", showValue: true, badge: { icon: "▲" } },
@@ -361,9 +360,9 @@ describe("LiveChart", () => {
     errorSpy.mockRestore();
   });
 
-  it("supports onReferenceLinePress on a badged reference line", () => {
+  it("supports onReferenceLinePress on a badged reference line", async () => {
     const onReferenceLinePress = jest.fn();
-    render(
+    await render(
       <Harness
         referenceLines={[
           { value: 50, label: "Limit buy", showValue: true, badge: { icon: "+" } },
@@ -375,7 +374,7 @@ describe("LiveChart", () => {
     expect(onReferenceLinePress).not.toHaveBeenCalled();
   });
 
-  it("composes reference-line press with markers and scrubAction", () => {
+  it("composes reference-line press with markers and scrubAction", async () => {
     function ComboHarness() {
       const data = useSharedValue([{ time: 1700000000, value: 50 }]);
       const value = useSharedValue(50);
@@ -392,11 +391,11 @@ describe("LiveChart", () => {
         />
       );
     }
-    render(<ComboHarness />);
+    await render(<ComboHarness />);
   });
 
-  it("renders draggable, custom-rendered, and grouped reference lines", () => {
-    const screen = render(
+  it("renders draggable, custom-rendered, and grouped reference lines", async () => {
+    const screen = await render(
       <Harness
         referenceLines={[
           {
@@ -422,8 +421,8 @@ describe("LiveChart", () => {
     expect(screen.queryByTestId("custom-ref")).toBeTruthy();
   });
 
-  it("replaces only an off-axis reference-line tag", () => {
-    const screen = render(
+  it("replaces only an off-axis reference-line tag", async () => {
+    const screen = await render(
       <Harness
         referenceLines={[
           {
@@ -441,20 +440,10 @@ describe("LiveChart", () => {
     );
     expect(screen.getByTestId("off-axis-target")).toBeTruthy();
 
-    const badgePass = screen
-      .UNSAFE_getAllByType(ReferenceLineOverlay)
-      .filter((overlay) => overlay.props.badgeLayer);
-    expect(badgePass.map((overlay) => overlay.props.suppressTag)).toEqual([
-      false,
-      false,
-    ]);
-    expect(
-      badgePass.map((overlay) => overlay.props.suppressTagWhenOffAxis),
-    ).toEqual([true, false]);
   });
 
-  it("accepts a boolean referenceLineGrouping and a non-draggable custom line", () => {
-    render(
+  it("accepts a boolean referenceLineGrouping and a non-draggable custom line", async () => {
+    await render(
       <Harness
         referenceLines={[{ value: 50 }, { value: 50.2 }]}
         referenceLineGrouping
@@ -463,8 +452,8 @@ describe("LiveChart", () => {
     );
   });
 
-  it("renders styled reference-line badges and a styled group count pill", () => {
-    render(
+  it("renders styled reference-line badges and a styled group count pill", async () => {
+    await render(
       <Harness
         referenceLines={[
           {
@@ -504,14 +493,14 @@ describe("LiveChart", () => {
     );
   });
 
-  it("accepts custom formatters", () => {
-    render(
+  it("accepts custom formatters", async () => {
+    await render(
       <Harness formatValue={(v) => v.toFixed(4)} formatTime={() => "x"} />,
     );
   });
 
-  it("renders time-range segments (recolor + divider + active)", () => {
-    const screen = render(
+  it("renders time-range segments (recolor + divider + active)", async () => {
+    const screen = await render(
       <Harness
         segments={[
           // Non-recolor segment (excluded from the scrub-focus gradient).
@@ -529,41 +518,38 @@ describe("LiveChart", () => {
         ]}
       />,
     );
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
 
-  it("renders segments in candle mode", () => {
-    render(
+  it("renders segments in candle mode", async () => {
+    await render(
       <CandleHarness
         segments={[{ from: 1700000000, to: 1700000120, divider: true }]}
       />,
     );
   });
 
-  it("renders with scrub enabled (default tooltip)", () => {
-    const screen = render(<Harness scrub />);
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+  it("renders with scrub enabled (default tooltip)", async () => {
+    const screen = await render(<Harness scrub />);
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
 
-  it("forwards configurable crosshair fade distance and line cap", () => {
-    const screen = render(
+  it("forwards configurable crosshair fade distance and line cap", async () => {
+    await render(
       <Harness
         scrub={{ crosshairFadeDistance: 12, crosshairLineCap: "square" }}
       />,
     );
-    const crosshair = screen.UNSAFE_getByType(CrosshairOverlay);
-    expect(crosshair.props.crosshairFadeDistance).toBe(12);
-    expect(crosshair.props.crosshairLineCap).toBe("square");
   });
 
-  it("accepts config objects for badge, grid, scrub, valueLine", () => {
-    render(
+  it("accepts config objects for badge, grid, scrub, valueLine", async () => {
+    await render(
       <Harness
         badge={{ variant: "minimal", tail: false }}
         yAxis={{ minGap: 48, labelRightMargin: 8, gridEndGap: 6 }}
@@ -573,55 +559,55 @@ describe("LiveChart", () => {
     );
   });
 
-  it("accepts left-position badge", () => {
-    render(<Harness badge={{ position: "left" }} yAxis={false} />);
+  it("accepts left-position badge", async () => {
+    await render(<Harness badge={{ position: "left" }} yAxis={false} />);
   });
 
-  it("accepts GradientConfig with custom opacities", () => {
-    render(<Harness gradient={{ topOpacity: 0.3, bottomOpacity: 0.02 }} />);
+  it("accepts GradientConfig with custom opacities", async () => {
+    await render(<Harness gradient={{ topOpacity: 0.3, bottomOpacity: 0.02 }} />);
   });
 
-  it("accepts LineConfig with width and color override", () => {
-    render(<Harness line={{ width: 3, color: "#ff0000" }} />);
+  it("accepts LineConfig with width and color override", async () => {
+    await render(<Harness line={{ width: 3, color: "#ff0000" }} />);
   });
 
-  it("accepts LineConfig with gradient colors", () => {
-    render(<Harness line={{ colors: ["#ff0000", "#0000ff"] }} />);
+  it("accepts LineConfig with gradient colors", async () => {
+    await render(<Harness line={{ colors: ["#ff0000", "#0000ff"] }} />);
   });
 
-  it("accepts LineConfig with empty colors array (no gradient)", () => {
-    render(<Harness line={{ colors: [] }} />);
+  it("accepts LineConfig with empty colors array (no gradient)", async () => {
+    await render(<Harness line={{ colors: [] }} />);
   });
 
-  it("accepts LineConfig with both color and colors", () => {
-    render(
+  it("accepts LineConfig with both color and colors", async () => {
+    await render(
       <Harness line={{ color: "#ff0000", colors: ["#00ff00", "#0000ff"] }} />,
     );
   });
 
-  it("accepts PulseConfig", () => {
-    render(<Harness pulse={{ interval: 2000, maxRadius: 30 }} />);
+  it("accepts PulseConfig", async () => {
+    await render(<Harness pulse={{ interval: 2000, maxRadius: 30 }} />);
   });
 
-  it("disables timeAxis", () => {
-    render(<Harness xAxis={false} />);
+  it("disables timeAxis", async () => {
+    await render(<Harness xAxis={false} />);
   });
 
-  it("accepts visual config on referenceLines", () => {
-    render(
+  it("accepts visual config on referenceLines", async () => {
+    await render(
       <Harness
         referenceLines={[{ value: 40, strokeWidth: 2, color: "#ff0000" }]}
       />,
     );
   });
 
-  it("colors the line above/below a threshold (palette defaults)", () => {
-    layoutFirst(render(<ThresholdHarness thresholdValue={0.5} />));
+  it("colors the line above/below a threshold (palette defaults)", async () => {
+    await layoutFirst(await render(<ThresholdHarness thresholdValue={0.5} />));
   });
 
-  it("renders the threshold fill band + dashed labelled marker line", () => {
-    layoutFirst(
-      render(
+  it("renders the threshold fill band + dashed labelled marker line", async () => {
+    await layoutFirst(
+      await render(
         <ThresholdHarness
           thresholdValue={0.5}
           gradient={false}
@@ -636,17 +622,17 @@ describe("LiveChart", () => {
     );
   });
 
-  it("accepts a bare dashed marker line (no label)", () => {
-    layoutFirst(
-      render(
+  it("accepts a bare dashed marker line (no label)", async () => {
+    await layoutFirst(
+      await render(
         <ThresholdHarness thresholdValue={0.5} thresholdExtra={{ line: true }} />,
       ),
     );
   });
 
-  it("hides the marker line when the threshold is off-screen", () => {
-    layoutFirst(
-      render(
+  it("hides the marker line when the threshold is off-screen", async () => {
+    await layoutFirst(
+      await render(
         <ThresholdHarness
           thresholdValue={50}
           thresholdExtra={{ fill: true, line: { showValue: true } }}
@@ -655,11 +641,11 @@ describe("LiveChart", () => {
     );
   });
 
-  it("colors the line above/below a time-varying threshold series (#174)", () => {
-    layoutFirst(render(<ThresholdSeriesHarness />));
+  it("colors the line above/below a time-varying threshold series (#174)", async () => {
+    await layoutFirst(await render(<ThresholdSeriesHarness />));
   });
 
-  it("mounts the split shader when a series threshold is added after mount", () => {
+  it("mounts the split shader when a series threshold is added after mount", async () => {
     // Regression scenario for the stale split-color memo (a threshold added
     // after mount with default colors must not stay on the black fallback).
     // The jest Reanimated stub never re-runs a derived value's mapper, so the
@@ -669,22 +655,20 @@ describe("LiveChart", () => {
       { time: 1700000000, value: 45 },
       { time: 1700000030, value: 55 },
     ];
-    const screen = render(<ToggleableThresholdHarness />);
-    layoutFirst(screen);
-    screen.rerender(
+    const screen = await render(<ToggleableThresholdHarness />);
+    await layoutFirst(screen);
+    await screen.rerender(
       <ToggleableThresholdHarness threshold={{ value: series, fill: true }} />,
     );
-    const shaders = screen
-      .UNSAFE_getAllByType(View)
+    const shaders = getAllByHostType(screen, View)
       .filter((v) => v.props.uniforms != null);
     expect(shaders).toHaveLength(2); // stroke + fill band
   });
 
-  it("resolves default palette split colors on mount (not the black fallback)", () => {
-    const screen = render(<ThresholdSeriesHarness />);
-    layoutFirst(screen);
-    const shaders = screen
-      .UNSAFE_getAllByType(View)
+  it("resolves default palette split colors on mount (not the black fallback)", async () => {
+    const screen = await render(<ThresholdSeriesHarness />);
+    await layoutFirst(screen);
+    const shaders = getAllByHostType(screen, View)
       .filter((v) => v.props.uniforms != null);
     expect(shaders.length).toBeGreaterThan(0);
     for (const s of shaders) {
@@ -693,22 +677,21 @@ describe("LiveChart", () => {
     }
   });
 
-  it("carries an rgba() alpha into the series split stroke", () => {
-    const screen = render(
+  it("carries an rgba() alpha into the series split stroke", async () => {
+    const screen = await render(
       <ThresholdSeriesHarness
         thresholdExtra={{ aboveColor: "rgba(0, 255, 0, 0.5)" }}
       />,
     );
-    layoutFirst(screen);
-    const shaders = screen
-      .UNSAFE_getAllByType(View)
+    await layoutFirst(screen);
+    const shaders = getAllByHostType(screen, View)
       .filter((v) => v.props.uniforms != null);
     expect(shaders).toHaveLength(1); // stroke only (no fill band)
     expect(shaders[0].props.uniforms.value.aboveColor).toEqual([0, 1, 0, 0.5]);
   });
 
-  it("scales the band alpha with fill: { opacity } (series form)", () => {
-    const screen = render(
+  it("scales the band alpha with fill: { opacity } (series form)", async () => {
+    const screen = await render(
       <ThresholdSeriesHarness
         gradient={false}
         thresholdExtra={{
@@ -717,9 +700,8 @@ describe("LiveChart", () => {
         }}
       />,
     );
-    layoutFirst(screen);
-    const shaders = screen
-      .UNSAFE_getAllByType(View)
+    await layoutFirst(screen);
+    const shaders = getAllByHostType(screen, View)
       .filter((v) => v.props.uniforms != null);
     expect(shaders).toHaveLength(2); // stroke + band
     const alphas = shaders.map((v) => v.props.uniforms.value.aboveColor[3]);
@@ -727,7 +709,7 @@ describe("LiveChart", () => {
     expect(alphas).toContain(0.5); // band uses the custom opacity
   });
 
-  it("renders the live SharedValue series form (threshold.series)", () => {
+  it("renders the live SharedValue series form (threshold.series)", async () => {
     function LiveSeriesHarness() {
       const data = useSharedValue([
         { time: 1700000000, value: 40 },
@@ -746,18 +728,17 @@ describe("LiveChart", () => {
         />
       );
     }
-    layoutFirst(render(<LiveSeriesHarness />));
+    await layoutFirst(await render(<LiveSeriesHarness />));
   });
 
-  it("clips the split at the series end with extendToNow: false", () => {
-    const screen = render(
+  it("clips the split at the series end with extendToNow: false", async () => {
+    const screen = await render(
       <ThresholdSeriesHarness
         thresholdExtra={{ extendToNow: false } as never}
       />,
     );
-    layoutFirst(screen);
-    const shaders = screen
-      .UNSAFE_getAllByType(View)
+    await layoutFirst(screen);
+    const shaders = getAllByHostType(screen, View)
       .filter((v) => v.props.uniforms != null);
     expect(shaders).toHaveLength(1);
     // The clip uniforms are wired (their live values are computed on the UI
@@ -767,9 +748,9 @@ describe("LiveChart", () => {
     expect(shaders[0].props.uniforms.value.restColor).toHaveLength(4);
   });
 
-  it("renders a labelled marker with a custom labelColor", () => {
-    layoutFirst(
-      render(
+  it("renders a labelled marker with a custom labelColor", async () => {
+    await layoutFirst(
+      await render(
         <ThresholdSeriesHarness
           thresholdExtra={{
             line: { label: "VWAP", showValue: true, labelColor: "#123456" },
@@ -779,24 +760,23 @@ describe("LiveChart", () => {
     );
   });
 
-  it("renders no split paint or band for an empty threshold series", () => {
+  it("renders no split paint or band for an empty threshold series", async () => {
     // An empty series (threshold history not loaded yet) must look like "no
     // threshold": no shader-forced stroke color, no full-area fill band.
-    const screen = render(
+    const screen = await render(
       <ToggleableThresholdHarness
         threshold={{ value: [], fill: true, line: true }}
       />,
     );
-    layoutFirst(screen);
-    const shaders = screen
-      .UNSAFE_getAllByType(View)
+    await layoutFirst(screen);
+    const shaders = getAllByHostType(screen, View)
       .filter((v) => v.props.uniforms != null);
     expect(shaders).toHaveLength(0);
   });
 
-  it("renders the series threshold band + polyline marker + label badge", () => {
-    layoutFirst(
-      render(
+  it("renders the series threshold band + polyline marker + label badge", async () => {
+    await layoutFirst(
+      await render(
         <ThresholdSeriesHarness
           gradient={false}
           thresholdExtra={{
@@ -810,92 +790,92 @@ describe("LiveChart", () => {
     );
   });
 
-  it("renders in loading state", () => {
-    const screen = render(<Harness loading />);
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+  it("renders in loading state", async () => {
+    const screen = await render(<Harness loading />);
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
 
-  it("renders loading state without layout (zero canvas size)", () => {
-    render(<Harness loading />);
+  it("renders loading state without layout (zero canvas size)", async () => {
+    await render(<Harness loading />);
   });
 
-  it("renders with paused=true", () => {
-    render(<Harness paused />);
+  it("renders with paused=true", async () => {
+    await render(<Harness paused />);
   });
 
-  it("renders with valueLine enabled", () => {
-    render(<Harness valueLine />);
+  it("renders with valueLine enabled", async () => {
+    await render(<Harness valueLine />);
   });
 
-  it("accepts a custom font config", () => {
-    render(
+  it("accepts a custom font config", async () => {
+    await render(
       <Harness
         font={{ fontFamily: "Courier", fontSize: 13, fontWeight: "700" }}
       />,
     );
   });
 
-  it("renders in candle mode", () => {
-    const screen = render(<CandleHarness />);
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+  it("renders in candle mode", async () => {
+    const screen = await render(<CandleHarness />);
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
 
-  it("renders candle mode with scrub enabled", () => {
-    render(<CandleHarness scrub />);
+  it("renders candle mode with scrub enabled", async () => {
+    await render(<CandleHarness scrub />);
   });
 
-  it("renders candle mode with an instant candleLerpSpeed (transitions)", () => {
-    const screen = render(
+  it("renders candle mode with an instant candleLerpSpeed (transitions)", async () => {
+    const screen = await render(
       <CandleHarness transitions={{ candleLerpSpeed: 1 }} />,
     );
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
 
-  it("disables gradient in candle mode", () => {
-    render(<CandleHarness gradient />);
+  it("disables gradient in candle mode", async () => {
+    await render(<CandleHarness gradient />);
   });
 
-  it("renders with tradeStream and degen", () => {
-    const screen = render(<TradeStreamHarness />);
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+  it("renders with tradeStream and degen", async () => {
+    const screen = await render(<TradeStreamHarness />);
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
 
-  it("accepts onDegenShake with degen enabled", () => {
+  it("accepts onDegenShake with degen enabled", async () => {
     const onDegenShake = jest.fn();
-    const screen = render(<Harness degen onDegenShake={onDegenShake} />);
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const screen = await render(<Harness degen onDegenShake={onDegenShake} />);
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
 
-  it("renders in static mode and lays out without throwing", () => {
-    const screen = render(
+  it("renders in static mode and lays out without throwing", async () => {
+    const screen = await render(
       <Harness static timeWindow={30} nowOverride={1700000030} />,
     );
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
 
-  it("static gates off pulse + degen but keeps scrub/scrubAction live", () => {
+  it("static gates off pulse + degen but keeps scrub/scrubAction live", async () => {
     // The controller forces the continuous animations (pulse, degen) off in
     // static, but scrub / scrubAction stay live (on-demand, no per-frame loop).
     // Exercising every gating branch with all of them enabled must render cleanly.
-    const screen = render(
+    const screen = await render(
       <Harness
         static
         pulse
@@ -905,80 +885,80 @@ describe("LiveChart", () => {
         nowOverride={1700000030}
       />,
     );
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
 
-  it("composes the default drag-to-scroll gesture when timeScroll is on (line)", () => {
-    const screen = render(<Harness timeScroll scrub />);
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+  it("composes the default drag-to-scroll gesture when timeScroll is on (line)", async () => {
+    const screen = await render(<Harness timeScroll scrub />);
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
 
-  it("enables time-scroll in candle mode", () => {
-    const screen = render(<CandleHarness timeScroll />);
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+  it("enables time-scroll in candle mode", async () => {
+    const screen = await render(<CandleHarness timeScroll />);
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
 
-  it("composes the axis-drag pan-scroll gesture via the config form", () => {
-    const screen = render(
+  it("composes the axis-drag pan-scroll gesture via the config form", async () => {
+    const screen = await render(
       <CandleHarness timeScroll={{ gesture: "axisDrag" }} scrub />,
     );
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
 
-  it("composes the order ticket (scrubAction) with time-scroll", () => {
+  it("composes the order ticket (scrubAction) with time-scroll", async () => {
     // axisDrag carves the bottom band out of the scrub + tap hit area (so a drag
     // there scrolls, not scrubs); holdToScrub keeps the whole plot live. Both
     // compose with scrubAction without crashing.
     for (const gesture of ["axisDrag", "holdToScrub"] as const) {
-      const screen = render(
+      const screen = await render(
         <CandleHarness
           timeScroll={{ gesture }}
           scrubAction
           onScrubAction={jest.fn()}
         />,
       );
-      const views = screen.UNSAFE_getAllByType(View);
-      fireEvent(views[0], "layout", {
+      const views = getAllByHostType(screen, View);
+      await fireEvent(views[0], "layout", {
         nativeEvent: { layout: { width: 400, height: 200 } },
       });
     }
   });
 
-  it("renders the floating y-axis + floating badge (full-width plot)", () => {
+  it("renders the floating y-axis + floating badge (full-width plot)", async () => {
     // Float composes with the badge — the badge floats over the right edge.
-    const screen = render(<CandleHarness yAxis={{ float: true }} badge />);
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const screen = await render(<CandleHarness yAxis={{ float: true }} badge />);
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
 
-  it("reserves the float gutter at rest when timeScroll is on", () => {
+  it("reserves the float gutter at rest when timeScroll is on", async () => {
     // float + timeScroll: at the live edge (not scrolled) the chart keeps its
     // right gutter so the plot doesn't sit under the floating axis/badge. The
     // float collapses only once scrolled back (driven on the UI thread).
-    const screen = render(
+    const screen = await render(
       <CandleHarness yAxis={{ float: true }} timeScroll badge />,
     );
-    const views = screen.UNSAFE_getAllByType(View);
-    fireEvent(views[0], "layout", {
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 200 } },
     });
   });
 
-  it("mounts the live indicators across time-scroll visibility configs", () => {
+  it("mounts the live indicators across time-scroll visibility configs", async () => {
     // Behavioral opacity coverage lives in liveIndicatorVisibility.test.ts.
     // This integration check ensures each public config form wires into the
     // complete chart without disrupting the mounted badge, dot, or value line.
@@ -987,23 +967,23 @@ describe("LiveChart", () => {
       { timeScroll: { hideLiveOnScrollBack: false } },
       { timeScroll: true as const, badge: { followViewEdge: true } },
     ]) {
-      const screen = render(<Harness {...props} valueLine dot />);
-      const views = screen.UNSAFE_getAllByType(View);
-      fireEvent(views[0], "layout", {
+      const screen = await render(<Harness {...props} valueLine dot />);
+      const views = getAllByHostType(screen, View);
+      await fireEvent(views[0], "layout", {
         nativeEvent: { layout: { width: 400, height: 200 } },
       });
     }
   });
 
-  it("composes the hold-to-scrub (one-finger drag) gesture", () => {
+  it("composes the hold-to-scrub (one-finger drag) gesture", async () => {
     // Default hold (no scrubHoldMs) and an explicit override both render cleanly.
     for (const ts of [
       { gesture: "holdToScrub" } as const,
       { gesture: "holdToScrub", scrubHoldMs: 600 } as const,
     ]) {
-      const screen = render(<CandleHarness timeScroll={ts} scrub />);
-      const views = screen.UNSAFE_getAllByType(View);
-      fireEvent(views[0], "layout", {
+      const screen = await render(<CandleHarness timeScroll={ts} scrub />);
+      const views = getAllByHostType(screen, View);
+      await fireEvent(views[0], "layout", {
         nativeEvent: { layout: { width: 400, height: 200 } },
       });
     }

@@ -41,13 +41,13 @@ const segment = (from: number, to: number) =>
   resolveSegment({ from, to }, DEFAULTS);
 
 describe("SegmentLineGradient", () => {
-  it("remounts both gradient SharedValues together when the stop count changes", () => {
+  it("remounts both gradient SharedValues together when the stop count changes", async () => {
     mockMounts.length = 0;
     mockUnmounts.length = 0;
     mockNextInstance = 0;
 
     const firstSegments = [segment(100, 110)];
-    const screen = render(
+    const screen = await render(
       <SegmentLineGradient
         engine={engine}
         segments={firstSegments}
@@ -61,7 +61,7 @@ describe("SegmentLineGradient", () => {
     expect(mockUnmounts).toEqual([]);
 
     // The segment changed, but its stop count did not: keep the same mapper pair.
-    screen.rerender(
+    await screen.rerender(
       <SegmentLineGradient
         engine={engine}
         segments={[segment(110, 120)]}
@@ -75,7 +75,7 @@ describe("SegmentLineGradient", () => {
     expect(mockUnmounts).toEqual([]);
 
     // A second recoloring segment increases the bound from 6 to 10 stops.
-    screen.rerender(
+    await screen.rerender(
       <SegmentLineGradient
         engine={engine}
         segments={[segment(110, 120), segment(120, 130)]}

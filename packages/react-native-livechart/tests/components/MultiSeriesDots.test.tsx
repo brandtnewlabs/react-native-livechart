@@ -5,7 +5,7 @@ import type { MultiEngineState } from "../../src/core/useLiveChartEngine";
 import { MultiSeriesDots } from "../../src/components/MultiSeriesDots";
 
 describe("MultiSeriesDots", () => {
-  it("renders dot slots for the engine", () => {
+  it("renders dot slots for the engine", async () => {
     function Fixture() {
       const series = useSharedValue([
         {
@@ -49,10 +49,10 @@ describe("MultiSeriesDots", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("centers dot Y when value range is zero", () => {
+  it("centers dot Y when value range is zero", async () => {
     function Fixture() {
       const series = useSharedValue([
         {
@@ -93,10 +93,10 @@ describe("MultiSeriesDots", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("treats missing opacity slot as zero", () => {
+  it("treats missing opacity slot as zero", async () => {
     function Fixture() {
       const series = useSharedValue([
         {
@@ -137,6 +137,6 @@ describe("MultiSeriesDots", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });
