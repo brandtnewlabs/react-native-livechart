@@ -1796,6 +1796,7 @@ describe("resolveMarkerCluster", () => {
       overlap: 0.75,
       gap: 2,
       maxBeforeGroup: 5,
+      maxVisible: Number.MAX_SAFE_INTEGER,
       groupBadge: "count",
       showGroupCount: false,
     });
@@ -1807,6 +1808,11 @@ describe("resolveMarkerCluster", () => {
     expect(resolveMarkerCluster("stacked").mode).toBe("stacked");
   });
 
+  it("passes maxVisible through and defaults it to unbounded", () => {
+    expect(resolveMarkerCluster({ maxVisible: 10 }).maxVisible).toBe(10);
+    expect(resolveMarkerCluster({}).maxVisible).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
   it("accepts the object form, implying stacked, with tunable overlap/threshold", () => {
     expect(resolveMarkerCluster({ overlap: 0.8, maxBeforeGroup: 3 })).toEqual({
       mode: "stacked",
@@ -1814,6 +1820,7 @@ describe("resolveMarkerCluster", () => {
       overlap: 0.8,
       gap: 2,
       maxBeforeGroup: 3,
+      maxVisible: Number.MAX_SAFE_INTEGER,
       groupBadge: "count",
       showGroupCount: false,
     });

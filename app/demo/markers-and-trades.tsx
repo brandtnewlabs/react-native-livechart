@@ -11,8 +11,6 @@ import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Markers" };
-
 type Side = "buy" | "sell";
 
 // Tailwind green-600 / red-600 — saturated enough for the white +/− to read.
@@ -48,6 +46,13 @@ const OVERLAP_OPTIONS = [
   { value: 0.6, label: "60%" },
   { value: 0.75, label: "75%" },
   { value: 0.9, label: "90%" },
+];
+
+/** Vertical-stack cap presets. `undefined` leaves `maxVisible` at its unbounded default. */
+const MAX_VISIBLE_OPTIONS: { value: number | undefined; label: string }[] = [
+  { value: undefined, label: "Unbounded" },
+  { value: 4, label: "4" },
+  { value: 8, label: "8" },
 ];
 
 /** What a collapsed group draws: the count badge, the representative buy/sell pill,
@@ -132,6 +137,7 @@ export default function MarkersScreen() {
   const [stacked, setStacked] = useState(false);
   const [vertical, setVertical] = useState(false);
   const [overlap, setOverlap] = useState(0.75);
+  const [maxVisible, setMaxVisible] = useState<number | undefined>(undefined);
   const [groupBadge, setGroupBadge] = useState<GroupBadge>("count");
   const [hitRadius, setHitRadius] = useState(22);
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("normal");
@@ -235,6 +241,7 @@ export default function MarkersScreen() {
                   direction: vertical ? "vertical" : "horizontal",
                   overlap,
                   maxBeforeGroup: vertical ? 20 : 5,
+                  maxVisible: vertical ? maxVisible : undefined,
                   // #165: collapsed-group look — a count circle, the representative
                   // buy/sell pill (optionally with a corner "+N"), or a dedicated
                   // custom group badge (its own glyph, distinct from the members).
@@ -329,7 +336,9 @@ export default function MarkersScreen() {
         With stacking on, co-located markers fan apart horizontally (overlapping,
         left-over-right); a dense burst collapses to a count badge (tap it for the
         member list). Switch on the vertical column to pile them up the value axis
-        instead (buys down, sells up) — the transactions-on-the-candle look.
+        instead (buys down, sells up) — the transactions-on-the-candle look. Cap
+        a vertical column to keep the oldest glyphs near the line and hide newer
+        overflow.
       </Text>
       {stacked ? (
         <ChipRow
@@ -338,6 +347,21 @@ export default function MarkersScreen() {
           value={overlap}
           onChange={setOverlap}
         />
+      ) : null}
+      {stacked && vertical ? (
+        <ChipRow
+          label="Vertical column cap (maxVisible)"
+          options={MAX_VISIBLE_OPTIONS}
+          value={maxVisible}
+          onChange={(cap) => setMaxVisible(cap)}
+        />
+      ) : null}
+      {stacked && vertical ? (
+        <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+          Try a capped column with Burst ×12: `maxBeforeGroup` stays at 20 here,
+          so `maxVisible` can hide the newest markers instead of collapsing the
+          burst to a count badge.
+        </Text>
       ) : null}
       {stacked ? (
         <ChipRow

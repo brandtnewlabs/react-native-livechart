@@ -164,6 +164,15 @@ provided; everything else has a default.
   markerCluster={{ overlap: 0.75, maxBeforeGroup: 8 }}
   ```
 
+  For `direction: "vertical"`, `maxVisible` caps the column while preserving the
+  oldest glyphs nearest the line; newer overflow is hidden. It defaults to
+  unbounded. `maxBeforeGroup` still runs first, so set it higher than the burst
+  you want to cap instead of collapse:
+
+  ```tsx
+  markerCluster={{ direction: "vertical", maxBeforeGroup: 20, maxVisible: 8 }}
+  ```
+
   **Custom collapsed look** — by default a collapsed group draws a round count
   badge (`groupBadge: "count"`). Two ways to customize it:
   - `groupBadge: "marker"` — draw the **representative marker's own glyph** (its
