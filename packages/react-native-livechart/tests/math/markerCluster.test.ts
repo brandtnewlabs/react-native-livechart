@@ -13,6 +13,7 @@ const ANCHORED: ClusterMarkersOpts["config"] = {
   overlap: 0.6,
   gap: 2,
   maxBeforeGroup: 5,
+  maxVisible: Number.MAX_SAFE_INTEGER,
   groupBadge: "count",
   showGroupCount: false,
 };
@@ -22,6 +23,7 @@ const STACKED: ClusterMarkersOpts["config"] = {
   overlap: 0.6,
   gap: 2,
   maxBeforeGroup: 5,
+  maxVisible: Number.MAX_SAFE_INTEGER,
   groupBadge: "count",
   showGroupCount: false,
 };
@@ -31,6 +33,7 @@ const STACKED_VERTICAL: ClusterMarkersOpts["config"] = {
   overlap: 0.6,
   gap: 2,
   maxBeforeGroup: 5,
+  maxVisible: Number.MAX_SAFE_INTEGER,
   groupBadge: "count",
   showGroupCount: false,
 };
@@ -196,6 +199,29 @@ describe("clusterMarkers — stacked vertical", () => {
     expect(proj[0].y).toBeCloseTo(150); // first sits on the line
     expect(proj[1].y).toBeCloseTo(150 - STEP);
     expect(proj.every((p) => p.x === 100)).toBe(true);
+  });
+
+  it("hides the newest overflow past maxVisible, keeping the oldest slots", () => {
+    const markers = [
+      trade("a", 1, "above"),
+      trade("b", 2, "above"),
+      trade("c", 3, "above"),
+      trade("d", 4, "above"),
+    ];
+    const proj = [pm(100, 150), pm(100, 150), pm(100, 150), pm(100, 150)];
+    clusterMarkers(markers, proj, {
+      config: { ...STACKED_VERTICAL, maxVisible: 2 },
+    });
+    // Oldest two keep their column slots…
+    expect(proj[0].hidden).toBe(false);
+    expect(proj[0].y).toBeCloseTo(140);
+    expect(proj[1].hidden).toBe(false);
+    expect(proj[1].y).toBeCloseTo(140 - STEP);
+    // …the newest overflow is hidden, not grouped.
+    expect(proj[2].hidden).toBe(true);
+    expect(proj[3].hidden).toBe(true);
+    expect(proj[2].isGrouped).toBe(false);
+    expect(proj[3].groupCount).toBe(0);
   });
 
   it("still collapses a column past maxBeforeGroup to a count badge at the base", () => {

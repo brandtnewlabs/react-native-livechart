@@ -129,6 +129,7 @@ interface MarkerClusterConfig {
   direction?: "horizontal" | "vertical"; // fan sideways (default) or pile into a column
   overlap?: number;        // 0 (touching) – 1 (stacked); default 0.75
   maxBeforeGroup?: number; // collapse a run past this many; default 5
+  maxVisible?: number;     // vertical columns only: keep this many oldest glyphs; default unbounded
   groupBadge?: "count" | "marker" | MarkerGroupBadge; // collapsed look: count circle
                           // (default), the representative marker's own glyph, or a
                           // dedicated custom badge you supply (object form)
@@ -452,6 +453,13 @@ interface YAxisConfig {
   float?: boolean;
 }
 interface XAxisConfig { minGap?: number } // default 60
+// Fades both axes while LiveChart is idle. @experimental
+interface AxisAutoHideConfig {
+  fadeInMs?: number;    // interaction-start fade duration; default 60
+  fadeOutMs?: number;   // fade back to idle; default 250
+  idleOpacity?: number; // axes' resting opacity (0 = hidden); default 0
+  hideAfterMs?: number; // idle delay before fade-out; default 3000
+}
 // Volume bars below the candles (candle mode only). Bars normalize to the largest
 // visible volume; the candle plot shrinks by `maxHeight` to make room. @see CandlePoint.volume
 interface VolumeConfig {
@@ -467,6 +475,7 @@ interface TimeScrollConfig {
   scrubHoldMs?: number; // holdToScrub: press-hold (ms) before scrub engages; default 500
   hideLiveOnScrollBack?: boolean; // hide live badge + dot + value line while scrolled back (they mark the off-screen live price); default true. Ignored with badge.followViewEdge
   overscroll?: number; // fraction of the window (0–1) pan/zoom may travel past the data bounds into blank space (TradingView-style); default 0 (hard stops at the oldest data / live edge)
+  fling?: boolean; // keep release momentum after a fast drag; false stops exactly where the finger lifts. Default true.
 }
 // Tunes the return-to-live glide (the `returnToLive` prop). @experimental
 interface ReturnToLiveConfig {

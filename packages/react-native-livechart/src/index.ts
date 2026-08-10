@@ -33,6 +33,7 @@ export { usePriceY, useTimeX } from "./hooks/useChartOverlayContext";
 
 export type {
   AreaDotsConfig,
+  AxisAutoHideConfig,
   AxisLabelConfig,
   BadgeConfig,
   BadgeMetrics,

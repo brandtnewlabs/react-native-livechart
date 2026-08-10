@@ -20,6 +20,9 @@ export interface ResolvedMarkerCluster {
   gap: number;
   /** Collapse a co-located run to a single count badge once it exceeds this many. */
   maxBeforeGroup: number;
+  /** Cap a `"vertical"` column at this many glyphs: the newest overflow is
+   *  hidden instead of the column growing unbounded. */
+  maxVisible: number;
   /** What a collapsed group draws: `"count"` = the round count badge (default);
    *  `"marker"` = the representative marker's own glyph; a {@link MarkerGroupBadge}
    *  = a dedicated badge (custom image/icon) independent of the members. */
@@ -131,9 +134,20 @@ function layoutBucket(
     // AWAY from the line in the side direction (above → up, below → down,
     // center → up from the line). `j` runs in time order, so the newest sits
     // furthest out — and, drawn last in array order, paints over the one below it.
+    //
+    // `maxVisible` caps the column: the oldest glyphs keep their slots and the
+    // newest overflow is simply hidden.
     const dir = side === "below" ? 1 : -1;
+    const cap = opts.config.maxVisible;
     for (let j = 0; j < count; j++) {
       const p = proj[idx[s + j]];
+      if (j >= cap) {
+        p.hidden = true;
+        p.isGrouped = false;
+        p.groupCount = 0;
+        p.groupRep = -1;
+        continue;
+      }
       p.x = anchorX;
       p.y = anchorY + sideDy + dir * j * step;
       p.hidden = false;

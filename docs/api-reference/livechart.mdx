@@ -164,6 +164,15 @@ provided; everything else has a default.
   markerCluster={{ overlap: 0.75, maxBeforeGroup: 8 }}
   ```
 
+  For `direction: "vertical"`, `maxVisible` caps the column while preserving the
+  oldest glyphs nearest the line; newer overflow is hidden. It defaults to
+  unbounded. `maxBeforeGroup` still runs first, so set it higher than the burst
+  you want to cap instead of collapse:
+
+  ```tsx
+  markerCluster={{ direction: "vertical", maxBeforeGroup: 20, maxVisible: 8 }}
+  ```
+
   **Custom collapsed look** — by default a collapsed group draws a round count
   badge (`groupBadge: "count"`). Two ways to customize it:
   - `groupBadge: "marker"` — draw the **representative marker's own glyph** (its
@@ -384,6 +393,15 @@ provided; everything else has a default.
   prices instead of the dynamic nice-interval grid. Use `{ labelRightMargin,
   gridEndGap }` for a fixed right-anchored label column and deterministic gap
   between labels and grid/plain reference lines.
+</ParamField>
+
+<ParamField body="axisAutoHide" type="boolean | AxisAutoHideConfig" default="false">
+  Fade the X and Y axes (grid, ticks, and labels) out while the chart is idle,
+  then show them for scrubbing, panning, fling momentum, and pinch zoom. `true`
+  uses the default timing; pass
+  [`AxisAutoHideConfig`](/api-reference/types#config-objects) to set the fade
+  durations, idle opacity, and idle delay. **Experimental; `LiveChart` only.**
+  See [Axis auto-hide](/guides/axis-auto-hide).
 </ParamField>
 
 <ParamField body="topLabel" type="boolean | AxisLabelConfig" default="false">

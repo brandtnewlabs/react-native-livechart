@@ -738,6 +738,22 @@ export interface XAxisConfig {
 }
 
 /**
+ * Auto-hide both axes while idle (see {@link LiveChartCoreProps.axisAutoHide}).
+ *
+ * @experimental
+ */
+export interface AxisAutoHideConfig {
+  /** Fade-in duration (ms) when interaction starts — near-instant. Default `60`. */
+  fadeInMs?: number;
+  /** Fade-out duration (ms) back to idle. Default `250`. */
+  fadeOutMs?: number;
+  /** Axis opacity while idle (0 = fully hidden). Default `0`. */
+  idleOpacity?: number;
+  /** Untouched time (ms) before the axes fade back out. Default `3000`. */
+  hideAfterMs?: number;
+}
+
+/**
  * Morfi-style on-canvas tooltip for {@link LiveChartSeries}: a time-range pill
  * above the guide plus one value pill at every visible series intersection.
  *
@@ -1361,6 +1377,12 @@ export interface MarkerClusterConfig {
    *  Default `5`. */
   maxBeforeGroup?: number;
   /**
+   * `"vertical"` only: cap the column at this many glyphs instead of letting it
+   * grow unbounded (and off the plot). The oldest `maxVisible` glyphs keep
+   * their stack; the newest overflow is hidden. Default unbounded.
+   */
+  maxVisible?: number;
+  /**
    * What a collapsed cluster draws in place of its members:
    *  - `"count"` (default) — the built-in round count badge (a circle with the
    *    member count inside).
@@ -1791,6 +1813,14 @@ export interface TimeScrollConfig {
    * clamped. Applies to the pinch-zoom (`zoom`) clamps too.
    */
   overscroll?: number;
+  /**
+   * Fling inertia on release: a fast drag keeps scrolling and decays to a
+   * stop (the classic momentum feel). Set `false` to stop the window dead
+   * where the finger lifts — a deliberate, TradingView-style hard stop. A
+   * release that lands within the snap zone of the live edge still
+   * re-attaches to live. Default `true`.
+   */
+  fling?: boolean;
 }
 
 /**
@@ -2038,6 +2068,15 @@ export interface LiveChartCoreProps {
   yAxis?: boolean | YAxisConfig;
   /** X-axis time labels. `true` = defaults, `false` = hidden, or pass `XAxisConfig`. Default `true`. */
   xAxis?: boolean | XAxisConfig;
+  /**
+   * Auto-hide both axes while the chart is at rest: the X/Y axes (grid, ticks,
+   * labels) fade in on any interaction — scrubbing, time-scrolling, flinging,
+   * pinch-zooming — and fade back out once the chart goes untouched for
+   * `hideAfterMs`. `true` = defaults, or pass `AxisAutoHideConfig`. Default off.
+   *
+   * @experimental
+   */
+  axisAutoHide?: boolean | AxisAutoHideConfig;
   /**
    * Label floated at the top edge of the plot area. `true` = the built-in value
    * label showing the chart's current TOP Y-axis bound (updated each frame),
