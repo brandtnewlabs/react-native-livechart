@@ -434,15 +434,17 @@ provided; everything else has a default.
   Breathing-line loading shell until data is ready. `true` uses the defaults; pass
   a [`LoadingConfig`](/api-reference/types#loadingconfig) to restyle it (`color`,
   `strokeWidth`, `amplitude`, `speed`, and `axisLabels` to toggle the skeleton
-  Y-axis placeholders). `false` / omitted is "not loading". The loading→live reveal
-  duration is set via the `transitions` prop below — see
+  Y-axis placeholders). `false` / omitted is "not loading". Entering loading or
+  empty snaps immediately; the loading→live grow-in duration is set via the
+  `transitions` prop below — see
   [Transitions](/guides/transitions).
 </ParamField>
 
 <ParamField body="transitions" type="boolean | TransitionConfig">
   Tune or disable the built-in transition animations. `true` / omitted keeps the
   defaults; `false` makes them instant (no grow-in when data appears or the
-  timeframe changes, no candle↔line crossfade, candle width snaps); a
+  timeframe changes, no candle↔line crossfade, candle width snaps); leaving
+  live data for loading/empty already snaps; a
   [`TransitionConfig`](/api-reference/types#config-objects) sets per-transition
   durations in ms — `reveal` (default `600`) and `mode` (default `300`), `0` to
   snap — plus `candleLerpSpeed` (default `0.08`, `1` = instant), the per-frame

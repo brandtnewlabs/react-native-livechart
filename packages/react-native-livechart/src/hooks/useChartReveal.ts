@@ -51,8 +51,9 @@ export interface ChartRevealState {
 /**
  * Drives loading / empty / live visibility.
  *
- * Chart is fully revealed only when `!loading && hasData`. `morphT` animates
- * between 0 and 1 when that condition changes. `isEmpty` is derived as
+ * Chart is fully revealed only when `!loading && hasData`. Data appearing
+ * grows `morphT` from 0 to 1; data disappearing snaps it to 0 so stale paths
+ * never visibly flatten over a loading or empty shell. `isEmpty` is derived as
  * `!loading && !hasData` for the empty overlay label.
  */
 export function useChartReveal(
@@ -87,11 +88,18 @@ export function useChartReveal(
         return;
       }
       if (prev !== chartVisible) {
+        // Collapse (live → loading/empty) snaps: the data is already gone, so
+        // animating would draw the stale line morphing flat over the loading
+        // shell.
+        if (!chartVisible) {
+          morphT.set(0);
+          return;
+        }
         // 0ms → withTiming resolves on the next frame (effectively a snap), so an
         // explicit `transitions={{ reveal: 0 }}` / `transitions={false}` removes
         // the grow-in without a special-case branch.
         morphT.set(
-          withTiming(chartVisible ? 1 : 0, {
+          withTiming(1, {
             duration: revealDuration,
             easing: Easing.out(Easing.cubic),
           }),

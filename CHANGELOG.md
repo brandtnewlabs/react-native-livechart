@@ -25,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   panning, fling momentum, and pinch zoom. Use `true` for the defaults or
   `AxisAutoHideConfig` to tune the fade timings, idle opacity, and delay. The
   example app and guide include an interactive configuration demo.
+
+### Fixed
+
+- **Live-data collapse no longer morphs over the loading shell.** When data is
+  cleared or `loading` becomes true, `LiveChart` and `LiveChartSeries` now snap
+  directly to the loading/empty state instead of visibly flattening stale paths.
+  The loading/empty → live grow-in remains configurable with
+  `transitions.reveal`.
 ## [4.16.0] - 2026-08-10
 
 ### Added
