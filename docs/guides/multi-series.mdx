@@ -51,6 +51,22 @@ Each `SeriesConfig` supports:
 | `glow`        | Soft glow behind the line                                      |
 | `kind`        | `"outcome"` (default) or `"derived"` (subdued/dashed chip)     |
 
+## Dimming replacement data
+
+For a timeframe change, retain the current series while the next range loads,
+then set one UI-thread opacity multiplier for every plotted series:
+
+```tsx
+const seriesOpacity = useSharedValue(1);
+
+seriesOpacity.set(isLoadingReplacement ? 0.5 : 1);
+
+<LiveChartSeries series={series} seriesOpacity={seriesOpacity} />;
+```
+
+The multiplier covers strokes, dots, value lines, and inline value labels. It
+does not dim axes, the legend, reference lines, or scrub UI.
+
 ## Legend
 
 The legend renders toggle chips by default. Configure it with the `legend` prop, and listen for

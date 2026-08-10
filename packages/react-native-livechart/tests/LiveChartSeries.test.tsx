@@ -1,6 +1,6 @@
 import React from "react";
 import { View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
@@ -56,6 +56,40 @@ describe("LiveChartSeries", () => {
     }
     const screen = render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
+  });
+
+  it("applies one series opacity to every plotted series layer", async () => {
+    const seriesOpacity = { value: 0.5 } as SharedValue<number>;
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return (
+        <LiveChartSeries
+          series={series}
+          seriesOpacity={seriesOpacity}
+          dot={{ valueLabel: true, valueLine: true }}
+        />
+      );
+    }
+
+    const screen = render(<H />);
+    await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
+    expect(
+      screen
+        .UNSAFE_getAllByType(View)
+        .filter((view) => view.props.opacity === seriesOpacity),
+    ).toHaveLength(3);
   });
 
   it("forwards configurable crosshair fade distance and line cap", async () => {

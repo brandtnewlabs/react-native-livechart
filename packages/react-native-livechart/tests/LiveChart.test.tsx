@@ -171,6 +171,19 @@ describe("LiveChart", () => {
     });
   });
 
+  it("applies series opacity to line and candle data layers", () => {
+    const seriesOpacity = { value: 0.5 } as SharedValue<number>;
+    const matchingOpacityGroups = (screen: ReturnType<typeof render>) =>
+      screen
+        .UNSAFE_getAllByType(View)
+        .filter((view) => view.props.opacity === seriesOpacity);
+
+    expect(matchingOpacityGroups(render(<Harness seriesOpacity={seriesOpacity} />))).toHaveLength(2);
+    expect(
+      matchingOpacityGroups(render(<CandleHarness seriesOpacity={seriesOpacity} />)),
+    ).toHaveLength(3);
+  });
+
   it("opts into an opaque canvas and replaces destination-alpha masks", () => {
     const screen = render(
       <Harness canvasMode="opaque" theme="light" loading />,

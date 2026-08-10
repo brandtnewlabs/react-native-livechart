@@ -11,6 +11,16 @@ import { LiveChart } from "react-native-livechart";
 `LiveChart` renders one series in line or candlestick mode. Props marked **required** must be
 provided; everything else has a default.
 
+## Series opacity
+
+<ParamField body="seriesOpacity" type="SharedValue<number>" default="1">
+  A UI-thread opacity multiplier for the plotted data. Set it to `0.5` while
+  replacement history loads, then restore it to `1` when the new data arrives.
+  It affects the line and area fill, candles and volume bars, live dot, value
+  line, badge, and inline value text—not axes, reference lines, or scrub UI.
+  See [Dimming replacement data](/guides/line-and-area#dimming-replacement-data).
+</ParamField>
+
 ## Data
 
 <ParamField body="data" type="SharedValue<LiveChartPoint[]>" required>

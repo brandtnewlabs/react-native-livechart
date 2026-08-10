@@ -139,6 +139,7 @@ function useLiveChartSeriesController({
   font: fontProp,
   insets,
   style,
+  seriesOpacity,
   canvasMode = "transparent",
   timeWindow = 30,
   paused = false,
@@ -190,6 +191,8 @@ function useLiveChartSeriesController({
   renderOffAxisReferenceLine,
   leftEdgeFade = true,
 }: LiveChartSeriesProps) {
+  const fullSeriesOpacity = useSharedValue(1);
+  const resolvedSeriesOpacity = seriesOpacity ?? fullSeriesOpacity;
   const emptyMarkers = useSharedValue<Marker[]>([]);
   const markersSV = markers ?? emptyMarkers;
   const markerClusterCfg = resolveMarkerCluster(markerCluster);
@@ -589,6 +592,7 @@ function useLiveChartSeriesController({
   return {
     // passthrough props the render needs
     series,
+    seriesOpacity: resolvedSeriesOpacity,
     style,
     canvasMode,
     accessibilityLabel,
@@ -700,6 +704,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     overlayScrubFade,
     renderMarker,
     series,
+    seriesOpacity,
     emptyText,
     loadingAxisLabels,
     metricsCfg,
@@ -750,30 +755,32 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         ))}
       </Group>
 
-      {dotCfg.valueLine && (
-        <Group opacity={reveal.lineOpacity}>
-          <MultiSeriesValueLines
-            engine={engine}
-            padding={effectivePadding}
-            colors={lineColors}
-            config={dotCfg.valueLine}
-            seriesCount={activeSeriesCount}
-          />
-        </Group>
-      )}
+      <Group opacity={seriesOpacity}>
+        {dotCfg.valueLine && (
+          <Group opacity={reveal.lineOpacity}>
+            <MultiSeriesValueLines
+              engine={engine}
+              padding={effectivePadding}
+              colors={lineColors}
+              config={dotCfg.valueLine}
+              seriesCount={activeSeriesCount}
+            />
+          </Group>
+        )}
 
-      <Group opacity={reveal.lineOpacity}>
-        {Array.from({ length: activeSeriesCount }, (_, i) => (
-          <MultiSeriesStroke
-            key={i}
-            index={i}
-            paths={linePaths}
-            opacities={engine.seriesOpacities}
-            series={effectiveSeries}
-            strokeWidth={strokeWidth}
-            lineStyle={lineStyles[i]}
-          />
-        ))}
+        <Group opacity={reveal.lineOpacity}>
+          {Array.from({ length: activeSeriesCount }, (_, i) => (
+            <MultiSeriesStroke
+              key={i}
+              index={i}
+              paths={linePaths}
+              opacities={engine.seriesOpacities}
+              series={effectiveSeries}
+              strokeWidth={strokeWidth}
+              lineStyle={lineStyles[i]}
+            />
+          ))}
+        </Group>
       </Group>
 
       {xAxisCfg && (
@@ -787,19 +794,21 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
       )}
 
       {dotCfg.show && (
-        <Group opacity={reveal.dotOpacity}>
-          <MultiSeriesDots
-            engine={engine}
-            padding={effectivePadding}
-            colors={lineColors}
-            radius={dotCfg.radius}
-            ring={dotCfg.ring}
-            ringColor={palette.badgeOuterBg}
-            color={dotCfg.color}
-            pulse={dotCfg.pulse}
-            viewEnd={engine.viewEnd}
-            seriesCount={activeSeriesCount}
-          />
+        <Group opacity={seriesOpacity}>
+          <Group opacity={reveal.dotOpacity}>
+            <MultiSeriesDots
+              engine={engine}
+              padding={effectivePadding}
+              colors={lineColors}
+              radius={dotCfg.radius}
+              ring={dotCfg.ring}
+              ringColor={palette.badgeOuterBg}
+              color={dotCfg.color}
+              pulse={dotCfg.pulse}
+              viewEnd={engine.viewEnd}
+              seriesCount={activeSeriesCount}
+            />
+          </Group>
         </Group>
       )}
 
@@ -872,21 +881,24 @@ function SeriesValueLabelLayer({ model }: { model: LiveChartSeriesModel }) {
     lineColors,
     skiaFont,
     reveal,
+    seriesOpacity,
     degenShakeTransform,
     activeSeriesCount,
   } = model;
   if (!dotCfg.valueLabel) return null;
   return (
     <Group transform={degenShakeTransform}>
-      <Group opacity={reveal.dotOpacity}>
-        <MultiSeriesValueLabels
-          engine={engine}
-          padding={effectivePadding}
-          colors={lineColors}
-          font={skiaFont}
-          dotRadius={dotOuterRadius}
-          seriesCount={activeSeriesCount}
-        />
+      <Group opacity={seriesOpacity}>
+        <Group opacity={reveal.dotOpacity}>
+          <MultiSeriesValueLabels
+            engine={engine}
+            padding={effectivePadding}
+            colors={lineColors}
+            font={skiaFont}
+            dotRadius={dotOuterRadius}
+            seriesCount={activeSeriesCount}
+          />
+        </Group>
       </Group>
     </Group>
   );
