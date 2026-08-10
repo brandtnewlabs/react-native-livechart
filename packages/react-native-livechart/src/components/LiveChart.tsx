@@ -1151,6 +1151,27 @@ function useLiveChartController({
     axisAutoHideCfg ? axisIdleOpacity : 1,
   );
   const axisAutoHideEnabled = axisAutoHideCfg !== null;
+  const lastAxisAutoHide = useRef({
+    enabled: axisAutoHideEnabled,
+    idleOpacity: axisIdleOpacity,
+  });
+  // `useSharedValue` only reads its initial value on mount. Keep prop changes
+  // in sync as well: turning auto-hide off must immediately restore the axes,
+  // and turning it on starts from the configured idle opacity.
+  useEffect(() => {
+    if (
+      lastAxisAutoHide.current.enabled === axisAutoHideEnabled &&
+      lastAxisAutoHide.current.idleOpacity === axisIdleOpacity
+    ) {
+      return;
+    }
+    lastAxisAutoHide.current = {
+      enabled: axisAutoHideEnabled,
+      idleOpacity: axisIdleOpacity,
+    };
+    cancelAnimation(axisAutoHideOpacity);
+    axisAutoHideOpacity.value = axisAutoHideEnabled ? axisIdleOpacity : 1;
+  }, [axisAutoHideEnabled, axisAutoHideOpacity, axisIdleOpacity]);
   useAnimatedReaction(
     () => ({
       gesture: scrollActive.value || crosshairScrubActive.value,

@@ -231,8 +231,8 @@ describe("LiveChart", () => {
   });
 
   it("renders with axisAutoHide enabled (defaults and config object)", () => {
-    render(<Harness axisAutoHide />);
-    render(
+    const screen = render(<Harness axisAutoHide />);
+    screen.rerender(
       <Harness
         axisAutoHide={{
           fadeInMs: 50,
@@ -242,6 +242,9 @@ describe("LiveChart", () => {
         }}
       />,
     );
+    // `useSharedValue` keeps its initial value, so runtime configuration changes
+    // need to reset the axis group opacity instead of leaving the axes stuck.
+    screen.rerender(<Harness axisAutoHide={false} />);
   });
 
   it("does not register disabled optional subsystem worklets", () => {
