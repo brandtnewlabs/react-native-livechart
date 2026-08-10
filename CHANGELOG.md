@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Vertical marker-column caps.** `MarkerClusterConfig.maxVisible` keeps only
+  the oldest glyphs in a vertical stack and hides newer overflow, preventing a
+  busy timestamp from growing beyond the plot. It defaults to unbounded; the
+  Markers demo and guide include an interactive example.
 ## [4.16.0] - 2026-08-10
 
 ### Added

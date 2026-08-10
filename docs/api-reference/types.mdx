@@ -129,6 +129,7 @@ interface MarkerClusterConfig {
   direction?: "horizontal" | "vertical"; // fan sideways (default) or pile into a column
   overlap?: number;        // 0 (touching) – 1 (stacked); default 0.75
   maxBeforeGroup?: number; // collapse a run past this many; default 5
+  maxVisible?: number;     // vertical columns only: keep this many oldest glyphs; default unbounded
   groupBadge?: "count" | "marker" | MarkerGroupBadge; // collapsed look: count circle
                           // (default), the representative marker's own glyph, or a
                           // dedicated custom badge you supply (object form)

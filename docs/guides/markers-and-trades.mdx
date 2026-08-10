@@ -73,6 +73,26 @@ tall column doesn't collapse to a count badge early.
 markerCluster={{ direction: "vertical", overlap: 0.6, maxBeforeGroup: 20 }}
 ```
 
+#### Cap a vertical column
+
+`maxVisible` limits a **vertical** column to its oldest glyphs, keeping the
+markers nearest the line and hiding newer overflow. It defaults to unbounded.
+Grouping still takes precedence, so `maxBeforeGroup` must be higher than the
+burst you want to cap; otherwise the bucket collapses to its group badge first.
+
+```tsx
+markerCluster={{
+  direction: "vertical",
+  overlap: 0.6,
+  maxBeforeGroup: 20,
+  maxVisible: 8,
+}}
+```
+
+The example app's **Markers & trades** screen includes an `Unbounded / 4 / 8`
+`maxVisible` control. Turn on **vertical column**, choose a cap, then tap
+**Burst ×12** to see the newest markers disappear.
+
 #### Custom collapsed-group badge
 
 A collapsed group draws a round **count badge** by default (`groupBadge: "count"`). Two ways to give
