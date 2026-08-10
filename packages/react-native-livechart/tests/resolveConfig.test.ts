@@ -15,6 +15,7 @@ import {
   resolvePulse,
   resolveReferenceLineConfig,
   resolveLoading,
+  resolveFling,
   resolveOverscroll,
   resolveReturnToLiveMs,
   resolveTransitions,
@@ -349,6 +350,26 @@ describe("resolveOverscroll", () => {
   it("clamps values at or above 1 to just under 1", () => {
     expect(resolveOverscroll({ overscroll: 1 })).toBe(0.99);
     expect(resolveOverscroll({ overscroll: 5 })).toBe(0.99);
+  });
+});
+
+// ─── resolveFling ────────────────────────────────────────────────────────────
+
+describe("resolveFling", () => {
+  it("defaults to on for undefined and the boolean forms of timeScroll", () => {
+    expect(resolveFling(undefined)).toBe(true);
+    expect(resolveFling(true)).toBe(true);
+    expect(resolveFling(false)).toBe(true);
+  });
+
+  it("defaults to on when omitted from the config object", () => {
+    expect(resolveFling({})).toBe(true);
+    expect(resolveFling({ gesture: "axisDrag" })).toBe(true);
+  });
+
+  it("passes an explicit value through", () => {
+    expect(resolveFling({ fling: false })).toBe(false);
+    expect(resolveFling({ fling: true })).toBe(true);
   });
 });
 
@@ -1775,6 +1796,7 @@ describe("resolveMarkerCluster", () => {
       overlap: 0.75,
       gap: 2,
       maxBeforeGroup: 5,
+      maxVisible: Number.MAX_SAFE_INTEGER,
       groupBadge: "count",
       showGroupCount: false,
     });
@@ -1786,6 +1808,11 @@ describe("resolveMarkerCluster", () => {
     expect(resolveMarkerCluster("stacked").mode).toBe("stacked");
   });
 
+  it("passes maxVisible through and defaults it to unbounded", () => {
+    expect(resolveMarkerCluster({ maxVisible: 10 }).maxVisible).toBe(10);
+    expect(resolveMarkerCluster({}).maxVisible).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
   it("accepts the object form, implying stacked, with tunable overlap/threshold", () => {
     expect(resolveMarkerCluster({ overlap: 0.8, maxBeforeGroup: 3 })).toEqual({
       mode: "stacked",
@@ -1793,6 +1820,7 @@ describe("resolveMarkerCluster", () => {
       overlap: 0.8,
       gap: 2,
       maxBeforeGroup: 3,
+      maxVisible: Number.MAX_SAFE_INTEGER,
       groupBadge: "count",
       showGroupCount: false,
     });

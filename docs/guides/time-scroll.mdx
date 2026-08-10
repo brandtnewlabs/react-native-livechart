@@ -86,6 +86,20 @@ scrolls instead). Higher = more deliberate scrub, fewer accidental scrubs while 
 />
 ```
 
+### Release momentum (`fling`)
+
+By default, a quick drag keeps moving with decaying momentum after you lift your finger. Set
+`fling: false` for a deliberate hard stop: the window remains exactly where the drag ends. This
+does not change the live-edge snap zone, so releasing near the live edge still resumes
+auto-following.
+
+```tsx
+<LiveChart data={data} value={value} timeScroll={{ fling: false }} />
+```
+
+`fling` defaults to `true`. The example app's **Time scroll** screen includes a **Fling inertia**
+switch to compare both behaviors.
+
 ### Overscroll (`overscroll`)
 
 By default the window hard-stops at the data: the oldest point on the left, the live edge on the

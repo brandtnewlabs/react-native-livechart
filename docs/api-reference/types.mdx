@@ -7,7 +7,12 @@ description: "Exported TypeScript types — data shapes, config objects, and the
 All types are exported from the package root:
 
 ```tsx
-import type { LiveChartPoint, SeriesConfig, ReferenceLine } from "react-native-livechart";
+import type {
+  LiveChartPoint,
+  ReferenceLine,
+  SeriesConfig,
+} from "react-native-livechart";
+import type { SharedValue } from "react-native-reanimated";
 ```
 
 The source `.d.ts` and JSDoc remain the canonical reference (your editor surfaces them on hover);
@@ -54,6 +59,20 @@ interface SeriesConfig {
   valueLabel?: string;
 }
 ```
+
+Both chart components also accept this shared plotted-data opacity control:
+
+```ts
+interface LiveChartCoreProps {
+  // UI-thread value from 0 (hidden) to 1 (fully visible); default 1.
+  seriesOpacity?: SharedValue<number>;
+}
+```
+
+`seriesOpacity` dims plot data (line and area fill, candles, live dots, value
+lines, badges, and inline values) without dimming axes, legends, reference
+lines, or scrub UI. See [Line & area](/guides/line-and-area#dimming-replacement-data)
+or [Multi-series](/guides/multi-series#dimming-replacement-data).
 
 ## Momentum
 
@@ -110,6 +129,7 @@ interface MarkerClusterConfig {
   direction?: "horizontal" | "vertical"; // fan sideways (default) or pile into a column
   overlap?: number;        // 0 (touching) – 1 (stacked); default 0.75
   maxBeforeGroup?: number; // collapse a run past this many; default 5
+  maxVisible?: number;     // vertical columns only: keep this many oldest glyphs; default unbounded
   groupBadge?: "count" | "marker" | MarkerGroupBadge; // collapsed look: count circle
                           // (default), the representative marker's own glyph, or a
                           // dedicated custom badge you supply (object form)
@@ -433,6 +453,13 @@ interface YAxisConfig {
   float?: boolean;
 }
 interface XAxisConfig { minGap?: number } // default 60
+// Fades both axes while LiveChart is idle. @experimental
+interface AxisAutoHideConfig {
+  fadeInMs?: number;    // interaction-start fade duration; default 60
+  fadeOutMs?: number;   // fade back to idle; default 250
+  idleOpacity?: number; // axes' resting opacity (0 = hidden); default 0
+  hideAfterMs?: number; // idle delay before fade-out; default 3000
+}
 // Volume bars below the candles (candle mode only). Bars normalize to the largest
 // visible volume; the candle plot shrinks by `maxHeight` to make room. @see CandlePoint.volume
 interface VolumeConfig {
@@ -448,6 +475,7 @@ interface TimeScrollConfig {
   scrubHoldMs?: number; // holdToScrub: press-hold (ms) before scrub engages; default 500
   hideLiveOnScrollBack?: boolean; // hide live badge + dot + value line while scrolled back (they mark the off-screen live price); default true. Ignored with badge.followViewEdge
   overscroll?: number; // fraction of the window (0–1) pan/zoom may travel past the data bounds into blank space (TradingView-style); default 0 (hard stops at the oldest data / live edge)
+  fling?: boolean; // keep release momentum after a fast drag; false stops exactly where the finger lifts. Default true.
 }
 // Tunes the return-to-live glide (the `returnToLive` prop). @experimental
 interface ReturnToLiveConfig {
@@ -455,7 +483,7 @@ interface ReturnToLiveConfig {
 }
 // Tune/disable the built-in transition animations — the object form of `transitions`.
 interface TransitionConfig {
-  reveal?: number;          // grow-in/collapse on data appear, timeframe change, candle→line; default 600 (0 = snap)
+  reveal?: number;          // grow-in when data appears, on timeframe change, or candle→line; default 600 (0 = snap)
   mode?: number;            // candle↔line crossfade (single-series LiveChart only); default 300 (0 = snap)
   candleLerpSpeed?: number; // candle-width ease speed (0–1, like smoothing); candle mode; default 0.08 (1 = instant resize)
 }

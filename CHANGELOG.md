@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Zero-floor Y-range zoom-out.** On a `nonNegative` chart, `yRangeScale` now
+  stops expanding at the zero floor rather than continuing to grow only the
+  upper bound and pinning values to the bottom. The Y-range scaling demo and
+  guide include an interactive example.
+
+### Added
+
+- **Vertical marker-column caps.** `MarkerClusterConfig.maxVisible` keeps only
+  the oldest glyphs in a vertical stack and hides newer overflow, preventing a
+  busy timestamp from growing beyond the plot. It defaults to unbounded; the
+  Markers demo and guide include an interactive example.
+
+- **Optional time-scroll release momentum.** `TimeScrollConfig.fling` on
+  `LiveChart` and `LiveChartSeries` defaults to `true`, preserving decaying
+  release momentum. Set it to `false` for a deliberate hard stop at the
+  finger's release point; a release in the live-edge snap zone still resumes
+  auto-following. The Time scroll demo now exposes a **Fling inertia** switch.
+
+- **Experimental axis auto-hide.** `LiveChart.axisAutoHide` fades the X and Y
+  axes (grid, ticks, and labels) while idle, then restores them for scrubbing,
+  panning, fling momentum, and pinch zoom. Use `true` for the defaults or
+  `AxisAutoHideConfig` to tune the fade timings, idle opacity, and delay. The
+  example app and guide include an interactive configuration demo.
+
+### Fixed
+
+- **Live-data collapse no longer morphs over the loading shell.** When data is
+  cleared or `loading` becomes true, `LiveChart` and `LiveChartSeries` now snap
+  directly to the loading/empty state instead of visibly flattening stale paths.
+  The loading/empty → live grow-in remains configurable with
+  `transitions.reveal`.
+## [4.16.0] - 2026-08-10
+
+### Added
+
+- **Shared plotted-series opacity.** `seriesOpacity` on `LiveChart` and
+  `LiveChartSeries` accepts a UI-thread `SharedValue<number>` so an app can dim
+  current chart data during a replacement load without fading axes, legends,
+  reference lines, or scrub UI. It covers line and area fills, candles and
+  volume bars, live dots, value lines, badges, and inline value labels.
+
 ## [4.15.1] - 2026-08-09
 
 ### Fixed
@@ -1089,6 +1132,8 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.16.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.16.0
+[4.15.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.15.1
 [4.15.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.15.0
 [4.13.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.13.1
 [4.13.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.13.0

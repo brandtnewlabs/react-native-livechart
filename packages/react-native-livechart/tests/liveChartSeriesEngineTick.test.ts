@@ -1035,6 +1035,41 @@ describe("tickLiveChartSeriesEngineFrame", () => {
         expect(Number.isFinite(invalid.displayMax)).toBe(true);
         expect(invalid.lastYRangeScale).toBe(1);
       });
+
+      it("caps zoom-out at the zero floor on nonNegative charts", () => {
+        const auto = baseMulti();
+        tickLiveChartSeriesEngineFrame(
+          auto,
+          scaleInput({ snap: true, nonNegative: true }),
+        );
+        const mid = (auto.displayMin + auto.displayMax) / 2;
+        const scaled = baseMulti();
+        tickLiveChartSeriesEngineFrame(
+          scaled,
+          scaleInput({ snap: true, nonNegative: true, yRangeScale: 10 }),
+        );
+        // Uncapped, the min would clamp to 0 while the max kept growing —
+        // pinning the data to the bottom of the plot. The cap stops the
+        // expansion where the floor reaches 0, keeping the data centered.
+        expect(scaled.displayMin).toBeCloseTo(0);
+        expect(scaled.displayMax).toBeCloseTo(2 * mid);
+      });
+
+      it("leaves zoom-outs that stay above zero untouched on nonNegative charts", () => {
+        const auto = baseMulti();
+        tickLiveChartSeriesEngineFrame(
+          auto,
+          scaleInput({ snap: true, nonNegative: true }),
+        );
+        const scaled = baseMulti();
+        tickLiveChartSeriesEngineFrame(
+          scaled,
+          scaleInput({ snap: true, nonNegative: true, yRangeScale: 1.1 }),
+        );
+        expect(scaled.displayMax - scaled.displayMin).toBeCloseTo(
+          1.1 * (auto.displayMax - auto.displayMin),
+        );
+      });
     });
   });
 });

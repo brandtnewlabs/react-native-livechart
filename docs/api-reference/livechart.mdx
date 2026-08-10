@@ -11,6 +11,16 @@ import { LiveChart } from "react-native-livechart";
 `LiveChart` renders one series in line or candlestick mode. Props marked **required** must be
 provided; everything else has a default.
 
+## Series opacity
+
+<ParamField body="seriesOpacity" type="SharedValue<number>" default="1">
+  A UI-thread opacity multiplier for the plotted data. Set it to `0.5` while
+  replacement history loads, then restore it to `1` when the new data arrives.
+  It affects the line and area fill, candles and volume bars, live dot, value
+  line, badge, and inline value text—not axes, reference lines, or scrub UI.
+  See [Dimming replacement data](/guides/line-and-area#dimming-replacement-data).
+</ParamField>
+
 ## Data
 
 <ParamField body="data" type="SharedValue<LiveChartPoint[]>" required>
@@ -152,6 +162,15 @@ provided; everything else has a default.
 
   ```tsx
   markerCluster={{ overlap: 0.75, maxBeforeGroup: 8 }}
+  ```
+
+  For `direction: "vertical"`, `maxVisible` caps the column while preserving the
+  oldest glyphs nearest the line; newer overflow is hidden. It defaults to
+  unbounded. `maxBeforeGroup` still runs first, so set it higher than the burst
+  you want to cap instead of collapse:
+
+  ```tsx
+  markerCluster={{ direction: "vertical", maxBeforeGroup: 20, maxVisible: 8 }}
   ```
 
   **Custom collapsed look** — by default a collapsed group draws a round count
@@ -376,6 +395,15 @@ provided; everything else has a default.
   between labels and grid/plain reference lines.
 </ParamField>
 
+<ParamField body="axisAutoHide" type="boolean | AxisAutoHideConfig" default="false">
+  Fade the X and Y axes (grid, ticks, and labels) out while the chart is idle,
+  then show them for scrubbing, panning, fling momentum, and pinch zoom. `true`
+  uses the default timing; pass
+  [`AxisAutoHideConfig`](/api-reference/types#config-objects) to set the fade
+  durations, idle opacity, and idle delay. **Experimental; `LiveChart` only.**
+  See [Axis auto-hide](/guides/axis-auto-hide).
+</ParamField>
+
 <ParamField body="topLabel" type="boolean | AxisLabelConfig" default="false">
   Edge label floated at the plot's **top**. `true` shows the built-in value
   label — the chart's current top Y-axis bound, formatted and updated each frame
@@ -406,15 +434,17 @@ provided; everything else has a default.
   Breathing-line loading shell until data is ready. `true` uses the defaults; pass
   a [`LoadingConfig`](/api-reference/types#loadingconfig) to restyle it (`color`,
   `strokeWidth`, `amplitude`, `speed`, and `axisLabels` to toggle the skeleton
-  Y-axis placeholders). `false` / omitted is "not loading". The loading→live reveal
-  duration is set via the `transitions` prop below — see
+  Y-axis placeholders). `false` / omitted is "not loading". Entering loading or
+  empty snaps immediately; the loading→live grow-in duration is set via the
+  `transitions` prop below — see
   [Transitions](/guides/transitions).
 </ParamField>
 
 <ParamField body="transitions" type="boolean | TransitionConfig">
   Tune or disable the built-in transition animations. `true` / omitted keeps the
   defaults; `false` makes them instant (no grow-in when data appears or the
-  timeframe changes, no candle↔line crossfade, candle width snaps); a
+  timeframe changes, no candle↔line crossfade, candle width snaps); leaving
+  live data for loading/empty already snaps; a
   [`TransitionConfig`](/api-reference/types#config-objects) sets per-transition
   durations in ms — `reveal` (default `600`) and `mode` (default `300`), `0` to
   snap — plus `candleLerpSpeed` (default `0.08`, `1` = instant), the per-frame
@@ -453,7 +483,9 @@ provided; everything else has a default.
 </ParamField>
 
 <ParamField body="nonNegative" type="boolean" default="false">
-  Clamp the Y-axis lower bound at 0.
+  Clamp the Y-axis lower bound at 0. When [`yRangeScale`](#param-y-range-scale)
+  zooms out, expansion stops when that floor is reached, keeping the data
+  centered rather than growing only upward.
 </ParamField>
 
 <ParamField body="maxValue" type="number">
@@ -465,7 +497,8 @@ provided; everything else has a default.
   it from a gesture (e.g. dragging the price axis) to stretch or compress the
   price scale TradingView-style; the auto-fit keeps tracking the visible window
   underneath. Values must be positive and finite; invalid values safely fall
-  back to `1`. Read on the UI thread each frame. Shared with `LiveChartSeries`.
+  back to `1`. On a `nonNegative` chart, zoom-out stops at the zero floor.
+  Read on the UI thread each frame. Shared with `LiveChartSeries`.
   **@experimental.** See
   [Manual Y-range scaling](/guides/y-range-scale).
 </ParamField>

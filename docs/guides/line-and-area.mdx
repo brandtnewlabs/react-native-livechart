@@ -36,6 +36,30 @@ Override the stroke with the `line` prop, and the area fill with `gradient`:
 
 Pass `gradient={false}` to remove the area fill entirely.
 
+## Dimming replacement data
+
+Keep the current chart visible while fetching a replacement range, then dim only
+the plotted data through a UI-thread shared value. Axes, reference lines, and
+scrub controls remain readable.
+
+```tsx
+const seriesOpacity = useSharedValue(1);
+
+function beginReplacementLoad() {
+  seriesOpacity.set(0.5);
+}
+
+function finishReplacementLoad() {
+  seriesOpacity.set(1);
+}
+
+<LiveChart data={data} value={value} seriesOpacity={seriesOpacity} />;
+```
+
+`seriesOpacity` affects the line and area fill, candles and volume bars, the
+live dot, value line, badge, and inline value text. Pass the same shared value
+to a candle chart—no mode-specific configuration is required.
+
 ### Dotted area fill
 
 For a textured fill, `areaDots` paints a screen-fixed dot lattice clipped to the

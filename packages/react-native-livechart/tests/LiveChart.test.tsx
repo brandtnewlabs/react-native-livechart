@@ -170,6 +170,25 @@ describe("LiveChart", () => {
     });
   });
 
+  it("applies series opacity to line and candle data layers", async () => {
+    const seriesOpacity = { value: 0.5 } as SharedValue<number>;
+    const matchingOpacityGroups = (
+      screen: Awaited<ReturnType<typeof render>>,
+    ) =>
+      getAllByHostType(screen, View).filter(
+        (view) => view.props.opacity === seriesOpacity,
+      );
+
+    expect(
+      matchingOpacityGroups(await render(<Harness seriesOpacity={seriesOpacity} />)),
+    ).toHaveLength(2);
+    expect(
+      matchingOpacityGroups(
+        await render(<CandleHarness seriesOpacity={seriesOpacity} />),
+      ),
+    ).toHaveLength(3);
+  });
+
   it("opts into an opaque canvas and replaces destination-alpha masks", async () => {
     const screen = await render(
       <Harness canvasMode="opaque" theme="light" loading />,
@@ -214,6 +233,23 @@ describe("LiveChart", () => {
 
   it("supports gradient off and overlays off", async () => {
     await render(<Harness gradient={false} yAxis={false} badge={false} />);
+  });
+
+  it("renders with axisAutoHide enabled (defaults and config object)", async () => {
+    const screen = await render(<Harness axisAutoHide />);
+    await screen.rerender(
+      <Harness
+        axisAutoHide={{
+          fadeInMs: 50,
+          fadeOutMs: 100,
+          idleOpacity: 0.2,
+          hideAfterMs: 1000,
+        }}
+      />,
+    );
+    // `useSharedValue` keeps its initial value, so runtime configuration changes
+    // need to reset the axis group opacity instead of leaving the axes stuck.
+    await screen.rerender(<Harness axisAutoHide={false} />);
   });
 
   it("does not register disabled optional subsystem worklets", async () => {

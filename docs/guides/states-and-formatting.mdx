@@ -25,6 +25,12 @@ While you wait for data, pass `loading` to render a breathing-line placeholder.
 <LiveChart data={data} value={value} loading={!ready} />
 ```
 
+If an already-live dataset is cleared for a replacement request, the chart switches to its loading
+or empty shell **immediately** — it never visibly morphs the now-stale line flat over the
+placeholder. When replacement data arrives, the usual grow-in runs; tune that direction with
+[`transitions.reveal`](/guides/transitions). The **Replace data** control in the example app shows
+the full handoff with a deliberately slow grow-in.
+
 ### Styling the loading shell
 
 `loading` also takes a `LoadingConfig` object to restyle the shell — the squiggle and the skeleton

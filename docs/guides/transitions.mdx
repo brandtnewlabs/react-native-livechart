@@ -56,6 +56,11 @@ also on a timeframe change, and when a line chart's data appears) and the **mode
   **bodies resize** when `candleWidth` changes. Same units as `smoothing` (`0`–`1`); `1` snaps in
   one frame. See [Candle-width resize](#candle-width-resize-on-a-timeframe-change) below.
 
+Leaving a live chart is deliberately different: when data is cleared or `loading` becomes true,
+the chart **snaps** to the loading/empty shell so a stale path never visibly collapses flat over the
+placeholder. `transitions.reveal` controls only the next loading/empty → live grow-in. Try
+**Replace data** in the [States & formatting example](/guides/states-and-formatting).
+
 <Note>
   `transitions` covers the **entry / mode** animations only. The live value's easing toward its
   target is the separate `smoothing` prop (`1` = instant), and `static` suppresses all per-frame

@@ -127,7 +127,8 @@ describe("static mode — no per-frame loops", () => {
     await render(<Harness />);
     // The live engine autostarts (true). useDegen's callback defaults to
     // autostart when not static; at minimum the engine's loop must be live.
+    // The candle-width bridge registers inert (false) in line mode — its loop
+    // only starts for candle charts (see useCandleWidthLerp).
     expect(frameCallbackCalls).toContain(true);
-    expect(frameCallbackCalls).not.toContain(false);
   });
 });
