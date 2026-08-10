@@ -395,6 +395,15 @@ provided; everything else has a default.
   between labels and grid/plain reference lines.
 </ParamField>
 
+<ParamField body="axisAutoHide" type="boolean | AxisAutoHideConfig" default="false">
+  Fade the X and Y axes (grid, ticks, and labels) out while the chart is idle,
+  then show them for scrubbing, panning, fling momentum, and pinch zoom. `true`
+  uses the default timing; pass
+  [`AxisAutoHideConfig`](/api-reference/types#config-objects) to set the fade
+  durations, idle opacity, and idle delay. **Experimental; `LiveChart` only.**
+  See [Axis auto-hide](/guides/axis-auto-hide).
+</ParamField>
+
 <ParamField body="topLabel" type="boolean | AxisLabelConfig" default="false">
   Edge label floated at the plot's **top**. `true` shows the built-in value
   label — the chart's current top Y-axis bound, formatted and updated each frame

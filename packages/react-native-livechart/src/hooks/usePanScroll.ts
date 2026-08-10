@@ -81,6 +81,13 @@ export interface UsePanScrollOptions {
    * `timeScroll.overscroll` (see `resolveOverscroll`).
    */
   overscroll?: number;
+  /**
+   * Fling inertia on release: a fast drag keeps scrolling and decays to a stop.
+   * `false` stops the window dead where the finger lifts (a release near the
+   * live edge still re-attaches to live). Resolved from `timeScroll.fling`
+   * (see `resolveFling`). Default `true`.
+   */
+  fling?: boolean;
 }
 
 /**
@@ -218,6 +225,7 @@ export function usePanScroll({
   scrollActive,
   scrubActive,
   overscroll = 0,
+  fling = true,
 }: UsePanScrollOptions): ReturnType<typeof Gesture.Pan> {
   const { viewEnd, liveEdge, displayWindow, canvasWidth, canvasHeight } = engine;
   const padLeft = padding.left;
@@ -307,7 +315,10 @@ export function usePanScroll({
       // to FOLLOW_SNAP of the window around it — this release callback is the
       // ONLY place that re-attaches to live (never mid-drag, see nextViewEnd).
       const snapZone = overscroll > 0 ? win * FOLLOW_SNAP : 1e-3;
-      const velocity = flingVelocity(e.velocityX, chartW, win);
+      // `fling: false` → zero velocity: the decay resolves immediately where
+      // the finger lifted, and the completion callback below still re-attaches
+      // to live when the release lands inside the snap zone.
+      const velocity = fling ? flingVelocity(e.velocityX, chartW, win) : 0;
       cancelAnimation(viewEnd);
       viewEnd.set(
         withDecay({ velocity, clamp: [lo, hi] }, (finished) => {

@@ -70,6 +70,7 @@ export default function TimeScrollScreen() {
   const [gesture, setGesture] = useState<Gesture>("holdToScrub");
   const [holdMs, setHoldMs] = useState(500);
   const [overscroll, setOverscroll] = useState(0);
+  const [fling, setFling] = useState(true);
   const [enabled, setEnabled] = useState(true);
   const [followViewEdge, setFollowViewEdge] = useState(true);
   const [hideLiveOnScrollBack, setHideLiveOnScrollBack] = useState(true);
@@ -109,7 +110,7 @@ export default function TimeScrollScreen() {
     <DemoScreen
       title="Time scroll"
       docs="guides/time-scroll"
-      description={`${hint} Pinch with two fingers to zoom the window in/out (anchored at your fingers). The chart stops auto-scrolling while panned; release (or fling) back to the live edge to resume. Works for line and candle; one-finger plot scrub is unchanged.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
+      description={`${hint} Pinch with two fingers to zoom the window in/out (anchored at your fingers). The chart stops auto-scrolling while panned; ${fling ? "fling" : "release"} back to the live edge to resume. Turn off Fling inertia to stop exactly where your finger lifts. Works for line and candle; one-finger plot scrub is unchanged.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
       chart={
         <LiveChart
           data={data}
@@ -130,6 +131,7 @@ export default function TimeScrollScreen() {
                   scrubHoldMs: holdMs,
                   hideLiveOnScrollBack,
                   overscroll,
+                  fling,
                 }
               : false
           }
@@ -199,6 +201,14 @@ export default function TimeScrollScreen() {
         value={overscroll}
         onChange={setOverscroll}
       />
+
+      <ControlRow label="Release behavior">
+        <ToggleChip
+          label="Fling inertia"
+          value={fling}
+          onChange={setFling}
+        />
+      </ControlRow>
 
       <ChipRow
         label="Return to live (toggle timeScroll off while scrolled back)"

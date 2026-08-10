@@ -15,6 +15,7 @@ import {
   resolvePulse,
   resolveReferenceLineConfig,
   resolveLoading,
+  resolveFling,
   resolveOverscroll,
   resolveReturnToLiveMs,
   resolveTransitions,
@@ -349,6 +350,26 @@ describe("resolveOverscroll", () => {
   it("clamps values at or above 1 to just under 1", () => {
     expect(resolveOverscroll({ overscroll: 1 })).toBe(0.99);
     expect(resolveOverscroll({ overscroll: 5 })).toBe(0.99);
+  });
+});
+
+// ─── resolveFling ────────────────────────────────────────────────────────────
+
+describe("resolveFling", () => {
+  it("defaults to on for undefined and the boolean forms of timeScroll", () => {
+    expect(resolveFling(undefined)).toBe(true);
+    expect(resolveFling(true)).toBe(true);
+    expect(resolveFling(false)).toBe(true);
+  });
+
+  it("defaults to on when omitted from the config object", () => {
+    expect(resolveFling({})).toBe(true);
+    expect(resolveFling({ gesture: "axisDrag" })).toBe(true);
+  });
+
+  it("passes an explicit value through", () => {
+    expect(resolveFling({ fling: false })).toBe(false);
+    expect(resolveFling({ fling: true })).toBe(true);
   });
 });
 
