@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Optional time-scroll release momentum.** `TimeScrollConfig.fling` on
+  `LiveChart` and `LiveChartSeries` defaults to `true`, preserving decaying
+  release momentum. Set it to `false` for a deliberate hard stop at the
+  finger's release point; a release in the live-edge snap zone still resumes
+  auto-following. The Time scroll demo now exposes a **Fling inertia** switch.
+
 ## [4.16.0] - 2026-08-10
 
 ### Added
