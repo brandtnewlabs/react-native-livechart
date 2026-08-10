@@ -20,8 +20,8 @@ function useMakeEngine() {
 }
 
 describe("useMultiSeriesDegen", () => {
-  it("returns pack / packRevision / shakeTransform when enabled", () => {
-    const { result } = renderHook(() => {
+  it("returns pack / packRevision / shakeTransform when enabled", async () => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       return useMultiSeriesDegen(engine, DEFAULT_PADDING, resolveDegen(true));
     });
@@ -30,17 +30,17 @@ describe("useMultiSeriesDegen", () => {
     expect(result.current.shakeTransform).toBeDefined();
   });
 
-  it("returns a pack when cfg is null (disabled)", () => {
-    const { result } = renderHook(() => {
+  it("returns a pack when cfg is null (disabled)", async () => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       return useMultiSeriesDegen(engine, DEFAULT_PADDING, null);
     });
     expect(result.current.pack.value).toBeInstanceOf(Float64Array);
   });
 
-  it("accepts shake:false, downMomentum:true and an onShake callback", () => {
+  it("accepts shake:false, downMomentum:true and an onShake callback", async () => {
     const onShake = jest.fn();
-    const { result } = renderHook(() => {
+    const { result } = await renderHook(() => {
       const engine = useMakeEngine();
       return useMultiSeriesDegen(
         engine,

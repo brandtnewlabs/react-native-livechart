@@ -27,6 +27,7 @@ import { resolveTheme } from "../../src/theme";
 import { View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
+import { getAllByHostType } from "../rntl14";
 
 const PULSE_ON = resolvePulse(true)!;
 
@@ -70,19 +71,19 @@ function expectConfiguredCrosshair(tree: unknown) {
 }
 
 describe("AnimatedLabel", () => {
-  it("renders off-screen when index missing", () => {
+  it("renders off-screen when index missing", async () => {
     function Fixture() {
       const entries = useSharedValue([{ x: 1, y: 2, label: "a", alpha: 1 }]);
       return (
         <AnimatedLabel entries={entries} index={5} font={font} color="#fff" />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });
 
 describe("BadgeOverlay", () => {
-  it("renders badge path and text", () => {
+  it("renders badge path and text", async () => {
     function Fixture() {
       const badge = useSharedValue({
         path: Skia.Path.Make(),
@@ -94,10 +95,10 @@ describe("BadgeOverlay", () => {
       });
       return <BadgeOverlay badge={badge} font={font} />;
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders a bordered, offset badge (stroke path + transform branch)", () => {
+  it("renders a bordered, offset badge (stroke path + transform branch)", async () => {
     function Fixture() {
       const badge = useSharedValue({
         path: Skia.Path.Make(),
@@ -118,7 +119,7 @@ describe("BadgeOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });
 
@@ -128,7 +129,7 @@ describe("YAxisOverlay", () => {
     expect(yAxisLabelIntersectsBadge(100, 12, 116, 18)).toBe(false);
   });
 
-  it("renders grid lines and labels", () => {
+  it("renders grid lines and labels", async () => {
     const makeBuilder = Skia.PathBuilder.Make as jest.Mock;
     const resultIndex = makeBuilder.mock.results.length;
 
@@ -144,13 +145,13 @@ describe("YAxisOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
 
     const builder = makeBuilder.mock.results[resultIndex].value;
     expect(builder.lineTo).toHaveBeenCalledWith(388, 40);
   });
 
-  it("ends grid lines before the right-anchored label column", () => {
+  it("ends grid lines before the right-anchored label column", async () => {
     const makeBuilder = Skia.PathBuilder.Make as jest.Mock;
     const resultIndex = makeBuilder.mock.results.length;
 
@@ -172,15 +173,14 @@ describe("YAxisOverlay", () => {
       );
     }
 
-    const screen = render(<Fixture />);
+    const screen = await render(<Fixture />);
 
     // 400 canvas - 8 edge margin - 42 widest label - 6 grid gap = 344.
     const builder = makeBuilder.mock.results[resultIndex].value;
     expect(builder.lineTo).toHaveBeenNthCalledWith(1, 344, 40);
     expect(builder.lineTo).toHaveBeenNthCalledWith(2, 344, 80);
 
-    const labels = screen
-      .UNSAFE_getAllByType(View)
+    const labels = getAllByHostType(screen, View)
       .filter(
         (view) =>
           view.props.text?.value === "10" ||
@@ -189,7 +189,7 @@ describe("YAxisOverlay", () => {
     expect(labels.map((view) => view.props.x.value)).toEqual([350, 350]);
   });
 
-  it("renders with live-badge collision suppression enabled", () => {
+  it("renders with live-badge collision suppression enabled", async () => {
     function Fixture() {
       const entries = useSharedValue([{ y: 40, label: "10", alpha: 1 }]);
       const badgeCenterY = useSharedValue(40);
@@ -209,12 +209,12 @@ describe("YAxisOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });
 
 describe("DotOverlay", () => {
-  it("renders pulse ring when pulse is on", () => {
+  it("renders pulse ring when pulse is on", async () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
@@ -230,10 +230,10 @@ describe("DotOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("suppresses the pulse while time-scrolled (viewEnd frozen)", () => {
+  it("suppresses the pulse while time-scrolled (viewEnd frozen)", async () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
@@ -251,10 +251,10 @@ describe("DotOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders with pulse disabled", () => {
+  it("renders with pulse disabled", async () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
@@ -270,10 +270,10 @@ describe("DotOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("skips pulse ring math when pulse is null", () => {
+  it("skips pulse ring math when pulse is null", async () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
@@ -289,10 +289,10 @@ describe("DotOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders inner and outer dot circles", () => {
+  it("renders inner and outer dot circles", async () => {
     function Fixture() {
       const dotX = useSharedValue(100);
       const dotY = useSharedValue(120);
@@ -308,7 +308,7 @@ describe("DotOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });
 
@@ -321,7 +321,7 @@ describe("LoadingOverlay", () => {
     }) as unknown as EngineState;
   }
 
-  it("renders in loading state with badge alignment (badge=true)", () => {
+  it("renders in loading state with badge alignment (badge=true)", async () => {
     function Fixture() {
       const morphT = useSharedValue(0);
       const isLoading = useSharedValue(true);
@@ -341,10 +341,10 @@ describe("LoadingOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders in loading state without badge (uses default badge=false)", () => {
+  it("renders in loading state without badge (uses default badge=false)", async () => {
     function Fixture() {
       const morphT = useSharedValue(0);
       const isLoading = useSharedValue(true);
@@ -363,10 +363,10 @@ describe("LoadingOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders in loading state without skeleton axis labels (showAxisLabels=false)", () => {
+  it("renders in loading state without skeleton axis labels (showAxisLabels=false)", async () => {
     function Fixture() {
       const morphT = useSharedValue(0);
       const isLoading = useSharedValue(true);
@@ -386,10 +386,10 @@ describe("LoadingOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders with zero canvas size (early return path)", () => {
+  it("renders with zero canvas size (early return path)", async () => {
     function Fixture() {
       const morphT = useSharedValue(0.5);
       const isLoading = useSharedValue(true);
@@ -408,10 +408,10 @@ describe("LoadingOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders in revealed state (morphT=1, not loading)", () => {
+  it("renders in revealed state (morphT=1, not loading)", async () => {
     function Fixture() {
       const morphT = useSharedValue(1);
       const isLoading = useSharedValue(false);
@@ -430,10 +430,10 @@ describe("LoadingOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders empty-state label when isEmpty", () => {
+  it("renders empty-state label when isEmpty", async () => {
     function Fixture() {
       const morphT = useSharedValue(1);
       const isLoading = useSharedValue(false);
@@ -452,7 +452,7 @@ describe("LoadingOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });
 
@@ -471,7 +471,7 @@ describe("CrosshairOverlay", () => {
     stackedLines: undefined,
   };
 
-  it("renders crosshair line and dim rect", () => {
+  it("renders crosshair line and dim rect", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -490,10 +490,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders a dashed crosshair line when crosshairDash is set", () => {
+  it("renders a dashed crosshair line when crosshairDash is set", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -513,10 +513,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("applies crosshair stroke width, overshoot, and disabled edge fade", () => {
+  it("applies crosshair stroke width, overshoot, and disabled edge fade", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(0.25);
@@ -539,11 +539,11 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    const { toJSON } = render(<Fixture />);
+    const { toJSON } = await render(<Fixture />);
     expectConfiguredCrosshair(toJSON());
   });
 
-  it("uses the configured visible fade without changing the trailing dim ramp", () => {
+  it("uses the configured visible fade without changing the trailing dim ramp", async () => {
     function Fixture() {
       const scrubX = useSharedValue(
         400 - DEFAULT_PADDING.right - 2,
@@ -566,12 +566,12 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    const tree = JSON.stringify(render(<Fixture />).toJSON());
+    const tree = JSON.stringify((await render(<Fixture />)).toJSON());
     expect(tree).toContain('"opacity":"0.25"');
     expect(tree).toContain("rgba(0,0,0,0.35)");
   });
 
-  it("keeps a custom top-tooltip line stop when overshoot is set", () => {
+  it("keeps a custom top-tooltip line stop when overshoot is set", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -593,12 +593,12 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    const tree = JSON.stringify(render(<Fixture />).toJSON());
+    const tree = JSON.stringify((await render(<Fixture />)).toJSON());
     expect(tree).toContain('\\"y\\":48');
     expect(tree).not.toContain('\\"y\\":42');
   });
 
-  it("renders tooltip pill when showTooltip=true", () => {
+  it("renders tooltip pill when showTooltip=true", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -630,10 +630,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("omits the value row when tooltipShowValue is false (date-only)", () => {
+  it("omits the value row when tooltipShowValue is false (date-only)", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -667,7 +667,7 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    const { toJSON } = render(<Fixture />);
+    const { toJSON } = await render(<Fixture />);
     const tree = JSON.stringify(toJSON());
     // Value row dropped, time row kept; custom radius applied to the pill.
     expect(tree).not.toContain("42.00");
@@ -675,7 +675,7 @@ describe("CrosshairOverlay", () => {
     expect(tree).toContain('"r":9');
   });
 
-  it("keeps the time row when both built-in tooltip rows are disabled", () => {
+  it("keeps the time row when both built-in tooltip rows are disabled", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -709,13 +709,13 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    const { toJSON } = render(<Fixture />);
+    const { toJSON } = await render(<Fixture />);
     const tree = JSON.stringify(toJSON());
     expect(tree).not.toContain("42.00");
     expect(tree).toContain("12:00:00");
   });
 
-  it("renders stacked multi-series tooltip lines", () => {
+  it("renders stacked multi-series tooltip lines", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -756,10 +756,10 @@ describe("CrosshairOverlay", () => {
         </CrosshairOverlay>
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("hides tooltip when showTooltip=false", () => {
+  it("hides tooltip when showTooltip=false", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(0.5);
@@ -779,10 +779,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders the built-in selection dot for the default config", () => {
+  it("renders the built-in selection dot for the default config", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -805,10 +805,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders the configured built-in dot (size/color/ring knobs)", () => {
+  it("renders the configured built-in dot (size/color/ring knobs)", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -835,10 +835,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders a flat dot (no ring) when ring is off", () => {
+  it("renders a flat dot (no ring) when ring is off", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -860,10 +860,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("hides the built-in dot off-screen when selectionY is negative (sentinel)", () => {
+  it("hides the built-in dot off-screen when selectionY is negative (sentinel)", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -885,10 +885,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders no dot when selectionDot resolves to null (selectionDot={false})", () => {
+  it("renders no dot when selectionDot resolves to null (selectionDot={false})", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -911,10 +911,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders a custom selection-dot component", () => {
+  it("renders a custom selection-dot component", async () => {
     const Custom = ({ x, y, color, size }: SelectionDotProps) => (
       <Circle cx={x} cy={y} r={size} color={color} />
     );
@@ -940,10 +940,10 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders a custom tooltip body via renderTooltip", () => {
+  it("renders a custom tooltip body via renderTooltip", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -964,12 +964,12 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });
 
 describe("CrosshairLine", () => {
-  it("stays visible at zero edge opacity when fade is disabled", () => {
+  it("stays visible at zero edge opacity when fade is disabled", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(0);
@@ -986,12 +986,12 @@ describe("CrosshairLine", () => {
         />
       );
     }
-    expect(JSON.stringify(render(<Fixture />).toJSON())).toContain(
+    expect(JSON.stringify((await render(<Fixture />)).toJSON())).toContain(
       '"opacity":"1"',
     );
   });
 
-  it("renders the built-in selection dot for the default config", () => {
+  it("renders the built-in selection dot for the default config", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -1011,10 +1011,10 @@ describe("CrosshairLine", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders no dot when selectionDot resolves to null (selectionDot={false})", () => {
+  it("renders no dot when selectionDot resolves to null (selectionDot={false})", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -1033,10 +1033,10 @@ describe("CrosshairLine", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders nothing for the dot when selectionY is absent", () => {
+  it("renders nothing for the dot when selectionY is absent", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -1053,10 +1053,10 @@ describe("CrosshairLine", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders a custom selection-dot component", () => {
+  it("renders a custom selection-dot component", async () => {
     const Custom = ({ x, y, color, size }: SelectionDotProps) => (
       <Circle cx={x} cy={y} r={size} color={color} />
     );
@@ -1079,10 +1079,10 @@ describe("CrosshairLine", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders a dashed crosshair line when crosshairDash is set", () => {
+  it("renders a dashed crosshair line when crosshairDash is set", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
@@ -1102,10 +1102,10 @@ describe("CrosshairLine", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("applies crosshair stroke width, overshoot, and disabled edge fade", () => {
+  it("applies crosshair stroke width, overshoot, and disabled edge fade", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(0.25);
@@ -1128,13 +1128,13 @@ describe("CrosshairLine", () => {
         />
       );
     }
-    const { toJSON } = render(<Fixture />);
+    const { toJSON } = await render(<Fixture />);
     expectConfiguredCrosshair(toJSON());
   });
 });
 
 describe("XAxisOverlay", () => {
-  it("renders axis and labels", () => {
+  it("renders axis and labels", async () => {
     function Fixture() {
       const entries = useSharedValue([{ x: 50, label: "12:00", alpha: 1 }]);
       return (
@@ -1147,7 +1147,7 @@ describe("XAxisOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });
 
@@ -1186,7 +1186,7 @@ describe("ReferenceLineOverlay", () => {
     renderLine({ value: 5, label: "mid" });
   });
 
-  it("clips a plain line to the right-anchored Y-axis column", () => {
+  it("clips a plain line to the right-anchored Y-axis column", async () => {
     const makeBuilder = Skia.PathBuilder.Make as jest.Mock;
     const resultIndex = makeBuilder.mock.results.length;
 
@@ -1210,7 +1210,7 @@ describe("ReferenceLineOverlay", () => {
       );
     }
 
-    render(<Fixture />);
+    await render(<Fixture />);
 
     const lineBuilder = makeBuilder.mock.results[resultIndex].value;
     expect(lineBuilder.lineTo).toHaveBeenCalledWith(344, 142);
@@ -1299,7 +1299,7 @@ describe("ReferenceLineOverlay", () => {
     });
   });
 
-  it("keeps a custom badge's connector and starts it after its measured edge", () => {
+  it("keeps a custom badge's connector and starts it after its measured edge", async () => {
     type MockBuilder = { moveTo: jest.Mock; lineTo: jest.Mock };
     const make = Skia.PathBuilder.Make as unknown as jest.Mock;
     make.mockClear();
@@ -1324,7 +1324,7 @@ describe("ReferenceLineOverlay", () => {
       );
     }
 
-    render(<Fixture />);
+    await render(<Fixture />);
     const builders = make.mock.results.map(
       ({ value }) => value as unknown as MockBuilder,
     );
@@ -1342,7 +1342,7 @@ describe("ReferenceLineOverlay", () => {
     make.mockClear();
   });
 
-  it("uses the custom connector edge only while an off-axis tag is active", () => {
+  it("uses the custom connector edge only while an off-axis tag is active", async () => {
     type MockBuilder = { moveTo: jest.Mock; lineTo: jest.Mock };
     const make = Skia.PathBuilder.Make as unknown as jest.Mock;
     make.mockClear();
@@ -1364,7 +1364,7 @@ describe("ReferenceLineOverlay", () => {
       );
     }
 
-    render(<Fixture />);
+    await render(<Fixture />);
     const builders = make.mock.results.map(
       ({ value }) => value as unknown as MockBuilder,
     );
@@ -1388,7 +1388,7 @@ describe("ReferenceLineOverlay", () => {
 });
 
 describe("ValueLineOverlay", () => {
-  it("draws line when dotY is in chart area", () => {
+  it("draws line when dotY is in chart area", async () => {
     function Fixture() {
       const dotY = useSharedValue(120);
       return (
@@ -1402,10 +1402,10 @@ describe("ValueLineOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("returns empty path when dotY is negative (off-screen)", () => {
+  it("returns empty path when dotY is negative (off-screen)", async () => {
     function Fixture() {
       const dotY = useSharedValue(-1);
       return (
@@ -1419,6 +1419,6 @@ describe("ValueLineOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });

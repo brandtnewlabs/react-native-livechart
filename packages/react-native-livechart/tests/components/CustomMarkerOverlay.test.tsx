@@ -29,7 +29,7 @@ const MARKERS: Marker[] = [
 ];
 
 describe("CustomMarkerOverlay", () => {
-  it("floats a custom element for each marker renderMarker handles", () => {
+  it("floats a custom element for each marker renderMarker handles", async () => {
     function Fixture() {
       const markers = useSharedValue<Marker[]>(MARKERS);
       const lineData = useSharedValue<LiveChartPoint[]>([]);
@@ -44,12 +44,12 @@ describe("CustomMarkerOverlay", () => {
         />
       );
     }
-    const { getByTestId } = render(<Fixture />);
+    const { getByTestId } = await render(<Fixture />);
     expect(getByTestId("cm-a")).toBeTruthy();
     expect(getByTestId("cm-b")).toBeTruthy();
   });
 
-  it("renders nothing when renderMarker opts out of every marker", () => {
+  it("renders nothing when renderMarker opts out of every marker", async () => {
     function Fixture() {
       const markers = useSharedValue<Marker[]>(MARKERS);
       return (
@@ -63,12 +63,12 @@ describe("CustomMarkerOverlay", () => {
         />
       );
     }
-    const { queryByTestId, toJSON } = render(<Fixture />);
+    const { queryByTestId, toJSON } = await render(<Fixture />);
     expect(queryByTestId("cm-a")).toBeNull();
     expect(toJSON()).toBeNull();
   });
 
-  it("renders only the markers renderMarker returns an element for", () => {
+  it("renders only the markers renderMarker returns an element for", async () => {
     function Fixture() {
       const markers = useSharedValue<Marker[]>(MARKERS);
       return (
@@ -83,12 +83,12 @@ describe("CustomMarkerOverlay", () => {
         />
       );
     }
-    const { getByTestId, queryByTestId } = render(<Fixture />);
+    const { getByTestId, queryByTestId } = await render(<Fixture />);
     expect(getByTestId("cm-a")).toBeTruthy(); // trade → custom
     expect(queryByTestId("cm-b")).toBeNull(); // boost → falls back to glyph
   });
 
-  it("centers via onLayout without throwing (measures element size)", () => {
+  it("centers via onLayout without throwing (measures element size)", async () => {
     function Fixture() {
       const markers = useSharedValue<Marker[]>([MARKERS[0]]);
       return (
@@ -103,15 +103,15 @@ describe("CustomMarkerOverlay", () => {
         />
       );
     }
-    const { getByTestId } = render(<Fixture />);
+    const { getByTestId } = await render(<Fixture />);
     // Drive an onLayout so the centering branch (size measurement) executes.
-    fireEvent(getByTestId("cm-a").parent!, "layout", {
+    await fireEvent(getByTestId("cm-a").parent!, "layout", {
       nativeEvent: { layout: { x: 0, y: 0, width: 24, height: 24 } },
     });
     expect(getByTestId("cm-a")).toBeTruthy();
   });
 
-  it("passes a render context (index/side) to renderMarker", () => {
+  it("passes a render context (index/side) to renderMarker", async () => {
     const seen: { index: number; side: string }[] = [];
     function Fixture() {
       const markers = useSharedValue<Marker[]>([
@@ -130,11 +130,11 @@ describe("CustomMarkerOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
     expect(seen[0]).toEqual({ index: 0, side: "below" });
   });
 
-  it("clusters co-located custom markers without crashing (stacked)", () => {
+  it("clusters co-located custom markers without crashing (stacked)", async () => {
     function Fixture() {
       const markers = useSharedValue<Marker[]>([
         { id: "a", time: 999, kind: "trade", value: 50, side: "above" },
@@ -150,11 +150,11 @@ describe("CustomMarkerOverlay", () => {
         />
       );
     }
-    const { getByTestId } = render(<Fixture />);
+    const { getByTestId } = await render(<Fixture />);
     expect(getByTestId("cm-a")).toBeTruthy();
   });
 
-  it("collapses a co-located run of custom markers (stacked)", () => {
+  it("collapses a co-located run of custom markers (stacked)", async () => {
     function Fixture() {
       const markers = useSharedValue<Marker[]>(
         Array.from({ length: 7 }, (_, i) => ({
@@ -177,12 +177,12 @@ describe("CustomMarkerOverlay", () => {
         />
       );
     }
-    const { getByTestId } = render(<Fixture />);
+    const { getByTestId } = await render(<Fixture />);
     // All views mount (collapsed members are hidden via opacity, not unmounted).
     expect(getByTestId("cm-m6")).toBeTruthy();
   });
 
-  it("anchors a custom marker to a series by seriesId", () => {
+  it("anchors a custom marker to a series by seriesId", async () => {
     function Fixture() {
       const markers = useSharedValue<Marker[]>([
         { id: "s", time: 990, kind: "winner", seriesId: "a" },
@@ -208,7 +208,7 @@ describe("CustomMarkerOverlay", () => {
         />
       );
     }
-    const { getByTestId } = render(<Fixture />);
+    const { getByTestId } = await render(<Fixture />);
     expect(getByTestId("cm-s")).toBeTruthy();
   });
 });

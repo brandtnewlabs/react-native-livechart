@@ -129,8 +129,8 @@ describe("applyLiveChartEngineFrame", () => {
 });
 
 describe("useLiveChartEngine", () => {
-  it("returns shared engine state", () => {
-    const { result } = renderHook(() => {
+  it("returns shared engine state", async () => {
+    const { result } = await renderHook(() => {
       const data = useSharedValue([{ time: 1700000000, value: 1 }]);
       const value = useSharedValue(1);
       return useLiveChartEngine({
@@ -147,8 +147,8 @@ describe("useLiveChartEngine", () => {
     expect(result.current.canvasWidth.value).toBe(0);
   });
 
-  it("treats optional exaggerate and reference as undefined", () => {
-    const { result } = renderHook(() => {
+  it("treats optional exaggerate and reference as undefined", async () => {
+    const { result } = await renderHook(() => {
       const data = useSharedValue([{ time: 1700000000, value: 1 }]);
       const value = useSharedValue(1);
       return useLiveChartEngine({
@@ -161,11 +161,11 @@ describe("useLiveChartEngine", () => {
     expect(result.current.displayMin.value).toBeDefined();
   });
 
-  it("does not throw rendering a static engine", () => {
+  it("does not throw rendering a static engine", async () => {
     // Smoke test: the static path adds a one-shot settle reaction; ensure the
     // hook mounts cleanly (autostart wiring is asserted in the frame-callback
     // mock test, the settle math in the smoothing=1 snap test below).
-    const { result } = renderHook(() => {
+    const { result } = await renderHook(() => {
       const data = useSharedValue([
         { time: 1700000000, value: 10 },
         { time: 1700000030, value: 30 },
@@ -183,14 +183,14 @@ describe("useLiveChartEngine", () => {
     expect(result.current.displayMin.value).toBeDefined();
   });
 
-  it("exposes a null pinch-zoom override that follows the timeWindow prop", () => {
+  it("exposes a null pinch-zoom override that follows the timeWindow prop", async () => {
     // `viewWindow` is the pinch-zoom override; it starts null (follow the prop) and
     // a mount-time effect keeps it cleared so a `timeWindow` prop change (range /
     // timeframe selector) isn't shadowed by a stale override. (The full reset-on-
     // prop-change path is hard to drive under the SharedValue mock — a `set()` on a
     // value read by a derived value forces a re-render that recreates it — so this
     // asserts the wiring and default; the behavior is exercised in-app.)
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ tw }: { tw: number }) => {
         const data = useSharedValue([{ time: 1700000000, value: 1 }]);
         const value = useSharedValue(1);
@@ -199,16 +199,16 @@ describe("useLiveChartEngine", () => {
       { initialProps: { tw: 30 } },
     );
     expect(result.current.viewWindow.get()).toBeNull();
-    rerender({ tw: 60 });
+    await rerender({ tw: 60 });
     expect(result.current.viewWindow.get()).toBeNull();
   });
 
-  it("requests a one-shot snap when snapKey changes (and not on a stable key)", () => {
+  it("requests a one-shot snap when snapKey changes (and not on a stable key)", async () => {
     // snapSV is internal, so this asserts the effect wiring doesn't throw across
     // the no-change / change paths; the snap math itself is covered by the
     // applyLiveChartEngineFrame + tick tests above. (Mirrors the viewWindow-reset
     // wiring test — the SharedValue mock can't round-trip the frame loop.)
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ k }: { k: string }) => {
         const data = useSharedValue([{ time: 1700000000, value: 1 }]);
         const value = useSharedValue(1);
@@ -222,8 +222,8 @@ describe("useLiveChartEngine", () => {
       },
       { initialProps: { k: "1H" } },
     );
-    rerender({ k: "1H" }); // unchanged key → no snap requested
-    rerender({ k: "1D" }); // changed key → snap requested for the next frame
+    await rerender({ k: "1H" }); // unchanged key → no snap requested
+    await rerender({ k: "1D" }); // changed key → snap requested for the next frame
     expect(result.current.displayMin.value).toBeDefined();
   });
 

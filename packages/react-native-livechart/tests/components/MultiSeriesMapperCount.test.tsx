@@ -63,13 +63,13 @@ function makeEngine(seriesCount: number): MultiEngineState {
 }
 
 describe("multi-series mapper count", () => {
-  it("mounts 36 default per-series mappers for three active series", () => {
+  it("mounts 36 default per-series mappers for three active series", async () => {
     mockUseDerivedValue.mockClear();
     const seriesCount = 3;
     const engine = makeEngine(seriesCount);
     const paths = shared(Array.from({ length: seriesCount }, () => Skia.Path.Make()));
 
-    render(
+    await render(
       <>
         {Array.from({ length: seriesCount }, (_, index) => (
           <MultiSeriesStroke
@@ -107,9 +107,9 @@ describe("multi-series mapper count", () => {
     expect(mockUseDerivedValue).toHaveBeenCalledTimes(seriesCount * 12);
   });
 
-  it("mounts only the five fixed candle-tooltip rows", () => {
+  it("mounts only the five fixed candle-tooltip rows", async () => {
     mockUseDerivedValue.mockClear();
-    render(
+    await render(
       <MultiSeriesTooltipStack
         tooltipLayout={shared({ stackedLines: [] })}
         font={font}

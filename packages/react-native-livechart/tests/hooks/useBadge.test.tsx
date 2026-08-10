@@ -38,8 +38,8 @@ function makeEngine(w: number, h: number): EngineState {
 describe("useBadge", () => {
   const palette = resolveTheme("#3b82f6", "dark");
 
-  it("returns empty path when canvas not laid out", () => {
-    const { result } = renderHook(() =>
+  it("returns empty path when canvas not laid out", async () => {
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(0, 0),
         DEFAULT_PADDING,
@@ -53,8 +53,8 @@ describe("useBadge", () => {
     expect(result.current.value.text).toBe("");
   });
 
-  it("builds badge with tail for default variant", () => {
-    const { result } = renderHook(() =>
+  it("builds badge with tail for default variant", async () => {
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(400, 300),
         DEFAULT_PADDING,
@@ -68,11 +68,11 @@ describe("useBadge", () => {
     expect(result.current.value.text).toBeTruthy();
   });
 
-  it("badge text matches pillTextLeftX — same horizontal position as y-axis labels", () => {
+  it("badge text matches pillTextLeftX — same horizontal position as y-axis labels", async () => {
     const w = 400;
     // minPaddingRightForBadgeYAxisAlign(12, 35) = 8 + 14 + 20 + 35 + 4 = 81
     const pad = { ...DEFAULT_PADDING, right: 81 };
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(w, 300),
         pad,
@@ -91,9 +91,9 @@ describe("useBadge", () => {
     );
   });
 
-  it("still lays out badge with a custom right padding override", () => {
+  it("still lays out badge with a custom right padding override", async () => {
     const pad = { ...DEFAULT_PADDING, right: 81 };
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(400, 300),
         pad,
@@ -108,8 +108,8 @@ describe("useBadge", () => {
     expect(Number.isFinite(result.current.value.textX)).toBe(true);
   });
 
-  it("uses minimal colors and no tail", () => {
-    const { result } = renderHook(() =>
+  it("uses minimal colors and no tail", async () => {
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(400, 300),
         DEFAULT_PADDING,
@@ -123,9 +123,9 @@ describe("useBadge", () => {
     expect(result.current.value.bgColor).toContain("255");
   });
 
-  it("no-tail pill uses minimal variant colors", () => {
+  it("no-tail pill uses minimal variant colors", async () => {
     const pad = { ...DEFAULT_PADDING, right: 81 };
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(400, 300),
         pad,
@@ -139,22 +139,22 @@ describe("useBadge", () => {
     expect(result.current.value.text).toBe("50.00");
   });
 
-  it("centers badge vertically when value range is zero", () => {
+  it("centers badge vertically when value range is zero", async () => {
     const eng = withSharedValueAccessors({
       ...makeEngine(400, 300),
       displayMin: { value: 5 },
       displayMax: { value: 5 },
       displayValue: { value: 5 },
     }) as unknown as EngineState;
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useBadge(eng, DEFAULT_PADDING, palette, (v) => v.toFixed(2), font),
     );
     expect(result.current.value.text).toBeTruthy();
   });
 
-  it("lerps badge background when momentum shared value is provided", () => {
+  it("lerps badge background when momentum shared value is provided", async () => {
     const eng = makeEngine(400, 300);
-    const { result } = renderHook(() => {
+    const { result } = await renderHook(() => {
       const momentum = useSharedValue<"up" | "down" | "flat">("up");
       return useBadge(
         eng,
@@ -170,9 +170,9 @@ describe("useBadge", () => {
     expect(result.current.value.bgColor.startsWith("rgb")).toBe(true);
   });
 
-  it("lerps toward down momentum target", () => {
+  it("lerps toward down momentum target", async () => {
     const eng = makeEngine(400, 300);
-    const { result } = renderHook(() => {
+    const { result } = await renderHook(() => {
       const momentum = useSharedValue<"up" | "down" | "flat">("down");
       return useBadge(
         eng,
@@ -188,9 +188,9 @@ describe("useBadge", () => {
     expect(result.current.value.bgColor.startsWith("rgb")).toBe(true);
   });
 
-  it("lerps toward flat momentum target", () => {
+  it("lerps toward flat momentum target", async () => {
     const eng = makeEngine(400, 300);
-    const { result } = renderHook(() => {
+    const { result } = await renderHook(() => {
       const momentum = useSharedValue<"up" | "down" | "flat">("flat");
       return useBadge(
         eng,
@@ -206,11 +206,11 @@ describe("useBadge", () => {
     expect(result.current.value.bgColor.startsWith("rgb")).toBe(true);
   });
 
-  it("left-position badge is a pill only (ignores showTail)", () => {
+  it("left-position badge is a pill only (ignores showTail)", async () => {
     const w = 400;
     const pad = { top: 12, right: 64, bottom: 28, left: 12 };
     const eng = makeEngine(w, 300);
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useBadge(
         eng,
         pad,
@@ -237,10 +237,10 @@ describe("useBadge", () => {
     expect(result.current.value.path).toBeDefined();
   });
 
-  it("no-tail right-position badge uses reduced offset for text alignment", () => {
+  it("no-tail right-position badge uses reduced offset for text alignment", async () => {
     const w = 400;
     const pad = { ...DEFAULT_PADDING, right: 76 };
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(w, 300),
         pad,
@@ -259,9 +259,9 @@ describe("useBadge", () => {
     );
   });
 
-  it("uses fixed background color when background override is provided", () => {
+  it("uses fixed background color when background override is provided", async () => {
     const eng = makeEngine(400, 300);
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useBadge(
         eng,
         DEFAULT_PADDING,
@@ -279,8 +279,8 @@ describe("useBadge", () => {
   });
 
   // pillH = font size (12) + padY*2 (6) = 18, so the capsule radius (midY) is 9.
-  it("applies a small custom corner radius in tail mode (rounded-corner branch)", () => {
-    const { result } = renderHook(() =>
+  it("applies a small custom corner radius in tail mode (rounded-corner branch)", async () => {
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(400, 300),
         DEFAULT_PADDING,
@@ -304,8 +304,8 @@ describe("useBadge", () => {
     expect(result.current.value.path).toBeDefined();
   });
 
-  it("clamps a large radius back to the capsule (semicircle branch)", () => {
-    const { result } = renderHook(() =>
+  it("clamps a large radius back to the capsule (semicircle branch)", async () => {
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(400, 300),
         DEFAULT_PADDING,
@@ -329,8 +329,8 @@ describe("useBadge", () => {
     expect(result.current.value.path).toBeDefined();
   });
 
-  it("clamps a negative radius to square corners on the no-tail pill", () => {
-    const { result } = renderHook(() =>
+  it("clamps a negative radius to square corners on the no-tail pill", async () => {
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(400, 300),
         { ...DEFAULT_PADDING, right: 76 },
@@ -354,8 +354,8 @@ describe("useBadge", () => {
     expect(result.current.value.path).toBeDefined();
   });
 
-  it("uses the text color override when provided", () => {
-    const { result } = renderHook(() =>
+  it("uses the text color override when provided", async () => {
+    const { result } = await renderHook(() =>
       useBadge(
         makeEngine(400, 300),
         DEFAULT_PADDING,

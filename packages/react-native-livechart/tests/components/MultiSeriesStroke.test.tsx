@@ -25,12 +25,12 @@ function StrokeFixture({ lineStyle }: { lineStyle?: SeriesLineStyle }) {
 }
 
 describe("MultiSeriesStroke", () => {
-  it("renders a plain solid stroke with no lineStyle", () => {
-    render(<StrokeFixture />);
+  it("renders a plain solid stroke with no lineStyle", async () => {
+    await render(<StrokeFixture />);
   });
 
-  it("renders a dashed stroke with a per-series width", () => {
-    render(
+  it("renders a dashed stroke with a per-series width", async () => {
+    await render(
       <StrokeFixture
         lineStyle={{
           strokeWidth: 4,
@@ -42,8 +42,8 @@ describe("MultiSeriesStroke", () => {
     );
   });
 
-  it("renders a glowing stroke", () => {
-    render(
+  it("renders a glowing stroke", async () => {
+    await render(
       <StrokeFixture
         lineStyle={{
           strokeWidth: undefined,

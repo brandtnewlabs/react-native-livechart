@@ -29,7 +29,7 @@ function engine(): ChartEngineWithLiveValue {
 const fmt = (v: number) => v.toFixed(2);
 
 describe("ValueTextOverlay", () => {
-  it("renders the value without momentum coloring", () => {
+  it("renders the value without momentum coloring", async () => {
     function Fixture() {
       return (
         <ValueTextOverlay
@@ -42,10 +42,10 @@ describe("ValueTextOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("tints by momentum when momentumColor is set", () => {
+  it("tints by momentum when momentumColor is set", async () => {
     function Fixture({ m }: { m: Momentum }) {
       const momentum = useSharedValue<Momentum>(m);
       return (
@@ -60,8 +60,8 @@ describe("ValueTextOverlay", () => {
         />
       );
     }
-    render(<Fixture m="up" />);
-    render(<Fixture m="down" />);
-    render(<Fixture m="flat" />);
+    await render(<Fixture m="up" />);
+    await render(<Fixture m="down" />);
+    await render(<Fixture m="flat" />);
   });
 });

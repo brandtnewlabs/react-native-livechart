@@ -9,6 +9,7 @@ import type {
   ChartEngineLayout,
 } from "../../src/core/useLiveChartEngine";
 import { DEFAULT_PADDING } from "../../src/draw/line";
+import { getAllByHostType } from "../rntl14";
 
 const sv = <T,>(value: T) => ({ value, get: () => value }) as never;
 
@@ -61,8 +62,8 @@ const builtIn = (
 const fmt = (v: number) => v.toFixed(2);
 
 describe("AxisLabelOverlay", () => {
-  it("renders the built-in top and bottom value labels without throwing", () => {
-    const screen = render(
+  it("renders the built-in top and bottom value labels without throwing", async () => {
+    const screen = await render(
       <AxisLabelOverlay
         topLabel={builtIn()}
         bottomLabel={builtIn()}
@@ -73,11 +74,11 @@ describe("AxisLabelOverlay", () => {
       />,
     );
     // The built-in label mounts an (animated) TextInput node for each side.
-    expect(screen.UNSAFE_getAllByType(TextInput)).toHaveLength(2);
+    expect(getAllByHostType(screen, TextInput)).toHaveLength(2);
   });
 
-  it("renders custom content when `render` is set", () => {
-    const screen = render(
+  it("renders custom content when `render` is set", async () => {
+    const screen = await render(
       <AxisLabelOverlay
         topLabel={builtIn({ render: () => <Text>HIGH</Text> })}
         bottomLabel={builtIn({ render: () => <Text>LOW</Text> })}
@@ -91,8 +92,8 @@ describe("AxisLabelOverlay", () => {
     expect(screen.getByText("LOW")).toBeTruthy();
   });
 
-  it("returns null when both labels are null", () => {
-    const screen = render(
+  it("returns null when both labels are null", async () => {
+    const screen = await render(
       <AxisLabelOverlay
         topLabel={null}
         bottomLabel={null}
@@ -105,8 +106,8 @@ describe("AxisLabelOverlay", () => {
     expect(screen.toJSON()).toBeNull();
   });
 
-  it("renders only the top label when bottom is null", () => {
-    const screen = render(
+  it("renders only the top label when bottom is null", async () => {
+    const screen = await render(
       <AxisLabelOverlay
         topLabel={builtIn({ render: () => <Text>HIGH</Text> })}
         bottomLabel={null}
@@ -120,8 +121,8 @@ describe("AxisLabelOverlay", () => {
     expect(screen.queryByText("LOW")).toBeNull();
   });
 
-  it("renders only the bottom label when top is null", () => {
-    const screen = render(
+  it("renders only the bottom label when top is null", async () => {
+    const screen = await render(
       <AxisLabelOverlay
         topLabel={null}
         bottomLabel={builtIn({ render: () => <Text>LOW</Text> })}
@@ -136,8 +137,8 @@ describe("AxisLabelOverlay", () => {
   });
 
   describe('position: "extrema"', () => {
-    it("floats the built-in top + bottom labels at the extrema points", () => {
-      const screen = render(
+    it("floats the built-in top + bottom labels at the extrema points", async () => {
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({ position: "extrema" })}
           bottomLabel={builtIn({ position: "extrema" })}
@@ -148,13 +149,13 @@ describe("AxisLabelOverlay", () => {
         />,
       );
       // No animated TextInput in extrema mode — the value rides a plain <Text>.
-      expect(screen.UNSAFE_queryAllByType(TextInput)).toHaveLength(0);
+      expect(getAllByHostType(screen, TextInput)).toHaveLength(0);
       // Mounts both anchors; the value text is empty until the reaction fires.
       expect(screen.toJSON()).toBeTruthy();
     });
 
-    it("drives onLayout to measure + center the extrema box", () => {
-      const screen = render(
+    it("drives onLayout to measure + center the extrema box", async () => {
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({
             position: "extrema",
@@ -168,14 +169,14 @@ describe("AxisLabelOverlay", () => {
         />,
       );
       // The element's parent is the measured Animated.View anchor (onLayout).
-      fireEvent(screen.getByTestId("peak").parent!, "layout", {
+      await fireEvent(screen.getByTestId("peak").parent!, "layout", {
         nativeEvent: { layout: { x: 0, y: 0, width: 50, height: 24 } },
       });
       expect(screen.getByTestId("peak")).toBeTruthy();
     });
 
-    it("renders a custom element at the extrema point", () => {
-      const screen = render(
+    it("renders a custom element at the extrema point", async () => {
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({
             position: "extrema",
@@ -195,8 +196,8 @@ describe("AxisLabelOverlay", () => {
       expect(screen.getByText("VALLEY")).toBeTruthy();
     });
 
-    it("stays mounted (hidden) when the extremum value is NaN", () => {
-      const screen = render(
+    it("stays mounted (hidden) when the extremum value is NaN", async () => {
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({ position: "extrema" })}
           bottomLabel={builtIn({ position: "extrema" })}
@@ -209,8 +210,8 @@ describe("AxisLabelOverlay", () => {
       expect(screen.toJSON()).toBeTruthy();
     });
 
-    it("hides when the extremum point has scrolled off-plot", () => {
-      const screen = render(
+    it("hides when the extremum point has scrolled off-plot", async () => {
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({ position: "extrema" })}
           bottomLabel={null}
@@ -224,8 +225,8 @@ describe("AxisLabelOverlay", () => {
       expect(screen.toJSON()).toBeTruthy();
     });
 
-    it("falls back to the edge label when the engine lacks extrema", () => {
-      const screen = render(
+    it("falls back to the edge label when the engine lacks extrema", async () => {
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({ position: "extrema" })}
           bottomLabel={null}
@@ -236,11 +237,11 @@ describe("AxisLabelOverlay", () => {
         />,
       );
       // Edge fallback renders the animated value TextInput.
-      expect(screen.UNSAFE_getAllByType(TextInput)).toHaveLength(1);
+      expect(getAllByHostType(screen, TextInput)).toHaveLength(1);
     });
 
-    it("honors custom dotSize / dotColor and font knobs", () => {
-      const screen = render(
+    it("honors custom dotSize / dotColor and font knobs", async () => {
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({
             position: "extrema",
@@ -260,9 +261,9 @@ describe("AxisLabelOverlay", () => {
       expect(screen.toJSON()).toBeTruthy();
     });
 
-    it('pins the value label to the edge in "extrema-edge" mode', () => {
+    it('pins the value label to the edge in "extrema-edge" mode', async () => {
       // The dot stays on the point; only the value text moves to the edge.
-      const screen = render(
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({ position: "extrema-edge" })}
           bottomLabel={builtIn({ position: "extrema-edge" })}
@@ -275,9 +276,9 @@ describe("AxisLabelOverlay", () => {
       expect(screen.toJSON()).toBeTruthy();
     });
 
-    it("applies extremaTimeOffset (candle-center alignment)", () => {
+    it("applies extremaTimeOffset (candle-center alignment)", async () => {
       // Half a candle width shifts the dot from the bucket-start to the center.
-      const screen = render(
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({ position: "extrema" })}
           bottomLabel={builtIn({ position: "extrema" })}
@@ -291,8 +292,8 @@ describe("AxisLabelOverlay", () => {
       expect(screen.toJSON()).toBeTruthy();
     });
 
-    it("omits the marker dot when dot is false (value text only)", () => {
-      const screen = render(
+    it("omits the marker dot when dot is false (value text only)", async () => {
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({ position: "extrema", dot: false })}
           bottomLabel={null}
@@ -305,8 +306,8 @@ describe("AxisLabelOverlay", () => {
       expect(screen.toJSON()).toBeTruthy();
     });
 
-    it("applies font knobs to the edge (non-extrema) label too", () => {
-      const screen = render(
+    it("applies font knobs to the edge (non-extrema) label too", async () => {
+      const screen = await render(
         <AxisLabelOverlay
           topLabel={builtIn({ fontSize: 18, fontWeight: "600" })}
           bottomLabel={null}
@@ -316,7 +317,7 @@ describe("AxisLabelOverlay", () => {
           padding={DEFAULT_PADDING}
         />,
       );
-      expect(screen.UNSAFE_getAllByType(TextInput)).toHaveLength(1);
+      expect(getAllByHostType(screen, TextInput)).toHaveLength(1);
     });
   });
 });

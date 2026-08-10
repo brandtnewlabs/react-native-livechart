@@ -35,8 +35,8 @@ function engine(
 }
 
 describe("useChartOverlayContext", () => {
-  it("derives the live scale snapshot from the engine + padding", () => {
-    const { result } = renderHook(() =>
+  it("derives the live scale snapshot from the engine + padding", async () => {
+    const { result } = await renderHook(() =>
       useChartOverlayContext(engine(), PADDING),
     );
     const s = result.current.scale.get();
@@ -49,8 +49,8 @@ describe("useChartOverlayContext", () => {
     });
   });
 
-  it("exposes mapping worklets that project against a scale snapshot", () => {
-    const { result } = renderHook(() =>
+  it("exposes mapping worklets that project against a scale snapshot", async () => {
+    const { result } = await renderHook(() =>
       useChartOverlayContext(engine(), PADDING),
     );
     const { priceToY, yToPrice, timeToX, xToTime, scale } = result.current;
@@ -64,29 +64,29 @@ describe("useChartOverlayContext", () => {
     expect(xToTime(320, s)).toBeCloseTo(0);
   });
 
-  it("tracks engine changes through the scale snapshot", () => {
+  it("tracks engine changes through the scale snapshot", async () => {
     const eng = engine({ displayMin: 20, displayMax: 120, timestamp: 1000 });
-    const { result } = renderHook(() => useChartOverlayContext(eng, PADDING));
+    const { result } = await renderHook(() => useChartOverlayContext(eng, PADDING));
     const s = result.current.scale.get();
     expect(s.min).toBe(20);
     expect(s.max).toBe(120);
     expect(s.now).toBe(1000);
   });
 
-  it("returns a stable context identity across re-renders", () => {
+  it("returns a stable context identity across re-renders", async () => {
     const eng = engine();
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       useChartOverlayContext(eng, PADDING),
     );
     const first = result.current;
-    rerender({});
+    await rerender({});
     expect(result.current).toBe(first);
   });
 });
 
 describe("usePriceY / useTimeX", () => {
-  it("usePriceY projects a price to its live canvas Y", () => {
-    const { result } = renderHook(() => {
+  it("usePriceY projects a price to its live canvas Y", async () => {
+    const { result } = await renderHook(() => {
       const ctx = useChartOverlayContext(engine(), PADDING);
       return usePriceY(ctx, 50);
     });
@@ -94,8 +94,8 @@ describe("usePriceY / useTimeX", () => {
     expect(result.current.get()).toBeCloseTo(142);
   });
 
-  it("useTimeX projects a timestamp to its live canvas X", () => {
-    const { result } = renderHook(() => {
+  it("useTimeX projects a timestamp to its live canvas X", async () => {
+    const { result } = await renderHook(() => {
       const ctx = useChartOverlayContext(engine(), PADDING);
       return useTimeX(ctx, 0);
     });

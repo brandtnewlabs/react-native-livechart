@@ -29,10 +29,10 @@ const scrub = (x: number, active: boolean) => ({
 describe("useSegmentLineGradient", () => {
   const BASE = "#0000ff";
 
-  it("de-emphasizes a segment with base + dim stops while scrubbing outside it", () => {
+  it("de-emphasizes a segment with base + dim stops while scrubbing outside it", async () => {
     // Segment ≈ px[137, 263]; scrub at 50 is left of it → segment is dimmed.
     const { scrubX, scrubActive } = scrub(50, true);
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSegmentLineGradient(
         engine(),
         [resolveSegment({ from: 110, to: 120, mutedColor: "#abc" }, DEFAULTS)],
@@ -50,9 +50,9 @@ describe("useSegmentLineGradient", () => {
     expect(result.current.gradientEnd.value.x).toBe(400);
   });
 
-  it("falls back to a flat base-color gradient at rest", () => {
+  it("falls back to a flat base-color gradient at rest", async () => {
     const { scrubX, scrubActive } = scrub(-1, false);
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSegmentLineGradient(
         engine(),
         [resolveSegment({ from: 110, to: 120 }, DEFAULTS)],
@@ -67,17 +67,18 @@ describe("useSegmentLineGradient", () => {
     expect(result.current.positions.value).toEqual([0, 1, 1, 1, 1, 1]);
   });
 
-  it("pads colors and positions to one stop count across scrub states", () => {
+  it("pads colors and positions to one stop count across scrub states", async () => {
     const segments = [
       resolveSegment({ from: 105, to: 115, mutedColor: "#aaa" }, DEFAULTS),
       resolveSegment({ from: 115, to: 125, mutedColor: "#bbb" }, DEFAULTS),
     ];
-    const lengths = [
+    const lengths: number[][] = [];
+    for (const { scrubX, scrubActive } of [
       scrub(-1, false), // at rest → fallback stops
       scrub(150, true), // one span dimmed
       scrub(50, true), // both dimmed
-    ].map(({ scrubX, scrubActive }) => {
-      const { result } = renderHook(() =>
+    ]) {
+      const { result } = await renderHook(() =>
         useSegmentLineGradient(
           engine(),
           segments,
@@ -87,11 +88,11 @@ describe("useSegmentLineGradient", () => {
           scrubActive,
         ),
       );
-      return [
+      lengths.push([
         result.current.colors.value.length,
         result.current.positions.value.length,
-      ];
-    });
+      ]);
+    }
     expect(lengths).toEqual([
       [10, 10],
       [10, 10],
@@ -99,9 +100,9 @@ describe("useSegmentLineGradient", () => {
     ]);
   });
 
-  it("keeps the gradient end at least 1px wide before layout", () => {
+  it("keeps the gradient end at least 1px wide before layout", async () => {
     const { scrubX, scrubActive } = scrub(50, true);
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSegmentLineGradient(
         engine({ canvasWidth: 0 }),
         [resolveSegment({ from: 110, to: 120 }, DEFAULTS)],

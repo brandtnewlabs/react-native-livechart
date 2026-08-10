@@ -91,8 +91,8 @@ describe("CustomReferenceLineOverlay", () => {
     );
   }
 
-  it("floats a custom element for each Form-A line the render handles", () => {
-    const { getByTestId } = render(
+  it("floats a custom element for each Form-A line the render handles", async () => {
+    const { getByTestId } = await render(
       <Fixture
         lines={[{ value: 30 }, { value: 60 }]}
         render={({ index }) => <Text testID={`rl-${index}`}>{index}</Text>}
@@ -102,8 +102,8 @@ describe("CustomReferenceLineOverlay", () => {
     expect(getByTestId("rl-1")).toBeTruthy();
   });
 
-  it("skips bands and time bands (Form-A only)", () => {
-    const { queryByTestId } = render(
+  it("skips bands and time bands (Form-A only)", async () => {
+    const { queryByTestId } = await render(
       <Fixture
         lines={[{ valueFrom: 10, valueTo: 20 }, { from: 1, to: 2 }]}
         render={({ index }) => <Text testID={`rl-${index}`}>{index}</Text>}
@@ -113,15 +113,15 @@ describe("CustomReferenceLineOverlay", () => {
     expect(queryByTestId("rl-1")).toBeNull();
   });
 
-  it("renders nothing when the render opts out of every line", () => {
-    const { toJSON } = render(
+  it("renders nothing when the render opts out of every line", async () => {
+    const { toJSON } = await render(
       <Fixture lines={[{ value: 30 }]} render={() => null} />,
     );
     expect(toJSON()).toBeNull();
   });
 
-  it("renders only the lines the render returns an element for", () => {
-    const { getByTestId, queryByTestId } = render(
+  it("renders only the lines the render returns an element for", async () => {
+    const { getByTestId, queryByTestId } = await render(
       <Fixture
         lines={[{ value: 30 }, { value: 60 }]}
         render={({ line, index }) =>
@@ -133,7 +133,7 @@ describe("CustomReferenceLineOverlay", () => {
     expect(queryByTestId("rl-1")).toBeNull();
   });
 
-  it("publishes the measured custom-tag width for the Skia connector", () => {
+  it("publishes the measured custom-tag width for the Skia connector", async () => {
     let tagWidths: SharedValue<number[]> | undefined;
     function WidthFixture() {
       const widths = useSharedValue<number[]>([]);
@@ -153,15 +153,15 @@ describe("CustomReferenceLineOverlay", () => {
       );
     }
 
-    const { getByTestId } = render(<WidthFixture />);
-    fireEvent(getByTestId("rl-0").parent!, "layout", {
+    const { getByTestId } = await render(<WidthFixture />);
+    await fireEvent(getByTestId("rl-0").parent!, "layout", {
       nativeEvent: { layout: { x: 0, y: 0, width: 52, height: 16 } },
     });
     expect(tagWidths?.get()).toEqual([52]);
   });
 
-  it("uses the static line value when no drag state is provided", () => {
-    const { getByText } = render(
+  it("uses the static line value when no drag state is provided", async () => {
+    const { getByText } = await render(
       <CustomReferenceLineOverlay
         lines={[{ value: 66 }]}
         renderReferenceLine={({ value, dragging }) => (
@@ -176,8 +176,8 @@ describe("CustomReferenceLineOverlay", () => {
     expect(getByText("66:false")).toBeTruthy();
   });
 
-  it("pins across left / center / right anchors and an off-screen value", () => {
-    const { getByTestId } = render(
+  it("pins across left / center / right anchors and an off-screen value", async () => {
+    const { getByTestId } = await render(
       <Fixture
         lines={[
           { value: 30, badge: { position: "left" } },
@@ -197,7 +197,7 @@ describe("CustomReferenceLineOverlay", () => {
     );
     // Drive onLayout so the measure + transform branches execute for each anchor.
     for (let i = 0; i < 5; i++) {
-      fireEvent(getByTestId(`rl-${i}`).parent!, "layout", {
+      await fireEvent(getByTestId(`rl-${i}`).parent!, "layout", {
         nativeEvent: { layout: { x: 0, y: 0, width: 40, height: 16 } },
       });
       expect(getByTestId(`rl-${i}`)).toBeTruthy();
@@ -206,8 +206,8 @@ describe("CustomReferenceLineOverlay", () => {
     expect(getByTestId("rl-4").props.accessibilityLabel).toBe("y:260");
   });
 
-  it("hides the element when the canvas is not laid out", () => {
-    const { getByTestId } = render(
+  it("hides the element when the canvas is not laid out", async () => {
+    const { getByTestId } = await render(
       <Fixture
         lines={[{ value: 30 }]}
         render={({ index }) => <Text testID={`rl-${index}`}>{index}</Text>}
@@ -218,8 +218,8 @@ describe("CustomReferenceLineOverlay", () => {
     expect(getByTestId("rl-0")).toBeTruthy();
   });
 
-  it("keeps an off-axis renderer mounted with its live edge context", () => {
-    const { getByText } = render(
+  it("keeps an off-axis renderer mounted with its live edge context", async () => {
+    const { getByText } = await render(
       <CustomReferenceLineOverlay
         lines={[{ value: 150, badge: true }]}
         renderReferenceLine={({ edge, inRange }) => (

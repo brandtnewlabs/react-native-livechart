@@ -58,7 +58,7 @@ describe("ScrubActionOverlay", () => {
   // queryable), so these exercise the render branches without asserting on text;
   // the badge geometry/text is covered by the crosshairShared
   // `computeActionBadgeLayout` tests.
-  it("renders the icon + price pill when a reticle is locked", () => {
+  it("renders the icon + price pill when a reticle is locked", async () => {
     const badge = computeActionBadgeLayout(
       true,
       150,
@@ -71,12 +71,12 @@ describe("ScrubActionOverlay", () => {
       10,
       3,
     );
-    render(<Fixture active badge={badge} />);
+    await render(<Fixture active badge={badge} />);
   });
 
-  it("renders the icon-less branch when icon is empty", () => {
+  it("renders the icon-less branch when icon is empty", async () => {
     const badge = computeActionBadgeLayout(true, 150, "64.20", "", 400, 360, font, 4, 10, 3);
-    render(
+    await render(
       <ScrubActionOverlay
         lockActive={{ value: true } as never}
         lockX={{ value: 200 } as never}
@@ -91,14 +91,14 @@ describe("ScrubActionOverlay", () => {
     );
   });
 
-  it("renders (hidden) without throwing when not locked", () => {
-    render(<Fixture active={false} badge={HIDDEN_ACTION_BADGE} />);
+  it("renders (hidden) without throwing when not locked", async () => {
+    await render(<Fixture active={false} badge={HIDDEN_ACTION_BADGE} />);
   });
 
-  it("renders the optional x-axis time badge when provided", () => {
+  it("renders the optional x-axis time badge when provided", async () => {
     const badge = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 360, font, 4, 10, 3);
     const time = computeTimeBadgeLayout(true, 200, "13:00", 400, 291, font, 10, 3, 4);
-    render(
+    await render(
       <ScrubActionOverlay
         lockActive={{ value: true } as never}
         lockX={{ value: 200 } as never}
@@ -114,9 +114,9 @@ describe("ScrubActionOverlay", () => {
     );
   });
 
-  it("honors color overrides", () => {
+  it("honors color overrides", async () => {
     const badge = computeActionBadgeLayout(true, 150, "64.20", "+", 400, 360, font, 4, 10, 3);
-    render(
+    await render(
       <ScrubActionOverlay
         lockActive={{ value: true } as never}
         lockX={{ value: 200 } as never}
