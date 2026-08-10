@@ -30,13 +30,19 @@ const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: "series", label: "Series" },
 ];
 
+const ZERO_FLOOR_OPTIONS = [
+  { value: false, label: "Off" },
+  { value: true, label: "On (0)" },
+];
+
 const SCALE_MIN = 0.25;
-const SCALE_MAX = 4;
+const SCALE_MAX = 10;
 const SCALE_DRAG_DISTANCE = 160;
 const RESET_DURATION_MS = 240;
 
 export default function YRangeScaleScreen() {
   const [mode, setMode] = useState<Mode>("line");
+  const [nonNegative, setNonNegative] = useState(false);
   const yRangeScale = useSharedValue(1);
   const dragStartScale = useSharedValue(1);
   const dragStartY = useSharedValue(0);
@@ -122,7 +128,7 @@ export default function YRangeScaleScreen() {
     <DemoScreen
       title="Y-range scale"
       docs="guides/y-range-scale"
-      description="Drag the right price-axis gutter vertically to stretch or compress the fitted Y-range for line, candle, and multi-series charts. Double-tap the gutter to reset to auto-fit."
+      description="Drag the right price-axis gutter vertically to stretch or compress the fitted Y-range for line, candle, and multi-series charts. With the zero floor on, zooming out stops at 0 instead of pinning values to the bottom. Double-tap the gutter to reset."
       chart={
         <View style={styles.chart}>
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -135,6 +141,7 @@ export default function YRangeScaleScreen() {
                 timeWindow={60}
                 yAxis
                 yRangeScale={yRangeScale}
+                nonNegative={nonNegative}
                 scrub={false}
                 legend={false}
               />
@@ -152,6 +159,7 @@ export default function YRangeScaleScreen() {
                 timeWindow={60}
                 yAxis
                 yRangeScale={yRangeScale}
+                nonNegative={nonNegative}
                 scrub={false}
               />
             )}
@@ -176,6 +184,12 @@ export default function YRangeScaleScreen() {
         value={mode}
         onChange={setMode}
       />
+      <ChipRow
+        label="Zero floor (nonNegative)"
+        options={ZERO_FLOOR_OPTIONS}
+        value={nonNegative}
+        onChange={setNonNegative}
+      />
       <ControlRow label="Current multiplier">
         <AnimatedTextInput
           editable={false}
@@ -189,6 +203,7 @@ export default function YRangeScaleScreen() {
         <Chip label="0.5×" active={false} onPress={() => animateToScale(0.5)} />
         <Chip label="Auto 1×" active={false} onPress={() => animateToScale(1)} />
         <Chip label="2×" active={false} onPress={() => animateToScale(2)} />
+        <Chip label="8×" active={false} onPress={() => animateToScale(8)} />
       </ControlRow>
     </DemoScreen>
   );

@@ -2035,7 +2035,10 @@ export interface LiveChartCoreProps {
   exaggerate?: boolean;
   /**
    * Clamp the Y-axis lower bound at 0 (prices, market caps, volumes) so the axis
-   * never shows negative ticks when data collapses toward zero. Default `false`.
+   * never shows negative ticks when data collapses toward zero. With
+   * `yRangeScale` zoomed out, the expansion stops once the lower bound reaches
+   * 0 so the data stays centered instead of continuing to grow only upward.
+   * Default `false`.
    */
   nonNegative?: boolean;
   /**

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Zero-floor Y-range zoom-out.** On a `nonNegative` chart, `yRangeScale` now
+  stops expanding at the zero floor rather than continuing to grow only the
+  upper bound and pinning values to the bottom. The Y-range scaling demo and
+  guide include an interactive example.
+
 ### Added
 
 - **Vertical marker-column caps.** `MarkerClusterConfig.maxVisible` keeps only

@@ -18,7 +18,8 @@ description: "Drive TradingView-style price-axis scaling from your own gesture."
   **Live example:**
   [`app/demo/y-range-scale.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/y-range-scale.tsx)
   includes line/candle/multi-series toggles, preset buttons, a draggable price gutter, and
-  double-tap reset.
+  double-tap reset. Turn on **Zero floor** and choose **8×** to see how a
+  `nonNegative` chart stops its zoom-out at `0`.
 </Note>
 
 <Frame caption="Drag the price gutter to stretch or compress the fitted Y-range">
@@ -68,7 +69,10 @@ outside the chart lets you choose its hit area and compose it with the rest of y
   ordinary live-data changes use the chart's configured `smoothing` again.
 - Reset with an animation such as `withTiming(1)` for the same smooth result whether the current
   scale is above or below `1`.
-- `nonNegative` and `maxValue` are applied after scaling, so those hard bounds still win.
+- On a `nonNegative` chart, zoom-out stops when the lower bound reaches `0`. The upper bound does
+  not keep growing after the floor is reached, so the values remain centered instead of being
+  pinned to the bottom of the plot.
+- `maxValue` is applied after scaling, so that hard ceiling still wins.
 - Values must be positive and finite. Invalid values safely behave as `1`; clamp gesture output to
   a product-appropriate range as shown above.
 

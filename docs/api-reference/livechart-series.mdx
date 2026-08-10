@@ -35,8 +35,10 @@ paints the palette background inside the canvas. See
   Multiplies the shared fitted Y-range around its midpoint. Drive it from a
   price-gutter gesture to stretch or compress every visible series together;
   hidden series remain excluded from the underlying fit. Values must be positive
-  and finite, and invalid values safely behave as `1`. Read on the UI thread each
-  frame. **@experimental.** See [Manual Y-range scaling](/guides/y-range-scale).
+  and finite, and invalid values safely behave as `1`. With the inherited
+  `nonNegative` prop, zoom-out stops at the zero floor. Read on the UI thread
+  each frame. **@experimental.** See
+  [Manual Y-range scaling](/guides/y-range-scale).
 </ParamField>
 
 ## Custom overlays
