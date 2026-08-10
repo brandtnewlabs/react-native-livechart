@@ -371,7 +371,11 @@ export function tickLiveChartEngineFrame(
         : 1;
     if (yScale !== 1) {
       const scaledMid = (tMin + tMax) / 2;
-      const scaledHalf = ((tMax - tMin) / 2) * yScale;
+      let scaledHalf = ((tMax - tMin) / 2) * yScale;
+      // On non-negative charts, cap the zoom-out at the point where the floor
+      // reaches 0. Letting it grow and clamping min afterwards keeps only the
+      // top expanding, which pins the data to the bottom of the plot.
+      if (input.nonNegative && scaledHalf > scaledMid) scaledHalf = scaledMid;
       const scaledMin = scaledMid - scaledHalf;
       const scaledMax = scaledMid + scaledHalf;
       // Reject multiplication overflow and subnormal scales that round the two
