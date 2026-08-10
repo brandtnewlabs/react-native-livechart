@@ -1791,6 +1791,14 @@ export interface TimeScrollConfig {
    * clamped. Applies to the pinch-zoom (`zoom`) clamps too.
    */
   overscroll?: number;
+  /**
+   * Fling inertia on release: a fast drag keeps scrolling and decays to a
+   * stop (the classic momentum feel). Set `false` to stop the window dead
+   * where the finger lifts — a deliberate, TradingView-style hard stop. A
+   * release that lands within the snap zone of the live edge still
+   * re-attaches to live. Default `true`.
+   */
+  fling?: boolean;
 }
 
 /**
