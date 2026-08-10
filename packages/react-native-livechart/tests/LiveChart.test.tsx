@@ -230,6 +230,20 @@ describe("LiveChart", () => {
     render(<Harness gradient={false} yAxis={false} badge={false} />);
   });
 
+  it("renders with axisAutoHide enabled (defaults and config object)", () => {
+    render(<Harness axisAutoHide />);
+    render(
+      <Harness
+        axisAutoHide={{
+          fadeInMs: 50,
+          fadeOutMs: 100,
+          idleOpacity: 0.2,
+          hideAfterMs: 1000,
+        }}
+      />,
+    );
+  });
+
   it("does not register disabled optional subsystem worklets", () => {
     const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
     const candlePathSpy = jest.spyOn(candlePathHooks, "useCandlePaths");

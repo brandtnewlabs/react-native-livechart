@@ -2,10 +2,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  cancelAnimation,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
+  withDelay,
+  withSequence,
   withTiming,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -294,6 +297,7 @@ function useLiveChartController({
   // ── Overlays ────────────────────────────────────────────────────────────
   yAxis = true,
   xAxis = true,
+  axisAutoHide = false,
   topLabel,
   bottomLabel,
   badge = true,
@@ -1131,6 +1135,57 @@ function useLiveChartController({
     },
   });
 
+  // Axis auto-hide: fade both axes out at rest and back in while the user
+  // interacts. Any movement — scrub / time-scroll touch, or a viewEnd /
+  // viewWindow change (fling momentum, pinch-zoom) — shows the axes; once the
+  // touch lifts and the view settles, they fade back out after `hideAfterMs`.
+  // Only the axis groups' opacity animates; the axis worklets keep running
+  // underneath so a fade-in shows current labels.
+  const axisAutoHideCfg =
+    axisAutoHide === true ? {} : axisAutoHide === false ? null : axisAutoHide;
+  const axisIdleOpacity = axisAutoHideCfg?.idleOpacity ?? 0;
+  const axisFadeInMs = axisAutoHideCfg?.fadeInMs ?? 60;
+  const axisFadeOutMs = axisAutoHideCfg?.fadeOutMs ?? 250;
+  const axisHideAfterMs = axisAutoHideCfg?.hideAfterMs ?? 3000;
+  const axisAutoHideOpacity = useSharedValue(
+    axisAutoHideCfg ? axisIdleOpacity : 1,
+  );
+  const axisAutoHideEnabled = axisAutoHideCfg !== null;
+  useAnimatedReaction(
+    () => ({
+      gesture: scrollActive.value || crosshairScrubActive.value,
+      viewEnd: engine.viewEnd.value,
+      viewWindow: engine.viewWindow.value,
+    }),
+    (curr, prev) => {
+      if (!axisAutoHideEnabled || prev === null) return;
+      const moved =
+        curr.gesture !== prev.gesture ||
+        curr.viewEnd !== prev.viewEnd ||
+        curr.viewWindow !== prev.viewWindow;
+      if (!moved) return;
+      cancelAnimation(axisAutoHideOpacity);
+      axisAutoHideOpacity.value = curr.gesture
+        ? withTiming(1, { duration: axisFadeInMs })
+        : // Movement without a held touch (gesture end, fling, pinch): show,
+          // then fade back out once the chart goes untouched for a while.
+          withSequence(
+            withTiming(1, { duration: axisFadeInMs }),
+            withDelay(
+              axisHideAfterMs,
+              withTiming(axisIdleOpacity, { duration: axisFadeOutMs }),
+            ),
+          );
+    },
+    [
+      axisAutoHideEnabled,
+      axisIdleOpacity,
+      axisFadeInMs,
+      axisFadeOutMs,
+      axisHideAfterMs,
+    ],
+  );
+
   // Paging callbacks: report the visible range / proximity to the oldest data so
   // a host can lazily load history. Inert unless a callback is supplied.
   useVisibleRange({
@@ -1358,6 +1413,7 @@ function useLiveChartController({
     // engine + reveal
     engine,
     reveal,
+    axisAutoHideOpacity,
     // loading shell styling (null → not loading)
     loadingLineColor: loadingCfg?.color,
     loadingStrokeWidth: loadingCfg?.strokeWidth,
@@ -1502,9 +1558,15 @@ function ChartYAxisLayer({
     yAxisFloat,
     yAxisCfg,
     liveBadgeOpacity,
+    axisAutoHideOpacity,
   } = model;
+  // Fold the axis auto-hide fade into the reveal opacity (1 when the feature
+  // is off).
+  const yAxisGroupOpacity = useDerivedValue(
+    () => reveal.yAxisOpacity.value * axisAutoHideOpacity.value,
+  );
   return (
-    <Group opacity={reveal.yAxisOpacity}>
+    <Group opacity={yAxisGroupOpacity}>
       <YAxisOverlay
         variant={variant}
         float={variant === "labels" && yAxisFloat}
@@ -1545,14 +1607,17 @@ function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
     skiaFont,
   );
   return (
-    <XAxisOverlay
-      entries={xAxisEntries}
-      engine={engine}
-      padding={effectivePadding}
-      palette={palette}
-      font={skiaFont}
-      volumeBandHeight={volumeBandHeight}
-    />
+    // Axis auto-hide fade (1 when the feature is off).
+    <Group opacity={model.axisAutoHideOpacity}>
+      <XAxisOverlay
+        entries={xAxisEntries}
+        engine={engine}
+        padding={effectivePadding}
+        palette={palette}
+        font={skiaFont}
+        volumeBandHeight={volumeBandHeight}
+      />
+    </Group>
   );
 }
 
