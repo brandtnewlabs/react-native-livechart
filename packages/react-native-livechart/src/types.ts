@@ -1361,6 +1361,12 @@ export interface MarkerClusterConfig {
    *  Default `5`. */
   maxBeforeGroup?: number;
   /**
+   * `"vertical"` only: cap the column at this many glyphs instead of letting it
+   * grow unbounded (and off the plot). The oldest `maxVisible` glyphs keep
+   * their stack; the newest overflow is hidden. Default unbounded.
+   */
+  maxVisible?: number;
+  /**
    * What a collapsed cluster draws in place of its members:
    *  - `"count"` (default) — the built-in round count badge (a circle with the
    *    member count inside).
