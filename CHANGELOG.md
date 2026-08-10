@@ -7,12 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- **Zero-floor Y-range zoom-out.** On a `nonNegative` chart, `yRangeScale` now
-  stops expanding at the zero floor rather than continuing to grow only the
-  upper bound and pinning values to the bottom. The Y-range scaling demo and
-  guide include an interactive example.
+## [4.17.0] - 2026-08-10
 
 ### Added
 
@@ -34,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   example app and guide include an interactive configuration demo.
 
 ### Fixed
+
+- **Zero-floor Y-range zoom-out.** On a `nonNegative` chart, `yRangeScale` now
+  stops expanding at the zero floor rather than continuing to grow only the
+  upper bound and pinning values to the bottom. The Y-range scaling demo and
+  guide include an interactive example.
 
 - **Live-data collapse no longer morphs over the loading shell.** When data is
   cleared or `loading` becomes true, `LiveChart` and `LiveChartSeries` now snap
