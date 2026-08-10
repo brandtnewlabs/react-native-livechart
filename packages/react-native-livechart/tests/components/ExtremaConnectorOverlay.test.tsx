@@ -49,8 +49,8 @@ const solid: ResolvedConnector = {
 };
 
 describe("ExtremaConnectorOverlay", () => {
-  it("renders dashed + solid connectors for top and bottom", () => {
-    const screen = render(
+  it("renders dashed + solid connectors for top and bottom", async () => {
+    const screen = await render(
       <ExtremaConnectorOverlay
         engine={makeEngine()}
         padding={DEFAULT_PADDING}
@@ -61,8 +61,8 @@ describe("ExtremaConnectorOverlay", () => {
     expect(screen.toJSON()).toBeTruthy();
   });
 
-  it("returns null when neither side has a connector", () => {
-    const screen = render(
+  it("returns null when neither side has a connector", async () => {
+    const screen = await render(
       <ExtremaConnectorOverlay
         engine={makeEngine()}
         padding={DEFAULT_PADDING}
@@ -73,9 +73,9 @@ describe("ExtremaConnectorOverlay", () => {
     expect(screen.toJSON()).toBeNull();
   });
 
-  it("builds an empty path when the extremum is NaN or off-plot", () => {
+  it("builds an empty path when the extremum is NaN or off-plot", async () => {
     // NaN value (no data) and an off-plot time both early-out in the worklet.
-    const nan = render(
+    const nan = await render(
       <ExtremaConnectorOverlay
         engine={makeEngine({ maxValue: NaN })}
         padding={DEFAULT_PADDING}
@@ -85,7 +85,7 @@ describe("ExtremaConnectorOverlay", () => {
     );
     expect(nan.toJSON()).toBeTruthy();
 
-    const offPlot = render(
+    const offPlot = await render(
       <ExtremaConnectorOverlay
         engine={makeEngine({ maxTime: -10_000 })}
         padding={DEFAULT_PADDING}
@@ -96,8 +96,8 @@ describe("ExtremaConnectorOverlay", () => {
     expect(offPlot.toJSON()).toBeTruthy();
   });
 
-  it("applies the candle-center time offset without throwing", () => {
-    const screen = render(
+  it("applies the candle-center time offset without throwing", async () => {
+    const screen = await render(
       <ExtremaConnectorOverlay
         engine={makeEngine()}
         padding={DEFAULT_PADDING}
@@ -109,10 +109,10 @@ describe("ExtremaConnectorOverlay", () => {
     expect(screen.toJSON()).toBeTruthy();
   });
 
-  it("skips the line when the dot is inside the label band", () => {
+  it("skips the line when the dot is inside the label band", async () => {
     // High hugs the top rail (within the label band) → no top line drawn; low
     // sits mid-plot → the bottom line draws. Exercises both worklet branches.
-    const screen = render(
+    const screen = await render(
       <ExtremaConnectorOverlay
         engine={makeEngine({ maxValue: 119.5, minValue: 100 })}
         padding={DEFAULT_PADDING}

@@ -37,16 +37,16 @@ function makeEngine(
 }
 
 describe("useChartPaths", () => {
-  it("returns paths for chart data", () => {
-    const { result } = renderHook(() =>
+  it("returns paths for chart data", async () => {
+    const { result } = await renderHook(() =>
       useChartPaths(makeEngine(), DEFAULT_PADDING),
     );
     expect(result.current.linePath.value).toBeDefined();
     expect(result.current.fillPath.value).toBeDefined();
   });
 
-  it("handles too few points for spline", () => {
-    const { result } = renderHook(() =>
+  it("handles too few points for spline", async () => {
+    const { result } = await renderHook(() =>
       useChartPaths(
         makeEngine({
           data: { value: [{ time: 1000, value: 1 }] },
@@ -59,8 +59,8 @@ describe("useChartPaths", () => {
     expect(result.current.linePath.value).toBeDefined();
   });
 
-  it("builds straight-polyline paths when linear, incl. the threshold band", () => {
-    const { result } = renderHook(() => {
+  it("builds straight-polyline paths when linear, incl. the threshold band", async () => {
+    const { result } = await renderHook(() => {
       const thresholdY = useSharedValue(60);
       return useChartPaths(
         makeEngine({
@@ -83,8 +83,8 @@ describe("useChartPaths", () => {
     expect(result.current.thresholdFillPath.value).toBeDefined();
   });
 
-  it("builds the threshold band from the shader samples (series threshold)", () => {
-    const { result } = renderHook(() => {
+  it("builds the threshold band from the shader samples (series threshold)", async () => {
+    const { result } = await renderHook(() => {
       // The split shader's evenly-spaced pixel-Y samples — used as the band's
       // bottom edge so it matches the shader (no bleed at step risers).
       const thresholdSamples = useSharedValue([50, 48, 44, 46, 45]);
@@ -110,8 +110,8 @@ describe("useChartPaths", () => {
     expect(result.current.thresholdFillPath.value).toBeDefined();
   });
 
-  it("blends toward squiggly when morphT < 1", () => {
-    const { result } = renderHook(() => {
+  it("blends toward squiggly when morphT < 1", async () => {
+    const { result } = await renderHook(() => {
       const morphT = useSharedValue(0.5);
       return useChartPaths(
         makeEngine({
@@ -141,8 +141,8 @@ describe("useChartPaths", () => {
     expect(resolveLineTipValue(9, 4, 1_000)).toBe(4);
   });
 
-  it("builds a historical line using the engine edge value", () => {
-    const { result } = renderHook(() => {
+  it("builds a historical line using the engine edge value", async () => {
+    const { result } = await renderHook(() => {
       const edgeValue = useSharedValue(1.5);
       return useChartPaths(
         makeEngine({

@@ -38,7 +38,7 @@ function packBuffer(count: number): Float64Array<ArrayBuffer> {
 }
 
 describe("DegenParticlesOverlay", () => {
-  it("renders the atlas for an active-particle burst", () => {
+  it("renders the atlas for an active-particle burst", async () => {
     function Fixture() {
       const pack = useSharedValue<Float64Array<ArrayBuffer>>(packBuffer(4));
       const packRevision = useSharedValue(1);
@@ -55,10 +55,10 @@ describe("DegenParticlesOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("renders without throwing for an empty (no active particles) buffer", () => {
+  it("renders without throwing for an empty (no active particles) buffer", async () => {
     function Fixture() {
       const pack = useSharedValue<Float64Array<ArrayBuffer>>(packBuffer(0));
       const packRevision = useSharedValue(0);
@@ -75,10 +75,10 @@ describe("DegenParticlesOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 
-  it("emits nothing while uninitialized (packRevision < 0)", () => {
+  it("emits nothing while uninitialized (packRevision < 0)", async () => {
     function Fixture() {
       const pack = useSharedValue<Float64Array<ArrayBuffer>>(packBuffer(4));
       const packRevision = useSharedValue(-1);
@@ -95,6 +95,6 @@ describe("DegenParticlesOverlay", () => {
         />
       );
     }
-    render(<Fixture />);
+    await render(<Fixture />);
   });
 });

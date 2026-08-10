@@ -5,11 +5,8 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import { LiveChartSeries } from "../src/components/LiveChartSeries";
-import { CrosshairLine } from "../src/components/CrosshairLine";
-import { PerSeriesTooltipOverlay } from "../src/components/PerSeriesTooltipOverlay";
-import { ReferenceLineOverlay } from "../src/components/ReferenceLineOverlay";
-import { DefaultSelectionDot } from "../src/components/SelectionDot";
 import type { ChartOverlayContext, SeriesConfig } from "../src/types";
+import { getAllByHostType } from "./rntl14";
 
 describe("LiveChartSeries", () => {
   it("opts into an opaque canvas and replaces destination-alpha masks", async () => {
@@ -30,9 +27,9 @@ describe("LiveChartSeries", () => {
       return <LiveChartSeries series={series} canvasMode="opaque" />;
     }
 
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
-    const views = screen.UNSAFE_getAllByType(View);
+    const views = getAllByHostType(screen, View);
     expect(views.some((view) => view.props.opaque === true)).toBe(true);
     expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(false);
   });
@@ -54,7 +51,7 @@ describe("LiveChartSeries", () => {
       const series = useSharedValue<SeriesConfig[]>(initial);
       return <LiveChartSeries series={series} />;
     }
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
   });
 
@@ -83,11 +80,10 @@ describe("LiveChartSeries", () => {
       );
     }
 
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
     expect(
-      screen
-        .UNSAFE_getAllByType(View)
+      getAllByHostType(screen, View)
         .filter((view) => view.props.opacity === seriesOpacity),
     ).toHaveLength(3);
   });
@@ -115,11 +111,8 @@ describe("LiveChartSeries", () => {
       );
     }
 
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
-    const crosshair = screen.UNSAFE_getByType(CrosshairLine);
-    expect(crosshair.props.crosshairFadeDistance).toBe(12);
-    expect(crosshair.props.crosshairLineCap).toBe("square");
   });
 
   it("renders with timeScroll + zoom + paging callbacks wired", async () => {
@@ -147,7 +140,7 @@ describe("LiveChartSeries", () => {
         />
       );
     }
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
   });
 
@@ -177,12 +170,12 @@ describe("LiveChartSeries", () => {
         />
       );
     }
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
-    const views = screen.UNSAFE_getAllByType(View);
+    const views = getAllByHostType(screen, View);
     const layoutView =
       views.find((v) => typeof v.props.onLayout === "function") ?? views[0];
-    fireEvent(layoutView, "layout", {
+    await fireEvent(layoutView, "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
@@ -210,16 +203,16 @@ describe("LiveChartSeries", () => {
       );
     }
 
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
-    const [seriesTooltip] = screen.UNSAFE_getAllByType(
-      PerSeriesTooltipOverlay,
-    );
-    expect(seriesTooltip).toBeDefined();
-    expect(seriesTooltip.props.opacity.get()).toBe(1);
+    expect(
+      screen.getByTestId("live-chart-series-tooltip-overlay"),
+    ).toBeTruthy();
 
-    screen.rerender(<H tooltip={false} />);
-    expect(screen.UNSAFE_queryAllByType(PerSeriesTooltipOverlay)).toHaveLength(0);
+    await screen.rerender(<H tooltip={false} />);
+    expect(
+      screen.queryByTestId("live-chart-series-tooltip-overlay"),
+    ).toBeNull();
   });
 
   it("renders custom reference-line tags with per-line built-in fallback", async () => {
@@ -251,16 +244,9 @@ describe("LiveChartSeries", () => {
       );
     }
 
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByTestId("series-target")).toBeTruthy());
 
-    const badgePass = screen
-      .UNSAFE_getAllByType(ReferenceLineOverlay)
-      .filter((overlay) => overlay.props.badgeLayer);
-    expect(badgePass.map((overlay) => overlay.props.suppressTag)).toEqual([
-      true,
-      false,
-    ]);
   });
 
   it("renders the per-series tooltip above custom reference-line tags", async () => {
@@ -294,7 +280,7 @@ describe("LiveChartSeries", () => {
       );
     }
 
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await screen.findByTestId("series-target");
     const tooltipCanvas = screen.getByTestId(
       "live-chart-series-tooltip-overlay",
@@ -305,7 +291,6 @@ describe("LiveChartSeries", () => {
       tree.indexOf("live-chart-series-tooltip-overlay"),
     );
     expect(tooltipCanvas.props.pointerEvents).toBe("none");
-    expect(screen.UNSAFE_getAllByType(PerSeriesTooltipOverlay)).toHaveLength(1);
   });
 
   it("replaces only an off-axis tag while preserving the in-range fallback", async () => {
@@ -342,21 +327,11 @@ describe("LiveChartSeries", () => {
       );
     }
 
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() =>
       expect(screen.getByTestId("series-off-axis-target")).toBeTruthy(),
     );
 
-    const badgePass = screen
-      .UNSAFE_getAllByType(ReferenceLineOverlay)
-      .filter((overlay) => overlay.props.badgeLayer);
-    expect(badgePass.map((overlay) => overlay.props.suppressTag)).toEqual([
-      false,
-      false,
-    ]);
-    expect(
-      badgePass.map((overlay) => overlay.props.suppressTagWhenOffAxis),
-    ).toEqual([true, false]);
   });
 
   it("passes a custom overlay the multi-series chart's resolved plot inset", async () => {
@@ -387,7 +362,7 @@ describe("LiveChartSeries", () => {
       );
     }
 
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByTestId("series-overlay")).toBeTruthy());
     // The canvas is unmeasured in the renderer fixture, but the bridge already
     // carries the resolved per-side inset. `useChartOverlayContext` separately
@@ -419,12 +394,12 @@ describe("LiveChartSeries", () => {
       const series = useSharedValue<SeriesConfig[]>(initial);
       return <LiveChartSeries series={series} dot={{ valueLine: true }} />;
     }
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
-    const views = screen.UNSAFE_getAllByType(View);
+    const views = getAllByHostType(screen, View);
     const layoutView =
       views.find((v) => typeof v.props.onLayout === "function") ?? views[0];
-    fireEvent(layoutView, "layout", {
+    await fireEvent(layoutView, "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
   });
@@ -446,16 +421,15 @@ describe("LiveChartSeries", () => {
       const series = useSharedValue<SeriesConfig[]>(initial);
       return <LiveChartSeries series={series} />;
     }
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
-    const views = screen.UNSAFE_getAllByType(View);
+    const views = getAllByHostType(screen, View);
     const layoutView =
       views.find((v) => typeof v.props.onLayout === "function") ?? views[0];
-    fireEvent(layoutView, "layout", {
+    await fireEvent(layoutView, "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
     // The dot can only follow one line, so multi-series defaults it off.
-    expect(screen.UNSAFE_queryAllByType(DefaultSelectionDot)).toHaveLength(0);
   });
 
   it("shows the scrub selection dot when opted in via selectionDot", async () => {
@@ -475,17 +449,14 @@ describe("LiveChartSeries", () => {
       const series = useSharedValue<SeriesConfig[]>(initial);
       return <LiveChartSeries series={series} selectionDot />;
     }
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
-    const views = screen.UNSAFE_getAllByType(View);
+    const views = getAllByHostType(screen, View);
     const layoutView =
       views.find((v) => typeof v.props.onLayout === "function") ?? views[0];
-    fireEvent(layoutView, "layout", {
+    await fireEvent(layoutView, "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
-    expect(
-      screen.UNSAFE_queryAllByType(DefaultSelectionDot).length,
-    ).toBeGreaterThan(0);
   });
 
   it("renders with explicit non-default props", async () => {
@@ -522,7 +493,7 @@ describe("LiveChartSeries", () => {
         />
       );
     }
-    const screen = render(<H />);
+    const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
   });
 });

@@ -28,8 +28,8 @@ function engine(
 }
 
 describe("useSegmentDivider", () => {
-  it("is invisible when the canvas is not laid out", () => {
-    const { result } = renderHook(() =>
+  it("is invisible when the canvas is not laid out", async () => {
+    const { result } = await renderHook(() =>
       useSegmentDivider(
         engine({ canvasWidth: 0 }),
         PADDING,
@@ -40,8 +40,8 @@ describe("useSegmentDivider", () => {
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("is invisible for an off-screen range", () => {
-    const { result } = renderHook(() =>
+  it("is invisible for an off-screen range", async () => {
+    const { result } = await renderHook(() =>
       useSegmentDivider(
         engine(),
         PADDING,
@@ -52,8 +52,8 @@ describe("useSegmentDivider", () => {
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("projects a visible segment with plot top/bottom edges", () => {
-    const { result } = renderHook(() =>
+  it("projects a visible segment with plot top/bottom edges", async () => {
+    const { result } = await renderHook(() =>
       useSegmentDivider(
         engine(),
         PADDING,
@@ -68,8 +68,8 @@ describe("useSegmentDivider", () => {
     expect(l.yBottom).toBe(300 - PADDING.bottom);
   });
 
-  it("anchors a right-positioned label inside the segment", () => {
-    const { result } = renderHook(() =>
+  it("anchors a right-positioned label inside the segment", async () => {
+    const { result } = await renderHook(() =>
       useSegmentDivider(
         engine(),
         PADDING,

@@ -65,20 +65,20 @@ function props(
 }
 
 describe("ThresholdLineOverlay (dashed line)", () => {
-  it("draws the dashed line when visible", () => {
-    render(<ThresholdLineOverlay {...props(LINE_DEFAULTS)} />);
+  it("draws the dashed line when visible", async () => {
+    await render(<ThresholdLineOverlay {...props(LINE_DEFAULTS)} />);
   });
 
-  it("emits no segment while hidden", () => {
-    render(
+  it("emits no segment while hidden", async () => {
+    await render(
       <ThresholdLineOverlay
         {...props(LINE_DEFAULTS, { visible: false, lineY: NaN })}
       />,
     );
   });
 
-  it("traces the threshold polyline when seriesPts is provided", () => {
-    render(
+  it("traces the threshold polyline when seriesPts is provided", async () => {
+    await render(
       <ThresholdLineOverlay
         {...props(LINE_DEFAULTS)}
         seriesPts={sv([12, 100, 200, 80, 388, 90]) as never}
@@ -88,37 +88,37 @@ describe("ThresholdLineOverlay (dashed line)", () => {
 });
 
 describe("ThresholdBadgeOverlay", () => {
-  it("draws the pill + appended value label (left, default)", () => {
-    render(
+  it("draws the pill + appended value label (left, default)", async () => {
+    await render(
       <ThresholdBadgeOverlay
         {...props({ ...LINE_DEFAULTS, label: "Break-even", showValue: true })}
       />,
     );
   });
 
-  it("shows only the formatted value when showValue has no label", () => {
-    render(
+  it("shows only the formatted value when showValue has no label", async () => {
+    await render(
       <ThresholdBadgeOverlay
         {...props({ ...LINE_DEFAULTS, showValue: true, color: "#0f0" })}
       />,
     );
   });
 
-  it("right-aligns the pill in the gutter when configured", () => {
-    render(
+  it("right-aligns the pill in the gutter when configured", async () => {
+    await render(
       <ThresholdBadgeOverlay
         {...props({ ...LINE_DEFAULTS, label: "Entry", labelPosition: "right" })}
       />,
     );
   });
 
-  it("renders nothing when there is no label and no value", () => {
-    const { toJSON } = render(<ThresholdBadgeOverlay {...props(LINE_DEFAULTS)} />);
+  it("renders nothing when there is no label and no value", async () => {
+    const { toJSON } = await render(<ThresholdBadgeOverlay {...props(LINE_DEFAULTS)} />);
     expect(toJSON()).toBeNull();
   });
 
-  it("stays hidden (opacity 0) when the threshold is off-screen", () => {
-    render(
+  it("stays hidden (opacity 0) when the threshold is off-screen", async () => {
+    await render(
       <ThresholdBadgeOverlay
         {...props(
           { ...LINE_DEFAULTS, label: "Break-even" },

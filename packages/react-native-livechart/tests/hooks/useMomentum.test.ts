@@ -71,12 +71,12 @@ function engineWithData(data: LiveChartPoint[]): SingleEngineState {
 }
 
 describe("useMomentum", () => {
-  it("defaults to auto-detect when prop is omitted", () => {
+  it("defaults to auto-detect when prop is omitted", async () => {
     const data = makeData([10, 10, 10, 10, 10, 11, 12, 13, 14, 15]).map(
       (p) => ({ ...p }),
     );
     const eng = engineWithData(data);
-    const { result } = renderHook(() => useMomentum(eng));
+    const { result } = await renderHook(() => useMomentum(eng));
     expect(result.current.value).toBe("up");
   });
 });

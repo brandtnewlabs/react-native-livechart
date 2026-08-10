@@ -54,15 +54,15 @@ function engine(
 describe("useReferenceLine", () => {
   // ── invisible guard branches ───────────────────────────────────────────────
 
-  it("returns invisible when referenceLine is undefined", () => {
-    const { result } = renderHook(() =>
+  it("returns invisible when referenceLine is undefined", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, undefined, fmt, font),
     );
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("returns invisible when valRange is zero", () => {
-    const { result } = renderHook(() =>
+  it("returns invisible when valRange is zero", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine({ displayMin: 50, displayMax: 50 }),
         PADDING,
@@ -74,8 +74,8 @@ describe("useReferenceLine", () => {
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("returns invisible when canvas width is zero", () => {
-    const { result } = renderHook(() =>
+  it("returns invisible when canvas width is zero", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine({ canvasWidth: 0 }),
         PADDING,
@@ -87,8 +87,8 @@ describe("useReferenceLine", () => {
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("returns invisible when canvas height is zero", () => {
-    const { result } = renderHook(() =>
+  it("returns invisible when canvas height is zero", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine({ canvasHeight: 0 }),
         PADDING,
@@ -100,17 +100,17 @@ describe("useReferenceLine", () => {
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("returns invisible when ref value projects above the chart area", () => {
+  it("returns invisible when ref value projects above the chart area", async () => {
     // ref=110 > displayMax=100 → y < padding.top → clipped
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 110 }, fmt, font),
     );
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("returns invisible when ref value projects below the chart area", () => {
+  it("returns invisible when ref value projects below the chart area", async () => {
     // ref=-10 < displayMin=0 → y > h - padding.bottom → clipped
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: -10 }, fmt, font),
     );
     expect(result.current.value.visible).toBe(false);
@@ -118,10 +118,10 @@ describe("useReferenceLine", () => {
 
   // ── visible happy-path ─────────────────────────────────────────────────────
 
-  it("returns visible with correct y for a mid-range value", () => {
+  it("returns visible with correct y for a mid-range value", async () => {
     // chartH = 300 - 12 - 28 = 260; ref=50, range=100
     // y = 12 + 260 * (1 - (50-0)/100) = 12 + 130 = 142
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 50 }, fmt, font),
     );
     const layout = result.current.value;
@@ -129,8 +129,8 @@ describe("useReferenceLine", () => {
     expect(layout.y).toBeCloseTo(142);
   });
 
-  it("sets x1 = padding.left and x2 = width - padding.right", () => {
-    const { result } = renderHook(() =>
+  it("sets x1 = padding.left and x2 = width - padding.right", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 50 }, fmt, font),
     );
     const layout = result.current.value;
@@ -138,8 +138,8 @@ describe("useReferenceLine", () => {
     expect(layout.x2).toBe(400 - PADDING.right);
   });
 
-  it("draws a plain line at the plot edges by default (not full-width)", () => {
-    const { result } = renderHook(() =>
+  it("draws a plain line at the plot edges by default (not full-width)", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 50 }, fmt, font),
     );
     const l = result.current.value;
@@ -148,8 +148,8 @@ describe("useReferenceLine", () => {
     expect(l.lineX2).toBe(400 - PADDING.right);
   });
 
-  it("clips a plain line before the right-anchored Y-axis label column", () => {
-    const { result } = renderHook(() =>
+  it("clips a plain line before the right-anchored Y-axis label column", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -172,8 +172,8 @@ describe("useReferenceLine", () => {
     expect(l.labelX).toBe(324);
   });
 
-  it("uses the Y-axis font when the reference badge font differs", () => {
-    const { result } = renderHook(() =>
+  it("uses the Y-axis font when the reference badge font differs", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -193,8 +193,8 @@ describe("useReferenceLine", () => {
     expect(result.current.value.lineX2).toBe(326);
   });
 
-  it("does not clip a full-width line to the Y-axis column", () => {
-    const { result } = renderHook(() =>
+  it("does not clip a full-width line to the Y-axis column", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -212,8 +212,8 @@ describe("useReferenceLine", () => {
     expect(result.current.value.lineX2).toBe(400);
   });
 
-  it("does not clip a value band to the Y-axis column", () => {
-    const { result } = renderHook(() =>
+  it("does not clip a value band to the Y-axis column", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -231,8 +231,8 @@ describe("useReferenceLine", () => {
     expect(result.current.value.lineX2).toBe(320);
   });
 
-  it("extends the line edge-to-edge through the gutter when fullWidth", () => {
-    const { result } = renderHook(() =>
+  it("extends the line edge-to-edge through the gutter when fullWidth", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 50, fullWidth: true }, fmt, font),
     );
     const l = result.current.value;
@@ -244,8 +244,8 @@ describe("useReferenceLine", () => {
     expect(l.x2).toBe(400 - PADDING.right);
   });
 
-  it("extends a value band edge-to-edge when fullWidth (label stays in plot)", () => {
-    const { result } = renderHook(() =>
+  it("extends a value band edge-to-edge when fullWidth (label stays in plot)", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -260,8 +260,8 @@ describe("useReferenceLine", () => {
     expect(l.x1).toBe(PADDING.left);
   });
 
-  it("full-width badged line draws the line and drops the connector", () => {
-    const { result } = renderHook(() =>
+  it("full-width badged line draws the line and drops the connector", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -281,8 +281,8 @@ describe("useReferenceLine", () => {
     expect(l.pillX).toBeGreaterThanOrEqual(PADDING.left);
   });
 
-  it("a default badged line keeps the connector and draws no plain line", () => {
-    const { result } = renderHook(() =>
+  it("a default badged line keeps the connector and draws no plain line", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 50, badge: true }, fmt, font),
     );
     const l = result.current.value;
@@ -290,8 +290,8 @@ describe("useReferenceLine", () => {
     expect(l.connStart).toBeGreaterThanOrEqual(0);
   });
 
-  it("uses the explicit label when provided", () => {
-    const { result } = renderHook(() =>
+  it("uses the explicit label when provided", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -303,15 +303,15 @@ describe("useReferenceLine", () => {
     expect(result.current.value.label).toBe("+5%");
   });
 
-  it("falls back to formatValue(ref.value) when no label is provided", () => {
-    const { result } = renderHook(() =>
+  it("falls back to formatValue(ref.value) when no label is provided", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 50 }, fmt, font),
     );
     expect(result.current.value.label).toBe("50.00");
   });
 
-  it("uses DEFAULT_PADDING correctly", () => {
-    const { result } = renderHook(() =>
+  it("uses DEFAULT_PADDING correctly", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), DEFAULT_PADDING, { value: 50 }, fmt, font),
     );
     expect(result.current.value.visible).toBe(true);
@@ -320,8 +320,8 @@ describe("useReferenceLine", () => {
 
   // ── Form B — value band ─────────────────────────────────────────────────────
 
-  it("renders a value band with top above bottom", () => {
-    const { result } = renderHook(() =>
+  it("renders a value band with top above bottom", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { valueFrom: 20, valueTo: 60 }, fmt, font),
     );
     const l = result.current.value;
@@ -329,8 +329,8 @@ describe("useReferenceLine", () => {
     expect(l.yBottom).toBeGreaterThan(l.y);
   });
 
-  it("returns invisible for a value band fully outside the range", () => {
-    const { result } = renderHook(() =>
+  it("returns invisible for a value band fully outside the range", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine({ displayMin: 0, displayMax: 10 }),
         PADDING,
@@ -342,8 +342,8 @@ describe("useReferenceLine", () => {
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("normalizes a reversed value band (valueFrom > valueTo)", () => {
-    const { result } = renderHook(() =>
+  it("normalizes a reversed value band (valueFrom > valueTo)", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { valueFrom: 60, valueTo: 20 }, fmt, font),
     );
     const l = result.current.value;
@@ -351,8 +351,8 @@ describe("useReferenceLine", () => {
     expect(l.yBottom).toBeGreaterThan(l.y);
   });
 
-  it("clamps a value band that overflows both edges to the plot area", () => {
-    const { result } = renderHook(() =>
+  it("clamps a value band that overflows both edges to the plot area", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -367,8 +367,8 @@ describe("useReferenceLine", () => {
     expect(l.yBottom).toBe(300 - PADDING.bottom);
   });
 
-  it("returns invisible for a value band when the range is degenerate", () => {
-    const { result } = renderHook(() =>
+  it("returns invisible for a value band when the range is degenerate", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine({ displayMin: 50, displayMax: 50 }),
         PADDING,
@@ -382,9 +382,9 @@ describe("useReferenceLine", () => {
 
   // ── Form C — time band ──────────────────────────────────────────────────────
 
-  it("renders a time band spanning part of the window", () => {
+  it("renders a time band spanning part of the window", async () => {
     // timestamp=0, window=30 → winStart=-30
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { from: -20, to: -5 }, fmt, font),
     );
     const l = result.current.value;
@@ -392,16 +392,16 @@ describe("useReferenceLine", () => {
     expect(l.x2).toBeGreaterThan(l.x1);
   });
 
-  it("returns invisible for a time band entirely before the window", () => {
-    const { result } = renderHook(() =>
+  it("returns invisible for a time band entirely before the window", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { from: -100, to: -60 }, fmt, font),
     );
     expect(result.current.value.visible).toBe(false);
   });
 
-  it("normalizes a reversed time band and clamps to the chart edges", () => {
+  it("normalizes a reversed time band and clamps to the chart edges", async () => {
     // from later than to → swapped; spans beyond both window edges → clamped.
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { from: 50, to: -50 }, fmt, font),
     );
     const l = result.current.value;
@@ -412,8 +412,8 @@ describe("useReferenceLine", () => {
 
   // ── Off-axis badge ──────────────────────────────────────────────────────────
 
-  it("shows an off-axis badge with an up chevron when above the range", () => {
-    const { result } = renderHook(() =>
+  it("shows an off-axis badge with an up chevron when above the range", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -429,8 +429,8 @@ describe("useReferenceLine", () => {
     expect(l.label).toContain("Target");
   });
 
-  it("shows an off-axis badge with a down chevron when below the range", () => {
-    const { result } = renderHook(() =>
+  it("shows an off-axis badge with a down chevron when below the range", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -446,8 +446,8 @@ describe("useReferenceLine", () => {
 
   // ── Label placement + showValue ─────────────────────────────────────────────
 
-  it("appends the value when showValue and a label are set", () => {
-    const { result } = renderHook(() =>
+  it("appends the value when showValue and a label are set", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -459,8 +459,8 @@ describe("useReferenceLine", () => {
     expect(result.current.value.label).toBe("Tgt 50.00");
   });
 
-  it("center-aligns the label when labelPosition is 'center'", () => {
-    const { result } = renderHook(() =>
+  it("center-aligns the label when labelPosition is 'center'", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -473,8 +473,8 @@ describe("useReferenceLine", () => {
     expect(result.current.value.labelX).toBeLessThan(324);
   });
 
-  it("renders an in-range value as a left-pinned pill badge", () => {
-    const { result } = renderHook(() =>
+  it("renders an in-range value as a left-pinned pill badge", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 50, badge: true }, fmt, font),
     );
     const l = result.current.value;
@@ -489,8 +489,8 @@ describe("useReferenceLine", () => {
     expect(l.connEnd).toBe(320);
   });
 
-  it("right-pins the badge and leaves room for an icon", () => {
-    const { result } = renderHook(() =>
+  it("right-pins the badge and leaves room for an icon", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -510,8 +510,8 @@ describe("useReferenceLine", () => {
     expect(l.connEnd).toBeLessThan(l.pillX);
   });
 
-  it("hides the text for an icon-only badge", () => {
-    const { result } = renderHook(() =>
+  it("hides the text for an icon-only badge", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -527,7 +527,7 @@ describe("useReferenceLine", () => {
     expect(l.labelX).toBe(-1);
   });
 
-  it("centers the icon ink in an icon-only pill (compensates the side-bearing)", () => {
+  it("centers the icon ink in an icon-only pill (compensates the side-bearing)", async () => {
     // A font where every glyph carries a 3px left side-bearing. SkiaText draws
     // from the pen origin, so the layout must pull `iconX` back by the bearing to
     // keep the ink centered in the pill.
@@ -537,7 +537,7 @@ describe("useReferenceLine", () => {
       measureText: (s: string) => ({ x: bearing, y: 0, width: s.length * 7, height: 12 }),
       getMetrics: () => ({ ascent: -9.6, descent: 2.4, leading: 0 }),
     } as never;
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -556,8 +556,8 @@ describe("useReferenceLine", () => {
     expect(inkLeft + inkW / 2).toBeCloseTo(l.pillX + l.pillW / 2);
   });
 
-  it("pins the badge to the edge with a chevron when off-screen", () => {
-    const { result } = renderHook(() =>
+  it("pins the badge to the edge with a chevron when off-screen", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(engine(), PADDING, { value: 150, badge: true }, fmt, font),
     );
     const l = result.current.value;
@@ -567,8 +567,8 @@ describe("useReferenceLine", () => {
     expect(l.chevronCx).toBeGreaterThanOrEqual(0);
   });
 
-  it("center-floats the pill at the value with no connector", () => {
-    const { result } = renderHook(() =>
+  it("center-floats the pill at the value with no connector", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,
@@ -589,8 +589,8 @@ describe("useReferenceLine", () => {
     expect(l.drawLine).toBe(false);
   });
 
-  it("center-floats an off-screen badge centered at the pinned edge", () => {
-    const { result } = renderHook(() =>
+  it("center-floats an off-screen badge centered at the pinned edge", async () => {
+    const { result } = await renderHook(() =>
       useReferenceLine(
         engine(),
         PADDING,

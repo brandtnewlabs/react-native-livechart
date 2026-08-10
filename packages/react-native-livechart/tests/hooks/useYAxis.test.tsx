@@ -29,8 +29,8 @@ function makeEngine(): EngineState {
 }
 
 describe("useYAxis", () => {
-  it("returns y-axis entries derived from engine", () => {
-    const { result } = renderHook(() =>
+  it("returns y-axis entries derived from engine", async () => {
+    const { result } = await renderHook(() =>
       useYAxis(makeEngine(), DEFAULT_PADDING, (v) => v.toFixed(0), font),
     );
     expect(result.current.yAxisEntries.value.length).toBeGreaterThanOrEqual(0);

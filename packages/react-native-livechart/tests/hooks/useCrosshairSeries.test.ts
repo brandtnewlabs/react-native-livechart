@@ -475,7 +475,7 @@ describe("interpolateSeriesAtTime", () => {
 });
 
 describe("useCrosshairSeries (hook)", () => {
-  it("initialises with inactive state", () => {
+  it("initialises with inactive state", async () => {
     const engine = makeEngine({
       series: {
         value: [
@@ -488,7 +488,7 @@ describe("useCrosshairSeries (hook)", () => {
         ],
       },
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshairSeries(engine, padding, false),
     );
     expect(result.current.scrubActive.value).toBe(false);
@@ -499,7 +499,7 @@ describe("useCrosshairSeries (hook)", () => {
     expect(result.current.tooltipLayout.value.x).toBeLessThan(0);
   });
 
-  it("exposes a gesture object", () => {
+  it("exposes a gesture object", async () => {
     const engine = makeEngine({
       series: {
         value: [
@@ -512,13 +512,13 @@ describe("useCrosshairSeries (hook)", () => {
         ],
       },
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshairSeries(engine, padding, true),
     );
     expect(result.current.gesture).toBeDefined();
   });
 
-  it("accepts onScrub and still initialises", () => {
+  it("accepts onScrub and still initialises", async () => {
     const onScrub = jest.fn();
     const engine = makeEngine({
       series: {
@@ -532,14 +532,14 @@ describe("useCrosshairSeries (hook)", () => {
         ],
       },
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshairSeries(engine, padding, true, onScrub),
     );
     expect(result.current.gesture).toBeDefined();
     expect(result.current.scrubActive.value).toBe(false);
   });
 
-  it("accepts onGestureStart/onGestureEnd and still returns a gesture", () => {
+  it("accepts onGestureStart/onGestureEnd and still returns a gesture", async () => {
     const onGestureStart = jest.fn();
     const onGestureEnd = jest.fn();
     const engine = makeEngine({
@@ -554,7 +554,7 @@ describe("useCrosshairSeries (hook)", () => {
         ],
       },
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshairSeries(
         engine,
         padding,
@@ -575,7 +575,7 @@ describe("useCrosshairSeries (hook)", () => {
 
   it.each(["ios", "android"] as const)(
     "waits for horizontal intent and yields vertical drags on %s",
-    (platform) => {
+    async (platform) => {
       const prev = Platform.OS;
       Object.defineProperty(Platform, "OS", {
         configurable: true,
@@ -593,7 +593,7 @@ describe("useCrosshairSeries (hook)", () => {
           ],
         },
       });
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useCrosshairSeries(engine, padding, true),
       );
       const config = getGestureConfig(result.current.gesture);
@@ -608,9 +608,9 @@ describe("useCrosshairSeries (hook)", () => {
     },
   );
 
-  it("restricts scrub recognition to horizontal plot bounds", () => {
+  it("restricts scrub recognition to horizontal plot bounds", async () => {
     const engine = makeEngine();
-    renderHook(() =>
+    await renderHook(() =>
       useCrosshairSeries(
         engine,
         padding,
@@ -631,7 +631,7 @@ describe("useCrosshairSeries (hook)", () => {
     });
   });
 
-  it("only configures a long-press modifier for a positive delay", () => {
+  it("only configures a long-press modifier for a positive delay", async () => {
     const engine = makeEngine({
       series: {
         value: [
@@ -644,7 +644,7 @@ describe("useCrosshairSeries (hook)", () => {
         ],
       },
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshairSeries(engine, padding, true, undefined, 250),
     );
     const config = getGestureConfig(result.current.gesture);

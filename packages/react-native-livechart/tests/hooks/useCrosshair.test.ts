@@ -938,9 +938,9 @@ describe("scrubValue interpolation", () => {
 // ─── useCrosshair smoke test ─────────────────────────────────────────────────
 
 describe("useCrosshair (hook)", () => {
-  it("initialises with inactive state", () => {
+  it("initialises with inactive state", async () => {
     const engine = makeEngine();
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshair(
         engine,
         padding,
@@ -961,9 +961,9 @@ describe("useCrosshair (hook)", () => {
     expect(result.current.scrubCandle?.value).toBeNull();
   });
 
-  it("exposes a gesture object", () => {
+  it("exposes a gesture object", async () => {
     const engine = makeEngine();
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshair(
         engine,
         padding,
@@ -977,10 +977,10 @@ describe("useCrosshair (hook)", () => {
     expect(result.current.gesture).toBeDefined();
   });
 
-  it("accepts onScrub and still initialises (sync reaction path)", () => {
+  it("accepts onScrub and still initialises (sync reaction path)", async () => {
     const onScrub = jest.fn();
     const engine = makeEngine();
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshair(
         engine,
         padding,
@@ -996,11 +996,11 @@ describe("useCrosshair (hook)", () => {
     expect(result.current.scrubActive.value).toBe(false);
   });
 
-  it("accepts onGestureStart/onGestureEnd and still returns a gesture", () => {
+  it("accepts onGestureStart/onGestureEnd and still returns a gesture", async () => {
     const onGestureStart = jest.fn();
     const onGestureEnd = jest.fn();
     const engine = makeEngine();
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshair(
         engine,
         padding,
@@ -1026,14 +1026,14 @@ describe("useCrosshair (hook)", () => {
 
   it.each(["ios", "android"] as const)(
     "waits for horizontal intent and yields vertical drags on %s",
-    (platform) => {
+    async (platform) => {
       const prev = Platform.OS;
       Object.defineProperty(Platform, "OS", {
         configurable: true,
         value: platform,
       });
       const engine = makeEngine();
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useCrosshair(
           engine,
           padding,
@@ -1056,9 +1056,9 @@ describe("useCrosshair (hook)", () => {
     },
   );
 
-  it("combines horizontal plot and bottom-band recognition bounds", () => {
+  it("combines horizontal plot and bottom-band recognition bounds", async () => {
     const engine = makeEngine();
-    renderHook(() =>
+    await renderHook(() =>
       useCrosshair(
         engine,
         padding,
@@ -1093,9 +1093,9 @@ describe("useCrosshair (hook)", () => {
     });
   });
 
-  it("only configures a long-press modifier for a positive delay", () => {
+  it("only configures a long-press modifier for a positive delay", async () => {
     const engine = makeEngine();
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshair(
         engine,
         padding,
@@ -1116,9 +1116,9 @@ describe("useCrosshair (hook)", () => {
     expect(config.failOffsetY).toEqual([[-10, 10]]);
   });
 
-  it("does not build a tap gesture or lock state without scrubAction", () => {
+  it("does not build a tap gesture or lock state without scrubAction", async () => {
     const engine = makeEngine();
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshair(engine, padding, palette, formatValue, formatTime, font, true),
     );
     // Lock SharedValues are still created (hooks are unconditional)...
@@ -1129,10 +1129,10 @@ describe("useCrosshair (hook)", () => {
     expect(result.current.tapGesture).toBeUndefined();
   });
 
-  it("initialises lock state + a tap gesture in scrub-action mode", () => {
+  it("initialises lock state + a tap gesture in scrub-action mode", async () => {
     const onScrubAction = jest.fn();
     const engine = makeEngine();
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useCrosshair(
         engine,
         padding,
@@ -1165,9 +1165,9 @@ describe("useCrosshair (hook)", () => {
     expect(onScrubAction).not.toHaveBeenCalled();
   });
 
-  it("keeps action Pan and Tap gutter-accessible while excluding the bottom band", () => {
+  it("keeps action Pan and Tap gutter-accessible while excluding the bottom band", async () => {
     const engine = makeEngine();
-    renderHook(() =>
+    await renderHook(() =>
       useCrosshair(
         engine,
         padding,

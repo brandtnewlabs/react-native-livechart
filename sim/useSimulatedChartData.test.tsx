@@ -52,14 +52,14 @@ describe("useSimulatedChartData", () => {
     jest.useRealTimers();
   });
 
-  it("advances data and trade stream together at steady TPS", () => {
+  it("advances data and trade stream together at steady TPS", async () => {
     let seed = 0.42;
     const rng = jest.fn(() => {
       seed = (seed * 9973 + 0.11) % 1;
       return Math.max(1e-9, seed);
     });
 
-    const { unmount } = render(
+    const { unmount } = await render(
       <HookProbe tradesPerSecond={5} random01={rng} />,
     );
 
@@ -67,12 +67,12 @@ describe("useSimulatedChartData", () => {
     expect(rng).toHaveBeenCalled();
 
     jest.advanceTimersByTime(1000);
-    unmount();
+    await unmount();
 
     jest.advanceTimersByTime(5000);
   });
 
-  it("with jitter=0 appends exactly tradesPerSecond line points per second", () => {
+  it("with jitter=0 appends exactly tradesPerSecond line points per second", async () => {
     function makeRng() {
       let s = 0.123456789;
       return () => {
@@ -82,7 +82,7 @@ describe("useSimulatedChartData", () => {
     }
     jest.setSystemTime(new Date("2020-01-01T12:00:00.000Z"));
 
-    const { result, unmount } = renderHook(() =>
+    const { result, unmount } = await renderHook(() =>
       useSimulatedChartData({
         random01: makeRng(),
         tradesPerSecond: 5,
@@ -97,27 +97,27 @@ describe("useSimulatedChartData", () => {
       }),
     );
 
-    act(() => {
+    await act(() => {
       jest.runOnlyPendingTimers();
     });
     const baseLen = result.current.data.value.length;
     expect(baseLen).toBeGreaterThan(0);
 
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(1000);
     });
     expect(result.current.data.value.length).toBe(baseLen + 5);
-    unmount();
+    await unmount();
   });
 
-  it("clears live timer when paused", () => {
+  it("clears live timer when paused", async () => {
     const spy = jest.spyOn(global, "setInterval");
-    const { rerender, unmount } = render(
+    const { rerender, unmount } = await render(
       <HookProbe tradesPerSecond={10} paused={false} />,
     );
     const afterStart = spy.mock.calls.length;
-    rerender(<HookProbe tradesPerSecond={10} paused />);
-    unmount();
+    await rerender(<HookProbe tradesPerSecond={10} paused />);
+    await unmount();
     expect(afterStart).toBeGreaterThan(0);
     spy.mockRestore();
   });

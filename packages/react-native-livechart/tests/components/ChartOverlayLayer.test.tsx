@@ -23,8 +23,8 @@ const context = {
 } as unknown as ChartOverlayContext;
 
 describe("ChartOverlayLayer", () => {
-  it("mounts the element the consumer returns", () => {
-    const { getByTestId } = render(
+  it("mounts the element the consumer returns", async () => {
+    const { getByTestId } = await render(
       <ChartOverlayLayer
         context={context}
         render={() => <Text testID="overlay">tag</Text>}
@@ -33,21 +33,21 @@ describe("ChartOverlayLayer", () => {
     expect(getByTestId("overlay")).toBeTruthy();
   });
 
-  it("passes the bridge context to the render callback", () => {
+  it("passes the bridge context to the render callback", async () => {
     const render_ = jest.fn(() => null);
-    render(<ChartOverlayLayer context={context} render={render_} />);
+    await render(<ChartOverlayLayer context={context} render={render_} />);
     expect(render_).toHaveBeenCalledWith(context);
   });
 
-  it("renders nothing when the callback returns null", () => {
-    const { toJSON } = render(
+  it("renders nothing when the callback returns null", async () => {
+    const { toJSON } = await render(
       <ChartOverlayLayer context={context} render={() => null} />,
     );
     expect(toJSON()).toBeNull();
   });
 
-  it("renders nothing when the callback returns undefined", () => {
-    const { toJSON } = render(
+  it("renders nothing when the callback returns undefined", async () => {
+    const { toJSON } = await render(
       <ChartOverlayLayer context={context} render={() => undefined} />,
     );
     expect(toJSON()).toBeNull();

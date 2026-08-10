@@ -6,23 +6,23 @@ import { useChartColors } from "../../src/hooks/useChartColors";
 const palette = resolveTheme("#3b82f6", "dark");
 
 describe("useChartColors", () => {
-  it("derives backgroundColor from palette.bgRgb", () => {
-    const { result } = renderHook(() =>
+  it("derives backgroundColor from palette.bgRgb", async () => {
+    const { result } = await renderHook(() =>
       useChartColors(palette, null, "#3b82f6", 300, DEFAULT_PADDING),
     );
     expect(result.current.backgroundColor).toMatch(/^rgb\(/);
   });
 
-  it("computes gradientEnd from layoutHeight minus bottom inset", () => {
-    const { result } = renderHook(() =>
+  it("computes gradientEnd from layoutHeight minus bottom inset", async () => {
+    const { result } = await renderHook(() =>
       useChartColors(palette, null, "#3b82f6", 300, DEFAULT_PADDING),
     );
     // layoutHeight=300, padding.bottom=28 → max(1, 272)
     expect(result.current.gradientEnd).toBe(272);
   });
 
-  it("falls back to palette.fillTop when no custom topOpacity", () => {
-    const { result } = renderHook(() =>
+  it("falls back to palette.fillTop when no custom topOpacity", async () => {
+    const { result } = await renderHook(() =>
       useChartColors(
         palette,
         {
@@ -40,8 +40,8 @@ describe("useChartColors", () => {
     expect(result.current.gradientBottomColor).toBe(palette.fillBottom);
   });
 
-  it("applies custom topOpacity as rgba string", () => {
-    const { result } = renderHook(() =>
+  it("applies custom topOpacity as rgba string", async () => {
+    const { result } = await renderHook(() =>
       useChartColors(
         palette,
         {
@@ -59,8 +59,8 @@ describe("useChartColors", () => {
     expect(result.current.gradientBottomColor).toBe(palette.fillBottom);
   });
 
-  it("applies custom bottomOpacity as rgba string", () => {
-    const { result } = renderHook(() =>
+  it("applies custom bottomOpacity as rgba string", async () => {
+    const { result } = await renderHook(() =>
       useChartColors(
         palette,
         {
@@ -78,15 +78,15 @@ describe("useChartColors", () => {
     expect(result.current.gradientBottomColor).toMatch(/^rgba\(.*0\.05\)$/);
   });
 
-  it("clamps gradientEnd to 1 when layoutHeight equals bottom inset", () => {
-    const { result } = renderHook(() =>
+  it("clamps gradientEnd to 1 when layoutHeight equals bottom inset", async () => {
+    const { result } = await renderHook(() =>
       useChartColors(palette, null, "#3b82f6", 0, DEFAULT_PADDING),
     );
     expect(result.current.gradientEnd).toBe(1);
   });
 
-  it("falls back to a 2-stop gradient array when no custom colors", () => {
-    const { result } = renderHook(() =>
+  it("falls back to a 2-stop gradient array when no custom colors", async () => {
+    const { result } = await renderHook(() =>
       useChartColors(palette, null, "#3b82f6", 300, DEFAULT_PADDING),
     );
     expect(result.current.gradientColors).toEqual([
@@ -96,9 +96,9 @@ describe("useChartColors", () => {
     expect(result.current.gradientPositions).toBeUndefined();
   });
 
-  it("uses custom multi-color stops when colors has ≥2 entries", () => {
+  it("uses custom multi-color stops when colors has ≥2 entries", async () => {
     const colors = ["rgba(51,35,230,0.45)", "rgba(168,85,247,0.25)", "rgba(0,0,0,0)"];
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useChartColors(
         palette,
         {
@@ -116,8 +116,8 @@ describe("useChartColors", () => {
     expect(result.current.gradientPositions).toBeUndefined();
   });
 
-  it("ignores a single-entry colors array (falls back to 2-stop)", () => {
-    const { result } = renderHook(() =>
+  it("ignores a single-entry colors array (falls back to 2-stop)", async () => {
+    const { result } = await renderHook(() =>
       useChartColors(
         palette,
         {
@@ -137,10 +137,10 @@ describe("useChartColors", () => {
     ]);
   });
 
-  it("keeps positions when their length matches colors", () => {
+  it("keeps positions when their length matches colors", async () => {
     const colors = ["#fff", "#000"];
     const positions = [0, 1];
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useChartColors(
         palette,
         {
@@ -158,8 +158,8 @@ describe("useChartColors", () => {
     expect(result.current.gradientPositions).toBe(positions);
   });
 
-  it("drops positions when their length does not match colors", () => {
-    const { result } = renderHook(() =>
+  it("drops positions when their length does not match colors", async () => {
+    const { result } = await renderHook(() =>
       useChartColors(
         palette,
         {

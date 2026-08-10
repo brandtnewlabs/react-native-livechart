@@ -87,15 +87,15 @@ function Fixture({
 }
 
 describe("CustomTooltipOverlay", () => {
-  it("floats the consumer's element over the canvas", () => {
-    const { getByTestId } = render(
+  it("floats the consumer's element over the canvas", async () => {
+    const { getByTestId } = await render(
       <Fixture renderTooltip={() => <Text testID="custom-tip">tip</Text>} />,
     );
     expect(getByTestId("custom-tip")).toBeTruthy();
   });
 
-  it("keeps the custom tooltip opaque when edge fade is disabled", () => {
-    const { toJSON } = render(
+  it("keeps the custom tooltip opaque when edge fade is disabled", async () => {
+    const { toJSON } = await render(
       <Fixture
         crosshairFade={false}
         scrubXValue={400 - DEFAULT_PADDING.right}
@@ -105,8 +105,8 @@ describe("CustomTooltipOverlay", () => {
     expect(JSON.stringify(toJSON())).toContain('"opacity":1');
   });
 
-  it("uses the configured edge-fade distance", () => {
-    const { toJSON } = render(
+  it("uses the configured edge-fade distance", async () => {
+    const { toJSON } = await render(
       <Fixture
         crosshairFadeDistance={8}
         scrubXValue={400 - DEFAULT_PADDING.right - 2}
@@ -116,25 +116,25 @@ describe("CustomTooltipOverlay", () => {
     expect(JSON.stringify(toJSON())).toContain('"opacity":0.25');
   });
 
-  it("measures the element via onLayout without throwing", () => {
-    const { getByTestId } = render(
+  it("measures the element via onLayout without throwing", async () => {
+    const { getByTestId } = await render(
       <Fixture renderTooltip={() => <Text testID="custom-tip">tip</Text>} />,
     );
     // Drive an onLayout so the size-measurement branch executes.
-    fireEvent(getByTestId("custom-tip").parent!, "layout", {
+    await fireEvent(getByTestId("custom-tip").parent!, "layout", {
       nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
     });
     expect(getByTestId("custom-tip")).toBeTruthy();
   });
 
-  it("renders nothing when renderTooltip returns null", () => {
-    const { toJSON } = render(<Fixture renderTooltip={() => null} />);
+  it("renders nothing when renderTooltip returns null", async () => {
+    const { toJSON } = await render(<Fixture renderTooltip={() => null} />);
     expect(toJSON()).toBeNull();
   });
 
-  it("exposes the scrub state as SharedValues in the context", () => {
+  it("exposes the scrub state as SharedValues in the context", async () => {
     let captured: TooltipRenderProps | undefined;
-    render(
+    await render(
       <Fixture
         renderTooltip={(ctx) => {
           captured = ctx;
@@ -153,7 +153,7 @@ describe("CustomTooltipOverlay", () => {
     expect(captured!.candle.get()).toBeNull();
   });
 
-  it("exposes the scrubbed OHLC candle in candle mode", () => {
+  it("exposes the scrubbed OHLC candle in candle mode", async () => {
     const ohlc: CandlePoint = {
       time: 985,
       open: 100,
@@ -162,7 +162,7 @@ describe("CustomTooltipOverlay", () => {
       close: 110,
     };
     let captured: TooltipRenderProps | undefined;
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <Fixture
         candle={ohlc}
         renderTooltip={(ctx) => {
@@ -176,9 +176,9 @@ describe("CustomTooltipOverlay", () => {
     expect(captured!.candle.get()).toEqual(ohlc);
   });
 
-  it("publishes the top-pinned label's bottom edge as the crosshair line-stop", () => {
+  it("publishes the top-pinned label's bottom edge as the crosshair line-stop", async () => {
     let lineTop: SharedValue<number> | undefined;
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <Fixture
         placement="top"
         captureLineTop={(sv) => {
@@ -189,16 +189,16 @@ describe("CustomTooltipOverlay", () => {
     );
     // Before layout the line keeps its default start.
     expect(lineTop!.value).toBe(-1);
-    fireEvent(getByTestId("tip-top").parent!, "layout", {
+    await fireEvent(getByTestId("tip-top").parent!, "layout", {
       nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
     });
     // Label bottom = margin (default 8) + measured height (40).
     expect(lineTop!.value).toBe(48);
   });
 
-  it("leaves the line-stop unset (-1) for non-top placement", () => {
+  it("leaves the line-stop unset (-1) for non-top placement", async () => {
     let lineTop: SharedValue<number> | undefined;
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <Fixture
         placement="bottom"
         captureLineTop={(sv) => {
@@ -207,14 +207,14 @@ describe("CustomTooltipOverlay", () => {
         renderTooltip={() => <Text testID="tip-bottom">tip</Text>}
       />,
     );
-    fireEvent(getByTestId("tip-bottom").parent!, "layout", {
+    await fireEvent(getByTestId("tip-bottom").parent!, "layout", {
       nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
     });
     expect(lineTop!.value).toBe(-1);
   });
 
-  it("positions for top/bottom placement without error", () => {
-    const top = render(
+  it("positions for top/bottom placement without error", async () => {
+    const top = await render(
       <Fixture
         placement="top"
         renderTooltip={() => <Text testID="tip-top">tip</Text>}
@@ -222,7 +222,7 @@ describe("CustomTooltipOverlay", () => {
     );
     expect(top.getByTestId("tip-top")).toBeTruthy();
 
-    const bottom = render(
+    const bottom = await render(
       <Fixture
         placement="bottom"
         renderTooltip={() => <Text testID="tip-bottom">tip</Text>}
@@ -231,23 +231,23 @@ describe("CustomTooltipOverlay", () => {
     expect(bottom.getByTestId("tip-bottom")).toBeTruthy();
   });
 
-  it("positions for 'point' placement (anchored above the dot) without error", () => {
-    const { getByTestId } = render(
+  it("positions for 'point' placement (anchored above the dot) without error", async () => {
+    const { getByTestId } = await render(
       <Fixture
         placement="point"
         scrubDotY={150}
         renderTooltip={() => <Text testID="tip-point">tip</Text>}
       />,
     );
-    fireEvent(getByTestId("tip-point").parent!, "layout", {
+    await fireEvent(getByTestId("tip-point").parent!, "layout", {
       nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
     });
     expect(getByTestId("tip-point")).toBeTruthy();
   });
 
-  it("leaves the crosshair line-stop unset (-1) for 'point' placement", () => {
+  it("leaves the crosshair line-stop unset (-1) for 'point' placement", async () => {
     let lineTop: SharedValue<number> | undefined;
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <Fixture
         placement="point"
         scrubDotY={150}
@@ -257,16 +257,16 @@ describe("CustomTooltipOverlay", () => {
         renderTooltip={() => <Text testID="tip-point">tip</Text>}
       />,
     );
-    fireEvent(getByTestId("tip-point").parent!, "layout", {
+    await fireEvent(getByTestId("tip-point").parent!, "layout", {
       nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 40 } },
     });
     // The pill floats over the line (not above it), so the line runs full height.
     expect(lineTop!.value).toBe(-1);
   });
 
-  it("'point' placement flips below / falls back at edge dot positions without error", () => {
+  it("'point' placement flips below / falls back at edge dot positions without error", async () => {
     // Dot near the top → the pill flips below it.
-    const flip = render(
+    const flip = await render(
       <Fixture
         placement="point"
         scrubDotY={4}
@@ -276,7 +276,7 @@ describe("CustomTooltipOverlay", () => {
     expect(flip.getByTestId("tip-flip")).toBeTruthy();
 
     // Unknown dot Y (-1) → top-pin fallback.
-    const fallback = render(
+    const fallback = await render(
       <Fixture
         placement="point"
         scrubDotY={-1}

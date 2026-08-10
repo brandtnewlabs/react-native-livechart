@@ -6,8 +6,8 @@ import { useLiveChartEngine } from "../../src/core/useLiveChartEngine";
 import { useTradeStream } from "../../src/hooks/useTradeStream";
 
 describe("useTradeStream", () => {
-  it("returns empty markers when inactive", () => {
-    const { result } = renderHook(() => {
+  it("returns empty markers when inactive", async () => {
+    const { result } = await renderHook(() => {
       const data = useSharedValue([{ time: 1_700_000_000, value: 50 }]);
       const value = useSharedValue(50);
       const engine = useLiveChartEngine({
@@ -25,8 +25,8 @@ describe("useTradeStream", () => {
     expect(result.current.value).toEqual([]);
   });
 
-  it("returns shared value when active", () => {
-    const { result } = renderHook(() => {
+  it("returns shared value when active", async () => {
+    const { result } = await renderHook(() => {
       const data = useSharedValue([{ time: 1_700_000_000, value: 50 }]);
       const value = useSharedValue(50);
       const engine = useLiveChartEngine({

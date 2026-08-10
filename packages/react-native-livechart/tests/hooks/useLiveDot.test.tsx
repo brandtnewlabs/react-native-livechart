@@ -27,15 +27,15 @@ function engine(
 }
 
 describe("useLiveDot", () => {
-  it("offsets dot when width is zero", () => {
-    const { result } = renderHook(() =>
+  it("offsets dot when width is zero", async () => {
+    const { result } = await renderHook(() =>
       useLiveDot(engine({ canvasWidth: 0 }), DEFAULT_PADDING),
     );
     expect(result.current.dotX.value).toBe(-100);
   });
 
-  it("centers vertically when val range is zero", () => {
-    const { result } = renderHook(() =>
+  it("centers vertically when val range is zero", async () => {
+    const { result } = await renderHook(() =>
       useLiveDot(
         engine({
           displayMin: 5,
@@ -48,17 +48,17 @@ describe("useLiveDot", () => {
     expect(result.current.dotY.value).toBeGreaterThan(0);
   });
 
-  it("maps dot to chart coordinates", () => {
-    const { result } = renderHook(() =>
+  it("maps dot to chart coordinates", async () => {
+    const { result } = await renderHook(() =>
       useLiveDot(engine({ displayValue: 5 }), DEFAULT_PADDING),
     );
     expect(result.current.dotX.value).toBeGreaterThan(0);
     expect(result.current.dotY.value).toBeGreaterThan(0);
   });
 
-  it("tracks the edge value when followViewEdge is set", () => {
+  it("tracks the edge value when followViewEdge is set", async () => {
     const edgeValue = { value: 9 } as unknown as SharedValue<number>;
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useLiveDot(
         engine({ displayValue: 5, displayMin: 0, displayMax: 10 }),
         DEFAULT_PADDING,

@@ -105,8 +105,8 @@ describe("MultiSeriesValueLines", () => {
     },
   ];
 
-  it("renders horizontal value lines for each slot with valid canvas size", () => {
-    render(
+  it("renders horizontal value lines for each slot with valid canvas size", async () => {
+    await render(
       <EngineHarness
         series={oneSeries}
         config={{ strokeWidth: 2, intervals: [6, 2], color: "#ff0000" }}
@@ -114,18 +114,18 @@ describe("MultiSeriesValueLines", () => {
     );
   });
 
-  it("returns empty paths when canvas height is zero", () => {
-    render(<EngineHarness series={oneSeries} canvasHeight={0} />);
+  it("returns empty paths when canvas height is zero", async () => {
+    await render(<EngineHarness series={oneSeries} canvasHeight={0} />);
   });
 
-  it("centers the line when display range is zero", () => {
-    render(
+  it("centers the line when display range is zero", async () => {
+    await render(
       <EngineHarness series={oneSeries} displayMin={10} displayMax={10} />,
     );
   });
 
-  it("skips drawing when computed y is negative", () => {
-    render(
+  it("skips drawing when computed y is negative", async () => {
+    await render(
       <EngineHarness
         series={oneSeries}
         displayMin={0}
@@ -135,12 +135,12 @@ describe("MultiSeriesValueLines", () => {
     );
   });
 
-  it("uses series value when displaySeriesValues entry is missing", () => {
-    render(<EngineHarness series={oneSeries} displaySeriesValues={[]} />);
+  it("uses series value when displaySeriesValues entry is missing", async () => {
+    await render(<EngineHarness series={oneSeries} displaySeriesValues={[]} />);
   });
 
-  it("uses palette color from config when provided", () => {
-    render(
+  it("uses palette color from config when provided", async () => {
+    await render(
       <EngineHarness
         series={oneSeries}
         config={{
@@ -152,8 +152,8 @@ describe("MultiSeriesValueLines", () => {
     );
   });
 
-  it("falls back to colors[i] when config color is undefined", () => {
-    render(
+  it("falls back to colors[i] when config color is undefined", async () => {
+    await render(
       <EngineHarness
         series={oneSeries}
         colors={["#abcdef"]}
@@ -162,7 +162,7 @@ describe("MultiSeriesValueLines", () => {
     );
   });
 
-  it("uses zero opacity when series opacities are shorter than index", () => {
-    render(<EngineHarness series={oneSeries} seriesOpacities={[]} />);
+  it("uses zero opacity when series opacities are shorter than index", async () => {
+    await render(<EngineHarness series={oneSeries} seriesOpacities={[]} />);
   });
 });
