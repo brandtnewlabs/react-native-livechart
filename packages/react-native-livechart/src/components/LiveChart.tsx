@@ -257,6 +257,7 @@ function useLiveChartController({
   font: fontProp,
   insets,
   style,
+  seriesOpacity,
   canvasMode = "transparent",
 
   // ── Candlestick ─────────────────────────────────────────────────────────
@@ -335,6 +336,8 @@ function useLiveChartController({
   onReachStart,
   onDegenShake,
 }: LiveChartProps) {
+  const fullSeriesOpacity = useSharedValue(1);
+  const resolvedSeriesOpacity = seriesOpacity ?? fullSeriesOpacity;
   const emptyMarkers = useSharedValue<Marker[]>([]);
   const markersSV = markers ?? emptyMarkers;
   // Stand-in threshold value so `useThreshold` can be called unconditionally
@@ -1230,7 +1233,8 @@ function useLiveChartController({
       liveIndicatorScrollOpacity(
         hideLiveOnScrollBack,
         engine.viewEnd.value,
-      ),
+      ) *
+      resolvedSeriesOpacity.value,
   );
   // Same scrolled-back gating for the value line: it would draw a dashed line
   // at the live value's Y — a price that isn't in the scrolled-back view.
@@ -1240,7 +1244,8 @@ function useLiveChartController({
       liveIndicatorScrollOpacity(
         hideLiveOnScrollBack,
         engine.viewEnd.value,
-      ),
+      ) *
+      resolvedSeriesOpacity.value,
   );
   const liveBadgeOpacity = useDerivedValue(
     () =>
@@ -1248,7 +1253,8 @@ function useLiveChartController({
       liveIndicatorScrollOpacity(
         hideLiveOnScrollBack,
         engine.viewEnd.value,
-      ),
+      ) *
+      resolvedSeriesOpacity.value,
   );
 
   // Fade the annotation overlays (markers + reference lines) out while scrubbing
@@ -1280,6 +1286,7 @@ function useLiveChartController({
     showValue,
     valueMomentumColor,
     lineProp,
+    seriesOpacity: resolvedSeriesOpacity,
     formatValue,
     formatTime,
     isCandle,
@@ -1583,6 +1590,7 @@ function ChartFillLayer({
     thresholdIsSeries,
     thresholdSeriesHasPoints,
     thresholdFillUniforms,
+    seriesOpacity,
   } = model;
   return (
     <Group transform={degen?.shakeTransform}>
@@ -1597,62 +1605,64 @@ function ChartFillLayer({
         />
       )}
 
-      {/* Dot-lattice area fill (the under-line `fillPath` painted with a dot
-          shader). Drawn before the gradient so a gradient (if also enabled)
-          composites on top. */}
-      {areaDotsCfg && (
-        <Group opacity={reveal.fillOpacity}>
-          <AreaDotsOverlay
-            fillPath={fillPath}
-            color={areaDotColorVec}
-            spacing={areaDotsCfg.spacing}
-            size={areaDotsCfg.size}
-          />
-        </Group>
-      )}
-
-      {/* Area gradient fill */}
-      {gradientCfg && (
-        <Group opacity={reveal.fillOpacity}>
-          <Path path={fillPath} style="fill">
-            <LinearGradient
-              start={vec(0, effectivePadding.top)}
-              end={vec(0, gradientEnd)}
-              colors={gradientColors}
-              positions={gradientPositions}
-            />
-          </Path>
-        </Group>
-      )}
-
-      {/* Threshold profit/loss band — the area between the line and the threshold,
-          split into the above/below colors. Independent of the baseline area fill
-          above (set `gradient={false}` for the band alone). A time-varying series
-          paints with the per-fragment split shader; a constant value with the
-          vertical hard-stop gradient. */}
-      {thresholdCfg?.fill &&
-        (thresholdIsSeries ? (
-          // The availability gate keeps a failed shader compile from filling the
-          // band with the default paint (opaque black) — see THRESHOLD_SPLIT_AVAILABLE.
-          thresholdSeriesHasPoints && THRESHOLD_SPLIT_AVAILABLE ? (
-            <Group opacity={reveal.fillOpacity}>
-              <Path path={thresholdFillPath} style="fill">
-                <ThresholdSplitShader uniforms={thresholdFillUniforms} />
-              </Path>
-            </Group>
-          ) : null
-        ) : thresholdFillColors ? (
+      <Group opacity={seriesOpacity}>
+        {/* Dot-lattice area fill (the under-line `fillPath` painted with a dot
+            shader). Drawn before the gradient so a gradient (if also enabled)
+            composites on top. */}
+        {areaDotsCfg && (
           <Group opacity={reveal.fillOpacity}>
-            <Path path={thresholdFillPath} style="fill">
+            <AreaDotsOverlay
+              fillPath={fillPath}
+              color={areaDotColorVec}
+              spacing={areaDotsCfg.spacing}
+              size={areaDotsCfg.size}
+            />
+          </Group>
+        )}
+
+        {/* Area gradient fill */}
+        {gradientCfg && (
+          <Group opacity={reveal.fillOpacity}>
+            <Path path={fillPath} style="fill">
               <LinearGradient
-                start={vec(0, 0)}
-                end={thresholdGeom.gradientEnd}
-                colors={thresholdFillColors}
-                positions={thresholdGeom.splitPositions}
+                start={vec(0, effectivePadding.top)}
+                end={vec(0, gradientEnd)}
+                colors={gradientColors}
+                positions={gradientPositions}
               />
             </Path>
           </Group>
-        ) : null)}
+        )}
+
+        {/* Threshold profit/loss band — the area between the line and the threshold,
+            split into the above/below colors. Independent of the baseline area fill
+            above (set `gradient={false}` for the band alone). A time-varying series
+            paints with the per-fragment split shader; a constant value with the
+            vertical hard-stop gradient. */}
+        {thresholdCfg?.fill &&
+          (thresholdIsSeries ? (
+            // The availability gate keeps a failed shader compile from filling the
+            // band with the default paint (opaque black) — see THRESHOLD_SPLIT_AVAILABLE.
+            thresholdSeriesHasPoints && THRESHOLD_SPLIT_AVAILABLE ? (
+              <Group opacity={reveal.fillOpacity}>
+                <Path path={thresholdFillPath} style="fill">
+                  <ThresholdSplitShader uniforms={thresholdFillUniforms} />
+                </Path>
+              </Group>
+            ) : null
+          ) : thresholdFillColors ? (
+            <Group opacity={reveal.fillOpacity}>
+              <Path path={thresholdFillPath} style="fill">
+                <LinearGradient
+                  start={vec(0, 0)}
+                  end={thresholdGeom.gradientEnd}
+                  colors={thresholdFillColors}
+                  positions={thresholdGeom.splitPositions}
+                />
+              </Path>
+            </Group>
+          ) : null)}
+      </Group>
     </Group>
   );
 }
@@ -1675,6 +1685,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     isStatic,
     transitionsCfg,
     candleGroupOpacity,
+    seriesOpacity,
     palette,
     volumeOpacity,
     volumeUpColor,
@@ -1702,7 +1713,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
   );
 
   return (
-    <>
+    <Group opacity={seriesOpacity}>
       <Group opacity={candleGroupOpacity}>
         <Path
           path={upWicksPath}
@@ -1728,7 +1739,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
           </Group>
         </Group>
       )}
-    </>
+    </Group>
   );
 }
 
@@ -1775,6 +1786,7 @@ function ChartStack({
     thresholdSeriesPts,
     formatValue,
     lineGroupOpacity,
+    seriesOpacity,
     linePath,
     lineIsLinear,
     strokeWidth,
@@ -1875,49 +1887,51 @@ function ChartStack({
           full-width gradient paints the base color outside segments and each
           segment's color within — so the line itself is recolored/faded (alpha in
           the segment color reduces the line's opacity), not covered by an overlay. */}
-      <Group opacity={lineGroupOpacity}>
-        <Path
-          path={linePath}
-          style="stroke"
-          strokeWidth={strokeWidth}
-          strokeCap={lineProp?.cap ?? "round"}
-          strokeJoin={lineProp?.join ?? "round"}
-          color={lineProp?.color ?? palette.line}
-        >
-          {thresholdIsSeries ? (
-            // Time-varying split: a per-fragment shader colors the stroke above/
-            // below the threshold polyline. Supersedes line.colors + segments.
-            // An empty series renders no paint child → the plain stroke color
-            // (null here keeps the empty case out of the NaN constant gradient).
-            thresholdSeriesHasPoints ? (
-              <ThresholdSplitShader uniforms={thresholdStrokeUniforms} />
-            ) : null
-          ) : thresholdCfg && thresholdStrokeColors ? (
-            // Vertical hard split at the threshold Y — supersedes line.colors and
-            // segment recoloring for the stroke while a threshold is set.
-            <LinearGradient
-              start={vec(0, 0)}
-              end={thresholdGeom.gradientEnd}
-              colors={thresholdStrokeColors}
-              positions={thresholdGeom.splitPositions}
-            />
-          ) : hasRecolorSegments ? (
-            <SegmentLineGradient
-              engine={engine}
-              segments={resolvedSegments}
-              padding={effectivePadding}
-              baseColor={lineProp?.color ?? palette.line}
-              scrubX={crosshair.scrubX}
-              scrubActive={crosshair.scrubActive}
-            />
-          ) : lineProp?.colors?.length ? (
-            <LinearGradient
-              start={vec(0, 0)}
-              end={vec(layoutWidth, 0)}
-              colors={lineProp.colors}
-            />
-          ) : null}
-        </Path>
+      <Group opacity={seriesOpacity}>
+        <Group opacity={lineGroupOpacity}>
+          <Path
+            path={linePath}
+            style="stroke"
+            strokeWidth={strokeWidth}
+            strokeCap={lineProp?.cap ?? "round"}
+            strokeJoin={lineProp?.join ?? "round"}
+            color={lineProp?.color ?? palette.line}
+          >
+            {thresholdIsSeries ? (
+              // Time-varying split: a per-fragment shader colors the stroke above/
+              // below the threshold polyline. Supersedes line.colors + segments.
+              // An empty series renders no paint child → the plain stroke color
+              // (null here keeps the empty case out of the NaN constant gradient).
+              thresholdSeriesHasPoints ? (
+                <ThresholdSplitShader uniforms={thresholdStrokeUniforms} />
+              ) : null
+            ) : thresholdCfg && thresholdStrokeColors ? (
+              // Vertical hard split at the threshold Y — supersedes line.colors and
+              // segment recoloring for the stroke while a threshold is set.
+              <LinearGradient
+                start={vec(0, 0)}
+                end={thresholdGeom.gradientEnd}
+                colors={thresholdStrokeColors}
+                positions={thresholdGeom.splitPositions}
+              />
+            ) : hasRecolorSegments ? (
+              <SegmentLineGradient
+                engine={engine}
+                segments={resolvedSegments}
+                padding={effectivePadding}
+                baseColor={lineProp?.color ?? palette.line}
+                scrubX={crosshair.scrubX}
+                scrubActive={crosshair.scrubActive}
+              />
+            ) : lineProp?.colors?.length ? (
+              <LinearGradient
+                start={vec(0, 0)}
+                end={vec(layoutWidth, 0)}
+                colors={lineProp.colors}
+              />
+            ) : null}
+          </Path>
+        </Group>
       </Group>
 
       {isCandle && <ChartCandleLayer model={model} />}
@@ -2190,21 +2204,24 @@ function ChartValueOverlay({
     momentumSV,
     valueMomentumColor,
     reveal,
+    seriesOpacity,
   } = model;
   if (!showValue) return null;
 
   return (
     <Group transform={degen?.shakeTransform}>
-      <Group opacity={reveal.lineOpacity}>
-        <ValueTextOverlay
-          engine={engine}
-          padding={effectivePadding}
-          palette={palette}
-          font={valueFont}
-          formatValue={formatValue}
-          momentum={momentumSV}
-          momentumColor={valueMomentumColor}
-        />
+      <Group opacity={seriesOpacity}>
+        <Group opacity={reveal.lineOpacity}>
+          <ValueTextOverlay
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            font={valueFont}
+            formatValue={formatValue}
+            momentum={momentumSV}
+            momentumColor={valueMomentumColor}
+          />
+        </Group>
       </Group>
     </Group>
   );

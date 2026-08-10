@@ -1926,6 +1926,14 @@ export interface LiveChartCoreProps {
   /** Container View style. */
   style?: ViewStyle;
   /**
+   * UI-thread opacity multiplier for the plotted data. Set a value from `0`
+   * (hidden) to `1` (fully visible), such as `0.5` while replacement data loads.
+   * Applies to every plotted series — line/fill/candles, live dots, value lines,
+   * and inline values — without affecting axes, reference lines, legends, or
+   * scrub UI. Default `1`.
+   */
+  seriesOpacity?: SharedValue<number>;
+  /**
    * Canvas composition mode. `"transparent"` keeps Skia's default compositing
    * path (TextureView on Android) and can reveal content behind the chart.
    * `"opaque"` makes the canvas own and paint its palette background; on Android

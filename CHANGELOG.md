@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Shared plotted-series opacity.** `seriesOpacity` on `LiveChart` and
+  `LiveChartSeries` accepts a UI-thread `SharedValue<number>` so an app can dim
+  current chart data during a replacement load without fading axes, legends,
+  reference lines, or scrub UI. It covers line and area fills, candles and
+  volume bars, live dots, value lines, badges, and inline value labels.
+
 ## [4.15.1] - 2026-08-09
 
 ### Fixed
