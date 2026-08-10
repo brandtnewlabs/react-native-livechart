@@ -51,8 +51,9 @@ export interface ChartRevealState {
 /**
  * Drives loading / empty / live visibility.
  *
- * Chart is fully revealed only when `!loading && hasData`. `morphT` animates
- * between 0 and 1 when that condition changes. `isEmpty` is derived as
+ * Chart is fully revealed only when `!loading && hasData`. Data appearing
+ * grows `morphT` from 0 to 1; data disappearing snaps it to 0 so stale paths
+ * never visibly flatten over a loading or empty shell. `isEmpty` is derived as
  * `!loading && !hasData` for the empty overlay label.
  */
 export function useChartReveal(

@@ -75,21 +75,26 @@ export default function StatesScreen() {
   });
 
   const chartData = empty ? emptyData : onePoint ? singlePointData : sim.data;
-  const chartValue = empty || onePoint ? emptyValue : sim.value;
+  const displayedData = loading ? emptyData : chartData;
+  const chartValue = empty || onePoint || loading ? emptyValue : sim.value;
   const showEmptyShell = empty || onePoint;
 
   return (
     <DemoScreen
       title="States & formatting"
       docs="guides/states-and-formatting"
-      description="The chart stays in loading/empty shell until there are at least two line points and loading is false. One point only still counts as empty. formatValue/formatTime must be worklet-safe (same pattern as src/format.ts)."
+      description="The chart stays in loading/empty shell until there are at least two line points and loading is false. Tap Replace data to remove live data: the loading shell appears immediately, then the returning data grows in. One point only still counts as empty. formatValue/formatTime must be worklet-safe (same pattern as src/format.ts)."
       chart={
         <LiveChart
-          data={chartData}
+          data={displayedData}
           value={chartValue}
           accentColor={ACCENT}
           theme={APP_THEME}
           loading={loading && loadingCfg}
+          // The longer grow-in makes the contrast intentional: leaving live data
+          // for the loading shell still snaps, while returned data reveals over
+          // this duration.
+          transitions={{ reveal: 1200 }}
           emptyText={showEmptyShell ? "Nothing to see here" : "No data"}
           formatValue={customFormat ? formatValueUsd : undefined}
           formatTime={customFormat ? formatTimeIsoUtcFragment : undefined}
@@ -115,7 +120,7 @@ export default function StatesScreen() {
           }}
         />
         <Chip
-          label={loading ? "Loading…" : "Loading 2s"}
+          label={loading ? "Replacing…" : "Replace data (2s)"}
           active={loading}
           disabled={loading}
           onPress={() => {

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Live-data collapse no longer morphs over the loading shell.** When data is
+  cleared or `loading` becomes true, `LiveChart` and `LiveChartSeries` now snap
+  directly to the loading/empty state instead of visibly flattening stale paths.
+  The loading/empty → live grow-in remains configurable with
+  `transitions.reveal`.
+
 ## [4.16.0] - 2026-08-10
 
 ### Added
