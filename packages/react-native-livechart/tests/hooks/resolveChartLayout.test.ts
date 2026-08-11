@@ -428,7 +428,8 @@ describe("resolveChartLayout", () => {
       badgeShowTail: false,
     });
     expect(noTail.padding.right).toBeLessThan(withTail.padding.right);
-    expect(withTail.padding.right - noTail.padding.right).toBe(5);
+    // tail (5) + cap inset ((12+6)/2 = 9) both drop when the tail is off
+    expect(withTail.padding.right - noTail.padding.right).toBe(14);
   });
 
   it("shrinks right padding when badgeShowTail is false (font path)", () => {
@@ -451,7 +452,8 @@ describe("resolveChartLayout", () => {
       currentValue: 42,
     });
     expect(noTail.padding.right).toBeLessThan(withTail.padding.right);
-    expect(withTail.padding.right - noTail.padding.right).toBe(5);
+    // tail (5) + cap inset ((12+6)/2 = 9) both drop when the tail is off
+    expect(withTail.padding.right - noTail.padding.right).toBe(14);
   });
 
   it("badgeShowTail defaults to true when omitted", () => {

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Tail-less badge sits flush at the gutter edge.** With `badge={{ tail: false }}`
+  the layout no longer reserves the round-cap inset, which left a dead gap
+  between the plot edge and the pill. The pill body now starts right after the
+  dot gap, and the auto right padding shrinks to match.
+
 ## [4.17.0] - 2026-08-10
 
 ### Added

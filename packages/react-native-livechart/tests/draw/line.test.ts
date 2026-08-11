@@ -52,10 +52,10 @@ describe("badgeTailAndCap", () => {
     expect(badgeTailAndCap(12, true)).toBe(BADGE_TAIL_LEN + 9); // 5 + (12+6)/2
   });
 
-  it("omits BADGE_TAIL_LEN when showTail is false", () => {
-    expect(badgeTailAndCap(12, false)).toBe(9); // (12+6)/2
+  it("returns 0 when showTail is false — no tail or cap inset reserved", () => {
+    expect(badgeTailAndCap(12, false)).toBe(0);
     expect(badgeTailAndCap(12, true) - badgeTailAndCap(12, false)).toBe(
-      BADGE_TAIL_LEN,
+      BADGE_TAIL_LEN + 9, // 5 + (12+6)/2
     );
   });
 });
@@ -66,13 +66,13 @@ describe("minPaddingRightForBadgeYAxisAlign", () => {
     expect(minPaddingRightForBadgeYAxisAlign(12, 35)).toBe(85);
   });
 
-  it("returns smaller padding when showTail is false", () => {
-    // 12 + 9 + 20 + 35 + 4 = 80
-    expect(minPaddingRightForBadgeYAxisAlign(12, 35, false)).toBe(80);
+  it("returns smaller padding when showTail is false (tl=0, pill flush)", () => {
+    // 12 + 0 + 20 + 35 + 4 = 71
+    expect(minPaddingRightForBadgeYAxisAlign(12, 35, false)).toBe(71);
     expect(
       minPaddingRightForBadgeYAxisAlign(12, 35, true) -
         minPaddingRightForBadgeYAxisAlign(12, 35, false),
-    ).toBe(BADGE_TAIL_LEN);
+    ).toBe(BADGE_TAIL_LEN + 9); // 5 + (12+6)/2
   });
 });
 
@@ -109,8 +109,8 @@ describe("resolveAutoRight", () => {
   });
 
   it("uses smaller badge width when showTail is false", () => {
-    // minPaddingRightForBadgeYAxisAlign(12, 49, false) = 12 + 9 + 20 + 49 + 4 = 94
-    expect(resolveAutoRight(true, true, false)).toBe(94);
+    // minPaddingRightForBadgeYAxisAlign(12, 49, false) = 12 + 0 + 20 + 49 + 4 = 85
+    expect(resolveAutoRight(true, true, false)).toBe(85);
   });
 
   it("uses grid width when no badge", () => {
@@ -287,8 +287,8 @@ describe("badge geometry metrics overrides", () => {
     const m = { ...BADGE_METRICS_DEFAULTS, tailLength: 12, padY: 5 };
     // tailLength + (fontSize + padY*2)/2 = 12 + (12 + 10)/2 = 12 + 11 = 23
     expect(badgeTailAndCap(12, true, m)).toBe(23);
-    // showTail=false drops the tail term -> (12 + 10)/2 = 11
-    expect(badgeTailAndCap(12, false, m)).toBe(11);
+    // showTail=false reserves nothing regardless of metrics
+    expect(badgeTailAndCap(12, false, m)).toBe(0);
   });
 
   it("minPaddingRightForBadgeYAxisAlign honors custom dotGap/padX/marginEdge", () => {

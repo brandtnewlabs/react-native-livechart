@@ -7,7 +7,7 @@ import type {
 import { LiveChart } from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
-import { ChipRow } from "../../demo-lib/ChipRow";
+import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
@@ -123,6 +123,9 @@ const OFFSET_OPTIONS: { value: OffsetMode; label: string }[] = [
 
 export default function BadgeStylingScreen() {
   const [position, setPosition] = useState<Pos>("right");
+  // Right-gutter only: `tail: false` drops the spike and its reserved inset,
+  // so the pill sits flush at the gutter edge (right after the dot gap).
+  const [tail, setTail] = useState(true);
   const [radius, setRadius] = useState<RadiusMode>("rounded");
   const [bg, setBg] = useState<BgMode>("momentum");
   const [tint, setTint] = useState<TintMode>("default");
@@ -141,6 +144,7 @@ export default function BadgeStylingScreen() {
 
   const badge: BadgeConfig = {
     position,
+    tail,
     radius: RADIUS[radius],
     background: BACKGROUND[bg],
     textColor: TEXT_COLOR[text],
@@ -172,6 +176,9 @@ export default function BadgeStylingScreen() {
         value={position}
         onChange={setPosition}
       />
+      <ControlRow label="Tail (right position)">
+        <ToggleChip label="tail" value={tail} onChange={setTail} />
+      </ControlRow>
       <ChipRow
         label="Radius"
         options={RADIUS_OPTIONS}
