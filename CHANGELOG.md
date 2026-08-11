@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Vertical marker stacks stay on the plot.** A `"vertical"` marker column
+  whose anchor sits near the top or bottom of the canvas no longer climbs off
+  the chart: the column is now also capped where the next glyph would cross the
+  canvas edge, hiding the overflow the same way `maxVisible` does. The base
+  glyph always draws.
+
 ## [4.17.0] - 2026-08-10
 
 ### Added

@@ -102,7 +102,11 @@ export function useMarkers(
         lineData: lineData?.get(),
         lineLinear,
       });
-      clusterMarkers(markers.get(), buf, { config: cluster });
+      clusterMarkers(markers.get(), buf, {
+        config: cluster,
+        minY: 0,
+        maxY: engine.canvasHeight.get(),
+      });
       projected.set(buf);
     },
     autostart,

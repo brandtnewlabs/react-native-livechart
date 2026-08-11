@@ -73,6 +73,11 @@ tall column doesn't collapse to a count badge early.
 markerCluster={{ direction: "vertical", overlap: 0.6, maxBeforeGroup: 20 }}
 ```
 
+A column whose anchor sits near the top or bottom of the canvas is clamped at
+the canvas edge automatically: glyphs that would land off the plot are hidden
+(the base glyph always draws), the same overflow treatment as `maxVisible`
+below.
+
 #### Cap a vertical column
 
 `maxVisible` limits a **vertical** column to its oldest glyphs, keeping the
