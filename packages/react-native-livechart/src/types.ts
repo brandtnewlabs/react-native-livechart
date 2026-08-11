@@ -591,7 +591,11 @@ export interface AreaDotsConfig {
 export interface BadgeConfig extends BadgeStyleConfig {
   /** Visual style of the badge pill. Default `"default"`. */
   variant?: BadgeVariant;
-  /** Show the pointed tail toward the live dot. Default `true`. */
+  /**
+   * Show the pointed tail toward the live dot. When `false`, no tail space is
+   * reserved: the pill body sits flush at the gutter edge (right after the dot
+   * gap) and the auto right padding shrinks accordingly. Default `true`.
+   */
   tail?: boolean;
   /** Which side of the chart the badge appears on. Default `"right"`. */
   position?: "right" | "left";
@@ -961,6 +965,15 @@ export interface ScrubConfig {
    * Default `false`.
    */
   clampToPlot?: boolean;
+  /**
+   * Candle mode: snap the crosshair to candle centers. The scrub X is
+   * quantized to the hovered candle's center before it drives the crosshair,
+   * so the line — and everything derived from it (the time, tooltip, and
+   * trailing dim) — jumps from candle to candle instead of gliding, the
+   * tick-to-tick feel of pro charting tools. A position in a gap between
+   * candles keeps the raw finger X; no effect in line mode. Default `false`.
+   */
+  snapToCandles?: boolean;
 }
 
 /**

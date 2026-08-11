@@ -46,7 +46,10 @@ export interface ChartLayoutConfig {
    * is not clipped. An explicit `insetsOverride` on a side wins over this floor.
    */
   pulse?: { maxRadius: number; strokeWidth: number } | null;
-  /** When false and badge uses the right gutter, omit BADGE_TAIL_LEN from the right padding. */
+  /**
+   * When false and the badge uses the right gutter, omit the tail and
+   * round-cap inset from the right padding.
+   */
   badgeShowTail?: boolean;
   /** Multi-series dot radius — used to add spacing between dots and Y-axis labels. */
   multiSeriesDotRadius?: number;
@@ -117,7 +120,16 @@ export function resolveChartLayout(
     );
   }
 
-  if (config.pulse && config.yAxis && config.insetsOverride?.right == null) {
+  // A right-gutter badge uses its pill layout instead of the bare centered label
+  // column, so the bare-axis pulse/label floor must not override badge sizing.
+  // The badge renders above the pulse; the general outlet floor below still
+  // prevents canvas-edge clipping.
+  if (
+    config.pulse &&
+    config.yAxis &&
+    !badgeUsesRightGutter &&
+    config.insetsOverride?.right == null
+  ) {
     const outlet = pulseRadialOutset(
       config.pulse.maxRadius,
       config.pulse.strokeWidth,

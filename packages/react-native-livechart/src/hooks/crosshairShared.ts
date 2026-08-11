@@ -4,6 +4,7 @@ import type { DerivedValue, SharedValue } from "react-native-reanimated";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { type ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
+import { pickCandleAtTime } from "../math/pickCandle";
 import type { CandlePoint } from "../types";
 
 const TOOLTIP_PAD_X = 8;
@@ -288,6 +289,36 @@ export function computeScrubTime(
   const winStart = timestamp - windowSecs;
   const fraction = (scrubX - padding.left) / chartW;
   return winStart + fraction * windowSecs;
+}
+
+/**
+ * Quantizes a scrub X to the center of the candle whose time bucket contains
+ * it (`scrub.snapToCandles`) — the inverse of {@link computeScrubTime}
+ * followed by the forward mapping of the picked candle's center. Returns the
+ * raw X unchanged when the position falls in a gap between candles or when
+ * the plot has no horizontal extent / time window yet.
+ */
+export function snapScrubXToCandleCenter(
+  x: number,
+  candles: CandlePoint[],
+  liveCandle: CandlePoint | null,
+  candleWidthSecs: number,
+  padding: ChartPadding,
+  canvasWidth: number,
+  timestamp: number,
+  windowSecs: number,
+): number {
+  "worklet";
+  const chartW = canvasWidth - padding.left - padding.right;
+  if (chartW <= 0 || windowSecs <= 0) return x;
+  const winStart = timestamp - windowSecs;
+  const t = winStart + ((x - padding.left) / chartW) * windowSecs;
+  const candle = pickCandleAtTime(candles, liveCandle, t, candleWidthSecs);
+  if (!candle) return x;
+  return (
+    padding.left +
+    ((candle.time + candleWidthSecs / 2 - winStart) / windowSecs) * chartW
+  );
 }
 
 /**

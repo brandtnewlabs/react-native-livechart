@@ -609,6 +609,7 @@ describe("resolveScrub", () => {
     panGestureDelay: 0,
     hideOverlaysOnScrub: false,
     clampToPlot: false,
+    snapToCandles: false,
   };
 
   it("returns null for undefined", () => {
@@ -689,6 +690,12 @@ describe("resolveScrub", () => {
   it("defaults clampToPlot to false and carries it when set", () => {
     expect(resolveScrub(true)?.clampToPlot).toBe(false);
     expect(resolveScrub({ clampToPlot: true })?.clampToPlot).toBe(true);
+  });
+
+  it("defaults snapToCandles to false and carries it when set", () => {
+    expect(resolveScrub(true)?.snapToCandles).toBe(false);
+    expect(resolveScrub({})?.snapToCandles).toBe(false);
+    expect(resolveScrub({ snapToCandles: true })?.snapToCandles).toBe(true);
   });
 
   it("carries a custom tooltipBorderRadius", () => {

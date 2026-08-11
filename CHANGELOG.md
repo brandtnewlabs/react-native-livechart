@@ -17,6 +17,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Ignored with `badge.followViewEdge` (an edge-pinned dot stays aligned with
   its badge). The Time scroll demo and guide include an interactive example.
 
+- **Candle-snapping crosshair.** `ScrubConfig.snapToCandles` quantizes the
+  scrub X to the hovered candle's center, so the crosshair — and the time,
+  tooltip, and trailing dim derived from it — jumps candle-to-candle instead
+  of gliding (the tick-to-tick feel of pro charting tools). Gaps between
+  candles and line mode keep the raw X; defaults to `false`. The Candlestick
+  demo includes a **Snap to candles** switch.
+
+### Fixed
+
+- **Vertical marker stacks stay on the plot.** A `"vertical"` marker column
+  whose anchor sits near the top or bottom of the canvas no longer climbs off
+  the chart: the column is now also capped where the next glyph would cross the
+  canvas edge, hiding the overflow the same way `maxVisible` does. The base
+  glyph always draws.
+
+- **Tail-less badge sits flush at the gutter edge.** With `badge={{ tail: false }}`
+  the layout no longer reserves the round-cap inset, which left a dead gap
+  between the plot edge and the pill. The pill body now starts right after the
+  dot gap, and the auto right padding shrinks to match.
+
 ## [4.17.0] - 2026-08-10
 
 ### Added

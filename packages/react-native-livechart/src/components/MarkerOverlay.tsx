@@ -388,7 +388,11 @@ export function MarkerOverlay({
         lineData: lineData?.get(),
         lineLinear,
       });
-      clusterMarkers(ms, buf, { config: cluster });
+      clusterMarkers(ms, buf, {
+        config: cluster,
+        minY: 0,
+        maxY: engine.canvasHeight.get(),
+      });
       const atlasFrames = atlasFrameRef.current!;
       atlasFrames.tick = !atlasFrames.tick;
       const frame = atlasFrames.tick ? atlasFrames.a : atlasFrames.b;

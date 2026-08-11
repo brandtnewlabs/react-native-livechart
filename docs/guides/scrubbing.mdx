@@ -52,6 +52,29 @@ to the nearest plot edge. Scrub-action gestures retain their existing behavior.
 The option works on `LiveChart` and `LiveChartSeries` and defaults to `false`
 for backwards compatibility.
 
+## Snap to candle centers (`snapToCandles`)
+
+In candle mode the crosshair glides continuously under the finger by default. Set
+`snapToCandles` to quantize the scrub X to the hovered candle's center: the crosshair — and
+everything derived from it (the time, tooltip, and trailing dim) — jumps from candle to candle
+instead, the tick-to-tick feel of pro charting tools:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  candleWidth={60}
+  scrub={{ snapToCandles: true }}
+/>
+```
+
+A position in a gap between candles keeps the raw finger X, and the option is a no-op in line
+mode. Defaults to `false`. The example app's **Candlestick** screen includes a **Snap to
+candles** switch to compare both behaviors.
+
 ## Customizing the tooltip
 
 The default pill shows the value on the first row and the time on the second, offset to the side of

@@ -340,7 +340,8 @@ interface ThresholdLineConfig {
 }
 interface BadgeConfig {
   variant?: "default" | "minimal";
-  tail?: boolean;
+  tail?: boolean;        // pointed tail toward the dot; false = pill sits flush
+                         //   at the gutter edge (no tail space reserved); default true
   background?: string;
   position?: "right" | "left";
   // Shape / style — all Skia-native, drawn in the batched canvas pass (no perf cost):
@@ -385,6 +386,7 @@ interface ScrubConfig {
   panGestureDelay?: number; // press-and-hold ms before scrubbing activates; default 0
   clampToPlot?: boolean; // plain scrub: ignore starts beyond the plot's X bounds and clamp active drags; default false
   hideOverlaysOnScrub?: boolean; // fade markers + reference lines out while scrubbing; default false
+  snapToCandles?: boolean; // candle mode: snap the crosshair to candle centers (tick-to-tick); gaps between candles + line mode keep the raw X; default false
 }
 interface PerSeriesTooltipConfig {
   alwaysShow?: boolean;      // pin value pills to visible endpoints while idle; default false
