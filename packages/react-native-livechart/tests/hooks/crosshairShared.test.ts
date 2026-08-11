@@ -7,7 +7,9 @@ import {
   computeValueAtY,
   pointInRect,
   snapPrice,
+  snapScrubXToCandleCenter,
 } from "../../src/hooks/crosshairShared";
+import type { CandlePoint } from "../../src/types";
 
 const font = {
   getSize: () => 12,
@@ -80,6 +82,74 @@ describe("snapPrice", () => {
     expect(snapPrice(64.3, 0.5)).toBe(64.5);
     expect(snapPrice(64.1, 0.5)).toBe(64);
     expect(snapPrice(64.236, 0.01)).toBeCloseTo(64.24);
+  });
+});
+
+describe("snapScrubXToCandleCenter", () => {
+  const candle = (time: number): CandlePoint => ({
+    time,
+    open: 1,
+    high: 2,
+    low: 0,
+    close: 1,
+  });
+
+  // chartW = 320 - 10 - 10 = 300 px over windowSecs = 300 s (1 px/s), so with
+  // timestamp = 1000 the window starts at t = 700 and x maps to t = 690 + x.
+  const padding = { top: 12, right: 10, bottom: 28, left: 10 };
+  const canvasWidth = 320;
+  const timestamp = 1000;
+  const windowSecs = 300;
+  const candleWidthSecs = 60;
+  // Committed buckets [700, 760) and [760, 820), a gap [820, 880), then
+  // [880, 940); the live candle owns [940, 1000).
+  const candles = [candle(700), candle(760), candle(880)];
+  const live = candle(940);
+
+  const snap = (x: number, width = canvasWidth, win = windowSecs) =>
+    snapScrubXToCandleCenter(
+      x,
+      candles,
+      live,
+      candleWidthSecs,
+      padding,
+      width,
+      timestamp,
+      win,
+    );
+
+  it("quantizes every X over a bucket to that candle's center", () => {
+    // Bucket [700, 760): center 730 → x = 40.
+    expect(snap(15)).toBeCloseTo(40);
+    expect(snap(40)).toBeCloseTo(40);
+    expect(snap(69)).toBeCloseTo(40);
+    // Bucket [760, 820): center 790 → x = 100.
+    expect(snap(75)).toBeCloseTo(100);
+    expect(snap(129)).toBeCloseTo(100);
+  });
+
+  it("snaps to the live candle's center", () => {
+    // Live bucket [940, 1000): center 970 → x = 280.
+    expect(snap(255)).toBeCloseTo(280);
+  });
+
+  it("passes the raw X through in a gap between candles", () => {
+    // t = 830 falls in the empty [820, 880) bucket.
+    expect(snap(140)).toBe(140);
+  });
+
+  it("passes the raw X through before the first candle", () => {
+    // t = 695 predates the oldest bucket.
+    expect(snap(5)).toBe(5);
+  });
+
+  it("guards a plot without horizontal extent", () => {
+    expect(snap(40, padding.left + padding.right)).toBe(40); // chartW = 0
+    expect(snap(40, 0)).toBe(40); // chartW < 0
+  });
+
+  it("guards a zero-length time window", () => {
+    expect(snap(40, canvasWidth, 0)).toBe(40);
   });
 });
 

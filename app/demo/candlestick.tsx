@@ -85,6 +85,7 @@ export default function CandlestickScreen() {
   const [volumeHeight, setVolumeHeight] = useState(48);
   const [volumeRound, setVolumeRound] = useState(2);
   const [customVolumeColors, setCustomVolumeColors] = useState(false);
+  const [snapToCandles, setSnapToCandles] = useState(false);
 
   const tf = TIMEFRAMES.find((t) => t.label === tfLabel) ?? TIMEFRAMES[1];
   const candleWidthSecs = tf.candleWidthSecs;
@@ -137,7 +138,7 @@ export default function CandlestickScreen() {
                 }
               : false
           }
-          scrub={{ tooltip: true }}
+          scrub={{ tooltip: true, snapToCandles }}
         />
       }
     >
@@ -199,6 +200,14 @@ export default function CandlestickScreen() {
           </ControlRow>
         </>
       )}
+
+      <ControlRow label="Scrub crosshair">
+        <ToggleChip
+          label="Snap to candles"
+          value={snapToCandles}
+          onChange={setSnapToCandles}
+        />
+      </ControlRow>
 
       <ControlRow label="Empty state">
         <ToggleChip

@@ -866,6 +866,20 @@ describe("LiveChart", () => {
     await render(<CandleHarness scrub />);
   });
 
+  it("renders candle mode with a candle-snapping scrub crosshair", async () => {
+    const screen = await render(
+      <CandleHarness scrub={{ snapToCandles: true }} />,
+    );
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
+
+  it("treats scrub.snapToCandles as a no-op in line mode", async () => {
+    await render(<Harness scrub={{ snapToCandles: true }} />);
+  });
+
   it("renders candle mode with an instant candleLerpSpeed (transitions)", async () => {
     const screen = await render(
       <CandleHarness transitions={{ candleLerpSpeed: 1 }} />,

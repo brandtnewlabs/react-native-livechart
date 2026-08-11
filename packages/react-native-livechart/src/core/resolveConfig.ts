@@ -192,6 +192,8 @@ export interface ResolvedScrubConfig {
   hideOverlaysOnScrub: boolean;
   /** Reject outside plain-scrub starts and clamp active scrub X to the plot. */
   clampToPlot: boolean;
+  /** Candle mode: quantize the scrub X to the hovered candle's center. */
+  snapToCandles: boolean;
 }
 
 export interface ResolvedPerSeriesTooltipConfig {
@@ -734,6 +736,7 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   panGestureDelay: 0,
   hideOverlaysOnScrub: false,
   clampToPlot: false,
+  snapToCandles: false,
 };
 
 const PER_SERIES_TOOLTIP_DEFAULTS: ResolvedPerSeriesTooltipConfig = {

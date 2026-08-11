@@ -1095,6 +1095,8 @@ function useLiveChartController({
       : 0,
     scrollActive,
     scrubCfg?.clampToPlot ?? false,
+    // Candle mode: snap the crosshair to candle centers (tick-to-tick).
+    scrubCfg?.snapToCandles ?? false,
   );
 
   // Capture only the shared value in the worklets below. Referencing

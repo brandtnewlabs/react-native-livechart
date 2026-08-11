@@ -961,6 +961,15 @@ export interface ScrubConfig {
    * Default `false`.
    */
   clampToPlot?: boolean;
+  /**
+   * Candle mode: snap the crosshair to candle centers. The scrub X is
+   * quantized to the hovered candle's center before it drives the crosshair,
+   * so the line — and everything derived from it (the time, tooltip, and
+   * trailing dim) — jumps from candle to candle instead of gliding, the
+   * tick-to-tick feel of pro charting tools. A position in a gap between
+   * candles keeps the raw finger X; no effect in line mode. Default `false`.
+   */
+  snapToCandles?: boolean;
 }
 
 /**
