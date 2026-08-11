@@ -27,8 +27,8 @@ export const DEFAULT_PADDING: ChartPadding = {
  * The pill body starts `tl` px to the right of the gutter left edge (= dot x),
  * so the tail spans the gap between the dot and the pill body.
  *
- * When `showTail` is false the tail spike is omitted and only the round cap
- * radius is returned, letting callers shrink the right gutter.
+ * When `showTail` is false there is no tail geometry at all, so the pill body
+ * starts flush at the gutter left edge (+ dotGap) and no cap inset is reserved.
  */
 export function badgeTailAndCap(
   fontSize: number,
@@ -36,8 +36,9 @@ export function badgeTailAndCap(
   badge: BadgeMetrics = BADGE_METRICS_DEFAULTS,
 ): number {
   "worklet";
+  if (!showTail) return 0;
   const pillH = fontSize + badge.padY * 2;
-  return (showTail ? badge.tailLength : 0) + pillH / 2;
+  return badge.tailLength + pillH / 2;
 }
 
 /**

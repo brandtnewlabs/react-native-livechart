@@ -39,6 +39,11 @@ nothing per frame. Pass a `BadgeConfig` to reshape it:
 `0` gives sharp corners. `textColor` mirrors `background` (set either or both).
 The font knobs fall back to the chart [`font`](/guides/theming#fonts) when omitted.
 
+`tail: false` removes the pointed spike toward the live dot **and** the space
+reserved for it: the pill body sits flush at the gutter edge, right after the
+dot gap, and the auto right padding shrinks to match. (The tail only applies to
+the default `position: "right"` badge.)
+
 <Note>
   A badge `fontSize` larger than the chart font can crowd the reserved right
   gutter (the badge text and y-axis labels share that space and are aligned to
