@@ -37,6 +37,7 @@ import {
   SCRUB_ACTIVATE_X_PX,
   SCRUB_FAIL_Y_PX,
   snapPrice,
+  snapScrubXToCandleCenter,
   startPlainScrub,
   type CrosshairState,
   updatePlainScrub,
@@ -157,6 +158,12 @@ export function useCrosshair(
    * Default `false`.
    */
   clampToPlot = false,
+  /**
+   * Candle mode: quantize the plain-scrub X to the hovered candle's center
+   * before it enters `scrubX` (`scrub.snapToCandles`). No-op in line mode.
+   * Default `false`.
+   */
+  snapToCandles = false,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -519,6 +526,26 @@ export function useCrosshair(
       ? SCRUB_ACTION_PRESS_HOLD_MS
       : panGestureDelay;
 
+  // `scrub.snapToCandles`: quantize the scrub X to the hovered candle's center
+  // before it enters `scrubX`, so the crosshair — and everything derived from
+  // it (time, tooltip, dim edge) — jumps candle-to-candle instead of gliding.
+  // Line mode and gaps between candles pass the raw X through.
+  /* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
+  const snapCandleX = (x: number): number => {
+    "worklet";
+    if (!snapToCandles || !isCandleMode || !candlesSV) return x;
+    return snapScrubXToCandleCenter(
+      x,
+      candlesSV.get(),
+      liveCandleSV?.get() ?? null,
+      candleWidthSecs,
+      padding,
+      engine.canvasWidth.get(),
+      engine.timestamp.get(),
+      engine.displayWindow.get(),
+    );
+  };
+
   let gesture = Gesture.Pan()
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
@@ -618,7 +645,7 @@ export function useCrosshair(
         // guard needed. (Plain-scrub counterpart of the scrub-action tap defer.)
         if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
         startPlainScrub(
-          e.x,
+          snapCandleX(e.x),
           padding,
           engine.canvasWidth.get(),
           clampPlainScrubToPlot,
@@ -653,7 +680,7 @@ export function useCrosshair(
           return;
         }
         updatePlainScrub(
-          e.x,
+          snapCandleX(e.x),
           padding,
           engine.canvasWidth.get(),
           clampPlainScrubToPlot,

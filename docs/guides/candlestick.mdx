@@ -147,6 +147,8 @@ Pass `scrub` to enable the crosshair: the built-in tooltip shows the scrubbed ca
 stacked with its time. For full control — a minimal pill, your own layout, or to mirror the active
 candle elsewhere in your UI — pass [`renderTooltip`](/guides/scrubbing#custom-tooltip-in-candle-mode),
 which receives the scrubbed bucket as `ctx.candle`. The JS-thread [`onScrub`](/guides/scrubbing)
-callback also includes `point.candle` for the OHLC under the crosshair.
+callback also includes `point.candle` for the OHLC under the crosshair. Set
+[`scrub.snapToCandles`](/guides/scrubbing#snap-to-candle-centers-snaptocandles) to make the
+crosshair jump from candle center to candle center instead of gliding.
 
 See the full prop list in the [`LiveChart` reference](/api-reference/livechart).

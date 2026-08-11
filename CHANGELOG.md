@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Candle-snapping crosshair.** `ScrubConfig.snapToCandles` quantizes the
+  scrub X to the hovered candle's center, so the crosshair — and the time,
+  tooltip, and trailing dim derived from it — jumps candle-to-candle instead
+  of gliding (the tick-to-tick feel of pro charting tools). Gaps between
+  candles and line mode keep the raw X; defaults to `false`. The Candlestick
+  demo includes a **Snap to candles** switch.
+
 ### Fixed
 
 - **Vertical marker stacks stay on the plot.** A `"vertical"` marker column
