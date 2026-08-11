@@ -29,6 +29,7 @@ export function DotOverlay({
   ring,
   color,
   viewEnd,
+  pulseWhileParked = false,
 }: {
   dotX: SharedValue<number>;
   dotY: SharedValue<number>;
@@ -46,6 +47,12 @@ export function DotOverlay({
    * misleading.
    */
   viewEnd?: SharedValue<number | null>;
+  /**
+   * Keep the heartbeat pulse while scrolled back. Set when the dot tracks the
+   * true live point (`dot.trackWhileParked`), so the pulse marks an honest
+   * live position; edge-pinned `followViewEdge` dots keep the suppression.
+   */
+  pulseWhileParked?: boolean;
 }) {
   const dotColor = color ?? palette.line;
 
@@ -64,7 +71,7 @@ export function DotOverlay({
 
   const pulseRadius = useDerivedValue(() => {
     if (!pulse) return 0;
-    if (viewEnd?.value != null) return 0; // scrolled back — no live pulse
+    if (!pulseWhileParked && viewEnd?.value != null) return 0; // scrolled back — no live pulse
     const nowMs = pulseClockMs.value;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
@@ -73,7 +80,7 @@ export function DotOverlay({
 
   const pulseOpacity = useDerivedValue(() => {
     if (!pulse) return 0;
-    if (viewEnd?.value != null) return 0; // scrolled back — no live pulse
+    if (!pulseWhileParked && viewEnd?.value != null) return 0; // scrolled back — no live pulse
     const nowMs = pulseClockMs.value;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;

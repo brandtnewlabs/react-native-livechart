@@ -254,6 +254,28 @@ describe("DotOverlay", () => {
     await render(<Fixture />);
   });
 
+  it("keeps the pulse while time-scrolled when pulseWhileParked is set", async () => {
+    function Fixture() {
+      const dotX = useSharedValue(100);
+      const dotY = useSharedValue(120);
+      const viewEnd = useSharedValue<number | null>(900); // scrolled back
+      return (
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          palette={palette}
+          radius={3.5}
+          ring={{ color: undefined, width: 2.5 }}
+          color={undefined}
+          pulse={PULSE_ON}
+          viewEnd={viewEnd}
+          pulseWhileParked
+        />
+      );
+    }
+    await render(<Fixture />);
+  });
+
   it("renders with pulse disabled", async () => {
     function Fixture() {
       const dotX = useSharedValue(100);

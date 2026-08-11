@@ -380,6 +380,10 @@ function useLiveChartController({
   // ring never starts (the DotOverlay reads `pulseCfg`, so null = no pulse).
   const pulseCfg = isStatic ? null : resolvePulse(pulse);
   const dotCfg = resolveDot(dot);
+  // `badge.followViewEdge` wins over `dot.trackWhileParked`: an edge-pinned dot
+  // must stay aligned with its badge, so the tracking flag is ignored.
+  const dotTracksParked =
+    dotCfg.trackWhileParked && !(badgeCfg?.followViewEdge ?? false);
   const selectionDotCfg = resolveSelectionDot(selectionDot);
   // Outer footprint of the dot (color-filled radius plus the halo ring).
   const dotOuterRadius = dotCfg.radius + (dotCfg.ring?.width ?? 0);
@@ -944,6 +948,7 @@ function useLiveChartController({
     effectivePadding,
     engine.edgeValue,
     badgeCfg?.followViewEdge ?? false,
+    dotCfg.trackWhileParked,
   );
 
   const momentumSV = useMomentum(engine, momentum);
@@ -1317,12 +1322,15 @@ function useLiveChartController({
     timeScroll,
     badgeCfg?.followViewEdge ?? false,
   );
+  // A dot that tracks the true live point while parked is exempt from the
+  // scroll-back hide: it no longer marks an off-screen price, and it hides
+  // itself once the live point leaves the window (`useLiveDot`'s sentinel).
   const liveDotOpacity = useDerivedValue(
     () =>
       reveal.dotOpacity.value *
       (selectionDotDuringScrub && crosshairScrubActive.value ? 0 : 1) *
       liveIndicatorScrollOpacity(
-        hideLiveOnScrollBack,
+        hideLiveOnScrollBack && !dotTracksParked,
         engine.viewEnd.value,
       ) *
       resolvedSeriesOpacity.value,
@@ -1398,6 +1406,7 @@ function useLiveChartController({
     valueLineCfg,
     pulseCfg,
     dotCfg,
+    dotTracksParked,
     dotOuterRadius,
     gridStyleCfg,
     degenCfg,
@@ -1895,6 +1904,7 @@ function ChartStack({
     liveDotOpacity,
     pulseCfg,
     dotCfg,
+    dotTracksParked,
     degenCfg,
     markersActive,
     markersSV,
@@ -2063,6 +2073,9 @@ function ChartStack({
             ring={dotCfg.ring}
             color={dotCfg.color}
             viewEnd={engine.viewEnd}
+            // A tracking dot marks the honest live position while parked, so
+            // its heartbeat keeps pulsing (useLiveDot tracks the true point).
+            pulseWhileParked={dotTracksParked}
           />
         </Group>
       )}

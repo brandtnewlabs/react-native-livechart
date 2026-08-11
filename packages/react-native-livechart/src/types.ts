@@ -1555,6 +1555,21 @@ export interface DotConfig {
   show?: boolean;
   /** Dot fill color. Defaults to the chart line color (per series for multi-series). */
   color?: string;
+  /**
+   * Keep the dot on the **true live point** while scrolled back or overscrolled
+   * with `timeScroll`: it tracks the live point's x (instead of staying pinned
+   * to the plot's right edge), keeps its heartbeat pulse (the dot still marks
+   * an honest live position), stays visible under
+   * `timeScroll.hideLiveOnScrollBack`, and hides once the live point leaves the
+   * visible window. Ignored when `badge.followViewEdge` is set — an edge-pinned
+   * dot must stay aligned with its badge. Single-series `LiveChart` only
+   * (multi-series dots already ride each line's end while scrolled). Default
+   * `false` (the dot stays pinned to the right edge with its pulse suppressed
+   * while scrolled back).
+   *
+   * @experimental
+   */
+  trackWhileParked?: boolean;
 }
 
 /** Live dot configuration for multi-series charts (extends the shared {@link DotConfig}). */
