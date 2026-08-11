@@ -74,6 +74,10 @@ export default function TimeScrollScreen() {
   const [enabled, setEnabled] = useState(true);
   const [followViewEdge, setFollowViewEdge] = useState(true);
   const [hideLiveOnScrollBack, setHideLiveOnScrollBack] = useState(true);
+  // Dot tracks the true live point while scrolled back / overscrolled (keeps
+  // pulsing, hides once the point leaves the window). Ignored while "Follow
+  // visible edge" is on — an edge-pinned dot stays aligned with its badge.
+  const [trackWhileParked, setTrackWhileParked] = useState(false);
   const [returnMode, setReturnMode] = useState<ReturnMode>("glide");
   const [zoomOn, setZoomOn] = useState(true);
   const [scrub, setScrub] = useState(true);
@@ -124,6 +128,7 @@ export default function TimeScrollScreen() {
           timeWindow={WINDOW_SECS}
           yAxis={{ float: floatAxis }}
           badge={{ followViewEdge }}
+          dot={{ trackWhileParked }}
           timeScroll={
             enabled
               ? {
@@ -165,6 +170,11 @@ export default function TimeScrollScreen() {
           label="Hide on scroll back"
           value={hideLiveOnScrollBack}
           onChange={setHideLiveOnScrollBack}
+        />
+        <ToggleChip
+          label="Dot tracks live point"
+          value={trackWhileParked}
+          onChange={setTrackWhileParked}
         />
       </ControlRow>
 

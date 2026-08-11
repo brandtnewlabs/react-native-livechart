@@ -1202,6 +1202,7 @@ export interface ResolvedDotConfig {
   ring: ResolvedDotRingConfig | null;
   show: boolean;
   color: string | undefined;
+  trackWhileParked: boolean;
 }
 
 const DOT_DEFAULTS: ResolvedDotConfig = {
@@ -1209,6 +1210,7 @@ const DOT_DEFAULTS: ResolvedDotConfig = {
   ring: RING_DEFAULTS,
   show: true,
   color: undefined,
+  trackWhileParked: false,
 };
 
 /**
@@ -1228,6 +1230,7 @@ export function resolveDot(
     ring: resolveDotRing(prop.ring),
     show: prop.show ?? DOT_DEFAULTS.show,
     color: prop.color,
+    trackWhileParked: prop.trackWhileParked ?? DOT_DEFAULTS.trackWhileParked,
   };
 }
 

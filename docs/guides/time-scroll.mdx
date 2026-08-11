@@ -204,6 +204,30 @@ The plotted line is independent of those overlay settings: while scrolled back, 
 at the visible window's right-edge value and never connects the historical window to the current
 live price.
 
+## Keep the dot on the live point (`dot.trackWhileParked`)
+
+The default live dot is pinned to the plot's right edge, so while scrolled back it would sit on a
+historical price — it's hidden (and its pulse suppressed) instead. Set
+[`dot.trackWhileParked`](/api-reference/types#config-objects) and the dot **tracks the true live
+point** while scrolled back or overscrolled: it stays visible at the live point's x, keeps its
+heartbeat pulse (it still marks an honest live position), and hides once the live point leaves
+the visible window. This is most visible with `overscroll` — drag past the live edge into blank
+space and the dot detaches from the plot edge, pulsing at the real last price.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  timeScroll={{ overscroll: 0.5 }}
+  dot={{ trackWhileParked: true }}
+/>
+```
+
+Because a tracking dot no longer marks an off-screen price, it is exempt from
+`hideLiveOnScrollBack` (the badge and value line keep the default hide). The flag is **ignored
+with `badge.followViewEdge`** — an edge-pinned dot must stay aligned with its badge. Off by
+default; the example app's **Time scroll** screen includes a **Dot tracks live point** switch.
+
 ## Notes
 
 - **Both charts.** `timeScroll` and `zoom` are wired into `LiveChart` and `LiveChartSeries`. In

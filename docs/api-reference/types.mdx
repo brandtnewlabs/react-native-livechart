@@ -538,6 +538,7 @@ interface DotConfig {
   ring?: boolean | DotRingConfig; // haloed outer ring, default true
   show?: boolean; // @deprecated — prefer dot={false}; default true
   color?: string; // dot fill, defaults to the line color
+  trackWhileParked?: boolean; // while scrolled back / overscrolled, the dot tracks the true live point — keeps pulsing, stays visible, hides once the point leaves the window; ignored with badge.followViewEdge (LiveChart only). Default false
 }
 interface MultiSeriesDotConfig extends DotConfig {
   pulse?: boolean | PulseConfig;

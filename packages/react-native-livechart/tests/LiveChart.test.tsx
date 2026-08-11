@@ -235,6 +235,24 @@ describe("LiveChart", () => {
     await render(<Harness gradient={false} yAxis={false} badge={false} />);
   });
 
+  it("renders with dot.trackWhileParked (on, off, and followViewEdge precedence)", async () => {
+    const screen = await render(
+      <Harness timeScroll dot={{ trackWhileParked: true }} />,
+    );
+    await screen.rerender(
+      <Harness timeScroll dot={{ trackWhileParked: false }} />,
+    );
+    // `badge.followViewEdge` wins: the edge-pinned dot stays with its badge, so
+    // the tracking flag (and its pulse/hide exemptions) is ignored.
+    await screen.rerender(
+      <Harness
+        timeScroll
+        badge={{ followViewEdge: true }}
+        dot={{ trackWhileParked: true }}
+      />,
+    );
+  });
+
   it("renders with axisAutoHide enabled (defaults and config object)", async () => {
     const screen = await render(<Harness axisAutoHide />);
     await screen.rerender(

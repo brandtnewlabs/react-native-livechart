@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Live dot can track the true live point while scrolled back.**
+  `DotConfig.trackWhileParked` on `LiveChart` (default `false`) keeps the dot
+  on the honest live position while time-scrolled or overscrolled: it tracks
+  the live point's x instead of staying pinned to the plot's right edge, keeps
+  its heartbeat pulse, and hides once the point leaves the visible window.
+  Ignored with `badge.followViewEdge` (an edge-pinned dot stays aligned with
+  its badge). The Time scroll demo and guide include an interactive example.
+
 ## [4.17.0] - 2026-08-10
 
 ### Added

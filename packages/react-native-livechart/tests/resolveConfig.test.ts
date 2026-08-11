@@ -1411,13 +1411,20 @@ describe("resolveDot", () => {
       ring: { color: undefined, width: 2.5 },
       show: true,
       color: undefined,
+      trackWhileParked: false,
     });
   });
 
   it("applies overrides (flat ring, hidden, color, radius)", () => {
     expect(
       resolveDot({ radius: 6, ring: false, show: false, color: "#abcdef" }),
-    ).toEqual({ radius: 6, ring: null, show: false, color: "#abcdef" });
+    ).toEqual({
+      radius: 6,
+      ring: null,
+      show: false,
+      color: "#abcdef",
+      trackWhileParked: false,
+    });
   });
 
   it("treats `true` as shown defaults", () => {
@@ -1431,7 +1438,19 @@ describe("resolveDot", () => {
       ring: { color: undefined, width: 2.5 },
       show: false,
       color: undefined,
+      trackWhileParked: false,
     });
+  });
+
+  it("defaults trackWhileParked to off when omitted from the config object", () => {
+    expect(resolveDot({ radius: 6 }).trackWhileParked).toBe(false);
+  });
+
+  it("passes an explicit trackWhileParked through", () => {
+    expect(resolveDot({ trackWhileParked: true }).trackWhileParked).toBe(true);
+    expect(resolveDot({ trackWhileParked: false }).trackWhileParked).toBe(
+      false,
+    );
   });
 });
 
@@ -1444,6 +1463,7 @@ describe("resolveMultiSeriesDot", () => {
       ring: { color: undefined, width: 2.5 },
       show: true,
       color: undefined,
+      trackWhileParked: false,
       pulse: expect.objectContaining({ maxRadius: expect.any(Number) }),
       valueLine: null,
       valueLabel: true,
@@ -1464,6 +1484,7 @@ describe("resolveMultiSeriesDot", () => {
       ring: null,
       show: false,
       color: "#abcdef",
+      trackWhileParked: false,
       pulse: expect.objectContaining({ maxRadius: expect.any(Number) }),
       valueLine: null,
       valueLabel: false,

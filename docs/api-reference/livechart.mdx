@@ -101,7 +101,11 @@ provided; everything else has a default.
   gives a flat dot, `color` overrides the fill. The same `DotConfig` is shared
   with `LiveChartSeries` (whose `dot` extends it with `pulse`, `valueLine`, and
   `valueLabel`). `dot={false}` is the canonical "hide" — the deprecated
-  `dot={{ show: false }}` still works.
+  `dot={{ show: false }}` still works. With `timeScroll`, `trackWhileParked`
+  keeps the dot on the **true live point** while scrolled back — it tracks the
+  point's x, keeps its pulse, and hides once the point leaves the window
+  (ignored with `badge.followViewEdge`). See
+  [Time-scroll](/guides/time-scroll#keep-the-dot-on-the-live-point-dottrackwhileparked).
 </ParamField>
 
 <ParamField body="valueLine" type="boolean | ValueLineConfig">
