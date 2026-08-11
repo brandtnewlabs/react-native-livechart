@@ -236,3 +236,86 @@ describe("clusterMarkers — stacked vertical", () => {
     expect(proj.slice(0, 5).every((p) => p.hidden && p.groupRep === 5)).toBe(true);
   });
 });
+
+describe("clusterMarkers — stacked vertical with canvas bounds", () => {
+  const STEP = 16 * (1 - 0.6); // glyphHeight(trade) * (1 - overlap) = 6.4
+
+  it("clamps an `above` column where the next glyph would cross minY", () => {
+    // Base at 25 - (16/2 + 2) = 15; room above = 15 - 8 = 7 → 1 + floor(7/6.4) = 2 slots.
+    const markers = Array.from({ length: 4 }, (_, i) => trade(`m${i}`, i + 1, "above"));
+    const proj = markers.map(() => pm(100, 25));
+    clusterMarkers(markers, proj, { config: STACKED_VERTICAL, minY: 0, maxY: 200 });
+    expect(proj[0].hidden).toBe(false);
+    expect(proj[0].y).toBeCloseTo(15);
+    expect(proj[1].hidden).toBe(false);
+    expect(proj[1].y).toBeCloseTo(15 - STEP);
+    expect(proj[2].hidden).toBe(true); // would sit at 2.2 with its top at -5.8
+    expect(proj[3].hidden).toBe(true);
+  });
+
+  it("clamps a `below` column where the next glyph would cross maxY", () => {
+    // Base at 175 + (16/2 + 2) = 185; room below = 200 - 8 - 185 = 7 → 2 slots.
+    const markers = Array.from({ length: 4 }, (_, i) => trade(`m${i}`, i + 1, "below"));
+    const proj = markers.map(() => pm(100, 175));
+    clusterMarkers(markers, proj, { config: STACKED_VERTICAL, minY: 0, maxY: 200 });
+    expect(proj[0].hidden).toBe(false);
+    expect(proj[0].y).toBeCloseTo(185);
+    expect(proj[1].hidden).toBe(false);
+    expect(proj[1].y).toBeCloseTo(185 + STEP);
+    expect(proj[2].hidden).toBe(true);
+    expect(proj[3].hidden).toBe(true);
+  });
+
+  it("always draws the base slot even when it already overflows the bounds", () => {
+    // Base at 5 - 10 = -5 is above minY entirely (negative room) — cap floors at 1.
+    const markers = Array.from({ length: 3 }, (_, i) => trade(`m${i}`, i + 1, "above"));
+    const proj = markers.map(() => pm(100, 5));
+    clusterMarkers(markers, proj, { config: STACKED_VERTICAL, minY: 0, maxY: 200 });
+    expect(proj[0].hidden).toBe(false);
+    expect(proj[0].y).toBeCloseTo(-5);
+    expect(proj[1].hidden).toBe(true);
+    expect(proj[2].hidden).toBe(true);
+  });
+
+  it("applies the smaller of maxVisible and the bounds cap", () => {
+    const markers = Array.from({ length: 4 }, (_, i) => trade(`m${i}`, i + 1, "above"));
+    // Plenty of room (base 140, minY 0 fits 20+): maxVisible = 2 wins.
+    const roomy = markers.map(() => pm(100, 150));
+    clusterMarkers(markers, roomy, {
+      config: { ...STACKED_VERTICAL, maxVisible: 2 },
+      minY: 0,
+      maxY: 200,
+    });
+    expect(roomy.map((p) => p.hidden)).toEqual([false, false, true, true]);
+    // Tight room (base 15 fits 2): the bounds cap wins over maxVisible = 3.
+    const tight = markers.map(() => pm(100, 25));
+    clusterMarkers(markers, tight, {
+      config: { ...STACKED_VERTICAL, maxVisible: 3 },
+      minY: 0,
+      maxY: 200,
+    });
+    expect(tight.map((p) => p.hidden)).toEqual([false, false, true, true]);
+  });
+
+  it("ignores bounds unless both minY and maxY are provided", () => {
+    const markers = Array.from({ length: 4 }, (_, i) => trade(`m${i}`, i + 1, "above"));
+    const proj = markers.map(() => pm(100, 25));
+    clusterMarkers(markers, proj, { config: STACKED_VERTICAL, minY: 0 });
+    // Pass-through: the full column lays out, even past the would-be bound.
+    expect(proj.every((p) => !p.hidden)).toBe(true);
+    expect(proj[3].y).toBeCloseTo(15 - 3 * STEP); // top glyph center at -4.2
+  });
+
+  it("skips the bounds clamp when the fan step is 0 (overlap 1)", () => {
+    // step = h * (1 - 1) = 0: all glyphs share the base slot; no division by 0.
+    const markers = Array.from({ length: 3 }, (_, i) => trade(`m${i}`, i + 1, "above"));
+    const proj = markers.map(() => pm(100, 25));
+    clusterMarkers(markers, proj, {
+      config: { ...STACKED_VERTICAL, overlap: 1 },
+      minY: 0,
+      maxY: 200,
+    });
+    expect(proj.every((p) => !p.hidden)).toBe(true);
+    expect(proj.every((p) => p.y === 15)).toBe(true);
+  });
+});

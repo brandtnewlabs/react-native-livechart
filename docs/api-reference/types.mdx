@@ -340,7 +340,8 @@ interface ThresholdLineConfig {
 }
 interface BadgeConfig {
   variant?: "default" | "minimal";
-  tail?: boolean;
+  tail?: boolean;        // pointed tail toward the dot; false = pill sits flush
+                         //   at the gutter edge (no tail space reserved); default true
   background?: string;
   position?: "right" | "left";
   // Shape / style — all Skia-native, drawn in the batched canvas pass (no perf cost):

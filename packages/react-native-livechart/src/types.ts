@@ -591,7 +591,11 @@ export interface AreaDotsConfig {
 export interface BadgeConfig extends BadgeStyleConfig {
   /** Visual style of the badge pill. Default `"default"`. */
   variant?: BadgeVariant;
-  /** Show the pointed tail toward the live dot. Default `true`. */
+  /**
+   * Show the pointed tail toward the live dot. When `false`, no tail space is
+   * reserved: the pill body sits flush at the gutter edge (right after the dot
+   * gap) and the auto right padding shrinks accordingly. Default `true`.
+   */
   tail?: boolean;
   /** Which side of the chart the badge appears on. Default `"right"`. */
   position?: "right" | "left";
