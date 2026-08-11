@@ -432,8 +432,9 @@ describe("resolveChartLayout", () => {
     expect(withTail.padding.right - noTail.padding.right).toBe(14);
   });
 
-  it("shrinks right padding when badgeShowTail is false (font path)", () => {
+  it("shrinks right padding when badgeShowTail is false with the default pulse", () => {
     const font = mockFont(7);
+    const pulse = { maxRadius: 21, strokeWidth: 1.5 };
     const withTail = resolveChartLayout({
       palette,
       yAxis: true,
@@ -441,6 +442,7 @@ describe("resolveChartLayout", () => {
       font,
       formatValue: fmt,
       currentValue: 42,
+      pulse,
     });
     const noTail = resolveChartLayout({
       palette,
@@ -450,6 +452,7 @@ describe("resolveChartLayout", () => {
       font,
       formatValue: fmt,
       currentValue: 42,
+      pulse,
     });
     expect(noTail.padding.right).toBeLessThan(withTail.padding.right);
     // tail (5) + cap inset ((12+6)/2 = 9) both drop when the tail is off
