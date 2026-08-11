@@ -199,7 +199,11 @@ export function CustomMarkerOverlay({
       lineData: lineData?.get(),
       lineLinear,
     });
-    clusterMarkers(ms, buf, { config: cluster });
+    clusterMarkers(ms, buf, {
+      config: cluster,
+      minY: 0,
+      maxY: engine.canvasHeight.get(),
+    });
     const map: Record<string, ProjectedMarker> = {};
     for (let i = 0; i < ms.length; i++) {
       if (customIds[ms[i].id]) map[ms[i].id] = buf[i];

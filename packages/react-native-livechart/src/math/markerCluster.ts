@@ -34,6 +34,12 @@ export interface ResolvedMarkerCluster {
 
 export interface ClusterMarkersOpts {
   config: ResolvedMarkerCluster;
+  /** Canvas-space y bounds (typically `0` / canvas height). When set, a
+   *  `"vertical"` column is additionally capped where the next glyph would
+   *  cross a bound, so a tall stack can't climb off the chart when its anchor
+   *  is already near the edge. The base slot always draws. */
+  minY?: number;
+  maxY?: number;
 }
 
 /** Glyph box used when `marker.size` is unset — mirrors `markerAtlas.DEFAULT_ICON_SIZE`. */
@@ -138,7 +144,15 @@ function layoutBucket(
     // `maxVisible` caps the column: the oldest glyphs keep their slots and the
     // newest overflow is simply hidden.
     const dir = side === "below" ? 1 : -1;
-    const cap = opts.config.maxVisible;
+    let cap = opts.config.maxVisible;
+    // Bounds clamp: slot j sits at `base + dir * j * step`; keep only slots
+    // whose glyph box stays inside [minY, maxY].
+    if (opts.minY !== undefined && opts.maxY !== undefined && step > 0) {
+      const base = anchorY + sideDy;
+      const room = dir === -1 ? base - h / 2 - opts.minY : opts.maxY - h / 2 - base;
+      const fit = 1 + Math.floor(room / step);
+      if (fit < cap) cap = Math.max(1, fit);
+    }
     for (let j = 0; j < count; j++) {
       const p = proj[idx[s + j]];
       if (j >= cap) {
