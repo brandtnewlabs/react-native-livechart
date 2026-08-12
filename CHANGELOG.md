@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Focused candle scrubbing.** `ScrubConfig.dimTarget: "otherCandles"` keeps
+  the candle under the finger at full color while dimming every other candle
+  body and wick to `dimOpacity` (`0.5` for the brokerage-style treatment).
+  The vertical scrub guide and selection dot hide in this mode, leaving the
+  focused candle as the sole position indicator. Other candles ease into and
+  out of the dim with configurable `dimFadeMs` (default `60`; `0` is instant).
+  Switching the same chart to line mode falls back to the standard guide, dot,
+  and trailing fade. The default `"future"` target preserves the existing
+  behavior. The Candle scrub demo enables it.
+
 ## [4.18.0] - 2026-08-12
 
 ### Added

@@ -894,8 +894,38 @@ describe("LiveChart", () => {
     });
   });
 
+  it("renders candle mode with other-candle scrub dimming", async () => {
+    const screen = await render(
+      <CandleHarness
+        scrub={{
+          dimTarget: "otherCandles",
+          dimOpacity: 0.5,
+          snapToCandles: true,
+        }}
+      />,
+    );
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+  });
+
   it("treats scrub.snapToCandles as a no-op in line mode", async () => {
     await render(<Harness scrub={{ snapToCandles: true }} />);
+  });
+
+  it("restores the standard scrub when switching other-candle dimming to line mode", async () => {
+    const scrub = {
+      dimTarget: "otherCandles" as const,
+      crosshairLineColor: "#123abc",
+    };
+    const screen = await render(<CandleHarness scrub={scrub} />);
+
+    expect(JSON.stringify(screen.toJSON())).not.toContain("#123abc");
+
+    await screen.rerender(<CandleHarness mode="line" scrub={scrub} />);
+
+    expect(JSON.stringify(screen.toJSON())).toContain("#123abc");
   });
 
   it("renders candle mode with an instant candleLerpSpeed (transitions)", async () => {

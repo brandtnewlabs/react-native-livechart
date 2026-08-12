@@ -201,18 +201,40 @@ function OhlcTooltip({ candle }: TooltipRenderProps) {
 that only shows the close + date needs no candle-specific code at all. This is handy when the active
 candle is shown elsewhere in your UI and you want a minimal (or empty) in-chart tooltip.
 
-## Trailing fade (`dimOpacity`)
+## Scrub dimming (`dimTarget`, `dimOpacity`)
 
-While scrubbing, the chart content to the **right** of the crosshair (the "future") is faded so the
-part you're inspecting stands out. This is done by erasing the trailing content's alpha — it reveals
-the **real background**, so it works on any background color (no need to match a mask color).
-
-`dimOpacity` sets the opacity of that trailing region: `1` disables the fade, `0` fully hides it.
-Default `0.3`.
+By default, scrubbing fades chart content to the **right** of the crosshair (the "future") so the
+part you're inspecting stands out. Set `dimTarget: "otherCandles"` in candle mode to keep the
+candle under the finger at full strength while fading every other candle body and wick:
 
 ```tsx
-<LiveChart data={data} value={value} scrub={{ dimOpacity: 0.3 }} />
+<LiveChart
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  scrub={{
+    tooltip: false,
+    snapToCandles: true,
+    dimTarget: "otherCandles",
+    dimOpacity: 0.5,
+    dimFadeMs: 60,
+  }}
+/>
 ```
+
+`dimOpacity` is clamped to `[0, 1]`: `1` disables the fade and `0` fully hides the selected target.
+Default `0.3`. With `"otherCandles"`, volume bars stay unchanged and gaps select no candle. The
+vertical crosshair and scrub selection dot are hidden so the focused candle is the sole position
+indicator. If the chart switches to line mode while keeping this config, scrubbing falls back to the
+standard guide, selection dot, and `"future"` fade. The default `dimTarget: "future"` preserves the
+existing trailing fade.
+
+`dimFadeMs` controls how quickly the other candles ease toward `dimOpacity` and return to full
+strength on release. It defaults to `60` ms; set it to `0` for the previous instant change. The
+selected candle remains fully opaque while the surrounding batch animates.
+
+The trailing fade erases content alpha, revealing the **real background**, so it works on any
+background color (no need to match a mask color).
 
 <Note>
   `crosshairDimColor` is the legacy alternative: a solid (usually semi-transparent) color painted
@@ -220,7 +242,8 @@ Default `0.3`.
   background — prefer `dimOpacity`. When `crosshairDimColor` is set, it overrides the fade.
 </Note>
 
-The same `dimOpacity` option works on `LiveChartSeries`.
+The default `dimTarget: "future"` and its `dimOpacity` work on `LiveChartSeries`;
+`"otherCandles"` focus rendering is candle-mode only.
 
 ## Hide overlays while scrubbing (`hideOverlaysOnScrub`)
 

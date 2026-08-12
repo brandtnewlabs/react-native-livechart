@@ -370,7 +370,9 @@ interface ScrubConfig {
   // LiveChartSeries only: opt-in Morfi-style time + per-series value pills.
   // false/omitted preserves the existing guide-only default.
   seriesTooltip?: boolean | PerSeriesTooltipConfig;
-  dimOpacity?: number; // opacity of content right of the crosshair; default 0.3 (1 = off)
+  dimTarget?: "future" | "otherCandles"; // default "future"; otherCandles hides the scrub line/dot in candle mode, falls back to future in line mode
+  dimOpacity?: number; // opacity of the selected dim target; clamped to [0, 1]; default 0.3
+  dimFadeMs?: number; // otherCandles fade-in/out duration; default 60; 0 = instant
   crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
   crosshairStrokeWidth?: number; // line width in px; default 1
   crosshairOvershoot?: number; // extend past top/bottom in px; preserves a custom top-tooltip stop; negatives clamp to 0; default 0

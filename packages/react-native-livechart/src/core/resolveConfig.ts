@@ -54,6 +54,7 @@ import {
   LOADING_WAVE_SPEED,
   MOTION_METRICS_DEFAULTS,
   RETURN_TO_LIVE_MS,
+  SCRUB_CANDLE_DIM_FADE_MS,
 } from "../constants";
 
 // ─── Resolved types (all fields required, no optionals) ──────────────────────
@@ -152,8 +153,12 @@ export interface ResolvedScrubConfig {
   tooltip: boolean;
   /** Opt-in per-series pill tooltip for LiveChartSeries; null keeps guide-only behavior. */
   seriesTooltip: ResolvedPerSeriesTooltipConfig | null;
-  /** Opacity of content right of the crosshair while scrubbing (dstOut fade). */
+  /** Content affected by dimOpacity while scrubbing. */
+  dimTarget: "future" | "otherCandles";
+  /** Opacity of the content selected by dimTarget while scrubbing. */
   dimOpacity: number;
+  /** Candle-focus dim transition duration in milliseconds. */
+  dimFadeMs: number;
   /** undefined → palette.crosshairLine */
   crosshairLineColor: string | undefined;
   /** Vertical crosshair line width in px. */
@@ -716,7 +721,9 @@ export function resolveXAxis(
 const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   tooltip: true,
   seriesTooltip: null,
+  dimTarget: "future",
   dimOpacity: 0.3,
+  dimFadeMs: SCRUB_CANDLE_DIM_FADE_MS,
   crosshairLineColor: undefined,
   crosshairStrokeWidth: 1,
   crosshairOvershoot: 0,
@@ -804,6 +811,8 @@ export function resolveScrub(
     const seriesTooltip =
       typeof prop === "object" ? prop.seriesTooltip : undefined;
     resolved.seriesTooltip = resolvePerSeriesTooltip(seriesTooltip);
+    resolved.dimOpacity = Math.max(0, Math.min(1, resolved.dimOpacity));
+    resolved.dimFadeMs = Math.max(0, resolved.dimFadeMs);
     resolved.crosshairOvershoot = Math.max(0, resolved.crosshairOvershoot);
     resolved.crosshairFadeDistance = Math.max(
       0,

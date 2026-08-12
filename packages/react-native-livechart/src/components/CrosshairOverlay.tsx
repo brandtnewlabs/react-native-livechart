@@ -29,6 +29,7 @@ export function CrosshairOverlay({
   children,
   renderTooltip,
   lineTop,
+  showLine = true,
   selectionDot,
   selectionY,
   scrubActive,
@@ -70,6 +71,8 @@ export function CrosshairOverlay({
    *  top-pinned custom tooltip instead of running up through it. -1 (or omitted)
    *  → start at `padding.top`. Fed by {@link CustomTooltipOverlay}. */
   lineTop?: SharedValue<number>;
+  /** Draw the vertical scrub guide. Default true. */
+  showLine?: boolean;
   /** Resolved selection-dot config; `null` hides it, a `component` renders the
    *  consumer's dot, otherwise the built-in dot. */
   selectionDot?: ResolvedSelectionDotConfig | null;
@@ -229,15 +232,17 @@ export function CrosshairOverlay({
       ) : null}
 
       <Group opacity={visibleOpacity}>
-        <Line
-          p1={p1}
-          p2={p2}
-          color={crosshairLineColor ?? palette.crosshairLine}
-          strokeWidth={crosshairStrokeWidth}
-          strokeCap={crosshairLineCap}
-        >
-          {crosshairDash ? <DashPathEffect intervals={crosshairDash} /> : null}
-        </Line>
+        {showLine ? (
+          <Line
+            p1={p1}
+            p2={p2}
+            color={crosshairLineColor ?? palette.crosshairLine}
+            strokeWidth={crosshairStrokeWidth}
+            strokeCap={crosshairLineCap}
+          >
+            {crosshairDash ? <DashPathEffect intervals={crosshairDash} /> : null}
+          </Line>
+        ) : null}
 
         {/* Selection dot at the scrub intersection. `null` hides it; a custom
             component renders the consumer's dot; otherwise the built-in dot. */}

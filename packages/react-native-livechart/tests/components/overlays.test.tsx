@@ -538,6 +538,36 @@ describe("CrosshairOverlay", () => {
     await render(<Fixture />);
   });
 
+  it("can hide the crosshair line and selection dot while keeping the overlay", async () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(120);
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          scrubActive={scrubActive}
+          showLine={false}
+          selectionDot={null}
+          selectionY={selectionY}
+          showTooltip={false}
+          dimOpacity={1}
+        />
+      );
+    }
+    const tree = JSON.stringify((await render(<Fixture />)).toJSON());
+    expect(tree).not.toContain(palette.crosshairLine);
+    expect(tree).not.toContain('"cx"');
+  });
+
   it("applies crosshair stroke width, overshoot, and disabled edge fade", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);

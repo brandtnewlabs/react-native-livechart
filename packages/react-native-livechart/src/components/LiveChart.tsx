@@ -70,6 +70,10 @@ import {
 import { resolveSegment, type ResolvedSegment } from "../core/resolveSegment";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import { pulseRadialOutset } from "../draw/line";
+import {
+  computeCandleFocusClip,
+  HIDDEN_CANDLE_FOCUS_CLIP,
+} from "../draw/candle";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
 import { useCandlePaths, useCandleWidthLerp } from "../hooks/useCandlePaths";
@@ -1778,6 +1782,42 @@ function ChartFillLayer({
   );
 }
 
+type CandlePaths = ReturnType<typeof useCandlePaths>;
+
+/** One batched candle pass: two body paths and two wick paths. */
+function CandlePathBatch({
+  paths,
+  wickWidth,
+  palette,
+}: {
+  paths: CandlePaths;
+  wickWidth: number;
+  palette: LiveChartPalette;
+}) {
+  return (
+    <>
+      <Path
+        path={paths.upWicksPath}
+        style="stroke"
+        strokeWidth={wickWidth}
+        color={palette.wickUp}
+      />
+      <Path
+        path={paths.downWicksPath}
+        style="stroke"
+        strokeWidth={wickWidth}
+        color={palette.wickDown}
+      />
+      <Path path={paths.upBodiesPath} style="fill" color={palette.candleUp} />
+      <Path
+        path={paths.downBodiesPath}
+        style="fill"
+        color={palette.candleDown}
+      />
+    </>
+  );
+}
+
 /**
  * Candle/volume paths are a mode-specific subsystem. Keeping their hooks in a
  * child means a line chart never registers the candle-width frame callback or
@@ -1799,15 +1839,10 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     volumeOpacity,
     volumeUpColor,
     volumeDownColor,
+    scrubCfg,
+    crosshair,
   } = model;
-  const {
-    upBodiesPath,
-    downBodiesPath,
-    upWicksPath,
-    downWicksPath,
-    upBarsPath,
-    downBarsPath,
-  } = useCandlePaths(
+  const paths = useCandlePaths(
     engine,
     effectivePadding,
     candlesEngine,
@@ -1818,31 +1853,97 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     volumeBandHeight,
     volumeCfg?.radius ?? 0,
   );
+  const focusOtherCandles = scrubCfg?.dimTarget === "otherCandles";
+  const candleDimOpacity = scrubCfg?.dimOpacity ?? 1;
+  const candleDimFadeMs = scrubCfg?.dimFadeMs ?? 0;
+  // Destructure the two SharedValues before entering worklets. Closing over the
+  // whole crosshair object would also serialize its RNGH gesture instances.
+  const scrubActive = crosshair.scrubActive;
+  // ChartCandleLayer is single-series only; useCrosshair always supplies this
+  // value (it is optional on the shared state type only for LiveChartSeries).
+  const scrubCandle = crosshair.scrubCandle!;
+  const inactiveCandleOpacity = useDerivedValue(() => {
+    const target =
+      focusOtherCandles && scrubActive.get() && scrubCandle.get()
+        ? candleDimOpacity
+        : 1;
+    return candleDimFadeMs > 0
+      ? withTiming(target, { duration: candleDimFadeMs })
+      : target;
+  }, [
+    focusOtherCandles,
+    scrubActive,
+    scrubCandle,
+    candleDimOpacity,
+    candleDimFadeMs,
+  ]);
+  const focusedCandleOpacity = useDerivedValue(
+    () => (focusOtherCandles && scrubActive.get() && scrubCandle.get() ? 1 : 0),
+    [focusOtherCandles, scrubActive, scrubCandle],
+  );
+  const focusedCandleClip = useDerivedValue(() => {
+    if (!focusOtherCandles || !scrubActive.get()) {
+      return HIDDEN_CANDLE_FOCUS_CLIP;
+    }
+    return computeCandleFocusClip(
+      scrubCandle.get(),
+      effectivePadding,
+      engine.canvasWidth.get(),
+      engine.canvasHeight.get(),
+      engine.timestamp.get() - engine.displayWindow.get(),
+      engine.displayWindow.get(),
+      displayCandleWidth.get(),
+    );
+  }, [
+    focusOtherCandles,
+    scrubActive,
+    scrubCandle,
+    effectivePadding,
+    engine.canvasWidth,
+    engine.canvasHeight,
+    engine.timestamp,
+    engine.displayWindow,
+    displayCandleWidth,
+  ]);
 
   return (
     <Group opacity={seriesOpacity}>
       <Group opacity={candleGroupOpacity}>
-        <Path
-          path={upWicksPath}
-          style="stroke"
-          strokeWidth={metricsCfg.candle.wickWidth}
-          color={palette.wickUp}
-        />
-        <Path
-          path={downWicksPath}
-          style="stroke"
-          strokeWidth={metricsCfg.candle.wickWidth}
-          color={palette.wickDown}
-        />
-        <Path path={upBodiesPath} style="fill" color={palette.candleUp} />
-        <Path path={downBodiesPath} style="fill" color={palette.candleDown} />
+        {focusOtherCandles ? (
+          <>
+            <Group opacity={inactiveCandleOpacity}>
+              <CandlePathBatch
+                paths={paths}
+                wickWidth={metricsCfg.candle.wickWidth}
+                palette={palette}
+              />
+            </Group>
+            <Group opacity={focusedCandleOpacity} clip={focusedCandleClip}>
+              <CandlePathBatch
+                paths={paths}
+                wickWidth={metricsCfg.candle.wickWidth}
+                palette={palette}
+              />
+            </Group>
+          </>
+        ) : (
+          <CandlePathBatch
+            paths={paths}
+            wickWidth={metricsCfg.candle.wickWidth}
+            palette={palette}
+          />
+        )}
       </Group>
 
       {volumeCfg && (
         <Group opacity={candleGroupOpacity}>
           <Group opacity={volumeOpacity}>
-            <Path path={upBarsPath} style="fill" color={volumeUpColor} />
-            <Path path={downBarsPath} style="fill" color={volumeDownColor} />
+            <Path path={paths.upBarsPath} style="fill" color={volumeUpColor} />
+            <Path
+              path={paths.downBarsPath}
+              style="fill"
+              color={volumeDownColor}
+            />
           </Group>
         </Group>
       )}
@@ -2219,6 +2320,10 @@ function ChartScrubLayer({
   // Skia tooltip is suppressed here while it's active — the line pill in line
   // mode, and the OHLC stack in candle mode (see the stack gate below).
   const customTooltipActive = renderTooltip != null;
+  // `otherCandles` is candle-only. If a consumer switches this chart to line
+  // mode without also rewriting its scrub config, preserve the standard line
+  // scrub (guide, selection dot, and trailing fade).
+  const dimsFuture = !isCandle || scrubCfg?.dimTarget === "future";
 
   if (!scrubCfg) return null;
 
@@ -2243,11 +2348,12 @@ function ChartScrubLayer({
           font={skiaFont}
           showTooltip={scrubCfg.tooltip && !customTooltipActive}
           lineTop={crosshair.tooltipLineTop}
-          selectionDot={selectionDot}
+          showLine={dimsFuture}
+          selectionDot={dimsFuture ? selectionDot : null}
           selectionY={crosshair.scrubDotY}
           scrubActive={crosshair.scrubActive}
           selectionColor={selectionColor}
-          dimOpacity={scrubCfg.dimOpacity}
+          dimOpacity={dimsFuture ? scrubCfg.dimOpacity : 1}
           liveDotExtent={liveDotExtent}
           crosshairLineColor={scrubCfg.crosshairLineColor}
           crosshairStrokeWidth={scrubCfg.crosshairStrokeWidth}
@@ -2256,7 +2362,9 @@ function ChartScrubLayer({
           crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
           crosshairLineCap={scrubCfg.crosshairLineCap}
           crosshairDash={scrubCfg.crosshairDash}
-          crosshairDimColor={scrubCfg.crosshairDimColor}
+          crosshairDimColor={
+            dimsFuture ? scrubCfg.crosshairDimColor : undefined
+          }
           tooltipBackground={scrubCfg.tooltipBackground}
           tooltipColor={scrubCfg.tooltipColor}
           tooltipBorderColor={scrubCfg.tooltipBorderColor}
