@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Shape-preserving line denoising.** `LineConfig.simplify` opts into
+  screen-space path simplification with a pixel tolerance, removing small visual
+  wiggles while retaining endpoints and larger peaks/valleys. It affects only
+  rendered line/fill geometry; axis fitting, values, markers, and scrubbing keep
+  using the original data. `LiveChartSeries` applies the shared line setting to
+  every path, with a per-series `SeriesConfig.simplify` override. Default `0`
+  keeps existing paths unchanged. A dedicated guide and raw-vs-simplified demo
+  make the tolerance and preserved structure directly comparable.
+
 ## [4.18.0] - 2026-08-12
 
 ### Added
@@ -42,15 +53,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [4.17.0] - 2026-08-10
 
 ### Added
-
-- **Shape-preserving line denoising.** `LineConfig.simplify` opts into
-  screen-space path simplification with a pixel tolerance, removing small visual
-  wiggles while retaining endpoints and larger peaks/valleys. It affects only
-  rendered line/fill geometry; axis fitting, values, markers, and scrubbing keep
-  using the original data. `LiveChartSeries` applies the shared line setting to
-  every path, with a per-series `SeriesConfig.simplify` override. Default `0`
-  keeps existing paths unchanged. A dedicated guide and raw-vs-simplified demo
-  make the tolerance and preserved structure directly comparable.
 
 - **Vertical marker-column caps.** `MarkerClusterConfig.maxVisible` keeps only
   the oldest glyphs in a vertical stack and hides newer overflow, preventing a
