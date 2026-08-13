@@ -863,13 +863,36 @@ export interface ScrubConfig {
    */
   seriesTooltip?: boolean | PerSeriesTooltipConfig;
   /**
-   * Opacity of the chart content to the *right* of the crosshair (the "future")
-   * while scrubbing — `0` fully fades it out, `1` disables the dim. Implemented
-   * by erasing the content's alpha (`dstOut`), so it reveals the real background
-   * and works on any background color. Default `0.3`. Ignored when
-   * `crosshairDimColor` is set (that uses the legacy colored mask instead).
+   * Which content {@link dimOpacity} fades while scrubbing.
+   *
+   * - `"future"` fades all chart content to the right of the crosshair.
+   * - `"otherCandles"` keeps the candle under the finger at full strength and
+   *   fades every other candle body and wick. Outside candle mode it falls back
+   *   to the standard `"future"` behavior. When the finger is in a gap between
+   *   candle buckets no candle is selected. Volume bars are unchanged. The
+   *   vertical crosshair and scrub selection dot are hidden so the focused
+   *   candle is the sole position indicator.
+   *
+   * Default `"future"`.
+   */
+  dimTarget?: "future" | "otherCandles";
+  /**
+   * Opacity of the content selected by {@link dimTarget} while scrubbing — `0`
+   * fully fades it out, `1` disables the dim. Values are clamped to `[0, 1]`.
+   *
+   * With the default `dimTarget: "future"`, the fade is implemented by erasing
+   * the trailing content's alpha (`dstOut`), so it reveals the real background
+   * and works on any background color. Default `0.3`. `crosshairDimColor`
+   * overrides this opacity only for the `"future"` target.
    */
   dimOpacity?: number;
+  /**
+   * Duration in milliseconds for other candles to ease toward
+   * {@link dimOpacity} when a focused-candle scrub starts, and back to full
+   * strength on release. Used only with `dimTarget: "otherCandles"`.
+   * Set `0` for an instant change. Negative values clamp to `0`. Default `60`.
+   */
+  dimFadeMs?: number;
   /** Vertical crosshair line stroke. Omit to use theme `crosshairLine`. */
   crosshairLineColor?: string;
   /** Vertical crosshair line width in px. Default `1`. */

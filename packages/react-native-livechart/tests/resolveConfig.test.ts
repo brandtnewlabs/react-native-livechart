@@ -590,7 +590,9 @@ describe("resolveScrub", () => {
   const DEFAULTS = {
     tooltip: true,
     seriesTooltip: null,
+    dimTarget: "future",
     dimOpacity: 0.3,
+    dimFadeMs: 60,
     crosshairLineColor: undefined,
     crosshairStrokeWidth: 1,
     crosshairOvershoot: 0,
@@ -636,6 +638,32 @@ describe("resolveScrub", () => {
     expect(resolveScrub({ dimOpacity: 0.5 })).toEqual({
       ...DEFAULTS,
       dimOpacity: 0.5,
+    });
+  });
+
+  it("supports candle-focus dimming and clamps its opacity", () => {
+    expect(
+      resolveScrub({ dimTarget: "otherCandles", dimOpacity: 1.5 }),
+    ).toMatchObject({ dimTarget: "otherCandles", dimOpacity: 1 });
+    expect(resolveScrub({ dimOpacity: -0.25 })?.dimOpacity).toBe(0);
+  });
+
+  it("supports a configurable candle-focus fade and clamps negatives", () => {
+    expect(resolveScrub({ dimFadeMs: 240 })?.dimFadeMs).toBe(240);
+    expect(resolveScrub({ dimFadeMs: -1 })?.dimFadeMs).toBe(0);
+  });
+
+  it("restores dim defaults when optional fields are explicitly undefined", () => {
+    expect(
+      resolveScrub({
+        dimTarget: undefined,
+        dimOpacity: undefined,
+        dimFadeMs: undefined,
+      }),
+    ).toMatchObject({
+      dimTarget: "future",
+      dimOpacity: 0.3,
+      dimFadeMs: 60,
     });
   });
 

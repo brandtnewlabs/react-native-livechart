@@ -40,6 +40,13 @@ export const RETURN_TO_LIVE_MS = 450;
 export const SCRUB_OVERLAY_FADE_MS = 150;
 
 /**
+ * Duration (ms) of the candle-focus opacity transition used by
+ * `scrub.dimTarget: "otherCandles"`. The selected candle remains fully opaque;
+ * the shared candle batch eases toward `dimOpacity` and back to full strength.
+ */
+export const SCRUB_CANDLE_DIM_FADE_MS = 60;
+
+/**
  * Base wave amplitude (px) of the breathing loading squiggle — it breathes
  * between `0.4×` and `1.0×` this. Overridable via `loading={{ amplitude }}`.
  */

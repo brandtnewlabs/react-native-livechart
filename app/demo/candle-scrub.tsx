@@ -3,7 +3,6 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 import {
   LiveChart,
   type CandlePoint,
-  type TooltipRenderProps,
 } from "react-native-livechart";
 import Animated, {
   useAnimatedProps,
@@ -71,26 +70,6 @@ function OhlcCell({
   );
 }
 
-/**
- * The custom candle tooltip: just the scrubbed time, pinned to the top edge of
- * the plot (`scrub.tooltipPlacement: "top"`). It reads `ctx.timeStr` (formatted
- * UI-side), so the OHLC can live in the header above the chart instead.
- */
-function TimeTooltip({ timeStr }: TooltipRenderProps) {
-  const animatedProps = useAnimatedProps(() => {
-    const t = timeStr.get();
-    return { text: t, defaultValue: t };
-  });
-  return (
-    <AnimatedTextInput
-      editable={false}
-      underlineColorAndroid="transparent"
-      style={styles.timeText}
-      animatedProps={animatedProps}
-    />
-  );
-}
-
 export default function CandleScrubScreen() {
   const windowSecs = 300;
   const candleWidthSecs = 15;
@@ -120,7 +99,7 @@ export default function CandleScrubScreen() {
     <DemoScreen
       title="Candle scrub"
       docs="guides/scrubbing"
-      description="Brokerage-style candle scrub: O/H/L/C in a header above the chart, the time pinned to the top edge, and the crosshair kept. A custom renderTooltip shows only ctx.timeStr; the OHLC comes from onScrub's point.candle (live candle when idle)."
+      description="Brokerage-style candle scrub: O/H/L/C in a header above the chart and the selected candle as the sole position indicator. The header reads onScrub's point.candle and returns to the live candle when idle."
       chart={
         <View style={styles.wrap}>
           <View style={styles.header}>
@@ -146,14 +125,13 @@ export default function CandleScrubScreen() {
               accentColor={ACCENT}
               theme={APP_THEME}
               timeWindow={windowSecs}
-              // Reserve a top band so the candles sit *below* the pinned time
-              // label — the label parks at the canvas edge and the crosshair line
-              // stops at it, neither overlapping the data (cf. the extrema labels).
-              insets={{ top: 28 }}
-              // Custom tooltip = time only, pinned to the top edge. The crosshair
-              // line + selection dot stay (the built-in OHLC stack is replaced).
-              scrub={{ tooltipPlacement: "top", tooltipMargin: 4 }}
-              renderTooltip={TimeTooltip}
+              scrub={{
+                tooltip: false,
+                snapToCandles: true,
+                dimTarget: "otherCandles",
+                dimOpacity: 0.5,
+                dimFadeMs: 60,
+              }}
               onScrub={(point) => {
                 "worklet";
                 if (point && point.candle) {
@@ -173,8 +151,9 @@ export default function CandleScrubScreen() {
       }
     >
       <Text style={demoStyles.scrubReadout}>
-        Press and drag across the candles. The header shows the scrubbed O/H/L/C
-        and the time pins to the top; release to return to the live candle.
+        Press and drag across the candles. The selected candle stays at full
+        strength while the others dim, with no extra line or dot; the header
+        shows its O/H/L/C. Release to return to the live candle.
       </Text>
     </DemoScreen>
   );
@@ -199,15 +178,4 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   chart: { flex: 1 },
-  timeText: {
-    // Hug the "HH:MM:SS" text (8 monospace glyphs ≈ 58px) instead of a wide box,
-    // so when the label clamps to the canvas edge the *text* reaches the edge
-    // rather than sitting inset inside an 80px box.
-    width: 64,
-    textAlign: "center",
-    color: colors.textMuted,
-    fontSize: 12,
-    padding: 0,
-    fontFamily: "JetBrainsMono_400Regular",
-  },
 });

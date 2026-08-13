@@ -22,6 +22,36 @@ export interface CandleGeometry {
   wicks: CandleWick[];
 }
 
+export interface CandleFocusClip {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Stable off-canvas clip used when no candle is focused. */
+export const HIDDEN_CANDLE_FOCUS_CLIP: CandleFocusClip = {
+  x: -1,
+  y: 0,
+  width: 0,
+  height: 0,
+};
+
+/**
+ * Keep the full-strength candle pass visible while a candle is selected and
+ * while the shared dimmed batch is still returning to full opacity. The latter
+ * prevents the selected candle from briefly dropping to the dim opacity when a
+ * scrub ends or moves into a gap.
+ */
+export function computeCandleFocusPassOpacity(
+  scrubActive: boolean,
+  hasScrubCandle: boolean,
+  inactiveCandleOpacity: number,
+): number {
+  "worklet";
+  return (scrubActive && hasScrubCandle) || inactiveCandleOpacity < 1 ? 1 : 0;
+}
+
 function candleTimeToX(
   t: number,
   padLeft: number,
@@ -42,6 +72,54 @@ function candleValueToY(
 ): number {
   "worklet";
   return padTop + ((displayMax - v) / valRange) * chartH;
+}
+
+/**
+ * Return the visible screen-space time slot occupied by one candle bucket.
+ * The focus renderer clips the existing batched candle paths to this strip,
+ * repainting only the selected body and wick without building another SkPath.
+ */
+export function computeCandleFocusClip(
+  candle: CandlePoint | null,
+  padding: ChartPadding,
+  canvasW: number,
+  canvasH: number,
+  winStart: number,
+  windowSecs: number,
+  candleWidthSecs: number,
+): CandleFocusClip {
+  "worklet";
+  if (!candle || windowSecs <= 0 || candleWidthSecs <= 0) {
+    return HIDDEN_CANDLE_FOCUS_CLIP;
+  }
+
+  const chartLeft = padding.left;
+  const chartRight = canvasW - padding.right;
+  const chartTop = padding.top;
+  const chartBottom = canvasH - padding.bottom;
+  const chartW = chartRight - chartLeft;
+  const chartH = chartBottom - chartTop;
+  if (chartW <= 0 || chartH <= 0) return HIDDEN_CANDLE_FOCUS_CLIP;
+
+  const bucketLeft = candleTimeToX(
+    candle.time,
+    padding.left,
+    winStart,
+    windowSecs,
+    chartW,
+  );
+  const bucketRight = candleTimeToX(
+    candle.time + candleWidthSecs,
+    padding.left,
+    winStart,
+    windowSecs,
+    chartW,
+  );
+  const x = Math.max(chartLeft, bucketLeft);
+  const right = Math.min(chartRight, bucketRight);
+  if (right <= x) return HIDDEN_CANDLE_FOCUS_CLIP;
+
+  return { x, y: chartTop, width: right - x, height: chartH };
 }
 
 /** One candle → bodies/wicks; top-level worklet (no nested closures). */

@@ -1,5 +1,10 @@
 import type { CandlePoint } from "../../src/types";
-import { buildCandleGeometry } from "../../src/draw/candle";
+import {
+  buildCandleGeometry,
+  computeCandleFocusClip,
+  computeCandleFocusPassOpacity,
+  HIDDEN_CANDLE_FOCUS_CLIP,
+} from "../../src/draw/candle";
 
 const pad = { top: 10, right: 10, bottom: 10, left: 10 };
 
@@ -201,6 +206,61 @@ describe("buildCandleGeometry", () => {
     const chartW = 200 - 10 - 10;
     const xCenter = 10 + ((0 + 30) / 60) * chartW;
     expect(result.bodies[0].x).toBeCloseTo(xCenter - result.bodies[0].w / 2, 1);
+  });
+});
+
+describe("computeCandleFocusClip", () => {
+  const candle = makeCandle(30, 100, 120, 80, 110);
+
+  it("maps the selected candle bucket to its visible plot strip", () => {
+    expect(computeCandleFocusClip(candle, pad, 200, 100, 0, 120, 60)).toEqual({
+      x: 55,
+      y: 10,
+      width: 90,
+      height: 80,
+    });
+  });
+
+  it("clips a partially visible bucket to the plot bounds", () => {
+    const leftEdgeCandle = makeCandle(-30, 100, 120, 80, 110);
+    expect(
+      computeCandleFocusClip(leftEdgeCandle, pad, 200, 100, 0, 120, 60),
+    ).toEqual({ x: 10, y: 10, width: 45, height: 80 });
+  });
+
+  it("hides the focus pass without a visible valid bucket", () => {
+    expect(computeCandleFocusClip(null, pad, 200, 100, 0, 120, 60)).toBe(
+      HIDDEN_CANDLE_FOCUS_CLIP,
+    );
+    expect(computeCandleFocusClip(candle, pad, 200, 100, 0, 0, 60)).toBe(
+      HIDDEN_CANDLE_FOCUS_CLIP,
+    );
+    expect(computeCandleFocusClip(candle, pad, 200, 100, 0, 120, 0)).toBe(
+      HIDDEN_CANDLE_FOCUS_CLIP,
+    );
+    expect(computeCandleFocusClip(candle, pad, 0, 100, 0, 120, 60)).toBe(
+      HIDDEN_CANDLE_FOCUS_CLIP,
+    );
+    expect(
+      computeCandleFocusClip(
+        makeCandle(200, 100, 120, 80, 110),
+        pad,
+        200,
+        100,
+        0,
+        120,
+        60,
+      ),
+    ).toBe(HIDDEN_CANDLE_FOCUS_CLIP);
+  });
+});
+
+describe("computeCandleFocusPassOpacity", () => {
+  it("keeps the selected candle full-strength through the release fade", () => {
+    expect(computeCandleFocusPassOpacity(true, true, 1)).toBe(1);
+    expect(computeCandleFocusPassOpacity(false, false, 0.5)).toBe(1);
+    expect(computeCandleFocusPassOpacity(false, false, 0.99)).toBe(1);
+    expect(computeCandleFocusPassOpacity(false, false, 1)).toBe(0);
   });
 });
 
