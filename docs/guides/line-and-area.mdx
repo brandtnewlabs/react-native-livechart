@@ -116,6 +116,29 @@ the area fill as well, so the gradient follows the same straight segments.
   pairs all three for a fully hard-edged line.
 </Note>
 
+### Denoising dense paths
+
+Use `line.simplify` when dense samples make the plotted path look busier than the
+screen can meaningfully show:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  line={{ simplify: 1 }} // remove deviations of about one screen pixel or less
+/>
+```
+
+The tolerance is measured after points are projected into the chart, so it stays
+visually consistent across values and canvas sizes. The simplifier retains the
+line endpoints and peaks or valleys that exceed the tolerance. It only changes
+the line and area-fill geometry: the original data still drives Y-range fitting,
+the live value, markers, and scrub callbacks. `0` (the default) disables it;
+`0.75`–`1.5` is a useful starting range for subtle denoising.
+
+See [Line denoising](/guides/line-denoising) for the raw-vs-simplified example,
+tolerance guidance, multi-series overrides, and rendering-cost details.
+
 ## Badge, dot, and value line
 
 By default the chart draws a value badge at the tip, a pulsing live dot, and (optionally) a

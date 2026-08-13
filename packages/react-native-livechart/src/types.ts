@@ -422,6 +422,15 @@ export interface LineConfig {
    * pair with `join: "miter"` + `cap: "butt"` for true sharp corners (no rounding).
    */
   curve?: "monotone" | "linear";
+  /**
+   * Screen-space path simplification tolerance in pixels. Values above `0`
+   * remove intermediate points that deviate by no more than this amount while
+   * retaining endpoints and larger peaks/valleys. This changes only the drawn
+   * line/fill; axis fitting, live values, markers, and scrubbing still use the
+   * original data. Default `0` (off). Start around `0.75`–`1.5` for sub-pixel
+   * noise reduction.
+   */
+  simplify?: number;
   /** Line color override. Defaults to palette-derived accent. */
   color?: string;
   /**
@@ -1637,6 +1646,13 @@ export interface SeriesConfig {
    *   anchored to this series snap to the straight chord to match.
    */
   curve?: "monotone" | "linear";
+  /**
+   * Per-series screen-space path simplification tolerance in pixels. Overrides
+   * `LiveChartSeries.line.simplify`; `0` disables simplification for this series.
+   * Only rendered geometry is simplified — values, range fitting, and scrubbing
+   * continue to use the original points.
+   */
+  simplify?: number;
   /** Per-series stroke width override (px). Falls back to the chart line width. */
   strokeWidth?: number;
   /** Render a soft glow behind this series' line. Default `false`. */

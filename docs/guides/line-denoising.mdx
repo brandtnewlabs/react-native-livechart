@@ -1,0 +1,106 @@
+---
+title: Line denoising
+icon: "wave-sine"
+description: "Remove visually noisy path detail with a pixel tolerance while keeping the original chart data exact."
+---
+
+Dense or high-frequency samples can make a line look noisy even after the chart
+has reduced overdraw to roughly pixel resolution. `line.simplify` applies a
+shape-preserving simplification pass to the **rendered path**:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  line={{ simplify: 1 }}
+/>
+```
+
+The number is a screen-space tolerance in pixels. Intermediate points may be
+removed when their deviation from the simplified path is no greater than that
+tolerance. Endpoints remain fixed, and peaks or valleys larger than the tolerance
+remain part of the path.
+
+<Note>
+  **Live example:**
+  [`app/demo/line-denoising.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/line-denoising.tsx)
+  shows the same deterministic signal raw and simplified, with live tolerance and
+  curve controls.
+</Note>
+
+## What stays exact
+
+Simplification changes only the line and area-fill geometry. It does not mutate
+the `data` shared value, and the original points still drive:
+
+- Y-axis range fitting and extrema
+- the live value and dot
+- markers anchored by time
+- scrub interpolation and callback values
+- threshold and reference-line calculations
+
+This separation is useful when the chart should read more calmly without
+changing the values a user can inspect or act on.
+
+## Choosing a tolerance
+
+Start with `0.75`–`1.5` pixels. That typically removes sub-pixel jitter while
+leaving the recognizable signal unchanged.
+
+| Value | Effect |
+| --- | --- |
+| `0` or omitted | Disabled; preserves the existing exact rendered path |
+| `0.75` | Very subtle cleanup on dense or high-DPI charts |
+| `1`–`1.5` | General-purpose denoising |
+| `2`–`3` | Stronger simplification; inspect narrow events carefully |
+
+Because tolerance is measured after mapping values to the canvas, a setting has
+a consistent visual meaning across datasets with very different value ranges.
+Zooming or resizing naturally recalculates the path for the new screen geometry.
+
+## Curve interpolation
+
+`simplify` and `curve` control different stages. Simplification selects the
+screen-space points to retain; `curve` then connects them with either the default
+monotone cubic or straight segments:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  line={{
+    simplify: 1,
+    curve: "linear",
+    join: "round",
+  }}
+/>
+```
+
+Use the same tolerance when comparing curve styles: changing the curve does not
+change the source data or the tolerance unit.
+
+## Multi-series
+
+Set the shared `line.simplify` to apply one tolerance to every series:
+
+```tsx
+<LiveChartSeries series={series} line={{ simplify: 1 }} />
+```
+
+An individual `SeriesConfig` can override that value. Passing `0` opts a series
+out while the other lines keep the shared setting:
+
+```tsx
+const series = useSharedValue<SeriesConfig[]>([
+  { id: "price", data: price, value: priceNow },
+  { id: "benchmark", data: benchmark, value: benchmarkNow, simplify: 0 },
+]);
+
+<LiveChartSeries series={series} line={{ simplify: 1 }} />;
+```
+
+## Rendering cost
+
+The pass runs on the UI thread after the chart's envelope-preserving dense-data
+decimation. It reuses scratch buffers and processes bounded point ranges, avoiding
+new point-array allocation or unbounded pathological scans on every frame.

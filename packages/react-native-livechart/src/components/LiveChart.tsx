@@ -926,6 +926,7 @@ function useLiveChartController({
     thresholdCfg?.fill && thresholdSeriesHasPoints
       ? thresholdSeriesGeom.samples
       : undefined,
+    lineProp?.simplify,
   );
 
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config

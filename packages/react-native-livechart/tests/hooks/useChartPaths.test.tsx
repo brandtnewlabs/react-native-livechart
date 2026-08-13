@@ -131,6 +131,33 @@ describe("useChartPaths", () => {
     expect(result.current.fillPath.value).toBeDefined();
   });
 
+  it("simplifies the rendered path with a screen-space tolerance", async () => {
+    const { result } = await renderHook(() =>
+      useChartPaths(
+        makeEngine({
+          data: {
+            value: [
+              { time: 970, value: 1 },
+              { time: 980, value: 1.001 },
+              { time: 990, value: 0.999 },
+              { time: 1000, value: 1 },
+            ],
+          },
+        } as unknown as Partial<ChartPathsEngine>),
+        DEFAULT_PADDING,
+        undefined,
+        undefined,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        1,
+      ),
+    );
+    expect(result.current.linePath.value).toBeDefined();
+    expect(result.current.fillPath.value).toBeDefined();
+  });
+
   it("tips a live window at displayValue", () => {
     expect(resolveLineTipValue(9, 4, null)).toBe(9);
   });

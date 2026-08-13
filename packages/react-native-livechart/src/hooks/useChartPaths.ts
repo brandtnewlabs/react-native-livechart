@@ -7,6 +7,10 @@ import type {
   SingleEngineState,
 } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
+import {
+  makeLineSimplifyScratch,
+  simplifyLinePoints,
+} from "../math/simplify";
 import { drawSpline, makeSplineScratch } from "../math/spline";
 import { sampleThresholdYAt, thresholdSampleSpanX } from "../math/threshold";
 import { blendPtsY, squigglifyPts } from "../math/squiggly";
@@ -52,6 +56,8 @@ export function useChartPaths(
    *  `samples[]` (so band geometry matches the shader exactly). Takes precedence
    *  over `thresholdY`, the constant (horizontal) case. */
   thresholdSamples?: SharedValue<number[]>,
+  /** Screen-space path simplification tolerance in pixels. `0` disables it. */
+  simplifyTolerance = 0,
 ) {
   const lineBuilder = usePathBuilder();
   const fillBuilder = usePathBuilder();
@@ -61,24 +67,28 @@ export function useChartPaths(
     emptyPath: SkPath;
     ptsA: number[];
     ptsB: number[];
+    rawPts: number[];
     ptsTick: boolean;
     squigglePts: number[];
     morphA: number[];
     morphB: number[];
     morphTick: boolean;
     scratch: ReturnType<typeof makeSplineScratch>;
+    simplifyScratch: ReturnType<typeof makeLineSimplifyScratch>;
   } | null>(null);
   if (cacheRef.current === null) {
     cacheRef.current = {
       emptyPath: Skia.Path.Make(),
       ptsA: [] as number[],
       ptsB: [] as number[],
+      rawPts: [] as number[],
       ptsTick: false,
       squigglePts: [] as number[],
       morphA: [] as number[],
       morphB: [] as number[],
       morphTick: false,
       scratch: makeSplineScratch(),
+      simplifyScratch: makeLineSimplifyScratch(),
     };
   }
 
@@ -94,6 +104,10 @@ export function useChartPaths(
       engine.edgeValue.get(),
       engine.viewEnd.get(),
     );
+    const simplify =
+      Number.isFinite(simplifyTolerance) && simplifyTolerance > 0
+        ? simplifyTolerance
+        : 0;
     const realPts = buildLinePoints(
       engine.data.get(),
       tipValue,
@@ -104,22 +118,26 @@ export function useChartPaths(
       engine.canvasWidth.get(),
       engine.canvasHeight.get(),
       padding,
-      buf,
+      simplify > 0 ? cache.rawPts : buf,
       // Only a live-following chart may extend the line to the right edge; a
       // parked (scrolled-back / overscrolled) window ends at its last real
       // point rather than fabricating a flat line into dataless space.
       engine.viewEnd.get() != null,
     );
+    const renderPts =
+      simplify > 0
+        ? simplifyLinePoints(realPts, simplify, buf, cache.simplifyScratch)
+        : realPts;
 
     // Skip blending when fully revealed or no morphT provided
     const t = morphT?.get() ?? 1;
-    if (t >= 1 || realPts.length === 0) return realPts;
+    if (t >= 1 || renderPts.length === 0) return renderPts;
 
     // Compute squiggly Y values at the same X positions as the real line
     const centerY =
       (engine.canvasHeight.get() - padding.bottom + padding.top) / 2;
     const squigglyPts = squigglifyPts(
-      realPts,
+      renderPts,
       engine.timestamp.get(),
       centerY,
       squiggleAmplitude,
@@ -131,7 +149,7 @@ export function useChartPaths(
     cache.morphTick = !cache.morphTick;
     return blendPtsY(
       squigglyPts,
-      realPts,
+      renderPts,
       t,
       padding,
       engine.canvasWidth.get(),
