@@ -53,6 +53,7 @@ interface SeriesConfig {
   style?: "solid" | "dashed";
   intervals?: [number, number];
   curve?: "monotone" | "linear"; // interpolation; default "monotone"
+  simplify?: number;          // per-series path tolerance in px; inherits line.simplify
   strokeWidth?: number;
   glow?: boolean;
   kind?: "outcome" | "derived";
@@ -292,6 +293,9 @@ interface LineConfig {
   colors?: string[];// per-point gradient stops (left → right); wins over color
   curve?: "monotone" | "linear"; // point interpolation; default "monotone"
                     //   (smooth cubic). "linear" = straight segments / hard-edged.
+  simplify?: number; // screen-space path tolerance in px; default 0 (off).
+                    //   Removes only intermediate drawn points within the tolerance;
+                    //   source data, axis fitting, markers, and scrubbing stay exact.
   join?: "round" | "miter" | "bevel"; // corner join; default "round".
                     //   "miter" = sharp/angular peaks, "bevel" = flattened.
   cap?: "round" | "butt" | "square";  // start/end cap; default "round".
@@ -532,6 +536,12 @@ interface AxisLabelConfig {
 interface ChartInsets { top?: number; right?: number; bottom?: number; left?: number }
 interface LeftEdgeFadeConfig { width?: number; startColor?: string; endColor?: string }
 
+interface DotGlowConfig {
+  color?: string; // default: resolved dot fill color
+  radius?: number; // glow source-circle radius, default 7
+  blur?: number; // Skia blur radius, default 5
+  opacity?: number; // 0–1, default 0.18
+}
 interface DotRingConfig {
   color?: string; // default: theme `badgeOuterBg`
   width?: number; // default 2.5
@@ -539,7 +549,8 @@ interface DotRingConfig {
 // Shared live-dot styling (LiveChart `dot`; LiveChartSeries `dot` extends it)
 interface DotConfig {
   radius?: number; // color-filled dot radius, default 3.5
-  ring?: boolean | DotRingConfig; // haloed outer ring, default true
+  ring?: boolean | DotRingConfig; // crisp outer backing ring, default true
+  glow?: boolean | DotGlowConfig; // soft static glow, default false
   show?: boolean; // @deprecated — prefer dot={false}; default true
   color?: string; // dot fill, defaults to the line color
   trackWhileParked?: boolean; // while scrolled back / overscrolled, the dot tracks the true live point — keeps pulsing, stays visible, hides once the point leaves the window; ignored with badge.followViewEdge (LiveChart only). Default false

@@ -12,7 +12,7 @@ import { LiveChartSeries } from "react-native-livechart";
 accepts all the shared theming, axis, range, layout, and text props from
 [`LiveChart`](/api-reference/livechart) (`theme`, `accentColor`, `palette`, `metrics`, `font`,
 `canvasMode`, `timeWindow`, `smoothing`, [`snapKey`](/api-reference/livechart#param-snap-key),
-[`yRangeScale`](/guides/y-range-scale), `yAxis`,
+[`yRangeScale`](/guides/y-range-scale), `line`, `yAxis`,
 `referenceLines`, `formatValue`, …), plus the multi-series props below.
 
 On Android, the shared experimental `canvasMode="opaque"` option selects an opaque SurfaceView and
@@ -76,7 +76,10 @@ paints the palette background inside the canvas. See
 ## Series data
 
 <ParamField body="series" type="SharedValue<SeriesConfig[]>" required>
-  Array of series definitions. Read on the UI thread. See [`SeriesConfig`](/api-reference/types).
+  Array of series definitions. Read on the UI thread. Each series can override
+  the shared `line.simplify` screen-space tolerance with `simplify`; `0` disables
+  simplification for that series. See [Line denoising](/guides/line-denoising)
+  and [`SeriesConfig`](/api-reference/types).
 </ParamField>
 
 ## Axis labels
@@ -109,11 +112,12 @@ default off.
 ## Dots
 
 <ParamField body="dot" type="boolean | MultiSeriesDotConfig" default="true">
-  Per-series live dots: `radius`, `ring`, `color`, `pulse`, `valueLine`,
-  `valueLabel`. Each dot is haloed with a contrasting outer `ring` by default
-  (matching the single-series live dot); pass `ring: false` for a flat circle,
-  `dot={false}` to hide the dots, or `color` to override the per-series fill.
-  (The deprecated `dot={{ show: false }}` still hides them.)
+  Per-series live dots: `radius`, `ring`, opt-in static `glow`, `color`,
+  `pulse`, `valueLine`, and `valueLabel`. The crisp contrasting outer `ring`
+  is on by default; `glow` is off by default and accepts `color`, `radius`,
+  `blur`, and `opacity`. Pass `ring: false` for a flat circle, `dot={false}`
+  to hide the dots, or `color` to override the per-series fill. (The deprecated
+  `dot={{ show: false }}` still hides them.)
 </ParamField>
 
 ## Scrub

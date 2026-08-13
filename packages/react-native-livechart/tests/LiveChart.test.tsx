@@ -625,6 +625,10 @@ describe("LiveChart", () => {
     await render(<Harness line={{ width: 3, color: "#ff0000" }} />);
   });
 
+  it("accepts screen-space line simplification", async () => {
+    await render(<Harness line={{ simplify: 1 }} />);
+  });
+
   it("accepts LineConfig with gradient colors", async () => {
     await render(<Harness line={{ colors: ["#ff0000", "#0000ff"] }} />);
   });

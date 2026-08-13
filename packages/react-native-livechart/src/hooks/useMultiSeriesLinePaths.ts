@@ -4,6 +4,10 @@ import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
+import {
+  makeLineSimplifyScratch,
+  simplifyLinePoints,
+} from "../math/simplify";
 import { drawSpline, makeSplineScratch } from "../math/spline";
 import { usePathBuilders } from "./usePathBuilder";
 
@@ -21,25 +25,31 @@ export function useMultiSeriesLinePaths(
   engine: MultiEngineState,
   padding: ChartPadding,
   activeSeriesCount = MAX_MULTI_SERIES,
+  /** Shared screen-space simplification tolerance; a series can override it. */
+  simplifyTolerance = 0,
 ): SharedValue<SkPath[]> {
   const builders = usePathBuilders(MAX_MULTI_SERIES);
 
   const poolRef = useRef<{
     empty: SkPath;
     ptsBuf: number[];
+    simplifiedPts: number[];
     pathsA: SkPath[];
     pathsB: SkPath[];
     pathsTick: boolean;
     scratch: ReturnType<typeof makeSplineScratch>;
+    simplifyScratch: ReturnType<typeof makeLineSimplifyScratch>;
   } | null>(null);
   if (poolRef.current === null) {
     poolRef.current = {
       empty: Skia.Path.Make(),
       ptsBuf: [] as number[],
+      simplifiedPts: [] as number[],
       pathsA: [] as SkPath[],
       pathsB: [] as SkPath[],
       pathsTick: false,
       scratch: makeSplineScratch(),
+      simplifyScratch: makeLineSimplifyScratch(),
     };
   }
 
@@ -53,7 +63,7 @@ export function useMultiSeriesLinePaths(
     out.length = 0;
     const count = Math.min(activeSeriesCount, s.length, MAX_MULTI_SERIES);
     for (let i = 0; i < count; i++) {
-      const pts = buildLinePoints(
+      const rawPts = buildLinePoints(
         s[i].data,
         displays[i] ?? s[i].value,
         engine.timestamp.get(),
@@ -65,6 +75,16 @@ export function useMultiSeriesLinePaths(
         padding,
         pool.ptsBuf,
       );
+      const seriesTolerance = s[i].simplify ?? simplifyTolerance;
+      const pts =
+        Number.isFinite(seriesTolerance) && seriesTolerance > 0
+          ? simplifyLinePoints(
+              rawPts,
+              seriesTolerance,
+              pool.simplifiedPts,
+              pool.simplifyScratch,
+            )
+          : rawPts;
       const n = pts.length >> 1;
       if (n >= 2) {
         const b = slots[i];

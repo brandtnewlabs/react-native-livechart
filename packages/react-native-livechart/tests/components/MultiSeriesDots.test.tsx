@@ -42,6 +42,7 @@ describe("MultiSeriesDots", () => {
           colors={["#3b82f6"]}
           radius={3.5}
           ring={{ color: undefined, width: 2.5 }}
+          glow={{ color: undefined, radius: 7, blur: 5, opacity: 0.18 }}
           ringColor="#ffffff"
           color={undefined}
           pulse={null}

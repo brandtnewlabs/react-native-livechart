@@ -422,6 +422,15 @@ export interface LineConfig {
    * pair with `join: "miter"` + `cap: "butt"` for true sharp corners (no rounding).
    */
   curve?: "monotone" | "linear";
+  /**
+   * Screen-space path simplification tolerance in pixels. Values above `0`
+   * remove intermediate points that deviate by no more than this amount while
+   * retaining endpoints and larger peaks/valleys. This changes only the drawn
+   * line/fill; axis fitting, live values, markers, and scrubbing still use the
+   * original data. Default `0` (off). Start around `0.75`–`1.5` for sub-pixel
+   * noise reduction.
+   */
+  simplify?: number;
   /** Line color override. Defaults to palette-derived accent. */
   color?: string;
   /**
@@ -1545,11 +1554,23 @@ export interface DegenShakePayload {
   direction: "up" | "down";
 }
 
-/** Contrasting outer ring drawn behind each series dot — the "haloed" look the
- *  single-series live dot has, so dots stand out against the lines and one
- *  another. */
+/** Optional soft, static color glow drawn behind a live dot. */
+export interface DotGlowConfig {
+  /** Glow color. Defaults to the dot's resolved fill color. */
+  color?: string;
+  /** Radius of the glow's source circle in pixels. Default `7`. */
+  radius?: number;
+  /** Skia blur radius in pixels. Default `5`. */
+  blur?: number;
+  /** Glow opacity (0–1). Default `0.18`. */
+  opacity?: number;
+}
+
+/** Contrasting outer ring drawn behind each series dot — the crisp backing
+ *  circle the single-series live dot has, so dots stand out against the lines
+ *  and one another. */
 export interface DotRingConfig {
-  /** Ring color. Default: theme `badgeOuterBg` (a near-background halo). */
+  /** Ring color. Default: theme `badgeOuterBg` (a near-background backing). */
   color?: string;
   /** Ring thickness in pixels — how far the halo extends past the dot. Default `2.5`. */
   width?: number;
@@ -1558,7 +1579,8 @@ export interface DotRingConfig {
 /**
  * Shared live-dot styling, used by both `LiveChart` (`dot`) and
  * `LiveChartSeries` (`dot`, which extends this). A dot is a color-filled circle
- * of `radius` with an optional contrasting outer `ring` (halo).
+ * of `radius` with an optional contrasting outer `ring` and opt-in soft
+ * `glow`. The glow is static; use `pulse` for an animated heartbeat.
  */
 export interface DotConfig {
   /** Radius of the (color-filled) dot in pixels. Default `3.5`. */
@@ -1569,6 +1591,12 @@ export interface DotConfig {
    * `DotRingConfig`. Default `true`.
    */
   ring?: boolean | DotRingConfig;
+  /**
+   * Soft static glow behind the dot. `true` = restrained defaults, `false` =
+   * off, or pass `DotGlowConfig` to tune its color, radius, blur, and opacity.
+   * Default `false`.
+   */
+  glow?: boolean | DotGlowConfig;
   /**
    * Show the dot. `false` hides it (line, badge, and labels still render). Default `true`.
    *
@@ -1660,6 +1688,13 @@ export interface SeriesConfig {
    *   anchored to this series snap to the straight chord to match.
    */
   curve?: "monotone" | "linear";
+  /**
+   * Per-series screen-space path simplification tolerance in pixels. Overrides
+   * `LiveChartSeries.line.simplify`; `0` disables simplification for this series.
+   * Only rendered geometry is simplified — values, range fitting, and scrubbing
+   * continue to use the original points.
+   */
+  simplify?: number;
   /** Per-series stroke width override (px). Falls back to the chart line width. */
   strokeWidth?: number;
   /** Render a soft glow behind this series' line. Default `false`. */
@@ -2349,7 +2384,8 @@ export interface LiveChartProps extends LiveChartCoreProps {
   pulse?: boolean | PulseConfig;
   /**
    * Live dot styling. `true`/omitted = shown defaults, `false` = hidden, or pass
-   * `DotConfig` (`radius`, `ring` halo, `color`). See {@link DotConfig}. Default `true`.
+   * `DotConfig` (`radius`, `ring`, opt-in `glow`, `color`). See
+   * {@link DotConfig}. Default `true`.
    */
   dot?: boolean | DotConfig;
   /** Horizontal dashed line at the current live value. `true` = defaults, or pass `ValueLineConfig`. */

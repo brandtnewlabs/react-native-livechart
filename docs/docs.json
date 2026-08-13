@@ -45,6 +45,7 @@
             "group": "Chart types",
             "pages": [
               "guides/line-and-area",
+              "guides/line-denoising",
               "guides/candlestick",
               "guides/multi-series",
               "guides/sparklines"

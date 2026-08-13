@@ -1,6 +1,7 @@
 import type { SkFont } from "@shopify/react-native-skia";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import {
+  dotGlowRadialOutset,
   minPaddingRightForBadgeYAxisAlign,
   minPaddingRightForYAxisWithPulse,
   pulseRadialOutset,
@@ -46,6 +47,11 @@ export interface ChartLayoutConfig {
    * is not clipped. An explicit `insetsOverride` on a side wins over this floor.
    */
   pulse?: { maxRadius: number; strokeWidth: number } | null;
+  /**
+   * Static live-dot glow; floors auto-padding so its blurred falloff is not
+   * clipped. Explicit side insets still win.
+   */
+  dotGlow?: { radius: number; blur: number } | null;
   /**
    * When false and the badge uses the right gutter, omit the tail and
    * round-cap inset from the right padding.
@@ -120,24 +126,28 @@ export function resolveChartLayout(
     );
   }
 
+  const pulseOutset = config.pulse
+    ? pulseRadialOutset(config.pulse.maxRadius, config.pulse.strokeWidth)
+    : 0;
+  const glowOutset = config.dotGlow
+    ? dotGlowRadialOutset(config.dotGlow.radius, config.dotGlow.blur)
+    : 0;
+  const dotEffectOutset = Math.max(pulseOutset, glowOutset);
+
   // A right-gutter badge uses its pill layout instead of the bare centered label
-  // column, so the bare-axis pulse/label floor must not override badge sizing.
-  // The badge renders above the pulse; the general outlet floor below still
-  // prevents canvas-edge clipping.
+  // column, so the bare-axis effect/label floor must not override badge sizing.
+  // The badge renders above the dot effects; the general outlet floor below
+  // still prevents canvas-edge clipping.
   if (
-    config.pulse &&
+    dotEffectOutset > 0 &&
     config.yAxis &&
     !badgeUsesRightGutter &&
     config.insetsOverride?.right == null
   ) {
-    const outlet = pulseRadialOutset(
-      config.pulse.maxRadius,
-      config.pulse.strokeWidth,
-    );
     const labelW = measuredYAxisLabelWidth ?? 49;
     rightPad = Math.max(
       rightPad,
-      minPaddingRightForYAxisWithPulse(outlet, labelW),
+      minPaddingRightForYAxisWithPulse(dotEffectOutset, labelW),
     );
   }
 
@@ -160,12 +170,8 @@ export function resolveChartLayout(
   );
 
   let padding: ChartPadding = { ...base, right: rightPad, left: leftPad };
-  if (config.pulse) {
-    const outlet = pulseRadialOutset(
-      config.pulse.maxRadius,
-      config.pulse.strokeWidth,
-    );
-    // The pulse ring needs this much room or it clips at the canvas edge, so it
+  if (dotEffectOutset > 0) {
+    // The pulse/glow needs this much room or it clips at the canvas edge, so it
     // acts as a floor on the *auto* padding. An explicitly-provided inset always
     // wins, though — the caller opts into any clipping that causes (issue #128).
     // Every other auto-padding already respects an explicit inset (see the
@@ -173,10 +179,16 @@ export function resolveChartLayout(
     const ins = config.insetsOverride;
     padding = {
       ...padding,
-      right: ins?.right != null ? padding.right : Math.max(padding.right, outlet),
-      top: ins?.top != null ? padding.top : Math.max(padding.top, outlet),
+      right:
+        ins?.right != null
+          ? padding.right
+          : Math.max(padding.right, dotEffectOutset),
+      top:
+        ins?.top != null ? padding.top : Math.max(padding.top, dotEffectOutset),
       bottom:
-        ins?.bottom != null ? padding.bottom : Math.max(padding.bottom, outlet),
+        ins?.bottom != null
+          ? padding.bottom
+          : Math.max(padding.bottom, dotEffectOutset),
     };
   }
 
