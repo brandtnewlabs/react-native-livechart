@@ -112,11 +112,12 @@ default off.
 ## Dots
 
 <ParamField body="dot" type="boolean | MultiSeriesDotConfig" default="true">
-  Per-series live dots: `radius`, `ring`, `color`, `pulse`, `valueLine`,
-  `valueLabel`. Each dot is haloed with a contrasting outer `ring` by default
-  (matching the single-series live dot); pass `ring: false` for a flat circle,
-  `dot={false}` to hide the dots, or `color` to override the per-series fill.
-  (The deprecated `dot={{ show: false }}` still hides them.)
+  Per-series live dots: `radius`, `ring`, opt-in static `glow`, `color`,
+  `pulse`, `valueLine`, and `valueLabel`. The crisp contrasting outer `ring`
+  is on by default; `glow` is off by default and accepts `color`, `radius`,
+  `blur`, and `opacity`. Pass `ring: false` for a flat circle, `dot={false}`
+  to hide the dots, or `color` to override the per-series fill. (The deprecated
+  `dot={{ show: false }}` still hides them.)
 </ParamField>
 
 ## Scrub

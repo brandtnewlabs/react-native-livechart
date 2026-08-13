@@ -100,14 +100,16 @@ provided; everything else has a default.
 
 <ParamField body="dot" type="boolean | DotConfig" default="true">
   Live dot styling. Pass `false` to hide the dot, or a `DotConfig` for `radius`,
-  `ring` (the contrasting outer halo, on by default), and `color` — `ring: false`
-  gives a flat dot, `color` overrides the fill. The same `DotConfig` is shared
-  with `LiveChartSeries` (whose `dot` extends it with `pulse`, `valueLine`, and
-  `valueLabel`). `dot={false}` is the canonical "hide" — the deprecated
-  `dot={{ show: false }}` still works. With `timeScroll`, `trackWhileParked`
-  keeps the dot on the **true live point** while scrolled back — it tracks the
-  point's x, keeps its pulse, and hides once the point leaves the window
-  (ignored with `badge.followViewEdge`). See
+  `ring` (the crisp contrasting backing, on by default), opt-in `glow`, and
+  `color`. `glow: true` enables restrained defaults, or pass a `DotGlowConfig`
+  to tune `color`, `radius`, `blur`, and `opacity`. It is independent from
+  the animated `pulse` prop and starts no animation clock. The same `DotConfig`
+  is shared with `LiveChartSeries` (whose `dot` extends it with `pulse`,
+  `valueLine`, and `valueLabel`). `dot={false}` is the canonical "hide" — the
+  deprecated `dot={{ show: false }}` still works. With `timeScroll`,
+  `trackWhileParked` keeps the dot on the **true live point** while scrolled
+  back — it tracks the point's x, keeps its pulse, and hides once the point
+  leaves the window (ignored with `badge.followViewEdge`). See
   [Time-scroll](/guides/time-scroll#keep-the-dot-on-the-live-point-dottrackwhileparked).
 </ParamField>
 

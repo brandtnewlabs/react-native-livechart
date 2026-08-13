@@ -1,4 +1,5 @@
 import {
+  dotGlowRadialOutset,
   minPaddingRightForYAxisWithPulse,
   pulseRadialOutset,
 } from "../../src/draw/line";
@@ -400,6 +401,34 @@ describe("resolveChartLayout", () => {
       pulse,
     });
     expect(padding.right).toBe(minPaddingRightForYAxisWithPulse(outlet, 49));
+  });
+
+  it("reserves auto-padding for an opt-in static dot glow", () => {
+    const glow = { radius: 7, blur: 5 };
+    const outlet = dotGlowRadialOutset(glow.radius, glow.blur);
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      dotGlow: glow,
+    });
+    expect(padding).toEqual({
+      top: outlet,
+      right: outlet,
+      bottom: 28,
+      left: 12,
+    });
+  });
+
+  it("lets explicit side insets opt into clipping a dot glow", () => {
+    const { padding } = resolveChartLayout({
+      palette,
+      yAxis: false,
+      badge: false,
+      dotGlow: { radius: 12, blur: 8 },
+      insetsOverride: { top: 3, right: 4, bottom: 5 },
+    });
+    expect(padding).toEqual({ top: 3, right: 4, bottom: 5, left: 12 });
   });
 
   it("respects explicit insetsOverride.left when badge omits right gutter", () => {

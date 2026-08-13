@@ -69,7 +69,7 @@ import {
 } from "../core/liveIndicatorVisibility";
 import { resolveSegment, type ResolvedSegment } from "../core/resolveSegment";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
-import { pulseRadialOutset } from "../draw/line";
+import { dotGlowRadialOutset, pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
 import { useCandlePaths, useCandleWidthLerp } from "../hooks/useCandlePaths";
@@ -87,10 +87,7 @@ import { useMarkers } from "../hooks/useMarkers";
 import { useReferenceDrag } from "../hooks/useReferenceDrag";
 import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
 import { useModeBlend } from "../hooks/useModeBlend";
-import {
-  resolveMomentumProp,
-  useMomentum,
-} from "../hooks/useMomentum";
+import { resolveMomentumProp, useMomentum } from "../hooks/useMomentum";
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { usePinchZoom } from "../hooks/usePinchZoom";
 import { useVisibleRange } from "../hooks/useVisibleRange";
@@ -385,8 +382,12 @@ function useLiveChartController({
   const dotTracksParked =
     dotCfg.trackWhileParked && !(badgeCfg?.followViewEdge ?? false);
   const selectionDotCfg = resolveSelectionDot(selectionDot);
-  // Outer footprint of the dot (color-filled radius plus the halo ring).
-  const dotOuterRadius = dotCfg.radius + (dotCfg.ring?.width ?? 0);
+  // Outer visible footprint of the dot, including its crisp ring and optional
+  // blurred glow. Used by scrub dimming so neither effect leaks through.
+  const dotOuterRadius = Math.max(
+    dotCfg.radius + (dotCfg.ring?.width ?? 0),
+    dotCfg.glow ? dotGlowRadialOutset(dotCfg.glow.radius, dotCfg.glow.blur) : 0,
+  );
   const gridStyleCfg = resolveGridStyle(gridStyle);
   // Static charts run zero loops: force degen off so `useDegen`'s frame callback
   // never starts (also passed `isStatic` below as a belt-and-braces autostart gate).
@@ -413,12 +414,14 @@ function useLiveChartController({
     const active = dragActive.get();
     const cur = dragValues.get();
     const seeded = seededRef.current;
-    dragValues.set(allRefLines.map((l, i) => {
-      const prop = l.value ?? 0;
-      if (active[i]) return cur[i] ?? prop; // mid-drag → keep the dragged value
-      if (l.value !== seeded[i]) return prop; // prop changed → adopt (controlled)
-      return cur[i] ?? prop; // unchanged → keep current (uncontrolled persist)
-    }));
+    dragValues.set(
+      allRefLines.map((l, i) => {
+        const prop = l.value ?? 0;
+        if (active[i]) return cur[i] ?? prop; // mid-drag → keep the dragged value
+        if (l.value !== seeded[i]) return prop; // prop changed → adopt (controlled)
+        return cur[i] ?? prop; // unchanged → keep current (uncontrolled persist)
+      }),
+    );
     seededRef.current = allRefLines.map((l) => l.value);
     if (dragActive.get().length !== allRefLines.length) {
       dragActive.set(allRefLines.map((_, i) => active[i] ?? false));
@@ -653,6 +656,7 @@ function useLiveChartController({
     formatValue,
     currentValue: valueLayoutSample,
     pulse: pulseConfig,
+    dotGlow: dotCfg.glow,
     volumeBandHeight,
   });
 
@@ -769,7 +773,8 @@ function useLiveChartController({
       if (
         referenceLineForm(l) !== "line" ||
         l.value === undefined ||
-        refLineCustom[i] || refLineOffAxisCustom[i]
+        refLineCustom[i] ||
+        refLineOffAxisCustom[i]
       ) {
         ys.push(-1);
         continue;
@@ -1341,19 +1346,13 @@ function useLiveChartController({
   const valueLineOpacity = useDerivedValue(
     () =>
       reveal.lineOpacity.value *
-      liveIndicatorScrollOpacity(
-        hideLiveOnScrollBack,
-        engine.viewEnd.value,
-      ) *
+      liveIndicatorScrollOpacity(hideLiveOnScrollBack, engine.viewEnd.value) *
       resolvedSeriesOpacity.value,
   );
   const liveBadgeOpacity = useDerivedValue(
     () =>
       reveal.badgeOpacity.value *
-      liveIndicatorScrollOpacity(
-        hideLiveOnScrollBack,
-        engine.viewEnd.value,
-      ) *
+      liveIndicatorScrollOpacity(hideLiveOnScrollBack, engine.viewEnd.value) *
       resolvedSeriesOpacity.value,
   );
 
@@ -2070,6 +2069,7 @@ function ChartStack({
             dotY={dotY}
             palette={palette}
             pulse={pulseCfg}
+            glow={dotCfg.glow}
             radius={dotCfg.radius}
             ring={dotCfg.ring}
             color={dotCfg.color}

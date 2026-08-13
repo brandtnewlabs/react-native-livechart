@@ -6,6 +6,7 @@ import {
   DEFAULT_PADDING,
   badgeTailAndCap,
   buildLinePoints,
+  dotGlowRadialOutset,
   gutterCenteredTextLeftX,
   gutterRightAlignedTextLeftX,
   minPaddingLeftForBadge,
@@ -92,6 +93,17 @@ describe("pulseRadialOutset", () => {
   it("rounds up fractional totals", () => {
     expect(pulseRadialOutset(10, 1)).toBe(11);
     expect(pulseRadialOutset(9, 1)).toBe(10);
+  });
+});
+
+describe("dotGlowRadialOutset", () => {
+  it("reserves the source radius plus two blur radii", () => {
+    expect(dotGlowRadialOutset(7, 5)).toBe(17);
+  });
+
+  it("clamps negative inputs and rounds fractional footprints up", () => {
+    expect(dotGlowRadialOutset(-2, -3)).toBe(0);
+    expect(dotGlowRadialOutset(4.1, 2.2)).toBe(9);
   });
 });
 
@@ -308,15 +320,10 @@ describe("badge geometry metrics overrides", () => {
   });
 
   it("resolvePadding threads badge metrics into the auto right gutter", () => {
-    const wide = resolvePadding(
-      undefined,
-      true,
-      true,
-      false,
-      true,
-      true,
-      { ...BADGE_METRICS_DEFAULTS, marginEdge: BADGE_MARGIN_RIGHT + 8 },
-    );
+    const wide = resolvePadding(undefined, true, true, false, true, true, {
+      ...BADGE_METRICS_DEFAULTS,
+      marginEdge: BADGE_MARGIN_RIGHT + 8,
+    });
     const base = resolvePadding(undefined, true, true, false, true, true);
     expect(wide.right - base.right).toBe(8);
   });
@@ -338,7 +345,17 @@ describe("buildLinePoints decimation", () => {
   it("decimates a dense window to ~pixel resolution", () => {
     const N = 2000;
     const data = Array.from({ length: N }, (_, i) => ({ time: i, value: 1 }));
-    const out = buildLinePoints(data, 1, N - 1, N, 0, 100, canvasW, canvasH, pad);
+    const out = buildLinePoints(
+      data,
+      1,
+      N - 1,
+      N,
+      0,
+      100,
+      canvasW,
+      canvasH,
+      pad,
+    );
     const count = out.length / 2;
     expect(count).toBeLessThan(N); // far fewer than the sample count
     expect(count).toBeLessThanOrEqual(chartW * 2 + 4); // bounded by ~2/pixel + tip
@@ -348,7 +365,17 @@ describe("buildLinePoints decimation", () => {
     const N = 2000;
     const data = Array.from({ length: N }, (_, i) => ({ time: i, value: 1 }));
     data[1000].value = 100; // single tall spike mid-window
-    const out = buildLinePoints(data, 1, N - 1, N, 0, 100, canvasW, canvasH, pad);
+    const out = buildLinePoints(
+      data,
+      1,
+      N - 1,
+      N,
+      0,
+      100,
+      canvasW,
+      canvasH,
+      pad,
+    );
     // The spike (value 100 => y at padding.top) must survive as the column max.
     let minY = Infinity;
     for (let i = 1; i < out.length; i += 2) minY = Math.min(minY, out[i]);

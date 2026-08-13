@@ -49,6 +49,7 @@ export type {
   ChartSegment,
   DegenOptions,
   DegenShakePayload,
+  DotGlowConfig,
   EmptyStateMetrics,
   FontConfig,
   FontWeight,

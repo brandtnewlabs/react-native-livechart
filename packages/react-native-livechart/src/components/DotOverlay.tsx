@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Circle, Group } from "@shopify/react-native-skia";
+import { BlurMask, Circle, Group } from "@shopify/react-native-skia";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -7,6 +7,7 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import type {
+  ResolvedDotGlowConfig,
   ResolvedDotRingConfig,
   ResolvedPulseConfig,
 } from "../core/resolveConfig";
@@ -25,6 +26,7 @@ export function DotOverlay({
   dotY,
   palette,
   pulse,
+  glow = null,
   radius,
   ring,
   color,
@@ -35,6 +37,8 @@ export function DotOverlay({
   dotY: SharedValue<number>;
   palette: LiveChartPalette;
   pulse: ResolvedPulseConfig | null;
+  /** Optional soft static glow; unlike `pulse`, it starts no frame callback. */
+  glow?: ResolvedDotGlowConfig | null;
   /** Radius of the color-filled dot in pixels. */
   radius: number;
   /** Outer halo ring, or `null` for a flat dot. */
@@ -99,6 +103,18 @@ export function DotOverlay({
           strokeWidth={pulse.strokeWidth}
           opacity={pulseOpacity}
         />
+      )}
+
+      {glow && (
+        <Circle
+          cx={dotX}
+          cy={dotY}
+          r={glow.radius}
+          color={glow.color ?? dotColor}
+          opacity={glow.opacity}
+        >
+          <BlurMask blur={glow.blur} style="normal" />
+        </Circle>
       )}
 
       {ring && (

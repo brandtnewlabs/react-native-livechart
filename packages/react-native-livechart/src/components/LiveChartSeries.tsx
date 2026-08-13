@@ -50,7 +50,7 @@ import {
   resolveZoom,
 } from "../core/resolveConfig";
 import { useLiveChartSeriesEngine } from "../core/useLiveChartSeriesEngine";
-import { pulseRadialOutset } from "../draw/line";
+import { dotGlowRadialOutset, pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useCanvasLayout } from "../hooks/useCanvasLayout";
 import { useChartReveal } from "../hooks/useChartReveal";
@@ -246,9 +246,12 @@ function useLiveChartSeriesController({
   const selectionDotCfg = resolveSelectionDot(selectionDot ?? false);
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
-  // Outer footprint of a dot (the color-filled radius plus the halo ring).
-  // Used to keep the gutter labels clear of the haloed dot.
-  const dotOuterRadius = dotCfg.radius + (dotCfg.ring?.width ?? 0);
+  // Outer visible footprint of a dot, including its crisp ring and optional
+  // blurred glow. Used to keep gutter labels clear of every dot effect.
+  const dotOuterRadius = Math.max(
+    dotCfg.radius + (dotCfg.ring?.width ?? 0),
+    dotCfg.glow ? dotGlowRadialOutset(dotCfg.glow.radius, dotCfg.glow.blur) : 0,
+  );
   const legendCfg = resolveLegend(legendProp);
   const degenCfg = resolveDegen(degen);
   const metricsCfg = resolveMetrics(metrics);
@@ -341,6 +344,7 @@ function useLiveChartSeriesController({
     formatValue,
     currentValue: representativeValue,
     pulse: dotCfg.pulse,
+    dotGlow: dotCfg.glow,
     multiSeriesDotRadius: dotOuterRadius,
     multiSeriesValueLabel: dotCfg.valueLabel,
     multiSeriesMaxLabelWidth: maxSeriesLabelWidth,
@@ -807,6 +811,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
               colors={lineColors}
               radius={dotCfg.radius}
               ring={dotCfg.ring}
+              glow={dotCfg.glow}
               ringColor={palette.badgeOuterBg}
               color={dotCfg.color}
               pulse={dotCfg.pulse}
@@ -954,7 +959,11 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
 }
 
 /** Owns the price/time projection worklets for the multi-series custom overlay. */
-function SeriesCustomConsumerOverlay({ model }: { model: LiveChartSeriesModel }) {
+function SeriesCustomConsumerOverlay({
+  model,
+}: {
+  model: LiveChartSeriesModel;
+}) {
   const { engine, effectivePadding, renderOverlay } = model;
   const overlayContext = useChartOverlayContext(engine, effectivePadding);
   return <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />;
@@ -1147,12 +1156,10 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
                 dimOpacity={scrubCfg.dimOpacity}
                 liveDotExtent={liveDotExtent}
                 crosshairLineColor={
-                  seriesTooltipCfg?.guideColor ??
-                  scrubCfg.crosshairLineColor
+                  seriesTooltipCfg?.guideColor ?? scrubCfg.crosshairLineColor
                 }
                 crosshairStrokeWidth={
-                  seriesTooltipCfg?.guideWidth ??
-                  scrubCfg.crosshairStrokeWidth
+                  seriesTooltipCfg?.guideWidth ?? scrubCfg.crosshairStrokeWidth
                 }
                 crosshairOvershoot={scrubCfg.crosshairOvershoot}
                 crosshairFade={scrubCfg.crosshairFade}

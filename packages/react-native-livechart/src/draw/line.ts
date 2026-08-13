@@ -5,7 +5,7 @@ export {
   BADGE_MARGIN_RIGHT,
   BADGE_PILL_PAD_X,
   BADGE_PILL_PAD_Y,
-  BADGE_TAIL_LEN
+  BADGE_TAIL_LEN,
 } from "../constants";
 
 export interface ChartPadding {
@@ -113,7 +113,8 @@ export function resolveAutoRight(
   showTail = true,
   badgeMetrics: BadgeMetrics = BADGE_METRICS_DEFAULTS,
 ): number {
-  if (badge) return minPaddingRightForBadgeYAxisAlign(12, 49, showTail, badgeMetrics);
+  if (badge)
+    return minPaddingRightForBadgeYAxisAlign(12, 49, showTail, badgeMetrics);
   if (yAxis) return 44;
   return DEFAULT_PADDING.right;
 }
@@ -154,6 +155,15 @@ export function pulseRadialOutset(
   strokeWidth: number,
 ): number {
   return Math.ceil(maxRadius + strokeWidth / 2);
+}
+
+/**
+ * Conservative canvas footprint for a blurred live-dot glow. Two blur radii
+ * retain the visible low-opacity falloff without over-inflating chart gutters.
+ * Keep this in sync with the `Circle` + `BlurMask` rendering in the dot overlays.
+ */
+export function dotGlowRadialOutset(radius: number, blur: number): number {
+  return Math.ceil(Math.max(0, radius) + Math.max(0, blur) * 2);
 }
 
 /** Extra space beyond label width so the pulse ring does not touch glyphs. */
