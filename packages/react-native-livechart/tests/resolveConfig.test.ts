@@ -652,6 +652,20 @@ describe("resolveScrub", () => {
     expect(resolveScrub({ dimFadeMs: -1 })?.dimFadeMs).toBe(0);
   });
 
+  it("restores dim defaults when optional fields are explicitly undefined", () => {
+    expect(
+      resolveScrub({
+        dimTarget: undefined,
+        dimOpacity: undefined,
+        dimFadeMs: undefined,
+      }),
+    ).toMatchObject({
+      dimTarget: "future",
+      dimOpacity: 0.3,
+      dimFadeMs: 60,
+    });
+  });
+
   it("normalizes the crosshairDash shorthand", () => {
     // `true` → a default dash, an array passes through, `false` → solid.
     expect(resolveScrub(true)?.crosshairDash).toBeUndefined();

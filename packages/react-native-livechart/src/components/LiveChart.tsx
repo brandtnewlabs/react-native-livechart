@@ -71,6 +71,7 @@ import { resolveSegment, type ResolvedSegment } from "../core/resolveSegment";
 import { useLiveChartEngine } from "../core/useLiveChartEngine";
 import { pulseRadialOutset } from "../draw/line";
 import {
+  computeCandleFocusPassOpacity,
   computeCandleFocusClip,
   HIDDEN_CANDLE_FOCUS_CLIP,
 } from "../draw/candle";
@@ -131,6 +132,7 @@ import {
   resolveTheme,
 } from "../theme";
 import type {
+  CandlePoint,
   LiveChartPalette,
   LiveChartPoint,
   LiveChartProps,
@@ -1862,6 +1864,15 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
   // ChartCandleLayer is single-series only; useCrosshair always supplies this
   // value (it is optional on the shared state type only for LiveChartSeries).
   const scrubCandle = crosshair.scrubCandle!;
+  // Keep the last selection after scrubCandle clears so its clipped full-
+  // strength pass can cover the base batch until the release fade completes.
+  const lastScrubCandle = useSharedValue<CandlePoint | null>(null);
+  useAnimatedReaction(
+    () => (focusOtherCandles ? scrubCandle.get() : null),
+    (candle) => {
+      if (candle) lastScrubCandle.set(candle);
+    },
+  );
   const inactiveCandleOpacity = useDerivedValue(() => {
     const target =
       focusOtherCandles && scrubActive.get() && scrubCandle.get()
@@ -1877,16 +1888,29 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     candleDimOpacity,
     candleDimFadeMs,
   ]);
-  const focusedCandleOpacity = useDerivedValue(
-    () => (focusOtherCandles && scrubActive.get() && scrubCandle.get() ? 1 : 0),
-    [focusOtherCandles, scrubActive, scrubCandle],
-  );
+  const focusedCandleOpacity = useDerivedValue(() => {
+    const currentCandle = scrubCandle.get();
+    const focusCandle = currentCandle ?? lastScrubCandle.get();
+    if (!focusOtherCandles || !focusCandle) return 0;
+    return computeCandleFocusPassOpacity(
+      scrubActive.get(),
+      currentCandle !== null,
+      inactiveCandleOpacity.get(),
+    );
+  }, [
+    focusOtherCandles,
+    scrubActive,
+    scrubCandle,
+    lastScrubCandle,
+    inactiveCandleOpacity,
+  ]);
   const focusedCandleClip = useDerivedValue(() => {
-    if (!focusOtherCandles || !scrubActive.get()) {
+    if (!focusOtherCandles) {
       return HIDDEN_CANDLE_FOCUS_CLIP;
     }
+    const focusCandle = scrubCandle.get() ?? lastScrubCandle.get();
     return computeCandleFocusClip(
-      scrubCandle.get(),
+      focusCandle,
       effectivePadding,
       engine.canvasWidth.get(),
       engine.canvasHeight.get(),
@@ -1896,8 +1920,8 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     );
   }, [
     focusOtherCandles,
-    scrubActive,
     scrubCandle,
+    lastScrubCandle,
     effectivePadding,
     engine.canvasWidth,
     engine.canvasHeight,

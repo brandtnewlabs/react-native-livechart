@@ -811,8 +811,19 @@ export function resolveScrub(
     const seriesTooltip =
       typeof prop === "object" ? prop.seriesTooltip : undefined;
     resolved.seriesTooltip = resolvePerSeriesTooltip(seriesTooltip);
-    resolved.dimOpacity = Math.max(0, Math.min(1, resolved.dimOpacity));
-    resolved.dimFadeMs = Math.max(0, resolved.dimFadeMs);
+    // `resolveToggle` shallow-merges object props, so an explicitly undefined
+    // optional field replaces its default. Restore the public defaults before
+    // normalizing; otherwise the numeric clamps produce NaN and an undefined
+    // dimTarget selects neither candle scrub rendering path.
+    resolved.dimTarget = resolved.dimTarget ?? SCRUB_DEFAULTS.dimTarget;
+    resolved.dimOpacity = Math.max(
+      0,
+      Math.min(1, resolved.dimOpacity ?? SCRUB_DEFAULTS.dimOpacity),
+    );
+    resolved.dimFadeMs = Math.max(
+      0,
+      resolved.dimFadeMs ?? SCRUB_DEFAULTS.dimFadeMs,
+    );
     resolved.crosshairOvershoot = Math.max(0, resolved.crosshairOvershoot);
     resolved.crosshairFadeDistance = Math.max(
       0,

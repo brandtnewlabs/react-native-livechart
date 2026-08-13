@@ -37,6 +37,21 @@ export const HIDDEN_CANDLE_FOCUS_CLIP: CandleFocusClip = {
   height: 0,
 };
 
+/**
+ * Keep the full-strength candle pass visible while a candle is selected and
+ * while the shared dimmed batch is still returning to full opacity. The latter
+ * prevents the selected candle from briefly dropping to the dim opacity when a
+ * scrub ends or moves into a gap.
+ */
+export function computeCandleFocusPassOpacity(
+  scrubActive: boolean,
+  hasScrubCandle: boolean,
+  inactiveCandleOpacity: number,
+): number {
+  "worklet";
+  return (scrubActive && hasScrubCandle) || inactiveCandleOpacity < 1 ? 1 : 0;
+}
+
 function candleTimeToX(
   t: number,
   padLeft: number,

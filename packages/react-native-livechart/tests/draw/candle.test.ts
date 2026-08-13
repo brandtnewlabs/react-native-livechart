@@ -2,6 +2,7 @@ import type { CandlePoint } from "../../src/types";
 import {
   buildCandleGeometry,
   computeCandleFocusClip,
+  computeCandleFocusPassOpacity,
   HIDDEN_CANDLE_FOCUS_CLIP,
 } from "../../src/draw/candle";
 
@@ -251,6 +252,15 @@ describe("computeCandleFocusClip", () => {
         60,
       ),
     ).toBe(HIDDEN_CANDLE_FOCUS_CLIP);
+  });
+});
+
+describe("computeCandleFocusPassOpacity", () => {
+  it("keeps the selected candle full-strength through the release fade", () => {
+    expect(computeCandleFocusPassOpacity(true, true, 1)).toBe(1);
+    expect(computeCandleFocusPassOpacity(false, false, 0.5)).toBe(1);
+    expect(computeCandleFocusPassOpacity(false, false, 0.99)).toBe(1);
+    expect(computeCandleFocusPassOpacity(false, false, 1)).toBe(0);
   });
 });
 
