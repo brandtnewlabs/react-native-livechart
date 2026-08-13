@@ -35,7 +35,7 @@ describe("useMultiSeriesLinePaths", () => {
         canvasHeight: { value: 300 },
       }) as unknown as MultiEngineState;
       const padding = { top: 12, right: 44, bottom: 28, left: 12 };
-      return useMultiSeriesLinePaths(engine, padding);
+      return useMultiSeriesLinePaths(engine, padding, undefined, 1);
     });
     expect(result.current.value).toHaveLength(1);
   });
@@ -53,6 +53,7 @@ describe("useMultiSeriesLinePaths", () => {
           value: 12,
           color: "#3b82f6",
           curve: "linear" as const,
+          simplify: 1,
         },
       ]);
       const displaySeriesValues = useSharedValue([12]);

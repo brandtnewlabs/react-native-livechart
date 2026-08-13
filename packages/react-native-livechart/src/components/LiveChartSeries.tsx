@@ -397,6 +397,7 @@ function useLiveChartSeriesController({
     engine,
     effectivePadding,
     activeSeriesCount,
+    lineProp?.simplify,
   );
 
   // Per-series colors and stroke styles, derived from the off-render snapshot

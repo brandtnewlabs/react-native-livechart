@@ -64,8 +64,11 @@ provided; everything else has a default.
   Main line styling: `width`, `color`, plus shape controls — `curve`
   (`"monotone"` smooth default | `"linear"` straight segments), `join`
   (`"round"` | `"miter"` | `"bevel"`), and `cap` (`"round"` | `"butt"` |
-  `"square"`). Pair `curve: "linear"` with `join: "miter"` + `cap: "butt"` for a
-  fully hard-edged ("edgy") line.
+  `"square"`). `simplify` is an opt-in screen-space path tolerance in pixels;
+  start around `0.75`–`1.5` to remove sub-pixel noise without changing the
+  source data, fitted range, markers, or scrub values. See
+  [Line denoising](/guides/line-denoising). Pair `curve: "linear"` with
+  `join: "miter"` + `cap: "butt"` for a fully hard-edged ("edgy") line.
 </ParamField>
 
 <ParamField body="gradient" type="boolean | GradientConfig" default="true">

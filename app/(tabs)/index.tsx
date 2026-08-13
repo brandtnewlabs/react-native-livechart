@@ -43,6 +43,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "Badge, pulse, value line, live value overlay.",
       },
       {
+        href: "/demo/line-denoising" as Href,
+        title: "Line denoising",
+        blurb: "simplify: compare the raw path with shape-preserving pixel-tolerance cleanup.",
+      },
+      {
         href: "/demo/candlestick",
         title: "Candlestick",
         blurb: "mode=candle: timeframes, candle colors, OHLC bodies + wicks.",

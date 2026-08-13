@@ -53,6 +53,7 @@ interface SeriesConfig {
   style?: "solid" | "dashed";
   intervals?: [number, number];
   curve?: "monotone" | "linear"; // interpolation; default "monotone"
+  simplify?: number;          // per-series path tolerance in px; inherits line.simplify
   strokeWidth?: number;
   glow?: boolean;
   kind?: "outcome" | "derived";
@@ -292,6 +293,9 @@ interface LineConfig {
   colors?: string[];// per-point gradient stops (left → right); wins over color
   curve?: "monotone" | "linear"; // point interpolation; default "monotone"
                     //   (smooth cubic). "linear" = straight segments / hard-edged.
+  simplify?: number; // screen-space path tolerance in px; default 0 (off).
+                    //   Removes only intermediate drawn points within the tolerance;
+                    //   source data, axis fitting, markers, and scrubbing stay exact.
   join?: "round" | "miter" | "bevel"; // corner join; default "round".
                     //   "miter" = sharp/angular peaks, "bevel" = flattened.
   cap?: "round" | "butt" | "square";  // start/end cap; default "round".

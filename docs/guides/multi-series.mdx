@@ -47,9 +47,15 @@ Each `SeriesConfig` supports:
 | `visible`     | Show/hide the series (default `true`)                          |
 | `style`       | `"solid"` or `"dashed"` (with `intervals`)                     |
 | `curve`       | `"monotone"` (default) smooth spline or `"linear"` straight segments |
+| `simplify`    | Per-series path tolerance in screen pixels; overrides `line.simplify` |
 | `strokeWidth` | Per-series width override                                      |
 | `glow`        | Soft glow behind the line                                      |
 | `kind`        | `"outcome"` (default) or `"derived"` (subdued/dashed chip)     |
+
+Set `line={{ simplify: 1 }}` on `LiveChartSeries` to denoise every rendered
+path by roughly one screen pixel. A series can choose a different tolerance, or
+set `simplify: 0` to keep its exact point path. The shared axis, scrub values,
+and live dots continue to use the original series data.
 
 ## Dimming replacement data
 
