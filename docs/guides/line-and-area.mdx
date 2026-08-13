@@ -154,18 +154,29 @@ dashed value line across the plot.
 />
 ```
 
-The live dot is a color-filled circle with a contrasting outer **ring** (halo). Style it via
-`dot` — the same `DotConfig` that `LiveChartSeries` uses:
+The live dot is a color-filled circle with a crisp contrasting outer **ring**.
+Style it via `dot` — the same `DotConfig` that `LiveChartSeries` uses. A soft
+static glow is available separately and remains off unless explicitly enabled:
 
 ```tsx
 <LiveChart
   data={data}
   value={value}
-  dot={{ radius: 4, ring: { color: "#0b0b0f", width: 3 } }}
-  // dot={{ ring: false }}  // flat dot, no halo
+  dot={{
+    radius: 4,
+    ring: { color: "#0b0b0f", width: 3 },
+    glow: { radius: 7, blur: 5, opacity: 0.16 },
+  }}
+  pulse={false} // glow and pulse are independent
+  // dot={{ ring: false }}  // flat dot, no backing ring
   // dot={{ show: false }}  // hide the dot
 />
 ```
+
+`glow: true` uses restrained defaults (`radius: 7`, `blur: 5`, `opacity: 0.18`,
+dot fill color). A config object can tune every value or supply its own color.
+The glow is a static Skia layer and starts no frame callback; `pulse` remains the
+separate expanding-ring animation.
 
 <Note>
   Most boolean-ish props accept `true` (defaults), `false` (off), or a config object — for

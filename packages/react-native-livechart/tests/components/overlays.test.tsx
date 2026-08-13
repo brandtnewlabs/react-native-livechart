@@ -20,6 +20,7 @@ import {
 } from "../../src/components/YAxisOverlay";
 import { render } from "@testing-library/react-native";
 import {
+  resolveDotGlow,
   resolvePulse,
   resolveSelectionDot,
 } from "../../src/core/resolveConfig";
@@ -63,9 +64,7 @@ function expectConfiguredCrosshair(tree: unknown) {
   expect(serialized).toContain('"strokeWidth":3');
   expect(serialized).toContain('"strokeCap":"round"');
   expect(serialized).toContain(`\\"y\\":${DEFAULT_PADDING.top - 6}`);
-  expect(serialized).toContain(
-    `\\"y\\":${300 - DEFAULT_PADDING.bottom + 6}`,
-  );
+  expect(serialized).toContain(`\\"y\\":${300 - DEFAULT_PADDING.bottom + 6}`);
   expect(serialized).toContain('"opacity":"1"');
   expect(serialized).toContain("rgba(0,0,0,0.175)");
 }
@@ -180,12 +179,10 @@ describe("YAxisOverlay", () => {
     expect(builder.lineTo).toHaveBeenNthCalledWith(1, 344, 40);
     expect(builder.lineTo).toHaveBeenNthCalledWith(2, 344, 80);
 
-    const labels = getAllByHostType(screen, View)
-      .filter(
-        (view) =>
-          view.props.text?.value === "10" ||
-          view.props.text?.value === "100000",
-      );
+    const labels = getAllByHostType(screen, View).filter(
+      (view) =>
+        view.props.text?.value === "10" || view.props.text?.value === "100000",
+    );
     expect(labels.map((view) => view.props.x.value)).toEqual([350, 350]);
   });
 
@@ -331,6 +328,29 @@ describe("DotOverlay", () => {
       );
     }
     await render(<Fixture />);
+  });
+
+  it("renders an opt-in static glow without requiring a pulse", async () => {
+    function Fixture() {
+      const dotX = useSharedValue(100);
+      const dotY = useSharedValue(120);
+      return (
+        <DotOverlay
+          dotX={dotX}
+          dotY={dotY}
+          palette={palette}
+          radius={3.5}
+          ring={null}
+          glow={resolveDotGlow({ radius: 8, blur: 4, opacity: 0.12 })}
+          color="#abcdef"
+          pulse={null}
+        />
+      );
+    }
+    const screen = await render(<Fixture />);
+    const tree = JSON.stringify(screen.toJSON());
+    expect(tree).toContain('"blur":4');
+    expect(tree).toContain('"style":"normal"');
   });
 });
 
@@ -567,9 +587,7 @@ describe("CrosshairOverlay", () => {
 
   it("uses the configured visible fade without changing the trailing dim ramp", async () => {
     function Fixture() {
-      const scrubX = useSharedValue(
-        400 - DEFAULT_PADDING.right - 2,
-      );
+      const scrubX = useSharedValue(400 - DEFAULT_PADDING.right - 2);
       // This stays on the controller's original 4 px fade: 2 / 4 = 0.5.
       const crosshairOpacity = useSharedValue(0.5);
       const scrubActive = useSharedValue(true);
@@ -1401,7 +1419,10 @@ describe("ReferenceLineOverlay", () => {
   });
 
   it("renders a right-pinned, icon-only badge", () => {
-    renderLine({ value: 5, badge: { position: "right", icon: "▲", text: false } });
+    renderLine({
+      value: 5,
+      badge: { position: "right", icon: "▲", text: false },
+    });
   });
 
   it("renders an off-screen badge (chevron) from the badge config", () => {

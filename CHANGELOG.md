@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keeps existing paths unchanged. A dedicated guide and raw-vs-simplified demo
   make the tolerance and preserved structure directly comparable.
 
+- **Opt-in configurable static live-dot glow.** `DotConfig.glow`, shared by
+  `LiveChart` and `LiveChartSeries`, accepts `true` for restrained defaults or a
+  `DotGlowConfig` with adjustable `color`, `radius`, `blur`, and `opacity`.
+  The glow defaults to off, adds no animation clock, composes independently
+  with the existing crisp `ring` and animated `pulse`, and participates in
+  automatic chart padding so its blurred falloff is not clipped.
+
+### Fixed
+
+- **Static dot glow is visibly rendered.** Dot glows use a Skia blur mask,
+  preserving the halo outside the source circle instead of diluting it through
+  an image filter before the crisp backing ring and dot are painted above it.
+
 ## [4.18.0] - 2026-08-12
 
 ### Added

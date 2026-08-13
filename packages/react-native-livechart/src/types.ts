@@ -1531,11 +1531,23 @@ export interface DegenShakePayload {
   direction: "up" | "down";
 }
 
-/** Contrasting outer ring drawn behind each series dot — the "haloed" look the
- *  single-series live dot has, so dots stand out against the lines and one
- *  another. */
+/** Optional soft, static color glow drawn behind a live dot. */
+export interface DotGlowConfig {
+  /** Glow color. Defaults to the dot's resolved fill color. */
+  color?: string;
+  /** Radius of the glow's source circle in pixels. Default `7`. */
+  radius?: number;
+  /** Skia blur radius in pixels. Default `5`. */
+  blur?: number;
+  /** Glow opacity (0–1). Default `0.18`. */
+  opacity?: number;
+}
+
+/** Contrasting outer ring drawn behind each series dot — the crisp backing
+ *  circle the single-series live dot has, so dots stand out against the lines
+ *  and one another. */
 export interface DotRingConfig {
-  /** Ring color. Default: theme `badgeOuterBg` (a near-background halo). */
+  /** Ring color. Default: theme `badgeOuterBg` (a near-background backing). */
   color?: string;
   /** Ring thickness in pixels — how far the halo extends past the dot. Default `2.5`. */
   width?: number;
@@ -1544,7 +1556,8 @@ export interface DotRingConfig {
 /**
  * Shared live-dot styling, used by both `LiveChart` (`dot`) and
  * `LiveChartSeries` (`dot`, which extends this). A dot is a color-filled circle
- * of `radius` with an optional contrasting outer `ring` (halo).
+ * of `radius` with an optional contrasting outer `ring` and opt-in soft
+ * `glow`. The glow is static; use `pulse` for an animated heartbeat.
  */
 export interface DotConfig {
   /** Radius of the (color-filled) dot in pixels. Default `3.5`. */
@@ -1555,6 +1568,12 @@ export interface DotConfig {
    * `DotRingConfig`. Default `true`.
    */
   ring?: boolean | DotRingConfig;
+  /**
+   * Soft static glow behind the dot. `true` = restrained defaults, `false` =
+   * off, or pass `DotGlowConfig` to tune its color, radius, blur, and opacity.
+   * Default `false`.
+   */
+  glow?: boolean | DotGlowConfig;
   /**
    * Show the dot. `false` hides it (line, badge, and labels still render). Default `true`.
    *
@@ -2342,7 +2361,8 @@ export interface LiveChartProps extends LiveChartCoreProps {
   pulse?: boolean | PulseConfig;
   /**
    * Live dot styling. `true`/omitted = shown defaults, `false` = hidden, or pass
-   * `DotConfig` (`radius`, `ring` halo, `color`). See {@link DotConfig}. Default `true`.
+   * `DotConfig` (`radius`, `ring`, opt-in `glow`, `color`). See
+   * {@link DotConfig}. Default `true`.
    */
   dot?: boolean | DotConfig;
   /** Horizontal dashed line at the current live value. `true` = defaults, or pass `ValueLineConfig`. */

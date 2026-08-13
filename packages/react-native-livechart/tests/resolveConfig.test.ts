@@ -4,6 +4,7 @@ import {
   resolveBadge,
   resolveDegen,
   resolveDot,
+  resolveDotGlow,
   resolveDotRing,
   resolveFontConfig,
   resolveGradient,
@@ -641,11 +642,15 @@ describe("resolveScrub", () => {
   it("normalizes the crosshairDash shorthand", () => {
     // `true` → a default dash, an array passes through, `false` → solid.
     expect(resolveScrub(true)?.crosshairDash).toBeUndefined();
-    expect(resolveScrub({ crosshairDash: true })?.crosshairDash).toEqual([4, 4]);
+    expect(resolveScrub({ crosshairDash: true })?.crosshairDash).toEqual([
+      4, 4,
+    ]);
     expect(resolveScrub({ crosshairDash: [2, 6] })?.crosshairDash).toEqual([
       2, 6,
     ]);
-    expect(resolveScrub({ crosshairDash: false })?.crosshairDash).toBeUndefined();
+    expect(
+      resolveScrub({ crosshairDash: false })?.crosshairDash,
+    ).toBeUndefined();
   });
 
   it("carries a custom panGestureDelay (press-and-hold to scrub)", () => {
@@ -681,7 +686,9 @@ describe("resolveScrub", () => {
   });
 
   it("clamps negative crosshair distances to zero", () => {
-    expect(resolveScrub({ crosshairOvershoot: -6 })?.crosshairOvershoot).toBe(0);
+    expect(resolveScrub({ crosshairOvershoot: -6 })?.crosshairOvershoot).toBe(
+      0,
+    );
     expect(
       resolveScrub({ crosshairFadeDistance: -8 })?.crosshairFadeDistance,
     ).toBe(0);
@@ -839,7 +846,12 @@ describe("resolveScrubAction", () => {
 
   it("merges a partial config with defaults", () => {
     expect(
-      resolveScrubAction({ icon: "★", snap: 0.5, text: false, timeBadge: true }),
+      resolveScrubAction({
+        icon: "★",
+        snap: 0.5,
+        text: false,
+        timeBadge: true,
+      }),
     ).toEqual({
       ...DEFAULTS,
       icon: "★",
@@ -1385,6 +1397,30 @@ describe("resolveGridStyle", () => {
   });
 });
 
+// ─── resolveDotGlow ───────────────────────────────────────────────────────────
+
+describe("resolveDotGlow", () => {
+  it("is opt-in", () => {
+    expect(resolveDotGlow(undefined)).toBeNull();
+    expect(resolveDotGlow(false)).toBeNull();
+  });
+
+  it("resolves restrained defaults only when enabled", () => {
+    expect(resolveDotGlow(true)).toEqual({
+      color: undefined,
+      radius: 7,
+      blur: 5,
+      opacity: 0.18,
+    });
+  });
+
+  it("merges customization and clamps invalid visual values", () => {
+    expect(
+      resolveDotGlow({ color: "#f00", radius: -2, blur: -3, opacity: 4 }),
+    ).toEqual({ color: "#f00", radius: 0, blur: 0, opacity: 1 });
+  });
+});
+
 // ─── resolveDotRing ───────────────────────────────────────────────────────────
 
 describe("resolveDotRing", () => {
@@ -1416,6 +1452,7 @@ describe("resolveDot", () => {
     expect(resolveDot(undefined)).toEqual({
       radius: 3.5,
       ring: { color: undefined, width: 2.5 },
+      glow: null,
       show: true,
       color: undefined,
       trackWhileParked: false,
@@ -1428,6 +1465,7 @@ describe("resolveDot", () => {
     ).toEqual({
       radius: 6,
       ring: null,
+      glow: null,
       show: false,
       color: "#abcdef",
       trackWhileParked: false,
@@ -1439,10 +1477,20 @@ describe("resolveDot", () => {
     expect(resolveDot(true).show).toBe(true);
   });
 
+  it("resolves an explicitly configured static glow", () => {
+    expect(resolveDot({ glow: { opacity: 0.12, blur: 3 } }).glow).toEqual({
+      color: undefined,
+      radius: 7,
+      blur: 3,
+      opacity: 0.12,
+    });
+  });
+
   it("treats `false` as shown:false over the defaults (dot={false})", () => {
     expect(resolveDot(false)).toEqual({
       radius: 3.5,
       ring: { color: undefined, width: 2.5 },
+      glow: null,
       show: false,
       color: undefined,
       trackWhileParked: false,
@@ -1468,6 +1516,7 @@ describe("resolveMultiSeriesDot", () => {
     expect(resolveMultiSeriesDot(undefined)).toEqual({
       radius: 3.5,
       ring: { color: undefined, width: 2.5 },
+      glow: null,
       show: true,
       color: undefined,
       trackWhileParked: false,
@@ -1489,6 +1538,7 @@ describe("resolveMultiSeriesDot", () => {
     ).toEqual({
       radius: 5,
       ring: null,
+      glow: null,
       show: false,
       color: "#abcdef",
       trackWhileParked: false,
@@ -1520,7 +1570,10 @@ describe("resolveSelectionDotRing", () => {
   });
 
   it("returns defaults for true/undefined (ring on)", () => {
-    expect(resolveSelectionDotRing(true)).toEqual({ color: undefined, width: 2 });
+    expect(resolveSelectionDotRing(true)).toEqual({
+      color: undefined,
+      width: 2,
+    });
     expect(resolveSelectionDotRing(undefined)).toEqual({
       color: undefined,
       width: 2,
@@ -1855,7 +1908,9 @@ describe("resolveMarkerCluster", () => {
     // Explicit mode honored; overlap clamped to [0, 0.95].
     expect(resolveMarkerCluster({ mode: "anchored" }).mode).toBe("anchored");
     // Vertical stacking is opt-in via the object form.
-    expect(resolveMarkerCluster({ direction: "vertical" }).direction).toBe("vertical");
+    expect(resolveMarkerCluster({ direction: "vertical" }).direction).toBe(
+      "vertical",
+    );
     expect(resolveMarkerCluster({ overlap: 5 }).overlap).toBe(0.95);
     expect(resolveMarkerCluster({ overlap: -1 }).overlap).toBe(0);
   });
@@ -1865,11 +1920,16 @@ describe("resolveMarkerCluster", () => {
     expect(resolveMarkerCluster("stacked").groupBadge).toBe("count");
     expect(resolveMarkerCluster("stacked").showGroupCount).toBe(false);
     // Opt into the representative marker's own glyph + a corner count.
-    const cfg = resolveMarkerCluster({ groupBadge: "marker", showGroupCount: true });
+    const cfg = resolveMarkerCluster({
+      groupBadge: "marker",
+      showGroupCount: true,
+    });
     expect(cfg.groupBadge).toBe("marker");
     expect(cfg.showGroupCount).toBe(true);
     // A dedicated group badge (object form) passes through untouched.
     const badge = { icon: "★", pill: true, color: "#a855f7" };
-    expect(resolveMarkerCluster({ groupBadge: badge }).groupBadge).toEqual(badge);
+    expect(resolveMarkerCluster({ groupBadge: badge }).groupBadge).toEqual(
+      badge,
+    );
   });
 });

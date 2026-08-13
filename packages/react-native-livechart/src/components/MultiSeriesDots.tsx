@@ -1,8 +1,9 @@
-import { Circle, Group } from "@shopify/react-native-skia";
+import { BlurMask, Circle, Group } from "@shopify/react-native-skia";
 
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ChartPadding } from "../draw/line";
 import type {
+  ResolvedDotGlowConfig,
   ResolvedDotRingConfig,
   ResolvedPulseConfig,
 } from "../core/resolveConfig";
@@ -18,6 +19,7 @@ function SeriesDotAtIndex({
   color,
   radius,
   ring,
+  glow = null,
   ringColor,
   pulse,
   viewEnd,
@@ -27,8 +29,10 @@ function SeriesDotAtIndex({
   padding: ChartPadding;
   color: string;
   radius: number;
-  /** Outer halo ring, or `null` for a flat circle. */
+  /** Crisp outer backing ring, or `null` for a flat circle. */
   ring: ResolvedDotRingConfig | null;
+  /** Optional soft static glow; unlike `pulse`, it has no animation clock. */
+  glow?: ResolvedDotGlowConfig | null;
   /** Fallback ring color when `ring.color` is unset (theme `badgeOuterBg`). */
   ringColor: string;
   pulse: ResolvedPulseConfig | null;
@@ -94,6 +98,17 @@ function SeriesDotAtIndex({
           opacity={pulseOpacity}
         />
       )}
+      {glow && (
+        <Circle
+          cx={dotX}
+          cy={dotY}
+          r={glow.radius}
+          color={glow.color ?? color}
+          opacity={glow.opacity}
+        >
+          <BlurMask blur={glow.blur} style="normal" />
+        </Circle>
+      )}
       {ring && (
         <Circle
           cx={dotX}
@@ -113,6 +128,7 @@ export function MultiSeriesDots({
   colors,
   radius,
   ring,
+  glow = null,
   ringColor,
   color,
   pulse,
@@ -123,8 +139,10 @@ export function MultiSeriesDots({
   padding: ChartPadding;
   colors: string[];
   radius: number;
-  /** Outer halo ring, or `null` for flat circles. */
+  /** Crisp outer backing ring, or `null` for flat circles. */
   ring: ResolvedDotRingConfig | null;
+  /** Optional soft static glow behind every series dot. */
+  glow?: ResolvedDotGlowConfig | null;
   /** Fallback ring color when `ring.color` is unset (theme `badgeOuterBg`). */
   ringColor: string;
   /** Fill color override; falls back to each series' line color. */
@@ -146,6 +164,7 @@ export function MultiSeriesDots({
           color={color ?? colors[i] ?? "#ffffff"}
           radius={radius}
           ring={ring}
+          glow={glow}
           ringColor={ringColor}
           pulse={pulse}
           viewEnd={viewEnd}

@@ -18,6 +18,7 @@ import type {
   LoadingConfig,
   MarkerClusterConfig,
   DotConfig,
+  DotGlowConfig,
   DotRingConfig,
   MultiSeriesDotConfig,
   PulseConfig,
@@ -40,7 +41,6 @@ import type {
   YAxisConfig,
   ZoomConfig,
 } from "../types";
-
 import type { ComponentType, ReactElement } from "react";
 import type { SharedValue } from "react-native-reanimated";
 import type { ResolvedMarkerCluster } from "../math/markerCluster";
@@ -199,9 +199,7 @@ export interface ResolvedScrubConfig {
 export interface ResolvedPerSeriesTooltipConfig {
   alwaysShow: boolean;
   bucketSeconds: number | undefined;
-  formatSeriesValue:
-    | ((value: number, seriesId: string) => string)
-    | undefined;
+  formatSeriesValue: ((value: number, seriesId: string) => string) | undefined;
   formatTimeRange: ((from: number, to: number) => string) | undefined;
   maxLabelChars: number;
   guideColor: string | undefined;
@@ -688,8 +686,7 @@ export function resolveAxisLabel(
 ): ResolvedAxisLabelConfig | null {
   const resolved = resolveToggle(prop, AXIS_LABEL_DEFAULTS, false);
   if (!resolved) return null;
-  const connectorProp =
-    typeof prop === "object" ? prop.connector : undefined;
+  const connectorProp = typeof prop === "object" ? prop.connector : undefined;
   return {
     ...resolved,
     connector: resolveConnector(
@@ -770,11 +767,7 @@ const PER_SERIES_TOOLTIP_DEFAULTS: ResolvedPerSeriesTooltipConfig = {
 function resolvePerSeriesTooltip(
   prop: boolean | PerSeriesTooltipConfig | undefined,
 ): ResolvedPerSeriesTooltipConfig | null {
-  const resolved = resolveToggle(
-    prop,
-    PER_SERIES_TOOLTIP_DEFAULTS,
-    false,
-  );
+  const resolved = resolveToggle(prop, PER_SERIES_TOOLTIP_DEFAULTS, false);
   if (!resolved) return null;
   const dash = typeof prop === "object" ? prop.guideDashPattern : undefined;
   if (dash !== undefined) {
@@ -1181,7 +1174,39 @@ export function resolveTradeStream(
 
 // ─── Dot (shared) ─────────────────────────────────────────────────────────────
 
-/** Resolved halo ring. `color: undefined` means "use the theme `badgeOuterBg`". */
+/** Resolved static dot glow. `color: undefined` means "use the dot color". */
+export interface ResolvedDotGlowConfig {
+  color: string | undefined;
+  radius: number;
+  blur: number;
+  opacity: number;
+}
+
+const DOT_GLOW_DEFAULTS: ResolvedDotGlowConfig = {
+  color: undefined,
+  radius: 7,
+  blur: 5,
+  opacity: 0.18,
+};
+
+/** `undefined`/`false` → off; `true` → restrained defaults; object → merged. */
+export function resolveDotGlow(
+  prop: boolean | DotGlowConfig | undefined,
+): ResolvedDotGlowConfig | null {
+  if (!prop) return null;
+  const config = prop === true ? DOT_GLOW_DEFAULTS : prop;
+  return {
+    color: config.color,
+    radius: Math.max(0, config.radius ?? DOT_GLOW_DEFAULTS.radius),
+    blur: Math.max(0, config.blur ?? DOT_GLOW_DEFAULTS.blur),
+    opacity: Math.max(
+      0,
+      Math.min(1, config.opacity ?? DOT_GLOW_DEFAULTS.opacity),
+    ),
+  };
+}
+
+/** Resolved backing ring. `color: undefined` means "use the theme `badgeOuterBg`". */
 export interface ResolvedDotRingConfig {
   color: string | undefined;
   width: number;
@@ -1203,6 +1228,7 @@ export function resolveDotRing(
 export interface ResolvedDotConfig {
   radius: number;
   ring: ResolvedDotRingConfig | null;
+  glow: ResolvedDotGlowConfig | null;
   show: boolean;
   color: string | undefined;
   trackWhileParked: boolean;
@@ -1211,6 +1237,7 @@ export interface ResolvedDotConfig {
 const DOT_DEFAULTS: ResolvedDotConfig = {
   radius: 3.5,
   ring: RING_DEFAULTS,
+  glow: null,
   show: true,
   color: undefined,
   trackWhileParked: false,
@@ -1231,6 +1258,7 @@ export function resolveDot(
   return {
     radius: prop.radius ?? DOT_DEFAULTS.radius,
     ring: resolveDotRing(prop.ring),
+    glow: resolveDotGlow(prop.glow),
     show: prop.show ?? DOT_DEFAULTS.show,
     color: prop.color,
     trackWhileParked: prop.trackWhileParked ?? DOT_DEFAULTS.trackWhileParked,

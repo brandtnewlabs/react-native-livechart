@@ -177,6 +177,7 @@ jest.mock("@shopify/react-native-skia", () => {
     Shader: View,
     DashPathEffect: View,
     Blur: View,
+    BlurMask: View,
     Image: View,
     Atlas: View,
     LinearGradient: View,
