@@ -62,15 +62,21 @@ export function useMultiSeriesLinePaths(
     const out = pool.pathsTick ? pool.pathsA : pool.pathsB;
     out.length = 0;
     const count = Math.min(activeSeriesCount, s.length, MAX_MULTI_SERIES);
+    const now = engine.timestamp.get();
+    const windowSecs = engine.displayWindow.get();
+    const canvasWidth = engine.canvasWidth.get();
+    const chartWidth = canvasWidth - padding.left - padding.right;
+    const absoluteXOffset =
+      windowSecs > 0 ? (now - windowSecs) * (chartWidth / windowSecs) : 0;
     for (let i = 0; i < count; i++) {
       const rawPts = buildLinePoints(
         s[i].data,
         displays[i] ?? s[i].value,
-        engine.timestamp.get(),
-        engine.displayWindow.get(),
+        now,
+        windowSecs,
         engine.displayMin.get(),
         engine.displayMax.get(),
-        engine.canvasWidth.get(),
+        canvasWidth,
         engine.canvasHeight.get(),
         padding,
         pool.ptsBuf,
@@ -83,6 +89,7 @@ export function useMultiSeriesLinePaths(
               seriesTolerance,
               pool.simplifiedPts,
               pool.simplifyScratch,
+              absoluteXOffset,
             )
           : rawPts;
       const n = pts.length >> 1;

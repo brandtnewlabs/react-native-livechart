@@ -108,14 +108,17 @@ export function useChartPaths(
       Number.isFinite(simplifyTolerance) && simplifyTolerance > 0
         ? simplifyTolerance
         : 0;
+    const now = engine.timestamp.get();
+    const windowSecs = engine.displayWindow.get();
+    const canvasWidth = engine.canvasWidth.get();
     const realPts = buildLinePoints(
       engine.data.get(),
       tipValue,
-      engine.timestamp.get(),
-      engine.displayWindow.get(),
+      now,
+      windowSecs,
       engine.displayMin.get(),
       engine.displayMax.get(),
-      engine.canvasWidth.get(),
+      canvasWidth,
       engine.canvasHeight.get(),
       padding,
       simplify > 0 ? cache.rawPts : buf,
@@ -124,9 +127,18 @@ export function useChartPaths(
       // point rather than fabricating a flat line into dataless space.
       engine.viewEnd.get() != null,
     );
+    const chartWidth = canvasWidth - padding.left - padding.right;
+    const absoluteXOffset =
+      windowSecs > 0 ? (now - windowSecs) * (chartWidth / windowSecs) : 0;
     const renderPts =
       simplify > 0
-        ? simplifyLinePoints(realPts, simplify, buf, cache.simplifyScratch)
+        ? simplifyLinePoints(
+            realPts,
+            simplify,
+            buf,
+            cache.simplifyScratch,
+            absoluteXOffset,
+          )
         : realPts;
 
     // Skip blending when fully revealed or no morphT provided

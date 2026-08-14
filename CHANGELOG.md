@@ -38,10 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Dense live lines retain stable history while scrolling.** Pixel-width
-  min/max decimation buckets are now anchored to absolute time, so advancing
-  the live window translates retained interior segments instead of repeatedly
-  regrouping and reshaping them. Boundary buckets still update normally, spikes
-  remain represented, and the output stays bounded near two points per pixel.
+  min/max decimation buckets and optional denoising ranges are now anchored to
+  absolute time, so advancing the live window translates retained interior
+  segments instead of repeatedly regrouping and reshaping them. Boundary ranges
+  still update normally, spikes remain represented, and the decimated output
+  stays bounded near two points per pixel.
 
 - **Static dot glow is visibly rendered.** Dot glows use a Skia blur mask,
   preserving the halo outside the source circle instead of diluting it through

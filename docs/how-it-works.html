@@ -442,6 +442,8 @@ displayValue += (target - displayValue) * factor;</pre>
         ~2 points per pixel, <code>buildLinePoints</code> keeps only the <b>lowest and highest sample in each pixel-width
         time bucket</b>. Buckets are anchored to absolute time, so advancing the viewport translates retained history
         without regrouping it, while every spike's envelope survives and the vertex count stays bounded by canvas width.
+        Optional line simplification uses the same stable absolute grid for its bounded ranges, preventing denoising from
+        selecting different historical vertices as the left edge advances.
         Fewer <code>cubicTo</code> calls, same shape. Toggle it and watch the count.
       </p>
       <div class="chart-canvas-wrap"><canvas id="decim-canvas"></canvas></div>
