@@ -381,4 +381,47 @@ describe("buildLinePoints decimation", () => {
     for (let i = 1; i < out.length; i += 2) minY = Math.min(minY, out[i]);
     expect(minY).toBeCloseTo(pad.top, 0);
   });
+
+  it("keeps dense interior representatives stable as the live window advances", () => {
+    const samplesPerSecond = 100;
+    const baseTime = 1_800_000_000;
+    const data = Array.from({ length: 2201 }, (_, i) => ({
+      time: baseTime + i / samplesPerSecond,
+      value: i,
+    }));
+    const windowSecs = 10;
+    const firstNow = baseTime + 20;
+    const secondNow = baseTime + 20.03;
+    const xScale = chartW / windowSecs;
+
+    const retainedTimes = (now: number): number[] => {
+      const points = buildLinePoints(
+        data,
+        2000,
+        now,
+        windowSecs,
+        0,
+        data.length,
+        canvasW,
+        canvasH,
+        pad,
+      );
+      const winStart = now - windowSecs;
+      const times: number[] = [];
+
+      // Drop the synthetic live tip, reconstruct each retained source time
+      // from its screen X, and compare only shared interior buckets. The bins
+      // at either viewport edge are expected to gain or lose samples.
+      for (let i = 0; i < points.length - 2; i += 2) {
+        const time = winStart + (points[i] - pad.left) / xScale;
+        const relativeTime = time - baseTime;
+        if (relativeTime > 10.5 && relativeTime < 19.5) {
+          times.push(Number(relativeTime.toFixed(6)));
+        }
+      }
+      return times;
+    };
+
+    expect(retainedTimes(firstNow)).toEqual(retainedTimes(secondNow));
+  });
 });

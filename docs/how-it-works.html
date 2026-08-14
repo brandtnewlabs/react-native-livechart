@@ -439,8 +439,9 @@ displayValue += (target - displayValue) * factor;</pre>
       <h3>Pixel decimation</h3>
       <p class="muted" style="font-size:14px;margin-bottom:14px">
         A wide <code>timeWindow</code> can pack 1000+ points into a few hundred pixels. Once the line is denser than
-        ~2 points per pixel, <code>buildLinePoints</code> keeps only the <b>lowest and highest sample in each pixel
-        column</b> — so every spike's envelope survives while the vertex count stays bounded by the canvas width.
+        ~2 points per pixel, <code>buildLinePoints</code> keeps only the <b>lowest and highest sample in each pixel-width
+        time bucket</b>. Buckets are anchored to absolute time, so advancing the viewport translates retained history
+        without regrouping it, while every spike's envelope survives and the vertex count stays bounded by canvas width.
         Fewer <code>cubicTo</code> calls, same shape. Toggle it and watch the count.
       </p>
       <div class="chart-canvas-wrap"><canvas id="decim-canvas"></canvas></div>
