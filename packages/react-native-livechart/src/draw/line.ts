@@ -293,15 +293,18 @@ export function buildLinePoints(
       );
     }
   } else {
-    // Min/max-per-pixel-column decimation: within each pixel column keep the
-    // lowest- and highest-value samples (emitted in their original time order)
-    // so the line's envelope and any volatility spikes survive at full vertical
-    // fidelity while the point count stays bounded by the canvas width.
+    // Min/max-per-pixel-width decimation: anchor buckets to absolute time, not
+    // the moving viewport origin. Existing samples then keep the same bucket as
+    // `now` advances, so interior history translates without being reshaped;
+    // only the buckets entering or leaving the viewport can change. Within each
+    // bucket keep the lowest- and highest-value samples (emitted in their
+    // original time order) so the line's envelope and volatility spikes survive
+    // at full vertical fidelity while the point count stays bounded by width.
     let curCol = -2147483648;
     let minIdx = startIdx;
     let maxIdx = startIdx;
     for (let i = startIdx; i < endIdx; i++) {
-      const col = ((data[i].time - winStart) * xScale) | 0;
+      const col = Math.floor(data[i].time * xScale);
       if (col !== curCol) {
         if (curCol !== -2147483648) {
           const a = minIdx <= maxIdx ? minIdx : maxIdx;

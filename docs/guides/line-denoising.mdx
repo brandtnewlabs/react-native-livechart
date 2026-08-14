@@ -102,5 +102,7 @@ const series = useSharedValue<SeriesConfig[]>([
 ## Rendering cost
 
 The pass runs on the UI thread after the chart's envelope-preserving dense-data
-decimation. It reuses scratch buffers and processes bounded point ranges, avoiding
-new point-array allocation or unbounded pathological scans on every frame.
+decimation. It reuses scratch buffers and processes bounded ranges anchored to
+an absolute screen-pixel grid, so a moving live window does not repartition and
+reshape retained history. This avoids new point-array allocation or unbounded
+pathological scans on every frame.

@@ -3,12 +3,18 @@ import {
   simplifyLinePoints,
 } from "../../src/math/simplify";
 
-function simplify(points: number[], tolerance: number, out: number[] = []) {
+function simplify(
+  points: number[],
+  tolerance: number,
+  out: number[] = [],
+  absoluteXOffset = 0,
+) {
   return simplifyLinePoints(
     points,
     tolerance,
     out,
     makeLineSimplifyScratch(),
+    absoluteXOffset,
   );
 }
 
@@ -47,11 +53,34 @@ describe("simplifyLinePoints", () => {
     ]);
   });
 
-  it("bounds worst-case work with retained overlapping range endpoints", () => {
+  it("bounds worst-case work with retained fixed-grid range endpoints", () => {
     const points = Array.from({ length: 130 }, (_, i) => [i, 0]).flat();
     expect(simplify(points, 0.5)).toEqual([
-      0, 0, 63, 0, 126, 0, 129, 0,
+      0, 0, 29, 0, 30, 0, 59, 0, 60, 0, 89, 0, 90, 0, 119, 0, 120, 0,
+      129, 0,
     ]);
+  });
+
+  it("keeps retained interior geometry stable while a live window advances", () => {
+    const frame = (startX: number) =>
+      Array.from({ length: 201 }, (_, i) => {
+        const absoluteX = startX + i;
+        const y =
+          Math.sin(absoluteX * 0.31) * 4 +
+          (absoluteX % 17 === 0 ? 8 : 0);
+        return [absoluteX - startX, y];
+      }).flat();
+    const retainedInterior = (startX: number) => {
+      const result = simplify(frame(startX), 1, [], startX);
+      const retained: number[] = [];
+      for (let i = 0; i < result.length; i += 2) {
+        const absoluteX = result[i] + startX;
+        if (absoluteX > 40 && absoluteX < 160) retained.push(absoluteX);
+      }
+      return retained;
+    };
+
+    expect(retainedInterior(0)).toEqual(retainedInterior(1));
   });
 
   it("leaves an aliased output buffer untouched", () => {
