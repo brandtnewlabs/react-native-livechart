@@ -43,6 +43,7 @@ const PLAYGROUND_HEADER_FORMATTER = new Intl.NumberFormat("en-US", {
 // Seed 1m of history into a 60s window so the screen opens on a lively, fully
 // drawn line (a long seed sampled coarsely renders flat in a short window).
 const HISTORY_SEED: HistoryRange = "1m";
+const DENOISING_TOLERANCE = 1.5;
 
 const MODE_OPTIONS: { value: "line" | "candle"; label: string }[] = [
   { value: "line", label: "Line" },
@@ -81,6 +82,7 @@ export default function PlaygroundScreen() {
   const [showRefLine, setShowRefLine] = useState(false);
   const [valueLine, setValueLine] = useState(false);
   const [exaggerate, setExaggerate] = useState(false);
+  const [denoising, setDenoising] = useState(false);
   const [degen, setDegen] = useState(true);
   const [simTradeStream, setSimTradeStream] = useState(true);
 
@@ -144,6 +146,7 @@ export default function PlaygroundScreen() {
           timeWindow={windowSecs}
           paused={paused}
           exaggerate={exaggerate}
+          line={{ simplify: denoising ? DENOISING_TOLERANCE : 0 }}
           valueLine={valueLine}
           referenceLines={
             showRefLine
@@ -214,6 +217,11 @@ export default function PlaygroundScreen() {
           onChange={setSimTradeStream}
         />
         <ToggleChip label="Degen" value={degen} onChange={setDegen} />
+        <ToggleChip
+          label={`Denoising (${DENOISING_TOLERANCE} px)`}
+          value={denoising}
+          onChange={setDenoising}
+        />
         <ToggleChip label="Value Line" value={valueLine} onChange={setValueLine} />
         <ToggleChip label="Ref Line" value={showRefLine} onChange={setShowRefLine} />
         <ToggleChip
