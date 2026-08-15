@@ -980,7 +980,8 @@ function useLiveChartController({
   const displayCandleWidth = useCandleWidthLerp(
     candleWidth,
     transitionsCfg.candleLerpSpeed,
-    !isStatic && isCandle,
+    !isStatic,
+    isCandle,
   );
 
   // ── Overlay hooks ─────────────────────────────────────────────────────

@@ -37,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Candle widths update after mounting in line mode.** Switching a live chart's
+  timeframe while it is a line chart and then changing to candle mode now sizes
+  candle bodies from the current `candleWidth`, instead of retaining the
+  mount-time width and collapsing wider buckets into 1 px slivers.
+
 - **Dense live lines retain stable history while scrolling.** Pixel-width
   min/max decimation buckets and optional denoising ranges are now anchored to
   absolute time, so advancing the live window translates retained interior
