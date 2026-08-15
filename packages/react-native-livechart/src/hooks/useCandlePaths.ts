@@ -1,4 +1,5 @@
 import { Skia } from "@shopify/react-native-skia";
+import { useEffect } from "react";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -48,7 +49,7 @@ export function useCandleWidthLerp(
     () => candleLerpSpeed ?? CANDLE_WIDTH_LERP_SPEED,
   );
 
-  useFrameCallback((frameInfo) => {
+  const widthFrameCallback = useFrameCallback((frameInfo) => {
     "worklet";
     if (!active) return;
     const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
@@ -61,6 +62,10 @@ export function useCandleWidthLerp(
       ),
     );
   }, autostart);
+  useEffect(() => {
+    // `autostart` is an initial seed in Reanimated, not a reactive switch.
+    widthFrameCallback.setActive(autostart);
+  }, [autostart, widthFrameCallback]);
 
   return displayCandleWidth;
 }

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useFrameCallback,
@@ -77,7 +77,7 @@ export function useMarkers(
       onMarkerPress?.(event);
     };
 
-  useFrameCallback(
+  const markerFrameCallback = useFrameCallback(
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
       "worklet";
       const cache = cacheRef.current!;
@@ -111,6 +111,10 @@ export function useMarkers(
     },
     autostart,
   );
+  useEffect(() => {
+    // Reanimated does not reactively apply later `autostart` values.
+    markerFrameCallback.setActive(autostart);
+  }, [autostart, markerFrameCallback]);
 
   const tapGesture = Gesture.Tap().onEnd(
     /* istanbul ignore next -- gesture worklet runs on UI thread, not in Jest */ (
