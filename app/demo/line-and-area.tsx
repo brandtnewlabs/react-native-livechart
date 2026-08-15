@@ -187,12 +187,15 @@ export default function LineScreen() {
   const [dots, setDots] = useState(true);
   const [ring, setRing] = useState(true);
   const [replacementLoading, setReplacementLoading] = useState(false);
+  const [replacementRevision, setReplacementRevision] = useState(0);
   const seriesOpacity = useSharedValue(1);
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
     candleAggregation: false,
     tradeStream: false,
+    paused: replacementLoading,
+    resetNonce: replacementRevision,
     // Dense seed so the line is fully drawn (and lively) on first frame instead
     // of flat until live ticks fill the default 30s window.
     historySpanSeconds: 40,
@@ -220,6 +223,7 @@ export default function LineScreen() {
           showValue={showValue}
           valueMomentumColor={valueMomentumColor}
           seriesOpacity={seriesOpacity}
+          paused={replacementLoading}
           scrub={false}
         />
       }
@@ -229,6 +233,9 @@ export default function LineScreen() {
           label="Dim while loading"
           value={replacementLoading}
           onChange={(loading) => {
+            if (!loading) {
+              setReplacementRevision((revision) => revision + 1);
+            }
             setReplacementLoading(loading);
             seriesOpacity.set(
               withTiming(loading ? 0.5 : 1, { duration: 300 }),
