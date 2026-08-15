@@ -37,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Dimmed replacement data no longer shows through live dots.** When
+  `seriesOpacity` falls below `1`, single- and multi-series live dots and pulse
+  rings now fade completely out instead of compositing translucently over their
+  own strokes. They fade back in once the plotted data returns to full opacity.
+
 - **Dense live lines retain stable history while scrolling.** Pixel-width
   min/max decimation buckets and optional denoising ranges are now anchored to
   absolute time, so advancing the live window translates retained interior

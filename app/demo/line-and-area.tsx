@@ -8,6 +8,7 @@ import type {
 } from "react-native-livechart";
 import { LiveChart } from "react-native-livechart";
 import { StyleSheet, TextInput } from "react-native";
+import { useSharedValue, withTiming } from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
@@ -185,6 +186,8 @@ export default function LineScreen() {
   const [valueMomentumColor, setValueMomentumColor] = useState(false);
   const [dots, setDots] = useState(true);
   const [ring, setRing] = useState(true);
+  const [replacementLoading, setReplacementLoading] = useState(false);
+  const seriesOpacity = useSharedValue(1);
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -216,10 +219,23 @@ export default function LineScreen() {
           valueLine={valueLine}
           showValue={showValue}
           valueMomentumColor={valueMomentumColor}
+          seriesOpacity={seriesOpacity}
           scrub={false}
         />
       }
     >
+      <ControlRow label="Replacement data">
+        <ToggleChip
+          label="Dim while loading"
+          value={replacementLoading}
+          onChange={(loading) => {
+            setReplacementLoading(loading);
+            seriesOpacity.set(
+              withTiming(loading ? 0.5 : 1, { duration: 300 }),
+            );
+          }}
+        />
+      </ControlRow>
       <ChipRow
         label="Badge"
         options={BADGE_OPTIONS}

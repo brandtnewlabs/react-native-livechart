@@ -55,7 +55,7 @@ describe("LiveChartSeries", () => {
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
   });
 
-  it("applies one series opacity to every plotted series layer", async () => {
+  it("keeps live dots out of the partially transparent series group", async () => {
     const seriesOpacity = { value: 0.5 } as SharedValue<number>;
     const initial: SeriesConfig[] = [
       {
@@ -85,7 +85,7 @@ describe("LiveChartSeries", () => {
     expect(
       getAllByHostType(screen, View)
         .filter((view) => view.props.opacity === seriesOpacity),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
   });
 
   it("forwards configurable crosshair fade distance and line cap", async () => {

@@ -56,9 +56,12 @@ function finishReplacementLoad() {
 <LiveChart data={data} value={value} seriesOpacity={seriesOpacity} />;
 ```
 
-`seriesOpacity` affects the line and area fill, candles and volume bars, the
-live dot, value line, badge, and inline value text. Pass the same shared value
-to a candle chart—no mode-specific configuration is required.
+`seriesOpacity` affects the line and area fill, candles and volume bars, value
+line, badge, and inline value text. While it is below `1`, the live dot and its
+pulse ring fade completely out instead of becoming translucent over the stroke;
+they fade back in after the series returns to full opacity. Pass the same shared
+value to a candle chart—no mode-specific configuration is required. The Line &
+area example's **Dim while loading** control demonstrates the transition.
 
 ### Dotted area fill
 

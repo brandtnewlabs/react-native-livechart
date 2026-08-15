@@ -64,6 +64,10 @@ import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
 import { usePanScroll } from "../hooks/usePanScroll";
 import { usePinchZoom } from "../hooks/usePinchZoom";
 import { useMultiSeriesReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
+import {
+  SERIES_INDICATOR_FADE_MS,
+  useSeriesIndicatorOpacity,
+} from "../hooks/useSeriesIndicatorOpacity";
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useXAxis } from "../hooks/useXAxis";
 import { useYAxis } from "../hooks/useYAxis";
@@ -371,6 +375,10 @@ function useLiveChartSeriesController({
     false,
     transitionsCfg.reveal,
   );
+  const seriesIndicatorOpacity = useSeriesIndicatorOpacity(
+    resolvedSeriesOpacity,
+    transitionsCfg.reveal === 0 ? 0 : SERIES_INDICATOR_FADE_MS,
+  );
 
   const effectiveSeries = useMultiSeriesReverseMorphInputs({
     series,
@@ -602,6 +610,7 @@ function useLiveChartSeriesController({
     // passthrough props the render needs
     series,
     seriesOpacity: resolvedSeriesOpacity,
+    seriesIndicatorOpacity,
     style,
     canvasMode,
     accessibilityLabel,
@@ -714,6 +723,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     renderMarker,
     series,
     seriesOpacity,
+    seriesIndicatorOpacity,
     emptyText,
     loadingAxisLabels,
     metricsCfg,
@@ -803,7 +813,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
       )}
 
       {dotCfg.show && (
-        <Group opacity={seriesOpacity}>
+        <Group opacity={seriesIndicatorOpacity}>
           <Group opacity={reveal.dotOpacity}>
             <MultiSeriesDots
               engine={engine}
