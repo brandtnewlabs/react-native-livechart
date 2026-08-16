@@ -560,10 +560,15 @@ export function useLiveChartEngine(
 
   // `autostart=false` registers the frame callback without running it — the live
   // loop is fully inert in static mode (the invariant that makes this worth it).
-  useFrameCallback((frameInfo) => {
+  const engineFrameCallback = useFrameCallback((frameInfo) => {
     "worklet";
     applyLiveChartEngineFrame(frameInfo, frameRefs, frameScratchRef.current!);
   }, !config.static);
+  useEffect(() => {
+    // Reanimated only seeds `isActive` from `autostart` on mount. Keep the
+    // imperative state aligned when a chart switches between static and live.
+    engineFrameCallback.setActive(!config.static);
+  }, [config.static, engineFrameCallback]);
 
   // When time-scroll is disabled while scrolled back, return the window to the
   // live edge. With a positive duration this glides: snapshot the frozen edge into

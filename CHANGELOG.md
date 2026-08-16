@@ -37,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Static charts resume and suspend every frame loop when toggled at runtime.**
+  Changing `static` now synchronizes the core engine, candle-width, marker, and
+  trade-stream callbacks instead of leaving them stuck in their mount-time
+  activation state. Returning live catches up normally; returning static stops
+  the loops again.
+
 - **Candle widths update after mounting in line mode.** Switching a live chart's
   timeframe while it is a line chart and then changing to candle mode now sizes
   candle bodies from the current `candleWidth`, instead of retaining the
