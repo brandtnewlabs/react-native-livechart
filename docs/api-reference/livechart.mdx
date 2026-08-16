@@ -16,8 +16,10 @@ provided; everything else has a default.
 <ParamField body="seriesOpacity" type="SharedValue<number>" default="1">
   A UI-thread opacity multiplier for the plotted data. Set it to `0.5` while
   replacement history loads, then restore it to `1` when the new data arrives.
-  It affects the line and area fill, candles and volume bars, live dot, value
-  line, badge, and inline value text—not axes, reference lines, or scrub UI.
+  It affects the line and area fill, candles and volume bars, value line, badge,
+  and inline value text—not axes, reference lines, or scrub UI. While it is below
+  `1`, the live dot and pulse ring fade completely out so the stroke cannot show
+  through the dot; they fade back in after the multiplier returns to `1`.
   See [Dimming replacement data](/guides/line-and-area#dimming-replacement-data).
 </ParamField>
 

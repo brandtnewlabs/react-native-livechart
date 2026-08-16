@@ -2044,9 +2044,11 @@ export interface LiveChartCoreProps {
   /**
    * UI-thread opacity multiplier for the plotted data. Set a value from `0`
    * (hidden) to `1` (fully visible), such as `0.5` while replacement data loads.
-   * Applies to every plotted series — line/fill/candles, live dots, value lines,
-   * and inline values — without affecting axes, reference lines, legends, or
-   * scrub UI. Default `1`.
+   * Applies to every plotted series — line/fill/candles, value lines, and inline
+   * values — without affecting axes, reference lines, legends, or scrub UI.
+   * While the multiplier is below `1`, live dots and pulse rings fade completely
+   * out so the dimmed stroke cannot show through them; they fade back in when it
+   * returns to `1`. Default `1`.
    */
   seriesOpacity?: SharedValue<number>;
   /**

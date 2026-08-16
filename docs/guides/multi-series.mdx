@@ -70,8 +70,10 @@ seriesOpacity.set(isLoadingReplacement ? 0.5 : 1);
 <LiveChartSeries series={series} seriesOpacity={seriesOpacity} />;
 ```
 
-The multiplier covers strokes, dots, value lines, and inline value labels. It
-does not dim axes, the legend, reference lines, or scrub UI.
+The multiplier covers strokes, value lines, and inline value labels. It does not
+dim axes, the legend, reference lines, or scrub UI. Live dots and pulse rings
+fade completely out while the multiplier is below `1`, then fade back in after
+the plotted series returns to full opacity.
 
 ## Legend
 

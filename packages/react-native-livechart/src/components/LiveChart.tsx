@@ -95,6 +95,10 @@ import { useModeBlend } from "../hooks/useModeBlend";
 import { resolveMomentumProp, useMomentum } from "../hooks/useMomentum";
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { usePinchZoom } from "../hooks/usePinchZoom";
+import {
+  SERIES_INDICATOR_FADE_MS,
+  useSeriesIndicatorOpacity,
+} from "../hooks/useSeriesIndicatorOpacity";
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useSingleChartReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import {
@@ -684,6 +688,10 @@ function useLiveChartController({
     hasData,
     isStatic,
     transitionsCfg.reveal,
+  );
+  const seriesIndicatorOpacity = useSeriesIndicatorOpacity(
+    resolvedSeriesOpacity,
+    isStatic || transitionsCfg.reveal === 0 ? 0 : SERIES_INDICATOR_FADE_MS,
   );
 
   // After data clears, keep last snapshot until morphT finishes dropping (web parity).
@@ -1346,7 +1354,7 @@ function useLiveChartController({
         hideLiveOnScrollBack && !dotTracksParked,
         engine.viewEnd.value,
       ) *
-      resolvedSeriesOpacity.value,
+      seriesIndicatorOpacity.value,
   );
   // Same scrolled-back gating for the value line: it would draw a dashed line
   // at the live value's Y — a price that isn't in the scrolled-back view.
