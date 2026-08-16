@@ -133,6 +133,11 @@ const SECTIONS: DemoSection[] = [
         title: "Overlay bridge",
         blurb: "renderOverlay: hand-rolled RN order overlay via the priceToY / yToPrice / timeToX bridge.",
       },
+      {
+        href: "/demo/drawing-tools-poc" as Href,
+        title: "Drawing tools POC",
+        blurb: "Internal spike: draw, select, and drag time/price-anchored trend-line segments.",
+      },
     ],
   },
   {
