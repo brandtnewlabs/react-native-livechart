@@ -942,6 +942,31 @@ describe("LiveChart", () => {
     });
   });
 
+  it("keeps the candle-width loop started when switching from line mode", async () => {
+    const widthLerpSpy = jest.spyOn(candlePathHooks, "useCandleWidthLerp");
+    const screen = await render(
+      <CandleHarness mode="line" candleWidth={3_600} />,
+    );
+
+    expect(widthLerpSpy).toHaveBeenLastCalledWith(
+      3_600,
+      undefined,
+      true,
+      false,
+    );
+
+    await screen.rerender(
+      <CandleHarness
+        mode="candle"
+        candleWidth={86_400}
+        transitions={{ candleLerpSpeed: 1 }}
+      />,
+    );
+
+    expect(widthLerpSpy).toHaveBeenLastCalledWith(86_400, 1, true, true);
+    widthLerpSpy.mockRestore();
+  });
+
   it("disables gradient in candle mode", async () => {
     await render(<CandleHarness gradient />);
   });

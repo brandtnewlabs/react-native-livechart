@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   useFrameCallback,
   useSharedValue,
@@ -31,7 +32,7 @@ export function useTradeStream(
   const markers = useSharedValue<TradeMarker[]>([]);
   const state = useSharedValue<TradeStreamState>(createTradeStreamState());
 
-  useFrameCallback(
+  const tradeFrameCallback = useFrameCallback(
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ (
       frameInfo,
     ) => {
@@ -62,6 +63,10 @@ export function useTradeStream(
     },
     autostart,
   );
+  useEffect(() => {
+    // Reanimated treats `autostart` as mount-time state; synchronize changes.
+    tradeFrameCallback.setActive(autostart);
+  }, [autostart, tradeFrameCallback]);
 
   return markers;
 }

@@ -78,8 +78,8 @@ describe("static mode — no per-frame loops", () => {
     // (No assertions needed on layout — just exercising the render path.)
     await screen.rerender(<Harness />);
     expect(views.length).toBeGreaterThan(0);
-    // Both the engine and useDegen register a frame callback; in static mode
-    // every one must be inert (autostart false) — that is the core invariant.
+    // The engine, candle-width bridge, and marker projection register frame
+    // callbacks; in static mode every one must mount inert.
     expect(frameCallbackCalls.length).toBeGreaterThanOrEqual(2);
     expect(frameCallbackCalls.every((autostart) => autostart === false)).toBe(
       true,
@@ -125,10 +125,9 @@ describe("static mode — no per-frame loops", () => {
       return <LiveChart data={data} value={value} />;
     }
     await render(<Harness />);
-    // The live engine autostarts (true). useDegen's callback defaults to
-    // autostart when not static; at minimum the engine's loop must be live.
-    // The candle-width bridge registers inert (false) in line mode — its loop
-    // only starts for candle charts (see useCandleWidthLerp).
+    // The live engine autostarts (true); at minimum its loop must be live.
+    // The candle-width bridge is also started for a non-static line chart; its
+    // per-frame mode guard keeps it idle until the chart switches to candles.
     expect(frameCallbackCalls).toContain(true);
   });
 });

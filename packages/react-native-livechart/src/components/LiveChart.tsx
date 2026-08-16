@@ -988,7 +988,8 @@ function useLiveChartController({
   const displayCandleWidth = useCandleWidthLerp(
     candleWidth,
     transitionsCfg.candleLerpSpeed,
-    !isStatic && isCandle,
+    !isStatic,
+    isCandle,
   );
 
   // ── Overlay hooks ─────────────────────────────────────────────────────
@@ -1550,8 +1551,7 @@ function ChartWithDegen({
   model: LiveChartModel;
   yAxisEntries: YAxisEntries | null;
 }) {
-  const { engine, dotX, dotY, momentumSV, degenCfg, onDegenShake, isStatic } =
-    model;
+  const { engine, dotX, dotY, momentumSV, degenCfg, onDegenShake } = model;
   const state = useDegen(
     engine,
     dotX,
@@ -1559,7 +1559,6 @@ function ChartWithDegen({
     momentumSV,
     degenCfg,
     onDegenShake,
-    isStatic,
   );
   return <ChartView model={model} yAxisEntries={yAxisEntries} degen={state} />;
 }

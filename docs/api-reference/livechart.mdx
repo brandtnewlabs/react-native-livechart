@@ -469,8 +469,9 @@ provided; everything else has a default.
   markers, pulse, and entry reveal are all disabled. `scrub` / `scrubAction` stay
   available, though: they're on-demand touch gestures with no per-frame cost, so a
   still chart costs nothing at rest yet is still scrubbable on touch. Keeps many
-  small charts cheap when you render a list or grid of sparklines. Frame the data
-  edge-to-edge with `timeWindow` + `nowOverride`. See the
+  small charts cheap when you render a list or grid of sparklines. You can toggle
+  it at runtime; switching back to live restarts the suspended loops and catches
+  up. Frame the data edge-to-edge with `timeWindow` + `nowOverride`. See the
   [Sparklines guide](/guides/sparklines).
 </ParamField>
 
