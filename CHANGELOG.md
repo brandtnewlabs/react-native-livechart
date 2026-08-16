@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.19.0] - 2026-08-16
+
 ### Added
 
 - **Focused candle scrubbing.** `ScrubConfig.dimTarget: "otherCandles"` keeps
@@ -1221,6 +1223,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.19.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.19.0
 [4.18.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.18.0
 [4.17.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.17.0
 [4.16.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.16.0
