@@ -3,13 +3,7 @@ import { useFont, type SkFont } from "@shopify/react-native-skia";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactElement,
-} from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import {
   AppState,
   Pressable,
@@ -77,11 +71,7 @@ const C = {
   purple: "#9B7BFF",
 } as const;
 
-const REFERENCE_PILL_GLOW = {
-  color: C.referencePill,
-  blur: 8,
-  opacity: 0.2,
-} as const;
+const REFERENCE_PILL_BOX_SHADOW = "0 0 8px rgba(237, 237, 237, 0.2)";
 
 const PRICE_FORMAT = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -248,10 +238,7 @@ function RoundTargetOverlay({
     return {
       opacity: next.opacity,
       width: next.lineWidth,
-      transform: [
-        { translateX: next.lineX },
-        { translateY: next.lineY },
-      ],
+      transform: [{ translateX: next.lineX }, { translateY: next.lineY }],
     };
   });
   const pillStyle = useAnimatedStyle(() => {
@@ -282,10 +269,7 @@ function RoundTargetOverlay({
         testID="round-target-line"
       >
         {REFERENCE_LINE_DASH_OFFSETS.map((left) => (
-          <View
-            key={left}
-            style={[styles.targetReferenceDash, { left }]}
-          />
+          <View key={left} style={[styles.targetReferenceDash, { left }]} />
         ))}
       </Animated.View>
       <Animated.View
@@ -345,19 +329,19 @@ function RoundCountdown({
     phantomRoundSecondsRemaining(Date.now(), initialRound.endMs),
   );
 
-  const reconcile = useCallback(() => {
-    const nowMs = Date.now();
-    const currentRound = resolvePhantomRound(nowMs);
-    if (currentRound.id !== roundId.current) {
-      roundId.current = currentRound.id;
-      onRoundChange(currentRound);
-    }
-    setSeconds(phantomRoundSecondsRemaining(nowMs, currentRound.endMs));
-  }, [onRoundChange]);
-
   useEffect(() => {
     let active = true;
     let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const reconcile = () => {
+      const nowMs = Date.now();
+      const currentRound = resolvePhantomRound(nowMs);
+      if (currentRound.id !== roundId.current) {
+        roundId.current = currentRound.id;
+        onRoundChange(currentRound);
+      }
+      setSeconds(phantomRoundSecondsRemaining(nowMs, currentRound.endMs));
+    };
 
     const schedule = () => {
       reconcile();
@@ -375,7 +359,7 @@ function RoundCountdown({
       if (timer !== null) clearTimeout(timer);
       subscription.remove();
     };
-  }, [reconcile]);
+  }, [onRoundChange]);
 
   return (
     <View
@@ -522,14 +506,11 @@ export default function PhantomUpDownShowcase(): ReactElement {
     selectTimeframe,
   } = usePhantomMarketSimulation();
 
-  const handleRoundChange = useCallback(
-    (nextRound: PhantomRound) => {
-      const nextTarget = phantomPriceAt(nextRound.startMs / 1000);
-      roundStartPrice.set(nextTarget);
-      setRoundTargetNumber(nextTarget);
-    },
-    [roundStartPrice],
-  );
+  const handleRoundChange = (nextRound: PhantomRound) => {
+    const nextTarget = phantomPriceAt(nextRound.startMs / 1000);
+    roundStartPrice.set(nextTarget);
+    setRoundTargetNumber(nextTarget);
+  };
 
   useAnimatedReaction(
     () => value.get() >= roundStartPrice.get(),
@@ -545,18 +526,15 @@ export default function PhantomUpDownShowcase(): ReactElement {
     PlusJakartaSans_500Medium,
     PHANTOM_CHART_FONT.fontSize,
   );
-  const renderTargetOverlay = useCallback(
-    (context: ChartOverlayContext) =>
-      targetLabelFont ? (
-        <RoundTargetOverlay
-          axisFont={targetLabelFont}
-          context={context}
-          label={roundTargetLabel}
-          price={roundTargetNumber}
-        />
-      ) : null,
-    [roundTargetLabel, roundTargetNumber, targetLabelFont],
-  );
+  const renderTargetOverlay = (context: ChartOverlayContext) =>
+    targetLabelFont ? (
+      <RoundTargetOverlay
+        axisFont={targetLabelFont}
+        context={context}
+        label={roundTargetLabel}
+        price={roundTargetNumber}
+      />
+    ) : null;
 
   const handleShare = () => {
     void Share.share({
@@ -569,7 +547,6 @@ export default function PhantomUpDownShowcase(): ReactElement {
       <StatusBar style="light" />
       <ScrollView
         bounces={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 18 }}
         showsVerticalScrollIndicator={false}
         style={{ paddingTop: insets.top }}
       >
@@ -742,6 +719,7 @@ export default function PhantomUpDownShowcase(): ReactElement {
             </View>
           </View>
         </View>
+        <View style={{ height: insets.bottom + 18 }} />
       </ScrollView>
     </View>
   );
@@ -874,10 +852,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: C.referencePill,
-    shadowColor: REFERENCE_PILL_GLOW.color,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: REFERENCE_PILL_GLOW.opacity,
-    shadowRadius: REFERENCE_PILL_GLOW.blur,
+    boxShadow: REFERENCE_PILL_BOX_SHADOW,
   },
   targetPillText: {
     color: C.referencePillText,

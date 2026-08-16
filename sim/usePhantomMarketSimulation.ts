@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import type { LiveChartPoint } from "react-native-livechart";
 import {
@@ -360,26 +360,47 @@ export function usePhantomMarketSimulation(
   const morphFrame = useRef<number | null>(null);
   const finalDataRef = useRef<LiveChartPoint[]>(initialData);
 
-  const selectTimeframe = useCallback(
-    (next: PhantomTimeframe) => {
-      if (next === selectedRef.current) return;
+  const selectTimeframe = (next: PhantomTimeframe) => {
+    if (next === selectedRef.current) return;
 
-      requestVersion.current += 1;
-      const version = requestVersion.current;
-      selectedRef.current = next;
-      setSelectedTimeframe(next);
+    requestVersion.current += 1;
+    const version = requestVersion.current;
+    selectedRef.current = next;
+    setSelectedTimeframe(next);
 
-      if (loadingTimer.current !== null) {
-        clearTimeout(loadingTimer.current);
-        loadingTimer.current = null;
-      }
-      if (settleFrame.current !== null) {
-        cancelAnimationFrame(settleFrame.current);
-        settleFrame.current = null;
-      }
+    if (loadingTimer.current !== null) {
+      clearTimeout(loadingTimer.current);
+      loadingTimer.current = null;
+    }
+    if (settleFrame.current !== null) {
+      cancelAnimationFrame(settleFrame.current);
+      settleFrame.current = null;
+    }
 
-      // Returning to the still-rendered range only cancels the pending request.
-      if (next === committedRef.current) {
+    // Returning to the still-rendered range only cancels the pending request.
+    if (next === committedRef.current) {
+      seriesOpacity.set(
+        fadeInDurationMs === 0
+          ? 1
+          : withTiming(1, { duration: fadeInDurationMs }),
+      );
+      return;
+    }
+
+    seriesOpacity.set(0.5);
+    loadingTimer.current = setTimeout(() => {
+      loadingTimer.current = null;
+      if (version !== requestVersion.current) return;
+
+      const endTimeSeconds = nowRef.current() / 1000;
+      const replacement = buildPhantomTimeframeData(next, endTimeSeconds);
+      committedRef.current = next;
+      setCommittedTimeframe(next);
+      if (morphDurationMs === 0) {
+        finalDataRef.current = replacement;
+        displayData.set(replacement);
+        value.set(phantomPriceAt(endTimeSeconds));
+        setDataSnapVersion((current) => current + 1);
         seriesOpacity.set(
           fadeInDurationMs === 0
             ? 1
@@ -387,88 +408,57 @@ export function usePhantomMarketSimulation(
         );
         return;
       }
-
-      seriesOpacity.set(0.5);
-      loadingTimer.current = setTimeout(() => {
-        loadingTimer.current = null;
+      // Commit the new timeWindow first. The following frame installs the old
+      // normalized shape on the new X coordinates and snaps the framing; the
+      // frame after that starts the actual point-for-point path morph.
+      settleFrame.current = requestAnimationFrame(() => {
+        settleFrame.current = null;
         if (version !== requestVersion.current) return;
 
-        const endTimeSeconds = nowRef.current() / 1000;
-        const replacement = buildPhantomTimeframeData(next, endTimeSeconds);
-        committedRef.current = next;
-        setCommittedTimeframe(next);
-        if (morphDurationMs === 0) {
-          finalDataRef.current = replacement;
-          displayData.set(replacement);
-          value.set(phantomPriceAt(endTimeSeconds));
-          setDataSnapVersion((current) => current + 1);
+        if (morphFrame.current !== null) {
+          cancelAnimationFrame(morphFrame.current);
+          morphFrame.current = null;
+        }
+        const aligned = alignPhantomTimeframeMorph(
+          displayData.get(),
+          replacement,
+        );
+        finalDataRef.current = replacement;
+        displayData.set(aligned.from);
+        value.set(phantomPriceAt(endTimeSeconds));
+        setDataSnapVersion((current) => current + 1);
+
+        settleFrame.current = requestAnimationFrame(() => {
+          settleFrame.current = null;
+          if (version !== requestVersion.current) return;
+          const startedAtMs = Date.now();
+          const drawMorphFrame = () => {
+            const elapsed = Date.now() - startedAtMs;
+            const progress = smoothstep(elapsed / morphDurationMs);
+            displayData.set(
+              interpolatePhantomTimeframeMorph(
+                aligned.from,
+                aligned.to,
+                progress,
+              ),
+            );
+            if (elapsed >= morphDurationMs) {
+              displayData.set(replacement);
+              morphFrame.current = null;
+              return;
+            }
+            morphFrame.current = requestAnimationFrame(drawMorphFrame);
+          };
+          drawMorphFrame();
           seriesOpacity.set(
             fadeInDurationMs === 0
               ? 1
               : withTiming(1, { duration: fadeInDurationMs }),
           );
-          return;
-        }
-        // Commit the new timeWindow first. The following frame installs the old
-        // normalized shape on the new X coordinates and snaps the framing; the
-        // frame after that starts the actual point-for-point path morph.
-        settleFrame.current = requestAnimationFrame(() => {
-          settleFrame.current = null;
-          if (version !== requestVersion.current) return;
-
-          if (morphFrame.current !== null) {
-            cancelAnimationFrame(morphFrame.current);
-            morphFrame.current = null;
-          }
-          const aligned = alignPhantomTimeframeMorph(
-            displayData.get(),
-            replacement,
-          );
-          finalDataRef.current = replacement;
-          displayData.set(aligned.from);
-          value.set(phantomPriceAt(endTimeSeconds));
-          setDataSnapVersion((current) => current + 1);
-
-          settleFrame.current = requestAnimationFrame(() => {
-            settleFrame.current = null;
-            if (version !== requestVersion.current) return;
-            const startedAtMs = Date.now();
-            const drawMorphFrame = () => {
-              const elapsed = Date.now() - startedAtMs;
-              const progress = smoothstep(elapsed / morphDurationMs);
-              displayData.set(
-                interpolatePhantomTimeframeMorph(
-                  aligned.from,
-                  aligned.to,
-                  progress,
-                ),
-              );
-              if (elapsed >= morphDurationMs) {
-                displayData.set(replacement);
-                morphFrame.current = null;
-                return;
-              }
-              morphFrame.current = requestAnimationFrame(drawMorphFrame);
-            };
-            drawMorphFrame();
-            seriesOpacity.set(
-              fadeInDurationMs === 0
-                ? 1
-                : withTiming(1, { duration: fadeInDurationMs }),
-            );
-          });
         });
-      }, loadingDelayMs);
-    },
-    [
-      displayData,
-      fadeInDurationMs,
-      loadingDelayMs,
-      morphDurationMs,
-      seriesOpacity,
-      value,
-    ],
-  );
+      });
+    }, loadingDelayMs);
+  };
 
   useEffect(() => {
     let tick = 0;
