@@ -24,8 +24,10 @@ paints the palette background inside the canvas. See
 <ParamField body="seriesOpacity" type="SharedValue<number>" default="1">
   A UI-thread opacity multiplier for every plotted series. Set it to `0.5`
   while replacement history loads, then restore it to `1` when the new data
-  arrives. It dims strokes, live dots, value lines, and inline value labels
-  without affecting axes, the legend, reference lines, or scrub UI. See
+  arrives. It dims strokes, value lines, and inline value labels without
+  affecting axes, the legend, reference lines, or scrub UI. Live dots and pulse
+  rings fade completely out while the multiplier is below `1`, then fade back in
+  once it returns to `1`, avoiding translucent dots over their own strokes. See
   [Dimming replacement data](/guides/multi-series#dimming-replacement-data).
 </ParamField>
 

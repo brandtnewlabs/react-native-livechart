@@ -70,10 +70,12 @@ interface LiveChartCoreProps {
 }
 ```
 
-`seriesOpacity` dims plot data (line and area fill, candles, live dots, value
-lines, badges, and inline values) without dimming axes, legends, reference
-lines, or scrub UI. See [Line & area](/guides/line-and-area#dimming-replacement-data)
-or [Multi-series](/guides/multi-series#dimming-replacement-data).
+`seriesOpacity` dims plot data (line and area fill, candles, value lines, badges,
+and inline values) without dimming axes, legends, reference lines, or scrub UI.
+While it is below `1`, live dots and pulse rings fade completely out so a dimmed
+stroke cannot show through them; they return once the multiplier reaches `1`.
+See [Line & area](/guides/line-and-area#dimming-replacement-data) or
+[Multi-series](/guides/multi-series#dimming-replacement-data).
 
 ## Momentum
 
