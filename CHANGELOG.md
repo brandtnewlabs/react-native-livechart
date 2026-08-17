@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Display-unit Y-axis intervals.** `YAxisConfig.intervalScale` chooses and aligns
+  dynamic nice intervals after applying a constant display multiplier, while all
+  plotted data remains in its original units. Pair it with `formatValue` using the
+  same multiplier for round labels across unit conversions. Invalid multipliers
+  safely use `1`; fixed-count axes keep their exact-range behavior.
+
 ## [4.19.0] - 2026-08-16
 
 ### Added

@@ -447,6 +447,10 @@ interface SelectionDotConfig {
 interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }
 interface YAxisConfig {
   minGap?: number; // min px gap between grid lines; default 36
+  // Multiplier used to choose dynamic nice intervals without changing plotted
+  // values. Pair with formatValue using the same multiplier. Must be positive
+  // and finite; invalid values use 1. Ignored with count. Default 1.
+  intervalScale?: number;
   // Show a fixed number of evenly-spaced prices (top = high, bottom = low)
   // instead of the dynamic nice-interval grid. Values track the live range each
   // frame. `minGap` still floors the spacing; clamped to at most 15. Default 0.

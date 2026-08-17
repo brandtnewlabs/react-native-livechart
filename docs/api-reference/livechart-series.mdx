@@ -15,6 +15,9 @@ accepts all the shared theming, axis, range, layout, and text props from
 [`yRangeScale`](/guides/y-range-scale), `line`, `yAxis`,
 `referenceLines`, `formatValue`, …), plus the multi-series props below.
 
+The inherited `yAxis.intervalScale` chooses dynamic nice intervals in display units without
+changing any series values. Pair it with a `formatValue` that applies the same multiplier.
+
 On Android, the shared experimental `canvasMode="opaque"` option selects an opaque SurfaceView and
 paints the palette background inside the canvas. See
 [Android surface rendering](/guides/android-surface-rendering) for constraints and profiling guidance.

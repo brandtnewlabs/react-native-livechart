@@ -649,6 +649,13 @@ export interface YAxisConfig {
   /** Minimum pixel gap between grid lines. Default `36`. */
   minGap?: number;
   /**
+   * Multiplier used to choose and align dynamic "nice" intervals without
+   * changing plotted values. Pair it with a `formatValue` that applies the
+   * same multiplier. Must be positive and finite; invalid values use `1`.
+   * Ignored when {@link count} is set. Default `1`.
+   */
+  intervalScale?: number;
+  /**
    * Show a fixed number of price labels instead of the dynamic nice-interval
    * grid. When set (≥ 2), exactly `count` labels are spaced evenly **in pixels**
    * across the plot — top label = current high, bottom = current low — so the

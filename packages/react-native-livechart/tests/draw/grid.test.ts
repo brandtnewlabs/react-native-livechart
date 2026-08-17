@@ -95,6 +95,31 @@ describe("computeGridEntries", () => {
     expect(r.interval).toBeGreaterThan(0);
   });
 
+  it("chooses nice intervals in scaled display units", () => {
+    const intervalScale = 987_654_321;
+    const alphas: Record<number, number> = {};
+    const r = computeGridEntries(
+      0.0095,
+      0.0145,
+      360,
+      16,
+      28,
+      0,
+      alphas,
+      (value) => String(Math.round(value * intervalScale)),
+      16.67,
+      54,
+      undefined,
+      0,
+      intervalScale,
+    );
+
+    expect(r.interval).toBe(1_000_000);
+    expect(r.entries.map((entry) => Number(entry.label))).toEqual([
+      10_000_000, 11_000_000, 12_000_000, 13_000_000, 14_000_000,
+    ]);
+  });
+
   it("fades labels toward zero and removes stale keys", () => {
     const alphas: Record<number, number> = { 50000: 0.5 };
     computeGridEntries(0, 100, 400, 12, 28, 0, alphas, fmt, 16.67);

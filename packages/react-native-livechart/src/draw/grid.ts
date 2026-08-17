@@ -165,6 +165,7 @@ export function computeGridEntries(
   minGap = 36,
   grid: GridMetrics = GRID_METRICS_DEFAULTS,
   count = 0,
+  intervalScale = 1,
 ): { entries: YAxisEntry[]; interval: number } {
   "worklet";
   const chartH = canvasHeight - padTop - padBottom;
@@ -194,7 +195,13 @@ export function computeGridEntries(
 
   const pxPerUnit = chartH / valRange;
 
-  const coarse = pickInterval(valRange, pxPerUnit, minGap, prevInterval);
+  const interval = pickInterval(
+    valRange * intervalScale,
+    pxPerUnit / intervalScale,
+    minGap,
+    prevInterval,
+  );
+  const coarse = interval / intervalScale;
   const fine = coarse / 2;
   const finePx = fine * pxPerUnit;
   const fineTarget = fineLineTargetAlpha(finePx, minGap);
@@ -272,5 +279,5 @@ export function computeGridEntries(
     entries.push({ y, label: formatValue(val), alpha });
   }
 
-  return { entries, interval: coarse };
+  return { entries, interval };
 }
