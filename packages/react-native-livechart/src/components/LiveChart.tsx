@@ -1586,6 +1586,7 @@ function ChartWithYAxis({ model }: { model: LiveChartModel }) {
     yAxisCfg?.minGap ?? 36,
     metricsCfg.grid,
     yAxisCfg?.count ?? 0,
+    yAxisCfg?.intervalScale ?? 1,
   );
   if (model.degenCfg) {
     return <ChartWithDegen model={model} yAxisEntries={yAxisEntries} />;

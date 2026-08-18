@@ -43,6 +43,35 @@ the values track the live range each frame (they aren't rounded to nice numbers)
 `minGap` still acts as a floor: if `count` labels won't fit at least `minGap` px apart, the count
 drops to what fits. The count is clamped to at most 15.
 
+## Nice intervals in display units
+
+Use `intervalScale` when stored values and displayed values differ by a constant multiplier.
+The chart keeps every point in its original units, but chooses dynamic grid intervals after
+applying the multiplier. Apply the same multiplier in `formatValue`:
+
+```tsx
+const DISPLAY_SCALE = 987_654_321;
+
+const formatDisplayValue = (value: number) => {
+  "worklet";
+  return `$${Math.round(value * DISPLAY_SCALE)}`;
+};
+
+<LiveChart
+  data={data}
+  value={value}
+  yAxis={{ intervalScale: DISPLAY_SCALE }}
+  formatValue={formatDisplayValue}
+/>
+```
+
+This can turn labels such as `$9,876,543` and `$10,864,198` into round `$10,000,000` and
+`$11,000,000` intervals. The chart geometry, markers, reference lines, and scrub values stay in
+their original units. The multiplier must be positive and finite; invalid values behave as `1`.
+If applying it would overflow or underflow the current live range, interval selection safely falls
+back to source units. Fixed-count mode ignores it because `{ count }` tracks the exact visible range
+instead of choosing nice intervals.
+
 ## Right-anchored price label column
 
 Set `labelRightMargin` to place every Y-axis label at the same left X in a column whose right edge

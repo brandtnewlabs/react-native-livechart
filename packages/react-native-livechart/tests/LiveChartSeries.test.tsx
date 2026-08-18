@@ -163,7 +163,11 @@ describe("LiveChartSeries", () => {
         <LiveChartSeries
           series={series}
           scrub={{ tooltip: true }}
-          yAxis={{ labelRightMargin: 8, gridEndGap: 6 }}
+          yAxis={{
+            intervalScale: 1_000_000,
+            labelRightMargin: 8,
+            gridEndGap: 6,
+          }}
           referenceLines={[{ value: 11 }]}
           legend={{ compact: true }}
           onSeriesToggle={jest.fn()}

@@ -606,7 +606,12 @@ describe("LiveChart", () => {
     await render(
       <Harness
         badge={{ variant: "minimal", tail: false }}
-        yAxis={{ minGap: 48, labelRightMargin: 8, gridEndGap: 6 }}
+        yAxis={{
+          minGap: 48,
+          intervalScale: 1_000_000,
+          labelRightMargin: 8,
+          gridEndGap: 6,
+        }}
         scrub={{ tooltip: false }}
         valueLine={{ strokeWidth: 2, intervals: [6, 3] }}
       />,

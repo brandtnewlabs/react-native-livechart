@@ -89,6 +89,8 @@ export interface ResolvedBadgeConfig {
 
 export interface ResolvedYAxisConfig {
   minGap: number;
+  /** Multiplier used to choose and align representable dynamic nice intervals. */
+  intervalScale: number;
   /** Fixed label count (≥ 2), or 0 for the dynamic nice-interval grid. */
   count: number;
   /** undefined → keep the default centered-gutter label placement. */
@@ -486,6 +488,7 @@ export function resolveBadge(
 
 const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
   minGap: 36,
+  intervalScale: 1,
   count: 0,
   labelRightMargin: undefined,
   gridEndGap: undefined,
@@ -503,7 +506,14 @@ export function resolveYAxis(
 ): ResolvedYAxisConfig | null {
   const resolved = resolveToggle(prop, Y_AXIS_DEFAULTS, false);
   if (resolved === null) return null;
-  return { ...resolved, count: Math.max(0, Math.floor(resolved.count)) };
+  return {
+    ...resolved,
+    count: Math.max(0, Math.floor(resolved.count)),
+    intervalScale:
+      Number.isFinite(resolved.intervalScale) && resolved.intervalScale > 0
+        ? resolved.intervalScale
+        : 1,
+  };
 }
 
 const VOLUME_DEFAULTS: ResolvedVolumeConfig = {

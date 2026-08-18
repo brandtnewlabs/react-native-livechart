@@ -450,6 +450,7 @@ function useLiveChartSeriesController({
     yAxisCfg?.minGap ?? 36,
     metricsCfg.grid,
     yAxisCfg?.count ?? 0,
+    yAxisCfg?.intervalScale ?? 1,
   );
 
   const { xAxisEntries } = useXAxis(

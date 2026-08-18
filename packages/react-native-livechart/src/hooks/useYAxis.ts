@@ -20,6 +20,7 @@ export function useYAxis(
   minGap = 36,
   gridMetrics: GridMetrics = GRID_METRICS_DEFAULTS,
   count = 0,
+  intervalScale = 1,
 ) {
   const prevInterval = useSharedValue(0);
   const labelAlphas = useSharedValue<Record<number, number>>({});
@@ -41,6 +42,7 @@ export function useYAxis(
       minGap,
       gridMetrics,
       count,
+      intervalScale,
     );
 
     prevInterval.set(result.interval);

@@ -201,6 +201,7 @@ describe("resolveYAxis", () => {
   it("returns defaults for true", () => {
     expect(resolveYAxis(true)).toEqual({
       minGap: 36,
+      intervalScale: 1,
       count: 0,
       float: false,
       labelRightMargin: undefined,
@@ -211,6 +212,7 @@ describe("resolveYAxis", () => {
   it("merges partial config with defaults", () => {
     expect(resolveYAxis({ minGap: 48 })).toEqual({
       minGap: 48,
+      intervalScale: 1,
       count: 0,
       float: false,
       labelRightMargin: undefined,
@@ -221,6 +223,7 @@ describe("resolveYAxis", () => {
   it("carries through the float flag", () => {
     expect(resolveYAxis({ float: true })).toEqual({
       minGap: 36,
+      intervalScale: 1,
       count: 0,
       float: true,
       labelRightMargin: undefined,
@@ -231,6 +234,7 @@ describe("resolveYAxis", () => {
   it("carries through a fixed count", () => {
     expect(resolveYAxis({ count: 5 })).toEqual({
       minGap: 36,
+      intervalScale: 1,
       count: 5,
       float: false,
       labelRightMargin: undefined,
@@ -241,6 +245,7 @@ describe("resolveYAxis", () => {
   it("carries through right-anchored label spacing", () => {
     expect(resolveYAxis({ labelRightMargin: 8, gridEndGap: 6 })).toEqual({
       minGap: 36,
+      intervalScale: 1,
       count: 0,
       float: false,
       labelRightMargin: 8,
@@ -251,6 +256,15 @@ describe("resolveYAxis", () => {
   it("normalizes count to a non-negative integer", () => {
     expect(resolveYAxis({ count: 4.8 })?.count).toBe(4);
     expect(resolveYAxis({ count: -3 })?.count).toBe(0);
+  });
+
+  it("normalizes intervalScale to a positive finite multiplier", () => {
+    expect(resolveYAxis({ intervalScale: 1_000_000 })?.intervalScale).toBe(
+      1_000_000,
+    );
+    expect(resolveYAxis({ intervalScale: 0 })?.intervalScale).toBe(1);
+    expect(resolveYAxis({ intervalScale: -2 })?.intervalScale).toBe(1);
+    expect(resolveYAxis({ intervalScale: Infinity })?.intervalScale).toBe(1);
   });
 });
 
