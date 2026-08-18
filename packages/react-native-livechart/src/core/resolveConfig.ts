@@ -89,7 +89,7 @@ export interface ResolvedBadgeConfig {
 
 export interface ResolvedYAxisConfig {
   minGap: number;
-  /** Multiplier used to choose and align dynamic nice intervals. */
+  /** Multiplier used to choose and align representable dynamic nice intervals. */
   intervalScale: number;
   /** Fixed label count (≥ 2), or 0 for the dynamic nice-interval grid. */
   count: number;

@@ -89,6 +89,7 @@ export function pickInterval(
   prev: number,
 ): number {
   "worklet";
+  if (!Number.isFinite(valRange) || !Number.isFinite(pxPerUnit)) return 0;
   if (prev > 0) {
     const px = prev * pxPerUnit;
     if (px >= minGap * 0.5 && px <= minGap * 4) return prev;
@@ -103,6 +104,9 @@ export function pickInterval(
   for (let s = 0; s < divisorSets.length; s++) {
     const divs = divisorSets[s];
     let span = Math.pow(10, Math.ceil(Math.log10(valRange)));
+    // `10 ** ceil(log10(Number.MAX_VALUE))` overflows even though the input is
+    // finite. Starting from the range itself preserves a finite upper bound.
+    if (!Number.isFinite(span) && valRange > 0) span = valRange;
     let i = 0;
     while ((span / divs[i % 3]) * pxPerUnit >= minGap) {
       span /= divs[i % 3];
@@ -195,13 +199,29 @@ export function computeGridEntries(
 
   const pxPerUnit = chartH / valRange;
 
+  let appliedIntervalScale = intervalScale;
+  let scaledRange = valRange * appliedIntervalScale;
+  let pxPerScaledUnit = pxPerUnit / appliedIntervalScale;
+  // A positive finite multiplier can still overflow/underflow when combined
+  // with the live range. Fall back to source-unit interval selection so an
+  // unrepresentable display range cannot poison or freeze this UI worklet.
+  if (
+    !Number.isFinite(scaledRange) ||
+    scaledRange <= 0 ||
+    !Number.isFinite(pxPerScaledUnit) ||
+    pxPerScaledUnit <= 0
+  ) {
+    appliedIntervalScale = 1;
+    scaledRange = valRange;
+    pxPerScaledUnit = pxPerUnit;
+  }
   const interval = pickInterval(
-    valRange * intervalScale,
-    pxPerUnit / intervalScale,
+    scaledRange,
+    pxPerScaledUnit,
     minGap,
-    prevInterval,
+    appliedIntervalScale === intervalScale ? prevInterval : 0,
   );
-  const coarse = interval / intervalScale;
+  const coarse = interval / appliedIntervalScale;
   const fine = coarse / 2;
   const finePx = fine * pxPerUnit;
   const fineTarget = fineLineTargetAlpha(finePx, minGap);
@@ -234,7 +254,10 @@ export function computeGridEntries(
       fromEdge >= fadeZone ? 1 : fromEdge <= 0 ? 0 : fromEdge / fadeZone;
 
     const target = (isCoarse ? 1 : fineTarget) * edgeAlpha;
-    const key = Math.round(val * 1e10);
+    // Snap to the exact fine-grid multiple. Unlike a fixed decimal precision,
+    // this keeps adjacent sub-1e-10 source values distinct while remaining
+    // stable when the same line is recomputed on later frames.
+    const key = Math.round(val / fine) * fine;
     targets[key] = target;
   }
 
@@ -272,7 +295,7 @@ export function computeGridEntries(
     const key = Number(allKeys[i]);
     const alpha = labelAlphas[key];
     if (alpha < 0.02) continue;
-    const val = key / 1e10;
+    const val = key;
     const y = gridValueToY(val, displayMax, valRange, padTop, chartH);
     /* istanbul ignore next -- vertical clip; y stays in-band when val comes from tracked keys */
     if (y < padTop - 10 || y > canvasHeight - padBottom + 10) continue;

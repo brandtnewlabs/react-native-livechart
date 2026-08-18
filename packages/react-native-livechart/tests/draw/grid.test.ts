@@ -71,6 +71,17 @@ describe("pickInterval", () => {
     const r = pickInterval(-1, 1, 36, 0);
     expect(r).toBeCloseTo(-0.2);
   });
+
+  it("returns safely for non-finite inputs", () => {
+    expect(pickInterval(Infinity, 1, 36, 0)).toBe(0);
+    expect(pickInterval(100, Infinity, 36, 0)).toBe(0);
+  });
+
+  it("keeps the initial span finite near Number.MAX_VALUE", () => {
+    const r = pickInterval(Number.MAX_VALUE, 1e-305, 36, 0);
+    expect(Number.isFinite(r)).toBe(true);
+    expect(r).toBeGreaterThan(0);
+  });
 });
 
 describe("computeGridEntries", () => {
@@ -118,6 +129,69 @@ describe("computeGridEntries", () => {
     expect(r.entries.map((entry) => Number(entry.label))).toEqual([
       10_000_000, 11_000_000, 12_000_000, 13_000_000, 14_000_000,
     ]);
+  });
+
+  it("keeps scaled entries distinct below fixed decimal precision", () => {
+    const intervalScale = 1e15;
+    const alphas: Record<number, number> = {};
+    const r = computeGridEntries(
+      0.95e-12,
+      1.45e-12,
+      360,
+      16,
+      28,
+      0,
+      alphas,
+      (value) => String(Math.round(value * intervalScale)),
+      16.67,
+      54,
+      undefined,
+      0,
+      intervalScale,
+    );
+
+    expect(r.interval).toBe(100);
+    expect(r.entries.map((entry) => Number(entry.label))).toEqual([
+      1_000, 1_100, 1_200, 1_300, 1_400,
+    ]);
+  });
+
+  it("falls back safely when scaled interval arithmetic is unrepresentable", () => {
+    const overflow = computeGridEntries(
+      0,
+      2,
+      400,
+      12,
+      28,
+      0,
+      {},
+      fmt,
+      16.67,
+      36,
+      undefined,
+      0,
+      1e308,
+    );
+    const underflow = computeGridEntries(
+      0,
+      2,
+      400,
+      12,
+      28,
+      0,
+      {},
+      fmt,
+      16.67,
+      36,
+      undefined,
+      0,
+      Number.MIN_VALUE,
+    );
+
+    expect(Number.isFinite(overflow.interval)).toBe(true);
+    expect(overflow.entries.length).toBeGreaterThan(0);
+    expect(Number.isFinite(underflow.interval)).toBe(true);
+    expect(underflow.entries.length).toBeGreaterThan(0);
   });
 
   it("fades labels toward zero and removes stale keys", () => {

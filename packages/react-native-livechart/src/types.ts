@@ -652,6 +652,8 @@ export interface YAxisConfig {
    * Multiplier used to choose and align dynamic "nice" intervals without
    * changing plotted values. Pair it with a `formatValue` that applies the
    * same multiplier. Must be positive and finite; invalid values use `1`.
+   * If applying the multiplier to the live range would overflow or underflow,
+   * interval selection falls back to source units for that range.
    * Ignored when {@link count} is set. Default `1`.
    */
   intervalScale?: number;
