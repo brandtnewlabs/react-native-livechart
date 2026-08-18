@@ -42,6 +42,7 @@
         "expo-*",
         "@expo/vector-icons",
         "jest-expo",
+        "@react-native/jest-preset",
         "babel-preset-expo",
         "eslint-config-expo",
         "react",
