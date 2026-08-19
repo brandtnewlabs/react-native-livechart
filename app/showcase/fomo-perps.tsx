@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Canvas, Path, Skia } from "@shopify/react-native-skia";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -16,6 +16,7 @@ import {
 import {
   LiveChart,
   type CandlePoint,
+  type LiveChartHandle,
   type Marker,
   type ReferenceLine,
   type ScrubActionPoint,
@@ -429,6 +430,7 @@ const SIZE_CHIPS = ["0.1", "0.5", "1.0", "Max"] as const;
 export default function FomoPerpsShowcase() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const chartRef = useRef<LiveChartHandle>(null);
 
   const [chartMode, setChartMode] = useState<"line" | "candle">("candle");
   const [intervalId, setIntervalId] = useState<IntervalId>("15m");
@@ -438,12 +440,6 @@ export default function FomoPerpsShowcase() {
   const [sizeChip, setSizeChip] = useState<(typeof SIZE_CHIPS)[number]>("0.5");
   const [orders, setOrders] = useState<WorkingOrder[]>([]);
   const [cancelIdx, setCancelIdx] = useState<number | null>(null);
-  // Toggled 0↔1 on every range tap so `visibleWindow` changes by an (imperceptible)
-  // 1s even when re-tapping the ALREADY-active range. That forces the engine's
-  // timeWindow-change zoom reset to fire, so re-tapping the active pill zooms back
-  // out — React bails on a same-state `setRange`, so otherwise the tap is a no-op.
-  const [zoomBump, setZoomBump] = useState(0);
-
   const interval = INTERVALS.find((i) => i.id === intervalId) ?? INTERVALS[2];
   const candleMode = chartMode === "candle";
   // Candle interval sets granularity (candle width); the range pill scales how wide
@@ -451,17 +447,16 @@ export default function FomoPerpsShowcase() {
   // is bucketed — never the feed itself — so switching either keeps the price
   // continuous. Clamp the window so it always fits inside the fixed seeded history.
   const baseWindow = interval.candleWidthSecs * VISIBLE_CANDLES;
-  const visibleWindow =
-    Math.min(
-      Math.round(baseWindow * RANGE_FACTORS[range]),
-      FIXED_HISTORY_SECS - 600,
-    ) + zoomBump;
+  const visibleWindow = Math.min(
+    Math.round(baseWindow * RANGE_FACTORS[range]),
+    FIXED_HISTORY_SECS - 600,
+  );
 
-  // Range tap: select it AND flip `zoomBump`, so re-tapping the active range still
-  // changes `timeWindow` (by 1s) and resets any pinch-zoom — see `zoomBump`.
+  // A range tap also resets any focal-anchored pinch override. This matters when
+  // re-tapping the active pill, where React correctly skips the same-state update.
   const selectRange = (r: (typeof RANGES)[number]) => {
     setRange(r);
-    setZoomBump((b) => (b === 0 ? 1 : 0));
+    chartRef.current?.resetZoom();
   };
 
   // ONE fixed feed: fine base candles over a fixed span. Nothing here depends on the
@@ -686,6 +681,7 @@ export default function FomoPerpsShowcase() {
       {/* ── Hero chart */}
       <View style={styles.chartWrap}>
         <LiveChart
+          ref={chartRef}
           data={data}
           value={value}
           style={styles.chartCanvas}

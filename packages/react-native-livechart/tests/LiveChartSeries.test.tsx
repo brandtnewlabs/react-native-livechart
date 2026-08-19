@@ -5,10 +5,33 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import { LiveChartSeries } from "../src/components/LiveChartSeries";
-import type { ChartOverlayContext, SeriesConfig } from "../src/types";
+import type {
+  ChartOverlayContext,
+  LiveChartHandle,
+  SeriesConfig,
+} from "../src/types";
 import { getAllByHostType } from "./rntl14";
 
 describe("LiveChartSeries", () => {
+  it("exposes an imperative pinch-zoom reset", async () => {
+    const ref = React.createRef<LiveChartHandle>();
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>([
+        {
+          id: "a",
+          label: "A",
+          data: [{ time: 1_700_000_000, value: 10 }],
+          value: 10,
+          color: "#3b82f6",
+        },
+      ]);
+      return <LiveChartSeries ref={ref} series={series} zoom />;
+    }
+
+    await render(<H />);
+    expect(ref.current?.resetZoom).toBeInstanceOf(Function);
+  });
+
   it("opts into an opaque canvas and replaces destination-alpha masks", async () => {
     const initial: SeriesConfig[] = [
       {

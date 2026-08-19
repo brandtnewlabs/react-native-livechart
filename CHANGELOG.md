@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **External pinch-zoom reset.** `LiveChart` and `LiveChartSeries` now expose a
+  shared `LiveChartHandle` through `ref`; call `resetZoom()` from a button or any
+  outside event to restore the configured `timeWindow`, clear the focal-point
+  offset, and resume following the live edge. The reset runs on the UI thread,
+  is safe when already reset, and is demonstrated by the Time scroll example's
+  visible-window readout and Reset zoom control.
+
 - **Display-unit Y-axis intervals.** `YAxisConfig.intervalScale` chooses and aligns
   dynamic nice intervals after applying a constant display multiplier, while all
   plotted data remains in its original units. Pair it with `formatValue` using the

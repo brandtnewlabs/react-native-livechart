@@ -381,6 +381,14 @@ provided; everything else has a default.
   [Time-scroll](/guides/time-scroll#pinch-to-zoom-zoom).
 </ParamField>
 
+### Resetting pinch zoom
+
+Attach a `ref` typed as [`LiveChartHandle`](/api-reference/types#imperative-handle) and call
+`ref.current?.resetZoom()` from a button or any other outside event. It returns the visible width
+to `timeWindow`, clears the focal-point offset, and resumes following the live edge. The reset is
+scheduled on the UI thread and is safe when the chart is already reset. A paused chart remains
+paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button).
+
 <ParamField body="onVisibleRangeChange" type="(range: VisibleRange) => void">
   Called as the visible window changes (throttled to ~1 Hz) with
   `{ startSec, endSec, following }`. Useful for paging a data source alongside

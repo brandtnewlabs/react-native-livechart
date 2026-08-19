@@ -14,6 +14,7 @@ import * as xAxisHooks from "../src/hooks/useXAxis";
 import * as yAxisHooks from "../src/hooks/useYAxis";
 import type {
   CandlePoint,
+  LiveChartHandle,
   LiveChartPoint,
   LiveChartProps,
   Marker,
@@ -162,6 +163,18 @@ async function layoutFirst(screen: Awaited<ReturnType<typeof render>>) {
 }
 
 describe("LiveChart", () => {
+  it("exposes an imperative pinch-zoom reset", async () => {
+    const ref = React.createRef<LiveChartHandle>();
+    function RefHarness() {
+      const data = useSharedValue([{ time: 1700000000, value: 50 }]);
+      const value = useSharedValue(50);
+      return <LiveChart ref={ref} data={data} value={value} zoom />;
+    }
+
+    await render(<RefHarness />);
+    expect(ref.current?.resetZoom).toBeInstanceOf(Function);
+  });
+
   it("renders with defaults", async () => {
     const screen = await render(<Harness />);
     const views = getAllByHostType(screen, View);

@@ -8,6 +8,7 @@ All types are exported from the package root:
 
 ```tsx
 import type {
+  LiveChartHandle,
   LiveChartPoint,
   ReferenceLine,
   SeriesConfig,
@@ -582,6 +583,21 @@ interface FontConfig {
   fontManager?: SkFontMgr | null;
 }
 ```
+
+## Imperative handle
+
+`LiveChart` and `LiveChartSeries` accept a ref with the same exported handle:
+
+```ts
+interface LiveChartHandle {
+  // Reset built-in pinch zoom to timeWindow and clear its focal offset so the
+  // chart follows the live edge again. Safe when already reset.
+  resetZoom(): void;
+}
+```
+
+Use `useRef<LiveChartHandle>(null)` and pass the ref to either chart. A paused chart remains paused.
+See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button).
 
 ## AxisLabelConfig
 

@@ -137,6 +137,40 @@ Pass a `ZoomConfig` to set them explicitly:
 
 The Y-range auto-fits the visible window as you zoom, and candle bars re-flow to the new width.
 
+### Reset zoom from a button
+
+Both chart components expose a `resetZoom()` method through a
+[`LiveChartHandle`](/api-reference/types#imperative-handle). Call it from any outside event to
+clear the focal-anchored pinch window and return to the configured `timeWindow` at the live edge:
+
+```tsx
+import { useRef } from "react";
+import { Button } from "react-native";
+import { LiveChart, type LiveChartHandle } from "react-native-livechart";
+
+const chartRef = useRef<LiveChartHandle>(null);
+
+<Button title="Reset zoom" onPress={() => chartRef.current?.resetZoom()} />
+
+<LiveChart
+  ref={chartRef}
+  data={data}
+  value={value}
+  timeWindow={300}
+  timeScroll
+  zoom
+/>
+```
+
+The same handle works on `LiveChartSeries`. Resetting clears both state values changed by a
+focal pinch: the overridden window width and its shifted right edge. That means the chart resumes
+following live data instead of staying parked at the pinch anchor while its width returns to
+normal. Calling it again is a safe no-op. A paused chart remains paused, and the displayed width
+uses the chart's normal `smoothing` as it settles back to `timeWindow`.
+
+The example app's **Time scroll** screen includes a **Reset zoom** button and a live visible-window
+readout so the behavior can be exercised directly.
+
 ## Paging callbacks (`onVisibleRangeChange`, `onReachStart`)
 
 To lazily page in history as the user scrolls/zooms back, two callbacks report the visible window:

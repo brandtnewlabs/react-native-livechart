@@ -5,7 +5,12 @@
  * @see https://github.com/benjitaylor/liveline
  */
 import { Canvas, Group, Rect } from "@shopify/react-native-skia";
-import { useLayoutEffect, useState } from "react";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useLayoutEffect,
+  useState,
+} from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -16,7 +21,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
+import { scheduleOnRN, scheduleOnUI } from "react-native-worklets";
 import {
   DEFAULT_ACCENT_COLOR,
   HOLD_TO_SCRUB_MS,
@@ -62,7 +67,7 @@ import { useMarkers } from "../hooks/useMarkers";
 import { useMultiSeriesDegen } from "../hooks/useMultiSeriesDegen";
 import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
 import { usePanScroll } from "../hooks/usePanScroll";
-import { usePinchZoom } from "../hooks/usePinchZoom";
+import { resetPinchZoom, usePinchZoom } from "../hooks/usePinchZoom";
 import { useMultiSeriesReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import {
   SERIES_INDICATOR_FADE_MS,
@@ -86,7 +91,12 @@ import {
   leftEdgeFadeColorsFromBgRgb,
   resolveTheme,
 } from "../theme";
-import type { LiveChartSeriesProps, Marker, SeriesConfig } from "../types";
+import type {
+  LiveChartHandle,
+  LiveChartSeriesProps,
+  Marker,
+  SeriesConfig,
+} from "../types";
 import { AxisLabelOverlay } from "./AxisLabelOverlay";
 import { ChartOverlayLayer } from "./ChartOverlayLayer";
 import {
@@ -1027,8 +1037,19 @@ function SeriesTooltipLayer({
   );
 }
 
-export function LiveChartSeries(props: LiveChartSeriesProps) {
+export const LiveChartSeries = forwardRef<
+  LiveChartHandle,
+  LiveChartSeriesProps
+>(function LiveChartSeries(props, ref) {
   const model = useLiveChartSeriesController(props);
+  const { viewEnd, viewWindow } = model.engine;
+  useImperativeHandle(
+    ref,
+    () => ({
+      resetZoom: () => scheduleOnUI(resetPinchZoom, { viewEnd, viewWindow }),
+    }),
+    [viewEnd, viewWindow],
+  );
   const {
     rootGesture,
     backgroundColor,
@@ -1274,4 +1295,4 @@ export function LiveChartSeries(props: LiveChartSeriesProps) {
       {legendCfg.position === "bottom" ? legend : null}
     </View>
   );
-}
+});

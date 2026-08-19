@@ -193,6 +193,11 @@ default off.
   [Time-scroll](/guides/time-scroll#pinch-to-zoom-zoom).
 </ParamField>
 
+Attach a `ref` typed as [`LiveChartHandle`](/api-reference/types#imperative-handle) and call
+`ref.current?.resetZoom()` to return the shared window to `timeWindow` and the live edge. This is
+the same imperative reset exposed by `LiveChart`. See
+[Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button).
+
 <ParamField body="onVisibleRangeChange" type="(range: VisibleRange) => void">
   Called as the visible window changes (~1 Hz) with `{ startSec, endSec,
   following }`. **@experimental.**

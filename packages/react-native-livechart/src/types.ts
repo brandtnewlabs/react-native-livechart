@@ -1951,6 +1951,22 @@ export interface ZoomConfig {
   maxTimeWindow?: number;
 }
 
+/** Imperative methods exposed by `LiveChart` and `LiveChartSeries`. */
+export interface LiveChartHandle {
+  /**
+   * Reset built-in pinch/time-window zoom to the configured `timeWindow` and
+   * clear the focal-point offset so the chart follows the live edge again.
+   * Safe to call when already reset. A paused chart remains paused.
+   *
+   * ```tsx
+   * const chartRef = useRef<LiveChartHandle>(null);
+   * <Button title="Reset zoom" onPress={() => chartRef.current?.resetZoom()} />
+   * <LiveChart ref={chartRef} data={data} value={value} zoom />
+   * ```
+   */
+  resetZoom(): void;
+}
+
 /**
  * The visible time range reported by {@link LiveChartCoreProps.onVisibleRangeChange}.
  *
