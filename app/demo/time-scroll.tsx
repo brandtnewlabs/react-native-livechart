@@ -12,8 +12,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Time scroll" };
-
 // 5-minute window of 15s candles (20 visible), but seed ~5 windows of history so
 // there's somewhere to scroll back into. `maxPoints` (tick buffer) stays well
 // longer than the seed so the oldest committed candles don't re-bucket as you
