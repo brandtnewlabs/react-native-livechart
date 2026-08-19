@@ -26,6 +26,27 @@ export interface PinchZoomEngineRefs {
   canvasWidth: SharedValue<number>;
 }
 
+/** The pinch state cleared by the public chart handle's `resetZoom()` method. */
+export type PinchZoomResetRefs = Pick<
+  PinchZoomEngineRefs,
+  "viewWindow" | "viewEnd"
+>;
+
+/**
+ * Clear the focal-anchored pinch overrides so the engine follows its configured
+ * `timeWindow` and live edge again. Safe to call when the chart is already reset.
+ */
+export function resetPinchZoom({
+  viewWindow,
+  viewEnd,
+}: PinchZoomResetRefs): void {
+  "worklet";
+  cancelAnimation(viewWindow);
+  cancelAnimation(viewEnd);
+  viewWindow.set(null);
+  viewEnd.set(null);
+}
+
 export interface UsePinchZoomOptions {
   engine: PinchZoomEngineRefs;
   padding: ChartPadding;

@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert } from "react-native";
-import { LiveChart, type ScrubActionPoint } from "react-native-livechart";
+import {
+  LiveChart,
+  type LiveChartHandle,
+  type ScrubActionPoint,
+} from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
-import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
+import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
-
-export const options = { title: "Time scroll" };
 
 // 5-minute window of 15s candles (20 visible), but seed ~5 windows of history so
 // there's somewhere to scroll back into. `maxPoints` (tick buffer) stays well
@@ -66,6 +68,7 @@ const RETURN_TO_LIVE: Record<ReturnMode, boolean | { duration: number }> = {
 };
 
 export default function TimeScrollScreen() {
+  const chartRef = useRef<LiveChartHandle>(null);
   const [mode, setMode] = useState<"candle" | "line">("candle");
   const [gesture, setGesture] = useState<Gesture>("holdToScrub");
   const [holdMs, setHoldMs] = useState(500);
@@ -84,6 +87,7 @@ export default function TimeScrollScreen() {
   const [orderTicket, setOrderTicket] = useState(true);
   const [floatAxis, setFloatAxis] = useState(true);
   const [reachedStart, setReachedStart] = useState(false);
+  const [visibleWindowSecs, setVisibleWindowSecs] = useState(WINDOW_SECS);
 
   // candleAggregation gives us both the line `data` and `candles`; the toggle
   // just switches which the chart renders. Time-scroll is mode-agnostic — it
@@ -117,6 +121,7 @@ export default function TimeScrollScreen() {
       description={`${hint} Pinch with two fingers to zoom the window in/out (anchored at your fingers). The chart stops auto-scrolling while panned; ${fling ? "fling" : "release"} back to the live edge to resume. Turn off Fling inertia to stop exactly where your finger lifts. Works for line and candle; one-finger plot scrub is unchanged.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
       chart={
         <LiveChart
+          ref={chartRef}
           data={data}
           value={value}
           mode={mode}
@@ -148,6 +153,7 @@ export default function TimeScrollScreen() {
           // `following`), rather than flashing — `onReachStart` is a one-shot
           // edge trigger (it fires once to cue a page-in, then re-arms).
           onVisibleRangeChange={(r) => {
+            setVisibleWindowSecs(r.endSec - r.startSec);
             console.log(
               `visible range: ${r.startSec.toFixed(0)}–${r.endSec.toFixed(0)} following=${r.following}`,
             );
@@ -227,8 +233,15 @@ export default function TimeScrollScreen() {
         onChange={setReturnMode}
       />
 
-      <ControlRow label="Pinch to zoom">
+      <ControlRow
+        label={`Pinch to zoom · visible ${Math.round(visibleWindowSecs)}s`}
+      >
         <ToggleChip label="zoom" value={zoomOn} onChange={setZoomOn} />
+        <Chip
+          label="Reset zoom"
+          active={false}
+          onPress={() => chartRef.current?.resetZoom()}
+        />
       </ControlRow>
 
       <ControlRow label="One-finger scrub">

@@ -1,9 +1,39 @@
+import type { SharedValue } from "react-native-reanimated";
+
 import {
   clampWindow,
   focalTime,
+  resetPinchZoom,
   zoomViewEnd,
   zoomWindowBounds,
 } from "../../src/hooks/usePinchZoom";
+
+describe("resetPinchZoom", () => {
+  const mutable = (initial: number | null) => {
+    const shared = {
+      value: initial,
+      set(next: number | null) {
+        shared.value = next;
+      },
+    };
+    return shared as unknown as SharedValue<number | null>;
+  };
+
+  it("clears both pinch overrides and is idempotent", () => {
+    const state = {
+      viewWindow: mutable(45),
+      viewEnd: mutable(1_700_000_000),
+    };
+
+    resetPinchZoom(state);
+    expect(state.viewWindow.value).toBeNull();
+    expect(state.viewEnd.value).toBeNull();
+
+    resetPinchZoom(state);
+    expect(state.viewWindow.value).toBeNull();
+    expect(state.viewEnd.value).toBeNull();
+  });
+});
 
 describe("clampWindow", () => {
   it("passes a value already in range through", () => {

@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -11,7 +19,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
+import { scheduleOnRN, scheduleOnUI } from "react-native-worklets";
 
 /**
  * Single-series live chart. UX and prop vocabulary parallel Benji Taylor’s
@@ -94,7 +102,7 @@ import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
 import { useModeBlend } from "../hooks/useModeBlend";
 import { resolveMomentumProp, useMomentum } from "../hooks/useMomentum";
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
-import { usePinchZoom } from "../hooks/usePinchZoom";
+import { resetPinchZoom, usePinchZoom } from "../hooks/usePinchZoom";
 import {
   SERIES_INDICATOR_FADE_MS,
   useSeriesIndicatorOpacity,
@@ -134,6 +142,7 @@ import {
 } from "../theme";
 import type {
   CandlePoint,
+  LiveChartHandle,
   LiveChartPalette,
   LiveChartPoint,
   LiveChartProps,
@@ -2912,13 +2921,23 @@ function ChartView({
   );
 }
 
-export function LiveChart(props: LiveChartProps) {
-  const model = useLiveChartController(props);
-  if (model.yAxisCfg) {
-    return <ChartWithYAxis model={model} />;
-  }
-  if (model.degenCfg) {
-    return <ChartWithDegen model={model} yAxisEntries={null} />;
-  }
-  return <ChartView model={model} yAxisEntries={null} degen={null} />;
-}
+export const LiveChart = forwardRef<LiveChartHandle, LiveChartProps>(
+  function LiveChart(props, ref) {
+    const model = useLiveChartController(props);
+    const { viewEnd, viewWindow } = model.engine;
+    useImperativeHandle(
+      ref,
+      () => ({
+        resetZoom: () => scheduleOnUI(resetPinchZoom, { viewEnd, viewWindow }),
+      }),
+      [viewEnd, viewWindow],
+    );
+    if (model.yAxisCfg) {
+      return <ChartWithYAxis model={model} />;
+    }
+    if (model.degenCfg) {
+      return <ChartWithDegen model={model} yAxisEntries={null} />;
+    }
+    return <ChartView model={model} yAxisEntries={null} degen={null} />;
+  },
+);

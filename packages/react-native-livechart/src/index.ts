@@ -61,6 +61,7 @@ export type {
   LegendStyle,
   LineConfig,
   LiveChartCoreProps,
+  LiveChartHandle,
   LiveChartMetrics,
   LiveChartMetricsOverride,
   LiveChartPalette,
