@@ -28,13 +28,23 @@ description: "Draw horizontal lines, value/time bands, pill badges, and draggabl
   value={value}
   referenceLines={[
     { value: 100, label: "Entry", showValue: true },
-    { valueFrom: 95, valueTo: 105, fillOpacity: 0.12, label: "Range" },
+    {
+      valueFrom: 95,
+      valueTo: 105,
+      fillColor: "#2563eb",
+      fillOpacity: 0.12,
+      color: "#60a5fa",
+      strokeOpacity: 0.8,
+      strokeWidth: 1,
+      label: "Range",
+    },
   ]}
 />
 ```
 
-Lines support labels, dashes (`intervals`), and excluding their value from the axis range
-(`excludeFromRange`). See the [types reference](/api-reference/types) for every field.
+Lines support labels, dashes (`intervals`), stroke opacity, and excluding their value from the axis
+range (`excludeFromRange`). Bands can use separate `fillColor` / `fillOpacity` and
+`color` / `strokeOpacity` paints. See the [types reference](/api-reference/types) for every field.
 When the array can reorder (for example, a dynamic order book), give each line a unique `id`
 so its rendered identity follows that line instead of its array position.
 

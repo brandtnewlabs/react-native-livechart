@@ -3,6 +3,12 @@ import type {
   AxisLabelConfig,
   BadgeConfig,
   BadgeVariant,
+  CandleGap,
+  CandleGapBandStyle,
+  CandleGapBridgeStyle,
+  CandleGapKind,
+  CandleGapLabelStyle,
+  CandleGapsConfig,
   DegenOptions,
   FontConfig,
   FontWeight,
@@ -112,6 +118,38 @@ export interface ResolvedVolumeConfig {
   radius: number;
   /** Opacity (0..1) applied to the whole band. */
   opacity: number;
+}
+
+export interface ResolvedCandleGapBridgeStyle {
+  color: string | undefined;
+  opacity: number;
+  strokeWidth: number;
+  strokeCap: "butt" | "round" | "square";
+}
+
+export interface ResolvedCandleGapBandStyle {
+  fillColor: string | undefined;
+  fillOpacity: number;
+  borderColor: string | undefined;
+  borderOpacity: number;
+  borderWidth: number;
+  intervals: [number, number];
+}
+
+export interface ResolvedCandleGapLabelStyle {
+  color: string | undefined;
+  position: "left" | "right";
+}
+
+export interface ResolvedCandleGapStyle {
+  bridge: ResolvedCandleGapBridgeStyle | null;
+  band: ResolvedCandleGapBandStyle | null;
+  label: ResolvedCandleGapLabelStyle | null;
+}
+
+export interface ResolvedCandleGapsConfig {
+  gaps: CandleGap[];
+  styles: Record<CandleGapKind, ResolvedCandleGapStyle>;
 }
 
 /** Resolved straight-line styling (connector, etc.). `color: undefined` → caller default. */
@@ -533,6 +571,151 @@ export function resolveVolume(
   prop: boolean | VolumeConfig | undefined,
 ): ResolvedVolumeConfig | null {
   return resolveToggle(prop, VOLUME_DEFAULTS, false);
+}
+
+const CANDLE_GAP_BRIDGE_DEFAULTS: ResolvedCandleGapBridgeStyle = {
+  color: undefined,
+  opacity: 0.7,
+  strokeWidth: 2,
+  strokeCap: "round",
+};
+
+const CANDLE_GAP_BAND_DEFAULTS: ResolvedCandleGapBandStyle = {
+  fillColor: undefined,
+  fillOpacity: 0.12,
+  borderColor: undefined,
+  borderOpacity: 1,
+  borderWidth: 2,
+  intervals: [4, 4],
+};
+
+const CANDLE_GAP_LABEL_DEFAULTS: ResolvedCandleGapLabelStyle = {
+  color: undefined,
+  position: "left",
+};
+
+function clampOpacity(value: number): number {
+  return value < 0 ? 0 : value > 1 ? 1 : value;
+}
+
+const CANDLE_GAP_STYLE_DEFAULTS: Record<CandleGapKind, ResolvedCandleGapStyle> = {
+  "no-trades": {
+    bridge: CANDLE_GAP_BRIDGE_DEFAULTS,
+    band: null,
+    label: null,
+  },
+  unavailable: {
+    bridge: { ...CANDLE_GAP_BRIDGE_DEFAULTS, opacity: 0.55 },
+    band: CANDLE_GAP_BAND_DEFAULTS,
+    label: CANDLE_GAP_LABEL_DEFAULTS,
+  },
+  unknown: {
+    bridge: null,
+    band: {
+      ...CANDLE_GAP_BAND_DEFAULTS,
+      fillOpacity: 0.08,
+      borderWidth: 1,
+    },
+    label: CANDLE_GAP_LABEL_DEFAULTS,
+  },
+};
+
+function resolveCandleGapBridge(
+  override: false | CandleGapBridgeStyle | undefined,
+  semanticDefault: ResolvedCandleGapBridgeStyle | null,
+): ResolvedCandleGapBridgeStyle | null {
+  if (override === false) return null;
+  if (override === undefined) {
+    return semanticDefault ? { ...semanticDefault } : null;
+  }
+  const base = semanticDefault ?? CANDLE_GAP_BRIDGE_DEFAULTS;
+  const strokeCap = override.strokeCap;
+  return {
+    color: override.color ?? base.color,
+    opacity: clampOpacity(override.opacity ?? base.opacity),
+    strokeWidth: Math.max(0, override.strokeWidth ?? base.strokeWidth),
+    strokeCap:
+      strokeCap === "butt" || strokeCap === "round" || strokeCap === "square"
+        ? strokeCap
+        : base.strokeCap,
+  };
+}
+
+function resolveCandleGapBand(
+  override: false | CandleGapBandStyle | undefined,
+  semanticDefault: ResolvedCandleGapBandStyle | null,
+): ResolvedCandleGapBandStyle | null {
+  if (override === false) return null;
+  if (override === undefined) {
+    return semanticDefault ? { ...semanticDefault } : null;
+  }
+  const base = semanticDefault ?? CANDLE_GAP_BAND_DEFAULTS;
+  return {
+    fillColor: override.fillColor ?? base.fillColor,
+    fillOpacity: clampOpacity(override.fillOpacity ?? base.fillOpacity),
+    borderColor: override.borderColor ?? base.borderColor,
+    borderOpacity: clampOpacity(override.borderOpacity ?? base.borderOpacity),
+    borderWidth: Math.max(0, override.borderWidth ?? base.borderWidth),
+    intervals: override.intervals ?? base.intervals,
+  };
+}
+
+function resolveCandleGapLabel(
+  override: false | CandleGapLabelStyle | undefined,
+  semanticDefault: ResolvedCandleGapLabelStyle | null,
+): ResolvedCandleGapLabelStyle | null {
+  if (override === false) return null;
+  if (override === undefined) {
+    return semanticDefault ? { ...semanticDefault } : null;
+  }
+  const base = semanticDefault ?? CANDLE_GAP_LABEL_DEFAULTS;
+  return {
+    color: override.color ?? base.color,
+    position:
+      override.position === "left" || override.position === "right"
+        ? override.position
+        : base.position,
+  };
+}
+
+/** Resolve and defensively normalize explicit candle-gap metadata. */
+export function resolveCandleGaps(
+  prop: CandleGap[] | CandleGapsConfig | undefined,
+): ResolvedCandleGapsConfig | null {
+  if (prop == null) return null;
+  const gaps = (Array.isArray(prop) ? prop : prop.gaps)
+    .filter(
+      (gap) =>
+        Number.isFinite(gap.from) &&
+        Number.isFinite(gap.to) &&
+        gap.to > gap.from &&
+        (gap.kind === "no-trades" ||
+          gap.kind === "unavailable" ||
+          gap.kind === "unknown"),
+    )
+    .slice()
+    .sort((a, b) => a.from - b.from || a.to - b.to);
+  if (gaps.length === 0) return null;
+
+  const overrides = Array.isArray(prop) ? undefined : prop.styles;
+  const resolveStyle = (kind: CandleGapKind): ResolvedCandleGapStyle => {
+    const base = CANDLE_GAP_STYLE_DEFAULTS[kind];
+    const override = overrides?.[kind];
+    return {
+      bridge: resolveCandleGapBridge(override?.bridge, base.bridge),
+      band: resolveCandleGapBand(override?.band, base.band),
+      label: resolveCandleGapLabel(override?.label, base.label),
+    };
+  };
+
+  return {
+    gaps,
+    styles: {
+      "no-trades": resolveStyle("no-trades"),
+      unavailable: resolveStyle("unavailable"),
+      unknown: resolveStyle("unknown"),
+    },
+  };
 }
 
 export interface ResolvedZoomConfig {

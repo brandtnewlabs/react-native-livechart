@@ -117,6 +117,8 @@ export function ReferenceLineOverlay({
   const isBand = form === "value-band" || form === "time-band";
 
   const color = line.color ?? palette.refLine;
+  const fillColor = line.fillColor ?? color;
+  const strokeOpacity = Math.max(0, Math.min(1, line.strokeOpacity ?? 1));
 
   // Resolved badge appearance (badge config → fallback flat fields → theme).
   const badge = resolveReferenceBadge(line);
@@ -183,6 +185,8 @@ export function ReferenceLineOverlay({
       <ReferenceLineBasePass
         layout={layout}
         color={color}
+        fillColor={fillColor}
+        strokeOpacity={strokeOpacity}
         strokeWidth={strokeWidth}
         intervals={intervals}
         isBand={isBand}
@@ -221,6 +225,8 @@ export function ReferenceLineOverlay({
 function ReferenceLineBasePass({
   layout,
   color,
+  fillColor,
+  strokeOpacity,
   strokeWidth,
   intervals,
   isBand,
@@ -230,6 +236,8 @@ function ReferenceLineBasePass({
 }: {
   layout: SharedValue<ReferenceLineLayout>;
   color: string;
+  fillColor: string;
+  strokeOpacity: number;
   strokeWidth: number;
   intervals: [number, number];
   isBand: boolean;
@@ -282,20 +290,20 @@ function ReferenceLineBasePass({
   });
   const lineOpacity = useDerivedValue(() => {
     const l = layout.get();
-    return l.visible && l.drawLine && !isBand ? 1 : 0;
+    return l.visible && l.drawLine && !isBand ? strokeOpacity : 0;
   });
   const bandOpacity = useDerivedValue(() =>
     layout.get().visible && isBand ? bandFillOpacity : 0,
   );
   const bandBorderOpacity = useDerivedValue(() =>
-    layout.get().visible && hasBandBorder ? 1 : 0,
+    layout.get().visible && hasBandBorder ? strokeOpacity : 0,
   );
 
   return (
     <Group>
       {isBand && (
         <Group opacity={bandOpacity}>
-          <Path path={bandPath} style="fill" color={color} />
+          <Path path={bandPath} style="fill" color={fillColor} />
         </Group>
       )}
       {hasBandBorder && (

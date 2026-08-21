@@ -4,8 +4,13 @@ import type { DerivedValue, SharedValue } from "react-native-reanimated";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { type ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
+import {
+  candleGapBucketStartAtTime,
+  candleGapDefaultLabel,
+  pickCandleGapAtTime,
+} from "../math/candleGaps";
 import { pickCandleAtTime } from "../math/pickCandle";
-import type { CandlePoint } from "../types";
+import type { CandleGap, CandlePoint } from "../types";
 
 const TOOLTIP_PAD_X = 8;
 const TOOLTIP_PAD_Y = 6;
@@ -187,6 +192,8 @@ export interface CrosshairState {
    *  inactive) — single-series `useCrosshair` only; undefined on the multi-series
    *  crosshair. Surfaced for a custom candle `renderTooltip`. */
   scrubCandle?: SharedValue<CandlePoint | null>;
+  /** Explicit candle gap under the crosshair; single-series candle mode only. */
+  scrubGap?: SharedValue<CandleGap | null>;
   /** Canvas-Y where the crosshair line should start so it stops at a top-pinned
    *  custom tooltip's bottom edge instead of running up through it. Written by
    *  {@link CustomTooltipOverlay} (the label's measured bottom) when
@@ -307,6 +314,7 @@ export function snapScrubXToCandleCenter(
   canvasWidth: number,
   timestamp: number,
   windowSecs: number,
+  gaps: CandleGap[] = [],
 ): number {
   "worklet";
   const chartW = canvasWidth - padding.left - padding.right;
@@ -314,7 +322,22 @@ export function snapScrubXToCandleCenter(
   const winStart = timestamp - windowSecs;
   const t = winStart + ((x - padding.left) / chartW) * windowSecs;
   const candle = pickCandleAtTime(candles, liveCandle, t, candleWidthSecs);
-  if (!candle) return x;
+  if (!candle) {
+    const gap = pickCandleGapAtTime(gaps, t);
+    if (!gap) return x;
+    const bucket = candleGapBucketStartAtTime(
+      gap,
+      t,
+      candles,
+      liveCandle,
+      candleWidthSecs,
+    );
+    if (bucket === null) return x;
+    return (
+      padding.left +
+      ((bucket + candleWidthSecs / 2 - winStart) / windowSecs) * chartW
+    );
+  }
   return (
     padding.left +
     ((candle.time + candleWidthSecs / 2 - winStart) / windowSecs) * chartW
@@ -559,16 +582,29 @@ export function computeCandleTooltipLayout(
   formatTime: (t: number) => string,
   font: SkFont,
   monoCharWidth = 0,
+  gap: CandleGap | null = null,
+  gapValue: number | null = null,
 ): TooltipLayout {
   "worklet";
-  if (!scrubActive || !candle) return HIDDEN_TOOLTIP;
-  const lines: { text: string; dim: boolean }[] = [
-    { text: `O ${formatValue(candle.open)}`, dim: false },
-    { text: `H ${formatValue(candle.high)}`, dim: false },
-    { text: `L ${formatValue(candle.low)}`, dim: false },
-    { text: `C ${formatValue(candle.close)}`, dim: false },
-    { text: formatTime(scrubTime), dim: true },
-  ];
+  if (!scrubActive || (!candle && !gap)) return HIDDEN_TOOLTIP;
+  const lines: { text: string; dim: boolean }[] = candle
+    ? [
+        { text: `O ${formatValue(candle.open)}`, dim: false },
+        { text: `H ${formatValue(candle.high)}`, dim: false },
+        { text: `L ${formatValue(candle.low)}`, dim: false },
+        { text: `C ${formatValue(candle.close)}`, dim: false },
+        { text: formatTime(scrubTime), dim: true },
+      ]
+    : [
+        {
+          text: gap?.label ?? candleGapDefaultLabel(gap!.kind),
+          dim: false,
+        },
+        ...(gapValue === null
+          ? []
+          : [{ text: `Last ${formatValue(gapValue)}`, dim: false }]),
+        { text: formatTime(scrubTime), dim: true },
+      ];
   const layout = computeTooltipLayoutMulti(
     scrubActive,
     scrubX,
@@ -582,7 +618,11 @@ export function computeCandleTooltipLayout(
   // OHLC stack renders `stackedLines`, but a custom `renderTooltip` reads
   // `valueStr` / `timeStr` off the layout (same as line mode) — so a custom
   // candle tooltip gets a ready-made close + time without its own formatter.
-  layout.valueStr = formatValue(candle.close);
+  layout.valueStr = candle
+    ? formatValue(candle.close)
+    : gapValue === null
+      ? ""
+      : formatValue(gapValue);
   layout.timeStr = formatTime(scrubTime);
   return layout;
 }
