@@ -192,7 +192,7 @@ export interface CrosshairState {
    *  inactive) — single-series `useCrosshair` only; undefined on the multi-series
    *  crosshair. Surfaced for a custom candle `renderTooltip`. */
   scrubCandle?: SharedValue<CandlePoint | null>;
-  /** Explicit candle gap under the crosshair; single-series candle mode only. */
+  /** Explicit line or candle gap under the crosshair; single-series only. */
   scrubGap?: SharedValue<CandleGap | null>;
   /** Canvas-Y where the crosshair line should start so it stops at a top-pinned
    *  custom tooltip's bottom edge instead of running up through it. Written by
@@ -625,6 +625,47 @@ export function computeCandleTooltipLayout(
       : formatValue(gapValue);
   layout.timeStr = formatTime(scrubTime);
   return layout;
+}
+
+/** Two-row line-mode tooltip for an explicit semantic gap. */
+export function computeLineGapTooltipLayout(
+  scrubActive: boolean,
+  scrubX: number,
+  gap: CandleGap | null,
+  scrubTime: number,
+  padding: ChartPadding,
+  canvasWidth: number,
+  formatTime: (t: number) => string,
+  font: SkFont,
+  monoCharWidth = 0,
+  placement: "side" | "top" | "bottom" | "point" = "side",
+  showLabel = true,
+  showTime = true,
+  canvasHeight = 0,
+  margin = TOOLTIP_TOP_MARGIN,
+  scrubDotY = -1,
+): TooltipLayout {
+  "worklet";
+  if (!gap) return HIDDEN_TOOLTIP;
+  const label = gap.label ?? candleGapDefaultLabel(gap.kind);
+  return computeTooltipLayout(
+    scrubActive,
+    scrubX,
+    0,
+    scrubTime,
+    padding,
+    canvasWidth,
+    () => label,
+    formatTime,
+    font,
+    monoCharWidth,
+    placement,
+    showLabel,
+    showTime,
+    canvasHeight,
+    margin,
+    scrubDotY,
+  );
 }
 
 /** Single-series scrub value at window time — extracted for tests. */

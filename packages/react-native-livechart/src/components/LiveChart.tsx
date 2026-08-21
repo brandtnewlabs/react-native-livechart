@@ -102,6 +102,7 @@ import { useCrosshair } from "../hooks/useCrosshair";
 import { useDegen } from "../hooks/useDegen";
 import { useLiveChartHasData } from "../hooks/useLiveChartHasData";
 import { useLiveDot } from "../hooks/useLiveDot";
+import { useLineGapPaths } from "../hooks/useLineGapPaths";
 import { useMarkers } from "../hooks/useMarkers";
 import { useReferenceDrag } from "../hooks/useReferenceDrag";
 import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
@@ -297,6 +298,7 @@ function useLiveChartController({
   candleWidth = 60,
   liveCandle,
   candleGaps,
+  lineGaps,
   volume,
 
   // ── Behaviour ───────────────────────────────────────────────────────────
@@ -392,7 +394,9 @@ function useLiveChartController({
   // Volume bars sit below the candles — a candle-mode-only feature (inert in
   // line mode, like the candle paths themselves).
   const volumeCfg = isCandle ? resolveVolume(volume) : null;
-  const candleGapsCfg = isCandle ? resolveCandleGaps(candleGaps) : null;
+  const chartGapsCfg = resolveCandleGaps(isCandle ? candleGaps : lineGaps);
+  const candleGapsCfg = isCandle ? chartGapsCfg : null;
+  const lineGapsCfg = isCandle ? null : chartGapsCfg;
   const volumeBandHeight = volumeCfg?.maxHeight ?? 0;
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
   // Dot-lattice area fill (clipped to the under-line region). Inert in candle
@@ -427,15 +431,15 @@ function useLiveChartController({
   const tradeStreamResolved = resolveTradeStream(tradeStream);
   const metricsCfg = resolveMetrics(metrics);
 
-  const candleGapBands: ReferenceLine[] =
-    candleGapsCfg?.gaps.flatMap((gap) => {
-      const gapStyle = candleGapsCfg.styles[gap.kind];
+  const chartGapBands: ReferenceLine[] =
+    chartGapsCfg?.gaps.flatMap((gap) => {
+      const gapStyle = chartGapsCfg.styles[gap.kind];
       const band = gapStyle.band;
       if (band === null) return [];
       const label = gapStyle.label;
       return [
         {
-          id: `candle-gap:${gap.kind}:${gap.from}:${gap.to}`,
+          id: `chart-gap:${gap.kind}:${gap.from}:${gap.to}`,
           from: gap.from,
           to: gap.to,
           label:
@@ -455,7 +459,7 @@ function useLiveChartController({
     }) ?? [];
   // Gap bands append after consumer reference lines so public line indices stay
   // stable for callbacks. Time bands contribute no Y values or press targets.
-  const allRefLines = [...(referenceLines ?? []), ...candleGapBands];
+  const allRefLines = [...(referenceLines ?? []), ...chartGapBands];
   const refValues = collectReferenceValues(allRefLines);
 
   // Per-line live value overrides + drag flags for draggable lines and the custom
@@ -497,7 +501,7 @@ function useLiveChartController({
   const consumerRefLines = referenceLines ?? [];
   const refLineCustom = [
     ...customReferenceLineFlags(consumerRefLines, renderReferenceLine),
-    ...candleGapBands.map(() => false),
+    ...chartGapBands.map(() => false),
   ];
   // An off-axis renderer replaces only the edge-pinned tag. A full custom tag
   // takes precedence for the same line to avoid mounting two native tags.
@@ -507,7 +511,7 @@ function useLiveChartController({
       renderOffAxisReferenceLine,
       "off-axis",
     ),
-    ...candleGapBands.map(() => false),
+    ...chartGapBands.map(() => false),
   ].map((custom, index) => custom && !refLineCustom[index]);
   const refLineKeys = referenceLineReactKeys(allRefLines);
   // RN custom tags report their measured widths here so the Skia connector can
@@ -1009,6 +1013,7 @@ function useLiveChartController({
       ? thresholdSeriesGeom.samples
       : undefined,
     lineProp?.simplify,
+    lineGapsCfg?.gaps,
   );
 
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config
@@ -1057,7 +1062,7 @@ function useLiveChartController({
 
   // ── Overlay hooks ─────────────────────────────────────────────────────
   // Scrub/crosshair must see the same stash-backed candles as the engine.
-  const candleOpts = isCandle
+  const crosshairChartOpts = isCandle
     ? {
         mode,
         candles: candlesEngine,
@@ -1070,7 +1075,15 @@ function useLiveChartController({
           Boolean(candleGapsCfg?.styles.unavailable.bridge),
         bridgeUnknown: Boolean(candleGapsCfg?.styles.unknown.bridge),
       }
-    : undefined;
+    : lineGapsCfg
+      ? {
+          mode,
+          gaps: lineGapsCfg.gaps,
+          bridgeNoTrades: Boolean(lineGapsCfg.styles["no-trades"].bridge),
+          bridgeUnavailable: Boolean(lineGapsCfg.styles.unavailable.bridge),
+          bridgeUnknown: Boolean(lineGapsCfg.styles.unknown.bridge),
+        }
+      : undefined;
 
   const markersActive = markers != null;
   const markerClusterCfg = resolveMarkerCluster(markerCluster);
@@ -1171,7 +1184,7 @@ function useLiveChartController({
     // yet becomes scrubbable on touch. `static` only kills the continuous loop.
     scrubCfg !== null || scrubActionCfg !== null,
     onScrub,
-    candleOpts,
+    crosshairChartOpts,
     scrubHoldMs,
     onGestureStart,
     onGestureEnd,
@@ -1571,6 +1584,7 @@ function useLiveChartController({
     lineIsLinear,
     volumeCfg,
     candleGapsCfg,
+    lineGapsCfg,
     // Volume bars: active flag, fade-in opacity, and resolved colors (default to
     // the candle palette). The reserved band height is read by the x-axis.
     volumeActive: volumeCfg !== null,
@@ -1864,13 +1878,14 @@ function ChartFillLayer({
 
 type CandlePaths = ReturnType<typeof useCandlePaths>;
 type CandleGapPaths = ReturnType<typeof useCandleGapPaths>;
+type LineGapPaths = ReturnType<typeof useLineGapPaths>;
 
-function CandleGapPathBatch({
+function GapBridgePathBatch({
   paths,
   config,
   palette,
 }: {
-  paths: CandleGapPaths;
+  paths: CandleGapPaths | LineGapPaths;
   config: ResolvedCandleGapsConfig;
   palette: LiveChartPalette;
 }) {
@@ -1946,7 +1961,7 @@ function ChartCandleGapLayer({
     model.metricsCfg.candle,
   );
   const batch = (
-    <CandleGapPathBatch
+    <GapBridgePathBatch
       paths={paths}
       config={config}
       palette={model.palette}
@@ -1961,6 +1976,23 @@ function ChartCandleGapLayer({
     </>
   ) : (
     batch
+  );
+}
+
+/** Line-mode bridge paths live in a child so candle charts register no worklets. */
+function ChartLineGapLayer({ model }: { model: LiveChartModel }) {
+  const config = model.lineGapsCfg!;
+  const paths = useLineGapPaths(
+    model.engine,
+    model.effectivePadding,
+    config,
+  );
+  return (
+    <GapBridgePathBatch
+      paths={paths}
+      config={config}
+      palette={model.palette}
+    />
   );
 }
 
@@ -2230,6 +2262,7 @@ function ChartStack({
     lineGroupOpacity,
     seriesOpacity,
     linePath,
+    lineGapsCfg,
     lineIsLinear,
     strokeWidth,
     lineProp,
@@ -2374,6 +2407,7 @@ function ChartStack({
               />
             ) : null}
           </Path>
+          {lineGapsCfg && <ChartLineGapLayer model={model} />}
         </Group>
       </Group>
 

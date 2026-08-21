@@ -19,9 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   section can also be explicitly enabled or disabled. Reference-line bands now
   expose separate `fillColor` and `strokeOpacity` paint controls used by the gap
   renderer and available to standalone reference bands.
-  A dedicated Empty candles demo compares raw gaps, forward fill alone, semantic
-  defaults, and a configurable styled treatment against a simulated live
-  one-minute trade feed.
+  The Chart gaps demo compares raw gaps, forward fill alone, semantic defaults,
+  and a configurable styled treatment against a simulated live trade feed.
+- **Semantic line gaps.** `LiveChart.lineGaps` applies the same semantic model and
+  nested styles to line charts. Declared empty intervals split the main stroke,
+  area/dot fills, and threshold bands so they never interpolate through downtime;
+  bridge-enabled kinds draw a separately styled previous-value segment. Real
+  samples override conflicting metadata, line scrubbing surfaces the active gap,
+  and renderer-neutral `ChartGap*` aliases make one metadata/config shape reusable
+  across line and candlestick modes. The live Chart gaps demo now switches between
+  both renderers.
 
 ### Fixed
 

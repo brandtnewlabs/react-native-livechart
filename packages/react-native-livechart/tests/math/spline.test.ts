@@ -10,6 +10,16 @@ function makePath() {
 }
 
 describe("drawSpline", () => {
+  it("draws only the requested point range", () => {
+    const path = {
+      lineTo: jest.fn(),
+      cubicTo: jest.fn(),
+    };
+    drawSpline(path, [0, 0, 10, 1, 20, 2, 30, 3], undefined, true, 1, 3);
+    expect(path.lineTo).toHaveBeenCalledTimes(1);
+    expect(path.lineTo).toHaveBeenCalledWith(20, 2);
+  });
+
   it("returns early when fewer than 4 floats (n < 2)", () => {
     const path = makePath();
     drawSpline(path as never, [0, 0]);

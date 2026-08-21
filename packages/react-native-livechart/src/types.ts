@@ -1151,11 +1151,11 @@ export interface TooltipRenderProps {
    */
   candle: SharedValue<CandlePoint | null>;
   /**
-   * Explicit candle gap under the crosshair (`null` outside a configured gap).
-   * A gap never fabricates {@link candle}; inspect this field for no-trade,
-   * unavailable, or unknown-data treatment.
+   * Explicit line or candle gap under the crosshair (`null` outside a
+   * configured gap). A gap never fabricates {@link candle}; inspect this field
+   * for no-trade, unavailable, or unknown-data treatment.
    */
-  gap: SharedValue<CandleGap | null>;
+  gap: SharedValue<ChartGap | null>;
 }
 
 /** Inner plot rectangle in canvas pixels (a snapshot field of {@link ChartScale}). */
@@ -1756,8 +1756,8 @@ export interface ScrubPointCore {
 export interface ScrubPoint extends ScrubPointCore {
   /** In candle mode, the OHLC data of the candle under the crosshair. */
   candle?: CandlePoint;
-  /** Explicit candle gap under the crosshair, when a bridged gap supplies the value. */
-  gap?: CandleGap;
+  /** Explicit chart gap under the crosshair, when a bridged gap supplies the value. */
+  gap?: ChartGap;
 }
 
 /** Scrub callback payload for multi-series charts. */
@@ -1787,26 +1787,26 @@ export interface CandlePoint {
   volume?: number;
 }
 
-/** Why a candle time range contains no observed OHLC bucket. */
+/** Why a chart time range contains no observed market sample. */
 export type CandleGapKind = "no-trades" | "unavailable" | "unknown";
 
 /**
- * Explicit metadata for a candle-chart interval without an OHLC observation.
- * The range is half-open (`[from, to)`) and uses Unix seconds, matching
- * {@link CandlePoint.time}. Gaps do not replace or mutate real candles.
+ * Explicit metadata for a chart interval without an observed sample. The range
+ * is half-open (`[from, to)`) and uses Unix seconds, matching line points and
+ * {@link CandlePoint.time}. Gaps do not replace or mutate real data.
  */
 export interface CandleGap {
   /** Inclusive range start as a Unix timestamp in seconds. */
   from: number;
   /** Exclusive range end as a Unix timestamp in seconds. Must be greater than {@link from}. */
   to: number;
-  /** Semantic reason the interval has no candle. */
+  /** Semantic reason the interval has no observation. */
   kind: CandleGapKind;
   /** Optional localized label, e.g. `"Exchange maintenance"`. */
   label?: string;
 }
 
-/** Previous-close mark styling for a candle gap. */
+/** Previous-value bridge styling for a chart gap. */
 export interface CandleGapBridgeStyle {
   /** Mark color. Defaults to palette `refLine`. */
   color?: string;
@@ -1818,7 +1818,7 @@ export interface CandleGapBridgeStyle {
   strokeCap?: "butt" | "round" | "square";
 }
 
-/** Full-height time-band styling for a candle gap. */
+/** Full-height time-band styling for a chart gap. */
 export interface CandleGapBandStyle {
   /** Band fill color. Defaults to palette `refLine`. */
   fillColor?: string;
@@ -1837,7 +1837,7 @@ export interface CandleGapBandStyle {
   intervals?: [number, number];
 }
 
-/** Label styling for a candle-gap time band. Text comes from {@link CandleGap.label}. */
+/** Label styling for a chart-gap time band. Text comes from {@link CandleGap.label}. */
 export interface CandleGapLabelStyle {
   /** Label color. Defaults to palette `refLabel`. */
   color?: string;
@@ -1865,9 +1865,9 @@ export interface CandleGapStyle {
 }
 
 /**
- * Data and optional per-kind styling for explicit candle gaps. Gap metadata is
- * low-frequency React data (like `referenceLines`); live OHLC remains in the
- * `candles` SharedValue.
+ * Data and optional per-kind styling for explicit chart gaps. Gap metadata is
+ * low-frequency React data (like `referenceLines`); live market data remains in
+ * its SharedValue.
  */
 export interface CandleGapsConfig {
   /** Sorted, non-overlapping gap ranges. Invalid ranges are ignored. */
@@ -1875,6 +1875,21 @@ export interface CandleGapsConfig {
   /** Presentation overrides keyed by semantic gap kind. */
   styles?: Partial<Record<CandleGapKind, CandleGapStyle>>;
 }
+
+/** Semantic reason for a chart interval with no observed market sample. */
+export type ChartGapKind = CandleGapKind;
+/** Shared gap metadata used by both line and candlestick charts. */
+export type ChartGap = CandleGap;
+/** Previous-value bridge styling shared by line and candlestick gaps. */
+export type ChartGapBridgeStyle = CandleGapBridgeStyle;
+/** Full-height time-band styling shared by line and candlestick gaps. */
+export type ChartGapBandStyle = CandleGapBandStyle;
+/** Time-band label styling shared by line and candlestick gaps. */
+export type ChartGapLabelStyle = CandleGapLabelStyle;
+/** Per-kind gap presentation shared by line and candlestick charts. */
+export type ChartGapStyle = CandleGapStyle;
+/** Gap data and per-kind styles shared by line and candlestick charts. */
+export type ChartGapsConfig = CandleGapsConfig;
 
 // ── Metrics (sizing & motion tokens) ─────────────────────────────────────────
 
@@ -2556,6 +2571,14 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * unfilled. Candle mode only. Default off.
    */
   candleGaps?: CandleGap[] | CandleGapsConfig;
+  /**
+   * Explicit line-chart gaps. Pass a sorted array for semantic defaults, or a
+   * {@link ChartGapsConfig} to override per-kind styling. The normal line and
+   * every area fill stop at the interval boundaries; bridge-enabled kinds draw
+   * a flat previous-value segment. Real samples inside a range take precedence
+   * over its metadata. Line mode only. Default off.
+   */
+  lineGaps?: ChartGap[] | ChartGapsConfig;
   /**
    * Live trade fills for optional on-chart markers. Read on the UI thread only —
    * pass a `SharedValue` and update from JS via `.value` (same pattern as `data` / `value`).

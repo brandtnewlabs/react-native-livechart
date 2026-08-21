@@ -54,7 +54,14 @@ provided; everything else has a default.
 <ParamField body="candleGaps" type="CandleGap[] | CandleGapsConfig" default="off">
   Explicit no-trade, unavailable, or unknown candle intervals. The library never
   infers their meaning from sparse timestamps and never inserts synthetic OHLC.
-  See [Empty candles](/guides/empty-candles).
+  See [Chart gaps](/guides/empty-candles).
+</ParamField>
+
+<ParamField body="lineGaps" type="ChartGap[] | ChartGapsConfig" default="off">
+  Explicit no-trade, unavailable, or unknown line intervals. The line and every
+  area fill stop at empty interval boundaries; bridge-enabled kinds draw an
+  independently styled previous-value segment. Real samples take precedence.
+  See [Chart gaps](/guides/empty-candles).
 </ParamField>
 
 <ParamField body="volume" type="boolean | VolumeConfig" default="false">
