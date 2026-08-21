@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   LiveChart,
-  type CandleGap,
-  type CandleGapStyle,
-  type CandleGapsConfig,
   type CandlePoint,
+  type ChartGap,
+  type ChartGapsConfig,
+  type ChartGapStyle,
 } from "react-native-livechart";
 import { useDerivedValue } from "react-native-reanimated";
 
@@ -14,8 +14,9 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Empty candles" };
+export const options = { title: "Chart gaps" };
 
+type ChartMode = "line" | "candle";
 type Scenario = "no-trades" | "unavailable" | "unknown";
 type Treatment = "raw" | "forward" | "semantic" | "styled";
 type BridgeCap = "butt" | "round" | "square";
@@ -41,6 +42,10 @@ const SCENARIOS: { value: Scenario; label: string }[] = [
   { value: "no-trades", label: "No trades" },
   { value: "unavailable", label: "Maintenance" },
   { value: "unknown", label: "Unknown feed" },
+];
+const CHART_MODES: { value: ChartMode; label: string }[] = [
+  { value: "line", label: "Line" },
+  { value: "candle", label: "Candles" },
 ];
 const TREATMENTS: { value: Treatment; label: string }[] = [
   { value: "raw", label: "Raw gap" },
@@ -103,6 +108,7 @@ function labelFor(kind: Scenario): string {
 }
 
 function GapChart({
+  mode,
   scenario,
   treatment,
   volume,
@@ -110,6 +116,7 @@ function GapChart({
   paused,
   styled,
 }: {
+  mode: ChartMode;
   scenario: Scenario;
   treatment: Treatment;
   volume: boolean;
@@ -118,18 +125,16 @@ function GapChart({
   styled: StyledGapControls;
 }) {
   const [mountedAt] = useState(() => Date.now() / 1000);
-  const gap = useMemo<CandleGap>(() => {
-    const currentBucket =
-      Math.floor(mountedAt / CANDLE_WIDTH_SECS) * CANDLE_WIDTH_SECS;
-    return {
-      // Keep three complete empty buckets in recent history while the current
-      // bucket continues forming from the live simulated trade feed.
-      from: currentBucket - 6 * CANDLE_WIDTH_SECS,
-      to: currentBucket - 3 * CANDLE_WIDTH_SECS,
-      kind: scenario,
-      label: labelFor(scenario),
-    };
-  }, [mountedAt, scenario]);
+  const currentBucket =
+    Math.floor(mountedAt / CANDLE_WIDTH_SECS) * CANDLE_WIDTH_SECS;
+  const gap: ChartGap = {
+    // Keep three complete empty buckets in recent history while the current
+    // bucket continues forming from the live simulated trade feed.
+    from: currentBucket - 6 * CANDLE_WIDTH_SECS,
+    to: currentBucket - 3 * CANDLE_WIDTH_SECS,
+    kind: scenario,
+    label: labelFor(scenario),
+  };
   const { data, value, candles, liveCandle, tradeStream } =
     useSimulatedChartData({
       multiSeries: false,
@@ -147,7 +152,8 @@ function GapChart({
 
   // The simulator supplies dense historical ticks so each real candle has a
   // body and wick. Remove the declared interval at the data boundary; the
-  // renderer receives no OHLC or line points there and must rely on candleGaps.
+  // renderer receives no OHLC or line points there and must rely on explicit
+  // semantic metadata (`candleGaps` or `lineGaps`).
   const visibleData = useDerivedValue(() =>
     data.get().filter((point) => point.time < gap.from || point.time >= gap.to),
   );
@@ -157,11 +163,11 @@ function GapChart({
       .filter((candle) => candle.time < gap.from || candle.time >= gap.to),
   );
 
-  let candleGaps: CandleGap[] | CandleGapsConfig | undefined;
+  let chartGaps: ChartGap[] | ChartGapsConfig | undefined;
   if (treatment === "semantic") {
-    candleGaps = [gap];
+    chartGaps = [gap];
   } else if (treatment === "forward") {
-    candleGaps = {
+    chartGaps = {
       gaps: [gap],
       styles: {
         [scenario]: {
@@ -172,7 +178,7 @@ function GapChart({
       },
     };
   } else if (treatment === "styled") {
-    const style: CandleGapStyle = {
+    const style: ChartGapStyle = {
       bridge: styled.bridge
         ? {
             color: styled.independentColors ? "#16a34a" : undefined,
@@ -199,30 +205,32 @@ function GapChart({
             }
           : false,
     };
-    candleGaps = { gaps: [gap], styles: { [scenario]: style } };
+    chartGaps = { gaps: [gap], styles: { [scenario]: style } };
   }
 
   return (
     <LiveChart
       data={visibleData}
       value={value}
-      mode="candle"
-      candles={visibleCandles}
-      liveCandle={liveCandle}
+      mode={mode}
+      candles={mode === "candle" ? visibleCandles : undefined}
+      liveCandle={mode === "candle" ? liveCandle : undefined}
       candleWidth={CANDLE_WIDTH_SECS}
-      candleGaps={candleGaps}
+      candleGaps={mode === "candle" ? chartGaps : undefined}
+      lineGaps={mode === "line" ? chartGaps : undefined}
       timeWindow={BUCKET_COUNT * CANDLE_WIDTH_SECS}
       accentColor={ACCENT}
       theme={APP_THEME}
-      volume={volume}
+      volume={mode === "candle" ? volume : false}
       tradeStream={tradeStream}
-      scrub={{ tooltip: true, snapToCandles: snap }}
-      accessibilityLabel={`${labelFor(scenario)}, ${treatment} treatment`}
+      scrub={{ tooltip: true, snapToCandles: mode === "candle" && snap }}
+      accessibilityLabel={`${mode} chart, ${labelFor(scenario)}, ${treatment} treatment`}
     />
   );
 }
 
 export default function EmptyCandlesScreen() {
+  const [mode, setMode] = useState<ChartMode>("line");
   const [scenario, setScenario] = useState<Scenario>("unavailable");
   const [treatment, setTreatment] = useState<Treatment>("styled");
   const [volume, setVolume] = useState(true);
@@ -236,11 +244,9 @@ export default function EmptyCandlesScreen() {
   const [bandFillOpacity, setBandFillOpacity] = useState(0.16);
   const [borderOpacity, setBorderOpacity] = useState(0.7);
   const [borderWidth, setBorderWidth] = useState(3);
-  const [dashPattern, setDashPattern] =
-    useState<DashPattern>("balanced");
+  const [dashPattern, setDashPattern] = useState<DashPattern>("balanced");
   const [label, setLabel] = useState(true);
-  const [labelPosition, setLabelPosition] =
-    useState<LabelPosition>("right");
+  const [labelPosition, setLabelPosition] = useState<LabelPosition>("right");
   const [independentColors, setIndependentColors] = useState(true);
 
   const styled: StyledGapControls = {
@@ -260,11 +266,12 @@ export default function EmptyCandlesScreen() {
 
   return (
     <DemoScreen
-      title="Empty candles"
+      title="Chart gaps"
       docs="guides/empty-candles"
-      description="A live simulated one-minute trade feed around explicit no-trade, unavailable, and unknown intervals. Compare raw, forward-fill, semantic-default, and fully configurable styled treatments while the current candle moves."
+      description="A moving line or candlestick chart around explicit no-trade, unavailable, and unknown intervals. Compare raw sparse data, forward-fill, semantic defaults, and fully styled treatments while live trades continue."
       chart={
         <GapChart
+          mode={mode}
           scenario={scenario}
           treatment={treatment}
           volume={volume}
@@ -274,6 +281,12 @@ export default function EmptyCandlesScreen() {
         />
       }
     >
+      <ChipRow
+        label="Chart type"
+        options={CHART_MODES}
+        value={mode}
+        onChange={setMode}
+      />
       <ChipRow
         label="Gap meaning"
         options={SCENARIOS}
@@ -368,10 +381,12 @@ export default function EmptyCandlesScreen() {
           onChange={(live) => setPaused(!live)}
         />
       </ControlRow>
-      <ControlRow label="Verification">
-        <ToggleChip label="Volume bars" value={volume} onChange={setVolume} />
-        <ToggleChip label="Snap scrub" value={snap} onChange={setSnap} />
-      </ControlRow>
+      {mode === "candle" && (
+        <ControlRow label="Verification">
+          <ToggleChip label="Volume bars" value={volume} onChange={setVolume} />
+          <ToggleChip label="Snap scrub" value={snap} onChange={setSnap} />
+        </ControlRow>
+      )}
     </DemoScreen>
   );
 }

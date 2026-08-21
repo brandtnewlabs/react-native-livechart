@@ -7,6 +7,7 @@ import type {
   SingleEngineState,
 } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
+import { buildLineGapSegmentRanges } from "../draw/lineGap";
 import {
   makeLineSimplifyScratch,
   simplifyLinePoints,
@@ -15,6 +16,7 @@ import { drawSpline, makeSplineScratch } from "../math/spline";
 import { sampleThresholdYAt, thresholdSampleSpanX } from "../math/threshold";
 import { blendPtsY, squigglifyPts } from "../math/squiggly";
 import { usePathBuilder } from "./usePathBuilder";
+import type { CandleGap } from "../types";
 
 /** Selects the synthetic right-edge line tip without coupling chart geometry
  * to badge or live-indicator presentation options. */
@@ -58,6 +60,8 @@ export function useChartPaths(
   thresholdSamples?: SharedValue<number[]>,
   /** Screen-space path simplification tolerance in pixels. `0` disables it. */
   simplifyTolerance = 0,
+  /** Explicit empty intervals that split line and fill geometry. */
+  lineGaps: CandleGap[] = [],
 ) {
   const lineBuilder = usePathBuilder();
   const fillBuilder = usePathBuilder();
@@ -68,6 +72,10 @@ export function useChartPaths(
     ptsA: number[];
     ptsB: number[];
     rawPts: number[];
+    rangesA: number[];
+    rangesB: number[];
+    gapXs: number[];
+    rangesTick: boolean;
     ptsTick: boolean;
     squigglePts: number[];
     morphA: number[];
@@ -82,6 +90,10 @@ export function useChartPaths(
       ptsA: [] as number[],
       ptsB: [] as number[],
       rawPts: [] as number[],
+      rangesA: [] as number[],
+      rangesB: [] as number[],
+      gapXs: [] as number[],
+      rangesTick: false,
       ptsTick: false,
       squigglePts: [] as number[],
       morphA: [] as number[],
@@ -169,14 +181,39 @@ export function useChartPaths(
     );
   });
 
+  const segmentRanges = useDerivedValue(() => {
+    const cache = cacheRef.current!;
+    cache.rangesTick = !cache.rangesTick;
+    const ranges = cache.rangesTick ? cache.rangesA : cache.rangesB;
+    const windowSecs = engine.displayWindow.get();
+    const canvasWidth = engine.canvasWidth.get();
+    return buildLineGapSegmentRanges(
+      flatPts.get(),
+      engine.data.get(),
+      lineGaps,
+      engine.timestamp.get() - windowSecs,
+      windowSecs,
+      padding.left,
+      canvasWidth - padding.left - padding.right,
+      ranges,
+      cache.gapXs,
+    );
+  });
+
   const linePath = useDerivedValue(() => {
     const cache = cacheRef.current!;
     const pts = flatPts.get();
     const n = pts.length >> 1;
     if (n < 2) return cache.emptyPath;
     const b = lineBuilder.value;
-    b.moveTo(pts[0], pts[1]);
-    drawSpline(b, pts, cache.scratch, linear);
+    const ranges = segmentRanges.get();
+    if (ranges.length === 0) return cache.emptyPath;
+    for (let i = 0; i < ranges.length; i += 2) {
+      const start = ranges[i];
+      const end = ranges[i + 1];
+      b.moveTo(pts[start * 2], pts[start * 2 + 1]);
+      drawSpline(b, pts, cache.scratch, linear, start, end);
+    }
     return b.detach();
   });
 
@@ -186,12 +223,20 @@ export function useChartPaths(
     const n = pts.length >> 1;
     if (n < 2) return cache.emptyPath;
     const b = fillBuilder.value;
-    b.moveTo(pts[0], pts[1]);
-    drawSpline(b, pts, cache.scratch, linear);
+    const ranges = segmentRanges.get();
+    if (ranges.length === 0) return cache.emptyPath;
     const bottom = engine.canvasHeight.get() - padding.bottom;
-    b.lineTo(pts[(n - 1) * 2], bottom);
-    b.lineTo(pts[0], bottom);
-    b.close();
+    for (let i = 0; i < ranges.length; i += 2) {
+      const start = ranges[i];
+      const end = ranges[i + 1];
+      const first = start * 2;
+      const last = (end - 1) * 2;
+      b.moveTo(pts[first], pts[first + 1]);
+      drawSpline(b, pts, cache.scratch, linear, start, end);
+      b.lineTo(pts[last], bottom);
+      b.lineTo(pts[first], bottom);
+      b.close();
+    }
     return b.detach();
   });
 
@@ -207,19 +252,17 @@ export function useChartPaths(
     const pts = flatPts.get();
     const n = pts.length >> 1;
     if (n < 2) return cache.emptyPath;
+    const ranges = segmentRanges.get();
+    if (ranges.length === 0) return cache.emptyPath;
 
     const tsamples = thresholdSamples?.get();
     if (tsamples && tsamples.length >= 2) {
       const b = thresholdFillBuilder.value;
-      b.moveTo(pts[0], pts[1]);
-      drawSpline(b, pts, cache.scratch, linear);
       // Band bottom = the SAMPLED threshold (identical to what the split shader
       // reads), pinned to the LINE's x-range. Because the geometry and the shader
       // use the same evenly-spaced, linearly-interpolated samples, a step riser
       // ramps the same way in both — no green/red sliver bleeds through — and the
       // x-range pin keeps the band closing with clean vertical sides (no wedge).
-      const leftX = pts[0];
-      const rightX = pts[(n - 1) * 2];
       const count = tsamples.length;
       // The samples live on the time-anchored, gliding grid — interpolate them
       // across that span (same as the shader), not the static plot edges.
@@ -231,13 +274,23 @@ export function useChartPaths(
         count,
       );
       const step = (x1 - x0) / (count - 1);
-      b.lineTo(rightX, sampleThresholdYAt(tsamples, x0, x1, rightX));
-      for (let i = count - 1; i >= 0; i--) {
-        const sx = x0 + step * i;
-        if (sx > leftX && sx < rightX) b.lineTo(sx, tsamples[i]);
+      for (let range = 0; range < ranges.length; range += 2) {
+        const start = ranges[range];
+        const end = ranges[range + 1];
+        const first = start * 2;
+        const last = (end - 1) * 2;
+        const leftX = pts[first];
+        const rightX = pts[last];
+        b.moveTo(leftX, pts[first + 1]);
+        drawSpline(b, pts, cache.scratch, linear, start, end);
+        b.lineTo(rightX, sampleThresholdYAt(tsamples, x0, x1, rightX));
+        for (let i = count - 1; i >= 0; i--) {
+          const sx = x0 + step * i;
+          if (sx > leftX && sx < rightX) b.lineTo(sx, tsamples[i]);
+        }
+        b.lineTo(leftX, sampleThresholdYAt(tsamples, x0, x1, leftX));
+        b.close();
       }
-      b.lineTo(leftX, sampleThresholdYAt(tsamples, x0, x1, leftX));
-      b.close();
       return b.detach();
     }
 
@@ -245,11 +298,17 @@ export function useChartPaths(
     const yT = thresholdY.get();
     if (!Number.isFinite(yT)) return cache.emptyPath;
     const b = thresholdFillBuilder.value;
-    b.moveTo(pts[0], pts[1]);
-    drawSpline(b, pts, cache.scratch, linear);
-    b.lineTo(pts[(n - 1) * 2], yT);
-    b.lineTo(pts[0], yT);
-    b.close();
+    for (let i = 0; i < ranges.length; i += 2) {
+      const start = ranges[i];
+      const end = ranges[i + 1];
+      const first = start * 2;
+      const last = (end - 1) * 2;
+      b.moveTo(pts[first], pts[first + 1]);
+      drawSpline(b, pts, cache.scratch, linear, start, end);
+      b.lineTo(pts[last], yT);
+      b.lineTo(pts[first], yT);
+      b.close();
+    }
     return b.detach();
   });
 

@@ -60,7 +60,7 @@ export function CustomTooltipOverlay({
   scrubActive: SharedValue<boolean>;
   /** OHLC candle under the crosshair (candle mode); omitted/`null` in line mode. */
   scrubCandle?: SharedValue<CandlePoint | null>;
-  /** Explicit gap under the crosshair (candle mode); omitted/`null` in line mode. */
+  /** Explicit line or candle gap under the crosshair; omitted/`null` outside one. */
   scrubGap?: SharedValue<CandleGap | null>;
   tooltipLayout: SharedValue<TooltipLayout>;
   engine: ChartEngineLayout;
@@ -85,8 +85,7 @@ export function CustomTooltipOverlay({
   // a worklet-safe formatter for the value/time.
   const valueStr = useDerivedValue(() => tooltipLayout.get().valueStr);
   const timeStr = useDerivedValue(() => tooltipLayout.get().timeStr);
-  // A stable `null` candle SharedValue for line mode so `ctx.candle` is always
-  // present (a SharedValue), regardless of mode.
+  // Stable null SharedValues keep both fields present regardless of mode.
   const nullCandle = useSharedValue<CandlePoint | null>(null);
   const nullGap = useSharedValue<CandleGap | null>(null);
 

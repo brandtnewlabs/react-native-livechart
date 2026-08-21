@@ -15,11 +15,13 @@ import {
 import {
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
+  computeLineGapTooltipLayout,
   computeScrubTime,
   computeTooltipLayout,
   computeTooltipLayoutMulti,
   deriveCrosshairTooltipSingle,
   deriveScrubValueSingle,
+  HIDDEN_TOOLTIP,
   useCrosshair,
 } from "../../src/hooks/useCrosshair";
 
@@ -964,15 +966,7 @@ describe("useCrosshair (hook)", () => {
   it("exposes a gesture object", async () => {
     const engine = makeEngine();
     const { result } = await renderHook(() =>
-      useCrosshair(
-        engine,
-        padding,
-        palette,
-        formatValue,
-        formatTime,
-        font,
-        true,
-      ),
+      useCrosshair(engine, padding, palette, formatValue, formatTime, font, true),
     );
     expect(result.current.gesture).toBeDefined();
   });
@@ -1119,7 +1113,15 @@ describe("useCrosshair (hook)", () => {
   it("does not build a tap gesture or lock state without scrubAction", async () => {
     const engine = makeEngine();
     const { result } = await renderHook(() =>
-      useCrosshair(engine, padding, palette, formatValue, formatTime, font, true),
+      useCrosshair(
+        engine,
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+      ),
     );
     // Lock SharedValues are still created (hooks are unconditional)...
     expect(result.current.lockActive?.value).toBe(false);
@@ -1387,5 +1389,43 @@ describe("computeCandleTooltipLayout", () => {
     );
     expect(layout.w).toBeGreaterThan(0);
     expect(layout.h).toBeGreaterThan(0);
+  });
+});
+
+describe("computeLineGapTooltipLayout", () => {
+  it("uses the configurable semantic label and formatted time", () => {
+    const layout = computeLineGapTooltipLayout(
+      true,
+      100,
+      {
+        from: 990,
+        to: 1_010,
+        kind: "unavailable",
+        label: "Exchange maintenance",
+      },
+      1_000,
+      padding,
+      400,
+      formatTime,
+      font,
+    );
+    expect(layout.valueStr).toBe("Exchange maintenance");
+    expect(layout.timeStr).toBe(formatTime(1_000));
+    expect(layout.w).toBeGreaterThan(0);
+  });
+
+  it("is hidden without an active gap", () => {
+    expect(
+      computeLineGapTooltipLayout(
+        true,
+        100,
+        null,
+        1_000,
+        padding,
+        400,
+        formatTime,
+        font,
+      ),
+    ).toBe(HIDDEN_TOOLTIP);
   });
 });
