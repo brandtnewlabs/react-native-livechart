@@ -18,6 +18,7 @@ import type {
   LiveChartPoint,
   LiveChartProps,
   Marker,
+  ReferenceLineRenderProps,
   ThresholdConfig,
   TradeEvent,
 } from "../src/types";
@@ -33,6 +34,13 @@ function TradeStreamHarness() {
     { time: 1_700_000_050, price: 50, size: 1, side: "buy" },
   ]);
   return <Harness tradeStream={tradeStream} degen={{ scale: 1.2 }} />;
+}
+
+function VolumeTradeStreamHarness({ volume }: Pick<LiveChartProps, "volume">) {
+  const tradeStream = useSharedValue<TradeEvent[]>([
+    { time: 1_700_000_050, price: 50, size: 1, side: "buy" },
+  ]);
+  return <VolumeCandleHarness volume={volume} tradeStream={tradeStream} />;
 }
 
 function CandleHarness(props: Partial<LiveChartProps>) {
@@ -400,6 +408,23 @@ describe("LiveChart", () => {
       />,
     );
     await layoutFirst(screen);
+  });
+
+  it("keeps the trade stream anchored to the lower chart edge with volume", async () => {
+    const tradeSpy = jest.spyOn(tradeStreamHooks, "useTradeStream");
+
+    await render(<VolumeTradeStreamHarness volume={false} />);
+    const paddingWithoutVolume = tradeSpy.mock.calls.at(-1)?.[2];
+    tradeSpy.mockClear();
+
+    await render(
+      <VolumeTradeStreamHarness volume={{ maxHeight: 64 }} />,
+    );
+    const paddingWithVolume = tradeSpy.mock.calls.at(-1)?.[2];
+
+    expect(paddingWithoutVolume).toBeDefined();
+    expect(paddingWithVolume?.bottom).toBe(paddingWithoutVolume?.bottom);
+    tradeSpy.mockRestore();
   });
 
   it("ignores the volume prop in line mode", async () => {
@@ -900,6 +925,66 @@ describe("LiveChart", () => {
     await fireEvent(views[0], "layout", {
       nativeEvent: { layout: { width: 400, height: 300 } },
     });
+  });
+
+  it("renders explicit candle gaps with semantic defaults and overrides", async () => {
+    const renderReferenceLine = jest.fn(
+      (_ctx: ReferenceLineRenderProps) => null,
+    );
+    const screen = await render(
+      <CandleHarness
+        referenceLines={[{ value: 103, label: "Consumer line" }]}
+        renderReferenceLine={renderReferenceLine}
+        candleGaps={{
+          gaps: [
+            { from: 1700000060, to: 1700000120, kind: "no-trades" },
+            {
+              from: 1700000120,
+              to: 1700000180,
+              kind: "unavailable",
+              label: "Maintenance",
+            },
+            {
+              from: 1700000180,
+              to: 1700000240,
+              kind: "unknown",
+            },
+          ],
+          styles: {
+            unavailable: {
+              bridge: {
+                color: "#22c55e",
+                opacity: 0.4,
+                strokeWidth: 3,
+                strokeCap: "square",
+              },
+              band: {
+                fillColor: "#a855f7",
+                fillOpacity: 0.2,
+                borderColor: "#f59e0b",
+                borderOpacity: 0.6,
+                borderWidth: 2,
+                intervals: [6, 3],
+              },
+              label: { color: "#f8fafc", position: "right" },
+            },
+          },
+        }}
+      />,
+    );
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+    expect(JSON.stringify(screen.toJSON())).toContain("#a855f7");
+    expect(JSON.stringify(screen.toJSON())).toContain("#f59e0b");
+    expect(JSON.stringify(screen.toJSON())).toContain("#f8fafc");
+    expect(JSON.stringify(screen.toJSON())).toContain("#22c55e");
+    expect(
+      renderReferenceLine.mock.calls.some(
+        ([ctx]) => ctx.line.from !== undefined || ctx.line.to !== undefined,
+      ),
+    ).toBe(false);
   });
 
   it("renders candle mode with scrub enabled", async () => {

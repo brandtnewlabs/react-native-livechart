@@ -1,8 +1,9 @@
-import type { CandlePoint, LiveChartPoint } from "../types";
+import type { CandleGap, CandlePoint, LiveChartPoint } from "../types";
 
 import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
 import { thresholdRangeMinMax } from "../math/threshold";
+import { previousCandleCloseAtTime } from "../math/candleGaps";
 
 /** Scratch for the threshold range fold — only alive within one tick call. */
 const THRESHOLD_RANGE_SCRATCH: [number, number] = [0, 0];
@@ -131,6 +132,11 @@ export interface EngineTickInput {
   candles?: CandlePoint[];
   /** In-progress candle. Included in Y range when mode is `"candle"`. */
   liveCandle?: CandlePoint | null;
+  /** Explicit semantic gaps used only for previous-close range anchoring. */
+  candleGaps?: CandleGap[];
+  candleGapBridgeNoTrades?: boolean;
+  candleGapBridgeUnavailable?: boolean;
+  candleGapBridgeUnknown?: boolean;
 }
 
 /**
@@ -302,6 +308,33 @@ export function tickLiveChartEngineFrame(
   state.extremaMaxValue = hasMax ? tMax : NaN;
   state.extremaMinTime = hasMin ? minTime : NaN;
   state.extremaMaxTime = hasMax ? maxTime : NaN;
+
+  // A previous-close bridge is presentation, not a traded observation: include
+  // its anchor in the fitted range (so a viewport parked wholly inside an outage
+  // stays framed correctly) only after snapshotting the real-data extrema above.
+  if (input.mode === "candle" && input.candleGaps) {
+    const cs = input.candles ?? [];
+    const lc = input.liveCandle ?? null;
+    for (let i = 0; i < input.candleGaps.length; i++) {
+      const gap = input.candleGaps[i];
+      if (gap.from >= state.timestamp || gap.to <= winStart) continue;
+      const bridge =
+        gap.kind === "no-trades"
+          ? input.candleGapBridgeNoTrades
+          : gap.kind === "unavailable"
+            ? input.candleGapBridgeUnavailable
+            : input.candleGapBridgeUnknown;
+      if (!bridge) continue;
+      const anchor = previousCandleCloseAtTime(
+        cs,
+        lc,
+        Math.min(gap.to, state.timestamp),
+      );
+      if (anchor === null) continue;
+      if (anchor < tMin) tMin = anchor;
+      if (anchor > tMax) tMax = anchor;
+    }
+  }
 
   // Keep the animated live tip inside the range — but only while it's actually
   // in the window. Scrolled back, the live value sits beyond the frozen right

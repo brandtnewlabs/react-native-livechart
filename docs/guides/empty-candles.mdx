@@ -1,0 +1,108 @@
+---
+title: Empty candles
+icon: "calendar-xmark"
+description: "Represent no-trade, unavailable, and unknown candle intervals without fabricating OHLC data."
+---
+
+Missing candle timestamps are ambiguous: the market may have been open with no trades, trading may
+have been unavailable, or the data feed may be incomplete. `candleGaps` adds that meaning explicitly
+without inserting synthetic records into `candles`.
+
+<Note>
+  **Live example:**
+  [`app/demo/empty-candles.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/empty-candles.tsx)
+  compares raw, forward-fill, semantic-default, and custom-styled treatments while a simulated
+  trade feed forms the current candle. The **Styled** treatment exposes section toggles, independent
+  colors, bridge paint, band fill/border/dashes, and label placement. Use **Live trades** to pause
+  the feed for close inspection.
+</Note>
+
+```tsx
+import { LiveChart, type CandleGap } from "react-native-livechart";
+
+const gaps: CandleGap[] = [
+  {
+    from: maintenanceStart,
+    to: maintenanceEnd,
+    kind: "unavailable",
+    label: "Exchange maintenance",
+  },
+];
+
+<LiveChart
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  candleWidth={60}
+  candleGaps={gaps}
+/>;
+```
+
+## Semantic states
+
+| Kind | Default price treatment | Default market-state treatment |
+| --- | --- | --- |
+| `"no-trades"` | Neutral marks at the previous real close | No time band |
+| `"unavailable"` | Neutral previous-close marks | Shaded time band with an optional label |
+| `"unknown"` | No forward-filled price | Shaded time band with an optional label |
+
+The library never infers a reason from sparse timestamps. Omit `candleGaps` to retain a normal blank
+hole. Actual candles always render if they conflict with gap metadata; generated marks carry no
+volume and do not affect momentum or extrema labels.
+
+## Styling
+
+Pass the object form to override one or more semantic styles:
+
+```tsx
+<LiveChart
+  mode="candle"
+  candles={candles}
+  candleGaps={{
+    gaps,
+    styles: {
+      unavailable: {
+        bridge: { color: "#f59e0b", strokeWidth: 2 },
+        band: {
+          fillColor: "#78350f",
+          fillOpacity: 0.14,
+          borderColor: "#f59e0b",
+          borderOpacity: 0.8,
+          borderWidth: 1,
+          intervals: [5, 4],
+        },
+        label: { color: "#fef3c7", position: "left" },
+      },
+      unknown: {
+        bridge: false,
+        band: { fillOpacity: 0.08 },
+      },
+    },
+  }}
+/>
+```
+
+Each nested section can be set to `false` to disable it, omitted to keep that gap kind's semantic
+default, or set to an object to enable it and override its paint. For example,
+`{ bridge: {}, band: false, label: false }` gives a forward-fill-only treatment. This preserves
+time spacing but is intentionally ambiguous; prefer a labeled `"unavailable"` band when downtime
+is known. A gap with no preceding real candle cannot be price-bridged.
+
+## Timeframes and partial buckets
+
+Gap ranges use absolute `[from, to)` Unix-second intervals. Empty marks are re-bucketed from
+`candleWidth`, so the same metadata works across timeframe changes. Only fully covered, actually
+missing buckets receive a mark. A partial outage within a bucket can still show a time band, but it
+does not turn a bucket containing trades into an empty candle.
+
+## Scrubbing
+
+The built-in candle tooltip shows the gap label and time. A bridged gap also shows the last observed
+close; an `"unknown"` gap remains price-free. `scrub.snapToCandles` snaps across explicit
+`"no-trades"` buckets as well as real candles.
+
+Custom tooltips receive `ctx.gap: SharedValue<CandleGap | null>`. The JS-thread `onScrub` payload
+includes `gap` when the gap supplies a previous-close value. Unbridged gaps—including
+`"unknown"` by default—do not emit a fabricated numeric scrub value.
+
+See [Candlestick](/guides/candlestick) for OHLC input, volume, sizing, and normal candle styling.

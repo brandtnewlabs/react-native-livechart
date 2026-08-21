@@ -80,7 +80,7 @@ function candleValueToY(
  * repainting only the selected body and wick without building another SkPath.
  */
 export function computeCandleFocusClip(
-  candle: CandlePoint | null,
+  candle: { time: number } | null,
   padding: ChartPadding,
   canvasW: number,
   canvasH: number,

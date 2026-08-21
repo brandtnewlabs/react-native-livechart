@@ -18,6 +18,7 @@ import Animated, {
   withDelay,
   withSequence,
   withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN, scheduleOnUI } from "react-native-worklets";
 
@@ -45,6 +46,7 @@ import {
   resolveAreaDots,
   resolveAxisLabel,
   resolveBadge,
+  resolveCandleGaps,
   resolveDegen,
   resolveDot,
   resolveGradient,
@@ -70,7 +72,10 @@ import {
   resolveXAxis,
   resolveYAxis,
 } from "../core/resolveConfig";
-import type { ResolvedThresholdConfig } from "../core/resolveConfig";
+import type {
+  ResolvedCandleGapsConfig,
+  ResolvedThresholdConfig,
+} from "../core/resolveConfig";
 import {
   liveIndicatorScrollOpacity,
   resolveHideLiveOnScrollBack,
@@ -85,6 +90,7 @@ import {
 import { dotGlowRadialOutset, pulseRadialOutset } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
+import { useCandleGapPaths } from "../hooks/useCandleGapPaths";
 import { useCandlePaths, useCandleWidthLerp } from "../hooks/useCandlePaths";
 import { useCanvasLayout } from "../hooks/useCanvasLayout";
 import { useChartColors } from "../hooks/useChartColors";
@@ -122,6 +128,10 @@ import {
   formatValue as defaultFormatValue,
 } from "../lib/format";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
+import {
+  candleGapBucketStartAtTime,
+  candleGapDefaultLabel,
+} from "../math/candleGaps";
 import { computeScrubDotY } from "../hooks/crosshairShared";
 import {
   groupReferenceLines,
@@ -147,6 +157,7 @@ import type {
   LiveChartPoint,
   LiveChartProps,
   Marker,
+  ReferenceLine,
 } from "../types";
 import {
   ThresholdBadgeOverlay,
@@ -285,6 +296,7 @@ function useLiveChartController({
   candles,
   candleWidth = 60,
   liveCandle,
+  candleGaps,
   volume,
 
   // ── Behaviour ───────────────────────────────────────────────────────────
@@ -380,6 +392,7 @@ function useLiveChartController({
   // Volume bars sit below the candles — a candle-mode-only feature (inert in
   // line mode, like the candle paths themselves).
   const volumeCfg = isCandle ? resolveVolume(volume) : null;
+  const candleGapsCfg = isCandle ? resolveCandleGaps(candleGaps) : null;
   const volumeBandHeight = volumeCfg?.maxHeight ?? 0;
   const gradientCfg = isCandle ? null : resolveGradient(gradient);
   // Dot-lattice area fill (clipped to the under-line region). Inert in candle
@@ -414,7 +427,35 @@ function useLiveChartController({
   const tradeStreamResolved = resolveTradeStream(tradeStream);
   const metricsCfg = resolveMetrics(metrics);
 
-  const allRefLines = referenceLines ?? [];
+  const candleGapBands: ReferenceLine[] =
+    candleGapsCfg?.gaps.flatMap((gap) => {
+      const gapStyle = candleGapsCfg.styles[gap.kind];
+      const band = gapStyle.band;
+      if (band === null) return [];
+      const label = gapStyle.label;
+      return [
+        {
+          id: `candle-gap:${gap.kind}:${gap.from}:${gap.to}`,
+          from: gap.from,
+          to: gap.to,
+          label:
+            label === null
+              ? undefined
+              : (gap.label ?? candleGapDefaultLabel(gap.kind)),
+          color: band.borderColor,
+          fillColor: band.fillColor,
+          fillOpacity: band.fillOpacity,
+          strokeOpacity: band.borderOpacity,
+          strokeWidth: band.borderWidth > 0 ? band.borderWidth : undefined,
+          intervals: band.intervals,
+          labelColor: label?.color,
+          labelPosition: label?.position,
+        },
+      ];
+    }) ?? [];
+  // Gap bands append after consumer reference lines so public line indices stay
+  // stable for callbacks. Time bands contribute no Y values or press targets.
+  const allRefLines = [...(referenceLines ?? []), ...candleGapBands];
   const refValues = collectReferenceValues(allRefLines);
 
   // Per-line live value overrides + drag flags for draggable lines and the custom
@@ -451,17 +492,23 @@ function useLiveChartController({
 
   // Form-A lines a custom `renderReferenceLine` owns → suppress their built-in tag
   // (no double-draw). Probed on the JS thread, index-aligned with `allRefLines`.
-  const refLineCustom = customReferenceLineFlags(
-    allRefLines,
-    renderReferenceLine,
-  );
+  // Semantic gap bands are library-owned annotations: do not leak them through
+  // the consumer's reference-line renderer or change its callback cardinality.
+  const consumerRefLines = referenceLines ?? [];
+  const refLineCustom = [
+    ...customReferenceLineFlags(consumerRefLines, renderReferenceLine),
+    ...candleGapBands.map(() => false),
+  ];
   // An off-axis renderer replaces only the edge-pinned tag. A full custom tag
   // takes precedence for the same line to avoid mounting two native tags.
-  const refLineOffAxisCustom = customReferenceLineFlags(
-    allRefLines,
-    renderOffAxisReferenceLine,
-    "off-axis",
-  ).map((custom, index) => custom && !refLineCustom[index]);
+  const refLineOffAxisCustom = [
+    ...customReferenceLineFlags(
+      consumerRefLines,
+      renderOffAxisReferenceLine,
+      "off-axis",
+    ),
+    ...candleGapBands.map(() => false),
+  ].map((custom, index) => custom && !refLineCustom[index]);
   const refLineKeys = referenceLineReactKeys(allRefLines);
   // RN custom tags report their measured widths here so the Skia connector can
   // start after the native badge instead of the hidden built-in pill.
@@ -747,6 +794,13 @@ function useLiveChartController({
     mode,
     candles: isCandle ? candlesEngine : candles,
     liveCandle: isCandle ? liveEngine : liveCandle,
+    candleGaps: candleGapsCfg?.gaps,
+    candleGapBridgeNoTrades:
+      Boolean(candleGapsCfg?.styles["no-trades"].bridge),
+    candleGapBridgeUnavailable:
+      Boolean(candleGapsCfg?.styles.unavailable.bridge),
+    candleGapBridgeUnknown:
+      Boolean(candleGapsCfg?.styles.unknown.bridge),
   });
 
   // Mirror the UI-thread scroll state to React so the floating y-axis can keep
@@ -1009,6 +1063,12 @@ function useLiveChartController({
         candles: candlesEngine,
         liveCandle: liveEngine,
         candleWidthSecs: candleWidth,
+        gaps: candleGapsCfg?.gaps,
+        bridgeNoTrades:
+          Boolean(candleGapsCfg?.styles["no-trades"].bridge),
+        bridgeUnavailable:
+          Boolean(candleGapsCfg?.styles.unavailable.bridge),
+        bridgeUnknown: Boolean(candleGapsCfg?.styles.unknown.bridge),
       }
     : undefined;
 
@@ -1510,6 +1570,7 @@ function useLiveChartController({
     thresholdFillPath,
     lineIsLinear,
     volumeCfg,
+    candleGapsCfg,
     // Volume bars: active flag, fade-in opacity, and resolved colors (default to
     // the candle palette). The reserved band height is read by the x-axis.
     volumeActive: volumeCfg !== null,
@@ -1802,6 +1863,106 @@ function ChartFillLayer({
 }
 
 type CandlePaths = ReturnType<typeof useCandlePaths>;
+type CandleGapPaths = ReturnType<typeof useCandleGapPaths>;
+
+function CandleGapPathBatch({
+  paths,
+  config,
+  palette,
+}: {
+  paths: CandleGapPaths;
+  config: ResolvedCandleGapsConfig;
+  palette: LiveChartPalette;
+}) {
+  const noTrades = config.styles["no-trades"].bridge;
+  const unavailable = config.styles.unavailable.bridge;
+  const unknown = config.styles.unknown.bridge;
+  return (
+    <>
+      {noTrades !== null && (
+        <Group opacity={noTrades.opacity}>
+          <Path
+            path={paths.noTradesPath}
+            style="stroke"
+            strokeWidth={noTrades.strokeWidth}
+            strokeCap={noTrades.strokeCap}
+            color={noTrades.color ?? palette.refLine}
+          />
+        </Group>
+      )}
+      {unavailable !== null && (
+        <Group opacity={unavailable.opacity}>
+          <Path
+            path={paths.unavailablePath}
+            style="stroke"
+            strokeWidth={unavailable.strokeWidth}
+            strokeCap={unavailable.strokeCap}
+            color={unavailable.color ?? palette.refLine}
+          />
+        </Group>
+      )}
+      {unknown !== null && (
+        <Group opacity={unknown.opacity}>
+          <Path
+            path={paths.unknownPath}
+            style="stroke"
+            strokeWidth={unknown.strokeWidth}
+            strokeCap={unknown.strokeCap}
+            color={unknown.color ?? palette.refLine}
+          />
+        </Group>
+      )}
+    </>
+  );
+}
+
+function ChartCandleGapLayer({
+  model,
+  config,
+  focusOtherCandles,
+  inactiveOpacity,
+  focusedOpacity,
+  focusedClip,
+}: {
+  model: LiveChartModel;
+  config: ResolvedCandleGapsConfig;
+  focusOtherCandles: boolean;
+  inactiveOpacity: SharedValue<number>;
+  focusedOpacity: SharedValue<number>;
+  focusedClip: SharedValue<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
+}) {
+  const paths = useCandleGapPaths(
+    model.engine,
+    model.effectivePadding,
+    model.candlesEngine,
+    model.liveEngine,
+    model.displayCandleWidth,
+    config,
+    model.metricsCfg.candle,
+  );
+  const batch = (
+    <CandleGapPathBatch
+      paths={paths}
+      config={config}
+      palette={model.palette}
+    />
+  );
+  return focusOtherCandles ? (
+    <>
+      <Group opacity={inactiveOpacity}>{batch}</Group>
+      <Group opacity={focusedOpacity} clip={focusedClip}>
+        {batch}
+      </Group>
+    </>
+  ) : (
+    batch
+  );
+}
 
 /** One batched candle pass: two body paths and two wick paths. */
 function CandlePathBatch({
@@ -1858,6 +2019,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     volumeOpacity,
     volumeUpColor,
     volumeDownColor,
+    candleGapsCfg,
     scrubCfg,
     crosshair,
   } = model;
@@ -1875,24 +2037,42 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
   const focusOtherCandles = scrubCfg?.dimTarget === "otherCandles";
   const candleDimOpacity = scrubCfg?.dimOpacity ?? 1;
   const candleDimFadeMs = scrubCfg?.dimFadeMs ?? 0;
-  // Destructure the two SharedValues before entering worklets. Closing over the
+  // Destructure SharedValues before entering worklets. Closing over the
   // whole crosshair object would also serialize its RNGH gesture instances.
   const scrubActive = crosshair.scrubActive;
   // ChartCandleLayer is single-series only; useCrosshair always supplies this
   // value (it is optional on the shared state type only for LiveChartSeries).
   const scrubCandle = crosshair.scrubCandle!;
-  // Keep the last selection after scrubCandle clears so its clipped full-
+  const scrubGap = crosshair.scrubGap!;
+  const scrubTime = crosshair.scrubTime;
+  const currentFocusBucketTime = useDerivedValue(() => {
+    if (!focusOtherCandles) return null;
+    const candle = scrubCandle.get();
+    if (candle) return candle.time;
+    const gap = scrubGap.get();
+    if (!gap) return null;
+    return candleGapBucketStartAtTime(
+      gap,
+      scrubTime.get(),
+      candlesEngine.get(),
+      liveEngine.get(),
+      displayCandleWidth.get(),
+    );
+  });
+  // Keep the last selection after the current target clears so its clipped full-
   // strength pass can cover the base batch until the release fade completes.
-  const lastScrubCandle = useSharedValue<CandlePoint | null>(null);
+  const lastFocusBucket = useSharedValue<{ time: number } | null>(null);
   useAnimatedReaction(
-    () => (focusOtherCandles ? scrubCandle.get() : null),
-    (candle) => {
-      if (candle) lastScrubCandle.set(candle);
+    () => currentFocusBucketTime.get(),
+    (time) => {
+      if (time !== null) lastFocusBucket.set({ time });
     },
   );
   const inactiveCandleOpacity = useDerivedValue(() => {
     const target =
-      focusOtherCandles && scrubActive.get() && scrubCandle.get()
+      focusOtherCandles &&
+      scrubActive.get() &&
+      currentFocusBucketTime.get() !== null
         ? candleDimOpacity
         : 1;
     return candleDimFadeMs > 0
@@ -1901,33 +2081,36 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
   }, [
     focusOtherCandles,
     scrubActive,
-    scrubCandle,
+    currentFocusBucketTime,
     candleDimOpacity,
     candleDimFadeMs,
   ]);
   const focusedCandleOpacity = useDerivedValue(() => {
-    const currentCandle = scrubCandle.get();
-    const focusCandle = currentCandle ?? lastScrubCandle.get();
-    if (!focusOtherCandles || !focusCandle) return 0;
+    const currentTime = currentFocusBucketTime.get();
+    const focusBucket =
+      currentTime === null ? lastFocusBucket.get() : { time: currentTime };
+    if (!focusOtherCandles || !focusBucket) return 0;
     return computeCandleFocusPassOpacity(
       scrubActive.get(),
-      currentCandle !== null,
+      currentTime !== null,
       inactiveCandleOpacity.get(),
     );
   }, [
     focusOtherCandles,
     scrubActive,
-    scrubCandle,
-    lastScrubCandle,
+    currentFocusBucketTime,
+    lastFocusBucket,
     inactiveCandleOpacity,
   ]);
   const focusedCandleClip = useDerivedValue(() => {
     if (!focusOtherCandles) {
       return HIDDEN_CANDLE_FOCUS_CLIP;
     }
-    const focusCandle = scrubCandle.get() ?? lastScrubCandle.get();
+    const currentTime = currentFocusBucketTime.get();
+    const focusBucket =
+      currentTime === null ? lastFocusBucket.get() : { time: currentTime };
     return computeCandleFocusClip(
-      focusCandle,
+      focusBucket,
       effectivePadding,
       engine.canvasWidth.get(),
       engine.canvasHeight.get(),
@@ -1937,8 +2120,8 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     );
   }, [
     focusOtherCandles,
-    scrubCandle,
-    lastScrubCandle,
+    currentFocusBucketTime,
+    lastFocusBucket,
     effectivePadding,
     engine.canvasWidth,
     engine.canvasHeight,
@@ -1950,6 +2133,16 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
   return (
     <Group opacity={seriesOpacity}>
       <Group opacity={candleGroupOpacity}>
+        {candleGapsCfg && (
+          <ChartCandleGapLayer
+            model={model}
+            config={candleGapsCfg}
+            focusOtherCandles={focusOtherCandles}
+            inactiveOpacity={inactiveCandleOpacity}
+            focusedOpacity={focusedCandleOpacity}
+            focusedClip={focusedCandleClip}
+          />
+        )}
         {focusOtherCandles ? (
           <>
             <Group opacity={inactiveCandleOpacity}>
@@ -2310,15 +2503,27 @@ function ChartTradeStreamLayer({
     tradeStream,
     tradeStreamResolved,
     effectivePadding,
+    volumeBandHeight,
     palette,
     skiaFont,
     reveal,
     isStatic,
   } = model;
+  // `effectivePadding.bottom` includes the volume reservation so candle prices
+  // stop above the bars. The trade tape should still enter at the chart's true
+  // lower edge (the volume baseline / x-axis), so remove that reservation for
+  // this overlay's coordinate space only.
+  const tradeStreamPadding =
+    volumeBandHeight > 0
+      ? {
+          ...effectivePadding,
+          bottom: effectivePadding.bottom - volumeBandHeight,
+        }
+      : effectivePadding;
   const tradeMarkers = useTradeStream(
     engine,
     tradeStream!,
-    effectivePadding,
+    tradeStreamPadding,
     !isStatic,
     !isStatic,
   );
@@ -2327,7 +2532,7 @@ function ChartTradeStreamLayer({
       <TradeStreamOverlay
         markers={tradeMarkers}
         palette={palette}
-        padding={effectivePadding}
+        padding={tradeStreamPadding}
         font={skiaFont}
         opacity={reveal.dotOpacity}
         labelOffsetX={tradeStreamResolved!.labelOffsetX}
@@ -2900,6 +3105,7 @@ function ChartView({
             scrubTime={crosshair.scrubTime}
             scrubActive={crosshair.scrubActive}
             scrubCandle={crosshair.scrubCandle}
+            scrubGap={crosshair.scrubGap}
             tooltipLayout={crosshair.tooltipLayout}
             engine={engine}
             padding={effectivePadding}

@@ -17,7 +17,12 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
-import type { CandlePoint, LiveChartPoint, SeriesConfig } from "../types";
+import type {
+  CandleGap,
+  CandlePoint,
+  LiveChartPoint,
+  SeriesConfig,
+} from "../types";
 import {
   tickLiveChartEngineFrame,
   type EngineTickInput,
@@ -95,6 +100,10 @@ export interface EngineConfig {
   mode?: "line" | "candle";
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
+  candleGaps?: CandleGap[];
+  candleGapBridgeNoTrades?: boolean;
+  candleGapBridgeUnavailable?: boolean;
+  candleGapBridgeUnknown?: boolean;
 }
 
 /** Canvas, time window, and Y-range — shared by single- and multi-series engines. */
@@ -238,6 +247,10 @@ export interface EngineFrameRefs {
   modeSV: SharedValue<"line" | "candle">;
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
+  candleGapsSV?: SharedValue<CandleGap[] | undefined>;
+  candleGapBridgeNoTradesSV?: SharedValue<boolean>;
+  candleGapBridgeUnavailableSV?: SharedValue<boolean>;
+  candleGapBridgeUnknownSV?: SharedValue<boolean>;
   extremaMinValue: SharedValue<number>;
   extremaMaxValue: SharedValue<number>;
   extremaMinTime: SharedValue<number>;
@@ -359,6 +372,12 @@ export function applyLiveChartEngineFrame(
   input.mode = sv.modeSV.value;
   input.candles = sv.candles?.value;
   input.liveCandle = sv.liveCandle?.value;
+  input.candleGaps = sv.candleGapsSV?.value;
+  input.candleGapBridgeNoTrades =
+    sv.candleGapBridgeNoTradesSV?.value ?? false;
+  input.candleGapBridgeUnavailable =
+    sv.candleGapBridgeUnavailableSV?.value ?? false;
+  input.candleGapBridgeUnknown = sv.candleGapBridgeUnknownSV?.value ?? false;
   tickLiveChartEngineFrame(state, input);
   sv.displayValue.value = state.displayValue;
   sv.displayMin.value = state.displayMin;
@@ -452,6 +471,16 @@ export function useLiveChartEngine(
     () => config.returnToLiveMs ?? RETURN_TO_LIVE_MS,
   );
   const modeSV = useDerivedValue(() => config.mode ?? "line");
+  const candleGapsSV = useDerivedValue(() => config.candleGaps);
+  const candleGapBridgeNoTradesSV = useDerivedValue(
+    () => config.candleGapBridgeNoTrades ?? false,
+  );
+  const candleGapBridgeUnavailableSV = useDerivedValue(
+    () => config.candleGapBridgeUnavailable ?? false,
+  );
+  const candleGapBridgeUnknownSV = useDerivedValue(
+    () => config.candleGapBridgeUnknown ?? false,
+  );
 
   // Animation state (mutated on UI thread each frame)
   const displayValue = useSharedValue(0);
@@ -548,15 +577,18 @@ export function useLiveChartEngine(
     modeSV,
     candles,
     liveCandle,
+    candleGapsSV,
+    candleGapBridgeNoTradesSV,
+    candleGapBridgeUnavailableSV,
+    candleGapBridgeUnknownSV,
     extremaMinValue,
     extremaMaxValue,
     extremaMinTime,
     extremaMaxTime,
   };
-  const frameScratchRef = useRef<EngineFrameScratch | null>(null);
-  if (frameScratchRef.current === null) {
-    frameScratchRef.current = makeEngineFrameScratch();
-  }
+  const [frameScratchRef] = useState(() => ({
+    current: makeEngineFrameScratch(),
+  }));
 
   // `autostart=false` registers the frame callback without running it — the live
   // loop is fully inert in static mode (the invariant that makes this worth it).

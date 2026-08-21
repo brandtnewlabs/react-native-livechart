@@ -53,6 +53,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "mode=candle: timeframes, candle colors, OHLC bodies + wicks.",
       },
       {
+        href: "/demo/empty-candles" as Href,
+        title: "Empty candles",
+        blurb: "Review semantic gaps and configurable bridge, band, and label styles against a live feed.",
+      },
+      {
         href: "/demo/multi-series",
         title: "Multi-series",
         blurb: "LiveChartSeries: legend, dots, and Morfi-style scrub tooltip pills.",

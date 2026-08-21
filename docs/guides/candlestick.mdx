@@ -152,3 +152,7 @@ callback also includes `point.candle` for the OHLC under the crosshair. Set
 crosshair jump from candle center to candle center instead of gliding.
 
 See the full prop list in the [`LiveChart` reference](/api-reference/livechart).
+
+For intervals without OHLC—no trades, exchange maintenance, or incomplete feed
+coverage—use [`candleGaps`](/guides/empty-candles) instead of fabricating normal
+bullish/bearish candles.
