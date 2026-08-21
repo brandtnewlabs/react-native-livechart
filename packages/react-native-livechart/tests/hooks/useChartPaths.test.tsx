@@ -110,6 +110,35 @@ describe("useChartPaths", () => {
     expect(result.current.thresholdFillPath.value).toBeDefined();
   });
 
+  it("splits line, area, and threshold geometry around explicit line gaps", async () => {
+    const { result } = await renderHook(() => {
+      const thresholdSamples = useSharedValue([50, 48, 44, 46, 45]);
+      return useChartPaths(
+        makeEngine({
+          data: {
+            value: [
+              { time: 980, value: 1 },
+              { time: 990, value: 1.5 },
+              { time: 1_000, value: 2 },
+            ],
+          },
+        } as unknown as Partial<ChartPathsEngine>),
+        DEFAULT_PADDING,
+        undefined,
+        undefined,
+        false,
+        undefined,
+        undefined,
+        thresholdSamples,
+        0,
+        [{ from: 981, to: 989, kind: "unavailable" }],
+      );
+    });
+    expect(result.current.linePath.value).toBeDefined();
+    expect(result.current.fillPath.value).toBeDefined();
+    expect(result.current.thresholdFillPath.value).toBeDefined();
+  });
+
   it("blends toward squiggly when morphT < 1", async () => {
     const { result } = await renderHook(() => {
       const morphT = useSharedValue(0.5);

@@ -10,6 +10,8 @@ All types are exported from the package root:
 import type {
   CandleGap,
   CandleGapsConfig,
+  ChartGap,
+  ChartGapsConfig,
   LiveChartHandle,
   LiveChartPoint,
   ReferenceLine,
@@ -54,6 +56,10 @@ interface CandleGap {
   kind: CandleGapKind;
   label?: string;
 }
+
+// Renderer-neutral aliases used by lineGaps. The candle names remain available.
+type ChartGapKind = CandleGapKind;
+type ChartGap = CandleGap;
 
 interface SeriesConfig {
   id: string;
@@ -281,7 +287,7 @@ interface ScrubPointCore {
 
 interface ScrubPoint extends ScrubPointCore {
   candle?: CandlePoint; // candle mode only
-  gap?: CandleGap; // candle mode only, when the active time is in a declared gap
+  gap?: ChartGap; // line or candle mode, when a bridged declared gap supplies value
 }
 
 interface ScrubPointMulti extends ScrubPointCore {
@@ -331,6 +337,11 @@ interface CandleGapsConfig {
   gaps: CandleGap[];
   styles?: Partial<Record<CandleGapKind, CandleGapStyle>>;
 }
+type ChartGapBridgeStyle = CandleGapBridgeStyle;
+type ChartGapBandStyle = CandleGapBandStyle;
+type ChartGapLabelStyle = CandleGapLabelStyle;
+type ChartGapStyle = CandleGapStyle;
+type ChartGapsConfig = CandleGapsConfig;
 interface LineConfig {
   width?: number;   // stroke width in px; default 2
   color?: string;   // line color override; defaults to palette accent
@@ -689,8 +700,8 @@ interface TooltipRenderProps {
   active: SharedValue<boolean>;      // whether scrubbing is active
   // Candle mode: the OHLC bucket under the crosshair (null in line mode / inactive).
   candle: SharedValue<CandlePoint | null>;
-  // Candle mode: the declared gap under the crosshair (null otherwise).
-  gap: SharedValue<CandleGap | null>;
+  // Line or candle mode: the declared gap under the crosshair (null otherwise).
+  gap: SharedValue<ChartGap | null>;
 }
 ```
 
