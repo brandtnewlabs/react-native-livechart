@@ -85,6 +85,55 @@ threshold={{
 While a threshold is set it supersedes `line.color` / `line.colors` and segment
 recoloring for the main stroke.
 
+## Custom threshold badge
+
+Use `renderThresholdBadge` when the badge needs React Native content the built-in
+Skia pill cannot provide: a branded average-cost tag, icon, status chip, blur, or
+an interactive child. The chart still owns the position and follows the live
+threshold on the UI thread; your component owns only the badge's contents and
+chrome. The dashed marker line remains built in.
+
+```tsx
+import { TextInput, View, Text } from "react-native";
+import Animated, { useAnimatedProps } from "react-native-reanimated";
+import {
+  LiveChart,
+  type ThresholdBadgeRenderProps,
+} from "react-native-livechart";
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+function AverageCostBadge({ valueStr }: ThresholdBadgeRenderProps) {
+  const animatedProps = useAnimatedProps(() => {
+    const text = valueStr.get();
+    return { text, defaultValue: text };
+  });
+
+  return (
+    <View style={{ flexDirection: "row", backgroundColor: "#0f172a" }}>
+      <Text>B/E</Text>
+      <AnimatedTextInput editable={false} animatedProps={animatedProps} />
+    </View>
+  );
+}
+
+<LiveChart
+  data={data}
+  value={value}
+  threshold={{
+    value: breakEven,
+    line: { label: "Break-even", showValue: true },
+  }}
+  renderThresholdBadge={(ctx) => <AverageCostBadge {...ctx} />}
+/>
+```
+
+`ThresholdBadgeRenderProps` contains `value`, `valueStr`, `y`, and `visible`
+SharedValues plus the resolved `line` config. Bind `valueStr` to animated text as
+above so the badge value updates without a React render. Returning `null` or
+`undefined` keeps the built-in badge. `renderThresholdBadge` has no effect unless
+`threshold.line` is enabled.
+
 ## Time-varying threshold (a series)
 
 Pass a `LiveChartPoint[]` as `value` instead of a `SharedValue<number>` and the

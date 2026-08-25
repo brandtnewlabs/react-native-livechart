@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Custom threshold badges.** `LiveChart.renderThresholdBadge` replaces the
+  built-in Skia threshold pill with any React Native element while the chart
+  continues to position it from the live threshold value on the UI thread. Its
+  `ThresholdBadgeRenderProps` expose the live value, formatted value, Y position,
+  visibility, and resolved line config; returning `null` preserves the built-in
+  badge, and the dashed marker line remains native.
 - **Configurable threshold series badge anchor.**
   `threshold.line.labelAnchor` independently chooses whether a time-varying
   threshold badge takes its Y position and optional value from the visible
@@ -16,7 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `labelPosition` continues to control the badge's horizontal side. The default
   remains `"last"` for backward compatibility. Resolves
   [#292](https://github.com/brandtnewlabs/react-native-livechart/issues/292).
-- **Semantic candle gaps.** `LiveChart.candleGaps` distinguishes known no-trade,
 - **Semantic candle gaps.** `LiveChart.candleGaps` distinguishes known no-trade,
   trading-unavailable, and unknown-data intervals without inserting synthetic
   OHLC records. No-trade and downtime gaps can draw neutral previous-close marks;

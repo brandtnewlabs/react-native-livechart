@@ -398,6 +398,13 @@ interface ThresholdLineConfig {
   strokeWidth?: number;              // default 1
   showValue?: boolean;               // append the formatted value to the label; default false
 }
+interface ThresholdBadgeRenderProps {
+  line: ThresholdLineConfig;          // resolved marker-line config
+  value: SharedValue<number>;         // live threshold value
+  valueStr: SharedValue<string>;      // formatted with the chart's formatValue
+  y: SharedValue<number>;             // live canvas Y (NaN when geometry is unavailable)
+  visible: SharedValue<boolean>;      // whether the badge is inside the plot
+}
 interface BadgeConfig {
   variant?: "default" | "minimal";
   tail?: boolean;        // pointed tail toward the dot; false = pill sits flush

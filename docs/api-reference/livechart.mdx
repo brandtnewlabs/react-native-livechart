@@ -304,15 +304,24 @@ provided; everything else has a default.
 
 <ParamField body="threshold" type="ThresholdConfig">
   Color the line above vs. below a live threshold value — green above, red below
-  by default. Use a `SharedValue<number>` for a live benchmark or a
-  `LiveChartPoint[]` / `SharedValue<LiveChartPoint[]>` for a time-varying series.
+  by default. Use a live scalar `SharedValue<number>`, a `LiveChartPoint[]`
+  history, or a live `SharedValue<LiveChartPoint[]>` series.
   Optionally adds a tinted profit/loss `fill` band and a dashed marker `line`; a
   series marker badge can independently select its
   horizontal `labelPosition` and first/last visible `labelAnchor`. Supersedes
-  `line.color`/`colors` and segment
-  recoloring for the main stroke while set. See
+  `line.color`/`colors` and segment recoloring for the main stroke while set. See
   [`ThresholdConfig`](/api-reference/types#thresholdconfig). Single-series,
   line mode only.
+</ParamField>
+
+<ParamField body="renderThresholdBadge" type="(ctx: ThresholdBadgeRenderProps) => ReactElement | null">
+  Replace the built-in Skia threshold pill with a custom **React Native**
+  element. The chart measures it and pins it to the threshold's live Y position
+  and `threshold.line.labelPosition` on the UI thread; the dashed marker line
+  remains native. The context exposes `value`, `valueStr`, `y`, and `visible`
+  SharedValues plus the resolved line config. Return `null`/`undefined` to keep
+  the built-in badge. Requires `threshold.line`. See
+  [Custom threshold badge](/guides/threshold#custom-threshold-badge).
 </ParamField>
 
 ## Scrubbing

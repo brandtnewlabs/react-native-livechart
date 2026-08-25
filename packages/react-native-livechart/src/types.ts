@@ -568,6 +568,25 @@ export interface ThresholdLineConfig {
   labelColor?: string;
 }
 
+/**
+ * Context passed to {@link LiveChartProps.renderThresholdBadge}. The chart
+ * floats the returned React Native element over the canvas and pins it to the
+ * live threshold on the UI thread. Bind the SharedValues to animated content
+ * when its displayed value must update without React re-renders.
+ */
+export interface ThresholdBadgeRenderProps {
+  /** Resolved marker-line config for the badge being rendered. */
+  line: ThresholdLineConfig;
+  /** Live threshold value in Y-axis units. */
+  value: SharedValue<number>;
+  /** The threshold value formatted with the chart's `formatValue`. */
+  valueStr: SharedValue<string>;
+  /** Canvas Y pixel of the threshold (`NaN` when geometry is unavailable). */
+  y: SharedValue<number>;
+  /** Whether the threshold badge currently belongs inside the visible plot. */
+  visible: SharedValue<boolean>;
+}
+
 /** Object form of {@link ThresholdConfig.fill} — band tuning. */
 export interface ThresholdFillConfig {
   /** Band fill opacity (0–1), applied to the above/below colors. Multiplies an
@@ -2552,10 +2571,21 @@ export interface LiveChartProps extends LiveChartCoreProps {
   segments?: ChartSegment[];
   /**
    * Color the line above vs. below a live threshold value (break-even / average
-   * cost, VWAP, previous close, a peg). Always a `SharedValue` so the split tracks
-   * live on the UI thread. See {@link ThresholdConfig}.
+   * cost, VWAP, previous close, a peg). Supports a live scalar or a static/live
+   * time-varying series. See {@link ThresholdConfig}.
    */
   threshold?: ThresholdConfig;
+  /**
+   * Render the threshold line's badge as a custom **React Native** element
+   * instead of the built-in Skia pill. The chart measures and pins the element
+   * to the threshold's live Y position and configured `labelPosition` on the UI
+   * thread (see {@link ThresholdBadgeRenderProps}); the dashed marker line stays
+   * built in. Requires `threshold.line`. Return `null`/`undefined` to keep the
+   * built-in badge. Single-series line mode only.
+   */
+  renderThresholdBadge?: (
+    ctx: ThresholdBadgeRenderProps,
+  ) => ReactElement | null | undefined;
   /** Render the live value as a large text overlay in the top-left. Default `false`. */
   showValue?: boolean;
   /** Tint the `showValue` text by momentum (green up / red down). Default `false`. */

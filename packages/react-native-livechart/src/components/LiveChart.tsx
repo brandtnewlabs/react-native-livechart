@@ -160,6 +160,7 @@ import type {
   Marker,
   ReferenceLine,
 } from "../types";
+import { CustomThresholdBadgeOverlay } from "./CustomThresholdBadgeOverlay";
 import {
   ThresholdBadgeOverlay,
   ThresholdLineOverlay,
@@ -356,6 +357,7 @@ function useLiveChartController({
   renderMarker,
   renderTooltip,
   renderOverlay,
+  renderThresholdBadge,
   renderReferenceLine,
   renderOffAxisReferenceLine,
   referenceLineGrouping,
@@ -984,6 +986,21 @@ function useLiveChartController({
     thresholdCfg && !thresholdIsSeries && !Array.isArray(thresholdCfg.value)
       ? (thresholdCfg.value ?? thresholdSeriesGeom.badgeValue)
       : thresholdSeriesGeom.badgeValue;
+  const hasCustomThresholdBadge =
+    thresholdCfg?.line != null && renderThresholdBadge != null;
+  const thresholdMarkerValueStr = useDerivedValue(() =>
+    hasCustomThresholdBadge ? formatValue(thresholdMarkerValue.get()) : "",
+  );
+  const thresholdCustomBadge =
+    thresholdCfg?.line && renderThresholdBadge
+      ? renderThresholdBadge({
+          line: thresholdCfg.line,
+          value: thresholdMarkerValue,
+          valueStr: thresholdMarkerValueStr,
+          y: thresholdMarkerLineY,
+          visible: thresholdBadgeVisible,
+        })
+      : null;
   const thresholdSeriesPts = thresholdIsSeries
     ? thresholdSeriesGeom.screenPts
     : undefined;
@@ -1543,6 +1560,7 @@ function useLiveChartController({
     thresholdMarkerVisible,
     thresholdBadgeVisible,
     thresholdMarkerValue,
+    thresholdCustomBadge,
     thresholdSeriesPts,
     badgeUsesRightGutter,
     // theme / layout / fonts
@@ -2258,6 +2276,7 @@ function ChartStack({
     thresholdMarkerVisible,
     thresholdBadgeVisible,
     thresholdMarkerValue,
+    thresholdCustomBadge,
     thresholdSeriesPts,
     formatValue,
     lineGroupOpacity,
@@ -2484,7 +2503,7 @@ function ChartStack({
 
       {/* Threshold label badge — on top of the line/dot/markers so it's never
           painted over (the dashed marker line itself stays behind the line, above). */}
-      {thresholdCfg?.line && (
+      {thresholdCfg?.line && thresholdCustomBadge == null && (
         <ThresholdBadgeOverlay
           engine={engine}
           padding={effectivePadding}
@@ -3005,6 +3024,10 @@ function ChartView({
     formatValue,
     topLabelCfg,
     bottomLabelCfg,
+    thresholdCfg,
+    thresholdMarkerLineY,
+    thresholdBadgeVisible,
+    thresholdCustomBadge,
     markersActive,
     renderMarker,
     renderTooltip,
@@ -3115,6 +3138,19 @@ function ChartView({
             defaultColor={palette.gridLabel}
             padding={effectivePadding}
             extremaTimeOffset={extremaTimeOffset}
+          />
+        )}
+
+        {/* Custom threshold badge — a native view positioned from the same live
+            value/Y SharedValues as the built-in Skia badge. */}
+        {thresholdCustomBadge && thresholdCfg?.line && (
+          <CustomThresholdBadgeOverlay
+            element={thresholdCustomBadge}
+            engine={engine}
+            padding={effectivePadding}
+            y={thresholdMarkerLineY}
+            visible={thresholdBadgeVisible}
+            position={thresholdCfg.line.labelPosition}
           />
         )}
 
