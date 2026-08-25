@@ -391,6 +391,7 @@ interface ThresholdConfig {
 interface ThresholdLineConfig {
   label?: string;                    // label text, e.g. "Break-even"
   labelPosition?: "left" | "right";  // "left" = inside plot (clear of y-axis); default "left"
+  labelAnchor?: "first" | "last";    // series: visible left-edge or live/right-edge value; default "last"
   color?: string;                    // line + label color; default palette refLine/refLabel
   labelColor?: string;               // label text color; falls back to color, then palette refLabel
   intervals?: [number, number];      // dash pattern; default [4, 4]

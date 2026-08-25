@@ -548,6 +548,13 @@ export interface ThresholdLineConfig {
    * gutter like a legacy reference line (may overlap y-axis labels). Default `"left"`.
    */
   labelPosition?: "left" | "right";
+  /**
+   * Time-varying threshold series only: which visible endpoint supplies the
+   * label badge's Y position and optional value. `"first"` samples the
+   * threshold at the visible window's left edge; `"last"` uses the live/right
+   * edge. Independent of {@link labelPosition}. Default `"last"`.
+   */
+  labelAnchor?: "first" | "last";
   /** Line + label color. Defaults to palette `refLine` / `refLabel`. */
   color?: string;
   /** Dash pattern `[dashLength, gapLength]` in pixels. Default `[4, 4]`. */

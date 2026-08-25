@@ -1871,6 +1871,7 @@ describe("resolveThresholdLine", () => {
     expect(resolveThresholdLine(true)).toEqual({
       label: undefined,
       labelPosition: "left",
+      labelAnchor: "last",
       color: undefined,
       labelColor: undefined,
       intervals: [4, 4],
@@ -1884,6 +1885,7 @@ describe("resolveThresholdLine", () => {
       resolveThresholdLine({
         label: "Break-even",
         labelPosition: "right",
+        labelAnchor: "first",
         color: "#0f0",
         intervals: [6, 3],
         strokeWidth: 2,
@@ -1892,6 +1894,7 @@ describe("resolveThresholdLine", () => {
     ).toEqual({
       label: "Break-even",
       labelPosition: "right",
+      labelAnchor: "first",
       color: "#0f0",
       labelColor: undefined,
       intervals: [6, 3],
@@ -1987,6 +1990,7 @@ describe("resolveThreshold", () => {
     expect(r?.line).toEqual({
       label: undefined,
       labelPosition: "left",
+      labelAnchor: "last",
       color: undefined,
       labelColor: undefined,
       intervals: [4, 4],
@@ -1999,6 +2003,7 @@ describe("resolveThreshold", () => {
     expect(resolveThreshold({ value, line: { label: "VWAP" } })?.line).toEqual({
       label: "VWAP",
       labelPosition: "left",
+      labelAnchor: "last",
       color: undefined,
       intervals: [4, 4],
       strokeWidth: 1,

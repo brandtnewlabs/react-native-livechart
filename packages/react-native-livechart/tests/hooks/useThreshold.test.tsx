@@ -52,8 +52,8 @@ describe("useThresholdSeries (time-varying)", () => {
     expect(result.current.screenPts.value.length).toBeGreaterThanOrEqual(4);
     expect(result.current.samples.value).toHaveLength(THRESHOLD_SAMPLE_COUNT);
     // value-at-now clamps to the last point (55).
-    expect(result.current.currentValue.value).toBeCloseTo(55);
-    expect(result.current.currentVisible.value).toBe(true);
+    expect(result.current.badgeValue.value).toBeCloseTo(55);
+    expect(result.current.badgeVisible.value).toBe(true);
     // Polyline is pinned to the exact plot edges (stable dash anchor).
     const pts = result.current.screenPts.value;
     expect(pts[0]).toBe(DEFAULT_PADDING.left);
@@ -74,8 +74,33 @@ describe("useThresholdSeries (time-varying)", () => {
       useThresholdSeries(engine(), DEFAULT_PADDING, stepped),
     );
     expect(result.current.visible.value).toBe(true);
-    expect(result.current.currentValue.value).toBeCloseTo(500);
-    expect(result.current.currentVisible.value).toBe(false);
+    expect(result.current.badgeValue.value).toBeCloseTo(500);
+    expect(result.current.badgeVisible.value).toBe(false);
+  });
+
+  it("can anchor the badge to the first visible threshold value", async () => {
+    const { result } = await renderHook(() =>
+      useThresholdSeries(
+        engine(),
+        DEFAULT_PADDING,
+        series,
+        null,
+        true,
+        "first",
+      ),
+    );
+    // The visible window starts at t=900, where the series value is 40. The
+    // default `last` anchor would use the t=1000 value (55).
+    expect(result.current.badgeValue.value).toBeCloseTo(40);
+    expect(result.current.badgeLineY.value).toBeCloseTo(168);
+    expect(result.current.badgeVisible.value).toBe(true);
+  });
+
+  it("hides a first-anchored badge when the threshold has no visible segment", async () => {
+    const { result } = await renderHook(() =>
+      useThresholdSeries(engine(), DEFAULT_PADDING, [], null, false, "first"),
+    );
+    expect(result.current.badgeVisible.value).toBe(false);
   });
 
   it("short-circuits to empty geometry for a constant value", async () => {
@@ -84,15 +109,15 @@ describe("useThresholdSeries (time-varying)", () => {
     );
     expect(result.current.screenPts.value).toEqual([]);
     expect(result.current.visible.value).toBe(false);
-    expect(result.current.currentValue.value).toBeNaN();
+    expect(result.current.badgeValue.value).toBeNaN();
   });
 
-  it("yields a NaN current value for an empty series", async () => {
+  it("yields a NaN badge value for an empty series", async () => {
     const { result } = await renderHook(() =>
       useThresholdSeries(engine(), DEFAULT_PADDING, []),
     );
     expect(result.current.screenPts.value).toEqual([]);
-    expect(result.current.currentValue.value).toBeNaN();
+    expect(result.current.badgeValue.value).toBeNaN();
   });
 
   it("reads a live SharedValue series (threshold.series form)", async () => {
@@ -107,7 +132,7 @@ describe("useThresholdSeries (time-varying)", () => {
       useThresholdSeries(engine(), DEFAULT_PADDING, useSharedValue(0), seriesSV),
     );
     expect(result.current.samples.value).toHaveLength(THRESHOLD_SAMPLE_COUNT);
-    expect(result.current.currentValue.value).toBeCloseTo(55);
+    expect(result.current.badgeValue.value).toBeCloseTo(55);
     expect(result.current.visible.value).toBe(true);
   });
 
@@ -126,7 +151,7 @@ describe("useThresholdSeries (time-varying)", () => {
     const pts = result.current.screenPts.value;
     expect(pts[pts.length - 2]).toBeCloseTo(200);
     // Badge hidden: "now" is past the series end.
-    expect(result.current.currentVisible.value).toBe(false);
+    expect(result.current.badgeVisible.value).toBe(false);
   });
 
   it("extendToNow=true (default): no clip, badge shows", async () => {
@@ -140,6 +165,6 @@ describe("useThresholdSeries (time-varying)", () => {
     expect(result.current.clipRightX.value).toBe(1e9);
     const pts = result.current.screenPts.value;
     expect(pts[pts.length - 2]).toBe(400 - DEFAULT_PADDING.right);
-    expect(result.current.currentVisible.value).toBe(true);
+    expect(result.current.badgeVisible.value).toBe(true);
   });
 });

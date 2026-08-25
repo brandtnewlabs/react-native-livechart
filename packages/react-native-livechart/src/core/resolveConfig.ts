@@ -417,6 +417,8 @@ export interface ResolvedThresholdLineConfig {
   label: string | undefined;
   /** Label side; `"left"` sits inside the plot (clear of the y-axis gutter). */
   labelPosition: "left" | "right";
+  /** Series badge value/Y source; `"last"` preserves the live-edge default. */
+  labelAnchor: "first" | "last";
   /** undefined → use palette.refLine (line) / palette.refLabel (label) at render time. */
   color: string | undefined;
   intervals: [number, number];
@@ -453,6 +455,7 @@ export interface ResolvedThresholdConfig {
 const THRESHOLD_LINE_DEFAULTS: ResolvedThresholdLineConfig = {
   label: undefined,
   labelPosition: "left",
+  labelAnchor: "last",
   color: undefined,
   intervals: [4, 4],
   strokeWidth: 1,
