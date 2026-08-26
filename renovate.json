@@ -31,6 +31,11 @@
       "groupName": "github actions"
     },
     {
+      "description": "Expo SDK 57 and its @typescript-eslint toolchain require the TypeScript 6 API.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
+    },
+    {
       "description": "Expo's eslint-plugin-react stack does not support ESLint 10 yet.",
       "matchPackageNames": ["eslint"],
       "allowedVersions": "<10"
