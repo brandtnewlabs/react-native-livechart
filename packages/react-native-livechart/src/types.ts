@@ -56,11 +56,12 @@ export type CanvasMode = "transparent" | "opaque";
 export type BadgeVariant = "default" | "minimal";
 
 /**
- * A reference line or band drawn into the chart. Three mutually-exclusive forms,
- * with precedence A > B > C when fields from more than one are present:
+ * A reference line or band drawn into the chart. Four mutually-exclusive forms,
+ * with precedence A > B > C > D when fields from more than one are present:
  * - **Form A** — horizontal line at `value`.
- * - **Form B** — horizontal band between `valueFrom` and `valueTo`.
- * - **Form C** — vertical time band between `from` and `to` (unix seconds).
+ * - **Form B** — time-varying line following `series`.
+ * - **Form C** — horizontal band between `valueFrom` and `valueTo`.
+ * - **Form D** — vertical time band between `from` and `to` (unix seconds).
  */
 export interface ReferenceLine {
   /**
@@ -70,13 +71,25 @@ export interface ReferenceLine {
   id?: string;
   /** Form A — the Y-axis value where the horizontal line is drawn. */
   value?: number;
-  /** Form B — horizontal band lower Y bound (paired with `valueTo`). */
+  /**
+   * Form B — a time-varying reference line. Points use unix-second timestamps
+   * and should be sorted oldest to newest. The first value extends to the left
+   * edge; the last value extends to the live edge unless {@link extendToNow} is
+   * `false`. Supported by line and candle charts.
+   */
+  series?: LiveChartPoint[];
+  /**
+   * Form B — extend the series' last value flat to the chart's live edge.
+   * Set `false` to stop at the last point. Default `true`.
+   */
+  extendToNow?: boolean;
+  /** Form C — horizontal band lower Y bound (paired with `valueTo`). */
   valueFrom?: number;
-  /** Form B — horizontal band upper Y bound (paired with `valueFrom`). */
+  /** Form C — horizontal band upper Y bound (paired with `valueFrom`). */
   valueTo?: number;
-  /** Form C — vertical time-band start, unix seconds (paired with `to`). */
+  /** Form D — vertical time-band start, unix seconds (paired with `to`). */
   from?: number;
-  /** Form C — vertical time-band end, unix seconds (paired with `from`). */
+  /** Form D — vertical time-band end, unix seconds (paired with `from`). */
   to?: number;
   /** Optional right-gutter label (e.g. `"Entry"`). */
   label?: string;
@@ -86,7 +99,7 @@ export interface ReferenceLine {
    * (top/bottom for value bands, left/right for time bands); omit for no border.
    */
   strokeWidth?: number;
-  /** Dash pattern as `[dashLength, gapLength]` in pixels (line stroke + band border). */
+  /** Dash pattern as `[dashLength, gapLength]` in pixels (line/series stroke + band border). */
   intervals?: [number, number];
   /**
    * Span the **full chart width** — edge to edge through the Y-axis gutter, not
@@ -94,19 +107,19 @@ export interface ReferenceLine {
    * value on the axis (like a price tag). Only the line/band extends; any
    * `label`/`badge` stays anchored inside the plot. For a Form-A line with a
    * `badge`, the full-width line replaces the dashed connector. No effect on a
-   * vertical time band. Default `false` (stops at the plot edge). Form A / B.
+   * vertical time band. Default `false` (stops at the plot edge). Form A / C.
    */
   fullWidth?: boolean;
   /** Line / band color override. Defaults to palette `refLine`. */
   color?: string;
   /**
    * Band fill color override. Defaults to {@link color}, then palette `refLine`.
-   * Form B / C only.
+   * Form C / D only.
    */
   fillColor?: string;
   /** Fill opacity for a value / time band (0–1). Default `0.16`. */
   fillOpacity?: number;
-  /** Opacity for the line or band border stroke (0–1). Default `1`. */
+  /** Opacity for the line, series, or band border stroke (0–1). Default `1`. */
   strokeOpacity?: number;
   /** Label text color. Defaults to `color`, then palette `refLabel`. */
   labelColor?: string;
@@ -116,7 +129,7 @@ export interface ReferenceLine {
    * (default `"left"`).
    */
   labelPosition?: "left" | "center" | "right";
-  /** Append the formatted `value` to the label (Form A only). Default `false`. */
+  /** Append the formatted value to the label (Form A/B). Default `false`. */
   showValue?: boolean;
   /**
    * Exclude this line's value(s) from the Y-axis range computation, so it may sit
@@ -2352,7 +2365,7 @@ export interface LiveChartCoreProps {
    * `render`). Default off.
    */
   bottomLabel?: boolean | AxisLabelConfig;
-  /** Reference lines / bands drawn into the chart. Supports all three `ReferenceLine` forms. */
+  /** Reference lines / bands drawn into the chart. Supports all four `ReferenceLine` forms. */
   referenceLines?: ReferenceLine[];
   /** Per-instance grid-line styling. Pass an object to override color / width / dash / opacity. */
   gridStyle?: GridStyleConfig;

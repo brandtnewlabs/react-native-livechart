@@ -258,8 +258,10 @@ provided; everything else has a default.
 </ParamField>
 
 <ParamField body="referenceLines" type="ReferenceLine[]">
-  Reference lines / bands (horizontal line, value band, or time band). Form-A lines
-  can be `draggable` (drag to set a price, with `snap` / `bounds` and `onChange` /
+  Reference lines / bands (horizontal line, time-varying `series`, value band, or
+  time band). Series lines work in both line and candle mode and extend their last
+  value to the live edge unless `extendToNow` is `false`. Form-A lines can be
+  `draggable` (drag to set a price, with `snap` / `bounds` and `onChange` /
   `onCommit` / `onDragIn` / `onDragOut` callbacks). See
   [Reference lines](/guides/reference-lines-and-bands).
 </ParamField>

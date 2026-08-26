@@ -20,6 +20,7 @@ import {
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
 import { referenceLineForm, resolveReferenceBadge } from "../math/referenceLines";
 import type { FontConfig, LiveChartPalette, ReferenceLine } from "../types";
+import { ReferenceLineSeriesOverlay } from "./ReferenceLineSeriesOverlay";
 
 /** Translucent fill alpha for value / time bands. */
 const BAND_FILL_OPACITY = 0.16;
@@ -33,9 +34,10 @@ const CONNECTOR_GAP = 4;
 const BADGE_EDGE_INSET = 2;
 
 /**
- * Renders one reference line or band into the chart canvas. Handles all three
- * `ReferenceLine` forms (horizontal line, horizontal value band, vertical time
- * band) plus the Form-A pill badge (in-range tag + off-screen chevron pin).
+ * Renders one reference line or band into the chart canvas. Handles all four
+ * `ReferenceLine` forms (horizontal line, time-varying line, horizontal value
+ * band, vertical time band) plus the Form-A pill badge (in-range tag +
+ * off-screen chevron pin).
  * Self-contained so callers can `.map()` over a variable-length array.
  */
 type ReferenceLineOverlayProps = {
@@ -94,7 +96,28 @@ type ReferenceLineOverlayProps = {
   gridEndGap?: number;
 };
 
-export function ReferenceLineOverlay({
+/**
+ * Dispatch to the series or scalar/band renderer without mixing their hook
+ * lifecycles. A stable `id` may therefore switch forms safely across renders.
+ */
+export function ReferenceLineOverlay(props: ReferenceLineOverlayProps) {
+  if (referenceLineForm(props.line) === "series") {
+    return (
+      <ReferenceLineSeriesOverlay
+        engine={props.engine}
+        padding={props.padding}
+        line={props.line}
+        palette={props.palette}
+        formatValue={props.formatValue}
+        font={props.font}
+        badgeLayer={props.badgeLayer ?? false}
+      />
+    );
+  }
+  return <ReferenceLineStaticOverlay {...props} />;
+}
+
+function ReferenceLineStaticOverlay({
   engine,
   padding,
   line,

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Time-varying reference lines.** `ReferenceLine.series` draws a historical
+  `LiveChartPoint[]` benchmark over line or candle charts, with the existing
+  color, dash, width, label, and range-fitting behavior. The final value extends
+  flat to the live edge by default; `extendToNow: false` stops at the last point.
 - **Custom threshold badges.** `LiveChart.renderThresholdBadge` replaces the
   built-in Skia threshold pill with any React Native element while the chart
   continues to position it from the live threshold value on the UI thread. Its

@@ -318,7 +318,7 @@ describe("useReferenceLine", () => {
     expect(result.current.value.x1).toBe(DEFAULT_PADDING.left);
   });
 
-  // ── Form B — value band ─────────────────────────────────────────────────────
+  // ── Form C — value band ─────────────────────────────────────────────────────
 
   it("renders a value band with top above bottom", async () => {
     const { result } = await renderHook(() =>
@@ -380,7 +380,7 @@ describe("useReferenceLine", () => {
     expect(result.current.value.visible).toBe(false);
   });
 
-  // ── Form C — time band ──────────────────────────────────────────────────────
+  // ── Form D — time band ──────────────────────────────────────────────────────
 
   it("renders a time band spanning part of the window", async () => {
     // timestamp=0, window=30 → winStart=-30

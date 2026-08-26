@@ -179,10 +179,13 @@ interface ReferenceLine {
   id?: string;                   // stable identity; supply when lines may reorder
   // Form A — horizontal line:
   value?: number;
-  // Form B — horizontal band:
+  // Form B — time-varying line (sorted unix-second points):
+  series?: LiveChartPoint[];
+  extendToNow?: boolean;         // flat-extend the last value to live; default true
+  // Form C — horizontal band:
   valueFrom?: number;
   valueTo?: number;
-  // Form C — vertical time band (unix seconds):
+  // Form D — vertical time band (unix seconds):
   from?: number;
   to?: number;
   // Shared:
@@ -192,8 +195,8 @@ interface ReferenceLine {
   color?: string;
   fillColor?: string;            // band fill; defaults to color, then palette refLine
   fillOpacity?: number;          // default 0.16
-  strokeOpacity?: number;        // line / band-border opacity; default 1
-  fullWidth?: boolean;           // span edge-to-edge through the Y-axis gutter (Form A/B);
+  strokeOpacity?: number;        // line / series / band-border opacity; default 1
+  fullWidth?: boolean;           // span edge-to-edge through the Y-axis gutter (Form A/C);
                                  //   label/badge stay in the plot. default false
   labelColor?: string;
   labelPosition?: "left" | "center" | "right";
