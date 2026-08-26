@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Semantic candle gaps.** `LiveChart.candleGaps` distinguishes known no-trade,
+  trading-unavailable, and unknown-data intervals without inserting synthetic
+  OHLC records. No-trade and downtime gaps can draw neutral previous-close marks;
+  unavailable/unknown ranges use labeled time bands, generated marks contribute
+  no volume/momentum/extrema, and candle scrubbing exposes the active `CandleGap`.
+  Nested per-kind `bridge`, `band`, and `label` styles independently configure
+  colors, opacity, stroke geometry, dash patterns, and label placement; each
+  section can also be explicitly enabled or disabled. Reference-line bands now
+  expose separate `fillColor` and `strokeOpacity` paint controls used by the gap
+  renderer and available to standalone reference bands.
+  A dedicated Empty candles demo compares raw gaps, forward fill alone, semantic
+  defaults, and a configurable styled treatment against a simulated live
+  one-minute trade feed.
+
+### Fixed
+
+- Trade-stream labels now enter from the chart's lower edge when candle volume
+  bars are enabled instead of starting above the reserved volume band.
+
 ## [4.20.0] - 2026-08-19
 
 ### Added

@@ -10,7 +10,7 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import type { TooltipLayout } from "../hooks/crosshairShared";
 import { resolveCrosshairVisibleOpacity } from "../hooks/useCrosshairVisibleOpacity";
-import type { CandlePoint, TooltipRenderProps } from "../types";
+import type { CandleGap, CandlePoint, TooltipRenderProps } from "../types";
 
 // Mirror the Skia tooltip's offsets (see crosshairShared.ts) so a custom pill
 // lines up with where the built-in one would sit. The vertical edge gap is
@@ -42,6 +42,7 @@ export function CustomTooltipOverlay({
   scrubTime,
   scrubActive,
   scrubCandle,
+  scrubGap,
   tooltipLayout,
   engine,
   padding,
@@ -59,6 +60,8 @@ export function CustomTooltipOverlay({
   scrubActive: SharedValue<boolean>;
   /** OHLC candle under the crosshair (candle mode); omitted/`null` in line mode. */
   scrubCandle?: SharedValue<CandlePoint | null>;
+  /** Explicit gap under the crosshair (candle mode); omitted/`null` in line mode. */
+  scrubGap?: SharedValue<CandleGap | null>;
   tooltipLayout: SharedValue<TooltipLayout>;
   engine: ChartEngineLayout;
   padding: ChartPadding;
@@ -85,6 +88,7 @@ export function CustomTooltipOverlay({
   // A stable `null` candle SharedValue for line mode so `ctx.candle` is always
   // present (a SharedValue), regardless of mode.
   const nullCandle = useSharedValue<CandlePoint | null>(null);
+  const nullGap = useSharedValue<CandleGap | null>(null);
 
   const ctx: TooltipRenderProps = {
     value: scrubValue,
@@ -93,6 +97,7 @@ export function CustomTooltipOverlay({
     timeStr,
     active: scrubActive,
     candle: scrubCandle ?? nullCandle,
+    gap: scrubGap ?? nullGap,
   };
   const element = renderTooltip(ctx);
 

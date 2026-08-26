@@ -99,8 +99,15 @@ export interface ReferenceLine {
   fullWidth?: boolean;
   /** Line / band color override. Defaults to palette `refLine`. */
   color?: string;
+  /**
+   * Band fill color override. Defaults to {@link color}, then palette `refLine`.
+   * Form B / C only.
+   */
+  fillColor?: string;
   /** Fill opacity for a value / time band (0–1). Default `0.16`. */
   fillOpacity?: number;
+  /** Opacity for the line or band border stroke (0–1). Default `1`. */
+  strokeOpacity?: number;
   /** Label text color. Defaults to `color`, then palette `refLabel`. */
   labelColor?: string;
   /**
@@ -1143,6 +1150,12 @@ export interface TooltipRenderProps {
    * worklet-safe formatter (e.g. the chart's `formatValue`).
    */
   candle: SharedValue<CandlePoint | null>;
+  /**
+   * Explicit candle gap under the crosshair (`null` outside a configured gap).
+   * A gap never fabricates {@link candle}; inspect this field for no-trade,
+   * unavailable, or unknown-data treatment.
+   */
+  gap: SharedValue<CandleGap | null>;
 }
 
 /** Inner plot rectangle in canvas pixels (a snapshot field of {@link ChartScale}). */
@@ -1743,6 +1756,8 @@ export interface ScrubPointCore {
 export interface ScrubPoint extends ScrubPointCore {
   /** In candle mode, the OHLC data of the candle under the crosshair. */
   candle?: CandlePoint;
+  /** Explicit candle gap under the crosshair, when a bridged gap supplies the value. */
+  gap?: CandleGap;
 }
 
 /** Scrub callback payload for multi-series charts. */
@@ -1770,6 +1785,95 @@ export interface CandlePoint {
    * contribute no bar. Ignored when `volume` is off or in line mode.
    */
   volume?: number;
+}
+
+/** Why a candle time range contains no observed OHLC bucket. */
+export type CandleGapKind = "no-trades" | "unavailable" | "unknown";
+
+/**
+ * Explicit metadata for a candle-chart interval without an OHLC observation.
+ * The range is half-open (`[from, to)`) and uses Unix seconds, matching
+ * {@link CandlePoint.time}. Gaps do not replace or mutate real candles.
+ */
+export interface CandleGap {
+  /** Inclusive range start as a Unix timestamp in seconds. */
+  from: number;
+  /** Exclusive range end as a Unix timestamp in seconds. Must be greater than {@link from}. */
+  to: number;
+  /** Semantic reason the interval has no candle. */
+  kind: CandleGapKind;
+  /** Optional localized label, e.g. `"Exchange maintenance"`. */
+  label?: string;
+}
+
+/** Previous-close mark styling for a candle gap. */
+export interface CandleGapBridgeStyle {
+  /** Mark color. Defaults to palette `refLine`. */
+  color?: string;
+  /** Mark opacity. Default `0.7` when enabled (`0.55` for unavailable gaps). */
+  opacity?: number;
+  /** Mark stroke width in pixels. Default `2`. */
+  strokeWidth?: number;
+  /** Mark cap style. Default `"round"`. */
+  strokeCap?: "butt" | "round" | "square";
+}
+
+/** Full-height time-band styling for a candle gap. */
+export interface CandleGapBandStyle {
+  /** Band fill color. Defaults to palette `refLine`. */
+  fillColor?: string;
+  /** Band fill opacity. Default `0.12` when enabled (`0.08` for unknown gaps). */
+  fillOpacity?: number;
+  /** Band-edge color. Defaults to palette `refLine`. */
+  borderColor?: string;
+  /** Band-edge opacity. Default `1`. */
+  borderOpacity?: number;
+  /**
+   * Band-edge width in pixels. `0` hides the border. Default `2` (`1` for
+   * unknown gaps).
+   */
+  borderWidth?: number;
+  /** Band-edge dash pattern. Default `[4, 4]`. */
+  intervals?: [number, number];
+}
+
+/** Label styling for a candle-gap time band. Text comes from {@link CandleGap.label}. */
+export interface CandleGapLabelStyle {
+  /** Label color. Defaults to palette `refLabel`. */
+  color?: string;
+  /** Label position inside the band. Default `"left"`. */
+  position?: "left" | "right";
+}
+
+/** Per-kind presentation overrides for {@link CandleGapsConfig}. */
+export interface CandleGapStyle {
+  /**
+   * Previous-close marks. `false` disables them; an object enables and styles
+   * them. Omission preserves the semantic default for the gap kind.
+   */
+  bridge?: false | CandleGapBridgeStyle;
+  /**
+   * Full-height time band. `false` disables it; an object enables and styles it.
+   * Omission preserves the semantic default for the gap kind.
+   */
+  band?: false | CandleGapBandStyle;
+  /**
+   * Band label. `false` hides it; an object enables and styles it. Omission
+   * preserves the semantic default for the gap kind.
+   */
+  label?: false | CandleGapLabelStyle;
+}
+
+/**
+ * Data and optional per-kind styling for explicit candle gaps. Gap metadata is
+ * low-frequency React data (like `referenceLines`); live OHLC remains in the
+ * `candles` SharedValue.
+ */
+export interface CandleGapsConfig {
+  /** Sorted, non-overlapping gap ranges. Invalid ranges are ignored. */
+  gaps: CandleGap[];
+  /** Presentation overrides keyed by semantic gap kind. */
+  styles?: Partial<Record<CandleGapKind, CandleGapStyle>>;
 }
 
 // ── Metrics (sizing & motion tokens) ─────────────────────────────────────────
@@ -2444,6 +2548,14 @@ export interface LiveChartProps extends LiveChartCoreProps {
   candleWidth?: number;
   /** In-progress candle updated each tick. Must be a SharedValue for UI-thread reads. */
   liveCandle?: SharedValue<CandlePoint | null>;
+  /**
+   * Explicit candle-chart gaps. Pass a sorted array for semantic defaults, or a
+   * {@link CandleGapsConfig} to override per-kind styling. Missing timestamps
+   * are never inferred: `"no-trades"` draws neutral previous-close marks,
+   * `"unavailable"` adds a labeled time band, and `"unknown"` leaves price
+   * unfilled. Candle mode only. Default off.
+   */
+  candleGaps?: CandleGap[] | CandleGapsConfig;
   /**
    * Live trade fills for optional on-chart markers. Read on the UI thread only —
    * pass a `SharedValue` and update from JS via `.value` (same pattern as `data` / `value`).

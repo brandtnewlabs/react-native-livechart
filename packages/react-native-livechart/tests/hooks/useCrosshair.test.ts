@@ -1235,6 +1235,56 @@ describe("computeCandleTooltipLayout", () => {
     expect(layout.x).toBe(-400);
   });
 
+  it("builds a semantic gap tooltip without fabricating OHLC", () => {
+    const layout = computeCandleTooltipLayout(
+      true,
+      100,
+      null,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      0,
+      {
+        from: 900,
+        to: 1100,
+        kind: "unavailable",
+        label: "Exchange maintenance",
+      },
+      105,
+    );
+    expect(layout.stackedLines?.map((line) => line.text)).toEqual([
+      "Exchange maintenance",
+      `Last ${formatValue(105)}`,
+      formatTime(1000),
+    ]);
+    expect(layout.valueStr).toBe(formatValue(105));
+  });
+
+  it("keeps unknown gaps price-free", () => {
+    const layout = computeCandleTooltipLayout(
+      true,
+      100,
+      null,
+      1000,
+      padding,
+      400,
+      formatValue,
+      formatTime,
+      font,
+      0,
+      { from: 900, to: 1100, kind: "unknown" },
+      null,
+    );
+    expect(layout.stackedLines?.map((line) => line.text)).toEqual([
+      "Data unavailable",
+      formatTime(1000),
+    ]);
+    expect(layout.valueStr).toBe("");
+  });
+
   it("builds 5 stacked lines: O, H, L, C + time", () => {
     const layout = computeCandleTooltipLayout(
       true,

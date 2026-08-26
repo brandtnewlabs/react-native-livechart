@@ -11,9 +11,14 @@ import type { ResolvedScrubActionConfig } from "../core/resolveConfig";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { type ChartPadding } from "../draw/line";
 import { interpolateAtTime } from "../math/interpolate";
+import {
+  pickCandleGapAtTime,
+  previousCandleCloseAtTime,
+} from "../math/candleGaps";
 import { pickCandleAtTime } from "../math/pickCandle";
 import type {
   BadgeMetrics,
+  CandleGap,
   CandlePoint,
   LiveChartPalette,
   ScrubActionPoint,
@@ -100,6 +105,10 @@ export interface CrosshairCandleOpts {
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
   candleWidthSecs: number;
+  gaps?: CandleGap[];
+  bridgeNoTrades?: boolean;
+  bridgeUnavailable?: boolean;
+  bridgeUnknown?: boolean;
 }
 
 /**
@@ -213,6 +222,10 @@ export function useCrosshair(
   const candlesSV = candleOpts?.candles;
   const liveCandleSV = candleOpts?.liveCandle;
   const candleWidthSecs = candleOpts?.candleWidthSecs ?? 60;
+  const candleGaps = candleOpts?.gaps ?? [];
+  const bridgeNoTrades = candleOpts?.bridgeNoTrades ?? false;
+  const bridgeUnavailable = candleOpts?.bridgeUnavailable ?? false;
+  const bridgeUnknown = candleOpts?.bridgeUnknown ?? false;
 
   // Monospace advance width, measured once per render (not per scrub frame) so
   // the tooltip layout worklet can size text by character count instead of a
@@ -220,6 +233,7 @@ export function useCrosshair(
   const monoCharWidth = font.measureText("0").width;
   const scrubTime = useSharedValue(-1);
   const scrubCandle = useSharedValue<CandlePoint | null>(null);
+  const scrubGap = useSharedValue<CandleGap | null>(null);
   const scrubValue = useSharedValue<number | null>(null);
   const crosshairOpacity = useSharedValue(0);
   const scrubDotY = useSharedValue(-1);
@@ -252,11 +266,30 @@ export function useCrosshair(
               candleWidthSecs,
             )
           : null;
+      const gap =
+        isCandleMode && active && time >= 0 && !candle
+          ? pickCandleGapAtTime(candleGaps, time)
+          : null;
+      const gapBridged = gap
+        ? gap.kind === "no-trades"
+          ? bridgeNoTrades
+          : gap.kind === "unavailable"
+            ? bridgeUnavailable
+            : bridgeUnknown
+        : false;
+      const gapValue =
+        gap && gapBridged && candlesSV
+          ? previousCandleCloseAtTime(
+              candlesSV.get(),
+              liveCandleSV?.get() ?? null,
+              time,
+            )
+          : null;
       const value =
         !active || time < 0
           ? null
           : isCandleMode
-            ? (candle?.close ?? null)
+            ? (candle?.close ?? gapValue)
             : interpolateAtTime(engine.data.get(), time);
       const dotY = computeScrubDotY(
         value,
@@ -278,6 +311,8 @@ export function useCrosshair(
             formatTime,
             font,
             monoCharWidth,
+            gap,
+            gapValue,
           )
         : deriveCrosshairTooltipSingle(
             active,
@@ -300,6 +335,7 @@ export function useCrosshair(
       return {
         time,
         candle,
+        gap,
         value,
         opacity: computeCrosshairOpacity(active, x, canvasWidth, padding.right),
         dotY,
@@ -310,6 +346,7 @@ export function useCrosshair(
       "worklet";
       scrubTime.set(snapshot.time);
       scrubCandle.set(snapshot.candle);
+      scrubGap.set(snapshot.gap);
       scrubValue.set(snapshot.value);
       crosshairOpacity.set(snapshot.opacity);
       scrubDotY.set(snapshot.dotY);
@@ -440,11 +477,15 @@ export function useCrosshair(
     time: number,
     value: number,
     candleJson: string | null,
+    gapJson: string | null,
   ) {
     const candle: CandlePoint | undefined = candleJson
       ? (JSON.parse(candleJson) as CandlePoint)
       : undefined;
-    onScrub?.({ time, value, x, y, candle });
+    const gap: CandleGap | undefined = gapJson
+      ? (JSON.parse(gapJson) as CandleGap)
+      : undefined;
+    onScrub?.({ time, value, x, y, candle, gap });
   }
 
   /* istanbul ignore next */
@@ -490,7 +531,9 @@ export function useCrosshair(
         const c = scrubCandle.get();
         if (c) candleJson = JSON.stringify(c);
       }
-      return JSON.stringify([time, val, x, dotY, candleJson]);
+      const gap = scrubGap.get();
+      const gapJson = gap ? JSON.stringify(gap) : null;
+      return JSON.stringify([time, val, x, dotY, candleJson, gapJson]);
     },
     (curr, prev) => {
       "worklet";
@@ -509,8 +552,17 @@ export function useCrosshair(
         number,
         number,
         string | null,
+        string | null,
       ];
-      scheduleOnRN(handleScrub, row[2], row[3], row[0], row[1], row[4]);
+      scheduleOnRN(
+        handleScrub,
+        row[2],
+        row[3],
+        row[0],
+        row[1],
+        row[4],
+        row[5],
+      );
     },
   );
 
@@ -543,6 +595,7 @@ export function useCrosshair(
       engine.canvasWidth.get(),
       engine.timestamp.get(),
       engine.displayWindow.get(),
+      candleGaps,
     );
   };
 
@@ -824,6 +877,7 @@ export function useCrosshair(
     scrubTime,
     scrubValue,
     scrubCandle,
+    scrubGap,
     crosshairOpacity,
     tooltipLayout,
     scrubDotY,

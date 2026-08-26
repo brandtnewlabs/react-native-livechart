@@ -8,6 +8,8 @@ All types are exported from the package root:
 
 ```tsx
 import type {
+  CandleGap,
+  CandleGapsConfig,
   LiveChartHandle,
   LiveChartPoint,
   ReferenceLine,
@@ -42,6 +44,15 @@ interface CandlePoint {
   low: number;
   close: number;
   volume?: number; // optional traded volume; drives the volume bars (candle mode)
+}
+
+type CandleGapKind = "no-trades" | "unavailable" | "unknown";
+
+interface CandleGap {
+  from: number; // inclusive, unix seconds
+  to: number;   // exclusive, unix seconds
+  kind: CandleGapKind;
+  label?: string;
 }
 
 interface SeriesConfig {
@@ -173,7 +184,9 @@ interface ReferenceLine {
   strokeWidth?: number;
   intervals?: [number, number];
   color?: string;
+  fillColor?: string;            // band fill; defaults to color, then palette refLine
   fillOpacity?: number;          // default 0.16
+  strokeOpacity?: number;        // line / band-border opacity; default 1
   fullWidth?: boolean;           // span edge-to-edge through the Y-axis gutter (Form A/B);
                                  //   label/badge stay in the plot. default false
   labelColor?: string;
@@ -268,6 +281,7 @@ interface ScrubPointCore {
 
 interface ScrubPoint extends ScrubPointCore {
   candle?: CandlePoint; // candle mode only
+  gap?: CandleGap; // candle mode only, when the active time is in a declared gap
 }
 
 interface ScrubPointMulti extends ScrubPointCore {
@@ -290,6 +304,33 @@ interface ScrubActionPoint {
 These are the option shapes accepted by the matching props.
 
 ```ts
+interface CandleGapBridgeStyle {
+  color?: string;
+  opacity?: number;
+  strokeWidth?: number;
+  strokeCap?: "butt" | "round" | "square";
+}
+interface CandleGapBandStyle {
+  fillColor?: string;
+  fillOpacity?: number;
+  borderColor?: string;
+  borderOpacity?: number;
+  borderWidth?: number;
+  intervals?: [number, number];
+}
+interface CandleGapLabelStyle {
+  color?: string;
+  position?: "left" | "right";
+}
+interface CandleGapStyle {
+  bridge?: false | CandleGapBridgeStyle;
+  band?: false | CandleGapBandStyle;
+  label?: false | CandleGapLabelStyle;
+}
+interface CandleGapsConfig {
+  gaps: CandleGap[];
+  styles?: Partial<Record<CandleGapKind, CandleGapStyle>>;
+}
 interface LineConfig {
   width?: number;   // stroke width in px; default 2
   color?: string;   // line color override; defaults to palette accent
@@ -648,6 +689,8 @@ interface TooltipRenderProps {
   active: SharedValue<boolean>;      // whether scrubbing is active
   // Candle mode: the OHLC bucket under the crosshair (null in line mode / inactive).
   candle: SharedValue<CandlePoint | null>;
+  // Candle mode: the declared gap under the crosshair (null otherwise).
+  gap: SharedValue<CandleGap | null>;
 }
 ```
 

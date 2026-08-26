@@ -1024,6 +1024,33 @@ describe("tickLiveChartEngineFrame", () => {
       expect(s.displayMax).toBeGreaterThan(120);
     });
 
+    it("frames a bridged historical gap without reporting synthetic extrema", () => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        targetValue: 500,
+        points: [],
+        nowSeconds: 1100,
+        viewEnd: 990,
+        mode: "candle",
+        candles: [{ time: 900, open: 98, high: 102, low: 97, close: 100 }],
+        liveCandle: null,
+        candleGaps: [{ from: 960, to: 1020, kind: "unavailable" }],
+        candleGapBridgeUnavailable: true,
+      });
+      expect(s.displayMin).toBeLessThan(100);
+      expect(s.displayMax).toBeGreaterThan(100);
+      expect(s.displayMax).toBeLessThan(200);
+      expect(s.extremaMinValue).toBeNaN();
+      expect(s.extremaMaxValue).toBeNaN();
+    });
+
     it("includes liveCandle in Y range", () => {
       const s = baseState();
       tickLiveChartEngineFrame(s, {

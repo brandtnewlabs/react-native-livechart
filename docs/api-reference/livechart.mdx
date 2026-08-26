@@ -51,6 +51,12 @@ provided; everything else has a default.
   In-progress candle, updated each tick; `null` between buckets.
 </ParamField>
 
+<ParamField body="candleGaps" type="CandleGap[] | CandleGapsConfig" default="off">
+  Explicit no-trade, unavailable, or unknown candle intervals. The library never
+  infers their meaning from sparse timestamps and never inserts synthetic OHLC.
+  See [Empty candles](/guides/empty-candles).
+</ParamField>
+
 <ParamField body="volume" type="boolean | VolumeConfig" default="false">
   Volume bars in a reserved band below the candles (candle mode only). The
   candle plot shrinks by the band height so candles are never cut off; the x-axis

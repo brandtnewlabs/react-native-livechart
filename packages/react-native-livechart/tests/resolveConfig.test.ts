@@ -2,6 +2,7 @@ import {
   resolveAreaDots,
   resolveAxisLabel,
   resolveBadge,
+  resolveCandleGaps,
   resolveDegen,
   resolveDot,
   resolveDotGlow,
@@ -76,6 +77,102 @@ describe("resolveValueLine", () => {
     expect(
       resolveValueLine({ strokeWidth: 2, intervals: [6, 3], color: "#f00" }),
     ).toEqual({ strokeWidth: 2, intervals: [6, 3], color: "#f00" });
+  });
+});
+
+describe("resolveCandleGaps", () => {
+  it("disables absent or wholly invalid gap data", () => {
+    expect(resolveCandleGaps(undefined)).toBeNull();
+    expect(
+      resolveCandleGaps([
+        { from: 10, to: 10, kind: "no-trades" },
+        { from: Number.NaN, to: 20, kind: "unknown" },
+      ]),
+    ).toBeNull();
+  });
+
+  it("sorts ranges and applies semantic defaults", () => {
+    const result = resolveCandleGaps([
+      { from: 20, to: 30, kind: "unknown" },
+      { from: 0, to: 10, kind: "no-trades" },
+    ]);
+    expect(result?.gaps.map((gap) => gap.from)).toEqual([0, 20]);
+    expect(result?.styles["no-trades"].bridge).toMatchObject({
+      opacity: 0.7,
+      strokeWidth: 2,
+      strokeCap: "round",
+    });
+    expect(result?.styles["no-trades"].band).toBeNull();
+    expect(result?.styles["no-trades"].label).toBeNull();
+    expect(result?.styles.unavailable.band?.fillOpacity).toBe(0.12);
+    expect(result?.styles.unavailable.label?.position).toBe("left");
+    expect(result?.styles.unknown.bridge).toBeNull();
+  });
+
+  it("merges and clamps per-kind presentation overrides", () => {
+    const result = resolveCandleGaps({
+      gaps: [{ from: 0, to: 10, kind: "unknown" }],
+      styles: {
+        unknown: {
+          bridge: {
+            color: "#123456",
+            opacity: 3,
+            strokeWidth: -2,
+            strokeCap: "square",
+          },
+          band: {
+            fillColor: "#abcdef",
+            fillOpacity: -1,
+            borderColor: "#654321",
+            borderOpacity: 3,
+            borderWidth: -4,
+            intervals: [8, 2],
+          },
+          label: { color: "#fedcba", position: "right" },
+        },
+      },
+    });
+    expect(result?.styles.unknown).toEqual({
+      bridge: {
+        color: "#123456",
+        opacity: 1,
+        strokeWidth: 0,
+        strokeCap: "square",
+      },
+      band: {
+        fillColor: "#abcdef",
+        fillOpacity: 0,
+        borderColor: "#654321",
+        borderOpacity: 1,
+        borderWidth: 0,
+        intervals: [8, 2],
+      },
+      label: { color: "#fedcba", position: "right" },
+    });
+  });
+
+  it("enables default-disabled sections with objects and disables defaults with false", () => {
+    const result = resolveCandleGaps({
+      gaps: [{ from: 0, to: 10, kind: "no-trades" }],
+      styles: {
+        "no-trades": { band: {}, label: {} },
+        unavailable: { bridge: false, band: false, label: false },
+      },
+    });
+
+    expect(result?.styles["no-trades"].band).toMatchObject({
+      fillOpacity: 0.12,
+      borderWidth: 2,
+    });
+    expect(result?.styles["no-trades"].label).toEqual({
+      color: undefined,
+      position: "left",
+    });
+    expect(result?.styles.unavailable).toEqual({
+      bridge: null,
+      band: null,
+      label: null,
+    });
   });
 });
 

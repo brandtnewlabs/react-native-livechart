@@ -138,6 +138,22 @@ describe("snapScrubXToCandleCenter", () => {
     expect(snap(140)).toBe(140);
   });
 
+  it("snaps an explicit no-trade gap to its empty bucket center", () => {
+    expect(
+      snapScrubXToCandleCenter(
+        140,
+        candles,
+        live,
+        candleWidthSecs,
+        padding,
+        canvasWidth,
+        timestamp,
+        windowSecs,
+        [{ from: 820, to: 880, kind: "no-trades" }],
+      ),
+    ).toBeCloseTo(160);
+  });
+
   it("passes the raw X through before the first candle", () => {
     // t = 695 predates the oldest bucket.
     expect(snap(5)).toBe(5);
