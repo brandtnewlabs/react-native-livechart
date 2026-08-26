@@ -95,15 +95,15 @@ export interface ThresholdSeriesGeometry {
   samples: SharedValue<number[]>;
   /** Whether any of the polyline is on-screen (drives marker-line opacity). */
   visible: SharedValue<boolean>;
-  /** Threshold value at `now` (flat-extended past the last point) — the badge label. */
-  currentValue: SharedValue<number>;
-  /** Pixel-Y of `currentValue` — anchors the badge. */
-  currentLineY: SharedValue<number>;
-  /** Whether the badge should show: `currentLineY` on-plot AND, with
-   *  `extendToNow` off, "now" not past the series' last point. (`visible` can be
-   *  true for the polyline while the value-at-now sits outside the plot; the
-   *  badge must not draw into the gutters then.) */
-  currentVisible: SharedValue<boolean>;
+  /** Threshold value at the configured badge anchor: the visible window's
+   *  left edge (`"first"`) or its live/right edge (`"last"`). */
+  badgeValue: SharedValue<number>;
+  /** Pixel-Y of `badgeValue` — anchors the badge. */
+  badgeLineY: SharedValue<number>;
+  /** Whether the configured badge anchor is on-plot and belongs to a visible
+   *  part of the threshold. (`visible` can still be true when that one endpoint
+   *  is off-plot.) */
+  badgeVisible: SharedValue<boolean>;
   /** Pixel-X where the threshold ends: the last point's X with `extendToNow`
    *  off, else {@link THRESHOLD_NO_CLIP}. The shader paints its plain
    *  `restColor` right of it; the marker polyline stops there. */
@@ -118,9 +118,9 @@ const EMPTY_SAMPLES: number[] = new Array(THRESHOLD_SAMPLE_COUNT).fill(0);
  * Per-frame screen geometry for a **time-varying** threshold — a plain
  * `LiveChartPoint[]` `value` or a live `SharedValue<LiveChartPoint[]>` `series`
  * (which wins when both are given): the screen polyline (marker line +
- * fill-band bottom), the shader's pixel-Y `samples[]`, the current value/anchor
- * for the badge, and the `extendToNow` cutoff X. The array buffers ping-pong
- * (Reanimated only re-notifies subscribers when the returned reference
+ * fill-band bottom), the shader's pixel-Y `samples[]`, the configured endpoint
+ * value/anchor for the badge, and the `extendToNow` cutoff X. The array buffers
+ * ping-pong (Reanimated only re-notifies subscribers when the returned reference
  * changes). When the threshold is a constant `SharedValue<number>` every
  * worklet short-circuits cheaply and {@link useThreshold} drives the render
  * instead.
@@ -131,6 +131,7 @@ export function useThresholdSeries(
   value: ThresholdValue,
   series: SharedValue<LiveChartPoint[]> | null = null,
   extendToNow = true,
+  labelAnchor: "first" | "last" = "last",
 ): ThresholdSeriesGeometry {
   const cacheRef = useRef<{
     ptsA: number[];
@@ -238,15 +239,19 @@ export function useThresholdSeries(
     );
   });
 
-  const currentValue = useDerivedValue(() => {
+  const badgeValue = useDerivedValue(() => {
     const pts = series ? series.get() : Array.isArray(value) ? value : null;
     if (pts === null) return NaN;
-    return interpolateAtTime(pts, engine.timestamp.get()) ?? NaN;
+    const time =
+      labelAnchor === "first"
+        ? engine.timestamp.get() - engine.displayWindow.get()
+        : engine.timestamp.get();
+    return interpolateAtTime(pts, time) ?? NaN;
   });
 
-  const currentLineY = useDerivedValue(() =>
+  const badgeLineY = useDerivedValue(() =>
     thresholdLineY(
-      currentValue.get(),
+      badgeValue.get(),
       engine.displayMin.get(),
       engine.displayMax.get(),
       engine.canvasHeight.get(),
@@ -255,15 +260,19 @@ export function useThresholdSeries(
     ),
   );
 
-  const currentVisible = useDerivedValue(() => {
-    if (!extendToNow) {
+  const badgeVisible = useDerivedValue(() => {
+    if (labelAnchor === "first") {
+      // If the non-extended series ended before this window, there is no left
+      // endpoint to label even though interpolation can still clamp a value.
+      if (screenPts.get().length < 4) return false;
+    } else if (!extendToNow) {
       // The threshold ends at its last point — no badge past it.
       const pts = series ? series.get() : Array.isArray(value) ? value : null;
       if (pts === null || pts.length === 0) return false;
       if (pts[pts.length - 1].time < engine.timestamp.get()) return false;
     }
     return thresholdVisible(
-      currentLineY.get(),
+      badgeLineY.get(),
       engine.canvasHeight.get(),
       padding.top,
       padding.bottom,
@@ -274,9 +283,9 @@ export function useThresholdSeries(
     screenPts,
     samples,
     visible,
-    currentValue,
-    currentLineY,
-    currentVisible,
+    badgeValue,
+    badgeLineY,
+    badgeVisible,
     clipRightX,
   };
 }

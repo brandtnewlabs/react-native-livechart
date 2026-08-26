@@ -64,9 +64,26 @@ below; override with `aboveColor` / `belowColor`). Two opt-in extras share the s
 
 The label renders as an opaque **badge** anchored flush to the plot's left edge
 (`labelPosition: "left"`, the default — clear of the y-axis labels) or the right
-gutter, and is drawn on top of the line so it's never painted over. While a
-threshold is set it supersedes `line.color` / `line.colors` and segment recoloring
-for the main stroke.
+gutter, and is drawn on top of the line so it's never painted over. For a
+time-varying series, `labelAnchor` independently selects the threshold value and
+Y position: `"first"` samples the visible window's left edge and `"last"` (the
+default) samples the live/right edge. This lets a left-positioned badge line up
+with the threshold where it enters the plot:
+
+```tsx
+threshold={{
+  series: vwap,
+  line: {
+    label: "VWAP",
+    showValue: true,
+    labelPosition: "left",
+    labelAnchor: "first",
+  },
+}}
+```
+
+While a threshold is set it supersedes `line.color` / `line.colors` and segment
+recoloring for the main stroke.
 
 ## Time-varying threshold (a series)
 
@@ -108,8 +125,9 @@ const breakEven: LiveChartPoint[] = [
   `rgba()`** in series mode (an `rgba()` alpha carries into the stroke and scales
   the band). Named CSS colors and 8-digit hex are only supported by the constant
   form — in series mode they fall back to grey.
-- The marker `line`'s badge shows the threshold's **current** value (at the live
-  edge) when `showValue` is set.
+- The marker `line`'s badge shows the threshold's live-edge value by default.
+  Set `labelAnchor: "first"` to show and align to the value at the visible
+  window's left edge instead; `labelPosition` still controls the badge's X side.
 - An **empty series** (`[]`) renders as "no threshold yet": plain line color, no
   band, no marker — handy while the threshold history is still loading.
 - **`extendToNow: false`** opts out of the flat extension for a benchmark that

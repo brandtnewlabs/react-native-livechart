@@ -114,6 +114,7 @@ export default function ThresholdScreen() {
   const [label, setLabel] = useState(true);
   const [showValue, setShowValue] = useState(true);
   const [labelSide, setLabelSide] = useState<"left" | "right">("left");
+  const [labelAnchor, setLabelAnchor] = useState<"first" | "last">("last");
   const [colorMode, setColorMode] = useState<"default" | "custom">("default");
   const [entry, setEntry] = useState<EntryLevel>("start");
 
@@ -174,7 +175,12 @@ export default function ThresholdScreen() {
             // `true` → dashed line only (no text/badge); object → labelled badge.
             line: markerLine
               ? label
-                ? { label: "Break-even", showValue, labelPosition: labelSide }
+                ? {
+                    label: "Break-even",
+                    showValue,
+                    labelPosition: labelSide,
+                    labelAnchor,
+                  }
                 : true
               : false,
           }}
@@ -226,6 +232,18 @@ export default function ThresholdScreen() {
         value={labelSide}
         onChange={setLabelSide}
       />
+
+      {isSeries && (
+        <ChipRow
+          label="Label anchor"
+          options={[
+            { value: "first", label: "First" },
+            { value: "last", label: "Last" },
+          ]}
+          value={labelAnchor}
+          onChange={setLabelAnchor}
+        />
+      )}
 
       <ChipRow
         label="Colors"

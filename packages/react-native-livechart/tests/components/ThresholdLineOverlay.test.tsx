@@ -32,6 +32,7 @@ function engine(): ChartEngineLayout {
 const LINE_DEFAULTS: ResolvedThresholdLineConfig = {
   label: undefined,
   labelPosition: "left",
+  labelAnchor: "last",
   color: undefined,
   labelColor: undefined,
   intervals: [4, 4],

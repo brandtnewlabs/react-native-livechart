@@ -906,6 +906,7 @@ function useLiveChartController({
     thresholdValue,
     thresholdSeriesSV,
     thresholdCfg?.extendToNow ?? true,
+    thresholdCfg?.line?.labelAnchor ?? "last",
   );
   const thresholdStopColors = thresholdCfg
     ? thresholdStops(thresholdCfg, palette)
@@ -966,23 +967,23 @@ function useLiveChartController({
     thresholdSeriesGeom.clipRightX,
   );
 
-  // Marker line + badge sources: the series anchors at the value-at-now (flat-
-  // extended past its last point); the constant case at the single benchmark Y.
-  // The badge gets its own visibility — it's pinned at the value-at-now Y, which
-  // can be off-plot while older polyline segments are still visible.
+  // Marker line + badge sources: a series badge independently selects its first
+  // or last visible endpoint; the constant case stays at the single benchmark Y.
+  // The badge gets its own visibility because its selected endpoint can be
+  // off-plot while older polyline segments are still visible.
   const thresholdMarkerLineY = thresholdIsSeries
-    ? thresholdSeriesGeom.currentLineY
+    ? thresholdSeriesGeom.badgeLineY
     : thresholdGeom.lineY;
   const thresholdMarkerVisible = thresholdIsSeries
     ? thresholdSeriesGeom.visible
     : thresholdGeom.visible;
   const thresholdBadgeVisible = thresholdIsSeries
-    ? thresholdSeriesGeom.currentVisible
+    ? thresholdSeriesGeom.badgeVisible
     : thresholdGeom.visible;
   const thresholdMarkerValue =
     thresholdCfg && !thresholdIsSeries && !Array.isArray(thresholdCfg.value)
-      ? (thresholdCfg.value ?? thresholdSeriesGeom.currentValue)
-      : thresholdSeriesGeom.currentValue;
+      ? (thresholdCfg.value ?? thresholdSeriesGeom.badgeValue)
+      : thresholdSeriesGeom.badgeValue;
   const thresholdSeriesPts = thresholdIsSeries
     ? thresholdSeriesGeom.screenPts
     : undefined;
