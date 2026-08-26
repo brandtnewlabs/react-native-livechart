@@ -987,6 +987,52 @@ describe("LiveChart", () => {
     ).toBe(false);
   });
 
+  it("renders explicit line gaps without exposing internal bands to reference-line slots", async () => {
+    const renderReferenceLine = jest.fn(
+      (_ctx: ReferenceLineRenderProps) => null,
+    );
+    const screen = await render(
+      <Harness
+        referenceLines={[{ value: 50, label: "Consumer line" }]}
+        renderReferenceLine={renderReferenceLine}
+        lineGaps={{
+          gaps: [
+            {
+              from: 1699999940,
+              to: 1699999970,
+              kind: "unavailable",
+              label: "Exchange maintenance",
+            },
+          ],
+          styles: {
+            unavailable: {
+              bridge: { color: "#16a34a", strokeWidth: 4 },
+              band: {
+                fillColor: "#7c3aed",
+                borderColor: "#f59e0b",
+              },
+              label: { color: "#f8fafc", position: "right" },
+            },
+          },
+        }}
+      />,
+    );
+    const views = getAllByHostType(screen, View);
+    await fireEvent(views[0], "layout", {
+      nativeEvent: { layout: { width: 400, height: 300 } },
+    });
+    const tree = JSON.stringify(screen.toJSON());
+    expect(tree).toContain("#16a34a");
+    expect(tree).toContain("#7c3aed");
+    expect(tree).toContain("#f59e0b");
+    expect(tree).toContain("#f8fafc");
+    expect(
+      renderReferenceLine.mock.calls.some(
+        ([ctx]) => ctx.line.from !== undefined || ctx.line.to !== undefined,
+      ),
+    ).toBe(false);
+  });
+
   it("renders candle mode with scrub enabled", async () => {
     await render(<CandleHarness scrub />);
   });

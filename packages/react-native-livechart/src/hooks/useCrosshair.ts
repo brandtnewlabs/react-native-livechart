@@ -10,6 +10,7 @@ import { BADGE_METRICS_DEFAULTS, X_AXIS_LABEL_OFFSET_Y } from "../constants";
 import type { ResolvedScrubActionConfig } from "../core/resolveConfig";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { type ChartPadding } from "../draw/line";
+import { lineGapContainsData, previousLineValueAtTime } from "../draw/lineGap";
 import { interpolateAtTime } from "../math/interpolate";
 import {
   pickCandleGapAtTime,
@@ -29,6 +30,7 @@ import {
   computeActionBadgeLayout,
   computeCandleTooltipLayout,
   computeCrosshairOpacity,
+  computeLineGapTooltipLayout,
   computeScrubDotY,
   computeScrubTime,
   computeTimeBadgeLayout,
@@ -89,22 +91,23 @@ function clampPlotY(
 export type { CrosshairState, TooltipLayout } from "./crosshairShared";
 export type { ScrubPoint };
 
-  export {
-    computeCandleTooltipLayout,
-    computeCrosshairOpacity,
-    computeScrubTime,
-    computeTooltipLayout,
-    computeTooltipLayoutMulti,
-    deriveCrosshairTooltipSingle,
-    deriveScrubValueSingle,
-    HIDDEN_TOOLTIP
-  } from "./crosshairShared";
+export {
+  computeCandleTooltipLayout,
+  computeCrosshairOpacity,
+  computeLineGapTooltipLayout,
+  computeScrubTime,
+  computeTooltipLayout,
+  computeTooltipLayoutMulti,
+  deriveCrosshairTooltipSingle,
+  deriveScrubValueSingle,
+  HIDDEN_TOOLTIP,
+} from "./crosshairShared";
 
-export interface CrosshairCandleOpts {
+export interface CrosshairChartOpts {
   mode: "line" | "candle";
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
-  candleWidthSecs: number;
+  candleWidthSecs?: number;
   gaps?: CandleGap[];
   bridgeNoTrades?: boolean;
   bridgeUnavailable?: boolean;
@@ -123,7 +126,7 @@ export function useCrosshair(
   font: SkFont,
   enabled: boolean,
   onScrub?: (point: ScrubPoint | null) => void,
-  candleOpts?: CrosshairCandleOpts,
+  chartOpts?: CrosshairChartOpts,
   /** Press-and-hold delay (ms) before scrubbing activates. 0 = immediate. */
   panGestureDelay = 0,
   onGestureStart?: () => void,
@@ -218,14 +221,14 @@ export function useCrosshair(
   const actionShowText = scrubAction?.text ?? true;
   const hasTimeBadge = scrubAction?.timeBadge ?? false;
 
-  const isCandleMode = candleOpts?.mode === "candle";
-  const candlesSV = candleOpts?.candles;
-  const liveCandleSV = candleOpts?.liveCandle;
-  const candleWidthSecs = candleOpts?.candleWidthSecs ?? 60;
-  const candleGaps = candleOpts?.gaps ?? [];
-  const bridgeNoTrades = candleOpts?.bridgeNoTrades ?? false;
-  const bridgeUnavailable = candleOpts?.bridgeUnavailable ?? false;
-  const bridgeUnknown = candleOpts?.bridgeUnknown ?? false;
+  const isCandleMode = chartOpts?.mode === "candle";
+  const candlesSV = chartOpts?.candles;
+  const liveCandleSV = chartOpts?.liveCandle;
+  const candleWidthSecs = chartOpts?.candleWidthSecs ?? 60;
+  const chartGaps = chartOpts?.gaps ?? [];
+  const bridgeNoTrades = chartOpts?.bridgeNoTrades ?? false;
+  const bridgeUnavailable = chartOpts?.bridgeUnavailable ?? false;
+  const bridgeUnknown = chartOpts?.bridgeUnknown ?? false;
 
   // Monospace advance width, measured once per render (not per scrub frame) so
   // the tooltip layout worklet can size text by character count instead of a
@@ -266,10 +269,17 @@ export function useCrosshair(
               candleWidthSecs,
             )
           : null;
-      const gap =
-        isCandleMode && active && time >= 0 && !candle
-          ? pickCandleGapAtTime(candleGaps, time)
+      const lineData = engine.data.get();
+      const candidateGap =
+        active && time >= 0 && (!isCandleMode || !candle)
+          ? pickCandleGapAtTime(chartGaps, time)
           : null;
+      const gap =
+        candidateGap &&
+        !isCandleMode &&
+        lineGapContainsData(lineData, candidateGap)
+          ? null
+          : candidateGap;
       const gapBridged = gap
         ? gap.kind === "no-trades"
           ? bridgeNoTrades
@@ -278,19 +288,23 @@ export function useCrosshair(
             : bridgeUnknown
         : false;
       const gapValue =
-        gap && gapBridged && candlesSV
-          ? previousCandleCloseAtTime(
-              candlesSV.get(),
-              liveCandleSV?.get() ?? null,
-              time,
-            )
+        gap && gapBridged
+          ? isCandleMode && candlesSV
+            ? previousCandleCloseAtTime(
+                candlesSV.get(),
+                liveCandleSV?.get() ?? null,
+                time,
+              )
+            : previousLineValueAtTime(lineData, gap.from)
           : null;
       const value =
         !active || time < 0
           ? null
           : isCandleMode
             ? (candle?.close ?? gapValue)
-            : interpolateAtTime(engine.data.get(), time);
+            : gap
+              ? gapValue
+              : interpolateAtTime(lineData, time);
       const dotY = computeScrubDotY(
         value,
         engine.displayMin.get(),
@@ -314,24 +328,42 @@ export function useCrosshair(
             gap,
             gapValue,
           )
-        : deriveCrosshairTooltipSingle(
-            active,
-            x,
-            time,
-            value,
-            padding,
-            canvasWidth,
-            formatValue,
-            formatTime,
-            font,
-            monoCharWidth,
-            tooltipPlacement,
-            tooltipShowValue,
-            tooltipShowTime,
-            canvasHeight,
-            tooltipMargin,
-            dotY,
-          );
+        : gap
+          ? computeLineGapTooltipLayout(
+              active,
+              x,
+              gap,
+              time,
+              padding,
+              canvasWidth,
+              formatTime,
+              font,
+              monoCharWidth,
+              tooltipPlacement,
+              tooltipShowValue,
+              tooltipShowTime,
+              canvasHeight,
+              tooltipMargin,
+              dotY,
+            )
+          : deriveCrosshairTooltipSingle(
+              active,
+              x,
+              time,
+              value,
+              padding,
+              canvasWidth,
+              formatValue,
+              formatTime,
+              font,
+              monoCharWidth,
+              tooltipPlacement,
+              tooltipShowValue,
+              tooltipShowTime,
+              canvasHeight,
+              tooltipMargin,
+              dotY,
+            );
       return {
         time,
         candle,
@@ -595,7 +627,7 @@ export function useCrosshair(
       engine.canvasWidth.get(),
       engine.timestamp.get(),
       engine.displayWindow.get(),
-      candleGaps,
+      chartGaps,
     );
   };
 

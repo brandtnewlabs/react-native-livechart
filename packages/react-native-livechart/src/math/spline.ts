@@ -56,16 +56,26 @@ export function drawSpline(
   /** Straight polyline (`lineTo` per point) instead of the monotone cubic — an
    *  angular, hard-edged line. The caller has already `moveTo`'d point 0. */
   linear = false,
+  /** First point index to draw (inclusive). The caller must moveTo this point. */
+  startPoint = 0,
+  /** Last point index to draw (exclusive). Defaults to the full array. */
+  endPoint = pts.length >> 1,
 ) {
   "worklet";
-  const n = pts.length >> 1;
+  const start = Math.max(0, startPoint);
+  const end = Math.min(pts.length >> 1, endPoint);
+  const n = end - start;
   if (n < 2) return;
   if (linear) {
-    for (let i = 1; i < n; i++) path.lineTo(pts[i * 2], pts[i * 2 + 1]);
+    for (let i = 1; i < n; i++) {
+      const point = (start + i) * 2;
+      path.lineTo(pts[point], pts[point + 1]);
+    }
     return;
   }
   if (n === 2) {
-    path.lineTo(pts[2], pts[3]);
+    const point = (start + 1) * 2;
+    path.lineTo(pts[point], pts[point + 1]);
     return;
   }
 
@@ -73,7 +83,7 @@ export function drawSpline(
   const delta: number[] = scratch ? scratch.delta : new Array(n - 1);
   const h: number[] = scratch ? scratch.h : new Array(n - 1);
   for (let i = 0; i < n - 1; i++) {
-    const i2 = i * 2;
+    const i2 = (start + i) * 2;
     const j2 = i2 + 2;
     h[i] = pts[j2] - pts[i2];
     delta[i] = h[i] === 0 ? 0 : (pts[j2 + 1] - pts[i2 + 1]) / h[i];
@@ -110,7 +120,7 @@ export function drawSpline(
 
   // 4. Draw bezier curves
   for (let i = 0; i < n - 1; i++) {
-    const i2 = i * 2;
+    const i2 = (start + i) * 2;
     const j2 = i2 + 2;
     const hi = h[i];
     path.cubicTo(

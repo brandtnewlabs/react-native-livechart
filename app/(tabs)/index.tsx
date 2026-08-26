@@ -54,8 +54,8 @@ const SECTIONS: DemoSection[] = [
       },
       {
         href: "/demo/empty-candles" as Href,
-        title: "Empty candles",
-        blurb: "Review semantic gaps and configurable bridge, band, and label styles against a live feed.",
+        title: "Chart gaps",
+        blurb: "Review semantic line/candle gaps and configurable bridge, band, and label styles against a live feed.",
       },
       {
         href: "/demo/multi-series",
