@@ -72,7 +72,7 @@
     "patch-package": "^8.0.1",
     "react-doctor": "^0.9.0",
     "react-test-renderer": "19.2.3",
-    "typescript": "~6.0.3"
+    "typescript": "~7.0.0"
   },
   "overrides": {
     "@react-native/jest-preset": "0.86.2"
