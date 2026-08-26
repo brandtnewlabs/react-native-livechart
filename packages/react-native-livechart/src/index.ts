@@ -114,6 +114,7 @@ export type {
   SeriesConfig,
   ThemeMode,
   ThresholdConfig,
+  ThresholdBadgeRenderProps,
   ThresholdLineConfig,
   TooltipRenderProps,
   TradeEvent,

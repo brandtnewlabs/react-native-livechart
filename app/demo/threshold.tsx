@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
-import { useSharedValue } from "react-native-reanimated";
-import { LiveChart, type LiveChartPoint } from "react-native-livechart";
+import { StyleSheet, Text, TextInput, View } from "react-native";
+import Animated, {
+  useAnimatedProps,
+  useSharedValue,
+} from "react-native-reanimated";
+import {
+  LiveChart,
+  type LiveChartPoint,
+  type ThresholdBadgeRenderProps,
+} from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
@@ -8,6 +16,8 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 
 export const options = { title: "Threshold split" };
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 const CENTER = 100;
 
@@ -19,6 +29,31 @@ const ENTRY_LEVELS: Record<EntryLevel, number> = {
   high: CENTER * 1.03,
   low: CENTER * 0.97,
 };
+
+/**
+ * A realistic custom threshold badge: a brokerage-style average-cost tag with
+ * an icon, distinct chrome, and a UI-thread value readout. The chart owns its
+ * position; this component owns only the contents and visual treatment.
+ */
+function AverageCostBadge({ valueStr }: ThresholdBadgeRenderProps) {
+  const animatedProps = useAnimatedProps(() => {
+    const text = valueStr.get();
+    return { text, defaultValue: text };
+  });
+  return (
+    <View style={styles.averageCostBadge}>
+      <View style={styles.averageCostIcon}>
+        <Text style={styles.averageCostIconText}>B/E</Text>
+      </View>
+      <AnimatedTextInput
+        editable={false}
+        underlineColorAndroid="transparent"
+        style={styles.averageCostValue}
+        animatedProps={animatedProps}
+      />
+    </View>
+  );
+}
 
 /**
  * Smooth, bounded, quasi-random price as a function of time (seconds): a few
@@ -65,7 +100,8 @@ function useSmoothPriceFeed() {
       value.set(v);
       // Commit a point every 3rd tick (~10Hz, matching the seed density) so the
       // 1000-point cap keeps ~100s of history instead of eroding to ~33s.
-      if (++tick % 3 !== 0) return;
+      tick += 1;
+      if (tick % 3 !== 0) return;
       const point: LiveChartPoint = { time: now, value: v };
       // Append IN PLACE on the UI thread (only `point` crosses the bridge) — never
       // re-clone the growing array JS→UI, matching the sim's hot path so the line
@@ -115,6 +151,8 @@ export default function ThresholdScreen() {
   const [showValue, setShowValue] = useState(true);
   const [labelSide, setLabelSide] = useState<"left" | "right">("left");
   const [labelAnchor, setLabelAnchor] = useState<"first" | "last">("last");
+  const [badgeRenderer, setBadgeRenderer] =
+    useState<"built-in" | "custom">("built-in");
   const [colorMode, setColorMode] = useState<"default" | "custom">("default");
   const [entry, setEntry] = useState<EntryLevel>("start");
 
@@ -184,6 +222,11 @@ export default function ThresholdScreen() {
                 : true
               : false,
           }}
+          renderThresholdBadge={
+            badgeRenderer === "custom"
+              ? (ctx) => <AverageCostBadge {...ctx} />
+              : undefined
+          }
           scrub={false}
         />
       }
@@ -246,6 +289,16 @@ export default function ThresholdScreen() {
       )}
 
       <ChipRow
+        label="Badge renderer"
+        options={[
+          { value: "built-in", label: "Built-in" },
+          { value: "custom", label: "Custom RN" },
+        ]}
+        value={badgeRenderer}
+        onChange={setBadgeRenderer}
+      />
+
+      <ChipRow
         label="Colors"
         options={[
           { value: "default", label: "Green / Red" },
@@ -280,3 +333,43 @@ export default function ThresholdScreen() {
     </DemoScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  averageCostBadge: {
+    height: 30,
+    paddingHorizontal: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2dd4bf",
+    backgroundColor: "#0f172a",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.28,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  averageCostIcon: {
+    minWidth: 27,
+    height: 20,
+    borderRadius: 5,
+    backgroundColor: "#2dd4bf",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  averageCostIconText: {
+    color: "#042f2e",
+    fontSize: 9,
+    fontWeight: "800",
+  },
+  averageCostValue: {
+    width: 58,
+    height: 24,
+    padding: 0,
+    color: "#f8fafc",
+    fontSize: 12,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
+});

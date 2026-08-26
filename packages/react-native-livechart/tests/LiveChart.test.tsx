@@ -723,6 +723,39 @@ describe("LiveChart", () => {
     );
   });
 
+  it("replaces the threshold badge with a custom React Native element", async () => {
+    let captured:
+      | Parameters<NonNullable<LiveChartProps["renderThresholdBadge"]>>[0]
+      | undefined;
+    const screen = await render(
+      <ThresholdHarness
+        thresholdValue={12.5}
+        thresholdExtra={{ line: true }}
+        formatValue={(v) => `$${v.toFixed(2)}`}
+        renderThresholdBadge={(ctx) => {
+          captured = ctx;
+          return <View testID="custom-threshold-badge" />;
+        }}
+      />,
+    );
+    expect(screen.getByTestId("custom-threshold-badge")).toBeTruthy();
+    expect(captured?.line.labelPosition).toBe("left");
+    expect(captured?.value.get()).toBe(12.5);
+    expect(captured?.valueStr.get()).toBe("$12.50");
+    expect(typeof captured?.visible.get()).toBe("boolean");
+  });
+
+  it("keeps the built-in threshold badge when the custom renderer opts out", async () => {
+    await layoutFirst(
+      await render(
+        <ThresholdHarness
+          thresholdExtra={{ line: { label: "Break-even", showValue: true } }}
+          renderThresholdBadge={() => null}
+        />,
+      ),
+    );
+  });
+
   it("accepts a bare dashed marker line (no label)", async () => {
     await layoutFirst(
       await render(
