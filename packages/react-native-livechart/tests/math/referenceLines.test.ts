@@ -184,11 +184,17 @@ describe("referenceLineForm", () => {
     expect(referenceLineForm({ value: 5 })).toBe("line");
   });
 
-  it("classifies a Form-B value band", () => {
+  it("classifies a Form-B series", () => {
+    expect(referenceLineForm({ series: [{ time: 1, value: 5 }] })).toBe(
+      "series",
+    );
+  });
+
+  it("classifies a Form-C value band", () => {
     expect(referenceLineForm({ valueFrom: 1, valueTo: 2 })).toBe("value-band");
   });
 
-  it("classifies a Form-C time band", () => {
+  it("classifies a Form-D time band", () => {
     expect(referenceLineForm({ from: 100, to: 200 })).toBe("time-band");
   });
 
@@ -201,10 +207,26 @@ describe("referenceLineForm", () => {
     expect(referenceLineForm({ from: 1 })).toBe("none");
   });
 
-  it("applies precedence A > B > C", () => {
+  it("applies precedence A > B > C > D", () => {
     expect(
-      referenceLineForm({ value: 5, valueFrom: 1, valueTo: 2, from: 3, to: 4 }),
+      referenceLineForm({
+        value: 5,
+        series: [{ time: 1, value: 2 }],
+        valueFrom: 1,
+        valueTo: 2,
+        from: 3,
+        to: 4,
+      }),
     ).toBe("line");
+    expect(
+      referenceLineForm({
+        series: [{ time: 1, value: 2 }],
+        valueFrom: 1,
+        valueTo: 2,
+        from: 3,
+        to: 4,
+      }),
+    ).toBe("series");
     expect(referenceLineForm({ valueFrom: 1, valueTo: 2, from: 3, to: 4 })).toBe(
       "value-band",
     );
@@ -229,6 +251,21 @@ describe("collectReferenceValues", () => {
         { value: 7 },
       ]),
     ).toEqual([7]);
+  });
+
+  it("folds only a series' finite extrema into the range", () => {
+    expect(
+      collectReferenceValues([
+        {
+          series: [
+            { time: 1, value: 7 },
+            { time: 2, value: Number.NaN },
+            { time: 3, value: 2 },
+            { time: 4, value: 9 },
+          ],
+        },
+      ]),
+    ).toEqual([2, 9]);
   });
 
   it("ignores form-less entries", () => {
@@ -259,6 +296,22 @@ describe("referenceLineReactKeys", () => {
       "{badge:true,label:\"Target\",value:10}:0",
       "{badge:true,label:\"Target\",value:10}:1",
     ]);
+  });
+
+  it("keeps a series fallback key stable when its samples grow", () => {
+    const before = referenceLineReactKeys([
+      { series: [{ time: 1, value: 10 }], label: "VWAP" },
+    ]);
+    const after = referenceLineReactKeys([
+      {
+        series: [
+          { time: 1, value: 10 },
+          { time: 2, value: 11 },
+        ],
+        label: "VWAP",
+      },
+    ]);
+    expect(after).toEqual(before);
   });
 });
 

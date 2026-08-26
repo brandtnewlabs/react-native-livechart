@@ -1,7 +1,7 @@
 ---
 title: Reference lines & bands
 icon: "ruler-horizontal"
-description: "Draw horizontal lines, value/time bands, pill badges, and draggable working orders."
+description: "Draw horizontal or time-varying lines, value/time bands, pill badges, and draggable working orders."
 ---
 
 <Note>
@@ -16,9 +16,10 @@ description: "Draw horizontal lines, value/time bands, pill badges, and draggabl
   <video autoPlay loop muted playsInline controls poster="/media/reference-lines-and-bands.jpg" src="/media/reference-lines-and-bands.mp4" />
 </Frame>
 
-`referenceLines` accepts an array of `ReferenceLine`s in three mutually-exclusive forms:
+`referenceLines` accepts an array of `ReferenceLine`s in four mutually-exclusive forms:
 
 - **Horizontal line** at a `value`
+- **Time-varying line** following a `series`
 - **Horizontal band** between `valueFrom` and `valueTo`
 - **Vertical time band** between `from` and `to` (unix seconds)
 
@@ -47,6 +48,51 @@ range (`excludeFromRange`). Bands can use separate `fillColor` / `fillOpacity` a
 `color` / `strokeOpacity` paints. See the [types reference](/api-reference/types) for every field.
 When the array can reorder (for example, a dynamic order book), give each line a unique `id`
 so its rendered identity follows that line instead of its array position.
+
+## Time-varying reference line (`series`)
+
+Use the `series` form for a historical benchmark that changes over time: average cost after
+multiple fills, VWAP, a moving target, or a peg. It is especially useful over candlesticks, where
+threshold split coloring does not apply.
+
+```tsx
+import type { LiveChartPoint, ReferenceLine } from "react-native-livechart";
+
+const averageCost: LiveChartPoint[] = [
+  { time: 1_700_000_000, value: 101.2 },
+  { time: 1_700_000_900, value: 99.8 },
+  { time: 1_700_001_800, value: 100.4 },
+];
+
+const referenceLines: ReferenceLine[] = [
+  {
+    series: averageCost,
+    label: "Avg cost",
+    showValue: true,
+    color: "#f59e0b",
+    strokeWidth: 2,
+    intervals: [6, 4],
+  },
+];
+
+<LiveChart
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  referenceLines={referenceLines}
+/>
+```
+
+Points use unix-second timestamps and must be sorted oldest to newest. The first value extends
+to the window's left edge, and the last value extends flat to the live edge. Set
+`extendToNow: false` to stop the path and its label at the final point. A series contributes its
+minimum and maximum to automatic Y-range fitting unless `excludeFromRange` is set.
+
+The series form supports the shared line presentation fields: `color`, `strokeOpacity`,
+`strokeWidth`, `intervals`, `label`, `labelColor`, `labelPosition`, `showValue`, and
+`excludeFromRange`.
+Working-order fields (`badge`, `draggable`, drag callbacks) and custom tag renderers remain for
+single-value Form-A lines.
 
 ## Full-width lines (`fullWidth`)
 

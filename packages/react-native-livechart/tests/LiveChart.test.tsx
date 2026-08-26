@@ -1124,6 +1124,30 @@ describe("LiveChart", () => {
     });
   });
 
+  it("draws a historical reference-line series over candle mode", async () => {
+    await layoutFirst(
+      await render(
+        <CandleHarness
+          nowOverride={1_700_000_120}
+          timeWindow={180}
+          referenceLines={[
+            {
+              series: [
+                { time: 1_699_999_940, value: 49 },
+                { time: 1_700_000_000, value: 51 },
+                { time: 1_700_000_060, value: 52 },
+              ],
+              label: "Average cost",
+              showValue: true,
+              color: "#f59e0b",
+              strokeWidth: 2,
+            },
+          ]}
+        />,
+      ),
+    );
+  });
+
   it("keeps the candle-width loop started when switching from line mode", async () => {
     const widthLerpSpy = jest.spyOn(candlePathHooks, "useCandleWidthLerp");
     const screen = await render(

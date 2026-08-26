@@ -1256,6 +1256,20 @@ describe("ReferenceLineOverlay", () => {
     renderLine({ value: 5, label: "mid" });
   });
 
+  it("renders a time-varying reference series (Form B)", () => {
+    renderLine({
+      series: [
+        { time: 1700000000 - 60, value: 4 },
+        { time: 1700000000 - 30, value: 6 },
+        { time: 1700000000 - 10, value: 5 },
+      ],
+      label: "VWAP",
+      showValue: true,
+      color: "#f59e0b",
+      strokeWidth: 2,
+    });
+  });
+
   it("clips a plain line to the right-anchored Y-axis column", async () => {
     const makeBuilder = Skia.PathBuilder.Make as jest.Mock;
     const resultIndex = makeBuilder.mock.results.length;
@@ -1294,7 +1308,7 @@ describe("ReferenceLineOverlay", () => {
     renderLine({ value: 5, badge: true, fullWidth: true });
   });
 
-  it("renders a horizontal value band (Form B)", () => {
+  it("renders a horizontal value band (Form C)", () => {
     renderLine({ valueFrom: 2, valueTo: 8, color: "#fbbf24", label: "band" });
   });
 
@@ -1308,7 +1322,7 @@ describe("ReferenceLineOverlay", () => {
     });
   });
 
-  it("renders a vertical time band (Form C)", () => {
+  it("renders a vertical time band (Form D)", () => {
     renderLine({
       from: 1700000000 - 20,
       to: 1700000000 - 5,

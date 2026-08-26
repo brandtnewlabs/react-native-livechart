@@ -4,16 +4,22 @@ import type {
   ReferenceLineBadgeConfig,
 } from "../types";
 
-/** Which of the three reference-line forms a `ReferenceLine` resolves to. */
-export type ReferenceLineForm = "line" | "value-band" | "time-band" | "none";
+/** Which of the four reference-line forms a `ReferenceLine` resolves to. */
+export type ReferenceLineForm =
+  | "line"
+  | "series"
+  | "value-band"
+  | "time-band"
+  | "none";
 
 /**
- * Classify a `ReferenceLine` into one of its three forms, applying the
- * documented precedence A (line) > B (value band) > C (time band).
+ * Classify a `ReferenceLine` into one of its four forms, applying the
+ * documented precedence A (line) > B (series) > C (value band) > D (time band).
  */
 export function referenceLineForm(rl: ReferenceLine): ReferenceLineForm {
   "worklet";
   if (rl.value !== undefined) return "line";
+  if (rl.series !== undefined) return "series";
   if (rl.valueFrom !== undefined && rl.valueTo !== undefined) {
     return "value-band";
   }
@@ -24,7 +30,7 @@ export function referenceLineForm(rl: ReferenceLine): ReferenceLineForm {
 /**
  * Gather every Y value a set of reference lines should contribute to the
  * axis-range computation. Lines flagged `excludeFromRange` are skipped, as are
- * time bands (Form C) which constrain time, not value.
+ * time bands (Form D) which constrain time, not value.
  */
 export function collectReferenceValues(lines: ReferenceLine[]): number[] {
   const out: number[] = [];
@@ -35,6 +41,22 @@ export function collectReferenceValues(lines: ReferenceLine[]): number[] {
       case "line":
         out.push(rl.value as number);
         break;
+      case "series": {
+        const points = rl.series;
+        if (!points || points.length === 0) break;
+        let min = Infinity;
+        let max = -Infinity;
+        for (let j = 0; j < points.length; j++) {
+          const value = points[j].value;
+          if (!Number.isFinite(value)) continue;
+          if (value < min) min = value;
+          if (value > max) max = value;
+        }
+        // Only the extrema are needed by the engine, avoiding a per-frame scan
+        // through the full historical annotation series.
+        if (min !== Infinity) out.push(min, max);
+        break;
+      }
       case "value-band":
         out.push(rl.valueFrom as number, rl.valueTo as number);
         break;
@@ -56,7 +78,13 @@ export function referenceLineReactKeys(
   const occurrences = new Map<string, number>();
   const keys: string[] = [];
   for (const line of lines) {
-    const base = line.id ?? stableReferenceLineSignature(line);
+    // A series' samples are render data, not identity. Omitting their contents
+    // keeps a growing historical series from remounting its overlay every render.
+    const base =
+      line.id ??
+      stableReferenceLineSignature(
+        line.series === undefined ? line : { ...line, series: "series" },
+      );
     const occurrence = occurrences.get(base) ?? 0;
     occurrences.set(base, occurrence + 1);
     keys.push(`${base}:${occurrence}`);

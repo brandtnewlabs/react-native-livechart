@@ -141,6 +141,31 @@ Configure colors, band height, rounding, and opacity with a
   by candle direction (up/down) unless you override `upColor` / `downColor`.
 </Note>
 
+## Historical reference series
+
+Overlay a changing average cost, VWAP, peg, or other historical benchmark with the
+[`referenceLines.series`](/guides/reference-lines-and-bands#time-varying-reference-line-series)
+form. It draws a Skia polyline over the candles using the same time and Y scales, supports the
+normal reference-line color, dash, width, and label fields, and extends its last value flat to
+the live edge by default.
+
+```tsx
+<LiveChart
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  referenceLines={[
+    {
+      series: averageCostHistory,
+      label: "Avg cost",
+      showValue: true,
+      color: "#f59e0b",
+      strokeWidth: 2,
+    },
+  ]}
+/>
+```
+
 ## Scrubbing & the OHLC tooltip
 
 Pass `scrub` to enable the crosshair: the built-in tooltip shows the scrubbed candle's O/H/L/C

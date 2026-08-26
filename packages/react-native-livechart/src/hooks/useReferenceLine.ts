@@ -279,9 +279,10 @@ export function computeReferenceBadgeRect(
 
 /**
  * Derives screen-space layout for a single reference line or band. Supports all
- * three `ReferenceLine` forms (horizontal line, horizontal value band, vertical
- * time band) plus the pill badge for a Form-A value (in-range tag + off-screen
- * chevron pin).
+ * three scalar/band `ReferenceLine` forms (horizontal line, horizontal value
+ * band, vertical time band) plus the pill badge for a Form-A value (in-range tag
+ * + off-screen chevron pin). The series form is handled by
+ * `ReferenceLineSeriesOverlay`.
  */
 export function useReferenceLine(
   engine: ChartEngineLayout,
@@ -344,7 +345,7 @@ export function useReferenceLine(
     const fm = font.getMetrics();
     const baselineOffset = (fm.ascent + fm.descent) / 2;
 
-    // ── Form C — vertical time band (independent of the value range) ─────────
+    // ── Form D — vertical time band (independent of the value range) ─────────
     if (form === "time-band") {
       if (line.from === undefined || line.to === undefined) return INVISIBLE;
       const now = engine.timestamp.value;
@@ -392,7 +393,7 @@ export function useReferenceLine(
     if (valRange <= 0) return INVISIBLE;
     const toY = (v: number) => chartTop + ((dMax - v) / valRange) * chartH;
 
-    // ── Form B — horizontal value band ───────────────────────────────────────
+    // ── Form C — horizontal value band ───────────────────────────────────────
     if (form === "value-band") {
       if (line.valueFrom === undefined || line.valueTo === undefined) {
         return INVISIBLE;
