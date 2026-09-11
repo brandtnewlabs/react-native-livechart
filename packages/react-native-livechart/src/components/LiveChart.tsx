@@ -479,26 +479,29 @@ function useLiveReferenceState(
   const dragActive = useSharedValue<boolean[]>([]);
   const seededRef = useRef<(number | undefined)[]>([]);
   const refValueSig = allRefLines.map((line) => line.value ?? "_").join(",");
+  const propValues = useMemo<(number | undefined)[]>(() => {
+    if (refValueSig === "") return [];
+    return refValueSig
+      .split(",")
+      .map((encoded) => (encoded === "_" ? undefined : Number(encoded)));
+  }, [refValueSig]);
   useEffect(() => {
     const active = dragActive.get();
     const current = dragValues.get();
     const seeded = seededRef.current;
     dragValues.set(
-      allRefLines.map((line, index) => {
-        const prop = line.value ?? 0;
+      propValues.map((value, index) => {
+        const prop = value ?? 0;
         if (active[index]) return current[index] ?? prop;
-        if (line.value !== seeded[index]) return prop;
+        if (value !== seeded[index]) return prop;
         return current[index] ?? prop;
       }),
     );
-    seededRef.current = allRefLines.map((line) => line.value);
-    if (dragActive.get().length !== allRefLines.length) {
-      dragActive.set(allRefLines.map((_, index) => active[index] ?? false));
+    seededRef.current = propValues;
+    if (dragActive.get().length !== propValues.length) {
+      dragActive.set(propValues.map((_, index) => active[index] ?? false));
     }
-    // The line list is reconstructed from props; its value signature and length
-    // are the stable reconciliation inputs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refValueSig, allRefLines.length]);
+  }, [dragActive, dragValues, propValues]);
 
   const refLineCustomTagWidths = useSharedValue<number[]>([]);
   const liveRefValues = useDerivedValue<number[]>(() => {
