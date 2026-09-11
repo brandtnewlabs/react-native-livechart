@@ -18,7 +18,10 @@ import {
   type ReferenceLineLayout,
 } from "../hooks/useReferenceLine";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
-import { referenceLineForm, resolveReferenceBadge } from "../math/referenceLines";
+import {
+  referenceLineForm,
+  resolveReferenceBadge,
+} from "../math/referenceLines";
 import type { FontConfig, LiveChartPalette, ReferenceLine } from "../types";
 import { ReferenceLineSeriesOverlay } from "./ReferenceLineSeriesOverlay";
 
@@ -65,7 +68,7 @@ type ReferenceLineOverlayProps = {
    * this line — used when a custom `renderReferenceLine` element owns the tag.
    * The line / band stroke and a badged line's dashed connector still draw. No
    * effect on the base pass.
-  */
+   */
   suppressTag?: boolean;
   /**
    * Suppress the built-in tag only while the line is off-axis. Used by
@@ -117,6 +120,52 @@ export function ReferenceLineOverlay(props: ReferenceLineOverlayProps) {
   return <ReferenceLineStaticOverlay {...props} />;
 }
 
+function resolveStaticReferenceLineAppearance(
+  line: ReferenceLine,
+  palette: LiveChartPalette,
+  fontProp: FontConfig | undefined,
+) {
+  const form = referenceLineForm(line);
+  const isBand = form === "value-band" || form === "time-band";
+  const color = line.color ?? palette.refLine;
+  const badge = resolveReferenceBadge(line);
+  const badgeHasFontOverride =
+    badge != null &&
+    (badge.fontSize != null ||
+      badge.fontFamily != null ||
+      badge.fontWeight != null);
+
+  return {
+    form,
+    isBand,
+    color,
+    fillColor: line.fillColor ?? color,
+    strokeOpacity: Math.max(0, Math.min(1, line.strokeOpacity ?? 1)),
+    badge,
+    badgeHasFontOverride,
+    badgeFontConfig: badgeHasFontOverride
+      ? {
+          ...fontProp,
+          fontFamily: badge?.fontFamily ?? fontProp?.fontFamily,
+          fontSize: badge?.fontSize ?? fontProp?.fontSize,
+          fontWeight: badge?.fontWeight ?? fontProp?.fontWeight,
+        }
+      : fontProp,
+    labelColor:
+      badge?.textColor ?? line.labelColor ?? line.color ?? palette.refLabel,
+    strokeWidth: line.strokeWidth ?? 1,
+    intervals: line.intervals ?? [4, 4],
+    bandFillOpacity: line.fillOpacity ?? BAND_FILL_OPACITY,
+    hasBandBorder: isBand && line.strokeWidth !== undefined,
+    badgeBackground: badge?.background ?? palette.tooltipBg,
+    badgeBorderColor: badge?.borderColor ?? color,
+    badgeBorderWidth: badge?.borderWidth ?? 1,
+    badgeRadius: badge?.radius ?? BADGE_PILL_RADIUS,
+    badgeOffsetX: badge?.offsetX ?? 0,
+    badgeOffsetY: badge?.offsetY ?? 0,
+  };
+}
+
 function ReferenceLineStaticOverlay({
   engine,
   padding,
@@ -136,33 +185,30 @@ function ReferenceLineStaticOverlay({
   labelRightMargin,
   gridEndGap,
 }: ReferenceLineOverlayProps) {
-  const form = referenceLineForm(line);
-  const isBand = form === "value-band" || form === "time-band";
+  const {
+    form,
+    isBand,
+    color,
+    fillColor,
+    strokeOpacity,
+    badge,
+    badgeHasFontOverride,
+    badgeFontConfig,
+    labelColor,
+    strokeWidth,
+    intervals,
+    bandFillOpacity,
+    hasBandBorder,
+    badgeBackground,
+    badgeBorderColor,
+    badgeBorderWidth,
+    badgeRadius,
+    badgeOffsetX,
+    badgeOffsetY,
+  } = resolveStaticReferenceLineAppearance(line, palette, fontProp);
 
-  const color = line.color ?? palette.refLine;
-  const fillColor = line.fillColor ?? color;
-  const strokeOpacity = Math.max(0, Math.min(1, line.strokeOpacity ?? 1));
-
-  // Resolved badge appearance (badge config → fallback flat fields → theme).
-  const badge = resolveReferenceBadge(line);
-
-  // Per-badge font (size/family/weight) override; reuses the chart `font` when no
-  // badge font knob is set, so plain lines and gutter labels are unchanged. The
-  // built font drives pill measurement (via useReferenceLine) and the badge text.
-  const badgeHasFontOverride =
-    badge != null &&
-    (badge.fontSize != null ||
-      badge.fontFamily != null ||
-      badge.fontWeight != null);
   const badgeFontOverride = useChartSkiaFont(
-    badgeHasFontOverride
-      ? {
-          ...fontProp,
-          fontFamily: badge?.fontFamily ?? fontProp?.fontFamily,
-          fontSize: badge?.fontSize ?? fontProp?.fontSize,
-          fontWeight: badge?.fontWeight ?? fontProp?.fontWeight,
-        }
-      : fontProp,
+    badgeFontConfig,
     MONO_FONT_FAMILY,
     palette.labelFontSize,
   );
@@ -181,27 +227,6 @@ function ReferenceLineStaticOverlay({
     gridEndGap,
     font,
   );
-
-  const labelColor =
-    badge?.textColor ?? line.labelColor ?? line.color ?? palette.refLabel;
-  const strokeWidth = line.strokeWidth ?? 1;
-  const intervals = line.intervals ?? [4, 4];
-
-  // Band fill + optional dashed border (border only when strokeWidth is set).
-  const bandFillOpacity = line.fillOpacity ?? BAND_FILL_OPACITY;
-  const hasBandBorder = isBand && line.strokeWidth !== undefined;
-
-  const badgeBackground = badge?.background ?? palette.tooltipBg;
-  const badgeBorderColor = badge?.borderColor ?? color;
-  const badgeBorderWidth = badge?.borderWidth ?? 1;
-  const badgeRadius = badge?.radius ?? BADGE_PILL_RADIUS;
-  // Nudge the whole badge (connector + pill + chevron + icon + label) off its anchor.
-  const badgeOffsetX = badge?.offsetX ?? 0;
-  const badgeOffsetY = badge?.offsetY ?? 0;
-  const badgeTransform =
-    badgeOffsetX !== 0 || badgeOffsetY !== 0
-      ? [{ translateX: badgeOffsetX }, { translateY: badgeOffsetY }]
-      : undefined;
 
   if (!badgeLayer) {
     return (
@@ -412,7 +437,7 @@ function ReferenceLineBadgePass({
       const customTagActive =
         suppressTag || (suppressTagWhenOffAxis && l.offAxis);
       const customWidth = customTagActive
-        ? customTagWidths?.get()[index] ?? 0
+        ? (customTagWidths?.get()[index] ?? 0)
         : 0;
       if (customWidth > 0) {
         if (badgePosition === "left") {
@@ -466,7 +491,9 @@ function ReferenceLineBadgePass({
     const grouped = groupHidden ? groupHidden.get()[index] === true : false;
     const customTagActive =
       suppressTag || (suppressTagWhenOffAxis && l.offAxis);
-    return !customTagActive && !grouped && l.visible && l.label.length > 0 ? 1 : 0;
+    return !customTagActive && !grouped && l.visible && l.label.length > 0
+      ? 1
+      : 0;
   });
   const iconOpacity = useDerivedValue(() => {
     const l = layout.get();
