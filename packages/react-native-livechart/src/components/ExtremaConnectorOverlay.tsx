@@ -11,7 +11,11 @@ import type {
 } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import { usePathBuilder } from "../hooks/usePathBuilder";
-import { EXTREMA_EDGE_INSET, EXTREMA_LABEL_FONT_SIZE } from "./AxisLabelOverlay";
+import {
+  EXTREMA_EDGE_INSET,
+  EXTREMA_LABEL_FONT_SIZE,
+  extremaPointsCoincide,
+} from "./AxisLabelOverlay";
 
 /** How far off-plot (px) the extremum may sit before the connector is dropped. */
 const CONNECTOR_CULL = 24;
@@ -55,6 +59,7 @@ function ConnectorLine({
   engine,
   padding,
   config,
+  suppressWhen,
 }: {
   side: "top" | "bottom";
   timeSV: SharedValue<number>;
@@ -63,6 +68,10 @@ function ConnectorLine({
   engine: ChartEngineLayout;
   padding: ChartPadding;
   config: ResolvedConnector;
+  suppressWhen?: {
+    timeSV: SharedValue<number>;
+    valueSV: SharedValue<number>;
+  };
 }) {
   const builder = usePathBuilder();
   const { line, fontSize } = config;
@@ -88,6 +97,13 @@ function ConnectorLine({
 
     if (
       !Number.isFinite(value) ||
+      (suppressWhen != null &&
+        extremaPointsCoincide(
+          time,
+          value,
+          suppressWhen.timeSV.get(),
+          suppressWhen.valueSV.get(),
+        )) ||
       cw === 0 ||
       ch === 0 ||
       chartW <= 0 ||
@@ -153,15 +169,29 @@ export function ExtremaConnectorOverlay({
   extremaTimeOffset = 0,
   top,
   bottom,
+  hideExtrema = false,
+  suppressBottomWhenCoincident = false,
 }: {
   engine: ChartEngineLayout & Partial<ChartEngineExtrema>;
   padding: ChartPadding;
   extremaTimeOffset?: number;
   top: ResolvedConnector | null;
   bottom: ResolvedConnector | null;
+  /** Hide extrema connectors while the chart is showing its loading shell. */
+  hideExtrema?: boolean;
+  /** Drop the lower connector when both configured labels share one point. */
+  suppressBottomWhenCoincident?: boolean;
 }) {
-  const hasTop = top != null && engine.extremaMaxTime != null;
-  const hasBottom = bottom != null && engine.extremaMinTime != null;
+  const hasTop =
+    !hideExtrema &&
+    top != null &&
+    engine.extremaMaxTime != null &&
+    engine.extremaMaxValue != null;
+  const hasBottom =
+    !hideExtrema &&
+    bottom != null &&
+    engine.extremaMinTime != null &&
+    engine.extremaMinValue != null;
   if (!hasTop && !hasBottom) return null;
 
   return (
@@ -186,6 +216,16 @@ export function ExtremaConnectorOverlay({
           engine={engine}
           padding={padding}
           config={bottom!}
+          suppressWhen={
+            suppressBottomWhenCoincident &&
+            engine.extremaMaxTime != null &&
+            engine.extremaMaxValue != null
+              ? {
+                  timeSV: engine.extremaMaxTime!,
+                  valueSV: engine.extremaMaxValue!,
+                }
+              : undefined
+          }
         />
       )}
     </>

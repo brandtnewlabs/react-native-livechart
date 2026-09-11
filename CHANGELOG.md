@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Extrema labels and their connector lines now hide while the loading shell is
+  active. Flat series whose high and low resolve to the same point render one
+  extrema label instead of drawing the same label twice. Resolves
+  [#303](https://github.com/brandtnewlabs/react-native-livechart/issues/303).
+
 ## [4.21.0] - 2026-08-26
 
 ### Added

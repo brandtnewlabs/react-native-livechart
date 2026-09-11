@@ -1574,6 +1574,7 @@ function useLiveChartController({
     // engine + reveal
     engine,
     reveal,
+    loadingActive,
     axisAutoHideOpacity,
     // loading shell styling (null → not loading)
     loadingLineColor: loadingCfg?.color,
@@ -3041,6 +3042,7 @@ function ChartView({
     topConnector,
     bottomConnector,
     canvasMode,
+    loadingActive,
   } = model;
 
   return (
@@ -3101,6 +3103,11 @@ function ChartView({
               extremaTimeOffset={extremaTimeOffset}
               top={topConnector}
               bottom={bottomConnector}
+              hideExtrema={loadingActive}
+              suppressBottomWhenCoincident={
+                topLabelCfg?.position === "extrema" ||
+                topLabelCfg?.position === "extrema-edge"
+              }
             />
           )}
 
@@ -3138,6 +3145,7 @@ function ChartView({
             defaultColor={palette.gridLabel}
             padding={effectivePadding}
             extremaTimeOffset={extremaTimeOffset}
+            hideExtrema={loadingActive}
           />
         )}
 

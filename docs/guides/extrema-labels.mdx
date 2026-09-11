@@ -32,9 +32,11 @@ rescales. It's the easiest way to show **when** the high / low happened, not jus
 />
 ```
 
-The label hides itself when the window holds no data, or when the extremum scrolls off the plot
-(the engine re-picks the visible high / low every frame). It works in **candle mode** too — the
-extrema track the highest high / lowest low.
+The label hides itself while the loading shell is active, when the window holds no data, or when
+the extremum scrolls off the plot (the engine re-picks the visible high / low every frame). When
+the high and low resolve to the same point, as they do for a flat series, the chart shows one
+label instead of drawing the same extremum twice. It works in **candle mode** too — the extrema
+track the highest high / lowest low.
 
 **`"extrema-edge"`** is a variant that keeps the readout on a clean rail: the value label pins to the
 top / bottom **edge** (still horizontally aligned with the extremum), and a dot marks the actual

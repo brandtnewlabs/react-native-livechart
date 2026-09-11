@@ -656,6 +656,7 @@ function useLiveChartSeriesController({
     // engine + reveal
     engine,
     reveal,
+    loadingActive,
     // loading shell styling (null → not loading)
     loadingLineColor: loadingCfg?.color,
     loadingStrokeWidth: loadingCfg?.strokeWidth,
@@ -1090,6 +1091,7 @@ export const LiveChartSeries = forwardRef<
     refLineCustomTagWidths,
     overlayScrubFade,
     canvasMode,
+    loadingActive,
   } = model;
 
   // Mirror the Skia overlay fade onto the RN custom-marker sibling so
@@ -1156,6 +1158,11 @@ export const LiveChartSeries = forwardRef<
               padding={effectivePadding}
               top={topConnector}
               bottom={bottomConnector}
+              hideExtrema={loadingActive}
+              suppressBottomWhenCoincident={
+                topLabelCfg?.position === "extrema" ||
+                topLabelCfg?.position === "extrema-edge"
+              }
             />
 
             {leftEdgeFadeCfg && (
@@ -1222,6 +1229,7 @@ export const LiveChartSeries = forwardRef<
             formatValue={formatValue}
             defaultColor={palette.gridLabel}
             padding={effectivePadding}
+            hideExtrema={loadingActive}
           />
 
           {/* Custom annotations — RN views floated over the canvas (non-Skia),
