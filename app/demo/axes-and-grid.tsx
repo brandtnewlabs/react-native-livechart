@@ -72,6 +72,88 @@ const GRID_STYLES: Record<GridLineStyle, GridStyleConfig | undefined> = {
   blue: { intervals: [], color: "rgba(96,165,250,0.5)", opacity: 1 },
 };
 
+function resolveYAxis(
+  visible: boolean,
+  gap: GapPreset,
+  count: YCountPreset,
+  column: YAxisColumnPreset,
+): YAxisConfig | boolean {
+  if (!visible) return false;
+
+  const config: YAxisConfig = {};
+  if (gap === "wide") config.minGap = 72;
+  if (count !== "auto") config.count = Number(count);
+  if (column !== "off") {
+    config.labelRightMargin = column === "tight" ? 8 : 24;
+    config.gridEndGap = column === "tight" ? 4 : 12;
+  }
+  return Object.keys(config).length > 0 ? config : true;
+}
+
+function axisLabel(
+  custom: boolean,
+  enabled: boolean,
+  label: "HIGH" | "LOW",
+): AxisLabelConfig | boolean | undefined {
+  if (custom) {
+    return {
+      render: () => (
+        <Text style={[demoStyles.scrubReadout, { marginBottom: 0 }]}>
+          {label}
+        </Text>
+      ),
+    };
+  }
+  return enabled || undefined;
+}
+
+type AxesChartProps = {
+  which: ChartKind;
+  data: ReturnType<typeof useSimulatedChartData>["data"];
+  value: ReturnType<typeof useSimulatedChartData>["value"];
+  series: ReturnType<typeof useSimulatedChartData>["series"];
+  yAxis: YAxisConfig | boolean;
+  xAxis: boolean | { minGap: number };
+  gridStyle: GridStyleConfig | undefined;
+  leftEdgeFade: { width: number } | undefined;
+  insets: { bottom: number } | undefined;
+  topLabel: AxisLabelConfig | boolean | undefined;
+  bottomLabel: AxisLabelConfig | boolean | undefined;
+};
+
+function AxesChart({
+  which,
+  data,
+  value,
+  series,
+  yAxis,
+  xAxis,
+  gridStyle,
+  leftEdgeFade,
+  insets,
+  topLabel,
+  bottomLabel,
+}: AxesChartProps) {
+  const common = {
+    accentColor: ACCENT,
+    theme: APP_THEME,
+    yAxis,
+    xAxis,
+    gridStyle,
+    leftEdgeFade,
+    insets,
+    scrub: true,
+    topLabel,
+    bottomLabel,
+    formatValue: formatWholeValue,
+  };
+  return which === "single" ? (
+    <LiveChart data={data} value={value} {...common} />
+  ) : (
+    <LiveChartSeries series={series} {...common} />
+  );
+}
+
 export default function AxesGridScreen() {
   const [vis, setVis] = useState<AxisVis>("both");
   const [gap, setGap] = useState<GapPreset>("default");
@@ -89,25 +171,18 @@ export default function AxesGridScreen() {
   // obvious. `undefined` keeps the chart's built-in fade.
   const leftEdgeFade = edgeFade ? { width: 64 } : undefined;
 
-  const yOn = vis !== "noY" && vis !== "none";
-  const xOn = vis !== "noX" && vis !== "none";
-
-  // `count` shows a fixed number of evenly-spaced prices (high→low) instead of
-  // the dynamic nice-interval grid; `minGap` still acts as a floor on spacing.
-  const yCountVal = yCount === "auto" ? 0 : Number(yCount);
-  const yAxisCfg: YAxisConfig = {};
-  if (gap === "wide") yAxisCfg.minGap = 72;
-  if (yCountVal > 0) yAxisCfg.count = yCountVal;
-  if (yAxisColumn !== "off") {
-    yAxisCfg.labelRightMargin = yAxisColumn === "tight" ? 8 : 24;
-    yAxisCfg.gridEndGap = yAxisColumn === "tight" ? 4 : 12;
-  }
-  const yAxis = !yOn
-    ? false
-    : Object.keys(yAxisCfg).length > 0
-      ? yAxisCfg
-      : true;
-  const xAxis = !xOn ? false : gap === "wide" ? { minGap: 100 } : true;
+  const yAxis = resolveYAxis(
+    vis !== "noY" && vis !== "none",
+    gap,
+    yCount,
+    yAxisColumn,
+  );
+  const xAxis =
+    vis === "noX" || vis === "none"
+      ? false
+      : gap === "wide"
+        ? { minGap: 100 }
+        : true;
 
   // An explicit inset overrides the auto-padding — including the live-dot pulse's
   // reserved room — so the plot fills to the edge (the pulse ring may clip there).
@@ -124,18 +199,8 @@ export default function AxesGridScreen() {
     historyRange: "1m",
   });
 
-  // Built-in high/low labels: the chart floats its current top / bottom Y-axis
-  // bound at each edge, formatted and updated on the UI thread — no hand-rolled
-  // animated text needed. A `render` escape hatch demos a fully custom element.
-  const customTop: AxisLabelConfig = {
-    render: () => <Text style={[demoStyles.scrubReadout, { marginBottom: 0 }]}>HIGH</Text>,
-  };
-  const customBottom: AxisLabelConfig = {
-    render: () => <Text style={[demoStyles.scrubReadout, { marginBottom: 0 }]}>LOW</Text>,
-  };
-
-  const topLabel = customLabel ? customTop : highLow ? true : undefined;
-  const bottomLabel = customLabel ? customBottom : highLow ? true : undefined;
+  const topLabel = axisLabel(customLabel, highLow, "HIGH");
+  const bottomLabel = axisLabel(customLabel, highLow, "LOW");
 
   return (
     <DemoScreen
@@ -143,38 +208,19 @@ export default function AxesGridScreen() {
       docs="guides/axes-and-grid"
       description="Hide Y, X, or both; axis minGap; a fixed Y-axis price count; explicit insets (bottom 0 fills the plot to the edge). Toggle single vs multi chart, and Robinhood-style high/low edge labels (built-in or a custom render)."
       chart={
-        which === "single" ? (
-          <LiveChart
-            data={data}
-            value={value}
-            accentColor={ACCENT}
-            theme={APP_THEME}
-            yAxis={yAxis}
-            xAxis={xAxis}
-            gridStyle={gridStyle}
-            leftEdgeFade={leftEdgeFade}
-            insets={insets}
-            scrub
-            topLabel={topLabel}
-            bottomLabel={bottomLabel}
-            formatValue={formatWholeValue}
-          />
-        ) : (
-          <LiveChartSeries
-            series={series}
-            accentColor={ACCENT}
-            theme={APP_THEME}
-            yAxis={yAxis}
-            xAxis={xAxis}
-            gridStyle={gridStyle}
-            leftEdgeFade={leftEdgeFade}
-            insets={insets}
-            scrub
-            topLabel={topLabel}
-            bottomLabel={bottomLabel}
-            formatValue={formatWholeValue}
-          />
-        )
+        <AxesChart
+          which={which}
+          data={data}
+          value={value}
+          series={series}
+          yAxis={yAxis}
+          xAxis={xAxis}
+          gridStyle={gridStyle}
+          leftEdgeFade={leftEdgeFade}
+          insets={insets}
+          topLabel={topLabel}
+          bottomLabel={bottomLabel}
+        />
       }
     >
       <ChipRow

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { Text } from "react-native";
 import { LiveChart, LiveChartTransition } from "react-native-livechart";
 
@@ -61,6 +61,225 @@ const ACCENT_OPTIONS: { value: Accent; label: string }[] = [
   { value: "violet", label: "violet" },
 ];
 
+type TransitionChartProps = {
+  example: Example;
+  mode: Mode;
+  accent: Accent;
+  keepMounted: boolean;
+  instant: boolean;
+  timeframe: Timeframe;
+  snap: boolean;
+  bucket: Bucket;
+  candleSnap: boolean;
+  data: ReturnType<typeof useSimulatedChartData>["data"];
+  value: ReturnType<typeof useSimulatedChartData>["value"];
+  candles: ReturnType<typeof useSimulatedChartData>["candles"];
+  liveCandle: ReturnType<typeof useSimulatedChartData>["liveCandle"];
+};
+
+function TransitionChart(props: TransitionChartProps) {
+  const { example, data, value, candles, liveCandle } = props;
+  switch (example) {
+    case "mode":
+      return (
+        <LiveChart
+          data={data}
+          value={value}
+          mode={props.mode}
+          candles={candles}
+          liveCandle={liveCandle}
+          candleWidth={CANDLE_WIDTH}
+          accentColor={ACCENT}
+          theme={APP_THEME}
+          timeWindow={WINDOW}
+          transitions={props.instant ? false : undefined}
+          accessibilityLabel={`Price ${props.mode} chart`}
+          scrub={false}
+        />
+      );
+    case "snap":
+      return (
+        <LiveChart
+          data={data}
+          value={value}
+          accentColor={ACCENT}
+          theme={APP_THEME}
+          timeWindow={TIMEFRAME_WINDOW[props.timeframe]}
+          smoothing={0.4}
+          snapKey={props.snap ? props.timeframe : undefined}
+          transitions={{ reveal: 0 }}
+          accessibilityLabel={`Price chart, ${props.timeframe} window`}
+          scrub={false}
+        />
+      );
+    case "candleWidth":
+      return (
+        <LiveChart
+          data={data}
+          value={value}
+          mode="candle"
+          candles={candles}
+          liveCandle={liveCandle}
+          candleWidth={props.bucket}
+          accentColor={ACCENT}
+          theme={APP_THEME}
+          timeWindow={WINDOW}
+          transitions={{ candleLerpSpeed: props.candleSnap ? 1 : undefined }}
+          accessibilityLabel={`Candle chart, ${props.bucket}s buckets`}
+          scrub={false}
+        />
+      );
+    case "crossfade":
+      return (
+        <LiveChartTransition
+          active={props.accent}
+          duration={350}
+          keepMounted={props.keepMounted}
+        >
+          <LiveChart
+            key="blue"
+            data={data}
+            value={value}
+            accentColor="#3b82f6"
+            theme={APP_THEME}
+            timeWindow={WINDOW}
+            scrub={false}
+          />
+          <LiveChart
+            key="violet"
+            data={data}
+            value={value}
+            accentColor="#a855f7"
+            theme={APP_THEME}
+            timeWindow={WINDOW}
+            scrub={false}
+          />
+        </LiveChartTransition>
+      );
+  }
+}
+
+type TransitionControlsProps = {
+  example: Example;
+  mode: Mode;
+  setMode: Dispatch<SetStateAction<Mode>>;
+  instant: boolean;
+  setInstant: Dispatch<SetStateAction<boolean>>;
+  timeframe: Timeframe;
+  setTimeframe: Dispatch<SetStateAction<Timeframe>>;
+  snap: boolean;
+  setSnap: Dispatch<SetStateAction<boolean>>;
+  bucket: Bucket;
+  setBucket: Dispatch<SetStateAction<Bucket>>;
+  candleSnap: boolean;
+  setCandleSnap: Dispatch<SetStateAction<boolean>>;
+  accent: Accent;
+  setAccent: Dispatch<SetStateAction<Accent>>;
+  keepMounted: boolean;
+  setKeepMounted: Dispatch<SetStateAction<boolean>>;
+};
+
+function TransitionControls(props: TransitionControlsProps) {
+  switch (props.example) {
+    case "mode":
+      return (
+        <>
+          <ChipRow
+            label="Mode"
+            options={MODE_OPTIONS}
+            value={props.mode}
+            onChange={props.setMode}
+          />
+          <ControlRow label="transitions">
+            <ToggleChip
+              label="Instant (no animation)"
+              value={props.instant}
+              onChange={props.setInstant}
+            />
+          </ControlRow>
+          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+            One LiveChart with a toggled mode — the engine morphs line↔candle
+            and the y-axis eases between the two ranges (no re-reveal). Flip
+            Instant ({`transitions={false}`}) to switch with no animation.
+          </Text>
+        </>
+      );
+    case "snap":
+      return (
+        <>
+          <ChipRow
+            label="Timeframe"
+            options={TIMEFRAME_OPTIONS}
+            value={props.timeframe}
+            onChange={props.setTimeframe}
+          />
+          <ControlRow label="snapKey">
+            <ToggleChip
+              label="Snap on change"
+              value={props.snap}
+              onChange={props.setSnap}
+            />
+          </ControlRow>
+          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+            Switch the timeframe. With Snap on ({`snapKey={timeframe}`}) the
+            window and y-range jump to the new framing in one frame; live ticks
+            still glide ({`smoothing={0.4}`}). Toggle Snap off to feel the same
+            change slide in instead — that slide is the easing, not a
+            transition.
+          </Text>
+        </>
+      );
+    case "candleWidth":
+      return (
+        <>
+          <ChipRow
+            label="Bucket"
+            options={BUCKET_OPTIONS}
+            value={props.bucket}
+            onChange={props.setBucket}
+          />
+          <ControlRow label="transitions.candleLerpSpeed">
+            <ToggleChip
+              label="Instant (candleLerpSpeed: 1)"
+              value={props.candleSnap}
+              onChange={props.setCandleSnap}
+            />
+          </ControlRow>
+          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+            Switch the Bucket to re-aggregate the candles. With Instant on (
+            {`transitions={{ candleLerpSpeed: 1 }}`}) the bodies resize in one
+            frame; toggle it off for the default 0.08 ease — the slow “fat →
+            thin” slide from #176. Independent of {`snapKey`} / {`smoothing`}.
+          </Text>
+        </>
+      );
+    case "crossfade":
+      return (
+        <>
+          <ChipRow
+            label="Active layer"
+            options={ACCENT_OPTIONS}
+            value={props.accent}
+            onChange={props.setAccent}
+          />
+          <ControlRow label="LiveChartTransition">
+            <ToggleChip
+              label="keepMounted"
+              value={props.keepMounted}
+              onChange={props.setKeepMounted}
+            />
+          </ControlRow>
+          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+            LiveChartTransition cross-fades two chart instances (here: accent
+            color, blue↔violet). keepMounted on = both engines stay mounted and
+            switching is a pure cross-fade; off = the incoming chart mounts
+            fresh and re-reveals (range re-animates) on each switch.
+          </Text>
+        </>
+      );
+  }
+}
+
 export default function TransitionsScreen() {
   const [example, setExample] = useState<Example>("mode");
   const [mode, setMode] = useState<Mode>("line");
@@ -101,87 +320,21 @@ export default function TransitionsScreen() {
       docs="guides/transitions"
       description="Line↔candle uses one chart's mode prop (shared y-axis morph); LiveChartTransition cross-fades two instances (here: accent color)"
       chart={
-        example === "mode" ? (
-          // Built-in line↔candle morph — ONE engine, so the y-axis eases
-          // smoothly between the line and candle ranges (no re-reveal).
-          <LiveChart
-            data={data}
-            value={value}
-            mode={mode}
-            candles={candles}
-            liveCandle={liveCandle}
-            candleWidth={CANDLE_WIDTH}
-            accentColor={ACCENT}
-            theme={APP_THEME}
-            timeWindow={WINDOW}
-            transitions={instant ? false : undefined}
-            accessibilityLabel={`Price ${mode} chart`}
-            scrub={false}
-          />
-        ) : example === "snap" ? (
-          // Snap-on-timeframe: a high smoothing keeps live ticks gliding, while
-          // `snapKey={timeframe}` makes a window change land in one frame. Toggle
-          // Snap off (snapKey omitted) to feel the framing slide instead.
-          <LiveChart
-            data={data}
-            value={value}
-            accentColor={ACCENT}
-            theme={APP_THEME}
-            timeWindow={TIMEFRAME_WINDOW[timeframe]}
-            smoothing={0.4}
-            snapKey={snap ? timeframe : undefined}
-            transitions={{ reveal: 0 }}
-            accessibilityLabel={`Price chart, ${timeframe} window`}
-            scrub={false}
-          />
-        ) : example === "candleWidth" ? (
-          // Candle-width resize: switching the bucket re-buckets the OHLC (the
-          // candle count + width both change). With Instant on, the bodies snap to
-          // the new width in one frame (candleLerpSpeed: 1); off uses the 0.08
-          // default ease, the "fat → thin" slide from #176.
-          <LiveChart
-            data={data}
-            value={value}
-            mode="candle"
-            candles={candles}
-            liveCandle={liveCandle}
-            candleWidth={bucket}
-            accentColor={ACCENT}
-            theme={APP_THEME}
-            timeWindow={WINDOW}
-            transitions={{ candleLerpSpeed: candleSnap ? 1 : undefined }}
-            accessibilityLabel={`Candle chart, ${bucket}s buckets`}
-            scrub={false}
-          />
-        ) : (
-          // Cross-fade between two instances. keepMounted lets both settle their
-          // y-range up front, so switching is a pure opacity fade. Same data +
-          // scale, so the two layers line up — only the accent color differs.
-          <LiveChartTransition
-            active={accent}
-            duration={350}
-            keepMounted={keepMounted}
-          >
-            <LiveChart
-              key="blue"
-              data={data}
-              value={value}
-              accentColor="#3b82f6"
-              theme={APP_THEME}
-              timeWindow={WINDOW}
-              scrub={false}
-            />
-            <LiveChart
-              key="violet"
-              data={data}
-              value={value}
-              accentColor="#a855f7"
-              theme={APP_THEME}
-              timeWindow={WINDOW}
-              scrub={false}
-            />
-          </LiveChartTransition>
-        )
+        <TransitionChart
+          example={example}
+          mode={mode}
+          accent={accent}
+          keepMounted={keepMounted}
+          instant={instant}
+          timeframe={timeframe}
+          snap={snap}
+          bucket={bucket}
+          candleSnap={candleSnap}
+          data={data}
+          value={value}
+          candles={candles}
+          liveCandle={liveCandle}
+        />
       }
     >
       <ChipRow
@@ -191,95 +344,25 @@ export default function TransitionsScreen() {
         onChange={setExample}
       />
 
-      {example === "mode" ? (
-        <>
-          <ChipRow
-            label="Mode"
-            options={MODE_OPTIONS}
-            value={mode}
-            onChange={setMode}
-          />
-          <ControlRow label="transitions">
-            {/* transitions={false} → instant reveal + instant line↔candle switch. */}
-            <ToggleChip
-              label="Instant (no animation)"
-              value={instant}
-              onChange={setInstant}
-            />
-          </ControlRow>
-          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
-            One LiveChart with a toggled mode — the engine morphs line↔candle and
-            the y-axis eases between the two ranges (no re-reveal). Flip Instant
-            ({`transitions={false}`}) to switch with no animation.
-          </Text>
-        </>
-      ) : example === "snap" ? (
-        <>
-          <ChipRow
-            label="Timeframe"
-            options={TIMEFRAME_OPTIONS}
-            value={timeframe}
-            onChange={setTimeframe}
-          />
-          <ControlRow label="snapKey">
-            <ToggleChip
-              label="Snap on change"
-              value={snap}
-              onChange={setSnap}
-            />
-          </ControlRow>
-          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
-            Switch the timeframe. With Snap on ({`snapKey={timeframe}`}) the window
-            and y-range jump to the new framing in one frame; live ticks still
-            glide ({`smoothing={0.4}`}). Toggle Snap off to feel the same change
-            slide in instead — that slide is the easing, not a transition.
-          </Text>
-        </>
-      ) : example === "candleWidth" ? (
-        <>
-          <ChipRow
-            label="Bucket"
-            options={BUCKET_OPTIONS}
-            value={bucket}
-            onChange={setBucket}
-          />
-          <ControlRow label="transitions.candleLerpSpeed">
-            <ToggleChip
-              label="Instant (candleLerpSpeed: 1)"
-              value={candleSnap}
-              onChange={setCandleSnap}
-            />
-          </ControlRow>
-          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
-            Switch the Bucket to re-aggregate the candles. With Instant on
-            ({`transitions={{ candleLerpSpeed: 1 }}`}) the bodies resize in one
-            frame; toggle it off for the default 0.08 ease — the slow “fat → thin”
-            slide from #176. Independent of {`snapKey`} / {`smoothing`}.
-          </Text>
-        </>
-      ) : (
-        <>
-          <ChipRow
-            label="Active layer"
-            options={ACCENT_OPTIONS}
-            value={accent}
-            onChange={setAccent}
-          />
-          <ControlRow label="LiveChartTransition">
-            <ToggleChip
-              label="keepMounted"
-              value={keepMounted}
-              onChange={setKeepMounted}
-            />
-          </ControlRow>
-          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
-            LiveChartTransition cross-fades two chart instances (here: accent
-            color, blue↔violet). keepMounted on = both engines stay mounted and
-            switching is a pure cross-fade; off = the incoming chart mounts fresh
-            and re-reveals (range re-animates) on each switch.
-          </Text>
-        </>
-      )}
+      <TransitionControls
+        example={example}
+        mode={mode}
+        setMode={setMode}
+        instant={instant}
+        setInstant={setInstant}
+        timeframe={timeframe}
+        setTimeframe={setTimeframe}
+        snap={snap}
+        setSnap={setSnap}
+        bucket={bucket}
+        setBucket={setBucket}
+        candleSnap={candleSnap}
+        setCandleSnap={setCandleSnap}
+        accent={accent}
+        setAccent={setAccent}
+        keepMounted={keepMounted}
+        setKeepMounted={setKeepMounted}
+      />
     </DemoScreen>
   );
 }
