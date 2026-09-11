@@ -4,7 +4,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { Canvas, Group, Rect } from "@shopify/react-native-skia";
+import { Canvas, Group, Rect, type SkFont } from "@shopify/react-native-skia";
 import {
   forwardRef,
   useImperativeHandle,
@@ -147,7 +147,7 @@ function seriesConfigSig(s: SharedValue<SeriesConfig[]>) {
  * overlay hooks and the color/style reaction state, returning a single render
  * model so `SeriesChartStack` and `LiveChartSeries` stay small and presentational.
  */
-function useLiveChartSeriesController({
+function resolveLiveChartSeriesInputs({
   series,
   theme = "dark",
   accentColor = DEFAULT_ACCENT_COLOR,
@@ -207,10 +207,6 @@ function useLiveChartSeriesController({
   renderOffAxisReferenceLine,
   leftEdgeFade = true,
 }: LiveChartSeriesProps) {
-  const fullSeriesOpacity = useSharedValue(1);
-  const resolvedSeriesOpacity = seriesOpacity ?? fullSeriesOpacity;
-  const emptyMarkers = useSharedValue<Marker[]>([]);
-  const markersSV = markers ?? emptyMarkers;
   const markerClusterCfg = resolveMarkerCluster(markerCluster);
   const markersActive = markers != null;
   const yAxisCfg = resolveYAxis(yAxis);
@@ -219,25 +215,13 @@ function useLiveChartSeriesController({
   const bottomLabelCfg = resolveAxisLabel(bottomLabel);
   const scrubCfg = resolveScrub(scrub);
   const scrubEnabled = scrubCfg !== null;
-  // Opt-in and subordinate to the existing master `tooltip` switch. Keeping
-  // this null by default preserves LiveChartSeries' historical guide-only scrub.
   const seriesTooltipCfg =
     scrubCfg?.tooltip === true ? scrubCfg.seriesTooltip : null;
-
-  // Time-scroll + pinch-zoom (mirrors LiveChart). LiveChartSeries has no static
-  // mode, so these gate on the props alone. `holdToScrub` requires the scrub
-  // gesture to wait for a press-and-hold so a quick drag scrolls instead — the
-  // hold delay is threaded into `useCrosshairSeries` below.
   const timeScrollEnabled = Boolean(timeScroll);
-  // Return-to-live glide duration (0 = instant); sibling of `timeScroll` so it
-  // survives `timeScroll={false}` (the disable that triggers it). See #164.
   const returnToLiveMs = resolveReturnToLiveMs(returnToLive);
-  // Overscroll fraction ([0, 1)) — how far pan/zoom may travel past the data
-  // bounds into blank space. 0 (the default) keeps the classic hard stops.
   const timeScrollOverscroll = timeScrollEnabled
     ? resolveOverscroll(timeScroll)
     : 0;
-  // Release inertia (fling) — `timeScroll.fling: false` stops the pan dead.
   const timeScrollFling = resolveFling(timeScroll);
   const zoomCfg = resolveZoom(zoom);
   const zoomEnabled = zoomCfg !== null;
@@ -247,22 +231,13 @@ function useLiveChartSeriesController({
       : "holdToScrub";
   const timeScrollHoldMs =
     typeof timeScroll === "object" ? timeScroll.scrubHoldMs : undefined;
-  // Precedence: explicit scrubHoldMs, then scrub.panGestureDelay, then default.
-  // `||` (not `??`) skips the resolved panGestureDelay's 0 default.
   const scrubHoldMs =
     timeScrollEnabled && scrollGestureMode === "holdToScrub"
       ? (timeScrollHoldMs ?? (scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS))
       : (scrubCfg?.panGestureDelay ?? 0);
-
-  // Multi-series defaults the scrub selection dot OFF: it can only track one
-  // line (the leading series), which reads as a bug next to the other series.
-  // The crosshair line (and the opt-in tooltip's per-series intersection dots)
-  // mark the scrub point. Passing `selectionDot` explicitly still opts it in.
   const selectionDotCfg = resolveSelectionDot(selectionDot ?? false);
   const gridStyleCfg = resolveGridStyle(gridStyle);
   const dotCfg = resolveMultiSeriesDot(dotProp);
-  // Outer visible footprint of a dot, including its crisp ring and optional
-  // blurred glow. Used to keep gutter labels clear of every dot effect.
   const dotOuterRadius = Math.max(
     dotCfg.radius + (dotCfg.ring?.width ?? 0),
     dotCfg.glow ? dotGlowRadialOutset(dotCfg.glow.radius, dotCfg.glow.blur) : 0,
@@ -270,37 +245,227 @@ function useLiveChartSeriesController({
   const legendCfg = resolveLegend(legendProp);
   const degenCfg = resolveDegen(degen);
   const metricsCfg = resolveMetrics(metrics);
-
   const allRefLines = referenceLines ?? [];
   const refValues = collectReferenceValues(allRefLines);
-  // Form-A lines a custom renderer owns keep their line stroke but suppress the
-  // built-in Skia tag. The callback is probed per line on the JS thread, matching
-  // LiveChart and CustomMarkerOverlay's per-item fallback model.
   const refLineCustom = customReferenceLineFlags(
     allRefLines,
     renderReferenceLine,
   );
-  // A full custom tag owns both states, so it takes precedence over an
-  // off-axis-only renderer for the same line.
   const refLineOffAxisCustom = customReferenceLineFlags(
     allRefLines,
     renderOffAxisReferenceLine,
     "off-axis",
   ).map((custom, index) => custom && !refLineCustom[index]);
   const refLineKeys = referenceLineReactKeys(allRefLines);
-  // RN custom tags report their measured widths here so the Skia connector can
-  // start after the native badge instead of the hidden built-in pill.
-  const refLineCustomTagWidths = useSharedValue<number[]>([]);
-
   const palette = applyPaletteOverride(
     resolveTheme(accentColor, theme),
     paletteOverride,
   );
-
   const leftEdgeFadeCfg = resolveLeftEdgeFade(
     leftEdgeFade,
     leftEdgeFadeColorsFromBgRgb(palette.bgRgb),
   );
+
+  return {
+    series,
+    lineProp,
+    fontProp,
+    insets,
+    style,
+    seriesOpacity,
+    canvasMode,
+    timeWindow,
+    paused,
+    loading,
+    transitions,
+    snapKey,
+    smoothing,
+    exaggerate,
+    nonNegative,
+    maxValue,
+    yRangeScale,
+    windowBuffer,
+    nowOverride,
+    accessibilityLabel,
+    accessibilityRole,
+    emptyText,
+    formatValue,
+    formatTime,
+    yAxisCfg,
+    xAxisCfg,
+    topLabelCfg,
+    bottomLabelCfg,
+    scrubCfg,
+    scrubEnabled,
+    seriesTooltipCfg,
+    timeScrollEnabled,
+    returnToLiveMs,
+    timeScrollOverscroll,
+    timeScrollFling,
+    zoomCfg,
+    zoomEnabled,
+    scrollGestureMode,
+    scrubHoldMs,
+    selectionDotCfg,
+    gridStyleCfg,
+    dotCfg,
+    dotOuterRadius,
+    legendCfg,
+    degenCfg,
+    metricsCfg,
+    allRefLines,
+    refValues,
+    refLineCustom,
+    refLineOffAxisCustom,
+    refLineKeys,
+    palette,
+    leftEdgeFadeCfg,
+    onScrub,
+    onGestureStart,
+    onGestureEnd,
+    onVisibleRangeChange,
+    onReachStart,
+    onSeriesToggle,
+    onDegenShake,
+    markers,
+    onMarkerPress,
+    markerHitRadius,
+    markerClusterCfg,
+    markersActive,
+    renderMarker,
+    renderOverlay,
+    renderReferenceLine,
+    renderOffAxisReferenceLine,
+  };
+}
+
+function resolveSeriesSnapshotLayout(
+  snapshot: SeriesConfig[],
+  dot: ReturnType<typeof resolveMultiSeriesDot>,
+  dotOuterRadius: number,
+  font: SkFont,
+) {
+  const maxLabelWidth = dot.valueLabel
+    ? Math.max(
+        0,
+        ...snapshot.map((item) =>
+          measureFontTextWidth(font, item.label ?? item.id),
+        ),
+      )
+    : 0;
+  return {
+    maxLabelWidth,
+    labelInset: dot.valueLabel ? dotOuterRadius + 8 + maxLabelWidth + 8 : 0,
+    representativeValue:
+      snapshot.length > 0 ? Math.max(...snapshot.map((item) => item.value)) : 0,
+    colors: resolveMultiSeriesLineColorsSnapshot(snapshot),
+    styles: resolveMultiSeriesLineStylesSnapshot(snapshot),
+  };
+}
+
+function composeSeriesRootGesture(
+  crosshairGesture: ReturnType<typeof useCrosshairSeries>["gesture"],
+  markerTapGesture: ReturnType<typeof useMarkers>["tapGesture"],
+  panScrollGesture: ReturnType<typeof usePanScroll>,
+  pinchZoomGesture: ReturnType<typeof usePinchZoom>,
+  markersActive: boolean,
+  timeScrollEnabled: boolean,
+  zoomEnabled: boolean,
+  scrollGestureMode: "holdToScrub" | "axisDrag",
+) {
+  let gesture = markersActive
+    ? Gesture.Race(crosshairGesture, markerTapGesture)
+    : crosshairGesture;
+  if (timeScrollEnabled) {
+    gesture =
+      scrollGestureMode === "axisDrag"
+        ? Gesture.Exclusive(panScrollGesture, gesture)
+        : Gesture.Race(panScrollGesture, gesture);
+  }
+  return zoomEnabled
+    ? Gesture.Simultaneous(gesture, pinchZoomGesture)
+    : gesture;
+}
+
+function useLiveChartSeriesController(props: LiveChartSeriesProps) {
+  const {
+    series,
+    lineProp,
+    fontProp,
+    insets,
+    style,
+    seriesOpacity,
+    canvasMode,
+    timeWindow,
+    paused,
+    loading,
+    transitions,
+    snapKey,
+    smoothing,
+    exaggerate,
+    nonNegative,
+    maxValue,
+    yRangeScale,
+    windowBuffer,
+    nowOverride,
+    accessibilityLabel,
+    accessibilityRole,
+    emptyText,
+    formatValue,
+    formatTime,
+    yAxisCfg,
+    xAxisCfg,
+    topLabelCfg,
+    bottomLabelCfg,
+    scrubCfg,
+    scrubEnabled,
+    seriesTooltipCfg,
+    timeScrollEnabled,
+    returnToLiveMs,
+    timeScrollOverscroll,
+    timeScrollFling,
+    zoomCfg,
+    zoomEnabled,
+    scrollGestureMode,
+    scrubHoldMs,
+    selectionDotCfg,
+    gridStyleCfg,
+    dotCfg,
+    dotOuterRadius,
+    legendCfg,
+    degenCfg,
+    metricsCfg,
+    allRefLines,
+    refValues,
+    refLineCustom,
+    refLineOffAxisCustom,
+    refLineKeys,
+    palette,
+    leftEdgeFadeCfg,
+    onScrub,
+    onGestureStart,
+    onGestureEnd,
+    onVisibleRangeChange,
+    onReachStart,
+    onSeriesToggle,
+    onDegenShake,
+    markers,
+    onMarkerPress,
+    markerHitRadius,
+    markerClusterCfg,
+    markersActive,
+    renderMarker,
+    renderOverlay,
+    renderReferenceLine,
+    renderOffAxisReferenceLine,
+  } = resolveLiveChartSeriesInputs(props);
+  const fullSeriesOpacity = useSharedValue(1);
+  const resolvedSeriesOpacity = seriesOpacity ?? fullSeriesOpacity;
+  const emptyMarkers = useSharedValue<Marker[]>([]);
+  const markersSV = markers ?? emptyMarkers;
+  // RN custom tags report their measured widths here so the Skia connector can
+  // start after the native badge instead of the hidden built-in pill.
+  const refLineCustomTagWidths = useSharedValue<number[]>([]);
 
   const skiaFont = useChartSkiaFont(
     fontProp,
@@ -314,12 +479,10 @@ function useLiveChartSeriesController({
   // Reanimated's strict-mode warning. React flushes layout-effect state before
   // paint, so the seed causes no flash.
   const [seriesSnapshot, setSeriesSnapshot] = useState<SeriesConfig[]>([]);
-  // react-doctor-disable-next-line react-doctor/no-derived-state-effect -- Reanimated: series must be read off the render path
   useLayoutEffect(() => {
     // `.get()` (not `.value`): React Compiler hoists the `.value` getter read into
     // render scope for memoization, which trips Reanimated's strict-mode warning;
     // it leaves the `.get()` method call inside the effect.
-    // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- Reanimated: seeding from a SharedValue off render is the warning-free path
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Reanimated: seed from the SharedValue outside render to avoid strict-mode access warnings
     setSeriesSnapshot(series.get().slice());
   }, [series]);
@@ -329,23 +492,18 @@ function useLiveChartSeriesController({
   // dot, and value-label layers even when a chart contained only one line.
   const activeSeriesCount = Math.min(seriesSnapshot.length, MAX_MULTI_SERIES);
 
-  const maxSeriesLabelWidth = dotCfg.valueLabel
-    ? Math.max(
-        0,
-        ...seriesSnapshot.map((s) =>
-          measureFontTextWidth(skiaFont, s.label ?? s.id),
-        ),
-      )
-    : 0;
-
-  const seriesLabelInset = dotCfg.valueLabel
-    ? dotOuterRadius + 8 + maxSeriesLabelWidth + 8
-    : 0;
-
-  const representativeValue =
-    seriesSnapshot.length > 0
-      ? Math.max(...seriesSnapshot.map((s) => s.value))
-      : 0;
+  const {
+    maxLabelWidth: maxSeriesLabelWidth,
+    labelInset: seriesLabelInset,
+    representativeValue,
+    colors: lineColors,
+    styles: lineStyles,
+  } = resolveSeriesSnapshotLayout(
+    seriesSnapshot,
+    dotCfg,
+    dotOuterRadius,
+    skiaFont,
+  );
 
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
@@ -418,13 +576,6 @@ function useLiveChartSeriesController({
     activeSeriesCount,
     lineProp?.simplify,
   );
-
-  // Per-series colors and stroke styles, derived from the off-render snapshot
-  // (React state — so no Reanimated read-during-render). The reaction below
-  // refreshes the snapshot when the series config signature changes. Plain
-  // derivations — React Compiler memoizes them, so no manual useMemo.
-  const lineColors = resolveMultiSeriesLineColorsSnapshot(seriesSnapshot);
-  const lineStyles = resolveMultiSeriesLineStylesSnapshot(seriesSnapshot);
 
   // Read the `series` prop from closure, not a SharedValue passed through
   // `scheduleOnRN`: the handle serialized across the worklet→JS boundary keeps
@@ -578,22 +729,16 @@ function useLiveChartSeriesController({
     onReachStart,
   });
 
-  let rootGesture = markersActive
-    ? Gesture.Race(crosshair.gesture, markerTapGesture)
-    : crosshair.gesture;
-
-  // holdToScrub races the scrub (quick drag scrolls; press-hold scrubs);
-  // axisDrag goes first via Exclusive (fails fast outside the bottom band).
-  if (timeScrollEnabled) {
-    rootGesture =
-      scrollGestureMode === "axisDrag"
-        ? Gesture.Exclusive(panScrollGesture, rootGesture)
-        : Gesture.Race(panScrollGesture, rootGesture);
-  }
-  // Pinch runs alongside (two-finger, disjoint from the one-finger gestures).
-  if (zoomEnabled) {
-    rootGesture = Gesture.Simultaneous(rootGesture, pinchZoomGesture);
-  }
+  const rootGesture = composeSeriesRootGesture(
+    crosshair.gesture,
+    markerTapGesture,
+    panScrollGesture,
+    pinchZoomGesture,
+    markersActive,
+    timeScrollEnabled,
+    zoomEnabled,
+    scrollGestureMode,
+  );
 
   const backgroundColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
 
@@ -1035,6 +1180,215 @@ function SeriesTooltipLayer({
   );
 }
 
+function SeriesLegend({
+  model,
+  position,
+}: {
+  model: LiveChartSeriesModel;
+  position: "top" | "bottom";
+}) {
+  const { legendCfg, series, palette, onSeriesToggle } = model;
+  if (legendCfg.position !== position) return null;
+  return (
+    <SeriesToggleChips
+      series={series}
+      legend={legendCfg}
+      palette={palette}
+      onSeriesToggle={onSeriesToggle}
+    />
+  );
+}
+
+function SeriesCanvas({ model }: { model: LiveChartSeriesModel }) {
+  const {
+    canvasMode,
+    layoutHeight,
+    engine,
+    backgroundColor,
+    effectivePadding,
+    topConnector,
+    bottomConnector,
+    loadingActive,
+    topLabelCfg,
+    leftEdgeFadeCfg,
+    palette,
+    scrubCfg,
+    seriesTooltipCfg,
+    crosshair,
+    selectionDot,
+    selectionColor,
+    dotOuterRadius,
+    dotCfg,
+  } = model;
+  const liveDotExtent = Math.max(
+    dotOuterRadius,
+    dotCfg.pulse
+      ? pulseRadialOutset(dotCfg.pulse.maxRadius, dotCfg.pulse.strokeWidth)
+      : 0,
+  );
+  return (
+    <Canvas
+      key={canvasMode}
+      style={{ flex: 1, minHeight: layoutHeight || 1 }}
+      opaque={canvasMode === "opaque"}
+    >
+      {canvasMode === "opaque" ? (
+        <Rect
+          x={0}
+          y={0}
+          width={engine.canvasWidth}
+          height={engine.canvasHeight}
+          color={backgroundColor}
+        />
+      ) : null}
+      <SeriesChartStack model={model} />
+      <ExtremaConnectorOverlay
+        engine={engine}
+        padding={effectivePadding}
+        top={topConnector}
+        bottom={bottomConnector}
+        hideExtrema={loadingActive}
+        suppressBottomWhenCoincident={
+          topLabelCfg?.position === "extrema" ||
+          topLabelCfg?.position === "extrema-edge"
+        }
+      />
+      {leftEdgeFadeCfg ? (
+        <LeftEdgeFade
+          paddingLeft={effectivePadding.left}
+          fadeWidth={leftEdgeFadeCfg.width}
+          startColor={leftEdgeFadeCfg.startColor}
+          endColor={leftEdgeFadeCfg.endColor}
+          engine={engine}
+          opaqueBackgroundRgb={
+            canvasMode === "opaque" ? palette.bgRgb : undefined
+          }
+        />
+      ) : null}
+      <SeriesRefBadgeLayer model={model} />
+      {scrubCfg ? (
+        <CrosshairLine
+          scrubX={crosshair.scrubX}
+          crosshairOpacity={crosshair.crosshairOpacity}
+          engine={engine}
+          padding={effectivePadding}
+          palette={palette}
+          selectionDot={selectionDot}
+          selectionY={crosshair.scrubDotY}
+          scrubActive={crosshair.scrubActive}
+          selectionColor={selectionColor}
+          dimOpacity={scrubCfg.dimOpacity}
+          liveDotExtent={liveDotExtent}
+          crosshairLineColor={
+            seriesTooltipCfg?.guideColor ?? scrubCfg.crosshairLineColor
+          }
+          crosshairStrokeWidth={
+            seriesTooltipCfg?.guideWidth ?? scrubCfg.crosshairStrokeWidth
+          }
+          crosshairOvershoot={scrubCfg.crosshairOvershoot}
+          crosshairFade={scrubCfg.crosshairFade}
+          crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
+          crosshairLineCap={scrubCfg.crosshairLineCap}
+          crosshairDash={
+            seriesTooltipCfg
+              ? seriesTooltipCfg.guideDashPattern
+              : scrubCfg.crosshairDash
+          }
+          crosshairDimColor={scrubCfg.crosshairDimColor}
+          opaqueCanvas={canvasMode === "opaque"}
+        />
+      ) : null}
+      <SeriesValueLabelLayer model={model} />
+    </Canvas>
+  );
+}
+
+function SeriesNativeOverlays({ model }: { model: LiveChartSeriesModel }) {
+  const {
+    markersActive,
+    markersSV,
+    markerClusterCfg,
+    renderMarker,
+    renderOverlay,
+    renderReferenceLine,
+    renderOffAxisReferenceLine,
+    allRefLines,
+    refLineCustom,
+    refLineOffAxisCustom,
+    refLineCustomTagWidths,
+    overlayScrubFade,
+    engine,
+    effectivePadding,
+    series,
+    formatValue,
+    seriesTooltipCfg,
+  } = model;
+  const overlayFadeStyle = useAnimatedStyle(() => ({
+    opacity: overlayScrubFade.get(),
+  }));
+  const hasCustomAnnotations =
+    (markersActive && renderMarker != null) ||
+    ((renderReferenceLine != null || renderOffAxisReferenceLine != null) &&
+      allRefLines.length > 0);
+
+  return (
+    <>
+      {hasCustomAnnotations ? (
+        <Animated.View
+          pointerEvents="box-none"
+          style={[StyleSheet.absoluteFill, overlayFadeStyle]}
+        >
+          {markersActive && renderMarker ? (
+            <CustomMarkerOverlay
+              markers={markersSV}
+              renderMarker={renderMarker}
+              engine={engine}
+              padding={effectivePadding}
+              series={series}
+              cluster={markerClusterCfg}
+            />
+          ) : null}
+          {renderReferenceLine && allRefLines.length > 0 ? (
+            <CustomReferenceLineOverlay
+              lines={allRefLines}
+              renderReferenceLine={renderReferenceLine}
+              custom={refLineCustom}
+              engine={engine}
+              padding={effectivePadding}
+              formatValue={formatValue}
+              tagWidths={refLineCustomTagWidths}
+            />
+          ) : null}
+          {renderOffAxisReferenceLine && allRefLines.length > 0 ? (
+            <CustomReferenceLineOverlay
+              lines={allRefLines}
+              renderReferenceLine={renderOffAxisReferenceLine}
+              custom={refLineOffAxisCustom}
+              engine={engine}
+              padding={effectivePadding}
+              formatValue={formatValue}
+              tagWidths={refLineCustomTagWidths}
+              offAxisOnly
+            />
+          ) : null}
+        </Animated.View>
+      ) : null}
+      {seriesTooltipCfg ? (
+        <View
+          testID="live-chart-series-tooltip-overlay"
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        >
+          <Canvas style={StyleSheet.absoluteFill}>
+            <SeriesTooltipLayer model={model} config={seriesTooltipCfg} />
+          </Canvas>
+        </View>
+      ) : null}
+      {renderOverlay ? <SeriesCustomConsumerOverlay model={model} /> : null}
+    </>
+  );
+}
+
 export const LiveChartSeries = forwardRef<
   LiveChartHandle,
   LiveChartSeriesProps
@@ -1056,66 +1410,14 @@ export const LiveChartSeries = forwardRef<
     accessibilityLabel,
     accessibilityRole,
     layoutHeight,
-    legendCfg,
-    series,
-    onSeriesToggle,
-    leftEdgeFadeCfg,
     effectivePadding,
     engine,
-    scrubCfg,
-    seriesTooltipCfg,
-    crosshair,
     palette,
-    dotCfg,
-    dotOuterRadius,
-    selectionDot,
-    selectionColor,
     formatValue,
     topLabelCfg,
     bottomLabelCfg,
-    topConnector,
-    bottomConnector,
-    markersActive,
-    markersSV,
-    markerClusterCfg,
-    renderMarker,
-    renderOverlay,
-    renderReferenceLine,
-    renderOffAxisReferenceLine,
-    allRefLines,
-    refLineCustom,
-    refLineOffAxisCustom,
-    refLineCustomTagWidths,
-    overlayScrubFade,
-    canvasMode,
     loadingActive,
   } = model;
-
-  // Mirror the Skia overlay fade onto the RN custom-marker sibling so
-  // `scrub.hideOverlaysOnScrub` hides it with the Skia markers.
-  const overlayFadeStyle = useAnimatedStyle(() => ({
-    opacity: overlayScrubFade.get(),
-  }));
-
-  // Extend the scrub dim past the plot's right edge to fully cover the series
-  // dots (with their halo) and pulse rings, all centered on that edge. The
-  // gutter reserves room beyond this for the value/Y-axis labels, drawn on top.
-  const liveDotExtent = Math.max(
-    dotOuterRadius,
-    dotCfg.pulse
-      ? pulseRadialOutset(dotCfg.pulse.maxRadius, dotCfg.pulse.strokeWidth)
-      : 0,
-  );
-
-  const legend =
-    legendCfg.position === "top" || legendCfg.position === "bottom" ? (
-      <SeriesToggleChips
-        series={series}
-        legend={legendCfg}
-        palette={palette}
-        onSeriesToggle={onSeriesToggle}
-      />
-    ) : null;
 
   return (
     <View
@@ -1124,97 +1426,14 @@ export const LiveChartSeries = forwardRef<
       accessibilityLabel={accessibilityLabel}
       accessibilityRole={accessibilityRole}
     >
-      {legendCfg.position === "top" ? legend : null}
+      <SeriesLegend model={model} position="top" />
       {/* Gesture + layout wrap ONLY the canvas: the legend chips are Pressables
           that must sit outside the scrub gesture to receive taps, and the engine
           canvas height must measure the canvas alone (excluding the legend row),
           else points map into a taller area and the x-axis draws past the edge. */}
       <GestureDetector gesture={rootGesture}>
         <View style={{ flex: 1 }} onLayout={onLayout}>
-          {/* Skia chooses TextureView vs SurfaceView when the native Canvas mounts. */}
-          <Canvas
-            key={canvasMode}
-            style={{ flex: 1, minHeight: layoutHeight || 1 }}
-            opaque={canvasMode === "opaque"}
-          >
-            {canvasMode === "opaque" && (
-              <Rect
-                x={0}
-                y={0}
-                width={engine.canvasWidth}
-                height={engine.canvasHeight}
-                color={backgroundColor}
-              />
-            )}
-            <SeriesChartStack model={model} />
-
-            {/* "extrema-edge" connector lines (dot → edge readout). Outside the
-                stack's degen-shake group so they track the (unshaken) RN dot. */}
-            <ExtremaConnectorOverlay
-              engine={engine}
-              padding={effectivePadding}
-              top={topConnector}
-              bottom={bottomConnector}
-              hideExtrema={loadingActive}
-              suppressBottomWhenCoincident={
-                topLabelCfg?.position === "extrema" ||
-                topLabelCfg?.position === "extrema-edge"
-              }
-            />
-
-            {leftEdgeFadeCfg && (
-              <LeftEdgeFade
-                paddingLeft={effectivePadding.left}
-                fadeWidth={leftEdgeFadeCfg.width}
-                startColor={leftEdgeFadeCfg.startColor}
-                endColor={leftEdgeFadeCfg.endColor}
-                engine={engine}
-                opaqueBackgroundRgb={
-                  canvasMode === "opaque" ? palette.bgRgb : undefined
-                }
-              />
-            )}
-
-            {/* Reference-line badges + labels above the fade so they stay crisp. */}
-            <SeriesRefBadgeLayer model={model} />
-
-            {scrubCfg && (
-              <CrosshairLine
-                scrubX={crosshair.scrubX}
-                crosshairOpacity={crosshair.crosshairOpacity}
-                engine={engine}
-                padding={effectivePadding}
-                palette={palette}
-                selectionDot={selectionDot}
-                selectionY={crosshair.scrubDotY}
-                scrubActive={crosshair.scrubActive}
-                selectionColor={selectionColor}
-                dimOpacity={scrubCfg.dimOpacity}
-                liveDotExtent={liveDotExtent}
-                crosshairLineColor={
-                  seriesTooltipCfg?.guideColor ?? scrubCfg.crosshairLineColor
-                }
-                crosshairStrokeWidth={
-                  seriesTooltipCfg?.guideWidth ?? scrubCfg.crosshairStrokeWidth
-                }
-                crosshairOvershoot={scrubCfg.crosshairOvershoot}
-                crosshairFade={scrubCfg.crosshairFade}
-                crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
-                crosshairLineCap={scrubCfg.crosshairLineCap}
-                crosshairDash={
-                  seriesTooltipCfg
-                    ? seriesTooltipCfg.guideDashPattern
-                    : scrubCfg.crosshairDash
-                }
-                crosshairDimColor={scrubCfg.crosshairDimColor}
-                opaqueCanvas={canvasMode === "opaque"}
-              />
-            )}
-
-            {/* Per-series value labels on top of the scrub dim so the dim never
-                clips them (they track each series' live value, not the scrub). */}
-            <SeriesValueLabelLayer model={model} />
-          </Canvas>
+          <SeriesCanvas model={model} />
 
           {/* RN labels floated over the canvas (sibling of <Canvas>, an RN
               view). Inside the canvas wrapper so its top/bottom edges align
@@ -1229,75 +1448,10 @@ export const LiveChartSeries = forwardRef<
             hideExtrema={loadingActive}
           />
 
-          {/* Custom annotations — RN views floated over the canvas (non-Skia),
-              pinned to their live positions. As a post-Canvas sibling they render
-              above the left-edge fade and scrub overlay. The box-none fade wrapper
-              keeps `scrub.hideOverlaysOnScrub` behavior aligned with Skia. */}
-          {((markersActive && renderMarker) ||
-            ((renderReferenceLine || renderOffAxisReferenceLine) &&
-              allRefLines.length > 0)) && (
-            <Animated.View
-              pointerEvents="box-none"
-              style={[StyleSheet.absoluteFill, overlayFadeStyle]}
-            >
-              {markersActive && renderMarker && (
-                <CustomMarkerOverlay
-                  markers={markersSV}
-                  renderMarker={renderMarker}
-                  engine={engine}
-                  padding={effectivePadding}
-                  series={series}
-                  cluster={markerClusterCfg}
-                />
-              )}
-              {renderReferenceLine && allRefLines.length > 0 && (
-                <CustomReferenceLineOverlay
-                  lines={allRefLines}
-                  renderReferenceLine={renderReferenceLine}
-                  custom={refLineCustom}
-                  engine={engine}
-                  padding={effectivePadding}
-                  formatValue={formatValue}
-                  tagWidths={refLineCustomTagWidths}
-                />
-              )}
-              {renderOffAxisReferenceLine && allRefLines.length > 0 && (
-                <CustomReferenceLineOverlay
-                  lines={allRefLines}
-                  renderReferenceLine={renderOffAxisReferenceLine}
-                  custom={refLineOffAxisCustom}
-                  engine={engine}
-                  padding={effectivePadding}
-                  formatValue={formatValue}
-                  tagWidths={refLineCustomTagWidths}
-                  offAxisOnly
-                />
-              )}
-            </Animated.View>
-          )}
-
-          {/* A dedicated transparent Canvas keeps the UI-thread tooltip above
-              custom RN annotations. Rendering it in the primary Canvas would
-              put every post-Canvas `renderReferenceLine` sibling above it and
-              produce mixed stacking through translucent custom tags. */}
-          {seriesTooltipCfg && (
-            <View
-              testID="live-chart-series-tooltip-overlay"
-              pointerEvents="none"
-              style={StyleSheet.absoluteFill}
-            >
-              <Canvas style={StyleSheet.absoluteFill}>
-                <SeriesTooltipLayer model={model} config={seriesTooltipCfg} />
-              </Canvas>
-            </View>
-          )}
-
-          {/* Custom consumer overlay — topmost RN sibling with the live plot
-              rect, including this multi-series chart's resolved axis inset. */}
-          {renderOverlay && <SeriesCustomConsumerOverlay model={model} />}
+          <SeriesNativeOverlays model={model} />
         </View>
       </GestureDetector>
-      {legendCfg.position === "bottom" ? legend : null}
+      <SeriesLegend model={model} position="bottom" />
     </View>
   );
 });
