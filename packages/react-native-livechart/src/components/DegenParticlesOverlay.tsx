@@ -17,6 +17,36 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 type DegenPack = SharedValue<Float64Array<ArrayBuffer>>;
 
+type ParticlePool = {
+  a: { transforms: SkRSXform[]; sprites: SkRect[]; colors: SkColor[] };
+  b: { transforms: SkRSXform[]; sprites: SkRect[]; colors: SkColor[] };
+  tick: boolean;
+  instances: ReturnType<typeof buildParticleInstances>;
+  instancePool: ReturnType<typeof buildParticleInstances>;
+  spriteRect: SkRect;
+};
+
+function makeParticlePool(
+  particleSlotCount: number,
+  spriteSize: number,
+): ParticlePool {
+  const instancePool = Array.from({ length: particleSlotCount }, () => ({
+    x: 0,
+    y: 0,
+    scale: 0,
+    alpha: 0,
+    colorIndex: 0,
+  }));
+  return {
+    a: { transforms: [], sprites: [], colors: [] },
+    b: { transforms: [], sprites: [], colors: [] },
+    tick: false,
+    instances: [],
+    instancePool,
+    spriteRect: Skia.XYWHRect(0, 0, spriteSize, spriteSize),
+  };
+}
+
 /**
  * Renders the degen particle burst with a single `drawAtlas` call.
  *
@@ -64,30 +94,11 @@ export function DegenParticlesOverlay({
   // memoizes this on `colorList`.
   const colorRgb = colorList.map((c) => parseColorRgb(c));
 
-  const poolRef = useRef<{
-    a: { transforms: SkRSXform[]; sprites: SkRect[]; colors: SkColor[] };
-    b: { transforms: SkRSXform[]; sprites: SkRect[]; colors: SkColor[] };
-    tick: boolean;
-    instances: ReturnType<typeof buildParticleInstances>;
-    instancePool: ReturnType<typeof buildParticleInstances>;
-    spriteRect: SkRect;
-  } | null>(null);
+  const poolRef = useRef<ParticlePool | null>(null);
   if (poolRef.current === null) {
-    const instancePool = Array.from({ length: particleSlotCount }, () => ({
-      x: 0,
-      y: 0,
-      scale: 0,
-      alpha: 0,
-      colorIndex: 0,
-    }));
-    poolRef.current = {
-      a: { transforms: [], sprites: [], colors: [] },
-      b: { transforms: [], sprites: [], colors: [] },
-      tick: false,
-      instances: [],
-      instancePool,
-      spriteRect: Skia.XYWHRect(0, 0, sprite.size, sprite.size),
-    };
+    // React permits this predictable lazy-ref initialization: https://react.dev/reference/react/useRef#avoiding-recreating-the-ref-contents
+    // react-doctor-disable-next-line react-doctor/no-ref-current-in-render -- false positive for React's documented lazy-ref exception
+    poolRef.current = makeParticlePool(particleSlotCount, sprite.size);
   }
 
   // Single per-frame worklet. Reads `packRevision` so it re-runs each frame

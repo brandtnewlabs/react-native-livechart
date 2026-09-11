@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -150,7 +150,7 @@ const NOW = Date.now() / 1000;
  * write a SharedValue during render) and the static chart re-settles to the new
  * series. No re-mount, no extra Canvas per scroll.
  */
-const CoinRow = memo(function CoinRow({ coin }: { coin: Coin }) {
+function CoinRow({ coin }: { coin: Coin }) {
   const dataSV = useSharedValue<LiveChartPoint[]>(coin.points);
   const valueSV = useSharedValue(coin.last);
 
@@ -210,7 +210,7 @@ const CoinRow = memo(function CoinRow({ coin }: { coin: Coin }) {
       </View>
     </View>
   );
-});
+}
 
 function ListHeader() {
   return (
@@ -244,7 +244,7 @@ const renderItem = ({ item }: LegendListRenderItemProps<Coin>) => (
 export default function CoinListScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const coins = useMemo(() => buildCoins(COIN_COUNT, NOW), []);
+  const [coins] = useState(() => buildCoins(COIN_COUNT, NOW));
 
   return (
     <View style={[demoStyles.demoRoot, { paddingTop: insets.top }]}>
