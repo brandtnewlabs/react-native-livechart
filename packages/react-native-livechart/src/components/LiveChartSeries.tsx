@@ -28,6 +28,7 @@ import {
   MAX_MULTI_SERIES,
   SCRUB_OVERLAY_FADE_MS,
 } from "../constants";
+import { hasMultiSeriesChartData } from "../core/chartDataPresence";
 import {
   lineColorsSignatureFromArray,
   lineStyleSignatureFromArray,
@@ -366,11 +367,7 @@ function useLiveChartSeriesController({
 
   const hasData = useDerivedValue(() => {
     "worklet";
-    const arr = series.value;
-    for (let i = 0; i < arr.length; i++) {
-      if (arr[i].data.length >= 2) return true;
-    }
-    return false;
+    return hasMultiSeriesChartData(series.value);
   });
 
   // Resolve the loading shell: null = not loading, else the styled config.

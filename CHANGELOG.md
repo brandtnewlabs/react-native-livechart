@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Charts now treat one line point, one multi-series point, or one committed
+  candle as valid data instead of showing the empty-state label. Resolves
+  [#302](https://github.com/brandtnewlabs/react-native-livechart/issues/302).
 - Extrema labels and their connector lines now hide while the loading shell is
   active. Flat series whose high and low resolve to the same point render one
   extrema label instead of drawing the same label twice. Resolves

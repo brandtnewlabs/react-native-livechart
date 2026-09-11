@@ -2261,7 +2261,7 @@ export interface LiveChartCoreProps {
   transitions?: boolean | TransitionConfig;
   /**
    * Breathing-line loading shell. When this becomes `false`, the chart reveals
-   * only if there is data (≥2 line points or ≥2 committed candles).
+   * only if there is data (≥1 line point or ≥1 committed candle).
    *
    * `true` shows the shell with the defaults; pass a {@link LoadingConfig} to
    * restyle it — `color` / `strokeWidth` for the squiggle + skeleton, `amplitude`
@@ -2330,8 +2330,8 @@ export interface LiveChartCoreProps {
    */
   yRangeScale?: SharedValue<number>;
   /**
-   * Label in the empty state when `loading` is false and there are fewer than
-   * two samples (line points or committed candles). Default `"No data"`.
+   * Label in the empty state when `loading` is false and there are no line
+   * points or committed candles. Default `"No data"`.
    */
   emptyText?: string;
   /** Custom formatter for value labels (axes, badge, tooltips). Default `v => v.toFixed(2)`. */

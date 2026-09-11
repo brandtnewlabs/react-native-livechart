@@ -222,7 +222,7 @@ export default function MultiSeriesScreen() {
     <DemoScreen
       title="Multi-series"
       docs="guides/multi-series"
-      description="series, onSeriesToggle, scrub, axis visibility. Use the QA reference buttons to move one line above, into, or below the plot: the custom tag takes over only off-axis, its caret flips with the edge, and its dashed connector continues right from the badge edge. Chart stays empty until at least one series has ≥2 points (toggle No series for shell)."
+      description="series, onSeriesToggle, scrub, axis visibility. Use the QA reference buttons to move one line above, into, or below the plot: the custom tag takes over only off-axis, its caret flips with the edge, and its dashed connector continues right from the badge edge. One point in any series is valid data; toggle No series for the empty shell."
       chartWrapperStyle={{ height: 360 }}
       chart={
         <>
