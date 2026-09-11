@@ -2,7 +2,6 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -1321,13 +1320,7 @@ function useLiveChartLayoutResources({
   const refGroupBadgeFont = refGroupBadgeHasFont
     ? refGroupBadgeFontOverride
     : skiaFont;
-  const [valueLayoutSample, setValueLayoutSample] = useState<
-    number | undefined
-  >(undefined);
-  useLayoutEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reanimated SharedValues cannot be read during render
-    setValueLayoutSample(value.get());
-  }, [value]);
+  const valueLayoutSample = useInitialSharedValueSample(value);
   const [scrolledBack, setScrolledBack] = useState(false);
   const effectiveYAxisFloat =
     yAxisFloat && (!timeScrollEnabled || scrolledBack);
@@ -1358,6 +1351,21 @@ function useLiveChartLayoutResources({
     setScrolledBack,
     ...layout,
   };
+}
+
+function useInitialSharedValueSample(value: SharedValue<number>) {
+  const [sample, setSample] = useState<number | undefined>(undefined);
+  const captured = useSharedValue(false);
+  useAnimatedReaction(
+    () => (captured.get() ? null : value.get()),
+    (current) => {
+      if (current === null) return;
+      captured.set(true);
+      scheduleOnRN(setSample, current);
+    },
+    [captured, value],
+  );
+  return sample;
 }
 
 function resolveLiveChartModelDefaults({
