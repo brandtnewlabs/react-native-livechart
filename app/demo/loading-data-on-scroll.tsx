@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Text } from "react-native";
 import {
   LiveChart,
@@ -26,6 +26,10 @@ type HistoryPage = {
 };
 
 type HistoryState = "loading" | "ready" | "error" | "exhausted";
+
+type HistoryPageResult =
+  | { ok: true; page: HistoryPage }
+  | { ok: false; error: unknown };
 
 function valueAt(time: number): number {
   return (
@@ -128,8 +132,7 @@ export default function LoadingDataOnScrollScreen() {
   const [rangeLabel, setRangeLabel] = useState(() => formatRange(null));
   const [liveEnabled, setLiveEnabled] = useState(true);
 
-  const fetchUntil = useCallback(
-    async (targetStartSec: number, reset = false) => {
+  const fetchUntil = async (targetStartSec: number, reset = false) => {
       if (reset) {
         generation.current += 1;
         request.current?.abort();
@@ -146,57 +149,64 @@ export default function LoadingDataOnScrollScreen() {
       setHistoryState("loading");
       const run = generation.current;
 
-      try {
-        while (!exhausted.current) {
-          const controller = new AbortController();
-          request.current = controller;
-          const previousCursor = cursor.current;
-          const page = await fetchHistoryPage(
-            archive,
-            previousCursor,
-            controller.signal,
-          );
-          if (run !== generation.current) return;
+      while (!exhausted.current) {
+        const controller = new AbortController();
+        request.current = controller;
+        const previousCursor = cursor.current;
+        const result: HistoryPageResult = await fetchHistoryPage(
+          archive,
+          previousCursor,
+          controller.signal,
+        ).then(
+          (page) => ({ ok: true, page }),
+          (error: unknown) => ({ ok: false, error }),
+        );
 
-          const merged = mergeByTime(data.get(), page.rows);
-          data.set(merged);
-          cursor.current = page.nextCursor;
-          setPageCount((count) => count + 1);
-          setRowCount(merged.length);
-
-          const latest = merged[merged.length - 1];
-          if (latest) value.set(latest.value);
-
-          if (page.nextCursor === previousCursor && page.nextCursor !== null) {
-            throw new Error("History cursor did not advance");
+        if (run !== generation.current) return;
+        if (!result.ok) {
+          if ((result.error as Error).name !== "AbortError") {
+            setHistoryState("error");
           }
-          if (page.nextCursor === null) {
-            exhausted.current = true;
-            setHistoryState("exhausted");
-            break;
-          }
-          if ((merged[0]?.time ?? Number.POSITIVE_INFINITY) <= targetStartSec) {
-            setHistoryState("ready");
-            break;
-          }
+          break;
         }
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") setHistoryState("error");
-      } finally {
-        if (run === generation.current) {
-          loading.current = false;
-          request.current = null;
+
+        const { page } = result;
+        const merged = mergeByTime(data.get(), page.rows);
+        data.set(merged);
+        cursor.current = page.nextCursor;
+        setPageCount((count) => count + 1);
+        setRowCount(merged.length);
+
+        const latest = merged[merged.length - 1];
+        if (latest) value.set(latest.value);
+
+        if (page.nextCursor === previousCursor && page.nextCursor !== null) {
+          setHistoryState("error");
+          break;
+        }
+        if (page.nextCursor === null) {
+          exhausted.current = true;
+          setHistoryState("exhausted");
+          break;
+        }
+        if ((merged[0]?.time ?? Number.POSITIVE_INFINITY) <= targetStartSec) {
+          setHistoryState("ready");
+          break;
         }
       }
-    },
-    [archive, data, value],
-  );
 
-  const resetHistory = useCallback(() => {
+      if (run === generation.current) {
+        loading.current = false;
+        request.current = null;
+      }
+  };
+
+  const resetHistory = () => {
     void fetchUntil(Date.now() / 1000 - TIME_WINDOW_SEC * 2, true);
-  }, [fetchUntil]);
+  };
+  const resetHistoryOnMount = useEffectEvent(resetHistory);
 
-  const loadOlderHistory = useCallback(() => {
+  const loadOlderHistory = () => {
     const range = visibleRange.current;
     const retainedStart = data.get()[0]?.time ?? Date.now() / 1000;
     const windowSec = range
@@ -204,16 +214,16 @@ export default function LoadingDataOnScrollScreen() {
       : TIME_WINDOW_SEC;
     const targetStart = (range?.startSec ?? retainedStart) - windowSec;
     void fetchUntil(targetStart);
-  }, [data, fetchUntil]);
+  };
 
   useEffect(() => {
-    const kickoff = setTimeout(resetHistory, 0);
+    const kickoff = setTimeout(resetHistoryOnMount, 0);
     return () => {
       clearTimeout(kickoff);
       generation.current += 1;
       request.current?.abort();
     };
-  }, [resetHistory]);
+  }, []);
 
   // Simulates a scoped subscribeBars callback. Realtime appends use modify so
   // the retained array is not cloned across the JS/UI boundary on every tick.
