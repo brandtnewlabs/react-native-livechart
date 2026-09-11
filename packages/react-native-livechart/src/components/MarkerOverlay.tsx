@@ -30,6 +30,7 @@ import {
   isConnectorMarker,
   markerAppearanceSig,
   type AtlasCell,
+  type MarkerAtlasPalette,
 } from "../draw/markerAtlas";
 import {
   markersSignature,
@@ -45,6 +46,7 @@ import type {
   LiveChartPalette,
   LiveChartPoint,
   Marker,
+  MarkerGroupBadge,
   MarkerRenderContext,
   SeriesConfig,
 } from "../types";
@@ -304,51 +306,84 @@ function useMarkerOverlayModel({
     return o;
   }, [customKey]);
 
-  // Rebuild the atlas image only when the set of distinct appearances or the
-  // theme/font changes — never per frame. `markersSignature` already drives the
-  // snapshot, so this useMemo re-runs at most at the snapshot cadence.
-  const appearanceKey = useMemo(() => {
-    const sigs = new Set<string>();
-    for (let i = 0; i < snapshot.length; i++) {
-      const m = snapshot[i];
-      if (!isConnectorMarker(m) && !customIds[m.id])
-        sigs.add(markerAppearanceSig(m));
-    }
-    return Array.from(sigs).sort().join("\x1e");
-  }, [snapshot, customIds]);
-  // Cells bake in resolved colors; include the palette fields they depend on.
-  const paletteKey = `${palette.bgRgb.join(",")}|${palette.line}|${palette.refLine}|${palette.dotUp}|${palette.refLabel}`;
   // Rasterize at the screen's device-pixel ratio so sprites stay crisp on
   // retina canvases instead of being upscaled from a logical-sized texture.
   const dpr = PixelRatio.get();
   const clusterStacked = cluster.mode === "stacked";
+  const [paletteBgR, paletteBgG, paletteBgB] = palette.bgRgb;
+  const paletteLine = palette.line;
+  const paletteRefLine = palette.refLine;
+  const paletteDotUp = palette.dotUp;
+  const paletteRefLabel = palette.refLabel;
+  const atlasPalette = useMemo<MarkerAtlasPalette>(
+    () => ({
+      bgRgb: [paletteBgR, paletteBgG, paletteBgB],
+      line: paletteLine,
+      refLine: paletteRefLine,
+      dotUp: paletteDotUp,
+      refLabel: paletteRefLabel,
+    }),
+    [
+      paletteBgR,
+      paletteBgG,
+      paletteBgB,
+      paletteLine,
+      paletteRefLine,
+      paletteDotUp,
+      paletteRefLabel,
+    ],
+  );
   // A dedicated group badge (object form) bakes one extra atlas cell; its image
   // identity + styling drive the rebuild key alongside the marker appearances.
   const groupBadgeCfg =
     typeof cluster.groupBadge === "object" ? cluster.groupBadge : undefined;
+  const hasGroupBadge = groupBadgeCfg !== undefined;
   const groupBadgeImage = groupBadgeCfg?.image;
-  const groupBadgeKey = groupBadgeCfg
-    ? `${groupBadgeCfg.icon ?? ""}|${groupBadgeCfg.color ?? ""}|${groupBadgeCfg.pill ? 1 : 0}|${groupBadgeCfg.size ?? ""}|${groupBadgeCfg.letterSpacing ?? ""}`
-    : "";
+  const groupBadgeIcon = groupBadgeCfg?.icon;
+  const groupBadgeColor = groupBadgeCfg?.color;
+  const groupBadgePill = groupBadgeCfg?.pill;
+  const groupBadgeSize = groupBadgeCfg?.size;
+  const groupBadgeLetterSpacing = groupBadgeCfg?.letterSpacing;
+  const atlasGroupBadge = useMemo<MarkerGroupBadge | undefined>(
+    () =>
+      hasGroupBadge
+        ? {
+            image: groupBadgeImage,
+            icon: groupBadgeIcon,
+            color: groupBadgeColor,
+            pill: groupBadgePill,
+            size: groupBadgeSize,
+            letterSpacing: groupBadgeLetterSpacing,
+          }
+        : undefined,
+    [
+      hasGroupBadge,
+      groupBadgeImage,
+      groupBadgeIcon,
+      groupBadgeColor,
+      groupBadgePill,
+      groupBadgeSize,
+      groupBadgeLetterSpacing,
+    ],
+  );
   const atlas = useMemo(
     () =>
       buildMarkerAtlas(
         snapshot.filter((m) => !customIds[m.id]),
-        palette,
+        atlasPalette,
         font,
         dpr,
         clusterStacked,
-        groupBadgeCfg,
+        atlasGroupBadge,
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- appearanceKey/paletteKey/groupBadgeKey capture the inputs that change cell pixels
     [
-      appearanceKey,
-      paletteKey,
+      snapshot,
+      customIds,
+      atlasPalette,
       font,
       dpr,
       clusterStacked,
-      groupBadgeKey,
-      groupBadgeImage,
+      atlasGroupBadge,
     ],
   );
   const cells: Record<string, AtlasCell> = atlas.cells;

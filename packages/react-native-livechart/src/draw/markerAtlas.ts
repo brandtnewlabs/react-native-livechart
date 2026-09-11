@@ -17,6 +17,11 @@ import type {
   MarkerKind,
 } from "../types";
 
+export type MarkerAtlasPalette = Pick<
+  LiveChartPalette,
+  "bgRgb" | "line" | "refLine" | "dotUp" | "refLabel"
+>;
+
 /** Default icon box (px) when `marker.size` is unset. */
 export const DEFAULT_ICON_SIZE = 16;
 /** Circular badge padding around the icon glyph + background ring width. */
@@ -78,7 +83,7 @@ export function groupCountTextWidth(
  *  per-frame overlay worklet can resolve a collapsed cluster's badge color. */
 export function defaultMarkerColor(
   kind: MarkerKind,
-  palette: LiveChartPalette,
+  palette: MarkerAtlasPalette,
 ): string {
   "worklet";
   switch (kind) {
@@ -188,7 +193,7 @@ interface CellSpec {
  * Geometry + draw routine for one marker appearance. Mirrors the per-glyph
  * rendering the old `MarkerGlyph` did inline, so the atlas is pixel-equivalent.
  */
-function cellSpec(m: Marker, palette: LiveChartPalette, font: SkFont): CellSpec {
+function cellSpec(m: Marker, palette: MarkerAtlasPalette, font: SkFont): CellSpec {
   const color = m.color ?? defaultMarkerColor(m.kind, palette);
   const m2 = CELL_MARGIN * 2;
 
@@ -382,7 +387,7 @@ function groupBgCellSpec(
  */
 export function buildMarkerAtlas(
   markers: Marker[],
-  palette: LiveChartPalette,
+  palette: MarkerAtlasPalette,
   font: SkFont,
   scale = 1,
   /** Also bake count-badge cells (digits + per-color backgrounds) for
