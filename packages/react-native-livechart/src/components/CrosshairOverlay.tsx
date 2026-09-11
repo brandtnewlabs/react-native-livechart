@@ -17,41 +17,7 @@ import type { ResolvedSelectionDotConfig } from "../core/resolveConfig";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import { SelectionDotSlot } from "./SelectionDot";
 
-export function CrosshairOverlay({
-  scrubX,
-  crosshairOpacity,
-  tooltipLayout,
-  engine,
-  padding,
-  palette,
-  font,
-  showTooltip = true,
-  children,
-  renderTooltip,
-  lineTop,
-  showLine = true,
-  selectionDot,
-  selectionY,
-  scrubActive,
-  selectionColor,
-  dimOpacity = 0.3,
-  liveDotExtent = 0,
-  crosshairLineColor,
-  crosshairStrokeWidth = 1,
-  crosshairOvershoot = 0,
-  crosshairFade = true,
-  crosshairFadeDistance = 4,
-  crosshairLineCap,
-  crosshairDash,
-  crosshairDimColor,
-  tooltipBackground,
-  tooltipColor,
-  tooltipBorderColor,
-  tooltipBorderRadius = 5,
-  tooltipShowValue = true,
-  tooltipShowTime = true,
-  opaqueCanvas = false,
-}: {
+type CrosshairOverlayProps = {
   scrubX: SharedValue<number>;
   crosshairOpacity: SharedValue<number>;
   tooltipLayout: SharedValue<TooltipLayout>;
@@ -116,32 +82,62 @@ export function CrosshairOverlay({
   tooltipShowTime?: boolean;
   /** Paint the owned background instead of erasing destination alpha. */
   opaqueCanvas?: boolean;
-}) {
+};
+
+export function CrosshairOverlay({
+  scrubX,
+  crosshairOpacity,
+  tooltipLayout,
+  engine,
+  padding,
+  palette,
+  font,
+  showTooltip = true,
+  children,
+  renderTooltip,
+  lineTop,
+  showLine = true,
+  selectionDot,
+  selectionY,
+  scrubActive,
+  selectionColor,
+  dimOpacity = 0.3,
+  liveDotExtent = 0,
+  crosshairLineColor,
+  crosshairStrokeWidth = 1,
+  crosshairOvershoot = 0,
+  crosshairFade = true,
+  crosshairFadeDistance = 4,
+  crosshairLineCap,
+  crosshairDash,
+  crosshairDimColor,
+  tooltipBackground,
+  tooltipColor,
+  tooltipBorderColor,
+  tooltipBorderRadius = 5,
+  tooltipShowValue = true,
+  tooltipShowTime = true,
+  opaqueCanvas = false,
+}: CrosshairOverlayProps) {
   // Explicit dependency arrays: with React Compiler enabled, Reanimated's
   // auto-detected worklet dependencies can change array size between renders
   // (e.g. when `liveDotExtent` flips 0 → the live-dot extent), which trips
   // React's "final argument changed size between renders" error. Listing the
   // captured plain values keeps the dependency array a constant size. SharedValue
   // reads stay reactive regardless of this list.
-  const p1 = useDerivedValue(
-    () => {
-      // A top-pinned custom tooltip pushes the line's start down to its measured
-      // bottom (lineTop) so the line stops at the label; -1 → no top tooltip.
-      const lt = lineTop?.value ?? -1;
-      return {
-        x: scrubX.value,
-        y: lt >= 0 ? lt : padding.top - crosshairOvershoot,
-      };
-    },
-    [scrubX, padding.top, lineTop, crosshairOvershoot],
-  );
+  const p1 = useDerivedValue(() => {
+    // A top-pinned custom tooltip pushes the line's start down to its measured
+    // bottom (lineTop) so the line stops at the label; -1 → no top tooltip.
+    const lt = lineTop?.value ?? -1;
+    return {
+      x: scrubX.value,
+      y: lt >= 0 ? lt : padding.top - crosshairOvershoot,
+    };
+  }, [scrubX, padding.top, lineTop, crosshairOvershoot]);
   const p2 = useDerivedValue(
     () => ({
       x: scrubX.value,
-      y:
-        engine.canvasHeight.value -
-        padding.bottom +
-        crosshairOvershoot,
+      y: engine.canvasHeight.value - padding.bottom + crosshairOvershoot,
     }),
     [scrubX, engine.canvasHeight, padding.bottom, crosshairOvershoot],
   );
@@ -197,111 +193,362 @@ export function CrosshairOverlay({
 
   return (
     <>
-      {crosshairDimColor !== undefined ? (
-        // Legacy: solid colored mask painted over the chart (opt-in).
-        <Group opacity={crosshairOpacity}>
-          <Rect
-            x={scrubX}
-            y={padding.top}
-            width={dimWidth}
-            height={dimHeight}
-            color={crosshairDimColor}
-          />
-        </Group>
-      ) : dimOpacity < 1 && opaqueCanvas ? (
+      <CrosshairDimLayer
+        scrubX={scrubX}
+        paddingTop={padding.top}
+        dimWidth={dimWidth}
+        dimHeight={dimHeight}
+        crosshairOpacity={crosshairOpacity}
+        crosshairDimColor={crosshairDimColor}
+        dimOpacity={dimOpacity}
+        opaqueCanvas={opaqueCanvas}
+        backgroundColor={backgroundColor}
+        opaqueDimOpacity={opaqueDimOpacity}
+        dimErase={dimErase}
+      />
+      <CrosshairVisibleLayer
+        opacity={visibleOpacity}
+        p1={p1}
+        p2={p2}
+        palette={palette}
+        showLine={showLine}
+        crosshairLineColor={crosshairLineColor}
+        crosshairStrokeWidth={crosshairStrokeWidth}
+        crosshairLineCap={crosshairLineCap}
+        crosshairDash={crosshairDash}
+        selectionDot={selectionDot}
+        scrubX={scrubX}
+        selectionY={selectionY}
+        scrubActive={scrubActive}
+        selectionColor={selectionColor}
+        showTooltip={showTooltip}
+        tipX={tipX}
+        tipY={tipY}
+        tipW={tipW}
+        tipH={tipH}
+        tooltipBorderRadius={tooltipBorderRadius}
+        tooltipBackground={tooltipBackground}
+        tooltipBorderColor={tooltipBorderColor}
+        renderTooltip={renderTooltip}
+        tooltipShowValue={tooltipShowValue}
+        effectiveTooltipShowTime={effectiveTooltipShowTime}
+        valueTextX={valueTextX}
+        timeTextX={timeTextX}
+        line1Y={line1Y}
+        line2Y={line2Y}
+        valueStr={valueStr}
+        timeStr={timeStr}
+        font={font}
+        tooltipColor={tooltipColor}
+      >
+        {children}
+      </CrosshairVisibleLayer>
+    </>
+  );
+}
+
+function CrosshairDimLayer({
+  scrubX,
+  paddingTop,
+  dimWidth,
+  dimHeight,
+  crosshairOpacity,
+  crosshairDimColor,
+  dimOpacity,
+  opaqueCanvas,
+  backgroundColor,
+  opaqueDimOpacity,
+  dimErase,
+}: {
+  scrubX: SharedValue<number>;
+  paddingTop: number;
+  dimWidth: SharedValue<number>;
+  dimHeight: SharedValue<number>;
+  crosshairOpacity: SharedValue<number>;
+  crosshairDimColor?: string;
+  dimOpacity: number;
+  opaqueCanvas: boolean;
+  backgroundColor: string;
+  opaqueDimOpacity: SharedValue<number>;
+  dimErase: SharedValue<string>;
+}) {
+  if (crosshairDimColor !== undefined) {
+    return (
+      <Group opacity={crosshairOpacity}>
         <Rect
           x={scrubX}
-          y={padding.top}
+          y={paddingTop}
           width={dimWidth}
           height={dimHeight}
-          color={backgroundColor}
-          opacity={opaqueDimOpacity}
+          color={crosshairDimColor}
         />
-      ) : dimOpacity < 1 ? (
-        // Erase the trailing content's alpha so it fades to the real background
-        // (works on any background color, unlike a colored mask).
-        <Group blendMode="dstOut">
-          <Rect
-            x={scrubX}
-            y={padding.top}
-            width={dimWidth}
-            height={dimHeight}
-            color={dimErase}
-          />
-        </Group>
-      ) : null}
-
-      <Group opacity={visibleOpacity}>
-        {showLine ? (
-          <Line
-            p1={p1}
-            p2={p2}
-            color={crosshairLineColor ?? palette.crosshairLine}
-            strokeWidth={crosshairStrokeWidth}
-            strokeCap={crosshairLineCap}
-          >
-            {crosshairDash ? <DashPathEffect intervals={crosshairDash} /> : null}
-          </Line>
-        ) : null}
-
-        {/* Selection dot at the scrub intersection. `null` hides it; a custom
-            component renders the consumer's dot; otherwise the built-in dot. */}
-        <SelectionDotSlot
-          config={selectionDot}
-          x={scrubX}
-          y={selectionY}
-          active={scrubActive}
-          opacity={visibleOpacity}
-          color={selectionColor ?? palette.line}
-        />
-
-        {showTooltip && (
-          <>
-            <RoundedRect
-              x={tipX}
-              y={tipY}
-              width={tipW}
-              height={tipH}
-              r={tooltipBorderRadius}
-              color={tooltipBackground ?? palette.tooltipBg}
-            />
-
-            <RoundedRect
-              x={tipX}
-              y={tipY}
-              width={tipW}
-              height={tipH}
-              r={tooltipBorderRadius}
-              color={tooltipBorderColor ?? palette.tooltipBorder}
-              style="stroke"
-              strokeWidth={1}
-            />
-
-            {children ?? renderTooltip?.() ?? (
-              <Group>
-                {tooltipShowValue && (
-                  <SkiaText
-                    x={valueTextX}
-                    y={line1Y}
-                    text={valueStr}
-                    font={font}
-                    color={tooltipColor ?? palette.tooltipText}
-                  />
-                )}
-                {effectiveTooltipShowTime && (
-                  <SkiaText
-                    x={timeTextX}
-                    y={tooltipShowValue ? line2Y : line1Y}
-                    text={timeStr}
-                    font={font}
-                    color={palette.gridLabel}
-                  />
-                )}
-              </Group>
-            )}
-          </>
-        )}
       </Group>
+    );
+  }
+  if (dimOpacity >= 1) return null;
+  if (opaqueCanvas) {
+    return (
+      <Rect
+        x={scrubX}
+        y={paddingTop}
+        width={dimWidth}
+        height={dimHeight}
+        color={backgroundColor}
+        opacity={opaqueDimOpacity}
+      />
+    );
+  }
+  return (
+    <Group blendMode="dstOut">
+      <Rect
+        x={scrubX}
+        y={paddingTop}
+        width={dimWidth}
+        height={dimHeight}
+        color={dimErase}
+      />
+    </Group>
+  );
+}
+
+function CrosshairVisibleLayer({
+  opacity,
+  p1,
+  p2,
+  palette,
+  showLine,
+  crosshairLineColor,
+  crosshairStrokeWidth,
+  crosshairLineCap,
+  crosshairDash,
+  selectionDot,
+  scrubX,
+  selectionY,
+  scrubActive,
+  selectionColor,
+  showTooltip,
+  tipX,
+  tipY,
+  tipW,
+  tipH,
+  tooltipBorderRadius,
+  tooltipBackground,
+  tooltipBorderColor,
+  children,
+  renderTooltip,
+  tooltipShowValue,
+  effectiveTooltipShowTime,
+  valueTextX,
+  timeTextX,
+  line1Y,
+  line2Y,
+  valueStr,
+  timeStr,
+  font,
+  tooltipColor,
+}: {
+  opacity: SharedValue<number>;
+  p1: SharedValue<{ x: number; y: number }>;
+  p2: SharedValue<{ x: number; y: number }>;
+  palette: LiveChartPalette;
+  showLine: boolean;
+  crosshairLineColor?: string;
+  crosshairStrokeWidth: number;
+  crosshairLineCap?: "butt" | "round" | "square";
+  crosshairDash?: number[];
+  selectionDot?: ResolvedSelectionDotConfig | null;
+  scrubX: SharedValue<number>;
+  selectionY?: SharedValue<number>;
+  scrubActive: SharedValue<number> | SharedValue<boolean>;
+  selectionColor?: string;
+  showTooltip: boolean;
+  tipX: SharedValue<number>;
+  tipY: SharedValue<number>;
+  tipW: SharedValue<number>;
+  tipH: SharedValue<number>;
+  tooltipBorderRadius: number;
+  tooltipBackground?: string;
+  tooltipBorderColor?: string;
+  children?: ReactNode;
+  renderTooltip?: () => ReactNode;
+  tooltipShowValue: boolean;
+  effectiveTooltipShowTime: boolean;
+  valueTextX: SharedValue<number>;
+  timeTextX: SharedValue<number>;
+  line1Y: SharedValue<number>;
+  line2Y: SharedValue<number>;
+  valueStr: SharedValue<string>;
+  timeStr: SharedValue<string>;
+  font: SkFont;
+  tooltipColor?: string;
+}) {
+  return (
+    <Group opacity={opacity}>
+      <CrosshairLine
+        show={showLine}
+        p1={p1}
+        p2={p2}
+        color={crosshairLineColor ?? palette.crosshairLine}
+        strokeWidth={crosshairStrokeWidth}
+        strokeCap={crosshairLineCap}
+        dash={crosshairDash}
+      />
+      <SelectionDotSlot
+        config={selectionDot}
+        x={scrubX}
+        y={selectionY}
+        active={scrubActive}
+        opacity={opacity}
+        color={selectionColor ?? palette.line}
+      />
+      <CrosshairTooltip
+        show={showTooltip}
+        tipX={tipX}
+        tipY={tipY}
+        tipW={tipW}
+        tipH={tipH}
+        borderRadius={tooltipBorderRadius}
+        background={tooltipBackground ?? palette.tooltipBg}
+        borderColor={tooltipBorderColor ?? palette.tooltipBorder}
+        renderTooltip={renderTooltip}
+        showValue={tooltipShowValue}
+        showTime={effectiveTooltipShowTime}
+        valueTextX={valueTextX}
+        timeTextX={timeTextX}
+        line1Y={line1Y}
+        line2Y={line2Y}
+        valueStr={valueStr}
+        timeStr={timeStr}
+        font={font}
+        valueColor={tooltipColor ?? palette.tooltipText}
+        timeColor={palette.gridLabel}
+      >
+        {children}
+      </CrosshairTooltip>
+    </Group>
+  );
+}
+
+function CrosshairLine({
+  show,
+  p1,
+  p2,
+  color,
+  strokeWidth,
+  strokeCap,
+  dash,
+}: {
+  show: boolean;
+  p1: SharedValue<{ x: number; y: number }>;
+  p2: SharedValue<{ x: number; y: number }>;
+  color: string;
+  strokeWidth: number;
+  strokeCap?: "butt" | "round" | "square";
+  dash?: number[];
+}) {
+  if (!show) return null;
+  return (
+    <Line
+      p1={p1}
+      p2={p2}
+      color={color}
+      strokeWidth={strokeWidth}
+      strokeCap={strokeCap}
+    >
+      {dash ? <DashPathEffect intervals={dash} /> : null}
+    </Line>
+  );
+}
+
+function CrosshairTooltip({
+  show,
+  tipX,
+  tipY,
+  tipW,
+  tipH,
+  borderRadius,
+  background,
+  borderColor,
+  children,
+  renderTooltip,
+  showValue,
+  showTime,
+  valueTextX,
+  timeTextX,
+  line1Y,
+  line2Y,
+  valueStr,
+  timeStr,
+  font,
+  valueColor,
+  timeColor,
+}: {
+  show: boolean;
+  tipX: SharedValue<number>;
+  tipY: SharedValue<number>;
+  tipW: SharedValue<number>;
+  tipH: SharedValue<number>;
+  borderRadius: number;
+  background: string;
+  borderColor: string;
+  children?: ReactNode;
+  renderTooltip?: () => ReactNode;
+  showValue: boolean;
+  showTime: boolean;
+  valueTextX: SharedValue<number>;
+  timeTextX: SharedValue<number>;
+  line1Y: SharedValue<number>;
+  line2Y: SharedValue<number>;
+  valueStr: SharedValue<string>;
+  timeStr: SharedValue<string>;
+  font: SkFont;
+  valueColor: string;
+  timeColor: string;
+}) {
+  if (!show) return null;
+  const body = children ?? renderTooltip?.();
+  return (
+    <>
+      <RoundedRect
+        x={tipX}
+        y={tipY}
+        width={tipW}
+        height={tipH}
+        r={borderRadius}
+        color={background}
+      />
+      <RoundedRect
+        x={tipX}
+        y={tipY}
+        width={tipW}
+        height={tipH}
+        r={borderRadius}
+        color={borderColor}
+        style="stroke"
+        strokeWidth={1}
+      />
+      {body ?? (
+        <Group>
+          {showValue ? (
+            <SkiaText
+              x={valueTextX}
+              y={line1Y}
+              text={valueStr}
+              font={font}
+              color={valueColor}
+            />
+          ) : null}
+          {showTime ? (
+            <SkiaText
+              x={timeTextX}
+              y={showValue ? line2Y : line1Y}
+              text={timeStr}
+              font={font}
+              color={timeColor}
+            />
+          ) : null}
+        </Group>
+      )}
     </>
   );
 }
