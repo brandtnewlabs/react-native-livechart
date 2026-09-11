@@ -13,6 +13,32 @@ import type { SingleEngineState } from "../core/useLiveChartEngine";
 import { computeShake, spawnBurst, tickParticles } from "../math/degenTick";
 import type { DegenShakePayload, Momentum } from "../types";
 
+function resolveDegenSettings(
+  config: ResolvedDegenConfig | null,
+  hasShakeListener: boolean,
+) {
+  return {
+    off: config === null,
+    scale: config?.scale ?? 1,
+    down: config?.downMomentum ?? false,
+    shake: config?.shake ?? true,
+    shakeIntensity: config?.shakeIntensity ?? 1,
+    shakeDurationSec: config?.shakeDurationSec ?? 0.45,
+    slotCount: config?.particleSlotCount ?? 60,
+    burstParticleCount: config?.burstParticleCount ?? 20,
+    particleBurstDurationSec: config?.particleBurstDurationSec ?? 1,
+    drag: config?.drag ?? 0.95,
+    sizeMin: config?.particleSizeMin ?? 1,
+    sizeMax: config?.particleSizeMax ?? 2.2,
+    spreadAngle: config?.spreadAngle ?? Math.PI * 1.2,
+    jitterX: config?.positionJitterX ?? 24,
+    jitterY: config?.positionJitterY ?? 8,
+    speedMin: config?.speedMin ?? 60,
+    speedMax: config?.speedMax ?? 160,
+    hasShakeListener,
+  };
+}
+
 export function useDegen(
   engine: SingleEngineState,
   dotX: SharedValue<number>,
@@ -65,23 +91,26 @@ export function useDegen(
     onShakeRef.current?.({ direction });
   };
 
-  const degenOff = cfg === null;
-  const resolvedScale = cfg?.scale ?? 1;
-  const resolvedDown = cfg?.downMomentum ?? false;
-  const resolvedShake = cfg?.shake ?? true;
-  const resolvedShakeIntensity = cfg?.shakeIntensity ?? 1;
-  const resolvedShakeDurationSec = cfg?.shakeDurationSec ?? 0.45;
-  const resolvedSlotCount = cfg?.particleSlotCount ?? 60;
-  const resolvedBurstParticleCount = cfg?.burstParticleCount ?? 20;
-  const resolvedParticleBurstDurationSec = cfg?.particleBurstDurationSec ?? 1.0;
-  const resolvedDrag = cfg?.drag ?? 0.95;
-  const resolvedSizeMin = cfg?.particleSizeMin ?? 1;
-  const resolvedSizeMax = cfg?.particleSizeMax ?? 2.2;
-  const resolvedSpreadAngle = cfg?.spreadAngle ?? Math.PI * 1.2;
-  const resolvedJitterX = cfg?.positionJitterX ?? 24;
-  const resolvedJitterY = cfg?.positionJitterY ?? 8;
-  const resolvedSpeedMin = cfg?.speedMin ?? 60;
-  const resolvedSpeedMax = cfg?.speedMax ?? 160;
+  const {
+    off,
+    scale,
+    down,
+    shake,
+    shakeIntensity,
+    shakeDurationSec,
+    slotCount,
+    burstParticleCount,
+    particleBurstDurationSec,
+    drag,
+    sizeMin,
+    sizeMax,
+    spreadAngle,
+    jitterX,
+    jitterY,
+    speedMin,
+    speedMax,
+    hasShakeListener,
+  } = resolveDegenSettings(cfg, onShake != null);
 
   useEffect(() => {
     // Mirror the resolved config into SharedValues for the UI-thread worklet.
@@ -90,43 +119,43 @@ export function useDegen(
     // is off, enabledSV is 0 and the frame worklet early-returns (zeroing the
     // particle buffer and shake itself), so the remaining values are inert; the
     // resolved* defaults already stand in for the null-config case.
-    enabledSV.set(degenOff ? 0 : 1);
-    shakeEnabledSV.set(!degenOff && resolvedShake ? 1 : 0);
-    hasOnShakeListenerSV.set(!degenOff && onShake != null ? 1 : 0);
-    scaleSV.set(resolvedScale);
-    downSV.set(resolvedDown ? 1 : 0);
-    shakeIntensitySV.set(resolvedShakeIntensity);
-    shakeDurationSecSV.set(resolvedShakeDurationSec);
-    slotCountSV.set(resolvedSlotCount);
-    burstParticleCountSV.set(resolvedBurstParticleCount);
-    particleBurstDurationSecSV.set(resolvedParticleBurstDurationSec);
-    dragSV.set(resolvedDrag);
-    sizeMinSV.set(resolvedSizeMin);
-    sizeMaxSV.set(resolvedSizeMax);
-    spreadAngleSV.set(resolvedSpreadAngle);
-    jitterXSV.set(resolvedJitterX);
-    jitterYSV.set(resolvedJitterY);
-    speedMinSV.set(resolvedSpeedMin);
-    speedMaxSV.set(resolvedSpeedMax);
+    enabledSV.set(off ? 0 : 1);
+    shakeEnabledSV.set(!off && shake ? 1 : 0);
+    hasOnShakeListenerSV.set(!off && hasShakeListener ? 1 : 0);
+    scaleSV.set(scale);
+    downSV.set(down ? 1 : 0);
+    shakeIntensitySV.set(shakeIntensity);
+    shakeDurationSecSV.set(shakeDurationSec);
+    slotCountSV.set(slotCount);
+    burstParticleCountSV.set(burstParticleCount);
+    particleBurstDurationSecSV.set(particleBurstDurationSec);
+    dragSV.set(drag);
+    sizeMinSV.set(sizeMin);
+    sizeMaxSV.set(sizeMax);
+    spreadAngleSV.set(spreadAngle);
+    jitterXSV.set(jitterX);
+    jitterYSV.set(jitterY);
+    speedMinSV.set(speedMin);
+    speedMaxSV.set(speedMax);
   }, [
-    degenOff,
-    onShake,
-    resolvedScale,
-    resolvedDown,
-    resolvedShake,
-    resolvedShakeIntensity,
-    resolvedShakeDurationSec,
-    resolvedSlotCount,
-    resolvedBurstParticleCount,
-    resolvedParticleBurstDurationSec,
-    resolvedDrag,
-    resolvedSizeMin,
-    resolvedSizeMax,
-    resolvedSpreadAngle,
-    resolvedJitterX,
-    resolvedJitterY,
-    resolvedSpeedMin,
-    resolvedSpeedMax,
+    off,
+    scale,
+    down,
+    shake,
+    shakeIntensity,
+    shakeDurationSec,
+    slotCount,
+    burstParticleCount,
+    particleBurstDurationSec,
+    drag,
+    sizeMin,
+    sizeMax,
+    spreadAngle,
+    jitterX,
+    jitterY,
+    speedMin,
+    speedMax,
+    hasShakeListener,
     // SharedValue refs are stable (useSharedValue), so listing them satisfies
     // exhaustive-deps without ever re-running the effect.
     enabledSV,
