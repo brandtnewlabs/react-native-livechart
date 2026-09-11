@@ -1,7 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Circle, Group } from "@shopify/react-native-skia";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import {
   formatTime,
   LiveChart,
@@ -104,7 +104,14 @@ const DOT_OPTIONS: { value: DotMode; label: string }[] = [
 function RingSelectionDot({ x, y, opacity, size }: SelectionDotProps) {
   return (
     <Group opacity={opacity}>
-      <Circle cx={x} cy={y} r={size + 3} color="#fbbf24" style="stroke" strokeWidth={2} />
+      <Circle
+        cx={x}
+        cy={y}
+        r={size + 3}
+        color="#fbbf24"
+        style="stroke"
+        strokeWidth={2}
+      />
       <Circle cx={x} cy={y} r={size - 1} color="#fbbf24" />
     </Group>
   );
@@ -158,6 +165,234 @@ function OhlcTooltip({ candle }: TooltipRenderProps) {
       />
     </View>
   );
+}
+
+type TooltipControlsProps = {
+  scrubMode: ScrubMode;
+  setScrubMode: Dispatch<SetStateAction<ScrubMode>>;
+  tooltipPlacement: TooltipPlacement;
+  setTooltipPlacement: Dispatch<SetStateAction<TooltipPlacement>>;
+  tooltipMargin: number;
+  setTooltipMargin: Dispatch<SetStateAction<number>>;
+  dateOnly: boolean;
+  setDateOnly: Dispatch<SetStateAction<boolean>>;
+  timeRow: boolean;
+  setTimeRow: Dispatch<SetStateAction<boolean>>;
+  roundedTip: boolean;
+  setRoundedTip: Dispatch<SetStateAction<boolean>>;
+  styledTooltip: boolean;
+  setStyledTooltip: Dispatch<SetStateAction<boolean>>;
+  customTooltip: boolean;
+  setCustomTooltip: Dispatch<SetStateAction<boolean>>;
+  dimOpacity: number;
+  setDimOpacity: Dispatch<SetStateAction<number>>;
+  dotMode: DotMode;
+  setDotMode: Dispatch<SetStateAction<DotMode>>;
+};
+
+function TooltipControls(props: TooltipControlsProps) {
+  return (
+    <>
+      <ChipRow
+        label="Scrub"
+        options={SCRUB_OPTIONS}
+        value={props.scrubMode}
+        onChange={props.setScrubMode}
+      />
+      <ChipRow
+        label="Tooltip placement"
+        options={PLACEMENT_OPTIONS}
+        value={props.tooltipPlacement}
+        onChange={props.setTooltipPlacement}
+      />
+      <ChipRow
+        label="Tooltip margin (edge gap)"
+        options={MARGIN_OPTIONS}
+        value={props.tooltipMargin}
+        onChange={props.setTooltipMargin}
+      />
+      <ControlRow label="Tooltip">
+        <ToggleChip
+          label="Date only"
+          value={props.dateOnly}
+          onChange={props.setDateOnly}
+        />
+        <ToggleChip
+          label="Time row"
+          value={props.timeRow}
+          onChange={props.setTimeRow}
+        />
+        <ToggleChip
+          label="Rounded"
+          value={props.roundedTip}
+          onChange={props.setRoundedTip}
+        />
+        <ToggleChip
+          label="Styled"
+          value={props.styledTooltip}
+          onChange={props.setStyledTooltip}
+        />
+        <ToggleChip
+          label="Custom render"
+          value={props.customTooltip}
+          onChange={props.setCustomTooltip}
+        />
+      </ControlRow>
+      <ChipRow
+        label="Trailing fade (dimOpacity)"
+        options={DIM_OPTIONS}
+        value={props.dimOpacity}
+        onChange={props.setDimOpacity}
+      />
+      <ChipRow
+        label="Selection dot"
+        options={DOT_OPTIONS}
+        value={props.dotMode}
+        onChange={props.setDotMode}
+      />
+    </>
+  );
+}
+
+type CrosshairControlsProps = {
+  crosshairDash: boolean;
+  setCrosshairDash: Dispatch<SetStateAction<boolean>>;
+  thickCrosshair: boolean;
+  setThickCrosshair: Dispatch<SetStateAction<boolean>>;
+  crosshairOvershootEnabled: boolean;
+  setCrosshairOvershootEnabled: Dispatch<SetStateAction<boolean>>;
+  crosshairFade: boolean;
+  setCrosshairFade: Dispatch<SetStateAction<boolean>>;
+  crosshairFadeDistance: number;
+  setCrosshairFadeDistance: Dispatch<SetStateAction<number>>;
+  crosshairLineCap: CrosshairLineCapChoice;
+  setCrosshairLineCap: Dispatch<SetStateAction<CrosshairLineCapChoice>>;
+  holdToScrub: boolean;
+  setHoldToScrub: Dispatch<SetStateAction<boolean>>;
+  clampToPlot: boolean;
+  setClampToPlot: Dispatch<SetStateAction<boolean>>;
+  hideOverlays: boolean;
+  setHideOverlays: Dispatch<SetStateAction<boolean>>;
+};
+
+function CrosshairControls(props: CrosshairControlsProps) {
+  return (
+    <>
+      <ControlRow label="Crosshair">
+        <ToggleChip
+          label="Dashed"
+          value={props.crosshairDash}
+          onChange={props.setCrosshairDash}
+        />
+        <ToggleChip
+          label="3px wide"
+          value={props.thickCrosshair}
+          onChange={props.setThickCrosshair}
+        />
+        <ToggleChip
+          label="6px overshoot"
+          value={props.crosshairOvershootEnabled}
+          onChange={props.setCrosshairOvershootEnabled}
+        />
+        <ToggleChip
+          label="Edge fade"
+          value={props.crosshairFade}
+          onChange={props.setCrosshairFade}
+        />
+      </ControlRow>
+      <ChipRow
+        label="Crosshair fade distance"
+        options={FADE_DISTANCE_OPTIONS}
+        value={props.crosshairFadeDistance}
+        onChange={props.setCrosshairFadeDistance}
+      />
+      <ChipRow
+        label="Crosshair line cap"
+        options={LINE_CAP_OPTIONS}
+        value={props.crosshairLineCap}
+        onChange={props.setCrosshairLineCap}
+      />
+      <ControlRow label="Gesture">
+        <ToggleChip
+          label="Hold to scrub (250ms)"
+          value={props.holdToScrub}
+          onChange={props.setHoldToScrub}
+        />
+        <ToggleChip
+          label="Clamp to plot"
+          value={props.clampToPlot}
+          onChange={props.setClampToPlot}
+        />
+      </ControlRow>
+      <ControlRow label="Overlays">
+        <ToggleChip
+          label="Hide on scrub"
+          value={props.hideOverlays}
+          onChange={props.setHideOverlays}
+        />
+      </ControlRow>
+    </>
+  );
+}
+
+type ScrubSettings = {
+  scrubMode: ScrubMode;
+  dimOpacity: number;
+  panGestureDelay: number;
+  clampToPlot: boolean;
+  hideOverlays: boolean;
+  tooltipPlacement: TooltipPlacement;
+  tooltipMargin: number;
+  dateOnly: boolean;
+  timeRow: boolean;
+  roundedTip: boolean;
+  crosshairDash: boolean;
+  thickCrosshair: boolean;
+  crosshairOvershootEnabled: boolean;
+  crosshairFade: boolean;
+  crosshairFadeDistance: number;
+  crosshairLineCap: CrosshairLineCapChoice;
+  styledTooltip: boolean;
+};
+
+function resolveScrub(settings: ScrubSettings): ScrubConfig | boolean {
+  if (settings.scrubMode === "off") return false;
+  return {
+    tooltip: settings.scrubMode !== "noTooltip",
+    dimOpacity: settings.dimOpacity,
+    panGestureDelay: settings.panGestureDelay,
+    clampToPlot: settings.clampToPlot,
+    hideOverlaysOnScrub: settings.hideOverlays,
+    tooltipPlacement: settings.tooltipPlacement,
+    tooltipMargin: settings.tooltipMargin,
+    tooltipShowValue: !settings.dateOnly,
+    tooltipShowTime: settings.dateOnly || settings.timeRow,
+    tooltipBorderRadius: settings.roundedTip ? 16 : 5,
+    crosshairDash: settings.crosshairDash ? [3, 4] : false,
+    crosshairStrokeWidth: settings.thickCrosshair ? 3 : 1,
+    crosshairOvershoot: settings.crosshairOvershootEnabled ? 6 : 0,
+    crosshairFade: settings.crosshairFade,
+    crosshairFadeDistance: settings.crosshairFadeDistance,
+    crosshairLineCap:
+      settings.crosshairLineCap === "default"
+        ? undefined
+        : settings.crosshairLineCap,
+    ...(settings.styledTooltip
+      ? {
+          tooltipBackground: "#1e293b",
+          tooltipColor: "#fbbf24",
+          tooltipBorderColor: "#fbbf24",
+          crosshairLineColor: "#fbbf24",
+        }
+      : {}),
+  };
+}
+
+function resolveSelectionDot(mode: DotMode) {
+  if (mode === "custom") return { component: RingSelectionDot };
+  if (mode === "styled")
+    return { size: 6, color: "#fbbf24", ring: { width: 2 } };
+  return mode === "off" ? false : true;
 }
 
 export default function ScrubbingScreen() {
@@ -251,55 +486,30 @@ export default function ScrubbingScreen() {
     );
   }, [markers]);
 
-  const scrub: ScrubConfig | boolean =
-    scrubMode === "off"
-      ? false
-      : {
-          tooltip: scrubMode !== "noTooltip",
-          dimOpacity,
-          panGestureDelay,
-          clampToPlot,
-          hideOverlaysOnScrub: hideOverlays,
-          // Tooltip layout knobs — apply to the built-in pill and the custom
-          // render alike (placement + margin position either one).
-          tooltipPlacement,
-          tooltipMargin,
-          tooltipShowValue: !dateOnly,
-          // Date only means hide the value while keeping the date visible. The
-          // separate Time row toggle can add the date to the normal value view.
-          tooltipShowTime: dateOnly || timeRow,
-          tooltipBorderRadius: roundedTip ? 16 : 5,
-          // `true` → default [4,4] dash; pass explicit [on, off] intervals for
-          // finer control. Omit / `false` → solid.
-          crosshairDash: crosshairDash ? [3, 4] : false,
-          crosshairStrokeWidth: thickCrosshair ? 3 : 1,
-          crosshairOvershoot: crosshairOvershootEnabled ? 6 : 0,
-          crosshairFade,
-          crosshairFadeDistance,
-          crosshairLineCap:
-            crosshairLineCap === "default" ? undefined : crosshairLineCap,
-          // The "Styled" toggle recolors the built-in pill + crosshair line.
-          ...(styledTooltip
-            ? {
-                tooltipBackground: "#1e293b",
-                tooltipColor: "#fbbf24",
-                tooltipBorderColor: "#fbbf24",
-                crosshairLineColor: "#fbbf24",
-              }
-            : {}),
-        };
+  const scrub = resolveScrub({
+    scrubMode,
+    dimOpacity,
+    panGestureDelay,
+    clampToPlot,
+    hideOverlays,
+    tooltipPlacement,
+    tooltipMargin,
+    dateOnly,
+    timeRow,
+    roundedTip,
+    crosshairDash,
+    thickCrosshair,
+    crosshairOvershootEnabled,
+    crosshairFade,
+    crosshairFadeDistance,
+    crosshairLineCap,
+    styledTooltip,
+  });
 
   // The `boolean | SelectionDotConfig` idiom: `true` = built-in dot, `false` =
   // hidden, a config tweaks size/color/ring, and `{ component }` swaps in a
   // fully custom Skia dot.
-  const selectionDot =
-    dotMode === "custom"
-      ? { component: RingSelectionDot }
-      : dotMode === "styled"
-        ? { size: 6, color: "#fbbf24", ring: { width: 2 } }
-        : dotMode === "off"
-          ? false
-          : true;
+  const selectionDot = resolveSelectionDot(dotMode);
 
   return (
     <DemoScreen
@@ -362,115 +572,48 @@ export default function ScrubbingScreen() {
         animatedProps={readoutProps}
       />
 
-      <ChipRow
-        label="Scrub"
-        options={SCRUB_OPTIONS}
-        value={scrubMode}
-        onChange={setScrubMode}
+      <TooltipControls
+        scrubMode={scrubMode}
+        setScrubMode={setScrubMode}
+        tooltipPlacement={tooltipPlacement}
+        setTooltipPlacement={setTooltipPlacement}
+        tooltipMargin={tooltipMargin}
+        setTooltipMargin={setTooltipMargin}
+        dateOnly={dateOnly}
+        setDateOnly={setDateOnly}
+        timeRow={timeRow}
+        setTimeRow={setTimeRow}
+        roundedTip={roundedTip}
+        setRoundedTip={setRoundedTip}
+        styledTooltip={styledTooltip}
+        setStyledTooltip={setStyledTooltip}
+        customTooltip={customTooltip}
+        setCustomTooltip={setCustomTooltip}
+        dimOpacity={dimOpacity}
+        setDimOpacity={setDimOpacity}
+        dotMode={dotMode}
+        setDotMode={setDotMode}
       />
-      <ChipRow
-        label="Tooltip placement"
-        options={PLACEMENT_OPTIONS}
-        value={tooltipPlacement}
-        onChange={setTooltipPlacement}
+      <CrosshairControls
+        crosshairDash={crosshairDash}
+        setCrosshairDash={setCrosshairDash}
+        thickCrosshair={thickCrosshair}
+        setThickCrosshair={setThickCrosshair}
+        crosshairOvershootEnabled={crosshairOvershootEnabled}
+        setCrosshairOvershootEnabled={setCrosshairOvershootEnabled}
+        crosshairFade={crosshairFade}
+        setCrosshairFade={setCrosshairFade}
+        crosshairFadeDistance={crosshairFadeDistance}
+        setCrosshairFadeDistance={setCrosshairFadeDistance}
+        crosshairLineCap={crosshairLineCap}
+        setCrosshairLineCap={setCrosshairLineCap}
+        holdToScrub={holdToScrub}
+        setHoldToScrub={setHoldToScrub}
+        clampToPlot={clampToPlot}
+        setClampToPlot={setClampToPlot}
+        hideOverlays={hideOverlays}
+        setHideOverlays={setHideOverlays}
       />
-      <ChipRow
-        label="Tooltip margin (edge gap)"
-        options={MARGIN_OPTIONS}
-        value={tooltipMargin}
-        onChange={setTooltipMargin}
-      />
-      <ControlRow label="Tooltip">
-        {/* Date-only + rounded restyle the built-in pill; Custom render swaps in
-            a brand-blue RN pill. Placement/margin apply to the custom one too. */}
-        {/* tooltipShowValue / tooltipShowTime drop a row independently — combine
-            for value-only / time-only / both. */}
-        <ToggleChip label="Date only" value={dateOnly} onChange={setDateOnly} />
-        <ToggleChip label="Time row" value={timeRow} onChange={setTimeRow} />
-        <ToggleChip
-          label="Rounded"
-          value={roundedTip}
-          onChange={setRoundedTip}
-        />
-        <ToggleChip
-          label="Styled"
-          value={styledTooltip}
-          onChange={setStyledTooltip}
-        />
-        <ToggleChip
-          label="Custom render"
-          value={customTooltip}
-          onChange={setCustomTooltip}
-        />
-      </ControlRow>
-      <ChipRow
-        label="Trailing fade (dimOpacity)"
-        options={DIM_OPTIONS}
-        value={dimOpacity}
-        onChange={setDimOpacity}
-      />
-      <ChipRow
-        label="Selection dot"
-        options={DOT_OPTIONS}
-        value={dotMode}
-        onChange={setDotMode}
-      />
-      <ControlRow label="Crosshair">
-        {/* Geometry and edge-fade controls live together for visual QA. */}
-        <ToggleChip
-          label="Dashed"
-          value={crosshairDash}
-          onChange={setCrosshairDash}
-        />
-        <ToggleChip
-          label="3px wide"
-          value={thickCrosshair}
-          onChange={setThickCrosshair}
-        />
-        <ToggleChip
-          label="6px overshoot"
-          value={crosshairOvershootEnabled}
-          onChange={setCrosshairOvershootEnabled}
-        />
-        <ToggleChip
-          label="Edge fade"
-          value={crosshairFade}
-          onChange={setCrosshairFade}
-        />
-      </ControlRow>
-      <ChipRow
-        label="Crosshair fade distance"
-        options={FADE_DISTANCE_OPTIONS}
-        value={crosshairFadeDistance}
-        onChange={setCrosshairFadeDistance}
-      />
-      <ChipRow
-        label="Crosshair line cap"
-        options={LINE_CAP_OPTIONS}
-        value={crosshairLineCap}
-        onChange={setCrosshairLineCap}
-      />
-      <ControlRow label="Gesture">
-        <ToggleChip
-          label="Hold to scrub (250ms)"
-          value={holdToScrub}
-          onChange={setHoldToScrub}
-        />
-        <ToggleChip
-          label="Clamp to plot"
-          value={clampToPlot}
-          onChange={setClampToPlot}
-        />
-      </ControlRow>
-      <ControlRow label="Overlays">
-        {/* scrub.hideOverlaysOnScrub — fade markers + reference lines while
-            scrubbing. Toggle off to see them stay put under the crosshair. */}
-        <ToggleChip
-          label="Hide on scrub"
-          value={hideOverlays}
-          onChange={setHideOverlays}
-        />
-      </ControlRow>
 
       <ChipRow
         label="Display"

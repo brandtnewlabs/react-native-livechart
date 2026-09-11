@@ -105,6 +105,51 @@ function labelFor(kind: Scenario): string {
   return "Feed unavailable";
 }
 
+function resolveChartGaps(
+  treatment: Treatment,
+  gap: ChartGap,
+  scenario: Scenario,
+  styled: StyledGapControls,
+): ChartGap[] | ChartGapsConfig | undefined {
+  if (treatment === "semantic") return [gap];
+  if (treatment === "forward") {
+    return {
+      gaps: [gap],
+      styles: { [scenario]: { bridge: {}, band: false, label: false } },
+    };
+  }
+  if (treatment !== "styled") return undefined;
+
+  const style: ChartGapStyle = {
+    bridge: styled.bridge
+      ? {
+          color: styled.independentColors ? "#16a34a" : undefined,
+          opacity: styled.bridgeOpacity,
+          strokeWidth: styled.bridgeWidth,
+          strokeCap: styled.bridgeCap,
+        }
+      : false,
+    band: styled.band
+      ? {
+          fillColor: styled.independentColors ? "#7c3aed" : undefined,
+          fillOpacity: styled.bandFillOpacity,
+          borderColor: styled.independentColors ? "#f59e0b" : undefined,
+          borderOpacity: styled.borderOpacity,
+          borderWidth: styled.borderWidth,
+          intervals: DASH_INTERVALS[styled.dashPattern],
+        }
+      : false,
+    label:
+      styled.band && styled.label
+        ? {
+            color: styled.independentColors ? "#7c3aed" : undefined,
+            position: styled.labelPosition,
+          }
+        : false,
+  };
+  return { gaps: [gap], styles: { [scenario]: style } };
+}
+
 function GapChart({
   mode,
   scenario,
@@ -161,50 +206,7 @@ function GapChart({
       .filter((candle) => candle.time < gap.from || candle.time >= gap.to),
   );
 
-  let chartGaps: ChartGap[] | ChartGapsConfig | undefined;
-  if (treatment === "semantic") {
-    chartGaps = [gap];
-  } else if (treatment === "forward") {
-    chartGaps = {
-      gaps: [gap],
-      styles: {
-        [scenario]: {
-          bridge: {},
-          band: false,
-          label: false,
-        },
-      },
-    };
-  } else if (treatment === "styled") {
-    const style: ChartGapStyle = {
-      bridge: styled.bridge
-        ? {
-            color: styled.independentColors ? "#16a34a" : undefined,
-            opacity: styled.bridgeOpacity,
-            strokeWidth: styled.bridgeWidth,
-            strokeCap: styled.bridgeCap,
-          }
-        : false,
-      band: styled.band
-        ? {
-            fillColor: styled.independentColors ? "#7c3aed" : undefined,
-            fillOpacity: styled.bandFillOpacity,
-            borderColor: styled.independentColors ? "#f59e0b" : undefined,
-            borderOpacity: styled.borderOpacity,
-            borderWidth: styled.borderWidth,
-            intervals: DASH_INTERVALS[styled.dashPattern],
-          }
-        : false,
-      label:
-        styled.band && styled.label
-          ? {
-              color: styled.independentColors ? "#7c3aed" : undefined,
-              position: styled.labelPosition,
-            }
-          : false,
-    };
-    chartGaps = { gaps: [gap], styles: { [scenario]: style } };
-  }
+  const chartGaps = resolveChartGaps(treatment, gap, scenario, styled);
 
   return (
     <LiveChart

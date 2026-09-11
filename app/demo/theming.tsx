@@ -5,10 +5,16 @@ import {
   useFonts as useJetBrainsFonts,
 } from "@expo-google-fonts/jetbrains-mono";
 import { useFonts } from "expo-font";
-import { useState } from "react";
+import {
+  useState,
+  type ComponentProps,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import {
   LiveChart,
   MONO_FONT_FAMILY,
+  type FontConfig,
   type FontWeight,
   type LiveChartMetricsOverride,
 } from "react-native-livechart";
@@ -69,6 +75,158 @@ const WEIGHT_OPTIONS = WEIGHTS.map((w) => ({ value: w, label: w }));
 /** Platform `matchFont` mono vs bundled fonts via Skia `typeface` (+ expo-font for RN labels). */
 type SkiaFontFamilyDemo = "platformMono" | "jetbrainsMono" | "googleSansCode";
 
+type LiveChartProps = ComponentProps<typeof LiveChart>;
+
+function resolveMetrics(
+  roomyBadge: boolean,
+  fastMotion: boolean,
+): LiveChartMetricsOverride | undefined {
+  if (!roomyBadge && !fastMotion) return undefined;
+  return {
+    ...(roomyBadge ? { badge: ROOMY_BADGE } : {}),
+    ...(fastMotion ? FAST_MOTION : {}),
+  };
+}
+
+function resolveGradient(mode: GradientMode): LiveChartProps["gradient"] {
+  switch (mode) {
+    case "off":
+      return false;
+    case "custom":
+      return { topOpacity: 0.5, bottomOpacity: 0.05 };
+    case "multi":
+      return { colors: MULTI_GRADIENT_COLORS };
+    case "on":
+      return true;
+  }
+}
+
+function resolveTypeface(
+  family: SkiaFontFamilyDemo,
+): FontConfig["typeface"] | undefined {
+  if (family === "jetbrainsMono") return JetBrainsMono_400Regular;
+  if (family === "googleSansCode") return googleSansCodeRegular;
+  return undefined;
+}
+
+type ThemedChartProps = {
+  data: ReturnType<typeof useSimulatedChartData>["data"];
+  value: ReturnType<typeof useSimulatedChartData>["value"];
+  accent: string;
+  theme: "dark" | "light";
+  gradientMode: GradientMode;
+  lineWide: boolean;
+  lineColor: boolean;
+  fontSize: number;
+  fontWeight: FontWeight;
+  skiaFontFamily: SkiaFontFamilyDemo;
+  gridDashed: boolean;
+  metrics: LiveChartMetricsOverride | undefined;
+  paletteOverride: boolean;
+  roundedStyle: boolean;
+};
+
+function ThemedChart(props: ThemedChartProps) {
+  return (
+    <LiveChart
+      data={props.data}
+      value={props.value}
+      accentColor={props.accent}
+      theme={props.theme}
+      gradient={resolveGradient(props.gradientMode)}
+      line={
+        props.lineWide || props.lineColor
+          ? {
+              width: props.lineWide ? 4 : 2,
+              color: props.lineColor ? "#f472b6" : undefined,
+            }
+          : undefined
+      }
+      font={{
+        fontFamily: MONO_FONT_FAMILY,
+        fontSize: props.fontSize,
+        fontWeight: props.fontWeight,
+        ...(resolveTypeface(props.skiaFontFamily)
+          ? { typeface: resolveTypeface(props.skiaFontFamily) }
+          : {}),
+      }}
+      gridStyle={
+        props.gridDashed ? { intervals: [1, 3], opacity: 0.8 } : undefined
+      }
+      metrics={props.metrics}
+      palette={
+        props.paletteOverride
+          ? { gridLine: "rgba(96,165,250,0.35)", gridLabel: "#60a5fa" }
+          : undefined
+      }
+      style={
+        props.roundedStyle
+          ? { borderRadius: 16, overflow: "hidden", margin: 4 }
+          : undefined
+      }
+      scrub={false}
+    />
+  );
+}
+
+type FontControlsProps = {
+  family: SkiaFontFamilyDemo;
+  setFamily: Dispatch<SetStateAction<SkiaFontFamilyDemo>>;
+  jetbrainsLoaded: boolean;
+  googleSansLoaded: boolean;
+};
+
+function FontControls(props: FontControlsProps) {
+  const options: {
+    family: SkiaFontFamilyDemo;
+    label: string;
+    fontFamily?: string;
+  }[] = [
+    { family: "platformMono", label: "Platform mono" },
+    {
+      family: "jetbrainsMono",
+      label: "JetBrains Mono",
+      fontFamily: props.jetbrainsLoaded
+        ? "JetBrainsMono_400Regular"
+        : undefined,
+    },
+    {
+      family: "googleSansCode",
+      label: "Google Sans Code",
+      fontFamily: props.googleSansLoaded ? "GoogleSansCodeRegular" : undefined,
+    },
+  ];
+  return (
+    <>
+      <Text style={demoStyles.sectionLabel}>Font (Skia)</Text>
+      <View style={demoStyles.buttonRow}>
+        {options.map((option) => (
+          <Pressable
+            key={option.family}
+            style={[
+              demoStyles.chip,
+              props.family === option.family && demoStyles.chipActive,
+            ]}
+            onPress={() => props.setFamily(option.family)}
+          >
+            <Text
+              style={[
+                demoStyles.chipText,
+                props.family === option.family && demoStyles.chipTextActive,
+                option.fontFamily
+                  ? { fontFamily: option.fontFamily }
+                  : undefined,
+              ]}
+            >
+              {option.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </>
+  );
+}
+
 export default function ThemingScreen() {
   const [jetbrainsLoaded] = useJetBrainsFonts({
     JetBrainsMono_400Regular,
@@ -79,9 +237,7 @@ export default function ThemingScreen() {
 
   const [theme, setTheme] = useState<"dark" | "light">(APP_THEME);
   const [accent, setAccent] = useState(ACCENT_PRESETS[0]);
-  const [gradientOn, setGradientOn] = useState(true);
-  const [gradientCfg, setGradientCfg] = useState(false);
-  const [gradientMulti, setGradientMulti] = useState(false);
+  const [gradientMode, setGradientMode] = useState<GradientMode>("on");
   const [lineWide, setLineWide] = useState(false);
   const [lineColor, setLineColor] = useState(false);
   const [fontSize, setFontSize] = useState(11);
@@ -96,26 +252,7 @@ export default function ThemingScreen() {
 
   // Merge the two metric toggles into a single override (or undefined when both
   // are off, so the chart keeps its built-in defaults).
-  const metrics: LiveChartMetricsOverride | undefined =
-    roomyBadge || fastMotion
-      ? {
-          ...(roomyBadge ? { badge: ROOMY_BADGE } : {}),
-          ...(fastMotion ? FAST_MOTION : {}),
-        }
-      : undefined;
-
-  const gradientMode: GradientMode = !gradientOn
-    ? "off"
-    : gradientMulti
-      ? "multi"
-      : gradientCfg
-        ? "custom"
-        : "on";
-  const setGradientMode = (mode: GradientMode) => {
-    setGradientOn(mode !== "off");
-    setGradientCfg(mode === "custom");
-    setGradientMulti(mode === "multi");
-  };
+  const metrics = resolveMetrics(roomyBadge, fastMotion);
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -133,55 +270,21 @@ export default function ThemingScreen() {
       docs="guides/theming"
       description="Theming: theme, accent, gradient, line, font (Skia: system / JetBrains / Google Sans Code), grid & palette, container style"
       chart={
-        <LiveChart
+        <ThemedChart
           data={data}
           value={value}
-          accentColor={accent}
+          accent={accent}
           theme={theme}
-          gradient={
-            gradientMulti
-              ? { colors: MULTI_GRADIENT_COLORS }
-              : gradientCfg
-                ? { topOpacity: 0.5, bottomOpacity: 0.05 }
-                : gradientOn
-          }
-          line={
-            lineWide || lineColor
-              ? {
-                  width: lineWide ? 4 : 2,
-                  color: lineColor ? "#f472b6" : undefined,
-                }
-              : undefined
-          }
-          font={{
-            fontFamily: MONO_FONT_FAMILY,
-            fontSize,
-            fontWeight,
-            ...(skiaFontFamily === "jetbrainsMono"
-              ? { typeface: JetBrainsMono_400Regular }
-              : skiaFontFamily === "googleSansCode"
-                ? { typeface: googleSansCodeRegular }
-                : {}),
-          }}
-          gridStyle={
-            gridDashed ? { intervals: [1, 3], opacity: 0.8 } : undefined
-          }
+          gradientMode={gradientMode}
+          lineWide={lineWide}
+          lineColor={lineColor}
+          fontSize={fontSize}
+          fontWeight={fontWeight}
+          skiaFontFamily={skiaFontFamily}
+          gridDashed={gridDashed}
           metrics={metrics}
-          palette={
-            paletteOverride
-              ? { gridLine: "rgba(96,165,250,0.35)", gridLabel: "#60a5fa" }
-              : undefined
-          }
-          style={
-            roundedStyle
-              ? {
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  margin: 4,
-                }
-              : undefined
-          }
-          scrub={false}
+          paletteOverride={paletteOverride}
+          roundedStyle={roundedStyle}
         />
       }
     >
@@ -219,59 +322,12 @@ export default function ThemingScreen() {
         />
       </ControlRow>
 
-      <Text style={demoStyles.sectionLabel}>Font (Skia)</Text>
-      <View style={demoStyles.buttonRow}>
-        <Pressable
-          style={[
-            demoStyles.chip,
-            skiaFontFamily === "platformMono" && demoStyles.chipActive,
-          ]}
-          onPress={() => setSkiaFontFamily("platformMono")}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              skiaFontFamily === "platformMono" && demoStyles.chipTextActive,
-            ]}
-          >
-            Platform mono
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[
-            demoStyles.chip,
-            skiaFontFamily === "jetbrainsMono" && demoStyles.chipActive,
-          ]}
-          onPress={() => setSkiaFontFamily("jetbrainsMono")}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              skiaFontFamily === "jetbrainsMono" && demoStyles.chipTextActive,
-              jetbrainsLoaded && { fontFamily: "JetBrainsMono_400Regular" },
-            ]}
-          >
-            JetBrains Mono
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[
-            demoStyles.chip,
-            skiaFontFamily === "googleSansCode" && demoStyles.chipActive,
-          ]}
-          onPress={() => setSkiaFontFamily("googleSansCode")}
-        >
-          <Text
-            style={[
-              demoStyles.chipText,
-              skiaFontFamily === "googleSansCode" && demoStyles.chipTextActive,
-              googleSansLoaded && { fontFamily: "GoogleSansCodeRegular" },
-            ]}
-          >
-            Google Sans Code
-          </Text>
-        </Pressable>
-      </View>
+      <FontControls
+        family={skiaFontFamily}
+        setFamily={setSkiaFontFamily}
+        jetbrainsLoaded={jetbrainsLoaded}
+        googleSansLoaded={googleSansLoaded}
+      />
       <Text style={[demoStyles.chipText, { opacity: 0.65, marginBottom: 8 }]}>
         Bundled fonts use Skia{" "}
         <Text style={{ fontFamily: "monospace" }}>font.typeface</Text> with{" "}
