@@ -125,7 +125,7 @@ export default function LoadingDataOnScrollScreen() {
   const [historyState, setHistoryState] = useState<HistoryState>("loading");
   const [pageCount, setPageCount] = useState(0);
   const [rowCount, setRowCount] = useState(0);
-  const [rangeLabel, setRangeLabel] = useState(formatRange(null));
+  const [rangeLabel, setRangeLabel] = useState(() => formatRange(null));
   const [liveEnabled, setLiveEnabled] = useState(true);
 
   const fetchUntil = useCallback(
