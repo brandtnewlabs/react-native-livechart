@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import { Text } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
@@ -46,7 +46,9 @@ function Fixture({
   crosshairFadeDistance,
   scrubXValue = 100,
 }: {
-  renderTooltip: (ctx: TooltipRenderProps) => React.ReactElement | null | undefined;
+  renderTooltip: (
+    ctx: TooltipRenderProps,
+  ) => React.ReactElement | null | undefined;
   placement?: "side" | "top" | "bottom" | "point";
   candle?: CandlePoint | null;
   captureLineTop?: (lineTop: SharedValue<number>) => void;
@@ -63,7 +65,9 @@ function Fixture({
   const scrubCandle = useSharedValue<CandlePoint | null>(candle ?? null);
   const lineTop = useSharedValue(-1);
   const scrubDotYSV = useSharedValue(scrubDotY ?? -1);
-  captureLineTop?.(lineTop);
+  useEffect(() => {
+    captureLineTop?.(lineTop);
+  }, [captureLineTop, lineTop]);
   return (
     <CustomTooltipOverlay
       renderTooltip={renderTooltip}

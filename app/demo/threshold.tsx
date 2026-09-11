@@ -149,8 +149,9 @@ export default function ThresholdScreen() {
   const [showValue, setShowValue] = useState(true);
   const [labelSide, setLabelSide] = useState<"left" | "right">("left");
   const [labelAnchor, setLabelAnchor] = useState<"first" | "last">("last");
-  const [badgeRenderer, setBadgeRenderer] =
-    useState<"built-in" | "custom">("built-in");
+  const [badgeRenderer, setBadgeRenderer] = useState<"built-in" | "custom">(
+    "built-in",
+  );
   const [colorMode, setColorMode] = useState<"default" | "custom">("default");
   const [entry, setEntry] = useState<EntryLevel>("start");
 
@@ -347,6 +348,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.28,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
   averageCostIcon: {
     minWidth: 27,
