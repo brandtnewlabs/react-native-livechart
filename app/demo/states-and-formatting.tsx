@@ -44,7 +44,7 @@ const FORMAT_OPTIONS: { value: FormatMode; label: string }[] = [
 
 export default function StatesScreen() {
   const [empty, setEmpty] = useState(false);
-  const [onePoint, setOnePoint] = useState(false);
+  const [onePoint, setOnePoint] = useState(true);
   const [loading, setLoading] = useState(false);
   const [styledLoading, setStyledLoading] = useState(false);
   const [axisLabels, setAxisLabels] = useState(true);
@@ -63,7 +63,9 @@ export default function StatesScreen() {
   const emptyData = useSharedValue<LiveChartPoint[]>([]);
   const emptyValue = useSharedValue(100);
   const [singlePointInit] = useState<LiveChartPoint[]>(() => [
-    { time: Date.now() / 1000, value: 100 },
+    // Start halfway across the default 30s window so the one historical sample
+    // and the synthetic live tip form an immediately visible segment.
+    { time: Date.now() / 1000 - 15, value: 100 },
   ]);
   const singlePointData = useSharedValue<LiveChartPoint[]>(singlePointInit);
 
@@ -77,13 +79,13 @@ export default function StatesScreen() {
   const chartData = empty ? emptyData : onePoint ? singlePointData : sim.data;
   const displayedData = loading ? emptyData : chartData;
   const chartValue = empty || onePoint || loading ? emptyValue : sim.value;
-  const showEmptyShell = empty || onePoint;
+  const showCustomEmptyText = empty;
 
   return (
     <DemoScreen
       title="States & formatting"
       docs="guides/states-and-formatting"
-      description="The chart stays in loading/empty shell until there are at least two line points and loading is false. Tap Replace data to remove live data: the loading shell appears immediately, then the returning data grows in. One point only still counts as empty. formatValue/formatTime must be worklet-safe (same pattern as src/format.ts)."
+      description="The chart shows its empty shell only when it has no points and loading is false. One point is valid data: it anchors a segment to the live tip. Tap Replace data to remove live data: the loading shell appears immediately, then the returning data grows in. formatValue/formatTime must be worklet-safe (same pattern as src/format.ts)."
       chart={
         <LiveChart
           data={displayedData}
@@ -95,7 +97,7 @@ export default function StatesScreen() {
           // for the loading shell still snaps, while returned data reveals over
           // this duration.
           transitions={{ reveal: 1200 }}
-          emptyText={showEmptyShell ? "Nothing to see here" : "No data"}
+          emptyText={showCustomEmptyText ? "Nothing to see here" : "No data"}
           formatValue={customFormat ? formatValueUsd : undefined}
           formatTime={customFormat ? formatTimeIsoUtcFragment : undefined}
           scrub={false}

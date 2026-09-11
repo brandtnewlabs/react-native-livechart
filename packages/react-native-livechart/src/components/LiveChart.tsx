@@ -733,7 +733,7 @@ function useLiveChartController({
   });
 
   // ── Reveal state ────────────────────────────────────────────
-  // ≥2 line points or ≥2 committed candles; morphT=1 only when !loading && hasData.
+  // ≥1 line point or ≥1 committed candle; morphT=1 only when !loading && hasData.
   const { hasData } = useLiveChartHasData({
     isCandle,
     data,

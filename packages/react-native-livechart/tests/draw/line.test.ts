@@ -228,6 +228,26 @@ describe("buildLinePoints", () => {
     expect(out.length).toBeGreaterThanOrEqual(4);
   });
 
+  it("connects one historical point to the live tip", () => {
+    const now = 100;
+    const out = buildLinePoints(
+      [{ time: now - 15, value: 100 }],
+      105,
+      now,
+      30,
+      90,
+      110,
+      200,
+      120,
+      pad,
+    );
+
+    expect(out).toHaveLength(4);
+    expect(out[0]).toBeGreaterThan(pad.left);
+    expect(out[0]).toBeLessThan(200 - pad.right);
+    expect(out[2]).toBe(200 - pad.right);
+  });
+
   it("uses startIdx lo-1 when lo > 0", () => {
     const now = 1000;
     const data = [
