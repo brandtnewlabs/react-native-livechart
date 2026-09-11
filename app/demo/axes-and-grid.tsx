@@ -15,8 +15,6 @@ import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Axes & grid" };
-
 type ChartKind = "single" | "multi";
 type AxisVis = "both" | "noY" | "noX" | "none";
 type GapPreset = "default" | "wide";

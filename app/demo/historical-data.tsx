@@ -9,8 +9,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { demoStyles } from "../../demo-lib/styles";
 
-export const options = { title: "Historical data fill" };
-
 const SPAN = 600; // 10 minutes of history
 const COUNT = 150;
 

@@ -17,8 +17,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Overlay bridge" };
-
 const WINDOW_SECS = 60;
 
 type Level = { price: number; label: string; color: string };

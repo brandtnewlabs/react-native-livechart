@@ -10,8 +10,6 @@ import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { colors } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Android surface rendering" };
-
 const MODES: { value: CanvasMode; label: string }[] = [
   { value: "transparent", label: "TextureView" },
   { value: "opaque", label: "SurfaceView" },

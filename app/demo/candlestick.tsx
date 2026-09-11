@@ -16,8 +16,6 @@ import {
   type HistoryRange,
 } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Candlestick" };
-
 /**
  * Candle timeframes. Each pairs a visible window with a candle width AND a
  * `seedRange` whose ideal sampling interval is far finer than `candleWidthSecs`,

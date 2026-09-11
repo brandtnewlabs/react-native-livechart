@@ -14,8 +14,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Chart gaps" };
-
 type ChartMode = "line" | "candle";
 type Scenario = "no-trades" | "unavailable" | "unknown";
 type Treatment = "raw" | "forward" | "semantic" | "styled";

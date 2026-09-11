@@ -21,8 +21,6 @@ import { APP_THEME } from "../../demo-lib/theme";
 
 const googleSansCodeRegular = require("../../assets/fonts/GoogleSansCode-Regular.ttf");
 
-export const options = { title: "Theming" };
-
 const FONT_SIZES = [10, 11, 13, 15] as const;
 const WEIGHTS: FontWeight[] = ["normal", "600", "bold"];
 

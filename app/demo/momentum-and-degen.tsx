@@ -12,8 +12,6 @@ import { ACCENT, VOLATILITY_MODES } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Momentum & degen" };
-
 type MomentumMode =
   | "auto"
   | "off"

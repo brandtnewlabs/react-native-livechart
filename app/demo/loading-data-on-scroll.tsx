@@ -13,8 +13,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
 
-export const options = { title: "Loading data on scroll" };
-
 const TIME_WINDOW_SEC = 60;
 const ARCHIVE_STEP_SEC = 2;
 const ARCHIVE_ROWS = 480;

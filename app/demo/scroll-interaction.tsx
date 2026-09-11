@@ -21,8 +21,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Scroll interaction" };
-
 type ActiveChart = "single" | "series" | "none";
 
 export default function ScrollInteractionScreen() {

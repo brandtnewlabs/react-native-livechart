@@ -14,8 +14,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Order ticket" };
-
 type DisplayMode = "line" | "candle";
 
 const DISPLAY_OPTIONS: { value: DisplayMode; label: string }[] = [

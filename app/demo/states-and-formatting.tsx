@@ -9,8 +9,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "States & formatting" };
-
 /** Worklet-safe — same as toISOString().slice(11, 19) in UTC (Date/toISOString not reliable inside UI worklets). */
 function formatTimeIsoUtcFragment(t: number): string {
   "worklet";
