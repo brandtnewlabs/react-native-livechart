@@ -9,8 +9,6 @@ import { ACCENT, ACCENT_PRESETS } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 import { demoStyles } from "../../demo-lib/styles";
 
-export const options = { title: "Sparklines" };
-
 const CELL_COUNT = 24;
 const POINTS_PER_CELL = 40;
 const CELL_SPAN = 60; // seconds of history per sparkline

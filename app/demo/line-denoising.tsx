@@ -16,8 +16,6 @@ import {
 import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 
-export const options = { title: "Line denoising" };
-
 const SPAN_SECONDS = 60;
 const POINT_COUNT = 241;
 const END_TIME = 1_700_000_060;

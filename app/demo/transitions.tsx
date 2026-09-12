@@ -9,8 +9,6 @@ import { APP_THEME } from "../../demo-lib/theme";
 import { demoStyles } from "../../demo-lib/styles";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Transitions" };
-
 const WINDOW = 300;
 const CANDLE_WIDTH = 15;
 

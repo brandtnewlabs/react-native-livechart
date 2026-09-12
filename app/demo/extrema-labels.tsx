@@ -11,8 +11,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Extrema labels" };
-
 type Position = "extrema" | "extrema-edge" | "right";
 
 // `"extrema"` floats topLabel/bottomLabel at the actual high / low data point;

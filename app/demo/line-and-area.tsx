@@ -16,8 +16,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Line & area" };
-
 type BadgeMode = "on" | "off" | "left" | "minimal" | "noTail" | "customBg";
 
 type LineMode = "default" | "solid" | "gradient" | "tricolor" | "custom";

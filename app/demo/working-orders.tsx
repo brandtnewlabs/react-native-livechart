@@ -14,8 +14,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Working orders" };
-
 const START = 100;
 const BUY_COLOR = "#34d399";
 const SELL_COLOR = "#f87171";

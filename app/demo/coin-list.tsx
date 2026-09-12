@@ -17,8 +17,6 @@ import {
 import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 
-export const options = { title: "Coin list" };
-
 // Hundreds of rows, each a static sparkline, in one virtualized + recycled list.
 const COIN_COUNT = 500;
 const ROW_HEIGHT = 64;

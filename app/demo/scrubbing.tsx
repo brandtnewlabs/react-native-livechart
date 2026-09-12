@@ -23,8 +23,6 @@ import { APP_THEME } from "../../demo-lib/theme";
 import { demoStyles } from "../../demo-lib/styles";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Scrubbing" };
-
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 // Seed price for the line so the reference lines below land in-range.

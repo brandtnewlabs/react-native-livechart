@@ -7,8 +7,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Axis auto-hide" };
-
 type IdleOpacity = "hidden" | "dim";
 type HideDelay = 1000 | 3000 | 5000;
 

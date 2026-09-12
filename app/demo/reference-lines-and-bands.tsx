@@ -11,8 +11,6 @@ import { ACCENT, formatWholeValue } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Reference lines & bands" };
-
 const START = 100;
 
 type ChartKind = "single" | "multi";

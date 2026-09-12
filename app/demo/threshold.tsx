@@ -15,8 +15,6 @@ import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 
-export const options = { title: "Threshold split" };
-
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 const CENTER = 100;
