@@ -586,9 +586,12 @@ export function useLiveChartEngine(
     extremaMinTime,
     extremaMaxTime,
   };
-  const [frameScratchRef] = useState(() => ({
-    current: makeEngineFrameScratch(),
-  }));
+  const frameScratchRef = useRef<EngineFrameScratch | null>(null);
+  if (frameScratchRef.current === null) {
+    // React permits this predictable lazy-ref initialization: https://react.dev/reference/react/useRef#avoiding-recreating-the-ref-contents
+    // react-doctor-disable-next-line react-doctor/no-ref-current-in-render -- false positive for React's documented lazy-ref exception
+    frameScratchRef.current = makeEngineFrameScratch();
+  }
 
   // `autostart=false` registers the frame callback without running it — the live
   // loop is fully inert in static mode (the invariant that makes this worth it).
