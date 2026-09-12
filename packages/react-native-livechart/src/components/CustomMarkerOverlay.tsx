@@ -30,6 +30,14 @@ import type {
 /** Live group flags surfaced to `renderMarker` (mirrored to JS on change). */
 type GroupState = Record<string, { isGrouped: boolean; groupCount: number }>;
 
+function markerIdSet(key: string): Record<string, true> {
+  const ids: Record<string, true> = {};
+  for (const id of key.split("\x1f")) {
+    if (id) ids[id] = true;
+  }
+  return ids;
+}
+
 /**
  * One custom-rendered marker: a React Native element floated over the canvas and
  * pinned to the marker's live clustered `(x, y)` position. It reads its slot out
@@ -168,12 +176,7 @@ export function CustomMarkerOverlay({
 
   // Stable id-set of customized markers (used by the UI-thread map below).
   const customKey = custom.map((c) => c.marker.id).join("\x1f");
-  const customIds = useMemo<Record<string, true>>(() => {
-    const o: Record<string, true> = {};
-    for (const c of custom) o[c.marker.id] = true;
-    return o;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- recomputed when the id set (customKey) changes
-  }, [customKey]);
+  const customIds = useMemo(() => markerIdSet(customKey), [customKey]);
 
   // One project+cluster over ALL markers each frame, exposed as an id→position map
   // for just the custom markers (so views read their own slot by id). Reuses a
