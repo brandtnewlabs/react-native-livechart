@@ -85,7 +85,12 @@ function pushGroupCountBadge(
   const bg = cells[groupBgSig(repColor)];
   if (bg) {
     transforms.push(
-      Skia.RSXform(invScale * mul, 0, cx - (bg.w * mul) / 2, cy - (bg.h * mul) / 2),
+      Skia.RSXform(
+        invScale * mul,
+        0,
+        cx - (bg.w * mul) / 2,
+        cy - (bg.h * mul) / 2,
+      ),
     );
     sprites.push(bg.rect);
   }
@@ -219,18 +224,7 @@ function ConnectorGlyph({
  *
  * Glyph precedence per marker: `image` → `icon` (text) → built-in `kind` shape.
  */
-export function MarkerOverlay({
-  markers,
-  engine,
-  padding,
-  palette,
-  font,
-  series,
-  lineData,
-  lineLinear,
-  renderMarker,
-  cluster,
-}: {
+type MarkerOverlayProps = {
   markers: SharedValue<Marker[]>;
   engine: ChartEngineLayout;
   padding: ChartPadding;
@@ -250,9 +244,24 @@ export function MarkerOverlay({
   renderMarker?: (marker: Marker, ctx: MarkerRenderContext) => unknown;
   /** Collision config; `"stacked"` fans/collapses co-located markers. */
   cluster: ResolvedMarkerCluster;
-}) {
+};
+
+function useMarkerOverlayModel({
+  markers,
+  engine,
+  padding,
+  palette,
+  font,
+  series,
+  lineData,
+  lineLinear,
+  renderMarker,
+  cluster,
+}: MarkerOverlayProps) {
   // Seed from the current markers at mount; the reaction below keeps it in sync.
-  const [snapshot, setSnapshot] = useState<Marker[]>(() => markers.get().slice());
+  const [snapshot, setSnapshot] = useState<Marker[]>(() =>
+    markers.get().slice(),
+  );
 
   // Read the `markers` prop from closure rather than a SharedValue passed
   // through `scheduleOnRN` (which loses `.get()`); mirrors the data model.
@@ -332,7 +341,15 @@ export function MarkerOverlay({
         groupBadgeCfg,
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- appearanceKey/paletteKey/groupBadgeKey capture the inputs that change cell pixels
-    [appearanceKey, paletteKey, font, dpr, clusterStacked, groupBadgeKey, groupBadgeImage],
+    [
+      appearanceKey,
+      paletteKey,
+      font,
+      dpr,
+      clusterStacked,
+      groupBadgeKey,
+      groupBadgeImage,
+    ],
   );
   const cells: Record<string, AtlasCell> = atlas.cells;
   const atlasImage = atlas.image;
@@ -367,133 +384,133 @@ export function MarkerOverlay({
   // Single per-frame worklet: project all markers, then emit a transform +
   // source rect for each visible atlas marker. Three mappers total regardless
   // of marker count (this + the two thin readers below).
-  const atlasData = useDerivedValue(
-    () => {
-      const ms = markers.get();
-      const proj = projRef.current!;
-      proj.tick = !proj.tick;
-      const buf = proj.tick ? proj.a : proj.b;
-      projectMarkers(ms, buf, {
-        canvasWidth: engine.canvasWidth.get(),
-        canvasHeight: engine.canvasHeight.get(),
-        padTop: padding.top,
-        padBottom: padding.bottom,
-        padLeft: padding.left,
-        padRight: padding.right,
-        timestamp: engine.timestamp.get(),
-        displayWindow: engine.displayWindow.get(),
-        displayMin: engine.displayMin.get(),
-        displayMax: engine.displayMax.get(),
-        series: series?.get(),
-        lineData: lineData?.get(),
-        lineLinear,
-      });
-      clusterMarkers(ms, buf, {
-        config: cluster,
-        minY: 0,
-        maxY: engine.canvasHeight.get(),
-      });
-      const atlasFrames = atlasFrameRef.current!;
-      atlasFrames.tick = !atlasFrames.tick;
-      const frame = atlasFrames.tick ? atlasFrames.a : atlasFrames.b;
-      const transforms = frame.transforms;
-      const sprites = frame.sprites;
-      transforms.length = 0;
-      sprites.length = 0;
-      for (let i = 0; i < ms.length; i++) {
-        const pt = buf[i];
-        // Collapsed-cluster members fold into their representative's badge.
-        if (!pt.visible || pt.hidden) continue;
-        const m = ms[i];
-        if (isConnectorMarker(m)) continue;
-        // Custom-rendered markers are floated as RN views, not drawn here.
-        if (customIds[m.id]) continue;
-        // Collapsed cluster. By default a round count badge; with
-        // `groupBadge: "marker"` the representative marker's own glyph, or with a
-        // `MarkerGroupBadge` object a dedicated baked badge — either optionally
-        // carrying a corner count, all within this one `drawAtlas`.
-        if (pt.isGrouped) {
-          const repColor = m.color ?? defaultMarkerColor(m.kind, palette);
-          const gb = cluster.groupBadge;
-          // Pick the non-count glyph cell: a dedicated group badge (object form)
-          // or the representative marker's own appearance.
-          const glyphCell =
-            typeof gb === "object" && gb !== null
-              ? cells[GROUP_BADGE_SIG]
-              : gb === "marker"
-                ? cells[markerAppearanceSig(m)]
-                : undefined;
-          if (glyphCell) {
-            transforms.push(
-              Skia.RSXform(
-                invScale,
-                0,
-                pt.x - glyphCell.w / 2,
-                pt.y - glyphCell.h / 2,
-              ),
-            );
-            sprites.push(glyphCell.rect);
-            if (cluster.showGroupCount) {
-              pushGroupCountBadge(
-                transforms,
-                sprites,
-                cells,
-                digitWidths,
-                invScale,
-                pt.x + (glyphCell.w / 2) * GROUP_CORNER_INSET,
-                pt.y - (glyphCell.h / 2) * GROUP_CORNER_INSET,
-                repColor,
-                pt.groupCount,
-                GROUP_CORNER_SCALE,
-                groupBadgeCfg?.letterSpacing ?? 0,
-              );
-            }
-            continue;
-          }
-          // Default — or fall back here when a non-count badge has no baked cell
-          // (e.g. an empty group-badge config): the round count badge.
-          pushGroupCountBadge(
-            transforms,
-            sprites,
-            cells,
-            digitWidths,
-            invScale,
-            pt.x,
-            pt.y,
-            repColor,
-            pt.groupCount,
-            1,
-            groupBadgeCfg?.letterSpacing ?? 0,
+  const atlasData = useDerivedValue(() => {
+    const ms = markers.get();
+    const proj = projRef.current!;
+    proj.tick = !proj.tick;
+    const buf = proj.tick ? proj.a : proj.b;
+    projectMarkers(ms, buf, {
+      canvasWidth: engine.canvasWidth.get(),
+      canvasHeight: engine.canvasHeight.get(),
+      padTop: padding.top,
+      padBottom: padding.bottom,
+      padLeft: padding.left,
+      padRight: padding.right,
+      timestamp: engine.timestamp.get(),
+      displayWindow: engine.displayWindow.get(),
+      displayMin: engine.displayMin.get(),
+      displayMax: engine.displayMax.get(),
+      series: series?.get(),
+      lineData: lineData?.get(),
+      lineLinear,
+    });
+    clusterMarkers(ms, buf, {
+      config: cluster,
+      minY: 0,
+      maxY: engine.canvasHeight.get(),
+    });
+    const atlasFrames = atlasFrameRef.current!;
+    atlasFrames.tick = !atlasFrames.tick;
+    const frame = atlasFrames.tick ? atlasFrames.a : atlasFrames.b;
+    const transforms = frame.transforms;
+    const sprites = frame.sprites;
+    transforms.length = 0;
+    sprites.length = 0;
+    for (let i = 0; i < ms.length; i++) {
+      const pt = buf[i];
+      // Collapsed-cluster members fold into their representative's badge.
+      if (!pt.visible || pt.hidden) continue;
+      const m = ms[i];
+      if (isConnectorMarker(m)) continue;
+      // Custom-rendered markers are floated as RN views, not drawn here.
+      if (customIds[m.id]) continue;
+      // Collapsed cluster. By default a round count badge; with
+      // `groupBadge: "marker"` the representative marker's own glyph, or with a
+      // `MarkerGroupBadge` object a dedicated baked badge — either optionally
+      // carrying a corner count, all within this one `drawAtlas`.
+      if (pt.isGrouped) {
+        const repColor = m.color ?? defaultMarkerColor(m.kind, palette);
+        const gb = cluster.groupBadge;
+        // Pick the non-count glyph cell: a dedicated group badge (object form)
+        // or the representative marker's own appearance.
+        const glyphCell =
+          typeof gb === "object" && gb !== null
+            ? cells[GROUP_BADGE_SIG]
+            : gb === "marker"
+              ? cells[markerAppearanceSig(m)]
+              : undefined;
+        if (glyphCell) {
+          transforms.push(
+            Skia.RSXform(
+              invScale,
+              0,
+              pt.x - glyphCell.w / 2,
+              pt.y - glyphCell.h / 2,
+            ),
           );
+          sprites.push(glyphCell.rect);
+          if (cluster.showGroupCount) {
+            pushGroupCountBadge(
+              transforms,
+              sprites,
+              cells,
+              digitWidths,
+              invScale,
+              pt.x + (glyphCell.w / 2) * GROUP_CORNER_INSET,
+              pt.y - (glyphCell.h / 2) * GROUP_CORNER_INSET,
+              repColor,
+              pt.groupCount,
+              GROUP_CORNER_SCALE,
+              groupBadgeCfg?.letterSpacing ?? 0,
+            );
+          }
           continue;
         }
-        const cell = cells[markerAppearanceSig(m)];
-        if (!cell) continue;
-        // Center the cell on the projected point. The cell's source rect is in
-        // device pixels, so scale by 1/dpr to land it at its logical size.
-        transforms.push(
-          Skia.RSXform(invScale, 0, pt.x - cell.w / 2, pt.y - cell.h / 2),
+        // Default — or fall back here when a non-count badge has no baked cell
+        // (e.g. an empty group-badge config): the round count badge.
+        pushGroupCountBadge(
+          transforms,
+          sprites,
+          cells,
+          digitWidths,
+          invScale,
+          pt.x,
+          pt.y,
+          repColor,
+          pt.groupCount,
+          1,
+          groupBadgeCfg?.letterSpacing ?? 0,
         );
-        sprites.push(cell.rect);
+        continue;
       }
-      return frame;
-    },
-    [
-      cells,
-      customIds,
-      invScale,
-      digitWidths,
-      markers,
-      engine,
-      padding,
-      palette,
-      series,
-      lineData,
-      lineLinear,
-      cluster,
-    ],
+      const cell = cells[markerAppearanceSig(m)];
+      if (!cell) continue;
+      // Center the cell on the projected point. The cell's source rect is in
+      // device pixels, so scale by 1/dpr to land it at its logical size.
+      transforms.push(
+        Skia.RSXform(invScale, 0, pt.x - cell.w / 2, pt.y - cell.h / 2),
+      );
+      sprites.push(cell.rect);
+    }
+    return frame;
+  }, [
+    cells,
+    customIds,
+    invScale,
+    digitWidths,
+    markers,
+    engine,
+    padding,
+    palette,
+    series,
+    lineData,
+    lineLinear,
+    cluster,
+  ]);
+  const transforms = useDerivedValue(
+    () => atlasData.get().transforms,
+    [atlasData],
   );
-  const transforms = useDerivedValue(() => atlasData.get().transforms, [atlasData]);
   const sprites = useDerivedValue(() => atlasData.get().sprites, [atlasData]);
 
   const axisY = useDerivedValue(
@@ -502,6 +519,13 @@ export function MarkerOverlay({
 
   const connectors = snapshot.filter(isConnectorMarker);
 
+  return { atlasImage, sprites, transforms, connectors, axisY };
+}
+
+export function MarkerOverlay(props: MarkerOverlayProps) {
+  const { engine, padding, palette, series, lineData, lineLinear } = props;
+  const { atlasImage, sprites, transforms, connectors, axisY } =
+    useMarkerOverlayModel(props);
   return (
     <Group>
       {atlasImage && (
