@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.21.1] - 2026-09-12
+
+### Changed
+
+- Chart controllers, overlays, and frame state now avoid unnecessary render-time
+  allocations and reconcile reactive values more reliably, without changing the
+  public API.
+
 ### Fixed
 
 - Charts now treat one line point, one multi-series point, or one committed
