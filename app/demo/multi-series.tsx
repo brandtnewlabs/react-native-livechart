@@ -1,5 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import {
   formatTime,
@@ -13,6 +19,7 @@ import Animated, {
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
+  type SharedValue,
 } from "react-native-reanimated";
 import { ACCENT, TIME_WINDOWS } from "../../demo-lib/shared";
 
@@ -23,6 +30,24 @@ import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+function SeriesReadout({ text }: { text: SharedValue<string> }) {
+  const animatedProps = useAnimatedProps(() => {
+    const value = text.get();
+    return { text: value, defaultValue: value };
+  });
+  return (
+    <AnimatedTextInput
+      editable={false}
+      multiline
+      numberOfLines={2}
+      scrollEnabled={false}
+      underlineColorAndroid="transparent"
+      style={demoStyles.scrubReadout}
+      animatedProps={animatedProps}
+    />
+  );
+}
 
 function CustomTargetTag({ ctx }: { ctx: ReferenceLineRenderProps }) {
   const caretStyle = useAnimatedStyle(() => ({
@@ -86,13 +111,15 @@ const THEME_OPTIONS: { value: "dark" | "light"; label: string }[] = [
   { value: "light", label: "Light" },
 ];
 
-const AXIS_OPTIONS: { value: "both" | "noY" | "noX" | "none"; label: string }[] =
-  [
-    { value: "both", label: "Both" },
-    { value: "noY", label: "No Y" },
-    { value: "noX", label: "No X" },
-    { value: "none", label: "None" },
-  ];
+const AXIS_OPTIONS: {
+  value: "both" | "noY" | "noX" | "none";
+  label: string;
+}[] = [
+  { value: "both", label: "Both" },
+  { value: "noY", label: "No Y" },
+  { value: "noX", label: "No X" },
+  { value: "none", label: "None" },
+];
 
 // Per-series interpolation. "linear" draws straight segments between samples
 // instead of the default monotone cubic.
@@ -108,6 +135,208 @@ const QA_REFERENCE_EDGE_OPTIONS: { value: number; label: string }[] = [
   { value: 33.8, label: "In range" },
   { value: 0, label: "Below" },
 ];
+
+type DotLegendControlsProps = {
+  dots: boolean;
+  setDots: Dispatch<SetStateAction<boolean>>;
+  ring: boolean;
+  setRing: Dispatch<SetStateAction<boolean>>;
+  pulse: boolean;
+  setPulse: Dispatch<SetStateAction<boolean>>;
+  valueLabels: boolean;
+  setValueLabels: Dispatch<SetStateAction<boolean>>;
+  valueLines: boolean;
+  setValueLines: Dispatch<SetStateAction<boolean>>;
+  dotRadius: number;
+  setDotRadius: Dispatch<SetStateAction<number>>;
+  legendVisible: boolean;
+  setLegendVisible: Dispatch<SetStateAction<boolean>>;
+  legendCompact: boolean;
+  setLegendCompact: Dispatch<SetStateAction<boolean>>;
+  legendPosition: "top" | "bottom";
+  setLegendPosition: Dispatch<SetStateAction<"top" | "bottom">>;
+  styled: boolean;
+  setStyled: Dispatch<SetStateAction<boolean>>;
+  legendStyled: boolean;
+  setLegendStyled: Dispatch<SetStateAction<boolean>>;
+  curve: "monotone" | "linear";
+  setCurve: Dispatch<SetStateAction<"monotone" | "linear">>;
+};
+
+function DotLegendControls(props: DotLegendControlsProps) {
+  return (
+    <>
+      <ControlRow label="Dot">
+        <ToggleChip label="Dots" value={props.dots} onChange={props.setDots} />
+        <ToggleChip label="Ring" value={props.ring} onChange={props.setRing} />
+        <ToggleChip
+          label="Pulse"
+          value={props.pulse}
+          onChange={props.setPulse}
+        />
+        <ToggleChip
+          label="Labels"
+          value={props.valueLabels}
+          onChange={props.setValueLabels}
+        />
+        <ToggleChip
+          label="Value lines"
+          value={props.valueLines}
+          onChange={props.setValueLines}
+        />
+      </ControlRow>
+      <ChipRow
+        options={DOT_RADIUS_OPTIONS}
+        value={props.dotRadius}
+        onChange={props.setDotRadius}
+      />
+      <ControlRow label="Legend">
+        <ToggleChip
+          label="Visible"
+          value={props.legendVisible}
+          onChange={props.setLegendVisible}
+        />
+        <ToggleChip
+          label="Compact"
+          value={props.legendCompact}
+          onChange={props.setLegendCompact}
+        />
+      </ControlRow>
+      <ChipRow
+        options={LEGEND_POSITION_OPTIONS}
+        value={props.legendPosition}
+        onChange={props.setLegendPosition}
+      />
+      <ControlRow label="Per-series style">
+        <ToggleChip
+          label="Styled lines"
+          value={props.styled}
+          onChange={props.setStyled}
+        />
+        <ToggleChip
+          label="Legend style"
+          value={props.legendStyled}
+          onChange={props.setLegendStyled}
+        />
+      </ControlRow>
+      <ChipRow
+        label="Curve (per-series interpolation)"
+        options={CURVE_OPTIONS}
+        value={props.curve}
+        onChange={props.setCurve}
+      />
+    </>
+  );
+}
+
+type PlaybackControlsProps = {
+  paused: boolean;
+  setPaused: Dispatch<SetStateAction<boolean>>;
+  exaggerate: boolean;
+  setExaggerate: Dispatch<SetStateAction<boolean>>;
+  degen: boolean;
+  setDegen: Dispatch<SetStateAction<boolean>>;
+  loading: boolean;
+  setLoading: Dispatch<SetStateAction<boolean>>;
+  showRef: boolean;
+  setShowRef: Dispatch<SetStateAction<boolean>>;
+  panZoom: boolean;
+  setPanZoom: Dispatch<SetStateAction<boolean>>;
+};
+
+function PlaybackControls(props: PlaybackControlsProps) {
+  return (
+    <ControlRow label="Playback & theme">
+      <ToggleChip
+        label="Pause"
+        value={props.paused}
+        onChange={props.setPaused}
+      />
+      <ToggleChip
+        label="Exaggerate"
+        value={props.exaggerate}
+        onChange={props.setExaggerate}
+      />
+      <ToggleChip label="Degen" value={props.degen} onChange={props.setDegen} />
+      <Chip
+        label={props.loading ? "…" : "Load"}
+        active={props.loading}
+        disabled={props.loading}
+        onPress={() => {
+          props.setLoading(true);
+          setTimeout(() => props.setLoading(false), 2000);
+        }}
+      />
+      <ToggleChip
+        label="QA connector"
+        value={props.showRef}
+        onChange={props.setShowRef}
+      />
+      <ToggleChip
+        label="Pan + zoom"
+        value={props.panZoom}
+        onChange={props.setPanZoom}
+      />
+    </ControlRow>
+  );
+}
+
+type ChartSettingsControlsProps = {
+  windowSecs: number;
+  setWindowSecs: Dispatch<SetStateAction<number>>;
+  smoothing: number;
+  setSmoothing: Dispatch<SetStateAction<number>>;
+  scrubDim: number;
+  setScrubDim: Dispatch<SetStateAction<number>>;
+  seriesTooltip: boolean;
+  setSeriesTooltip: Dispatch<SetStateAction<boolean>>;
+  tooltipAlwaysShow: boolean;
+  setTooltipAlwaysShow: Dispatch<SetStateAction<boolean>>;
+  styledTooltip: boolean;
+  setStyledTooltip: Dispatch<SetStateAction<boolean>>;
+};
+
+function ChartSettingsControls(props: ChartSettingsControlsProps) {
+  return (
+    <>
+      <ChipRow
+        label="Time window"
+        options={WINDOW_OPTIONS}
+        value={props.windowSecs}
+        onChange={props.setWindowSecs}
+      />
+      <ChipRow
+        label="Responsiveness"
+        options={RESPONSIVENESS_OPTIONS}
+        value={props.smoothing}
+        onChange={props.setSmoothing}
+      />
+      <ChipRow
+        label="Scrub trailing fade (dimOpacity)"
+        options={SCRUB_DIM_OPTIONS}
+        value={props.scrubDim}
+        onChange={props.setScrubDim}
+      />
+      <ControlRow label="Series scrub tooltip">
+        <ToggleChip
+          label="Pills"
+          value={props.seriesTooltip}
+          onChange={props.setSeriesTooltip}
+        />
+        <ToggleChip
+          label="Pin while idle"
+          value={props.tooltipAlwaysShow}
+          onChange={props.setTooltipAlwaysShow}
+        />
+        <ToggleChip
+          label="Styled"
+          value={props.styledTooltip}
+          onChange={props.setStyledTooltip}
+        />
+      </ControlRow>
+    </>
+  );
+}
 
 export default function MultiSeriesScreen() {
   const seriesVisibilityRef = useRef<Record<string, boolean>>({});
@@ -136,10 +365,6 @@ export default function MultiSeriesScreen() {
   );
 
   const readoutText = useSharedValue("—");
-  const readoutProps = useAnimatedProps(() => {
-    const text = readoutText.get();
-    return { text, defaultValue: text };
-  });
 
   const [pulse, setPulse] = useState(true);
   const [valueLines, setValueLines] = useState(false);
@@ -226,15 +451,7 @@ export default function MultiSeriesScreen() {
       chartWrapperStyle={{ height: 360 }}
       chart={
         <>
-          <AnimatedTextInput
-            editable={false}
-            multiline
-            numberOfLines={2}
-            scrollEnabled={false}
-            underlineColorAndroid="transparent"
-            style={demoStyles.scrubReadout}
-            animatedProps={readoutProps}
-          />
+          <SeriesReadout text={readoutText} />
           <LiveChartSeries
             series={seriesSource}
             accentColor={ACCENT}
@@ -337,134 +554,69 @@ export default function MultiSeriesScreen() {
         </>
       }
     >
-      <ChipRow label="Data" options={DATA_OPTIONS} value={empty} onChange={setEmpty} />
-
-      <ControlRow label="Dot">
-        <ToggleChip label="Dots" value={dots} onChange={setDots} />
-        <ToggleChip label="Ring" value={ring} onChange={setRing} />
-        <ToggleChip label="Pulse" value={pulse} onChange={setPulse} />
-        <ToggleChip label="Labels" value={valueLabels} onChange={setValueLabels} />
-        <ToggleChip
-          label="Value lines"
-          value={valueLines}
-          onChange={setValueLines}
-        />
-      </ControlRow>
       <ChipRow
-        options={DOT_RADIUS_OPTIONS}
-        value={dotRadius}
-        onChange={setDotRadius}
+        label="Data"
+        options={DATA_OPTIONS}
+        value={empty}
+        onChange={setEmpty}
       />
 
-      <ControlRow label="Legend">
-        <ToggleChip
-          label="Visible"
-          value={legendVisible}
-          onChange={setLegendVisible}
-        />
-        <ToggleChip
-          label="Compact"
-          value={legendCompact}
-          onChange={setLegendCompact}
-        />
-      </ControlRow>
-      <ChipRow
-        options={LEGEND_POSITION_OPTIONS}
-        value={legendPosition}
-        onChange={setLegendPosition}
+      <DotLegendControls
+        dots={dots}
+        setDots={setDots}
+        ring={ring}
+        setRing={setRing}
+        pulse={pulse}
+        setPulse={setPulse}
+        valueLabels={valueLabels}
+        setValueLabels={setValueLabels}
+        valueLines={valueLines}
+        setValueLines={setValueLines}
+        dotRadius={dotRadius}
+        setDotRadius={setDotRadius}
+        legendVisible={legendVisible}
+        setLegendVisible={setLegendVisible}
+        legendCompact={legendCompact}
+        setLegendCompact={setLegendCompact}
+        legendPosition={legendPosition}
+        setLegendPosition={setLegendPosition}
+        styled={styled}
+        setStyled={setStyled}
+        legendStyled={legendStyled}
+        setLegendStyled={setLegendStyled}
+        curve={curve}
+        setCurve={setCurve}
       />
 
-      <ControlRow label="Per-series style">
-        <ToggleChip label="Styled lines" value={styled} onChange={setStyled} />
-        <ToggleChip
-          label="Legend style"
-          value={legendStyled}
-          onChange={setLegendStyled}
-        />
-      </ControlRow>
-
-      <ChipRow
-        label="Curve (per-series interpolation)"
-        options={CURVE_OPTIONS}
-        value={curve}
-        onChange={setCurve}
+      <ChartSettingsControls
+        windowSecs={windowSecs}
+        setWindowSecs={setWindowSecs}
+        smoothing={smoothing}
+        setSmoothing={setSmoothing}
+        scrubDim={scrubDim}
+        setScrubDim={setScrubDim}
+        seriesTooltip={seriesTooltip}
+        setSeriesTooltip={setSeriesTooltip}
+        tooltipAlwaysShow={tooltipAlwaysShow}
+        setTooltipAlwaysShow={setTooltipAlwaysShow}
+        styledTooltip={styledTooltip}
+        setStyledTooltip={setStyledTooltip}
       />
 
-      <ChipRow
-        label="Time window"
-        options={WINDOW_OPTIONS}
-        value={windowSecs}
-        onChange={setWindowSecs}
+      <PlaybackControls
+        paused={paused}
+        setPaused={setPaused}
+        exaggerate={exaggerate}
+        setExaggerate={setExaggerate}
+        degen={degen}
+        setDegen={setDegen}
+        loading={loading}
+        setLoading={setLoading}
+        showRef={showRef}
+        setShowRef={setShowRef}
+        panZoom={panZoom}
+        setPanZoom={setPanZoom}
       />
-
-      <ChipRow
-        label="Responsiveness"
-        options={RESPONSIVENESS_OPTIONS}
-        value={smoothing}
-        onChange={setSmoothing}
-      />
-
-      <ChipRow
-        label="Scrub trailing fade (dimOpacity)"
-        options={SCRUB_DIM_OPTIONS}
-        value={scrubDim}
-        onChange={setScrubDim}
-      />
-
-      <ControlRow label="Series scrub tooltip">
-        <ToggleChip
-          label="Pills"
-          value={seriesTooltip}
-          onChange={setSeriesTooltip}
-        />
-        <ToggleChip
-          label="Pin while idle"
-          value={tooltipAlwaysShow}
-          onChange={setTooltipAlwaysShow}
-        />
-        <ToggleChip
-          label="Styled"
-          value={styledTooltip}
-          onChange={setStyledTooltip}
-        />
-      </ControlRow>
-
-      <ControlRow label="Playback & theme">
-        <ToggleChip
-          label="Pause"
-          value={paused}
-          onChange={() => setPaused((p) => !p)}
-        />
-        <ToggleChip
-          label="Exaggerate"
-          value={exaggerate}
-          onChange={() => setExaggerate((e) => !e)}
-        />
-        <ToggleChip
-          label="Degen"
-          value={degen}
-          onChange={() => setDegen((d) => !d)}
-        />
-        <Chip
-          label={loading ? "…" : "Load"}
-          active={loading}
-          disabled={loading}
-          onPress={() => {
-            setLoading(true);
-            setTimeout(() => setLoading(false), 2000);
-          }}
-        />
-        <ToggleChip
-          label="QA connector"
-          value={showRef}
-          onChange={() => setShowRef((r) => !r)}
-        />
-        <ToggleChip
-          label="Pan + zoom"
-          value={panZoom}
-          onChange={() => setPanZoom((p) => !p)}
-        />
-      </ControlRow>
       <ChipRow
         label="QA reference edge"
         options={QA_REFERENCE_EDGE_OPTIONS}
