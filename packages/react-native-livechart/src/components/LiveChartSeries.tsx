@@ -8,7 +8,6 @@ import { Canvas, Group, Rect, type SkFont } from "@shopify/react-native-skia";
 import {
   forwardRef,
   useImperativeHandle,
-  useLayoutEffect,
   useState,
 } from "react";
 import { StyleSheet, View } from "react-native";
@@ -474,18 +473,9 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   );
 
   // Snapshot of the series config (colors, styles, labels) for layout + line
-  // rendering. Seeded off the render path below and refreshed by the reaction
-  // further down — reading the `series` SharedValue during render trips
-  // Reanimated's strict-mode warning. React flushes layout-effect state before
-  // paint, so the seed causes no flash.
+  // rendering. The animated reaction below emits the initial snapshot and every
+  // subsequent configuration change without reading the SharedValue in render.
   const [seriesSnapshot, setSeriesSnapshot] = useState<SeriesConfig[]>([]);
-  useLayoutEffect(() => {
-    // `.get()` (not `.value`): React Compiler hoists the `.value` getter read into
-    // render scope for memoization, which trips Reanimated's strict-mode warning;
-    // it leaves the `.get()` method call inside the effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reanimated: seed from the SharedValue outside render to avoid strict-mode access warnings
-    setSeriesSnapshot(series.get().slice());
-  }, [series]);
 
   // Mount per-series drawing worklets only for real series. The previous fixed
   // 12-slot render kept 144 derived-value mappers alive for the default stroke,
