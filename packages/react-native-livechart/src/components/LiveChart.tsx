@@ -87,7 +87,11 @@ import {
   computeCandleFocusClip,
   HIDDEN_CANDLE_FOCUS_CLIP,
 } from "../draw/candle";
-import { dotGlowRadialOutset, pulseRadialOutset } from "../draw/line";
+import {
+  dotGlowRadialOutset,
+  pulseRadialOutset,
+  type ChartPadding,
+} from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
 import { useCandleGapPaths } from "../hooks/useCandleGapPaths";
@@ -269,6 +273,1119 @@ function thresholdSplitColorVecs(
 /** Transparent vec4 — the band shader's "threshold ended" rest color. */
 const TRANSPARENT_VEC4 = [0, 0, 0, 0];
 
+function resolveLiveChartFeatureConfig({
+  mode,
+  yAxis,
+  xAxis,
+  topLabel,
+  bottomLabel,
+  badge,
+  scrub,
+  scrubAction,
+  volume,
+  candleGaps,
+  lineGaps,
+  gradient,
+  areaDots,
+  threshold,
+  valueLine,
+  isStatic,
+  pulse,
+  dot,
+  selectionDot,
+  gridStyle,
+  degen,
+  tradeStream,
+  metrics,
+}: Pick<
+  LiveChartProps,
+  | "mode"
+  | "yAxis"
+  | "xAxis"
+  | "topLabel"
+  | "bottomLabel"
+  | "badge"
+  | "scrub"
+  | "scrubAction"
+  | "volume"
+  | "candleGaps"
+  | "lineGaps"
+  | "gradient"
+  | "areaDots"
+  | "threshold"
+  | "valueLine"
+  | "pulse"
+  | "dot"
+  | "selectionDot"
+  | "gridStyle"
+  | "degen"
+  | "tradeStream"
+  | "metrics"
+> & { isStatic: boolean }) {
+  const isCandle = mode === "candle";
+  const badgeCfg = resolveBadge(badge);
+  const chartGapsCfg = resolveCandleGaps(isCandle ? candleGaps : lineGaps);
+  const thresholdCfg = isCandle ? null : resolveThreshold(threshold);
+  const thresholdSeriesSV = thresholdCfg?.series ?? null;
+  const dotCfg = resolveDot(dot);
+  const volumeCfg = isCandle ? resolveVolume(volume) : null;
+
+  return {
+    isCandle,
+    yAxisCfg: resolveYAxis(yAxis),
+    xAxisCfg: resolveXAxis(xAxis),
+    topLabelCfg: resolveAxisLabel(topLabel),
+    bottomLabelCfg: resolveAxisLabel(bottomLabel),
+    badgeCfg,
+    scrubCfg: resolveScrub(scrub),
+    scrubActionCfg: resolveScrubAction(scrubAction),
+    volumeCfg,
+    chartGapsCfg,
+    candleGapsCfg: isCandle ? chartGapsCfg : null,
+    lineGapsCfg: isCandle ? null : chartGapsCfg,
+    volumeBandHeight: volumeCfg?.maxHeight ?? 0,
+    gradientCfg: isCandle ? null : resolveGradient(gradient),
+    areaDotsCfg: isCandle ? null : resolveAreaDots(areaDots),
+    thresholdCfg,
+    thresholdSeriesSV,
+    thresholdIsSeries:
+      thresholdSeriesSV !== null || Array.isArray(thresholdCfg?.value),
+    valueLineCfg: resolveValueLine(valueLine),
+    pulseCfg: isStatic ? null : resolvePulse(pulse),
+    dotCfg,
+    dotTracksParked:
+      dotCfg.trackWhileParked && !(badgeCfg?.followViewEdge ?? false),
+    selectionDotCfg: resolveSelectionDot(selectionDot),
+    dotOuterRadius: Math.max(
+      dotCfg.radius + (dotCfg.ring?.width ?? 0),
+      dotCfg.glow
+        ? dotGlowRadialOutset(dotCfg.glow.radius, dotCfg.glow.blur)
+        : 0,
+    ),
+    gridStyleCfg: resolveGridStyle(gridStyle),
+    degenCfg: isStatic ? null : resolveDegen(degen),
+    tradeStreamResolved: resolveTradeStream(tradeStream),
+    metricsCfg: resolveMetrics(metrics),
+  };
+}
+
+function resolveLiveChartReferenceConfig({
+  chartGapsCfg,
+  referenceLines,
+  renderReferenceLine,
+  renderOffAxisReferenceLine,
+  thresholdCfg,
+  referenceLineGrouping,
+  badgeCfg,
+}: {
+  chartGapsCfg: ReturnType<typeof resolveCandleGaps>;
+  referenceLines: LiveChartProps["referenceLines"];
+  renderReferenceLine: LiveChartProps["renderReferenceLine"];
+  renderOffAxisReferenceLine: LiveChartProps["renderOffAxisReferenceLine"];
+  thresholdCfg: ReturnType<typeof resolveThreshold>;
+  referenceLineGrouping: LiveChartProps["referenceLineGrouping"];
+  badgeCfg: ReturnType<typeof resolveBadge>;
+}) {
+  const chartGapBands: ReferenceLine[] =
+    chartGapsCfg?.gaps.flatMap((gap) => {
+      const gapStyle = chartGapsCfg.styles[gap.kind];
+      const band = gapStyle.band;
+      if (band === null) return [];
+      const label = gapStyle.label;
+      return [
+        {
+          id: `chart-gap:${gap.kind}:${gap.from}:${gap.to}`,
+          from: gap.from,
+          to: gap.to,
+          label:
+            label === null
+              ? undefined
+              : (gap.label ?? candleGapDefaultLabel(gap.kind)),
+          color: band.borderColor,
+          fillColor: band.fillColor,
+          fillOpacity: band.fillOpacity,
+          strokeOpacity: band.borderOpacity,
+          strokeWidth: band.borderWidth > 0 ? band.borderWidth : undefined,
+          intervals: band.intervals,
+          labelColor: label?.color,
+          labelPosition: label?.position,
+        },
+      ];
+    }) ?? [];
+  const consumerRefLines = referenceLines ?? [];
+  const allRefLines = [...consumerRefLines, ...chartGapBands];
+  const refLineCustom = [
+    ...customReferenceLineFlags(consumerRefLines, renderReferenceLine),
+    ...chartGapBands.map(() => false),
+  ];
+  const refLineOffAxisCustom = [
+    ...customReferenceLineFlags(
+      consumerRefLines,
+      renderOffAxisReferenceLine,
+      "off-axis",
+    ),
+    ...chartGapBands.map(() => false),
+  ].map((custom, index) => custom && !refLineCustom[index]);
+  const draggableRefIdx: number[] = [];
+  for (let index = 0; index < allRefLines.length; index++) {
+    const line = allRefLines[index];
+    if (
+      line.draggable &&
+      !line.excludeFromRange &&
+      referenceLineForm(line) === "line"
+    ) {
+      draggableRefIdx.push(index);
+    }
+  }
+  const thresholdInRange = thresholdCfg?.includeInRange === true;
+  const thresholdRangeValueSV =
+    thresholdInRange &&
+    thresholdCfg?.value != null &&
+    !Array.isArray(thresholdCfg.value)
+      ? thresholdCfg.value
+      : null;
+  const refGroupingCfg =
+    typeof referenceLineGrouping === "object"
+      ? referenceLineGrouping
+      : undefined;
+
+  return {
+    chartGapBands,
+    allRefLines,
+    refValues: collectReferenceValues(allRefLines),
+    refLineCustom,
+    refLineOffAxisCustom,
+    refLineKeys: referenceLineReactKeys(allRefLines),
+    draggableRefIdx,
+    thresholdInRange,
+    thresholdRangeValueSV,
+    refGroupingCfg,
+    refGroupingRadius: referenceLineGrouping
+      ? (refGroupingCfg?.radius ?? 18)
+      : null,
+    refGroupBadge: resolveReferenceGroupBadge(refGroupingCfg?.badge),
+    refGroupFormat: refGroupingCfg?.format,
+    badgeUsesRightGutter:
+      badgeCfg !== null && (badgeCfg.position ?? "right") === "right",
+  };
+}
+
+function useLiveReferenceState(
+  allRefLines: ReferenceLine[],
+  draggableRefIdx: number[],
+  thresholdRangeValueSV: SharedValue<number> | null,
+) {
+  const dragValues = useSharedValue<number[]>([]);
+  const dragActive = useSharedValue<boolean[]>([]);
+  const seededRef = useRef<(number | undefined)[]>([]);
+  const refValueSig = allRefLines.map((line) => line.value ?? "_").join(",");
+  useEffect(() => {
+    const active = dragActive.get();
+    const current = dragValues.get();
+    const seeded = seededRef.current;
+    dragValues.set(
+      allRefLines.map((line, index) => {
+        const prop = line.value ?? 0;
+        if (active[index]) return current[index] ?? prop;
+        if (line.value !== seeded[index]) return prop;
+        return current[index] ?? prop;
+      }),
+    );
+    seededRef.current = allRefLines.map((line) => line.value);
+    if (dragActive.get().length !== allRefLines.length) {
+      dragActive.set(allRefLines.map((_, index) => active[index] ?? false));
+    }
+    // The line list is reconstructed from props; its value signature and length
+    // are the stable reconciliation inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refValueSig, allRefLines.length]);
+
+  const refLineCustomTagWidths = useSharedValue<number[]>([]);
+  const liveRefValues = useDerivedValue<number[]>(() => {
+    if (draggableRefIdx.length === 0 && thresholdRangeValueSV === null) {
+      return EMPTY_NUMS;
+    }
+    const output: number[] = [];
+    if (draggableRefIdx.length > 0) {
+      const values = dragValues.get();
+      for (let index = 0; index < draggableRefIdx.length; index++) {
+        const value = values[draggableRefIdx[index]];
+        if (value != null) output.push(value);
+      }
+    }
+    if (thresholdRangeValueSV !== null) {
+      const value = thresholdRangeValueSV.get();
+      if (Number.isFinite(value)) output.push(value);
+    }
+    return output;
+  });
+
+  return { dragValues, dragActive, refLineCustomTagWidths, liveRefValues };
+}
+
+function resolveLiveChartPresentationConfig({
+  accentColor,
+  theme,
+  paletteOverride,
+  segments,
+  leftEdgeFade,
+  fontProp,
+  badgeCfg,
+  refGroupBadge,
+  pulseCfg,
+  timeScroll,
+  isStatic,
+  returnToLive,
+  zoom,
+  yAxisCfg,
+}: {
+  accentColor: string;
+  theme: NonNullable<LiveChartProps["theme"]>;
+  paletteOverride: LiveChartProps["palette"];
+  segments: LiveChartProps["segments"];
+  leftEdgeFade: LiveChartProps["leftEdgeFade"];
+  fontProp: LiveChartProps["font"];
+  badgeCfg: ReturnType<typeof resolveBadge>;
+  refGroupBadge: ReturnType<typeof resolveReferenceGroupBadge>;
+  pulseCfg: ReturnType<typeof resolvePulse>;
+  timeScroll: LiveChartProps["timeScroll"];
+  isStatic: boolean;
+  returnToLive: LiveChartProps["returnToLive"];
+  zoom: LiveChartProps["zoom"];
+  yAxisCfg: ReturnType<typeof resolveYAxis>;
+}) {
+  const palette = applyPaletteOverride(
+    resolveTheme(accentColor, theme),
+    paletteOverride,
+  );
+  const resolvedSegments = (segments ?? []).map((segment) =>
+    resolveSegment(segment, {
+      muted: palette.gridLabel,
+      divider: palette.refLine,
+      label: palette.refLabel,
+    }),
+  );
+  const badgeHasFontOverride =
+    badgeCfg?.fontSize != null ||
+    badgeCfg?.fontFamily != null ||
+    badgeCfg?.fontWeight != null;
+  const refGroupBadgeHasFont =
+    refGroupBadge.fontSize != null ||
+    refGroupBadge.fontFamily != null ||
+    refGroupBadge.fontWeight != null;
+  const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
+  const zoomCfg = resolveZoom(zoom);
+
+  return {
+    palette,
+    resolvedSegments,
+    hasRecolorSegments: resolvedSegments.some((segment) => segment.recolorLine),
+    leftEdgeFadeCfg: resolveLeftEdgeFade(
+      leftEdgeFade,
+      leftEdgeFadeColorsFromBgRgb(palette.bgRgb),
+    ),
+    badgeHasFontOverride,
+    badgeFontConfig: badgeHasFontOverride
+      ? {
+          ...fontProp,
+          fontFamily: badgeCfg?.fontFamily ?? fontProp?.fontFamily,
+          fontSize: badgeCfg?.fontSize ?? fontProp?.fontSize,
+          fontWeight: badgeCfg?.fontWeight ?? fontProp?.fontWeight,
+        }
+      : fontProp,
+    refGroupBadgeHasFont,
+    refGroupBadgeFontConfig: refGroupBadgeHasFont
+      ? {
+          ...fontProp,
+          fontFamily: refGroupBadge.fontFamily ?? fontProp?.fontFamily,
+          fontSize: refGroupBadge.fontSize ?? fontProp?.fontSize,
+          fontWeight: refGroupBadge.fontWeight ?? fontProp?.fontWeight,
+        }
+      : fontProp,
+    pulseConfig: pulseCfg
+      ? {
+          maxRadius: pulseCfg.maxRadius,
+          strokeWidth: pulseCfg.strokeWidth,
+        }
+      : null,
+    timeScrollEnabled,
+    returnToLiveMs: resolveReturnToLiveMs(returnToLive),
+    timeScrollOverscroll: timeScrollEnabled ? resolveOverscroll(timeScroll) : 0,
+    timeScrollFling: resolveFling(timeScroll),
+    zoomCfg,
+    zoomEnabled: zoomCfg !== null && !isStatic,
+    yAxisFloat: yAxisCfg?.float ?? false,
+  };
+}
+
+function resolveThresholdColorConfig(
+  thresholdCfg: ReturnType<typeof resolveThreshold>,
+  palette: LiveChartPalette,
+  lineProp: LiveChartProps["line"],
+) {
+  return {
+    stopColors: thresholdCfg ? thresholdStops(thresholdCfg, palette) : null,
+    splitAbove: thresholdCfg
+      ? (thresholdCfg.aboveColor ?? palette.candleUp)
+      : null,
+    splitBelow: thresholdCfg
+      ? (thresholdCfg.belowColor ?? palette.candleDown)
+      : null,
+    fillOpacity: thresholdCfg?.fillOpacity ?? THRESHOLD_FILL_OPACITY_DEFAULT,
+    lineColor: lineProp?.color ?? palette.line,
+  };
+}
+
+function useThresholdGeometryState({
+  engine,
+  padding,
+  thresholdCfg,
+  thresholdSeriesSV,
+  emptyThresholdValue,
+}: {
+  engine: ReturnType<typeof useLiveChartEngine>;
+  padding: ChartPadding;
+  thresholdCfg: ReturnType<typeof resolveThreshold>;
+  thresholdSeriesSV: SharedValue<LiveChartPoint[]> | null;
+  emptyThresholdValue: SharedValue<number>;
+}) {
+  const thresholdValue = thresholdCfg?.value ?? emptyThresholdValue;
+  const [svSeriesNonEmpty, setSvSeriesNonEmpty] = useState(false);
+  useAnimatedReaction(
+    () => (thresholdSeriesSV ? thresholdSeriesSV.get().length > 0 : false),
+    /* istanbul ignore next -- UI-thread reaction */ (hasPoints, previous) => {
+      if (hasPoints !== previous) {
+        scheduleOnRN(setSvSeriesNonEmpty, hasPoints);
+      }
+    },
+  );
+  return {
+    thresholdSeriesHasPoints: thresholdSeriesSV
+      ? svSeriesNonEmpty
+      : Array.isArray(thresholdCfg?.value) && thresholdCfg.value.length > 0,
+    thresholdGeom: useThreshold(engine, padding, thresholdValue),
+    thresholdSeriesGeom: useThresholdSeries(
+      engine,
+      padding,
+      thresholdValue,
+      thresholdSeriesSV,
+      thresholdCfg?.extendToNow ?? true,
+      thresholdCfg?.line?.labelAnchor ?? "last",
+    ),
+  };
+}
+
+function useThresholdShaderUniforms({
+  engine,
+  padding,
+  samples,
+  clipRightX,
+  thresholdCfg,
+  palette,
+  lineProp,
+}: {
+  engine: ReturnType<typeof useLiveChartEngine>;
+  padding: ChartPadding;
+  samples: SharedValue<number[]>;
+  clipRightX: SharedValue<number>;
+  thresholdCfg: ReturnType<typeof resolveThreshold>;
+  palette: LiveChartPalette;
+  lineProp: LiveChartProps["line"];
+}) {
+  const { stopColors, splitAbove, splitBelow, fillOpacity, lineColor } =
+    resolveThresholdColorConfig(thresholdCfg, palette, lineProp);
+  const vectors = useMemo(() => {
+    if (splitAbove === null || splitBelow === null) return null;
+    const [r, g, b, a] = parseColorRgba(lineColor);
+    return {
+      ...thresholdSplitColorVecs(splitAbove, splitBelow, fillOpacity),
+      strokeRest: [r / 255, g / 255, b / 255, a],
+    };
+  }, [splitAbove, splitBelow, fillOpacity, lineColor]);
+  return {
+    thresholdStrokeColors: stopColors?.stroke ?? null,
+    thresholdFillColors: stopColors?.fill ?? null,
+    thresholdStrokeUniforms: useThresholdSplitUniforms(
+      samples,
+      engine,
+      padding,
+      vectors?.strokeAbove ?? THRESHOLD_FALLBACK_COLOR,
+      vectors?.strokeBelow ?? THRESHOLD_FALLBACK_COLOR,
+      vectors?.strokeRest ?? THRESHOLD_FALLBACK_COLOR,
+      clipRightX,
+    ),
+    thresholdFillUniforms: useThresholdSplitUniforms(
+      samples,
+      engine,
+      padding,
+      vectors?.fillAbove ?? THRESHOLD_FALLBACK_COLOR,
+      vectors?.fillBelow ?? THRESHOLD_FALLBACK_COLOR,
+      TRANSPARENT_VEC4,
+      clipRightX,
+    ),
+  };
+}
+
+function useThresholdBadgeProjection({
+  thresholdCfg,
+  thresholdIsSeries,
+  thresholdGeom,
+  thresholdSeriesGeom,
+  renderThresholdBadge,
+  formatValue,
+}: {
+  thresholdCfg: ReturnType<typeof resolveThreshold>;
+  thresholdIsSeries: boolean;
+  thresholdGeom: ReturnType<typeof useThreshold>;
+  thresholdSeriesGeom: ReturnType<typeof useThresholdSeries>;
+  renderThresholdBadge: LiveChartProps["renderThresholdBadge"];
+  formatValue: (value: number) => string;
+}) {
+  const lineY = thresholdIsSeries
+    ? thresholdSeriesGeom.badgeLineY
+    : thresholdGeom.lineY;
+  const markerVisible = thresholdIsSeries
+    ? thresholdSeriesGeom.visible
+    : thresholdGeom.visible;
+  const badgeVisible = thresholdIsSeries
+    ? thresholdSeriesGeom.badgeVisible
+    : thresholdGeom.visible;
+  const markerValue =
+    thresholdCfg && !thresholdIsSeries && !Array.isArray(thresholdCfg.value)
+      ? (thresholdCfg.value ?? thresholdSeriesGeom.badgeValue)
+      : thresholdSeriesGeom.badgeValue;
+  const custom = thresholdCfg?.line != null && renderThresholdBadge != null;
+  const valueStr = useDerivedValue(() =>
+    custom ? formatValue(markerValue.get()) : "",
+  );
+  return {
+    thresholdMarkerLineY: lineY,
+    thresholdMarkerVisible: markerVisible,
+    thresholdBadgeVisible: badgeVisible,
+    thresholdMarkerValue: markerValue,
+    thresholdCustomBadge:
+      thresholdCfg?.line && renderThresholdBadge
+        ? renderThresholdBadge({
+            line: thresholdCfg.line,
+            value: markerValue,
+            valueStr,
+            y: lineY,
+            visible: badgeVisible,
+          })
+        : null,
+    thresholdSeriesPts: thresholdIsSeries
+      ? thresholdSeriesGeom.screenPts
+      : undefined,
+  };
+}
+
+function useLiveChartThresholdModel({
+  engine,
+  padding,
+  thresholdCfg,
+  thresholdSeriesSV,
+  thresholdIsSeries,
+  emptyThresholdValue,
+  palette,
+  lineProp,
+  renderThresholdBadge,
+  formatValue,
+}: {
+  engine: ReturnType<typeof useLiveChartEngine>;
+  padding: ChartPadding;
+  thresholdCfg: ReturnType<typeof resolveThreshold>;
+  thresholdSeriesSV: SharedValue<LiveChartPoint[]> | null;
+  thresholdIsSeries: boolean;
+  emptyThresholdValue: SharedValue<number>;
+  palette: LiveChartPalette;
+  lineProp: LiveChartProps["line"];
+  renderThresholdBadge: LiveChartProps["renderThresholdBadge"];
+  formatValue: (value: number) => string;
+}) {
+  const { thresholdSeriesHasPoints, thresholdGeom, thresholdSeriesGeom } =
+    useThresholdGeometryState({
+      engine,
+      padding,
+      thresholdCfg,
+      thresholdSeriesSV,
+      emptyThresholdValue,
+    });
+  const shaderModel = useThresholdShaderUniforms({
+    engine,
+    padding,
+    samples: thresholdSeriesGeom.samples,
+    clipRightX: thresholdSeriesGeom.clipRightX,
+    thresholdCfg,
+    palette,
+    lineProp,
+  });
+  const badgeModel = useThresholdBadgeProjection({
+    thresholdCfg,
+    thresholdIsSeries,
+    thresholdGeom,
+    thresholdSeriesGeom,
+    renderThresholdBadge,
+    formatValue,
+  });
+
+  return {
+    thresholdGeom,
+    thresholdSeriesHasPoints,
+    ...shaderModel,
+    ...badgeModel,
+    thresholdFillLineY:
+      thresholdCfg?.fill && !thresholdIsSeries
+        ? thresholdGeom.lineY
+        : undefined,
+    thresholdFillSamples:
+      thresholdCfg?.fill && thresholdSeriesHasPoints
+        ? thresholdSeriesGeom.samples
+        : undefined,
+  };
+}
+
+function resolveLiveChartInteractionConfig({
+  isCandle,
+  mode,
+  candlesEngine,
+  liveEngine,
+  candleWidth,
+  candleGapsCfg,
+  lineGapsCfg,
+  markers,
+  markerCluster,
+  onReferenceLinePress,
+  allRefLines,
+  isStatic,
+  timeScroll,
+  timeScrollEnabled,
+  scrubCfg,
+}: {
+  isCandle: boolean;
+  mode: "line" | "candle";
+  candlesEngine: SharedValue<CandlePoint[]>;
+  liveEngine: SharedValue<CandlePoint | null>;
+  candleWidth: number;
+  candleGapsCfg: ResolvedCandleGapsConfig | null;
+  lineGapsCfg: ResolvedCandleGapsConfig | null;
+  markers: LiveChartProps["markers"];
+  markerCluster: LiveChartProps["markerCluster"];
+  onReferenceLinePress: LiveChartProps["onReferenceLinePress"];
+  allRefLines: ReferenceLine[];
+  isStatic: boolean;
+  timeScroll: LiveChartProps["timeScroll"];
+  timeScrollEnabled: boolean;
+  scrubCfg: ReturnType<typeof resolveScrub>;
+}) {
+  const crosshairChartOpts = isCandle
+    ? {
+        mode,
+        candles: candlesEngine,
+        liveCandle: liveEngine,
+        candleWidthSecs: candleWidth,
+        gaps: candleGapsCfg?.gaps,
+        bridgeNoTrades: Boolean(candleGapsCfg?.styles["no-trades"].bridge),
+        bridgeUnavailable: Boolean(candleGapsCfg?.styles.unavailable.bridge),
+        bridgeUnknown: Boolean(candleGapsCfg?.styles.unknown.bridge),
+      }
+    : lineGapsCfg
+      ? {
+          mode,
+          gaps: lineGapsCfg.gaps,
+          bridgeNoTrades: Boolean(lineGapsCfg.styles["no-trades"].bridge),
+          bridgeUnavailable: Boolean(lineGapsCfg.styles.unavailable.bridge),
+          bridgeUnknown: Boolean(lineGapsCfg.styles.unknown.bridge),
+        }
+      : undefined;
+  const scrollGestureMode =
+    typeof timeScroll === "object"
+      ? (timeScroll.gesture ?? "holdToScrub")
+      : "holdToScrub";
+  const timeScrollHoldMs =
+    typeof timeScroll === "object" ? timeScroll.scrubHoldMs : undefined;
+
+  return {
+    crosshairChartOpts,
+    markersActive: markers != null,
+    markerClusterCfg: resolveMarkerCluster(markerCluster),
+    refPressActive: onReferenceLinePress != null && allRefLines.length > 0,
+    refDragEnabled:
+      !isStatic && allRefLines.some((line) => line.draggable === true),
+    scrollGestureMode,
+    scrubHoldMs:
+      timeScrollEnabled && scrollGestureMode === "holdToScrub"
+        ? (timeScrollHoldMs ?? (scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS))
+        : (scrubCfg?.panGestureDelay ?? 0),
+  };
+}
+
+function composeLiveChartRootGesture({
+  crosshair,
+  markerTapGesture,
+  refLineTapGesture,
+  refDragGesture,
+  panScrollGesture,
+  pinchZoomGesture,
+  markersActive,
+  refPressActive,
+  refDragEnabled,
+  scrubActionActive,
+  timeScrollEnabled,
+  scrollGestureMode,
+  zoomEnabled,
+}: {
+  crosshair: ReturnType<typeof useCrosshair>;
+  markerTapGesture: ReturnType<typeof useMarkers>["tapGesture"];
+  refLineTapGesture: ReturnType<typeof useReferenceLinePress>["tapGesture"];
+  refDragGesture: ReturnType<typeof useReferenceDrag>["gesture"];
+  panScrollGesture: ReturnType<typeof usePanScroll>;
+  pinchZoomGesture: ReturnType<typeof usePinchZoom>;
+  markersActive: boolean;
+  refPressActive: boolean;
+  refDragEnabled: boolean;
+  scrubActionActive: boolean;
+  timeScrollEnabled: boolean;
+  scrollGestureMode: "holdToScrub" | "axisDrag";
+  zoomEnabled: boolean;
+}) {
+  const baseGesture =
+    scrubActionActive && crosshair.tapGesture
+      ? Gesture.Exclusive(crosshair.tapGesture, crosshair.gesture)
+      : crosshair.gesture;
+  const overlayTaps = [
+    markersActive ? markerTapGesture : null,
+    refPressActive ? refLineTapGesture : null,
+  ].filter(
+    (gesture): gesture is NonNullable<typeof gesture> => gesture !== null,
+  );
+  let rootGesture = baseGesture;
+  if (overlayTaps.length > 0) {
+    const tapGroup =
+      overlayTaps.length === 1
+        ? overlayTaps[0]
+        : Gesture.Simultaneous(overlayTaps[0], overlayTaps[1]);
+    rootGesture = Gesture.Simultaneous(baseGesture, tapGroup);
+  }
+  if (timeScrollEnabled) {
+    rootGesture =
+      scrollGestureMode === "axisDrag"
+        ? Gesture.Exclusive(panScrollGesture, rootGesture)
+        : Gesture.Race(panScrollGesture, rootGesture);
+  }
+  if (refDragEnabled) {
+    rootGesture = Gesture.Exclusive(refDragGesture, rootGesture);
+  }
+  return zoomEnabled
+    ? Gesture.Simultaneous(rootGesture, pinchZoomGesture)
+    : rootGesture;
+}
+
+function useAxisAutoHide({
+  config,
+  scrollActive,
+  scrubActive,
+  engine,
+}: {
+  config: LiveChartProps["axisAutoHide"];
+  scrollActive: SharedValue<boolean>;
+  scrubActive: SharedValue<boolean>;
+  engine: ReturnType<typeof useLiveChartEngine>;
+}) {
+  const resolved = config === true ? {} : config === false ? null : config;
+  const idleOpacity = resolved?.idleOpacity ?? 0;
+  const fadeInMs = resolved?.fadeInMs ?? 60;
+  const fadeOutMs = resolved?.fadeOutMs ?? 250;
+  const hideAfterMs = resolved?.hideAfterMs ?? 3000;
+  const opacity = useSharedValue(resolved ? idleOpacity : 1);
+  const enabled = resolved !== null;
+  const last = useRef({ enabled, idleOpacity });
+  useEffect(() => {
+    if (
+      last.current.enabled === enabled &&
+      last.current.idleOpacity === idleOpacity
+    ) {
+      return;
+    }
+    last.current = { enabled, idleOpacity };
+    cancelAnimation(opacity);
+    opacity.value = enabled ? idleOpacity : 1;
+  }, [enabled, idleOpacity, opacity]);
+  useAnimatedReaction(
+    () => ({
+      gesture: scrollActive.value || scrubActive.value,
+      viewEnd: engine.viewEnd.value,
+      viewWindow: engine.viewWindow.value,
+    }),
+    (current, previous) => {
+      if (!enabled || previous === null) return;
+      const moved =
+        current.gesture !== previous.gesture ||
+        current.viewEnd !== previous.viewEnd ||
+        current.viewWindow !== previous.viewWindow;
+      if (!moved) return;
+      cancelAnimation(opacity);
+      opacity.value = current.gesture
+        ? withTiming(1, { duration: fadeInMs })
+        : withSequence(
+            withTiming(1, { duration: fadeInMs }),
+            withDelay(
+              hideAfterMs,
+              withTiming(idleOpacity, { duration: fadeOutMs }),
+            ),
+          );
+    },
+    [enabled, idleOpacity, fadeInMs, fadeOutMs, hideAfterMs],
+  );
+  return opacity;
+}
+
+function resolveLiveEngineModeInputs({
+  isCandle,
+  data,
+  lineEngineData,
+  candles,
+  candlesEngine,
+  liveCandle,
+  liveEngine,
+  candleGapsCfg,
+  thresholdInRange,
+  thresholdIsSeries,
+  thresholdSeriesSV,
+  thresholdCfg,
+}: {
+  isCandle: boolean;
+  data: LiveChartProps["data"];
+  lineEngineData: LiveChartProps["data"];
+  candles: LiveChartProps["candles"];
+  candlesEngine: SharedValue<CandlePoint[]>;
+  liveCandle: LiveChartProps["liveCandle"];
+  liveEngine: SharedValue<CandlePoint | null>;
+  candleGapsCfg: ResolvedCandleGapsConfig | null;
+  thresholdInRange: boolean;
+  thresholdIsSeries: boolean;
+  thresholdSeriesSV: SharedValue<LiveChartPoint[]> | null;
+  thresholdCfg: ResolvedThresholdConfig | null;
+}) {
+  return {
+    data: isCandle ? data : lineEngineData,
+    thresholdRangePoints:
+      thresholdInRange && thresholdIsSeries
+        ? (thresholdSeriesSV ?? (thresholdCfg?.value as LiveChartPoint[]))
+        : undefined,
+    thresholdRangeExtendToNow: thresholdCfg?.extendToNow ?? true,
+    candles: isCandle ? candlesEngine : candles,
+    liveCandle: isCandle ? liveEngine : liveCandle,
+    candleGaps: candleGapsCfg?.gaps,
+    candleGapBridgeNoTrades: Boolean(candleGapsCfg?.styles["no-trades"].bridge),
+    candleGapBridgeUnavailable: Boolean(
+      candleGapsCfg?.styles.unavailable.bridge,
+    ),
+    candleGapBridgeUnknown: Boolean(candleGapsCfg?.styles.unknown.bridge),
+  };
+}
+
+function resolveCrosshairControllerSettings({
+  scrubCfg,
+  scrubActionCfg,
+  markersActive,
+  refPressActive,
+  refDragEnabled,
+  deferTapHit,
+  timeScrollEnabled,
+  scrollGestureMode,
+  effectivePadding,
+}: {
+  scrubCfg: ReturnType<typeof resolveScrub>;
+  scrubActionCfg: ReturnType<typeof resolveScrubAction>;
+  markersActive: boolean;
+  refPressActive: boolean;
+  refDragEnabled: boolean;
+  deferTapHit: (x: number, y: number) => boolean;
+  timeScrollEnabled: boolean;
+  scrollGestureMode: "holdToScrub" | "axisDrag";
+  effectivePadding: ChartPadding;
+}) {
+  return {
+    enabled: scrubCfg !== null || scrubActionCfg !== null,
+    deferTapHit:
+      markersActive || refPressActive || refDragEnabled
+        ? deferTapHit
+        : undefined,
+    tooltipPlacement: scrubCfg?.tooltipPlacement ?? "side",
+    tooltipShowValue: scrubCfg?.tooltipShowValue ?? true,
+    tooltipShowTime: scrubCfg?.tooltipShowTime ?? true,
+    tooltipMargin: scrubCfg?.tooltipMargin ?? 8,
+    scrubBottomExclude:
+      timeScrollEnabled && scrollGestureMode === "axisDrag"
+        ? Math.max(effectivePadding.bottom, AXIS_GRAB_MIN_PX)
+        : 0,
+    clampToPlot: scrubCfg?.clampToPlot ?? false,
+    snapToCandles: scrubCfg?.snapToCandles ?? false,
+  };
+}
+
+function resolveAreaDotColorVec(
+  areaDotsCfg: ReturnType<typeof resolveAreaDots>,
+  lineProp: LiveChartProps["line"],
+  palette: LiveChartPalette,
+) {
+  const rgb = parseColorRgb(lineProp?.color ?? palette.line);
+  const [r, g, b, a] = parseColorRgba(
+    areaDotsCfg?.color ?? `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.22)`,
+  );
+  return [r / 255, g / 255, b / 255, a * (areaDotsCfg?.opacity ?? 1)];
+}
+
+function useLiveIndicatorOpacities({
+  reveal,
+  seriesIndicatorOpacity,
+  seriesOpacity,
+  scrubActive,
+  selectionDotDuringScrub,
+  hideLiveOnScrollBack,
+  dotTracksParked,
+  viewEnd,
+  fadeOverlaysOnScrub,
+}: {
+  reveal: ReturnType<typeof useChartReveal>;
+  seriesIndicatorOpacity: SharedValue<number>;
+  seriesOpacity: SharedValue<number>;
+  scrubActive: SharedValue<boolean>;
+  selectionDotDuringScrub: boolean;
+  hideLiveOnScrollBack: boolean;
+  dotTracksParked: boolean;
+  viewEnd: SharedValue<number | null>;
+  fadeOverlaysOnScrub: boolean;
+}) {
+  const liveDotOpacity = useDerivedValue(
+    () =>
+      reveal.dotOpacity.value *
+      (selectionDotDuringScrub && scrubActive.value ? 0 : 1) *
+      liveIndicatorScrollOpacity(
+        hideLiveOnScrollBack && !dotTracksParked,
+        viewEnd.value,
+      ) *
+      seriesIndicatorOpacity.value,
+  );
+  const valueLineOpacity = useDerivedValue(
+    () =>
+      reveal.lineOpacity.value *
+      liveIndicatorScrollOpacity(hideLiveOnScrollBack, viewEnd.value) *
+      seriesOpacity.value,
+  );
+  const liveBadgeOpacity = useDerivedValue(
+    () =>
+      reveal.badgeOpacity.value *
+      liveIndicatorScrollOpacity(hideLiveOnScrollBack, viewEnd.value) *
+      seriesOpacity.value,
+  );
+  const overlayScrubFade = useDerivedValue(() =>
+    fadeOverlaysOnScrub
+      ? withTiming(scrubActive.get() ? 0 : 1, {
+          duration: SCRUB_OVERLAY_FADE_MS,
+        })
+      : 1,
+  );
+  const markerGroupOpacity = useDerivedValue(
+    () => reveal.dotOpacity.get() * overlayScrubFade.get(),
+  );
+  return {
+    liveDotOpacity,
+    valueLineOpacity,
+    liveBadgeOpacity,
+    overlayScrubFade,
+    markerGroupOpacity,
+  };
+}
+
+function useReferenceLineGrouping({
+  radius,
+  engine,
+  padding,
+  lines,
+  custom,
+  offAxisCustom,
+  dragValues,
+}: {
+  radius: number | null;
+  engine: ReturnType<typeof useLiveChartEngine>;
+  padding: ChartPadding;
+  lines: ReferenceLine[];
+  custom: boolean[];
+  offAxisCustom: boolean[];
+  dragValues: SharedValue<number[]>;
+}) {
+  const result = useDerivedValue<ReferenceGrouping>(() => {
+    if (radius == null) return EMPTY_GROUPING;
+    const canvasHeight = engine.canvasHeight.get();
+    const displayMin = engine.displayMin.get();
+    const displayMax = engine.displayMax.get();
+    const top = padding.top;
+    const bottom = canvasHeight - padding.bottom;
+    const yPositions: number[] = [];
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
+      if (
+        referenceLineForm(line) !== "line" ||
+        line.value === undefined ||
+        custom[index] ||
+        offAxisCustom[index]
+      ) {
+        yPositions.push(-1);
+        continue;
+      }
+      const value = dragValues.get()[index] ?? line.value;
+      const y = computeScrubDotY(
+        value,
+        displayMin,
+        displayMax,
+        canvasHeight,
+        top,
+        padding.bottom,
+      );
+      yPositions.push(y < 0 ? -1 : Math.min(bottom, Math.max(top, y)));
+    }
+    return groupReferenceLines(yPositions, radius);
+  });
+  const hidden = useDerivedValue<boolean[]>(() => result.get().hidden);
+  return { refGroupResult: result, groupHidden: hidden };
+}
+
+function useLiveChartLayoutResources({
+  value,
+  fontProp,
+  palette,
+  badgeHasFontOverride,
+  badgeFontConfig,
+  refGroupBadgeHasFont,
+  refGroupBadgeFontConfig,
+  yAxisFloat,
+  timeScrollEnabled,
+  lineProp,
+  insets,
+  yAxisCfg,
+  badgeCfg,
+  metricsCfg,
+  badgeUsesRightGutter,
+  xAxisCfg,
+  formatValue,
+  pulseConfig,
+  dotCfg,
+  volumeBandHeight,
+}: {
+  value: LiveChartProps["value"];
+  fontProp: LiveChartProps["font"];
+  palette: LiveChartPalette;
+  badgeHasFontOverride: boolean;
+  badgeFontConfig: LiveChartProps["font"];
+  refGroupBadgeHasFont: boolean;
+  refGroupBadgeFontConfig: LiveChartProps["font"];
+  yAxisFloat: boolean;
+  timeScrollEnabled: boolean;
+  lineProp: LiveChartProps["line"];
+  insets: LiveChartProps["insets"];
+  yAxisCfg: ReturnType<typeof resolveYAxis>;
+  badgeCfg: ReturnType<typeof resolveBadge>;
+  metricsCfg: ReturnType<typeof resolveMetrics>;
+  badgeUsesRightGutter: boolean;
+  xAxisCfg: ReturnType<typeof resolveXAxis>;
+  formatValue: (value: number) => string;
+  pulseConfig: { maxRadius: number; strokeWidth: number } | null;
+  dotCfg: ReturnType<typeof resolveDot>;
+  volumeBandHeight: number;
+}) {
+  const skiaFont = useChartSkiaFont(
+    fontProp,
+    MONO_FONT_FAMILY,
+    palette.labelFontSize,
+  );
+  const valueFont = useChartSkiaFont(
+    fontProp,
+    MONO_FONT_FAMILY,
+    palette.valueFontSize * 2,
+  );
+  const badgeFontOverride = useChartSkiaFont(
+    badgeFontConfig,
+    MONO_FONT_FAMILY,
+    palette.labelFontSize,
+  );
+  const badgeFont = badgeHasFontOverride ? badgeFontOverride : skiaFont;
+  const refGroupBadgeFontOverride = useChartSkiaFont(
+    refGroupBadgeFontConfig,
+    MONO_FONT_FAMILY,
+    palette.labelFontSize,
+  );
+  const refGroupBadgeFont = refGroupBadgeHasFont
+    ? refGroupBadgeFontOverride
+    : skiaFont;
+  const [valueLayoutSample, setValueLayoutSample] = useState<
+    number | undefined
+  >(undefined);
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reanimated SharedValues cannot be read during render
+    setValueLayoutSample(value.get());
+  }, [value]);
+  const [scrolledBack, setScrolledBack] = useState(false);
+  const effectiveYAxisFloat =
+    yAxisFloat && (!timeScrollEnabled || scrolledBack);
+  const layout = resolveChartLayout({
+    palette,
+    lineWidthOverride: lineProp?.width,
+    insetsOverride: insets,
+    yAxis: yAxisCfg !== null,
+    yAxisFloat: effectiveYAxisFloat,
+    badge: badgeCfg !== null,
+    badgeMetrics: metricsCfg.badge,
+    badgeUsesRightGutter,
+    badgeShowTail: badgeCfg?.tail ?? true,
+    xAxis: xAxisCfg !== null,
+    font: skiaFont,
+    formatValue,
+    currentValue: valueLayoutSample,
+    pulse: pulseConfig,
+    dotGlow: dotCfg.glow,
+    volumeBandHeight,
+  });
+  return {
+    skiaFont,
+    valueFont,
+    badgeFont,
+    refGroupBadgeFont,
+    effectiveYAxisFloat,
+    setScrolledBack,
+    ...layout,
+  };
+}
+
+function resolveLiveChartModelDefaults({
+  isCandle,
+  candleWidth,
+  loadingCfg,
+  volumeCfg,
+  palette,
+  lineProp,
+}: {
+  isCandle: boolean;
+  candleWidth: number;
+  loadingCfg: ReturnType<typeof resolveLoading>;
+  volumeCfg: ReturnType<typeof resolveVolume>;
+  palette: LiveChartPalette;
+  lineProp: LiveChartProps["line"];
+}) {
+  return {
+    extremaTimeOffset: isCandle ? candleWidth / 2 : 0,
+    loadingLineColor: loadingCfg?.color,
+    loadingStrokeWidth: loadingCfg?.strokeWidth,
+    loadingAmplitude: loadingCfg?.amplitude,
+    loadingSpeed: loadingCfg?.speed,
+    loadingAxisLabels: loadingCfg?.axisLabels ?? true,
+    volumeOpacity: volumeCfg?.opacity ?? 1,
+    volumeUpColor: volumeCfg?.upColor ?? palette.candleUp,
+    volumeDownColor: volumeCfg?.downColor ?? palette.candleDown,
+    selectionColor: lineProp?.color ?? palette.line,
+  };
+}
+
 /**
  * Resolves props → configs → theme/layout → engine → per-frame derived values and
  * overlay hooks, returning a single render model. All the chart's wiring lives
@@ -380,355 +1497,152 @@ function useLiveChartController({
   // Stand-in threshold value so `useThreshold` can be called unconditionally
   // (hooks can't be); the geometry is ignored when no threshold is configured.
   const emptyThresholdValue = useSharedValue(0);
-  const isCandle = mode === "candle";
-
-  // ── Resolve feature configs ────────────────────────────────────────────
-  const yAxisCfg = resolveYAxis(yAxis);
-  const xAxisCfg = resolveXAxis(xAxis);
-  const topLabelCfg = resolveAxisLabel(topLabel);
-  const bottomLabelCfg = resolveAxisLabel(bottomLabel);
-  const badgeCfg = resolveBadge(badge);
-  const scrubCfg = resolveScrub(scrub);
-  // Scrub + scrub-action are on-demand touch gestures (event-driven, no per-frame
-  // loop), so they stay live on static charts — `static` suppresses the continuous
-  // render loop, not interaction. A still sparkline in a list can still be scrubbed.
-  const scrubActionCfg = resolveScrubAction(scrubAction);
-  // Volume bars sit below the candles — a candle-mode-only feature (inert in
-  // line mode, like the candle paths themselves).
-  const volumeCfg = isCandle ? resolveVolume(volume) : null;
-  const chartGapsCfg = resolveCandleGaps(isCandle ? candleGaps : lineGaps);
-  const candleGapsCfg = isCandle ? chartGapsCfg : null;
-  const lineGapsCfg = isCandle ? null : chartGapsCfg;
-  const volumeBandHeight = volumeCfg?.maxHeight ?? 0;
-  const gradientCfg = isCandle ? null : resolveGradient(gradient);
-  // Dot-lattice area fill (clipped to the under-line region). Inert in candle
-  // mode, same as the gradient fill.
-  const areaDotsCfg = isCandle ? null : resolveAreaDots(areaDots);
-  // Threshold split is a line-mode feature (candle bodies carry their own up/down
-  // colors), so it's inert in candle mode — same as the area gradient.
-  const thresholdCfg = isCandle ? null : resolveThreshold(threshold);
-  const thresholdSeriesSV = thresholdCfg?.series ?? null;
-  const thresholdIsSeries =
-    thresholdSeriesSV !== null || Array.isArray(thresholdCfg?.value);
-  const valueLineCfg = resolveValueLine(valueLine);
-  // Static charts run zero loops: force the pulse off so its `withRepeat`-driven
-  // ring never starts (the DotOverlay reads `pulseCfg`, so null = no pulse).
-  const pulseCfg = isStatic ? null : resolvePulse(pulse);
-  const dotCfg = resolveDot(dot);
-  // `badge.followViewEdge` wins over `dot.trackWhileParked`: an edge-pinned dot
-  // must stay aligned with its badge, so the tracking flag is ignored.
-  const dotTracksParked =
-    dotCfg.trackWhileParked && !(badgeCfg?.followViewEdge ?? false);
-  const selectionDotCfg = resolveSelectionDot(selectionDot);
-  // Outer visible footprint of the dot, including its crisp ring and optional
-  // blurred glow. Used by scrub dimming so neither effect leaks through.
-  const dotOuterRadius = Math.max(
-    dotCfg.radius + (dotCfg.ring?.width ?? 0),
-    dotCfg.glow ? dotGlowRadialOutset(dotCfg.glow.radius, dotCfg.glow.blur) : 0,
-  );
-  const gridStyleCfg = resolveGridStyle(gridStyle);
-  // Static charts run zero loops: force degen off so `useDegen`'s frame callback
-  // never starts (also passed `isStatic` below as a belt-and-braces autostart gate).
-  const degenCfg = isStatic ? null : resolveDegen(degen);
-  const tradeStreamResolved = resolveTradeStream(tradeStream);
-  const metricsCfg = resolveMetrics(metrics);
-
-  const chartGapBands: ReferenceLine[] =
-    chartGapsCfg?.gaps.flatMap((gap) => {
-      const gapStyle = chartGapsCfg.styles[gap.kind];
-      const band = gapStyle.band;
-      if (band === null) return [];
-      const label = gapStyle.label;
-      return [
-        {
-          id: `chart-gap:${gap.kind}:${gap.from}:${gap.to}`,
-          from: gap.from,
-          to: gap.to,
-          label:
-            label === null
-              ? undefined
-              : (gap.label ?? candleGapDefaultLabel(gap.kind)),
-          color: band.borderColor,
-          fillColor: band.fillColor,
-          fillOpacity: band.fillOpacity,
-          strokeOpacity: band.borderOpacity,
-          strokeWidth: band.borderWidth > 0 ? band.borderWidth : undefined,
-          intervals: band.intervals,
-          labelColor: label?.color,
-          labelPosition: label?.position,
-        },
-      ];
-    }) ?? [];
-  // Gap bands append after consumer reference lines so public line indices stay
-  // stable for callbacks. Time bands contribute no Y values or press targets.
-  const allRefLines = [...(referenceLines ?? []), ...chartGapBands];
-  const refValues = collectReferenceValues(allRefLines);
-
-  // Per-line live value overrides + drag flags for draggable lines and the custom
-  // `renderReferenceLine` slot. One array SharedValue each (the line count varies,
-  // so a single SharedValue beats N hooks). Seeded from each line's static `value`;
-  // the drag gesture overwrites a slot, and the effect re-seeds slots not being
-  // dragged when the props change (so a controlled `value` flows back in).
-  const dragValues = useSharedValue<number[]>([]);
-  const dragActive = useSharedValue<boolean[]>([]);
-  // Last `value` props used to seed each slot, so reconciliation can tell a
-  // controlled prop change (adopt it) from an unchanged prop (keep the dragged
-  // value — uncontrolled persistence) without resetting a drop on every re-render.
-  const seededRef = useRef<(number | undefined)[]>([]);
-  const refValueSig = allRefLines.map((l) => l.value ?? "_").join(",");
-  useEffect(() => {
-    const active = dragActive.get();
-    const cur = dragValues.get();
-    const seeded = seededRef.current;
-    dragValues.set(
-      allRefLines.map((l, i) => {
-        const prop = l.value ?? 0;
-        if (active[i]) return cur[i] ?? prop; // mid-drag → keep the dragged value
-        if (l.value !== seeded[i]) return prop; // prop changed → adopt (controlled)
-        return cur[i] ?? prop; // unchanged → keep current (uncontrolled persist)
-      }),
-    );
-    seededRef.current = allRefLines.map((l) => l.value);
-    if (dragActive.get().length !== allRefLines.length) {
-      dragActive.set(allRefLines.map((_, i) => active[i] ?? false));
-    }
-    // allRefLines is rebuilt every render; key off the value signature + length.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refValueSig, allRefLines.length]);
-
-  // Form-A lines a custom `renderReferenceLine` owns → suppress their built-in tag
-  // (no double-draw). Probed on the JS thread, index-aligned with `allRefLines`.
-  // Semantic gap bands are library-owned annotations: do not leak them through
-  // the consumer's reference-line renderer or change its callback cardinality.
-  const consumerRefLines = referenceLines ?? [];
-  const refLineCustom = [
-    ...customReferenceLineFlags(consumerRefLines, renderReferenceLine),
-    ...chartGapBands.map(() => false),
-  ];
-  // An off-axis renderer replaces only the edge-pinned tag. A full custom tag
-  // takes precedence for the same line to avoid mounting two native tags.
-  const refLineOffAxisCustom = [
-    ...customReferenceLineFlags(
-      consumerRefLines,
-      renderOffAxisReferenceLine,
-      "off-axis",
-    ),
-    ...chartGapBands.map(() => false),
-  ].map((custom, index) => custom && !refLineCustom[index]);
-  const refLineKeys = referenceLineReactKeys(allRefLines);
-  // RN custom tags report their measured widths here so the Skia connector can
-  // start after the native badge instead of the hidden built-in pill.
-  const refLineCustomTagWidths = useSharedValue<number[]>([]);
-
-  // Live Y values of the *draggable* Form-A lines, folded into the engine's
-  // axis-range fit so dragging a line toward / past the visible edge expands the
-  // range and the axis follows the finger in one motion (the committed values are
-  // already in `refValues`). `excludeFromRange` lines opt out, matching the static
-  // fit. Identity-stable (no re-fit) when nothing is draggable.
-  //
-  // `threshold.includeInRange` rides the same channel: the constant benchmark
-  // contributes its live value; a series contributes its window min/max
-  // (respecting `extendToNow`), so an off-range break-even expands the axis and
-  // stays on-plot like a reference line would.
-  const draggableRefIdx: number[] = [];
-  for (let i = 0; i < allRefLines.length; i++) {
-    const line = allRefLines[i];
-    if (
-      line.draggable &&
-      !line.excludeFromRange &&
-      referenceLineForm(line) === "line"
-    ) {
-      draggableRefIdx.push(i);
-    }
-  }
-  const thresholdInRange = thresholdCfg?.includeInRange === true;
-  // Constant benchmark → its live value rides this channel. A series threshold
-  // is folded inside the engine tick instead (`thresholdRangePoints`), which
-  // already knows the window bounds for the min/max.
-  const thresholdRangeValueSV =
-    thresholdInRange &&
-    thresholdCfg?.value != null &&
-    !Array.isArray(thresholdCfg.value)
-      ? thresholdCfg.value
-      : null;
-  const liveRefValues = useDerivedValue<number[]>(() => {
-    if (draggableRefIdx.length === 0 && thresholdRangeValueSV === null)
-      return EMPTY_NUMS;
-    const out: number[] = [];
-    if (draggableRefIdx.length > 0) {
-      const dv = dragValues.get();
-      for (let k = 0; k < draggableRefIdx.length; k++) {
-        const v = dv[draggableRefIdx[k]];
-        if (v != null) out.push(v);
-      }
-    }
-    if (thresholdRangeValueSV !== null) {
-      const v = thresholdRangeValueSV.get();
-      if (Number.isFinite(v)) out.push(v);
-    }
-    return out;
+  const {
+    isCandle,
+    yAxisCfg,
+    xAxisCfg,
+    topLabelCfg,
+    bottomLabelCfg,
+    badgeCfg,
+    scrubCfg,
+    scrubActionCfg,
+    volumeCfg,
+    chartGapsCfg,
+    candleGapsCfg,
+    lineGapsCfg,
+    volumeBandHeight,
+    gradientCfg,
+    areaDotsCfg,
+    thresholdCfg,
+    thresholdSeriesSV,
+    thresholdIsSeries,
+    valueLineCfg,
+    pulseCfg,
+    dotCfg,
+    dotTracksParked,
+    selectionDotCfg,
+    dotOuterRadius,
+    gridStyleCfg,
+    degenCfg,
+    tradeStreamResolved,
+    metricsCfg,
+  } = resolveLiveChartFeatureConfig({
+    mode,
+    yAxis,
+    xAxis,
+    topLabel,
+    bottomLabel,
+    badge,
+    scrub,
+    scrubAction,
+    volume,
+    candleGaps,
+    lineGaps,
+    gradient,
+    areaDots,
+    threshold,
+    valueLine,
+    isStatic,
+    pulse,
+    dot,
+    selectionDot,
+    gridStyle,
+    degen,
+    tradeStream,
+    metrics,
   });
 
-  // Reference-line grouping (collapse near-value handles). Resolved once; the
-  // per-frame clustering runs on the UI thread (see ReferenceLineGroupOverlay).
-  const refGroupingCfg =
-    typeof referenceLineGrouping === "object"
-      ? referenceLineGrouping
-      : undefined;
-  const refGroupingRadius = referenceLineGrouping
-    ? (refGroupingCfg?.radius ?? 18)
-    : null;
-  // Count-pill styling (same style/shape config as a per-line badge) + count
-  // formatter. Resolved once; theme color defaults are applied in the overlay.
-  const refGroupBadge = resolveReferenceGroupBadge(refGroupingCfg?.badge);
-  const refGroupFormat = refGroupingCfg?.format;
-
-  const badgeUsesRightGutter =
-    badgeCfg !== null && (badgeCfg.position ?? "right") === "right";
-
-  // ── Theme, font and layout ─────────────────────────────────────────────
-  const palette = applyPaletteOverride(
-    resolveTheme(accentColor, theme),
-    paletteOverride,
-  );
-
-  // Time-range segments (sessions, after-hours, …). Resolved once per render like
-  // reference lines; the divider/label/muted colors default to the chart palette
-  // (no per-segment base color needed). `hasRecolorSegments` is a render-time gate
-  // for the line-recolor gradient pass (per-frame visibility is handled by the
-  // gradient's transparent stops, not by mounting/unmounting the Path).
-  const resolvedSegments = (segments ?? []).map((s) =>
-    resolveSegment(s, {
-      muted: palette.gridLabel,
-      divider: palette.refLine,
-      label: palette.refLabel,
-    }),
-  );
-  const hasRecolorSegments = resolvedSegments.some((s) => s.recolorLine);
-
-  const leftEdgeFadeCfg = resolveLeftEdgeFade(
-    leftEdgeFade,
-    leftEdgeFadeColorsFromBgRgb(palette.bgRgb),
-  );
-
-  const skiaFont = useChartSkiaFont(
-    fontProp,
-    MONO_FONT_FAMILY,
-    palette.labelFontSize,
-  );
-
-  // Larger font for the optional live-value text overlay (showValue).
-  const valueFont = useChartSkiaFont(
-    fontProp,
-    MONO_FONT_FAMILY,
-    palette.valueFontSize * 2,
-  );
-
-  // Per-badge font (size/family/weight) override; reuses the chart font when
-  // none of the badge font knobs are set, so the gutter sizing is unchanged.
-  const badgeHasFontOverride =
-    badgeCfg?.fontSize != null ||
-    badgeCfg?.fontFamily != null ||
-    badgeCfg?.fontWeight != null;
-  const badgeFontOverride = useChartSkiaFont(
-    badgeHasFontOverride
-      ? {
-          ...fontProp,
-          fontFamily: badgeCfg?.fontFamily ?? fontProp?.fontFamily,
-          fontSize: badgeCfg?.fontSize ?? fontProp?.fontSize,
-          fontWeight: badgeCfg?.fontWeight ?? fontProp?.fontWeight,
-        }
-      : fontProp,
-    MONO_FONT_FAMILY,
-    palette.labelFontSize,
-  );
-  const badgeFont = badgeHasFontOverride ? badgeFontOverride : skiaFont;
-
-  // Per-badge font for the grouping count pill (same override pattern as above).
-  const refGroupBadgeHasFont =
-    refGroupBadge.fontSize != null ||
-    refGroupBadge.fontFamily != null ||
-    refGroupBadge.fontWeight != null;
-  const refGroupBadgeFontOverride = useChartSkiaFont(
-    refGroupBadgeHasFont
-      ? {
-          ...fontProp,
-          fontFamily: refGroupBadge.fontFamily ?? fontProp?.fontFamily,
-          fontSize: refGroupBadge.fontSize ?? fontProp?.fontSize,
-          fontWeight: refGroupBadge.fontWeight ?? fontProp?.fontWeight,
-        }
-      : fontProp,
-    MONO_FONT_FAMILY,
-    palette.labelFontSize,
-  );
-  const refGroupBadgeFont = refGroupBadgeHasFont
-    ? refGroupBadgeFontOverride
-    : skiaFont;
-
-  const pulseConfig = pulseCfg
-    ? {
-        maxRadius: pulseCfg.maxRadius,
-        strokeWidth: pulseCfg.strokeWidth,
-      }
-    : null;
-
-  // Snapshot the live value off the render path to size the right gutter to the
-  // value label. Reading a SharedValue during render trips Reanimated's
-  // strict-mode warning, and the gutter only needs a representative magnitude —
-  // so read it in a layout effect (re-measures before paint, no visible reflow)
-  // once on mount, re-synced if the `value` SharedValue identity changes.
-  // react-doctor's "derive during render" fix is exactly what Reanimated forbids
-  // here, so suppress its effect-read rules at this seed.
-  const [valueLayoutSample, setValueLayoutSample] = useState<
-    number | undefined
-  >(undefined);
-  // react-doctor-disable-next-line react-doctor/no-derived-state-effect -- Reanimated: must read the SharedValue off the render path
-  useLayoutEffect(() => {
-    // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- Reanimated: seeding from a SharedValue off render is the warning-free path
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reanimated: seed from the SharedValue outside render to avoid strict-mode access warnings
-    setValueLayoutSample(value.get());
-  }, [value]);
-
-  // `scrolledBack` mirrors the UI-thread scroll state (engine.viewEnd != null)
-  // onto the JS thread (set by the reaction below, after the engine exists).
-  const [scrolledBack, setScrolledBack] = useState(false);
-  const timeScrollEnabled = Boolean(timeScroll) && !isStatic;
-  // Glide duration for the return-to-live animation (0 = instant). A sibling of
-  // `timeScroll` so it survives `timeScroll={false}` (the disable that triggers it).
-  const returnToLiveMs = resolveReturnToLiveMs(returnToLive);
-  // Overscroll fraction ([0, 1)) — how far pan/zoom may travel past the data
-  // bounds into blank space. 0 (the default) keeps the classic hard stops.
-  const timeScrollOverscroll = timeScrollEnabled
-    ? resolveOverscroll(timeScroll)
-    : 0;
-  // Release inertia (fling) — `timeScroll.fling: false` stops the pan dead.
-  const timeScrollFling = resolveFling(timeScroll);
-  const zoomCfg = resolveZoom(zoom);
-  const zoomEnabled = zoomCfg !== null && !isStatic;
-
-  const yAxisFloat = yAxisCfg?.float ?? false;
-  // With timeScroll, the floating full-width plot engages only while scrolled
-  // back; at the live edge the chart keeps a normal right gutter so the
-  // line/candles don't sit under the floating y-axis labels + badge. Without
-  // timeScroll, float behaves as before (always full-width).
-  const effectiveYAxisFloat =
-    yAxisFloat && (!timeScrollEnabled || scrolledBack);
-  const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
-    palette,
-    lineWidthOverride: lineProp?.width,
-    insetsOverride: insets,
-    yAxis: yAxisCfg !== null,
-    yAxisFloat: effectiveYAxisFloat,
-    badge: badgeCfg !== null,
-    badgeMetrics: metricsCfg.badge,
+  const {
+    chartGapBands,
+    allRefLines,
+    refValues,
+    refLineCustom,
+    refLineOffAxisCustom,
+    refLineKeys,
+    draggableRefIdx,
+    thresholdInRange,
+    thresholdRangeValueSV,
+    refGroupingCfg,
+    refGroupingRadius,
+    refGroupBadge,
+    refGroupFormat,
     badgeUsesRightGutter,
-    badgeShowTail: badgeCfg?.tail ?? true,
-    xAxis: xAxisCfg !== null,
-    font: skiaFont,
+  } = resolveLiveChartReferenceConfig({
+    chartGapsCfg,
+    referenceLines,
+    renderReferenceLine,
+    renderOffAxisReferenceLine,
+    thresholdCfg,
+    referenceLineGrouping,
+    badgeCfg,
+  });
+
+  const { dragValues, dragActive, refLineCustomTagWidths, liveRefValues } =
+    useLiveReferenceState(allRefLines, draggableRefIdx, thresholdRangeValueSV);
+
+  const {
+    palette,
+    resolvedSegments,
+    hasRecolorSegments,
+    leftEdgeFadeCfg,
+    badgeHasFontOverride,
+    badgeFontConfig,
+    refGroupBadgeHasFont,
+    refGroupBadgeFontConfig,
+    pulseConfig,
+    timeScrollEnabled,
+    returnToLiveMs,
+    timeScrollOverscroll,
+    timeScrollFling,
+    zoomCfg,
+    zoomEnabled,
+    yAxisFloat,
+  } = resolveLiveChartPresentationConfig({
+    accentColor,
+    theme,
+    paletteOverride,
+    segments,
+    leftEdgeFade,
+    fontProp,
+    badgeCfg,
+    refGroupBadge,
+    pulseCfg,
+    timeScroll,
+    isStatic,
+    returnToLive,
+    zoom,
+    yAxisCfg,
+  });
+
+  const {
+    skiaFont,
+    valueFont,
+    badgeFont,
+    refGroupBadgeFont,
+    effectiveYAxisFloat,
+    setScrolledBack,
+    strokeWidth,
+    padding: effectivePadding,
+  } = useLiveChartLayoutResources({
+    value,
+    fontProp,
+    palette,
+    badgeHasFontOverride,
+    badgeFontConfig,
+    refGroupBadgeHasFont,
+    refGroupBadgeFontConfig,
+    yAxisFloat,
+    timeScrollEnabled,
+    lineProp,
+    insets,
+    yAxisCfg,
+    badgeCfg,
+    metricsCfg,
+    badgeUsesRightGutter,
+    xAxisCfg,
     formatValue,
-    currentValue: valueLayoutSample,
-    pulse: pulseConfig,
-    dotGlow: dotCfg.glow,
+    pulseConfig,
+    dotCfg,
     volumeBandHeight,
   });
 
@@ -770,8 +1684,22 @@ function useLiveChartController({
   // ── Engine ─────────────────────────────────────────────────────────────
   // Line mode: tick + paths use `lineEngineData` (stash when reversing). Candle mode:
   // parent `data` stays tick/line-morph input; OHLC uses candlesEngine + liveEngine.
+  const engineModeInputs = resolveLiveEngineModeInputs({
+    isCandle,
+    data,
+    lineEngineData,
+    candles,
+    candlesEngine,
+    liveCandle,
+    liveEngine,
+    candleGapsCfg,
+    thresholdInRange,
+    thresholdIsSeries,
+    thresholdSeriesSV,
+    thresholdCfg,
+  });
   const engine = useLiveChartEngine({
-    data: isCandle ? data : lineEngineData,
+    ...engineModeInputs,
     value,
     timeWindow,
     paused,
@@ -785,28 +1713,12 @@ function useLiveChartController({
     exaggerate,
     referenceValues: refValues,
     liveReferenceValues: liveRefValues,
-    // Series threshold with `includeInRange`: the tick folds its window min/max
-    // into the Y-range fit (the constant form rides `liveReferenceValues`).
-    thresholdRangePoints:
-      thresholdInRange && thresholdIsSeries
-        ? (thresholdSeriesSV ?? (thresholdCfg?.value as LiveChartPoint[]))
-        : undefined,
-    thresholdRangeExtendToNow: thresholdCfg?.extendToNow ?? true,
     nonNegative,
     maxValue,
     yRangeScale,
     windowBuffer,
     nowOverride,
     mode,
-    candles: isCandle ? candlesEngine : candles,
-    liveCandle: isCandle ? liveEngine : liveCandle,
-    candleGaps: candleGapsCfg?.gaps,
-    candleGapBridgeNoTrades:
-      Boolean(candleGapsCfg?.styles["no-trades"].bridge),
-    candleGapBridgeUnavailable:
-      Boolean(candleGapsCfg?.styles.unavailable.bridge),
-    candleGapBridgeUnknown:
-      Boolean(candleGapsCfg?.styles.unknown.bridge),
   });
 
   // Mirror the UI-thread scroll state to React so the floating y-axis can keep
@@ -836,174 +1748,48 @@ function useLiveChartController({
   // ── Per-frame derived values ───────────────────────────────────────────
   const { layoutWidth, layoutHeight, onLayout } = useCanvasLayout(engine);
 
-  // Reference-line grouping: cluster Form-A lines by their per-frame value-Y so a
-  // stack of nearby orders collapses into one count handle. `groupHidden` suppresses
-  // the clustered lines' individual tags; the count pills read `refGroupResult`.
-  // Identity-stable (no work) when grouping is off.
-  const refGroupResult = useDerivedValue<ReferenceGrouping>(() => {
-    if (refGroupingRadius == null) return EMPTY_GROUPING;
-    const ch = engine.canvasHeight.get();
-    const dMin = engine.displayMin.get();
-    const dMax = engine.displayMax.get();
-    const top = effectivePadding.top;
-    const bottom = ch - effectivePadding.bottom;
-    const ys: number[] = [];
-    for (let i = 0; i < allRefLines.length; i++) {
-      const l = allRefLines[i];
-      // Skip bands and lines a custom `renderReferenceLine` owns — a custom tag
-      // draws itself and isn't suppressed by grouping, so folding it into a
-      // built-in count pill would double-count it (counted *and* still shown).
-      if (
-        referenceLineForm(l) !== "line" ||
-        l.value === undefined ||
-        refLineCustom[i] ||
-        refLineOffAxisCustom[i]
-      ) {
-        ys.push(-1);
-        continue;
-      }
-      const v = dragValues.get()[i] ?? l.value;
-      const y = computeScrubDotY(
-        v,
-        dMin,
-        dMax,
-        ch,
-        top,
-        effectivePadding.bottom,
-      );
-      ys.push(y < 0 ? -1 : Math.min(bottom, Math.max(top, y)));
-    }
-    return groupReferenceLines(ys, refGroupingRadius);
+  const { refGroupResult, groupHidden } = useReferenceLineGrouping({
+    radius: refGroupingRadius,
+    engine,
+    padding: effectivePadding,
+    lines: allRefLines,
+    custom: refLineCustom,
+    offAxisCustom: refLineOffAxisCustom,
+    dragValues,
   });
-  const groupHidden = useDerivedValue<boolean[]>(
-    () => refGroupResult.get().hidden,
-  );
 
   // Threshold split geometry. Two forms, picked at render by `Array.isArray` (no
   // SharedValue read): a constant `SharedValue<number>` benchmark drives the
   // vertical hard-stop gradient (`thresholdGeom`); a time-varying `LiveChartPoint[]`
   // series drives the per-fragment split shader (`thresholdSeriesGeom`). Both hooks
   // run unconditionally — the unused one short-circuits cheaply on the UI thread.
-  const thresholdValue = thresholdCfg?.value ?? emptyThresholdValue;
-  // An empty series (e.g. threshold history not fetched yet) must not paint: no
-  // band, no shader-forced stroke color — unlike the constant form, "no points
-  // yet" is a reachable state and should look like "no threshold". For the live
-  // `series` SharedValue form the emptiness lives on the UI thread, so mirror it
-  // to React state (fires only on empty↔non-empty transitions).
-  const [svSeriesNonEmpty, setSvSeriesNonEmpty] = useState(false);
-  useAnimatedReaction(
-    () => (thresholdSeriesSV ? thresholdSeriesSV.get().length > 0 : false),
-    /* istanbul ignore next -- Reanimated reaction; state mirrored on the JS thread, not exercised under Jest */
-    (hasPts, prev) => {
-      if (hasPts !== prev) scheduleOnRN(setSvSeriesNonEmpty, hasPts);
-    },
-  );
-  const thresholdSeriesHasPoints = thresholdSeriesSV
-    ? svSeriesNonEmpty
-    : Array.isArray(thresholdCfg?.value) && thresholdCfg.value.length > 0;
-  const thresholdGeom = useThreshold(engine, effectivePadding, thresholdValue);
-  const thresholdSeriesGeom = useThresholdSeries(
+  const {
+    thresholdGeom,
+    thresholdStrokeColors,
+    thresholdFillColors,
+    thresholdSeriesHasPoints,
+    thresholdStrokeUniforms,
+    thresholdFillUniforms,
+    thresholdMarkerLineY,
+    thresholdMarkerVisible,
+    thresholdBadgeVisible,
+    thresholdMarkerValue,
+    thresholdCustomBadge,
+    thresholdSeriesPts,
+    thresholdFillLineY,
+    thresholdFillSamples,
+  } = useLiveChartThresholdModel({
     engine,
-    effectivePadding,
-    thresholdValue,
+    padding: effectivePadding,
+    thresholdCfg,
     thresholdSeriesSV,
-    thresholdCfg?.extendToNow ?? true,
-    thresholdCfg?.line?.labelAnchor ?? "last",
-  );
-  const thresholdStopColors = thresholdCfg
-    ? thresholdStops(thresholdCfg, palette)
-    : null;
-
-  // Split colors as vec4s for the series shader, memoized on the *resolved*
-  // color strings + opacity (so a threshold added after mount with default
-  // colors still computes, and the per-frame uniforms worklet isn't rebuilt
-  // every render). `strokeRest` is the plain line color painted right of the
-  // `extendToNow: false` cutoff.
-  const thresholdSplitAbove = thresholdCfg
-    ? (thresholdCfg.aboveColor ?? palette.candleUp)
-    : null;
-  const thresholdSplitBelow = thresholdCfg
-    ? (thresholdCfg.belowColor ?? palette.candleDown)
-    : null;
-  const thresholdFillOpacity =
-    thresholdCfg?.fillOpacity ?? THRESHOLD_FILL_OPACITY_DEFAULT;
-  const thresholdLineColorStr = lineProp?.color ?? palette.line;
-  const thresholdVecs = useMemo(
-    () =>
-      thresholdSplitAbove !== null && thresholdSplitBelow !== null
-        ? {
-            ...thresholdSplitColorVecs(
-              thresholdSplitAbove,
-              thresholdSplitBelow,
-              thresholdFillOpacity,
-            ),
-            strokeRest: (() => {
-              const [r, g, b, a] = parseColorRgba(thresholdLineColorStr);
-              return [r / 255, g / 255, b / 255, a];
-            })(),
-          }
-        : null,
-    [
-      thresholdSplitAbove,
-      thresholdSplitBelow,
-      thresholdFillOpacity,
-      thresholdLineColorStr,
-    ],
-  );
-  const thresholdStrokeUniforms = useThresholdSplitUniforms(
-    thresholdSeriesGeom.samples,
-    engine,
-    effectivePadding,
-    thresholdVecs?.strokeAbove ?? THRESHOLD_FALLBACK_COLOR,
-    thresholdVecs?.strokeBelow ?? THRESHOLD_FALLBACK_COLOR,
-    thresholdVecs?.strokeRest ?? THRESHOLD_FALLBACK_COLOR,
-    thresholdSeriesGeom.clipRightX,
-  );
-  const thresholdFillUniforms = useThresholdSplitUniforms(
-    thresholdSeriesGeom.samples,
-    engine,
-    effectivePadding,
-    thresholdVecs?.fillAbove ?? THRESHOLD_FALLBACK_COLOR,
-    thresholdVecs?.fillBelow ?? THRESHOLD_FALLBACK_COLOR,
-    TRANSPARENT_VEC4,
-    thresholdSeriesGeom.clipRightX,
-  );
-
-  // Marker line + badge sources: a series badge independently selects its first
-  // or last visible endpoint; the constant case stays at the single benchmark Y.
-  // The badge gets its own visibility because its selected endpoint can be
-  // off-plot while older polyline segments are still visible.
-  const thresholdMarkerLineY = thresholdIsSeries
-    ? thresholdSeriesGeom.badgeLineY
-    : thresholdGeom.lineY;
-  const thresholdMarkerVisible = thresholdIsSeries
-    ? thresholdSeriesGeom.visible
-    : thresholdGeom.visible;
-  const thresholdBadgeVisible = thresholdIsSeries
-    ? thresholdSeriesGeom.badgeVisible
-    : thresholdGeom.visible;
-  const thresholdMarkerValue =
-    thresholdCfg && !thresholdIsSeries && !Array.isArray(thresholdCfg.value)
-      ? (thresholdCfg.value ?? thresholdSeriesGeom.badgeValue)
-      : thresholdSeriesGeom.badgeValue;
-  const hasCustomThresholdBadge =
-    thresholdCfg?.line != null && renderThresholdBadge != null;
-  const thresholdMarkerValueStr = useDerivedValue(() =>
-    hasCustomThresholdBadge ? formatValue(thresholdMarkerValue.get()) : "",
-  );
-  const thresholdCustomBadge =
-    thresholdCfg?.line && renderThresholdBadge
-      ? renderThresholdBadge({
-          line: thresholdCfg.line,
-          value: thresholdMarkerValue,
-          valueStr: thresholdMarkerValueStr,
-          y: thresholdMarkerLineY,
-          visible: thresholdBadgeVisible,
-        })
-      : null;
-  const thresholdSeriesPts = thresholdIsSeries
-    ? thresholdSeriesGeom.screenPts
-    : undefined;
+    thresholdIsSeries,
+    emptyThresholdValue,
+    palette,
+    lineProp,
+    renderThresholdBadge,
+    formatValue,
+  });
 
   // Straight polyline instead of the monotone cubic when line.curve === "linear".
   // Shared by the path builders and the marker anchoring so glyphs sit on the
@@ -1016,7 +1802,7 @@ function useLiveChartController({
     reveal.morphT,
     // Constant threshold band closes at a single Y (the series closes along the
     // polyline passed as the last arg below).
-    thresholdCfg?.fill && !thresholdIsSeries ? thresholdGeom.lineY : undefined,
+    thresholdFillLineY,
     lineIsLinear,
     // The plotted line independently selects the visible edge while historical;
     // badge/live-indicator options affect overlays only.
@@ -1027,9 +1813,7 @@ function useLiveChartController({
     // (so the band matches the shader and doesn't bleed at step risers). An empty
     // series builds no band (its samples are all the far-below fallback, which
     // would tint the entire area under the line).
-    thresholdCfg?.fill && thresholdSeriesHasPoints
-      ? thresholdSeriesGeom.samples
-      : undefined,
+    thresholdFillSamples,
     lineProp?.simplify,
     lineGapsCfg?.gaps,
   );
@@ -1037,17 +1821,11 @@ function useLiveChartController({
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config
   // `opacity` folded into the alpha. Defaults to a faint tint of the line/accent
   // color (theme-aware) so out-of-the-box dots read as a subtle field.
-  const areaDotRgb = parseColorRgb(lineProp?.color ?? palette.line);
-  const [adR, adG, adB, adA] = parseColorRgba(
-    areaDotsCfg?.color ??
-      `rgba(${areaDotRgb[0]}, ${areaDotRgb[1]}, ${areaDotRgb[2]}, 0.22)`,
+  const areaDotColorVec = resolveAreaDotColorVec(
+    areaDotsCfg,
+    lineProp,
+    palette,
   );
-  const areaDotColorVec = [
-    adR / 255,
-    adG / 255,
-    adB / 255,
-    adA * (areaDotsCfg?.opacity ?? 1),
-  ];
 
   const { dotX, dotY } = useLiveDot(
     engine,
@@ -1078,33 +1856,31 @@ function useLiveChartController({
     isCandle,
   );
 
-  // ── Overlay hooks ─────────────────────────────────────────────────────
-  // Scrub/crosshair must see the same stash-backed candles as the engine.
-  const crosshairChartOpts = isCandle
-    ? {
-        mode,
-        candles: candlesEngine,
-        liveCandle: liveEngine,
-        candleWidthSecs: candleWidth,
-        gaps: candleGapsCfg?.gaps,
-        bridgeNoTrades:
-          Boolean(candleGapsCfg?.styles["no-trades"].bridge),
-        bridgeUnavailable:
-          Boolean(candleGapsCfg?.styles.unavailable.bridge),
-        bridgeUnknown: Boolean(candleGapsCfg?.styles.unknown.bridge),
-      }
-    : lineGapsCfg
-      ? {
-          mode,
-          gaps: lineGapsCfg.gaps,
-          bridgeNoTrades: Boolean(lineGapsCfg.styles["no-trades"].bridge),
-          bridgeUnavailable: Boolean(lineGapsCfg.styles.unavailable.bridge),
-          bridgeUnknown: Boolean(lineGapsCfg.styles.unknown.bridge),
-        }
-      : undefined;
-
-  const markersActive = markers != null;
-  const markerClusterCfg = resolveMarkerCluster(markerCluster);
+  const {
+    crosshairChartOpts,
+    markersActive,
+    markerClusterCfg,
+    refPressActive,
+    refDragEnabled,
+    scrollGestureMode,
+    scrubHoldMs,
+  } = resolveLiveChartInteractionConfig({
+    isCandle,
+    mode,
+    candlesEngine,
+    liveEngine,
+    candleWidth,
+    candleGapsCfg,
+    lineGapsCfg,
+    markers,
+    markerCluster,
+    onReferenceLinePress,
+    allRefLines,
+    isStatic,
+    timeScroll,
+    timeScrollEnabled,
+    scrubCfg,
+  });
   // `projected` is used internally by the hit-test gesture; the overlay
   // self-projects, so we only need the gesture + hit-test here. Built BEFORE
   // `useCrosshair` so the scrub-action tap can defer to a marker under the finger.
@@ -1124,7 +1900,6 @@ function useLiveChartController({
 
   // Pressable reference-line badges (working orders / alerts). Built before
   // `useCrosshair` so the scrub-action tap can defer to a badge under the finger.
-  const refPressActive = onReferenceLinePress != null && allRefLines.length > 0;
   const { tapGesture: refLineTapGesture, hitTest: refLineHitTest } =
     useReferenceLinePress(
       engine,
@@ -1143,8 +1918,6 @@ function useLiveChartController({
   // unconditionally for stable hook order (and before `useCrosshair` so the scrub
   // can defer to a line under the finger); the gesture self-disables when no line
   // opts in, and it's only composed into the root when `refDragEnabled`.
-  const refDragEnabled =
-    !isStatic && allRefLines.some((l) => l.draggable === true);
   const { gesture: refDragGesture, hitTest: refDragHitTest } = useReferenceDrag(
     engine,
     effectivePadding,
@@ -1164,24 +1937,6 @@ function useLiveChartController({
     return markerHitTest(x, y) || refLineHitTest(x, y) || refDragHitTest(x, y);
   };
 
-  // Time-scroll activation. `holdToScrub`: a quick one-finger drag scrolls while
-  // scrub engages on press-and-hold — so the scrub gesture needs a long-press
-  // delay (unless the caller set its own `panGestureDelay`). `timeScrollEnabled`
-  // is computed earlier (it gates the float gutter).
-  const scrollGestureMode =
-    typeof timeScroll === "object"
-      ? (timeScroll.gesture ?? "holdToScrub")
-      : "holdToScrub";
-  // In holdToScrub the scrub MUST require a hold so a quick drag scrolls instead.
-  // Precedence: explicit timeScroll.scrubHoldMs, then scrub.panGestureDelay, then
-  // the default. `||` (not `??`) skips the resolved panGestureDelay's 0 default.
-  const timeScrollHoldMs =
-    typeof timeScroll === "object" ? timeScroll.scrubHoldMs : undefined;
-  const scrubHoldMs =
-    timeScrollEnabled && scrollGestureMode === "holdToScrub"
-      ? (timeScrollHoldMs ?? (scrubCfg?.panGestureDelay || HOLD_TO_SCRUB_MS))
-      : (scrubCfg?.panGestureDelay ?? 0);
-
   // Cross-gesture arbitration for the one-finger touch. `Gesture.Race` below is
   // NOT arbitration — RNGH's Race adds no relation between its children, so both
   // pans recognize independently and each can activate while the other already
@@ -1189,6 +1944,18 @@ function useLiveChartController({
   // long-press guard) makes "the scroll already won" a hard fact; `scrubActive`
   // (written by the crosshair, read by the scroll pan) is the mirror image.
   const scrollActive = useSharedValue(false);
+
+  const crosshairSettings = resolveCrosshairControllerSettings({
+    scrubCfg,
+    scrubActionCfg,
+    markersActive,
+    refPressActive,
+    refDragEnabled,
+    deferTapHit,
+    timeScrollEnabled,
+    scrollGestureMode,
+    effectivePadding,
+  });
 
   const crosshair = useCrosshair(
     engine,
@@ -1200,7 +1967,7 @@ function useLiveChartController({
     // Scrub / scrub-action stay live even on static charts: the gesture is
     // event-driven (no per-frame loop), so a settled chart costs nothing at rest
     // yet becomes scrubbable on touch. `static` only kills the continuous loop.
-    scrubCfg !== null || scrubActionCfg !== null,
+    crosshairSettings.enabled,
     onScrub,
     crosshairChartOpts,
     scrubHoldMs,
@@ -1209,20 +1976,15 @@ function useLiveChartController({
     scrubActionCfg,
     onScrubAction,
     metricsCfg.badge,
-    markersActive || refPressActive || refDragEnabled ? deferTapHit : undefined,
-    scrubCfg?.tooltipPlacement ?? "side",
-    scrubCfg?.tooltipShowValue ?? true,
-    scrubCfg?.tooltipShowTime ?? true,
-    scrubCfg?.tooltipMargin ?? 8,
-    // Axis-drag time-scroll: keep the bottom "time ruler" band scroll-only so a
-    // drag there never trips the scrub crosshair.
-    timeScrollEnabled && scrollGestureMode === "axisDrag"
-      ? Math.max(effectivePadding.bottom, AXIS_GRAB_MIN_PX)
-      : 0,
+    crosshairSettings.deferTapHit,
+    crosshairSettings.tooltipPlacement,
+    crosshairSettings.tooltipShowValue,
+    crosshairSettings.tooltipShowTime,
+    crosshairSettings.tooltipMargin,
+    crosshairSettings.scrubBottomExclude,
     scrollActive,
-    scrubCfg?.clampToPlot ?? false,
-    // Candle mode: snap the crosshair to candle centers (tick-to-tick).
-    scrubCfg?.snapToCandles ?? false,
+    crosshairSettings.clampToPlot,
+    crosshairSettings.snapToCandles,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -1276,77 +2038,12 @@ function useLiveChartController({
     },
   });
 
-  // Axis auto-hide: fade both axes out at rest and back in while the user
-  // interacts. Any movement — scrub / time-scroll touch, or a viewEnd /
-  // viewWindow change (fling momentum, pinch-zoom) — shows the axes; once the
-  // touch lifts and the view settles, they fade back out after `hideAfterMs`.
-  // Only the axis groups' opacity animates; the axis worklets keep running
-  // underneath so a fade-in shows current labels.
-  const axisAutoHideCfg =
-    axisAutoHide === true ? {} : axisAutoHide === false ? null : axisAutoHide;
-  const axisIdleOpacity = axisAutoHideCfg?.idleOpacity ?? 0;
-  const axisFadeInMs = axisAutoHideCfg?.fadeInMs ?? 60;
-  const axisFadeOutMs = axisAutoHideCfg?.fadeOutMs ?? 250;
-  const axisHideAfterMs = axisAutoHideCfg?.hideAfterMs ?? 3000;
-  const axisAutoHideOpacity = useSharedValue(
-    axisAutoHideCfg ? axisIdleOpacity : 1,
-  );
-  const axisAutoHideEnabled = axisAutoHideCfg !== null;
-  const lastAxisAutoHide = useRef({
-    enabled: axisAutoHideEnabled,
-    idleOpacity: axisIdleOpacity,
+  const axisAutoHideOpacity = useAxisAutoHide({
+    config: axisAutoHide,
+    scrollActive,
+    scrubActive: crosshairScrubActive,
+    engine,
   });
-  // `useSharedValue` only reads its initial value on mount. Keep prop changes
-  // in sync as well: turning auto-hide off must immediately restore the axes,
-  // and turning it on starts from the configured idle opacity.
-  useEffect(() => {
-    if (
-      lastAxisAutoHide.current.enabled === axisAutoHideEnabled &&
-      lastAxisAutoHide.current.idleOpacity === axisIdleOpacity
-    ) {
-      return;
-    }
-    lastAxisAutoHide.current = {
-      enabled: axisAutoHideEnabled,
-      idleOpacity: axisIdleOpacity,
-    };
-    cancelAnimation(axisAutoHideOpacity);
-    axisAutoHideOpacity.value = axisAutoHideEnabled ? axisIdleOpacity : 1;
-  }, [axisAutoHideEnabled, axisAutoHideOpacity, axisIdleOpacity]);
-  useAnimatedReaction(
-    () => ({
-      gesture: scrollActive.value || crosshairScrubActive.value,
-      viewEnd: engine.viewEnd.value,
-      viewWindow: engine.viewWindow.value,
-    }),
-    (curr, prev) => {
-      if (!axisAutoHideEnabled || prev === null) return;
-      const moved =
-        curr.gesture !== prev.gesture ||
-        curr.viewEnd !== prev.viewEnd ||
-        curr.viewWindow !== prev.viewWindow;
-      if (!moved) return;
-      cancelAnimation(axisAutoHideOpacity);
-      axisAutoHideOpacity.value = curr.gesture
-        ? withTiming(1, { duration: axisFadeInMs })
-        : // Movement without a held touch (gesture end, fling, pinch): show,
-          // then fade back out once the chart goes untouched for a while.
-          withSequence(
-            withTiming(1, { duration: axisFadeInMs }),
-            withDelay(
-              axisHideAfterMs,
-              withTiming(axisIdleOpacity, { duration: axisFadeOutMs }),
-            ),
-          );
-    },
-    [
-      axisAutoHideEnabled,
-      axisIdleOpacity,
-      axisFadeInMs,
-      axisFadeOutMs,
-      axisHideAfterMs,
-    ],
-  );
 
   // Paging callbacks: report the visible range / proximity to the oldest data so
   // a host can lazily load history. Inert unless a callback is supplied.
@@ -1361,59 +2058,21 @@ function useLiveChartController({
   // ahead of the pan via Exclusive, so a tap is tried first and only becomes a
   // drag (live-scrub, or lock-adjust once placed) if the finger moves. `Exclusive`
   // (not `Race`) prevents a jittery tap from being swallowed by the pan.
-  const baseGesture =
-    scrubActionCfg !== null && crosshair.tapGesture
-      ? Gesture.Exclusive(crosshair.tapGesture, crosshair.gesture)
-      : crosshair.gesture;
-
-  // Overlay taps that hit-test discrete targets (marker dots, reference-line
-  // badges). They must all see each tap, so they're combined with `Simultaneous`
-  // (not `Race`, which cancels the loser and would drop one). The scrub-action
-  // action tap defers to them via `deferTapHit`, so a tap on an overlay is routed
-  // there instead of placing a reticle.
-  const overlayTaps = [
-    markersActive ? markerTapGesture : null,
-    refPressActive ? refLineTapGesture : null,
-  ].filter((g): g is NonNullable<typeof g> => g !== null);
-
-  let rootGesture = baseGesture;
-  if (overlayTaps.length > 0) {
-    const tapGroup =
-      overlayTaps.length === 1
-        ? overlayTaps[0]
-        : Gesture.Simultaneous(overlayTaps[0], overlayTaps[1]);
-    // Always `Simultaneous`, never `Race`: on iOS the scrub pan uses
-    // `minDistance(0)`, so in a `Race` it activates on touch-down and cancels the
-    // overlay tap before it can recognize — `onMarkerPress`/`onReferenceLinePress`
-    // would never fire. Sharing the gesture space lets the tap recognize; the pan
-    // defers to a marker/badge under the finger via `deferTapHit` (see
-    // `useCrosshair`'s scrub `onStart`) so no stray crosshair is dropped there.
-    rootGesture = Gesture.Simultaneous(baseGesture, tapGroup);
-  }
-
-  // Compose the pan-scroll gesture. holdToScrub races the scrub/tap gestures (a
-  // quick drag scrolls; a still press-hold falls through to scrub). Axis-drag
-  // goes first via Exclusive: it fails instantly outside the axis band, so scrub
-  // runs everywhere else.
-  if (timeScrollEnabled) {
-    rootGesture =
-      scrollGestureMode === "axisDrag"
-        ? Gesture.Exclusive(panScrollGesture, rootGesture)
-        : Gesture.Race(panScrollGesture, rootGesture);
-  }
-
-  // Draggable reference lines take priority: a vertical grab on a line drags it.
-  // The manual-activation pan fails fast off any line (or on horizontal intent), so
-  // Exclusive falls through to scrub / scroll everywhere else.
-  if (refDragEnabled) {
-    rootGesture = Gesture.Exclusive(refDragGesture, rootGesture);
-  }
-
-  // Pinch runs alongside everything else (two-finger, so it never competes with
-  // the one-finger pan/scrub/tap gestures for the same touch).
-  if (zoomEnabled) {
-    rootGesture = Gesture.Simultaneous(rootGesture, pinchZoomGesture);
-  }
+  const rootGesture = composeLiveChartRootGesture({
+    crosshair,
+    markerTapGesture,
+    refLineTapGesture,
+    refDragGesture,
+    panScrollGesture,
+    pinchZoomGesture,
+    markersActive,
+    refPressActive,
+    refDragEnabled,
+    scrubActionActive: scrubActionCfg !== null,
+    timeScrollEnabled,
+    scrollGestureMode,
+    zoomEnabled,
+  });
 
   // ── Derived render values ──────────────────────────────────────────────
   const {
@@ -1446,49 +2105,33 @@ function useLiveChartController({
   // A dot that tracks the true live point while parked is exempt from the
   // scroll-back hide: it no longer marks an off-screen price, and it hides
   // itself once the live point leaves the window (`useLiveDot`'s sentinel).
-  const liveDotOpacity = useDerivedValue(
-    () =>
-      reveal.dotOpacity.value *
-      (selectionDotDuringScrub && crosshairScrubActive.value ? 0 : 1) *
-      liveIndicatorScrollOpacity(
-        hideLiveOnScrollBack && !dotTracksParked,
-        engine.viewEnd.value,
-      ) *
-      seriesIndicatorOpacity.value,
-  );
-  // Same scrolled-back gating for the value line: it would draw a dashed line
-  // at the live value's Y — a price that isn't in the scrolled-back view.
-  const valueLineOpacity = useDerivedValue(
-    () =>
-      reveal.lineOpacity.value *
-      liveIndicatorScrollOpacity(hideLiveOnScrollBack, engine.viewEnd.value) *
-      resolvedSeriesOpacity.value,
-  );
-  const liveBadgeOpacity = useDerivedValue(
-    () =>
-      reveal.badgeOpacity.value *
-      liveIndicatorScrollOpacity(hideLiveOnScrollBack, engine.viewEnd.value) *
-      resolvedSeriesOpacity.value,
-  );
-
-  // Fade the annotation overlays (markers + reference lines) out while scrubbing
-  // when `scrub.hideOverlays` is set. Eased off the scrub-ACTIVE flag — not the
-  // crosshair's edge-proximity fade, which drops to 0 near the live dot and would
-  // resurface the overlays mid-scrub. Only this group opacity animates; the
-  // marker atlas / reference-line draws stay intact (one batched draw each).
   const fadeOverlaysOnScrub =
     !isStatic && scrubCfg !== null && scrubCfg.hideOverlaysOnScrub === true;
-  const overlayScrubFade = useDerivedValue(() =>
-    fadeOverlaysOnScrub
-      ? withTiming(crosshairScrubActive.get() ? 0 : 1, {
-          duration: SCRUB_OVERLAY_FADE_MS,
-        })
-      : 1,
-  );
-  // Markers already fade with the dot reveal; fold the scrub-hide fade in too.
-  const markerGroupOpacity = useDerivedValue(
-    () => reveal.dotOpacity.get() * overlayScrubFade.get(),
-  );
+  const {
+    liveDotOpacity,
+    valueLineOpacity,
+    liveBadgeOpacity,
+    overlayScrubFade,
+    markerGroupOpacity,
+  } = useLiveIndicatorOpacities({
+    reveal,
+    seriesIndicatorOpacity,
+    seriesOpacity: resolvedSeriesOpacity,
+    scrubActive: crosshairScrubActive,
+    selectionDotDuringScrub,
+    hideLiveOnScrollBack,
+    dotTracksParked,
+    viewEnd: engine.viewEnd,
+    fadeOverlaysOnScrub,
+  });
+  const modelDefaults = resolveLiveChartModelDefaults({
+    isCandle,
+    candleWidth,
+    loadingCfg,
+    volumeCfg,
+    palette,
+    lineProp,
+  });
 
   return {
     // passthrough props the render needs
@@ -1505,9 +2148,7 @@ function useLiveChartController({
     formatTime,
     isCandle,
     isStatic,
-    // Half a candle width (seconds) so an "extrema" axis label's dot lands on the
-    // candle's drawn center, not its bucket-start (left) edge. 0 in line mode.
-    extremaTimeOffset: isCandle ? candleWidth / 2 : 0,
+    ...modelDefaults,
     // configs
     yAxisCfg,
     yAxisFloat: effectiveYAxisFloat,
@@ -1548,8 +2189,8 @@ function useLiveChartController({
     hasRecolorSegments,
     thresholdCfg,
     thresholdGeom,
-    thresholdStrokeColors: thresholdStopColors?.stroke ?? null,
-    thresholdFillColors: thresholdStopColors?.fill ?? null,
+    thresholdStrokeColors,
+    thresholdFillColors,
     // Time-varying threshold (a `LiveChartPoint[]` series): the per-fragment split
     // shader + polyline marker, vs. the constant case's gradient.
     thresholdIsSeries,
@@ -1576,12 +2217,6 @@ function useLiveChartController({
     reveal,
     loadingActive,
     axisAutoHideOpacity,
-    // loading shell styling (null → not loading)
-    loadingLineColor: loadingCfg?.color,
-    loadingStrokeWidth: loadingCfg?.strokeWidth,
-    loadingAmplitude: loadingCfg?.amplitude,
-    loadingSpeed: loadingCfg?.speed,
-    loadingAxisLabels: loadingCfg?.axisLabels ?? true,
     // derived render values
     backgroundColor,
     gradientEnd,
@@ -1609,9 +2244,6 @@ function useLiveChartController({
     // the candle palette). The reserved band height is read by the x-axis.
     volumeActive: volumeCfg !== null,
     volumeBandHeight,
-    volumeOpacity: volumeCfg?.opacity ?? 1,
-    volumeUpColor: volumeCfg?.upColor ?? palette.candleUp,
-    volumeDownColor: volumeCfg?.downColor ?? palette.candleDown,
     dotX,
     dotY,
     liveDotOpacity,
@@ -1632,7 +2264,6 @@ function useLiveChartController({
     renderOverlay,
     // selection dot: resolved config + fallback color (the chart line/accent color)
     selectionDot: selectionDotCfg,
-    selectionColor: lineProp?.color ?? palette.line,
     // RN axis edge labels (floated over the canvas as a sibling layer)
     topLabelCfg,
     bottomLabelCfg,
@@ -1981,11 +2612,7 @@ function ChartCandleGapLayer({
     model.metricsCfg.candle,
   );
   const batch = (
-    <GapBridgePathBatch
-      paths={paths}
-      config={config}
-      palette={model.palette}
-    />
+    <GapBridgePathBatch paths={paths} config={config} palette={model.palette} />
   );
   return focusOtherCandles ? (
     <>
@@ -2002,17 +2629,9 @@ function ChartCandleGapLayer({
 /** Line-mode bridge paths live in a child so candle charts register no worklets. */
 function ChartLineGapLayer({ model }: { model: LiveChartModel }) {
   const config = model.lineGapsCfg!;
-  const paths = useLineGapPaths(
-    model.engine,
-    model.effectivePadding,
-    config,
-  );
+  const paths = useLineGapPaths(model.engine, model.effectivePadding, config);
   return (
-    <GapBridgePathBatch
-      paths={paths}
-      config={config}
-      palette={model.palette}
-    />
+    <GapBridgePathBatch paths={paths} config={config} palette={model.palette} />
   );
 }
 
@@ -2237,6 +2856,113 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
   );
 }
 
+function ChartLineStrokeShader({ model }: { model: LiveChartModel }) {
+  const {
+    engine,
+    effectivePadding,
+    palette,
+    resolvedSegments,
+    hasRecolorSegments,
+    crosshair,
+    thresholdCfg,
+    thresholdGeom,
+    thresholdStrokeColors,
+    thresholdIsSeries,
+    thresholdSeriesHasPoints,
+    thresholdStrokeUniforms,
+    lineProp,
+    layoutWidth,
+  } = model;
+  if (thresholdIsSeries) {
+    return thresholdSeriesHasPoints ? (
+      <ThresholdSplitShader uniforms={thresholdStrokeUniforms} />
+    ) : null;
+  }
+  if (thresholdCfg && thresholdStrokeColors) {
+    return (
+      <LinearGradient
+        start={vec(0, 0)}
+        end={thresholdGeom.gradientEnd}
+        colors={thresholdStrokeColors}
+        positions={thresholdGeom.splitPositions}
+      />
+    );
+  }
+  if (hasRecolorSegments) {
+    return (
+      <SegmentLineGradient
+        engine={engine}
+        segments={resolvedSegments}
+        padding={effectivePadding}
+        baseColor={lineProp?.color ?? palette.line}
+        scrubX={crosshair.scrubX}
+        scrubActive={crosshair.scrubActive}
+      />
+    );
+  }
+  if (!lineProp?.colors?.length) return null;
+  return (
+    <LinearGradient
+      start={vec(0, 0)}
+      end={vec(layoutWidth, 0)}
+      colors={lineProp.colors}
+    />
+  );
+}
+
+function ChartMainPlotLayer({
+  model,
+  yAxisEntries,
+}: {
+  model: LiveChartModel;
+  yAxisEntries: YAxisEntries | null;
+}) {
+  const {
+    engine,
+    effectivePadding,
+    palette,
+    lineGroupOpacity,
+    seriesOpacity,
+    linePath,
+    lineGapsCfg,
+    strokeWidth,
+    lineProp,
+    isCandle,
+    xAxisCfg,
+    yAxisCfg,
+    yAxisFloat,
+  } = model;
+
+  return (
+    <>
+      <Group opacity={seriesOpacity}>
+        <Group opacity={lineGroupOpacity}>
+          <Path
+            path={linePath}
+            style="stroke"
+            strokeWidth={strokeWidth}
+            strokeCap={lineProp?.cap ?? "round"}
+            strokeJoin={lineProp?.join ?? "round"}
+            color={lineProp?.color ?? palette.line}
+          >
+            <ChartLineStrokeShader model={model} />
+          </Path>
+          {lineGapsCfg ? <ChartLineGapLayer model={model} /> : null}
+        </Group>
+      </Group>
+      {isCandle ? <ChartCandleLayer model={model} /> : null}
+      {yAxisCfg && yAxisFloat ? (
+        <ChartYAxisLayer
+          model={model}
+          variant="labels"
+          entries={yAxisEntries!}
+        />
+      ) : null}
+      {xAxisCfg ? <ChartXAxisLayer model={model} /> : null}
+    </>
+  );
+}
+
 /** Main shaken chart stack drawn ABOVE the left-edge fade so the line stays crisp:
  *  segment dividers, value/reference lines, the line/candles, axes, dot, degen,
  *  markers, and the loading/empty art. Background fills are in `ChartFillLayer`
@@ -2380,74 +3106,7 @@ function ChartStack({
         />
       )}
 
-      {/* Chart line (fades out in candle mode). When segments recolor the line, a
-          full-width gradient paints the base color outside segments and each
-          segment's color within — so the line itself is recolored/faded (alpha in
-          the segment color reduces the line's opacity), not covered by an overlay. */}
-      <Group opacity={seriesOpacity}>
-        <Group opacity={lineGroupOpacity}>
-          <Path
-            path={linePath}
-            style="stroke"
-            strokeWidth={strokeWidth}
-            strokeCap={lineProp?.cap ?? "round"}
-            strokeJoin={lineProp?.join ?? "round"}
-            color={lineProp?.color ?? palette.line}
-          >
-            {thresholdIsSeries ? (
-              // Time-varying split: a per-fragment shader colors the stroke above/
-              // below the threshold polyline. Supersedes line.colors + segments.
-              // An empty series renders no paint child → the plain stroke color
-              // (null here keeps the empty case out of the NaN constant gradient).
-              thresholdSeriesHasPoints ? (
-                <ThresholdSplitShader uniforms={thresholdStrokeUniforms} />
-              ) : null
-            ) : thresholdCfg && thresholdStrokeColors ? (
-              // Vertical hard split at the threshold Y — supersedes line.colors and
-              // segment recoloring for the stroke while a threshold is set.
-              <LinearGradient
-                start={vec(0, 0)}
-                end={thresholdGeom.gradientEnd}
-                colors={thresholdStrokeColors}
-                positions={thresholdGeom.splitPositions}
-              />
-            ) : hasRecolorSegments ? (
-              <SegmentLineGradient
-                engine={engine}
-                segments={resolvedSegments}
-                padding={effectivePadding}
-                baseColor={lineProp?.color ?? palette.line}
-                scrubX={crosshair.scrubX}
-                scrubActive={crosshair.scrubActive}
-              />
-            ) : lineProp?.colors?.length ? (
-              <LinearGradient
-                start={vec(0, 0)}
-                end={vec(layoutWidth, 0)}
-                colors={lineProp.colors}
-              />
-            ) : null}
-          </Path>
-          {lineGapsCfg && <ChartLineGapLayer model={model} />}
-        </Group>
-      </Group>
-
-      {isCandle && <ChartCandleLayer model={model} />}
-
-      {/* Floating axis: the labels float ABOVE the candles (right-aligned at the
-          edge) so the plot runs full-width and candles stay fully visible behind
-          them. (Default non-floating axis draws grid + labels in ChartFillLayer.) */}
-      {yAxisCfg && yAxisFloat && (
-        <ChartYAxisLayer
-          model={model}
-          variant="labels"
-          entries={yAxisEntries!}
-        />
-      )}
-
-      {/* X-axis time labels. With a volume band the bottom padding is inflated by
-          the band height; pass it so the axis shifts back to the very bottom. */}
-      {xAxisCfg && <ChartXAxisLayer model={model} />}
+      <ChartMainPlotLayer model={model} yAxisEntries={yAxisEntries} />
 
       {/* Live dot — the badge is drawn later (after the scrub layer) so the
           scrub dim never clips the live-price badge's left edge. Hidden while
@@ -3002,6 +3661,165 @@ function ChartCustomConsumerOverlay({ model }: { model: LiveChartModel }) {
   return <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />;
 }
 
+function ChartCanvas({
+  model,
+  yAxisEntries,
+  degen,
+}: {
+  model: LiveChartModel;
+  yAxisEntries: YAxisEntries | null;
+  degen: DegenState | null;
+}) {
+  const {
+    canvasMode,
+    engine,
+    backgroundColor,
+    leftEdgeFadeCfg,
+    effectivePadding,
+    palette,
+    topConnector,
+    bottomConnector,
+    extremaTimeOffset,
+    loadingActive,
+    topLabelCfg,
+  } = model;
+  return (
+    <Canvas
+      key={canvasMode}
+      style={{ flex: 1 }}
+      opaque={canvasMode === "opaque"}
+    >
+      {canvasMode === "opaque" ? (
+        <Rect
+          x={0}
+          y={0}
+          width={engine.canvasWidth}
+          height={engine.canvasHeight}
+          color={backgroundColor}
+        />
+      ) : null}
+      <ChartFillLayer model={model} yAxisEntries={yAxisEntries} degen={degen} />
+      {leftEdgeFadeCfg ? (
+        <LeftEdgeFade
+          paddingLeft={effectivePadding.left}
+          fadeWidth={leftEdgeFadeCfg.width}
+          startColor={leftEdgeFadeCfg.startColor}
+          endColor={leftEdgeFadeCfg.endColor}
+          engine={engine}
+          opaqueBackgroundRgb={
+            canvasMode === "opaque" ? palette.bgRgb : undefined
+          }
+        />
+      ) : null}
+      <ChartStack model={model} yAxisEntries={yAxisEntries} degen={degen} />
+      {topConnector || bottomConnector ? (
+        <ExtremaConnectorOverlay
+          engine={engine}
+          padding={effectivePadding}
+          extremaTimeOffset={extremaTimeOffset}
+          top={topConnector}
+          bottom={bottomConnector}
+          hideExtrema={loadingActive}
+          suppressBottomWhenCoincident={
+            topLabelCfg?.position === "extrema" ||
+            topLabelCfg?.position === "extrema-edge"
+          }
+        />
+      ) : null}
+      <ChartRefBadgeLayer
+        model={model}
+        degen={degen}
+        yAxisEntries={yAxisEntries}
+      />
+      <ChartValueOverlay model={model} degen={degen} />
+      {model.tradeStreamResolved && model.tradeStream ? (
+        <ChartTradeStreamLayer model={model} degen={degen} />
+      ) : null}
+      <ChartScrubLayer model={model} degen={degen} />
+      {model.badgeCfg ? <ChartBadgeLayer model={model} degen={degen} /> : null}
+      <ChartScrubActionLayer model={model} />
+    </Canvas>
+  );
+}
+
+function ChartNativeOverlays({ model }: { model: LiveChartModel }) {
+  const {
+    topLabelCfg,
+    bottomLabelCfg,
+    engine,
+    formatValue,
+    palette,
+    effectivePadding,
+    extremaTimeOffset,
+    loadingActive,
+    thresholdCustomBadge,
+    thresholdCfg,
+    thresholdMarkerLineY,
+    thresholdBadgeVisible,
+    markersActive,
+    renderMarker,
+    renderReferenceLine,
+    renderOffAxisReferenceLine,
+    allRefLines,
+    scrubCfg,
+    renderTooltip,
+    crosshair,
+    renderOverlay,
+  } = model;
+  const hasAnnotations =
+    (markersActive && renderMarker != null) ||
+    ((renderReferenceLine != null || renderOffAxisReferenceLine != null) &&
+      allRefLines.length > 0);
+  return (
+    <>
+      {topLabelCfg || bottomLabelCfg ? (
+        <AxisLabelOverlay
+          topLabel={topLabelCfg}
+          bottomLabel={bottomLabelCfg}
+          engine={engine}
+          formatValue={formatValue}
+          defaultColor={palette.gridLabel}
+          padding={effectivePadding}
+          extremaTimeOffset={extremaTimeOffset}
+          hideExtrema={loadingActive}
+        />
+      ) : null}
+      {thresholdCustomBadge && thresholdCfg?.line ? (
+        <CustomThresholdBadgeOverlay
+          element={thresholdCustomBadge}
+          engine={engine}
+          padding={effectivePadding}
+          y={thresholdMarkerLineY}
+          visible={thresholdBadgeVisible}
+          position={thresholdCfg.line.labelPosition}
+        />
+      ) : null}
+      {hasAnnotations ? <ChartCustomAnnotations model={model} /> : null}
+      {scrubCfg && renderTooltip ? (
+        <CustomTooltipOverlay
+          renderTooltip={renderTooltip}
+          scrubX={crosshair.scrubX}
+          scrubValue={crosshair.scrubValue}
+          scrubTime={crosshair.scrubTime}
+          scrubActive={crosshair.scrubActive}
+          scrubCandle={crosshair.scrubCandle}
+          scrubGap={crosshair.scrubGap}
+          tooltipLayout={crosshair.tooltipLayout}
+          engine={engine}
+          padding={effectivePadding}
+          placement={scrubCfg.tooltipPlacement}
+          margin={scrubCfg.tooltipMargin}
+          crosshairFade={scrubCfg.crosshairFade}
+          crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
+          lineTop={crosshair.tooltipLineTop}
+          scrubDotY={crosshair.scrubDotY}
+        />
+      ) : null}
+      {renderOverlay ? <ChartCustomConsumerOverlay model={model} /> : null}
+    </>
+  );
+}
+
 function ChartView({
   model,
   yAxisEntries,
@@ -3018,31 +3836,6 @@ function ChartView({
     onLayout,
     accessibilityLabel,
     accessibilityRole,
-    leftEdgeFadeCfg,
-    effectivePadding,
-    engine,
-    palette,
-    formatValue,
-    topLabelCfg,
-    bottomLabelCfg,
-    thresholdCfg,
-    thresholdMarkerLineY,
-    thresholdBadgeVisible,
-    thresholdCustomBadge,
-    markersActive,
-    renderMarker,
-    renderTooltip,
-    renderOverlay,
-    renderReferenceLine,
-    renderOffAxisReferenceLine,
-    allRefLines,
-    scrubCfg,
-    crosshair,
-    extremaTimeOffset,
-    topConnector,
-    bottomConnector,
-    canvasMode,
-    loadingActive,
   } = model;
 
   return (
@@ -3054,153 +3847,8 @@ function ChartView({
         accessibilityLabel={accessibilityLabel}
         accessibilityRole={accessibilityRole}
       >
-        {/* Skia chooses TextureView vs SurfaceView when the native Canvas mounts. */}
-        <Canvas
-          key={canvasMode}
-          style={{ flex: 1 }}
-          opaque={canvasMode === "opaque"}
-        >
-          {canvasMode === "opaque" && (
-            <Rect
-              x={0}
-              y={0}
-              width={engine.canvasWidth}
-              height={engine.canvasHeight}
-              color={backgroundColor}
-            />
-          )}
-          {/* Background fills first, then the left-edge fade (a canvas-space sibling
-              so dstOut blends correctly), then the line stack on top — so the fade
-              softens only the fills and the line stays crisp at the left edge. */}
-          <ChartFillLayer
-            model={model}
-            yAxisEntries={yAxisEntries}
-            degen={degen}
-          />
-
-          {leftEdgeFadeCfg && (
-            <LeftEdgeFade
-              paddingLeft={effectivePadding.left}
-              fadeWidth={leftEdgeFadeCfg.width}
-              startColor={leftEdgeFadeCfg.startColor}
-              endColor={leftEdgeFadeCfg.endColor}
-              engine={engine}
-              opaqueBackgroundRgb={
-                canvasMode === "opaque" ? palette.bgRgb : undefined
-              }
-            />
-          )}
-
-          {/* Line stack above the fade so the line stays crisp at the left edge. */}
-          <ChartStack model={model} yAxisEntries={yAxisEntries} degen={degen} />
-
-          {/* "extrema-edge" connector lines (dot → edge readout), above the chart
-              content so the dashed guide reads over the line / candles. */}
-          {(topConnector || bottomConnector) && (
-            <ExtremaConnectorOverlay
-              engine={engine}
-              padding={effectivePadding}
-              extremaTimeOffset={extremaTimeOffset}
-              top={topConnector}
-              bottom={bottomConnector}
-              hideExtrema={loadingActive}
-              suppressBottomWhenCoincident={
-                topLabelCfg?.position === "extrema" ||
-                topLabelCfg?.position === "extrema-edge"
-              }
-            />
-          )}
-
-          {/* Reference-line badges + labels above the fade so they stay crisp. */}
-          <ChartRefBadgeLayer
-            model={model}
-            degen={degen}
-            yAxisEntries={yAxisEntries}
-          />
-
-          <ChartValueOverlay model={model} degen={degen} />
-
-          {model.tradeStreamResolved && model.tradeStream && (
-            <ChartTradeStreamLayer model={model} degen={degen} />
-          )}
-
-          <ChartScrubLayer model={model} degen={degen} />
-
-          {/* Live-price badge on top of the scrub dim so the dim never clips
-              its left edge (the badge tracks the live value, not the scrub). */}
-          {model.badgeCfg && <ChartBadgeLayer model={model} degen={degen} />}
-
-          {/* Scrub-action reticle + action badge — top-most, no shake transform. */}
-          <ChartScrubActionLayer model={model} />
-        </Canvas>
-
-        {/* RN labels floated over the canvas (sibling of <Canvas>, an RN view).
-            Pinned to the plot's top/bottom edges via the resolved padding. */}
-        {(topLabelCfg || bottomLabelCfg) && (
-          <AxisLabelOverlay
-            topLabel={topLabelCfg}
-            bottomLabel={bottomLabelCfg}
-            engine={engine}
-            formatValue={formatValue}
-            defaultColor={palette.gridLabel}
-            padding={effectivePadding}
-            extremaTimeOffset={extremaTimeOffset}
-            hideExtrema={loadingActive}
-          />
-        )}
-
-        {/* Custom threshold badge — a native view positioned from the same live
-            value/Y SharedValues as the built-in Skia badge. */}
-        {thresholdCustomBadge && thresholdCfg?.line && (
-          <CustomThresholdBadgeOverlay
-            element={thresholdCustomBadge}
-            engine={engine}
-            padding={effectivePadding}
-            y={thresholdMarkerLineY}
-            visible={thresholdBadgeVisible}
-            position={thresholdCfg.line.labelPosition}
-          />
-        )}
-
-        {/* Custom-rendered markers — RN views floated over the canvas (non-Skia),
-            pinned to each marker's live position. Sibling of <Canvas>. Wrapped in
-            a box-none fade layer so `scrub.hideOverlaysOnScrub` hides them with the
-            Skia markers (the wrapper is full-bleed; children keep their own
-            absolute positions). */}
-        {((markersActive && renderMarker) ||
-          ((renderReferenceLine || renderOffAxisReferenceLine) &&
-            allRefLines.length > 0)) && (
-          <ChartCustomAnnotations model={model} />
-        )}
-
-        {/* Custom scrub tooltip — an RN view floated over the canvas (non-Skia),
-            positioned on the UI thread. Sibling of <Canvas>. Works in line and
-            candle mode (candle exposes the OHLC via `scrubCandle`). */}
-        {scrubCfg && renderTooltip && (
-          <CustomTooltipOverlay
-            renderTooltip={renderTooltip}
-            scrubX={crosshair.scrubX}
-            scrubValue={crosshair.scrubValue}
-            scrubTime={crosshair.scrubTime}
-            scrubActive={crosshair.scrubActive}
-            scrubCandle={crosshair.scrubCandle}
-            scrubGap={crosshair.scrubGap}
-            tooltipLayout={crosshair.tooltipLayout}
-            engine={engine}
-            padding={effectivePadding}
-            placement={scrubCfg.tooltipPlacement}
-            margin={scrubCfg.tooltipMargin}
-            crosshairFade={scrubCfg.crosshairFade}
-            crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
-            lineTop={crosshair.tooltipLineTop}
-            scrubDotY={crosshair.scrubDotY}
-          />
-        )}
-
-        {/* Custom consumer overlay — an RN view tree floated over the canvas with
-            the price↔pixel / time↔pixel bridge, for order / avg-entry / liquidation
-            tags etc. Topmost RN sibling; `box-none` so empty areas still scrub. */}
-        {renderOverlay && <ChartCustomConsumerOverlay model={model} />}
+        <ChartCanvas model={model} yAxisEntries={yAxisEntries} degen={degen} />
+        <ChartNativeOverlays model={model} />
       </View>
     </GestureDetector>
   );
