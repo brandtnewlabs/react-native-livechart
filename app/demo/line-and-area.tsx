@@ -20,6 +20,11 @@ type BadgeMode = "on" | "off" | "left" | "minimal" | "noTail" | "customBg";
 
 type LineMode = "default" | "solid" | "gradient" | "tricolor" | "custom";
 
+type CustomColor = {
+  id: number;
+  value: string;
+};
+
 const LINE_OPTIONS: { value: LineMode; label: string }[] = [
   { value: "default", label: "Default" },
   { value: "solid", label: "Solid" },
@@ -178,7 +183,10 @@ export default function LineScreen() {
   const [cap, setCap] = useState<CapMode>("round");
   const [gradientMode, setGradientMode] = useState<GradientMode>("default");
   const [areaDotsMode, setAreaDotsMode] = useState<AreaDotsMode>("off");
-  const [customColors, setCustomColors] = useState(["#ff6b6b", "#6bff6b"]);
+  const [customColors, setCustomColors] = useState<CustomColor[]>([
+    { id: 0, value: "#ff6b6b" },
+    { id: 1, value: "#6bff6b" },
+  ]);
   const [valueLine, setValueLine] = useState(true);
   const [showValue, setShowValue] = useState(false);
   const [valueMomentumColor, setValueMomentumColor] = useState(false);
@@ -211,7 +219,13 @@ export default function LineScreen() {
           value={value}
           accentColor={ACCENT}
           theme={APP_THEME}
-          line={resolveLine(lineMode, customColors, curve, join, cap)}
+          line={resolveLine(
+            lineMode,
+            customColors.map((color) => color.value),
+            curve,
+            join,
+            cap,
+          )}
           gradient={resolveGradient(gradientMode)}
           areaDots={resolveAreaDots(areaDotsMode)}
           badge={resolveBadge(badgeMode)}
@@ -235,9 +249,7 @@ export default function LineScreen() {
               setReplacementRevision((revision) => revision + 1);
             }
             setReplacementLoading(loading);
-            seriesOpacity.set(
-              withTiming(loading ? 0.5 : 1, { duration: 300 }),
-            );
+            seriesOpacity.set(withTiming(loading ? 0.5 : 1, { duration: 300 }));
           }}
         />
       </ControlRow>
@@ -285,15 +297,15 @@ export default function LineScreen() {
       />
       {lineMode === "custom" && (
         <ControlRow label="Gradient colors">
-          {customColors.map((c, i) => (
+          {customColors.map((color, i) => (
             <TextInput
-              key={i}
+              key={color.id}
               style={styles.colorInput}
-              value={c}
+              value={color.value}
               onChangeText={(t) =>
                 setCustomColors((prev) => {
                   const next = [...prev];
-                  next[i] = t;
+                  next[i] = { ...next[i], value: t };
                   return next;
                 })
               }
@@ -308,7 +320,10 @@ export default function LineScreen() {
             value=""
             onChangeText={(t) =>
               t.trim().length > 0
-                ? setCustomColors((prev) => [...prev, t])
+                ? setCustomColors((prev) => [
+                    ...prev,
+                    { id: prev.length, value: t },
+                  ])
                 : undefined
             }
             placeholder="+ add color"

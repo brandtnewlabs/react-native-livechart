@@ -37,7 +37,7 @@ export default function ScrollInteractionScreen() {
   const [seriesScrubs, setSeriesScrubs] = useState(0);
   const [activeChart, setActiveChart] = useState<ActiveChart>("none");
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     setScrollOffset(Math.round(event.nativeEvent.contentOffset.y));
   };
 
@@ -77,8 +77,8 @@ export default function ScrollInteractionScreen() {
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
-        onScroll={handleScroll}
-        scrollEventThrottle={100}
+        onScrollEndDrag={handleScrollEnd}
+        onMomentumScrollEnd={handleScrollEnd}
         showsVerticalScrollIndicator
       >
         <View style={styles.instructions}>

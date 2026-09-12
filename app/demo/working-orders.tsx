@@ -20,6 +20,11 @@ const SELL_COLOR = "#f87171";
 
 type Side = "BUY" | "SELL";
 
+type LogEvent = {
+  id: number;
+  message: string;
+};
+
 /**
  * Custom draggable order tag (`renderReferenceLine`) — a glassy RN pill whose price
  * updates live on the UI thread as you drag, bound to `ctx.value` via
@@ -59,12 +64,12 @@ export default function WorkingOrdersScreen() {
   const [grouping, setGrouping] = useState(false);
 
   // Committed order prices (set by onCommit → controlled lines).
-  const [buy, setBuy] = useState(round(START * 0.97));
-  const [sell, setSell] = useState(round(START * 1.03));
+  const [buy, setBuy] = useState(() => round(START * 0.97));
+  const [sell, setSell] = useState(() => round(START * 1.03));
 
   // Live drag feedback (from onChange, throttled) + an event log (discrete events).
   const [live, setLive] = useState<{ side: Side; value: number } | null>(null);
-  const [events, setEvents] = useState<string[]>([]);
+  const [events, setEvents] = useState<LogEvent[]>([]);
   const lastChangeAt = useRef(0);
 
   const { data, value } = useSimulatedChartData({
@@ -76,8 +81,11 @@ export default function WorkingOrdersScreen() {
     historyRange: "1m",
   });
 
-  const log = (msg: string) =>
-    setEvents((prev) => [msg, ...prev].slice(0, 5));
+  const log = (message: string) => {
+    setEvents((prev) =>
+      [{ id: (prev[0]?.id ?? -1) + 1, message }, ...prev].slice(0, 5),
+    );
+  };
 
   /** Build the per-line drag callbacks for one side. */
   const handlers = (side: Side, commit: (v: number) => void) => ({
@@ -181,13 +189,22 @@ export default function WorkingOrdersScreen() {
     >
       <ControlRow label="Reference lines">
         <ToggleChip label="Custom tags" value={custom} onChange={setCustom} />
-        <ToggleChip label="Group alerts" value={grouping} onChange={setGrouping} />
+        <ToggleChip
+          label="Group alerts"
+          value={grouping}
+          onChange={setGrouping}
+        />
       </ControlRow>
 
       <View style={styles.panel}>
         <View style={styles.row}>
           <OrderStat side="BUY" color={BUY_COLOR} committed={buy} live={live} />
-          <OrderStat side="SELL" color={SELL_COLOR} committed={sell} live={live} />
+          <OrderStat
+            side="SELL"
+            color={SELL_COLOR}
+            committed={sell}
+            live={live}
+          />
         </View>
         <Text style={styles.logTitle}>Drag callbacks</Text>
         {events.length === 0 ? (
@@ -195,9 +212,9 @@ export default function WorkingOrdersScreen() {
             Drag an order to a bound, then release — events appear here.
           </Text>
         ) : (
-          events.map((e, i) => (
-            <Text key={`${e}-${i}`} style={styles.logLine}>
-              {e}
+          events.map((event) => (
+            <Text key={event.id} style={styles.logLine}>
+              {event.message}
             </Text>
           ))
         )}
