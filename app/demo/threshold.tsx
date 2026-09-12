@@ -344,11 +344,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.28,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    boxShadow: "0 2px 5px rgba(0, 0, 0, 0.28)",
   },
   averageCostIcon: {
     minWidth: 27,

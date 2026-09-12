@@ -356,6 +356,8 @@ export function useLiveChartSeriesEngine(
   // Reused per-frame output buffers (ping-ponged) — see applyLiveChartSeriesEngineFrame.
   const scratchRef = useRef<MultiSeriesEngineScratch | null>(null);
   if (scratchRef.current === null) {
+    // React permits this predictable lazy-ref initialization: https://react.dev/reference/react/useRef#avoiding-recreating-the-ref-contents
+    // react-doctor-disable-next-line react-doctor/no-ref-current-in-render -- false positive for React's documented lazy-ref exception
     scratchRef.current = makeMultiSeriesEngineScratch();
   }
 

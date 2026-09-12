@@ -1,7 +1,7 @@
 import { Link } from "expo-router";
 import {
+  FlatList,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -73,16 +73,17 @@ export default function Examples() {
       <Text style={styles.subtitle}>
         LiveChart dropped into recreations of real finance & crypto apps.
       </Text>
-      <ScrollView
+      <FlatList
+        data={EXAMPLES}
+        renderItem={({ item }) => <ExampleCard entry={item} />}
+        keyExtractor={(entry) => entry.id}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"
-      >
-        {EXAMPLES.map((entry) => (
-          <ExampleCard key={entry.id} entry={entry} />
-        ))}
-        <Text style={styles.footnote}>More apps coming soon.</Text>
-      </ScrollView>
+        ListFooterComponent={
+          <Text style={styles.footnote}>More apps coming soon.</Text>
+        }
+      />
     </View>
   );
 }

@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Canvas, Points, vec } from "@shopify/react-native-skia";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   type DimensionValue,
   Pressable,
@@ -178,15 +178,12 @@ function CandleGlyph({ active }: { active: boolean }) {
  * chart's line/area composite on top, so the dots only show in the empty plot.
  */
 function DotGrid({ width }: { width: number }) {
-  const dots = useMemo(() => {
-    const pts = [];
-    for (let y = GRID_SPACING / 2; y < CHART_HEIGHT; y += GRID_SPACING) {
-      for (let x = GRID_SPACING / 2; x < width; x += GRID_SPACING) {
-        pts.push(vec(x, y));
-      }
+  const dots = [];
+  for (let y = GRID_SPACING / 2; y < CHART_HEIGHT; y += GRID_SPACING) {
+    for (let x = GRID_SPACING / 2; x < width; x += GRID_SPACING) {
+      dots.push(vec(x, y));
     }
-    return pts;
-  }, [width]);
+  }
 
   return (
     <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
