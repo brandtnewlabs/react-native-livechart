@@ -54,6 +54,9 @@ export interface EngineConfig {
    * `LiveChartPoint[]` form.
    */
   thresholdRangePoints?: SharedValue<LiveChartPoint[]> | LiveChartPoint[];
+  /** With {@link thresholdRangePoints}: whether the series extends flat before
+   *  its first point to the visible window start. Default `true`. */
+  thresholdRangeExtendToStart?: boolean;
   /** With {@link thresholdRangePoints}: whether the series extends flat past its
    *  last point to "now" (`threshold.extendToNow`). Default `true`. */
   thresholdRangeExtendToNow?: boolean;
@@ -217,6 +220,7 @@ export interface EngineFrameRefs {
   referenceValues?: SharedValue<number[] | undefined>;
   /** Series threshold folded into the range fit (`threshold.includeInRange`). */
   thresholdRangePoints?: SharedValue<LiveChartPoint[] | undefined>;
+  thresholdRangeExtendToStart?: SharedValue<boolean>;
   thresholdRangeExtendToNow?: SharedValue<boolean>;
   nonNegativeSV?: SharedValue<boolean>;
   maxValueSV?: SharedValue<number | undefined>;
@@ -353,6 +357,8 @@ export function applyLiveChartEngineFrame(
   input.referenceValue = sv.referenceValue.value;
   input.referenceValues = sv.referenceValues?.value;
   input.thresholdRangePoints = sv.thresholdRangePoints?.value;
+  input.thresholdRangeExtendToStart =
+    sv.thresholdRangeExtendToStart?.value ?? true;
   input.thresholdRangeExtendToNow = sv.thresholdRangeExtendToNow?.value ?? true;
   input.nonNegative = sv.nonNegativeSV?.value ?? false;
   input.maxValue = sv.maxValueSV?.value;
@@ -452,6 +458,9 @@ export function useLiveChartEngine(
   );
   const thresholdRangeExtendToNow = useDerivedValue(
     () => config.thresholdRangeExtendToNow ?? true,
+  );
+  const thresholdRangeExtendToStart = useDerivedValue(
+    () => config.thresholdRangeExtendToStart ?? true,
   );
   const nonNegativeSV = useDerivedValue(() => config.nonNegative ?? false);
   const maxValueSV = useDerivedValue(() => config.maxValue);
@@ -559,6 +568,7 @@ export function useLiveChartEngine(
     referenceValue,
     referenceValues,
     thresholdRangePoints,
+    thresholdRangeExtendToStart,
     thresholdRangeExtendToNow,
     nonNegativeSV,
     maxValueSV,

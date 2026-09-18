@@ -20,6 +20,7 @@ export function buildReferenceLineSeriesPoints(
   canvasWidth: number,
   canvasHeight: number,
   padding: ChartPadding,
+  extendToStart: boolean,
   extendToNow: boolean,
   out?: number[],
 ): number[] {
@@ -43,11 +44,15 @@ export function buildReferenceLineSeriesPoints(
   }
 
   const windowStart = now - windowSecs;
+  const firstTime = points[0].time;
   const lastTime = points[points.length - 1].time;
+  const startTime = extendToStart
+    ? windowStart
+    : Math.max(windowStart, firstTime);
   const endTime = extendToNow ? now : Math.min(now, lastTime);
-  if (endTime < windowStart) return result;
+  if (endTime < startTime) return result;
 
-  const startValue = interpolateAtTime(points, windowStart);
+  const startValue = interpolateAtTime(points, startTime);
   const endValue = interpolateAtTime(points, endTime);
   if (
     startValue === null ||
@@ -70,10 +75,10 @@ export function buildReferenceLineSeriesPoints(
       padding.bottom,
     );
 
-  result.push(plotLeft, toY(startValue));
+  result.push(toX(startTime), toY(startValue));
   for (let i = 0; i < points.length; i++) {
     const point = points[i];
-    if (point.time <= windowStart) continue;
+    if (point.time <= startTime) continue;
     if (point.time >= endTime) break;
     if (!Number.isFinite(point.time) || !Number.isFinite(point.value)) continue;
     result.push(toX(point.time), toY(point.value));

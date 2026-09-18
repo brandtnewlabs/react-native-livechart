@@ -259,9 +259,10 @@ provided; everything else has a default.
 
 <ParamField body="referenceLines" type="ReferenceLine[]">
   Reference lines / bands (horizontal line, time-varying `series`, value band, or
-  time band). Series lines work in both line and candle mode and extend their last
-  value to the live edge unless `extendToNow` is `false`. Form-A lines can be
-  `draggable` (drag to set a price, with `snap` / `bounds` and `onChange` /
+  time band). Series lines work in both line and candle mode. Their first value
+  extends to the visible window start unless `extendToStart` is `false`, and their
+  last value extends to the live edge unless `extendToNow` is `false`. Form-A lines
+  can be `draggable` (drag to set a price, with `snap` / `bounds` and `onChange` /
   `onCommit` / `onDragIn` / `onDragOut` callbacks). See
   [Reference lines](/guides/reference-lines-and-bands).
 </ParamField>
@@ -310,8 +311,9 @@ provided; everything else has a default.
   history, or a live `SharedValue<LiveChartPoint[]>` series.
   Optionally adds a tinted profit/loss `fill` band and a dashed marker `line`; a
   series marker badge can independently select its
-  horizontal `labelPosition` and first/last visible `labelAnchor`. Supersedes
-  `line.color`/`colors` and segment recoloring for the main stroke while set. See
+  horizontal `labelPosition` and first/last visible `labelAnchor`. Set
+  `extendToStart: false` when the threshold did not exist before its first point.
+  Supersedes `line.color`/`colors` and segment recoloring for the main stroke while set. See
   [`ThresholdConfig`](/api-reference/types#thresholdconfig). Single-series,
   line mode only.
 </ParamField>

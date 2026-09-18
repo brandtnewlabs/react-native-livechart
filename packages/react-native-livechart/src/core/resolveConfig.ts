@@ -447,6 +447,8 @@ export interface ResolvedThresholdConfig {
   fillOpacity: number;
   /** Fold the threshold into the Y-axis range fit. */
   includeInRange: boolean;
+  /** Series forms: extend flat before the first point to the visible window's start. */
+  extendToStart: boolean;
   /** Series forms: extend flat past the last point to "now". */
   extendToNow: boolean;
   line: ResolvedThresholdLineConfig | null;
@@ -495,6 +497,7 @@ export function resolveThreshold(
       (typeof prop.fill === "object" ? prop.fill.opacity : undefined) ??
       THRESHOLD_FILL_OPACITY_DEFAULT,
     includeInRange: prop.includeInRange ?? false,
+    extendToStart: prop.extendToStart ?? true,
     extendToNow: prop.extendToNow ?? true,
     line: resolveThresholdLine(prop.line),
   };

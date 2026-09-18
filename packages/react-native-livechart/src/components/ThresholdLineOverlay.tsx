@@ -36,6 +36,8 @@ interface ThresholdMarkerProps {
   /** When set, draw the marker as this time-varying threshold polyline (`[x, y, …]`)
    *  instead of a horizontal line at `lineY`. */
   seriesPts?: SharedValue<number[]>;
+  /** Optional first rendered X for a non-extended series badge. */
+  leftAnchorX?: SharedValue<number>;
 }
 
 /**
@@ -126,6 +128,7 @@ export function ThresholdBadgeOverlay({
   palette,
   font,
   formatValue,
+  leftAnchorX,
 }: ThresholdMarkerProps) {
   const { label, labelPosition, showValue } = cfg;
   const badgeBackground = palette.tooltipBg;
@@ -155,12 +158,19 @@ export function ThresholdBadgeOverlay({
   const pillW = useDerivedValue(
     () => measureFontTextWidth(font, labelText.get()) + BADGE_PAD_X * 2,
   );
-  // Left: flush to the canvas edge. Right: flush to the right plot edge.
-  const pillX = useDerivedValue(() =>
-    labelPosition === "right"
-      ? engine.canvasWidth.get() - padding.right - BADGE_EDGE_INSET - pillW.get()
-      : BADGE_EDGE_INSET,
-  );
+  // A non-extended series' left badge follows its first rendered point, while
+  // staying fully inside the plot near the live edge. Other left badges retain
+  // the legacy canvas-edge position.
+  const pillX = useDerivedValue(() => {
+    if (labelPosition === "right") {
+      return engine.canvasWidth.get() - padding.right - BADGE_EDGE_INSET - pillW.get();
+    }
+    if (!leftAnchorX) return BADGE_EDGE_INSET;
+    const minX = padding.left + BADGE_EDGE_INSET;
+    const maxX =
+      engine.canvasWidth.get() - padding.right - BADGE_EDGE_INSET - pillW.get();
+    return Math.max(minX, Math.min(leftAnchorX.get(), maxX));
+  });
   const pillY = useDerivedValue(
     () => lineY.get() - baselineOffset + fontAscent - BADGE_PAD_Y,
   );

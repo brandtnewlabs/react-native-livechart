@@ -61,6 +61,9 @@ export interface EngineTickInput {
    * but windowed each tick.
    */
   thresholdRangePoints?: LiveChartPoint[];
+  /** Whether {@link thresholdRangePoints} extends flat before its first point to
+   *  the visible window start (`threshold.extendToStart`). Default `true`. */
+  thresholdRangeExtendToStart?: boolean;
   /** Whether {@link thresholdRangePoints} extends flat past its last point to
    *  "now" (`threshold.extendToNow`). Default `true`. */
   thresholdRangeExtendToNow?: boolean;
@@ -367,6 +370,7 @@ export function tickLiveChartEngineFrame(
       thrPts,
       state.timestamp,
       state.displayWindow,
+      input.thresholdRangeExtendToStart ?? true,
       input.thresholdRangeExtendToNow ?? true,
       THRESHOLD_RANGE_SCRATCH,
     );

@@ -86,6 +86,7 @@ describe("useThresholdSeries (time-varying)", () => {
         series,
         null,
         true,
+        true,
         "first",
       ),
     );
@@ -98,7 +99,15 @@ describe("useThresholdSeries (time-varying)", () => {
 
   it("hides a first-anchored badge when the threshold has no visible segment", async () => {
     const { result } = await renderHook(() =>
-      useThresholdSeries(engine(), DEFAULT_PADDING, [], null, false, "first"),
+      useThresholdSeries(
+        engine(),
+        DEFAULT_PADDING,
+        [],
+        null,
+        false,
+        true,
+        "first",
+      ),
     );
     expect(result.current.badgeVisible.value).toBe(false);
   });
@@ -166,5 +175,36 @@ describe("useThresholdSeries (time-varying)", () => {
     const pts = result.current.screenPts.value;
     expect(pts[pts.length - 2]).toBe(400 - DEFAULT_PADDING.right);
     expect(result.current.badgeVisible.value).toBe(true);
+  });
+
+  it("extendToStart=false: clips at the first point and anchors the first badge there", async () => {
+    const started: LiveChartPoint[] = [
+      { time: 950, value: 50 },
+      { time: 1000, value: 55 },
+    ];
+    const { result } = await renderHook(() =>
+      useThresholdSeries(
+        engine(),
+        DEFAULT_PADDING,
+        started,
+        null,
+        true,
+        false,
+        "first",
+      ),
+    );
+    expect(result.current.clipLeftX.value).toBeCloseTo(200);
+    expect(result.current.screenPts.value[0]).toBeCloseTo(200);
+    expect(result.current.badgeValue.value).toBe(50);
+    expect(result.current.badgeVisible.value).toBe(true);
+  });
+
+  it("extendToStart=true (default): has no left clip", async () => {
+    const started: LiveChartPoint[] = [{ time: 950, value: 50 }];
+    const { result } = await renderHook(() =>
+      useThresholdSeries(engine(), DEFAULT_PADDING, started),
+    );
+    expect(result.current.clipLeftX.value).toBe(-1e9);
+    expect(result.current.screenPts.value[0]).toBe(DEFAULT_PADDING.left);
   });
 });

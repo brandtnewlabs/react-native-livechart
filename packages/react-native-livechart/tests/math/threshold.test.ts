@@ -248,29 +248,29 @@ describe("thresholdRangeMinMax", () => {
   ];
 
   it("returns the window min/max (flat-extended to now)", () => {
-    expect(thresholdRangeMinMax(stepped, NOW, WIN, true, scratch)).toEqual([
+    expect(thresholdRangeMinMax(stepped, NOW, WIN, true, true, scratch)).toEqual([
       40, 70,
     ]);
   });
 
   it("clamps to the series edges outside the window", () => {
     // Window entirely after the last point → flat extension holds 70.
-    expect(thresholdRangeMinMax(stepped, 1200, 100, true, scratch)).toEqual([
+    expect(thresholdRangeMinMax(stepped, 1200, 100, true, true, scratch)).toEqual([
       70, 70,
     ]);
   });
 
   it("returns null for an empty series or degenerate window", () => {
-    expect(thresholdRangeMinMax([], NOW, WIN, true, scratch)).toBeNull();
-    expect(thresholdRangeMinMax(stepped, NOW, 0, true, scratch)).toBeNull();
+    expect(thresholdRangeMinMax([], NOW, WIN, true, true, scratch)).toBeNull();
+    expect(thresholdRangeMinMax(stepped, NOW, 0, true, true, scratch)).toBeNull();
   });
 
   it("respects extendToNow=false (no forward projection)", () => {
     // Window after the last point → nothing to contribute without extension.
-    expect(thresholdRangeMinMax(stepped, 1200, 100, false, scratch)).toBeNull();
+    expect(thresholdRangeMinMax(stepped, 1200, 100, true, false, scratch)).toBeNull();
     // Window straddling the last point → clamps the end at t=980 (same values
     // here, but the fold stops at the series end).
-    expect(thresholdRangeMinMax(stepped, NOW, WIN, false, scratch)).toEqual([
+    expect(thresholdRangeMinMax(stepped, NOW, WIN, true, false, scratch)).toEqual([
       40, 70,
     ]);
   });
@@ -285,8 +285,19 @@ describe("thresholdRangeMinMax", () => {
         NOW,
         WIN,
         true,
+        true,
         scratch,
       ),
+    ).toBeNull();
+  });
+
+  it("respects extendToStart=false (no backward projection)", () => {
+    const future = [{ time: 1100, value: 500 }];
+    expect(thresholdRangeMinMax(future, NOW, WIN, true, true, scratch)).toEqual([
+      500, 500,
+    ]);
+    expect(
+      thresholdRangeMinMax(future, NOW, WIN, false, true, scratch),
     ).toBeNull();
   });
 });

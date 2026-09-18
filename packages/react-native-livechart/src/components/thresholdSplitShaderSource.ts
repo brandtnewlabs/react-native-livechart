@@ -37,6 +37,9 @@ export function buildThresholdSplitShaderSource(sampleCount: number): string {
 // and glides with the window so features move fluidly, frame to frame.
 uniform float sampleLeft;
 uniform float sampleRight;
+// X where the threshold starts (extendToStart: false → the first point's
+// pixel-X, else a large negative sentinel). Fragments left of it use restColor.
+uniform float clipLeft;
 // X where the threshold ends (extendToNow: false → the last point's pixel-X,
 // else a huge sentinel). Fragments right of it paint restColor: the plain line
 // color for the stroke, transparent for the band.
@@ -51,7 +54,7 @@ ${lookup}
 }
 
 half4 main(vec2 xy) {
-  if (xy.x > clipRight) {
+  if (xy.x < clipLeft || xy.x > clipRight) {
     return half4(half3(restColor.rgb) * restColor.a, restColor.a);
   }
   float span = sampleRight - sampleLeft;
