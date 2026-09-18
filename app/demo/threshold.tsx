@@ -118,10 +118,11 @@ function useSmoothPriceFeed() {
 
 /** Initial stepped break-even near CENTER (two points per step → clean risers). */
 function seedBreakEven(now: number): LiveChartPoint[] {
-  // Start 12 seconds ago inside the default 30-second window so the chart has
-  // a visible pre-position region. This makes `extendToStart` easy to compare.
-  const levels = [CENTER - 1.4, CENTER - 0.3, CENTER + 0.8];
-  const stepSeconds = 4;
+  // Start only four seconds ago inside the default 30-second window. Most of
+  // the chart is therefore visibly pre-position history, making the difference
+  // between clipping and backfilling with `extendToStart` unmistakable.
+  const levels = [CENTER - 1.4, CENTER + 0.8];
+  const stepSeconds = 2;
   const pts: LiveChartPoint[] = [];
   for (let i = 0; i < levels.length; i++) {
     const t0 = now - (levels.length - i) * stepSeconds;
@@ -252,9 +253,9 @@ export default function ThresholdScreen() {
       />
 
       {isSeries && (
-        <ControlRow label="Series start / end">
+        <ControlRow label="Before first threshold point">
           <ToggleChip
-            label="Extend to start"
+            label="Backfill left"
             value={extendToStart}
             onChange={setExtendToStart}
           />
