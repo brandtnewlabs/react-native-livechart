@@ -16,8 +16,6 @@ import {
   type HistoryRange,
 } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Candlestick" };
-
 /**
  * Candle timeframes. Each pairs a visible window with a candle width AND a
  * `seedRange` whose ideal sampling interval is far finer than `candleWidthSecs`,
@@ -157,7 +155,7 @@ export default function CandlestickScreen() {
     <DemoScreen
       title="Candlestick"
       docs="guides/candlestick"
-      description={`mode="candle" with ${candleWidthSecs}s OHLC buckets plus a historical average-cost reference series. Each candle aggregates many ticks, so it shows a real body + wick. Needs ≥2 committed candles before it draws.`}
+      description={`mode="candle" with ${candleWidthSecs}s OHLC buckets plus a historical average-cost reference series. Each candle aggregates many ticks, so it shows a real body + wick. A single committed candle is enough to draw.`}
       chart={
         <LiveChart
           data={data}

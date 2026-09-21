@@ -114,6 +114,34 @@ export interface CrosshairChartOpts {
   bridgeUnknown?: boolean;
 }
 
+function resolveCrosshairSettings(
+  chartOpts: CrosshairChartOpts | undefined,
+  scrubAction: ResolvedScrubActionConfig | null | undefined,
+  onScrubAction: ((point: ScrubActionPoint) => void) | undefined,
+  clampToPlot: boolean,
+) {
+  const hasScrubAction = scrubAction != null;
+  return {
+    hasScrubAction,
+    clampPlainScrubToPlot: clampToPlot && !hasScrubAction,
+    hasOnScrubAction: onScrubAction != null,
+    dismissOnTapOutside: scrubAction?.dismissOnTapOutside ?? false,
+    dismissOnAction: scrubAction?.dismissOnAction ?? false,
+    snapIncrement: scrubAction?.snap,
+    actionIcon: scrubAction?.icon ?? "+",
+    actionShowText: scrubAction?.text ?? true,
+    hasTimeBadge: scrubAction?.timeBadge ?? false,
+    isCandleMode: chartOpts?.mode === "candle",
+    candlesSV: chartOpts?.candles,
+    liveCandleSV: chartOpts?.liveCandle,
+    candleWidthSecs: chartOpts?.candleWidthSecs ?? 60,
+    chartGaps: chartOpts?.gaps ?? [],
+    bridgeNoTrades: chartOpts?.bridgeNoTrades ?? false,
+    bridgeUnavailable: chartOpts?.bridgeUnavailable ?? false,
+    bridgeUnknown: chartOpts?.bridgeUnknown ?? false,
+  };
+}
+
 /**
  * Single-series crosshair + scrub. Use `useCrosshairSeries` for `LiveChartSeries`.
  */
@@ -211,24 +239,30 @@ export function useCrosshair(
   // screen Y is re-derived from it each frame (see `lockY` below) so the level
   // tracks the price as the axis rescales instead of drifting under a fixed pixel.
   const lockPriceValue = useSharedValue<number | null>(null);
-  const hasScrubAction = scrubAction != null;
-  const clampPlainScrubToPlot = clampToPlot && !hasScrubAction;
-  const hasOnScrubAction = onScrubAction != null;
-  const dismissOnTapOutside = scrubAction?.dismissOnTapOutside ?? false;
-  const dismissOnAction = scrubAction?.dismissOnAction ?? false;
-  const snapIncrement = scrubAction?.snap;
-  const actionIcon = scrubAction?.icon ?? "+";
-  const actionShowText = scrubAction?.text ?? true;
-  const hasTimeBadge = scrubAction?.timeBadge ?? false;
-
-  const isCandleMode = chartOpts?.mode === "candle";
-  const candlesSV = chartOpts?.candles;
-  const liveCandleSV = chartOpts?.liveCandle;
-  const candleWidthSecs = chartOpts?.candleWidthSecs ?? 60;
-  const chartGaps = chartOpts?.gaps ?? [];
-  const bridgeNoTrades = chartOpts?.bridgeNoTrades ?? false;
-  const bridgeUnavailable = chartOpts?.bridgeUnavailable ?? false;
-  const bridgeUnknown = chartOpts?.bridgeUnknown ?? false;
+  const {
+    hasScrubAction,
+    clampPlainScrubToPlot,
+    hasOnScrubAction,
+    dismissOnTapOutside,
+    dismissOnAction,
+    snapIncrement,
+    actionIcon,
+    actionShowText,
+    hasTimeBadge,
+    isCandleMode,
+    candlesSV,
+    liveCandleSV,
+    candleWidthSecs,
+    chartGaps,
+    bridgeNoTrades,
+    bridgeUnavailable,
+    bridgeUnknown,
+  } = resolveCrosshairSettings(
+    chartOpts,
+    scrubAction,
+    onScrubAction,
+    clampToPlot,
+  );
 
   // Monospace advance width, measured once per render (not per scrub frame) so
   // the tooltip layout worklet can size text by character count instead of a
@@ -407,9 +441,7 @@ export function useCrosshair(
       const canvasWidth = engine.canvasWidth.get();
       const canvasHeight = engine.canvasHeight.get();
       const price =
-        active && rawPrice !== null
-          ? snapPrice(rawPrice, snapIncrement)
-          : null;
+        active && rawPrice !== null ? snapPrice(rawPrice, snapIncrement) : null;
       let y = -1;
       if (
         rawPrice !== null &&
@@ -586,15 +618,7 @@ export function useCrosshair(
         string | null,
         string | null,
       ];
-      scheduleOnRN(
-        handleScrub,
-        row[2],
-        row[3],
-        row[0],
-        row[1],
-        row[4],
-        row[5],
-      );
+      scheduleOnRN(handleScrub, row[2], row[3], row[0], row[1], row[4], row[5]);
     },
   );
 
@@ -667,13 +691,7 @@ export function useCrosshair(
     .onTouchesUp(
       /* istanbul ignore next */ (e, manager) => {
         "worklet";
-        delayedPanTouchUp(
-          longPressMs,
-          e,
-          manager,
-          fingerDown,
-          panActivated,
-        );
+        delayedPanTouchUp(longPressMs, e, manager, fingerDown, panActivated);
       },
     )
     .onTouchesCancelled(
@@ -706,7 +724,12 @@ export function useCrosshair(
         // stays false and the live crosshair hides itself.
         if (hasScrubAction && lockActive.get()) {
           lockX.set(
-            clampPlotX(e.x, padding.left, engine.canvasWidth.get(), padding.right),
+            clampPlotX(
+              e.x,
+              padding.left,
+              engine.canvasWidth.get(),
+              padding.right,
+            ),
           );
           // Freeze the chosen price (value at the pointer Y); the line's Y is
           // re-derived from it so the level stays put in PRICE as the axis rescales.
@@ -747,7 +770,12 @@ export function useCrosshair(
         if (!enabled) return;
         if (hasScrubAction && lockActive.get()) {
           lockX.set(
-            clampPlotX(e.x, padding.left, engine.canvasWidth.get(), padding.right),
+            clampPlotX(
+              e.x,
+              padding.left,
+              engine.canvasWidth.get(),
+              padding.right,
+            ),
           );
           // Freeze the chosen price (value at the pointer Y); the line's Y is
           // re-derived from it so the level stays put in PRICE as the axis rescales.
@@ -895,13 +923,8 @@ export function useCrosshair(
     : undefined;
   // Keep the bottom axis scroll-only. Do not apply horizontal plot bounds here:
   // the action badge is intentionally tappable in the right gutter.
-  const tapHitSlop = resolveScrubHitSlop(
-    padding,
-    false,
-    scrubBottomExclude,
-  );
-  if (tapGesture && tapHitSlop)
-    tapGesture = tapGesture.hitSlop(tapHitSlop);
+  const tapHitSlop = resolveScrubHitSlop(padding, false, scrubBottomExclude);
+  if (tapGesture && tapHitSlop) tapGesture = tapGesture.hitSlop(tapHitSlop);
 
   return {
     scrubX,

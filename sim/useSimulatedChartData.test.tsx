@@ -121,4 +121,53 @@ describe("useSimulatedChartData", () => {
     expect(afterStart).toBeGreaterThan(0);
     spy.mockRestore();
   });
+
+  it("cancels the steady timer on unmount", async () => {
+    const setIntervalSpy = jest.spyOn(global, "setInterval");
+    const clearIntervalSpy = jest.spyOn(global, "clearInterval");
+    const { unmount } = await renderHook(() =>
+      useSimulatedChartData({
+        tradesPerSecond: 5,
+        tradeArrivalJitter: 0,
+        multiSeries: false,
+        candleAggregation: false,
+        tradeStream: false,
+      }),
+    );
+
+    const timerCall = setIntervalSpy.mock.calls.findIndex(
+      ([, delay]) => delay === 200,
+    );
+    expect(timerCall).toBeGreaterThanOrEqual(0);
+    const timerId = setIntervalSpy.mock.results[timerCall].value;
+    await unmount();
+    expect(clearIntervalSpy).toHaveBeenCalledWith(timerId);
+    setIntervalSpy.mockRestore();
+    clearIntervalSpy.mockRestore();
+  });
+
+  it("cancels the jittered timeout chain on unmount", async () => {
+    const setTimeoutSpy = jest.spyOn(global, "setTimeout");
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const { unmount } = await renderHook(() =>
+      useSimulatedChartData({
+        tradesPerSecond: 5,
+        tradeArrivalJitter: 0.5,
+        random01: () => 0.5,
+        multiSeries: false,
+        candleAggregation: false,
+        tradeStream: false,
+      }),
+    );
+
+    const timerCall = setTimeoutSpy.mock.calls.findIndex(
+      ([, delay]) => delay === 200,
+    );
+    expect(timerCall).toBeGreaterThanOrEqual(0);
+    const timerId = setTimeoutSpy.mock.results[timerCall].value;
+    await unmount();
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(timerId);
+    setTimeoutSpy.mockRestore();
+    clearTimeoutSpy.mockRestore();
+  });
 });

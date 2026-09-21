@@ -73,6 +73,37 @@ describe("ExtremaConnectorOverlay", () => {
     expect(screen.toJSON()).toBeNull();
   });
 
+  it("returns null while extrema are hidden for loading", async () => {
+    const screen = await render(
+      <ExtremaConnectorOverlay
+        engine={makeEngine()}
+        padding={DEFAULT_PADDING}
+        top={dashed}
+        bottom={solid}
+        hideExtrema
+      />,
+    );
+    expect(screen.toJSON()).toBeNull();
+  });
+
+  it("suppresses the lower connector when both extrema share one point", async () => {
+    const screen = await render(
+      <ExtremaConnectorOverlay
+        engine={makeEngine({
+          maxValue: 100,
+          minValue: 100,
+          maxTime: 985,
+          minTime: 985,
+        })}
+        padding={DEFAULT_PADDING}
+        top={dashed}
+        bottom={solid}
+        suppressBottomWhenCoincident
+      />,
+    );
+    expect(screen.toJSON()).toBeTruthy();
+  });
+
   it("builds an empty path when the extremum is NaN or off-plot", async () => {
     // NaN value (no data) and an off-plot time both early-out in the worklet.
     const nan = await render(

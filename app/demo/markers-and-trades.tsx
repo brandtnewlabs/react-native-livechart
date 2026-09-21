@@ -1,7 +1,18 @@
 import { BlurView } from "expo-blur";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { LiveChart, type Marker, type MarkerKind } from "react-native-livechart";
+import {
+  LiveChart,
+  type Marker,
+  type MarkerClusterConfig,
+  type MarkerKind,
+} from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
@@ -17,7 +28,10 @@ type Side = "buy" | "sell";
 const BUY_COLOR = "#16a34a";
 const SELL_COLOR = "#dc2626";
 
-const VOLATILITY_OPTIONS = VOLATILITY_MODES.map((m) => ({ value: m, label: m }));
+const VOLATILITY_OPTIONS = VOLATILITY_MODES.map((m) => ({
+  value: m,
+  label: m,
+}));
 
 /**
  * The full built-in glyph library — drawn into the Skia canvas with no `icon` /
@@ -129,6 +143,173 @@ function GlassMarker({ side }: { side: Side }) {
   );
 }
 
+function resolveMarkerCluster(
+  stacked: boolean,
+  vertical: boolean,
+  overlap: number,
+  maxVisible: number | undefined,
+  groupBadge: GroupBadge,
+): "anchored" | MarkerClusterConfig {
+  if (!stacked) return "anchored";
+  return {
+    mode: "stacked",
+    direction: vertical ? "vertical" : "horizontal",
+    overlap,
+    maxBeforeGroup: vertical ? 20 : 5,
+    maxVisible: vertical ? maxVisible : undefined,
+    groupBadge:
+      groupBadge === "count"
+        ? "count"
+        : groupBadge === "custom"
+          ? CUSTOM_GROUP_BADGE
+          : "marker",
+    showGroupCount: groupBadge === "marker+count",
+  };
+}
+
+type MarkersChartProps = {
+  data: ReturnType<typeof useSimulatedChartData>["data"];
+  value: ReturnType<typeof useSimulatedChartData>["value"];
+  tradeStream: ReturnType<typeof useSimulatedChartData>["tradeStream"];
+  markers: ReturnType<typeof useSharedValue<Marker[]>>;
+  hitRadius: number;
+  stacked: boolean;
+  vertical: boolean;
+  overlap: number;
+  maxVisible: number | undefined;
+  groupBadge: GroupBadge;
+  custom: boolean;
+  streamOn: boolean;
+  setHover: Dispatch<SetStateAction<string>>;
+};
+
+function MarkersChart(props: MarkersChartProps) {
+  return (
+    <LiveChart
+      data={props.data}
+      value={props.value}
+      accentColor={ACCENT}
+      theme={APP_THEME}
+      timeWindow={WINDOW}
+      markers={props.markers}
+      markerHitRadius={props.hitRadius}
+      markerCluster={resolveMarkerCluster(
+        props.stacked,
+        props.vertical,
+        props.overlap,
+        props.maxVisible,
+        props.groupBadge,
+      )}
+      renderMarker={
+        props.custom
+          ? (marker) => (
+              <GlassMarker
+                side={(marker.data as { side?: Side })?.side ?? "buy"}
+              />
+            )
+          : undefined
+      }
+      tradeStream={props.streamOn ? props.tradeStream : undefined}
+      onMarkerPress={(event) => {
+        const side = (event?.marker.data as { side?: Side } | undefined)?.side;
+        props.setHover(
+          event
+            ? event.isGrouped
+              ? `group of ${event.members?.length ?? 0} (tap #${event.index})`
+              : `${side ?? "marker"} @ (${event.point.x.toFixed(0)}, ${event.point.y.toFixed(0)})`
+            : "missed — tap a pill",
+        );
+      }}
+      scrub={false}
+    />
+  );
+}
+
+type CollisionControlsProps = {
+  stacked: boolean;
+  setStacked: Dispatch<SetStateAction<boolean>>;
+  vertical: boolean;
+  setVertical: Dispatch<SetStateAction<boolean>>;
+  overlap: number;
+  setOverlap: Dispatch<SetStateAction<number>>;
+  maxVisible: number | undefined;
+  setMaxVisible: Dispatch<SetStateAction<number | undefined>>;
+  groupBadge: GroupBadge;
+  setGroupBadge: Dispatch<SetStateAction<GroupBadge>>;
+};
+
+function CollisionControls(props: CollisionControlsProps) {
+  if (!props.stacked) {
+    return (
+      <ControlRow label="Collision">
+        <ToggleChip
+          label="markerCluster: stacked"
+          value={false}
+          onChange={props.setStacked}
+        />
+      </ControlRow>
+    );
+  }
+  return (
+    <>
+      <ControlRow label="Collision">
+        <ToggleChip
+          label="markerCluster: stacked"
+          value
+          onChange={props.setStacked}
+        />
+        <ToggleChip
+          label="vertical column"
+          value={props.vertical}
+          onChange={props.setVertical}
+        />
+      </ControlRow>
+      <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+        With stacking on, co-located markers fan apart horizontally
+        (overlapping, left-over-right); a dense burst collapses to a count badge
+        (tap it for the member list). Switch on the vertical column to pile them
+        up the value axis instead (buys down, sells up) — the
+        transactions-on-the-candle look. Cap a vertical column to keep the
+        oldest glyphs near the line and hide newer overflow.
+      </Text>
+      <ChipRow
+        label="Overlap"
+        options={OVERLAP_OPTIONS}
+        value={props.overlap}
+        onChange={props.setOverlap}
+      />
+      {props.vertical ? (
+        <>
+          <ChipRow
+            label="Vertical column cap (maxVisible)"
+            options={MAX_VISIBLE_OPTIONS}
+            value={props.maxVisible}
+            onChange={props.setMaxVisible}
+          />
+          <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+            Try a capped column with Burst ×12: `maxBeforeGroup` stays at 20
+            here, so `maxVisible` can hide the newest markers instead of
+            collapsing the burst to a count badge.
+          </Text>
+        </>
+      ) : null}
+      <ChipRow
+        label="Collapsed group badge"
+        options={GROUP_BADGE_OPTIONS}
+        value={props.groupBadge}
+        onChange={props.setGroupBadge}
+      />
+      <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
+        A collapsed burst can show the round count, the representative buy/sell
+        pill (`groupBadge: &quot;marker&quot;`, optionally with a corner
+        &quot;+N&quot; via `showGroupCount`), or a dedicated custom badge — here
+        a purple ★ pill (`groupBadge: {"{"} icon: &quot;★&quot;, pill: true{" "}
+        {"}"}`), its own glyph independent of the members. All drawn in Skia.
+      </Text>
+    </>
+  );
+}
+
 export default function MarkersScreen() {
   const [auto, setAuto] = useState(true);
   const [hover, setHover] = useState("Tap a marker");
@@ -226,59 +407,20 @@ export default function MarkersScreen() {
       docs="guides/markers-and-trades"
       description="Buy / sell markers anchored to the line — green + pill (buy), red − pill (sell). Tap a pill to hover; optional tradeStream overlay."
       chart={
-        <LiveChart
+        <MarkersChart
           data={data}
           value={value}
-          accentColor={ACCENT}
-          theme={APP_THEME}
-          timeWindow={WINDOW}
+          tradeStream={tradeStream}
           markers={markers}
-          markerHitRadius={hitRadius}
-          markerCluster={
-            stacked
-              ? {
-                  mode: "stacked",
-                  direction: vertical ? "vertical" : "horizontal",
-                  overlap,
-                  maxBeforeGroup: vertical ? 20 : 5,
-                  maxVisible: vertical ? maxVisible : undefined,
-                  // #165: collapsed-group look — a count circle, the representative
-                  // buy/sell pill (optionally with a corner "+N"), or a dedicated
-                  // custom group badge (its own glyph, distinct from the members).
-                  groupBadge:
-                    groupBadge === "count"
-                      ? "count"
-                      : groupBadge === "custom"
-                        ? CUSTOM_GROUP_BADGE
-                        : "marker",
-                  // `showGroupCount` is its own concern — demoed by "Pill +N".
-                  // "Custom" shows just the dedicated badge (no corner count) so the
-                  // two ideas don't blur together; the count still composes with it.
-                  showGroupCount: groupBadge === "marker+count",
-                }
-              : "anchored"
-          }
-          renderMarker={
-            custom
-              ? (m) => (
-                  <GlassMarker
-                    side={(m.data as { side?: Side })?.side ?? "buy"}
-                  />
-                )
-              : undefined
-          }
-          tradeStream={streamOn ? tradeStream : undefined}
-          onMarkerPress={(e) => {
-            const side = (e?.marker.data as { side?: Side } | undefined)?.side;
-            setHover(
-              e
-                ? e.isGrouped
-                  ? `group of ${e.members?.length ?? 0} (tap #${e.index})`
-                  : `${side ?? "marker"} @ (${e.point.x.toFixed(0)}, ${e.point.y.toFixed(0)})`
-                : "missed — tap a pill",
-            );
-          }}
-          scrub={false}
+          hitRadius={hitRadius}
+          stacked={stacked}
+          vertical={vertical}
+          overlap={overlap}
+          maxVisible={maxVisible}
+          groupBadge={groupBadge}
+          custom={custom}
+          streamOn={streamOn}
+          setHover={setHover}
         />
       }
     >
@@ -295,7 +437,11 @@ export default function MarkersScreen() {
         <Chip label="Sell −" active={false} onPress={() => spawn("sell")} />
         <Chip label="Fan ×4" active={false} onPress={() => spawnCluster(4)} />
         <Chip label="Burst ×9" active={false} onPress={() => spawnCluster(9)} />
-        <Chip label="Burst ×12" active={false} onPress={() => spawnCluster(12)} />
+        <Chip
+          label="Burst ×12"
+          active={false}
+          onPress={() => spawnCluster(12)}
+        />
         <Chip label="Clear" active={false} onPress={() => markers.set([])} />
       </ControlRow>
       <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
@@ -326,60 +472,18 @@ export default function MarkersScreen() {
         onChange={setHitRadius}
       />
 
-      <ControlRow label="Collision">
-        <ToggleChip label="markerCluster: stacked" value={stacked} onChange={setStacked} />
-        {stacked ? (
-          <ToggleChip label="vertical column" value={vertical} onChange={setVertical} />
-        ) : null}
-      </ControlRow>
-      <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
-        With stacking on, co-located markers fan apart horizontally (overlapping,
-        left-over-right); a dense burst collapses to a count badge (tap it for the
-        member list). Switch on the vertical column to pile them up the value axis
-        instead (buys down, sells up) — the transactions-on-the-candle look. Cap
-        a vertical column to keep the oldest glyphs near the line and hide newer
-        overflow.
-      </Text>
-      {stacked ? (
-        <ChipRow
-          label="Overlap"
-          options={OVERLAP_OPTIONS}
-          value={overlap}
-          onChange={setOverlap}
-        />
-      ) : null}
-      {stacked && vertical ? (
-        <ChipRow
-          label="Vertical column cap (maxVisible)"
-          options={MAX_VISIBLE_OPTIONS}
-          value={maxVisible}
-          onChange={(cap) => setMaxVisible(cap)}
-        />
-      ) : null}
-      {stacked && vertical ? (
-        <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
-          Try a capped column with Burst ×12: `maxBeforeGroup` stays at 20 here,
-          so `maxVisible` can hide the newest markers instead of collapsing the
-          burst to a count badge.
-        </Text>
-      ) : null}
-      {stacked ? (
-        <ChipRow
-          label="Collapsed group badge"
-          options={GROUP_BADGE_OPTIONS}
-          value={groupBadge}
-          onChange={setGroupBadge}
-        />
-      ) : null}
-      {stacked ? (
-        <Text style={[demoStyles.chipText, { opacity: 0.6, marginTop: 8 }]}>
-          A collapsed burst can show the round count, the representative buy/sell
-          pill (`groupBadge: &quot;marker&quot;`, optionally with a corner
-          &quot;+N&quot; via `showGroupCount`), or a dedicated custom badge — here a
-          purple ★ pill (`groupBadge: {'{'} icon: &quot;★&quot;, pill: true {'}'}`),
-          its own glyph independent of the members. All drawn in Skia.
-        </Text>
-      ) : null}
+      <CollisionControls
+        stacked={stacked}
+        setStacked={setStacked}
+        vertical={vertical}
+        setVertical={setVertical}
+        overlap={overlap}
+        setOverlap={setOverlap}
+        maxVisible={maxVisible}
+        setMaxVisible={setMaxVisible}
+        groupBadge={groupBadge}
+        setGroupBadge={setGroupBadge}
+      />
 
       <ControlRow label="Custom render">
         <ToggleChip label="renderMarker" value={custom} onChange={setCustom} />
@@ -391,7 +495,11 @@ export default function MarkersScreen() {
       </Text>
 
       <ControlRow label="Trade stream">
-        <ToggleChip label="tradeStream" value={streamOn} onChange={setStreamOn} />
+        <ToggleChip
+          label="tradeStream"
+          value={streamOn}
+          onChange={setStreamOn}
+        />
       </ControlRow>
       <ChipRow
         label="Volatility"
@@ -413,7 +521,8 @@ const glass = StyleSheet.create({
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     // Hairline rim sells the "glass" edge; overflow clips the blur to the pill.
-    borderColor: APP_THEME === "dark" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.12)",
+    borderColor:
+      APP_THEME === "dark" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.12)",
     overflow: "hidden",
   },
   dot: { width: 6, height: 6, borderRadius: 3 },

@@ -3,6 +3,11 @@ import {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
+import {
+  hasCandleChartData,
+  hasLineChartData,
+  hasMultiSeriesChartData,
+} from "../core/chartDataPresence";
 import type { CandlePoint, LiveChartPoint, SeriesConfig } from "../types";
 
 const STASH_MORPH_EPS = 0.01;
@@ -42,20 +47,19 @@ export function useSingleChartReverseMorphInputs({
       has: hasData.get(),
       m: morphT.get(),
       d: data.get(),
-      cLen: candles?.get().length ?? 0,
       c: candles?.get(),
       lc: liveCandle?.get() ?? null,
     }),
     (curr) => {
       "worklet";
       if (!curr.candle) {
-        if (curr.has && curr.d.length >= 2) {
+        if (curr.has && hasLineChartData(curr.d)) {
           lineStash.set(curr.d.slice());
           lineEngineData.set(curr.d);
         } else if (
           !curr.has &&
           curr.m > STASH_MORPH_EPS &&
-          lineStash.get().length >= 2
+          hasLineChartData(lineStash.get())
         ) {
           lineEngineData.set(lineStash.get());
         } else {
@@ -65,14 +69,14 @@ export function useSingleChartReverseMorphInputs({
       }
 
       const cArr = curr.c;
-      if (curr.has && curr.cLen >= 2 && cArr) {
+      if (curr.has && hasCandleChartData(cArr) && cArr) {
         candleStash.set(cArr.slice());
         candlesEngine.set(cArr);
         liveEngine.set(curr.lc);
       } else if (
         !curr.has &&
         curr.m > STASH_MORPH_EPS &&
-        candleStash.get().length >= 2
+        hasCandleChartData(candleStash.get())
       ) {
         candlesEngine.set(candleStash.get());
         liveEngine.set(null);
@@ -118,27 +122,14 @@ export function useMultiSeriesReverseMorphInputs({
     (curr) => {
       "worklet";
       const live = curr.live;
-
-      let anyReady = false;
-      for (let i = 0; i < live.length; i++) {
-        if (live[i].data.length >= 2) {
-          anyReady = true;
-          break;
-        }
-      }
+      const anyReady = hasMultiSeriesChartData(live);
 
       if (curr.has && anyReady) {
         seriesStash.set(snapshotSeriesWorklet(live));
         effectiveSeries.set(live);
       } else {
-        let stashReady = false;
         const stash = seriesStash.get();
-        for (let i = 0; i < stash.length; i++) {
-          if (stash[i].data.length >= 2) {
-            stashReady = true;
-            break;
-          }
-        }
+        const stashReady = hasMultiSeriesChartData(stash);
 
         if (!curr.has && curr.m > STASH_MORPH_EPS && stashReady) {
           effectiveSeries.set(seriesStash.get());

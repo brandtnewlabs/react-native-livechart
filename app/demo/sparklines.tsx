@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { LiveChart, type LiveChartPoint } from "react-native-livechart";
 import { useSharedValue } from "react-native-reanimated";
@@ -8,8 +8,6 @@ import { ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT, ACCENT_PRESETS } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 import { demoStyles } from "../../demo-lib/styles";
-
-export const options = { title: "Sparklines" };
 
 const CELL_COUNT = 24;
 const POINTS_PER_CELL = 40;
@@ -64,7 +62,7 @@ type CellSeed = {
  * `nowOverride` (the historical-data-fill pattern). `static` disables every
  * per-frame loop, so dozens of these cost almost nothing.
  */
-const SparklineCell = memo(function SparklineCell({
+function SparklineCell({
   seed,
 }: {
   seed: CellSeed;
@@ -94,7 +92,7 @@ const SparklineCell = memo(function SparklineCell({
       />
     </View>
   );
-});
+}
 
 /**
  * The 24-cell grid, mounted in a deferred batch. A chart's *mount* isn't free
@@ -147,7 +145,7 @@ export default function SparklinesScreen() {
   // most recent point sits exactly at the right edge. The anchor time is read
   // once at mount via a lazy initializer to keep render pure.
   const [endTime] = useState(() => Date.now() / 1000);
-  const seeds = useMemo<CellSeed[]>(() => {
+  const [seeds] = useState<CellSeed[]>(() => {
     return Array.from({ length: CELL_COUNT }, (_, i) => {
       const points = seededWalk(i * 1000 + 7, POINTS_PER_CELL, endTime);
       return {
@@ -158,7 +156,7 @@ export default function SparklinesScreen() {
         color: ACCENT_PRESETS[i % ACCENT_PRESETS.length],
       };
     });
-  }, [endTime]);
+  });
 
   // Featured larger sparkline shown in the fixed chart slot above the grid.
   const featuredData = useSharedValue<LiveChartPoint[]>(seeds[0].points);

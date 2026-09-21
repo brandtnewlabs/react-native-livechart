@@ -38,16 +38,13 @@ export default function MemoryProfileScreen() {
   });
 
   useEffect(() => {
-    let nextPhase = 1;
-    let timer = setTimeout(function advancePhase() {
-      setPhaseIndex(nextPhase);
-      nextPhase += 1;
-      if (nextPhase < PHASES.length) {
-        timer = setTimeout(advancePhase, PHASES[nextPhase - 1].seconds * 1000);
-      }
-    }, PHASES[0].seconds * 1000);
+    if (phaseIndex >= PHASES.length - 1) return;
+    const timer = setTimeout(
+      () => setPhaseIndex((current) => current + 1),
+      PHASES[phaseIndex].seconds * 1000,
+    );
     return () => clearTimeout(timer);
-  }, []);
+  }, [phaseIndex]);
 
   const phase = PHASES[phaseIndex];
 

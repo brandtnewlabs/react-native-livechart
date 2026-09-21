@@ -16,8 +16,6 @@ import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME, colors } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Candle scrub" };
-
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 type Field = "open" | "high" | "low" | "close";

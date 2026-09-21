@@ -56,6 +56,22 @@ export const EXTREMA_EDGE_INSET = 2;
  *  reads it to estimate where the edge label ends. */
 export const EXTREMA_LABEL_FONT_SIZE = 11;
 
+/** Whether the high and low extrema resolve to the exact same data point. */
+export function extremaPointsCoincide(
+  firstTime: number,
+  firstValue: number,
+  secondTime: number,
+  secondValue: number,
+): boolean {
+  "worklet";
+  return (
+    Number.isFinite(firstTime) &&
+    Number.isFinite(firstValue) &&
+    firstTime === secondTime &&
+    firstValue === secondValue
+  );
+}
+
 /**
  * The batteries-included axis edge label — an animated RN text driven by a
  * `SharedValue<number>` (the chart's current top / bottom Y-axis bound). The
@@ -131,6 +147,7 @@ function ExtremaAxisLabel({
   dotSize,
   dot,
   render,
+  suppressWhen,
 }: {
   /** `"top"` floats above the max point; `"bottom"` below the min point. */
   side: "top" | "bottom";
@@ -160,6 +177,11 @@ function ExtremaAxisLabel({
   /** Whether to draw the marker dot. */
   dot: boolean;
   render?: () => React.ReactElement | null;
+  /** Hide this side when it resolves to the same point as the other extremum. */
+  suppressWhen?: {
+    timeSV: SharedValue<number>;
+    valueSV: SharedValue<number>;
+  };
 }) {
   const isCustom = render != null;
   // Resolved dot geometry. `hasDot` also gates the label's vertical offset (it
@@ -181,7 +203,16 @@ function ExtremaAxisLabel({
   useAnimatedReaction(
     () => {
       const v = valueSV.get();
-      return isCustom || !Number.isFinite(v) ? "" : format(v);
+      const t = timeSV.get();
+      const suppressed =
+        suppressWhen != null &&
+        extremaPointsCoincide(
+          t,
+          v,
+          suppressWhen.timeSV.get(),
+          suppressWhen.valueSV.get(),
+        );
+      return isCustom || !Number.isFinite(v) || suppressed ? "" : format(v);
     },
     (curr, prev) => {
       if (curr !== prev) scheduleOnRN(setValueText, curr);
@@ -211,6 +242,13 @@ function ExtremaAxisLabel({
 
     if (
       !Number.isFinite(value) ||
+      (suppressWhen != null &&
+        extremaPointsCoincide(
+          time,
+          value,
+          suppressWhen.timeSV.get(),
+          suppressWhen.valueSV.get(),
+        )) ||
       cw === 0 ||
       ch === 0 ||
       chartW <= 0 ||
@@ -324,6 +362,90 @@ function ExtremaAxisLabel({
   );
 }
 
+/** One configured top/bottom label, rendered either on its edge or extremum. */
+function AxisLabelSide({
+  side,
+  label,
+  extrema,
+  timeSV,
+  valueSV,
+  edgeValue,
+  engine,
+  formatValue,
+  defaultColor,
+  padding,
+  extremaTimeOffset,
+  hideExtrema,
+  suppressWhen,
+}: {
+  side: "top" | "bottom";
+  label: ResolvedAxisLabelConfig | null;
+  extrema: boolean;
+  timeSV?: SharedValue<number>;
+  valueSV?: SharedValue<number>;
+  edgeValue: SharedValue<number>;
+  engine: ChartEngineLayout;
+  formatValue: (v: number) => string;
+  defaultColor: string;
+  padding: ChartPadding;
+  extremaTimeOffset: number;
+  hideExtrema: boolean;
+  suppressWhen?: {
+    timeSV: SharedValue<number>;
+    valueSV: SharedValue<number>;
+  };
+}) {
+  if (!label) return null;
+
+  if (extrema) {
+    if (hideExtrema || !timeSV || !valueSV) return null;
+    return (
+      <ExtremaAxisLabel
+        side={side}
+        timeSV={timeSV}
+        valueSV={valueSV}
+        timeOffset={extremaTimeOffset}
+        edgeAnchor={label.position === "extrema-edge"}
+        engine={engine}
+        padding={padding}
+        format={label.format ?? formatValue}
+        color={label.color ?? defaultColor}
+        font={labelFont(label)}
+        dotColor={label.dotColor}
+        dotSize={label.dotSize}
+        dot={label.dot}
+        render={label.render ?? undefined}
+        suppressWhen={suppressWhen}
+      />
+    );
+  }
+
+  return (
+    <View
+      style={{
+        position: "absolute",
+        ...(side === "top"
+          ? { top: padding.top }
+          : { bottom: padding.bottom }),
+        left: padding.left,
+        right: padding.right,
+      }}
+    >
+      {label.render ? (
+        label.render()
+      ) : (
+        <BuiltInAxisValueLabel
+          value={edgeValue}
+          format={label.format ?? formatValue}
+          color={label.color ?? defaultColor}
+          position={label.position}
+          font={labelFont(label)}
+        />
+      )}
+    </View>
+  );
+}
+
 /**
  * React Native overlay (NOT Skia) floating axis edge labels over the Skia
  * canvas — `topLabel` pinned to the plot's top edge and `bottomLabel` to its
@@ -353,6 +475,7 @@ export function AxisLabelOverlay({
   defaultColor,
   padding,
   extremaTimeOffset = 0,
+  hideExtrema = false,
 }: {
   topLabel: ResolvedAxisLabelConfig | null;
   bottomLabel: ResolvedAxisLabelConfig | null;
@@ -366,6 +489,8 @@ export function AxisLabelOverlay({
    * candle's drawn center; `0` (default) for line / multi-series.
    */
   extremaTimeOffset?: number;
+  /** Hide point-anchored extrema while the chart is showing its loading shell. */
+  hideExtrema?: boolean;
 }) {
   if (!topLabel && !bottomLabel) return null;
 
@@ -384,86 +509,42 @@ export function AxisLabelOverlay({
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {topLabel &&
-        (topExtrema ? (
-          <ExtremaAxisLabel
-            side="top"
-            timeSV={engine.extremaMaxTime!}
-            valueSV={engine.extremaMaxValue!}
-            timeOffset={extremaTimeOffset}
-            edgeAnchor={topMode === "extrema-edge"}
-            engine={engine}
-            padding={padding}
-            format={topLabel.format ?? formatValue}
-            color={topLabel.color ?? defaultColor}
-            font={labelFont(topLabel)}
-            dotColor={topLabel.dotColor}
-            dotSize={topLabel.dotSize}
-            dot={topLabel.dot}
-            render={topLabel.render ?? undefined}
-          />
-        ) : (
-          <View
-            style={{
-              position: "absolute",
-              top: padding.top,
-              left: padding.left,
-              right: padding.right,
-            }}
-          >
-            {topLabel.render ? (
-              topLabel.render()
-            ) : (
-              <BuiltInAxisValueLabel
-                value={engine.displayMax}
-                format={topLabel.format ?? formatValue}
-                color={topLabel.color ?? defaultColor}
-                position={topLabel.position}
-                font={labelFont(topLabel)}
-              />
-            )}
-          </View>
-        ))}
-      {bottomLabel &&
-        (bottomExtrema ? (
-          <ExtremaAxisLabel
-            side="bottom"
-            timeSV={engine.extremaMinTime!}
-            valueSV={engine.extremaMinValue!}
-            timeOffset={extremaTimeOffset}
-            edgeAnchor={bottomMode === "extrema-edge"}
-            engine={engine}
-            padding={padding}
-            format={bottomLabel.format ?? formatValue}
-            color={bottomLabel.color ?? defaultColor}
-            font={labelFont(bottomLabel)}
-            dotColor={bottomLabel.dotColor}
-            dotSize={bottomLabel.dotSize}
-            dot={bottomLabel.dot}
-            render={bottomLabel.render ?? undefined}
-          />
-        ) : (
-          <View
-            style={{
-              position: "absolute",
-              bottom: padding.bottom,
-              left: padding.left,
-              right: padding.right,
-            }}
-          >
-            {bottomLabel.render ? (
-              bottomLabel.render()
-            ) : (
-              <BuiltInAxisValueLabel
-                value={engine.displayMin}
-                format={bottomLabel.format ?? formatValue}
-                color={bottomLabel.color ?? defaultColor}
-                position={bottomLabel.position}
-                font={labelFont(bottomLabel)}
-              />
-            )}
-          </View>
-        ))}
+      <AxisLabelSide
+        side="top"
+        label={topLabel}
+        extrema={topExtrema}
+        timeSV={engine.extremaMaxTime}
+        valueSV={engine.extremaMaxValue}
+        edgeValue={engine.displayMax}
+        engine={engine}
+        formatValue={formatValue}
+        defaultColor={defaultColor}
+        padding={padding}
+        extremaTimeOffset={extremaTimeOffset}
+        hideExtrema={hideExtrema}
+      />
+      <AxisLabelSide
+        side="bottom"
+        label={bottomLabel}
+        extrema={bottomExtrema}
+        timeSV={engine.extremaMinTime}
+        valueSV={engine.extremaMinValue}
+        edgeValue={engine.displayMin}
+        engine={engine}
+        formatValue={formatValue}
+        defaultColor={defaultColor}
+        padding={padding}
+        extremaTimeOffset={extremaTimeOffset}
+        hideExtrema={hideExtrema}
+        suppressWhen={
+          topExtrema
+            ? {
+                timeSV: engine.extremaMaxTime!,
+                valueSV: engine.extremaMaxValue!,
+              }
+            : undefined
+        }
+      />
     </View>
   );
 }

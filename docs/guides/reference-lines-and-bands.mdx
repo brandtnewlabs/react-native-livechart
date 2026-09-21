@@ -85,8 +85,9 @@ const referenceLines: ReferenceLine[] = [
 
 Points use unix-second timestamps and must be sorted oldest to newest. The first value extends
 to the window's left edge, and the last value extends flat to the live edge. Set
-`extendToNow: false` to stop the path and its label at the final point. A series contributes its
-minimum and maximum to automatic Y-range fitting unless `excludeFromRange` is set.
+`extendToStart: false` to begin the path at its first point, or `extendToNow: false` to stop the
+path and its label at the final point. A series contributes its minimum and maximum to automatic
+Y-range fitting unless `excludeFromRange` is set.
 
 The series form supports the shared line presentation fields: `color`, `strokeOpacity`,
 `strokeWidth`, `intervals`, `label`, `labelColor`, `labelPosition`, `showValue`, and

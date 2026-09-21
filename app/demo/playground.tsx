@@ -29,8 +29,6 @@ import {
   type HistoryRange,
 } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Playground" };
-
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 // Built once at module scope so it isn't reconstructed per render (js-hoist-intl).

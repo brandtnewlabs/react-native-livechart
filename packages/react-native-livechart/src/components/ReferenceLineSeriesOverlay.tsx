@@ -38,11 +38,13 @@ export function ReferenceLineSeriesOverlay({
   badgeLayer: boolean;
 }) {
   const points = line.series ?? [];
+  const extendToStart = line.extendToStart ?? true;
   const extendToNow = line.extendToNow ?? true;
   const geometry = useReferenceLineSeries(
     engine,
     padding,
     points,
+    extendToStart,
     extendToNow,
   );
   const color = line.color ?? palette.refLine;

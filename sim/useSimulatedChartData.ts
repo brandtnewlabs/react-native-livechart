@@ -130,6 +130,34 @@ interface TickBuffers {
 
 const INITIAL_TAPE_EVENTS = 20;
 
+function startPulseTimer(
+  pulse: () => void,
+  baseMs: number,
+  jitter: number,
+  random01: () => number,
+): () => void {
+  if (jitter <= 0) {
+    const intervalId = setInterval(pulse, baseMs);
+    return () => clearInterval(intervalId);
+  }
+
+  let active = true;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const scheduleNext = () => {
+    const delay = nextJitteredDelayMs(baseMs, jitter, random01);
+    timeoutId = setTimeout(() => {
+      pulse();
+      if (active) scheduleNext();
+    }, delay);
+  };
+  scheduleNext();
+
+  return () => {
+    active = false;
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  };
+}
+
 /** Staggered timestamps so the initial tape has depth (same mid as last seed point). */
 function seedTradeTapeFromMid(
   midPrice: number,
@@ -369,7 +397,7 @@ export function useSimulatedChartData(
     liveCandle.set(nextLiveCandle);
   }, [candleWidth, candleAggregation, candles, liveCandle]);
 
-  // Live: setInterval (jitter 0) or chained setTimeout (jitter > 0). Cleanup clears all timers.
+  // Live: setInterval (jitter 0) or chained setTimeout (jitter > 0).
   useEffect(() => {
     // No catch-up burst on resume; effect re-runs when TPS/jitter change and replaces the timer.
     if (paused || tradesPerSecond <= 0) {
@@ -458,26 +486,7 @@ export function useSimulatedChartData(
       }
     };
 
-    let intervalId: ReturnType<typeof setInterval> | undefined;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-    if (tradeArrivalJitter <= 0) {
-      intervalId = setInterval(pulse, baseMs);
-    } else {
-      const scheduleNext = () => {
-        const delay = nextJitteredDelayMs(baseMs, tradeArrivalJitter, rng);
-        timeoutId = setTimeout(() => {
-          pulse();
-          scheduleNext();
-        }, delay);
-      };
-      scheduleNext();
-    }
-
-    return () => {
-      if (intervalId !== undefined) clearInterval(intervalId);
-      if (timeoutId !== undefined) clearTimeout(timeoutId);
-    };
+    return startPulseTimer(pulse, baseMs, tradeArrivalJitter, rng);
   }, [
     paused,
     tradesPerSecond,

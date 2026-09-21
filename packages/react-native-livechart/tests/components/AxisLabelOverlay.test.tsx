@@ -2,7 +2,10 @@ import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import { Text, TextInput } from "react-native";
 
-import { AxisLabelOverlay } from "../../src/components/AxisLabelOverlay";
+import {
+  AxisLabelOverlay,
+  extremaPointsCoincide,
+} from "../../src/components/AxisLabelOverlay";
 import type { ResolvedAxisLabelConfig } from "../../src/core/resolveConfig";
 import type {
   ChartEngineExtrema,
@@ -196,6 +199,69 @@ describe("AxisLabelOverlay", () => {
       expect(screen.getByText("VALLEY")).toBeTruthy();
     });
 
+    it("hides both extrema labels while loading", async () => {
+      const screen = await render(
+        <AxisLabelOverlay
+          topLabel={builtIn({
+            position: "extrema",
+            render: () => <Text>PEAK</Text>,
+          })}
+          bottomLabel={builtIn({
+            position: "extrema-edge",
+            render: () => <Text>VALLEY</Text>,
+          })}
+          engine={makeExtremaEngine()}
+          formatValue={fmt}
+          defaultColor="#888"
+          padding={DEFAULT_PADDING}
+          hideExtrema
+        />,
+      );
+      expect(screen.queryByText("PEAK")).toBeNull();
+      expect(screen.queryByText("VALLEY")).toBeNull();
+    });
+
+    it("does not hide ordinary edge labels while loading", async () => {
+      const screen = await render(
+        <AxisLabelOverlay
+          topLabel={builtIn({ render: () => <Text>HIGH</Text> })}
+          bottomLabel={null}
+          engine={makeExtremaEngine()}
+          formatValue={fmt}
+          defaultColor="#888"
+          padding={DEFAULT_PADDING}
+          hideExtrema
+        />,
+      );
+      expect(screen.getByText("HIGH")).toBeTruthy();
+    });
+
+    it("suppresses the lower label when both extrema are the same point", async () => {
+      const screen = await render(
+        <AxisLabelOverlay
+          topLabel={builtIn({
+            position: "extrema",
+            render: () => <Text>PEAK</Text>,
+          })}
+          bottomLabel={builtIn({
+            position: "extrema",
+            render: () => <Text>VALLEY</Text>,
+          })}
+          engine={makeExtremaEngine({
+            maxValue: 100,
+            minValue: 100,
+            maxTime: 985,
+            minTime: 985,
+          })}
+          formatValue={fmt}
+          defaultColor="#888"
+          padding={DEFAULT_PADDING}
+        />,
+      );
+      expect(screen.getByText("PEAK").parent).toHaveStyle({ opacity: 1 });
+      expect(screen.getByText("VALLEY").parent).toHaveStyle({ opacity: 0 });
+    });
+
     it("stays mounted (hidden) when the extremum value is NaN", async () => {
       const screen = await render(
         <AxisLabelOverlay
@@ -319,5 +385,14 @@ describe("AxisLabelOverlay", () => {
       );
       expect(getAllByHostType(screen, TextInput)).toHaveLength(1);
     });
+  });
+});
+
+describe("extremaPointsCoincide", () => {
+  it("matches only the same finite point", () => {
+    expect(extremaPointsCoincide(10, 100, 10, 100)).toBe(true);
+    expect(extremaPointsCoincide(10, 100, 11, 100)).toBe(false);
+    expect(extremaPointsCoincide(10, 100, 10, 99)).toBe(false);
+    expect(extremaPointsCoincide(10, NaN, 10, NaN)).toBe(false);
   });
 });

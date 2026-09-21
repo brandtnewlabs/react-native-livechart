@@ -11,8 +11,6 @@ import { Chip, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 
-export const options = { title: "Segments" };
-
 // Three sessions (pre-market | regular | after-hours) partition the chart. The
 // line is ONE color at rest; scrubbing a session keeps it full and de-emphasizes
 // the others (the Robinhood model). Framed with nowOverride + timeWindow so the

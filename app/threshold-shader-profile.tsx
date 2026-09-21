@@ -7,12 +7,9 @@
  */
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import {
-  runOnJS,
-  useFrameCallback,
-  useSharedValue,
-} from "react-native-reanimated";
+import { useFrameCallback, useSharedValue } from "react-native-reanimated";
 import { LiveChart, type LiveChartPoint } from "react-native-livechart";
+import { scheduleOnRN } from "react-native-worklets";
 
 const MODE =
   process.env.EXPO_PUBLIC_THRESHOLD_SHADER_PROFILE_MODE === "stroke"
@@ -164,7 +161,7 @@ export default function ThresholdShaderProfileScreen() {
 
     if (timestamp - stats.phaseStart >= FRAME_PROFILE_DURATION_MS) {
       stats.reported = true;
-      runOnJS(setFrameProfile)(formatFrameProfile(stats));
+      scheduleOnRN(setFrameProfile, formatFrameProfile(stats));
     }
   });
 

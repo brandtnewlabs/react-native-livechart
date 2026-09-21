@@ -39,7 +39,7 @@ export interface ChartRevealState {
   morphT: SharedValue<number>;
   /** True while loading=true */
   isLoading: SharedValue<boolean>;
-  /** True when not loading and fewer than two samples. */
+  /** True when not loading and no samples are available. */
   isEmpty: SharedValue<boolean>;
   yAxisOpacity: SharedValue<number>;
   fillOpacity: SharedValue<number>;

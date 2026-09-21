@@ -22,6 +22,8 @@ export type ThresholdValue = SharedValue<number> | LiveChartPoint[];
 
 /** `clipRight` sentinel when the threshold extends to "now" (no forward cutoff). */
 export const THRESHOLD_NO_CLIP = 1e9;
+/** `clipLeft` sentinel when the threshold extends to the window start. */
+export const THRESHOLD_NO_CLIP_LEFT = -1e9;
 
 export interface ThresholdGeometry {
   /** Threshold pixel-Y within the canvas, or NaN before layout / degenerate range. */
@@ -104,6 +106,9 @@ export interface ThresholdSeriesGeometry {
    *  part of the threshold. (`visible` can still be true when that one endpoint
    *  is off-plot.) */
   badgeVisible: SharedValue<boolean>;
+  /** Pixel-X where the threshold starts: the first point's X with
+   *  `extendToStart` off, else {@link THRESHOLD_NO_CLIP_LEFT}. */
+  clipLeftX: SharedValue<number>;
   /** Pixel-X where the threshold ends: the last point's X with `extendToNow`
    *  off, else {@link THRESHOLD_NO_CLIP}. The shader paints its plain
    *  `restColor` right of it; the marker polyline stops there. */
@@ -119,7 +124,7 @@ const EMPTY_SAMPLES: number[] = new Array(THRESHOLD_SAMPLE_COUNT).fill(0);
  * `LiveChartPoint[]` `value` or a live `SharedValue<LiveChartPoint[]>` `series`
  * (which wins when both are given): the screen polyline (marker line +
  * fill-band bottom), the shader's pixel-Y `samples[]`, the configured endpoint
- * value/anchor for the badge, and the `extendToNow` cutoff X. The array buffers
+ * value/anchor for the badge, and the endpoint cutoff X values. The array buffers
  * ping-pong (Reanimated only re-notifies subscribers when the returned reference
  * changes). When the threshold is a constant `SharedValue<number>` every
  * worklet short-circuits cheaply and {@link useThreshold} drives the render
@@ -131,6 +136,7 @@ export function useThresholdSeries(
   value: ThresholdValue,
   series: SharedValue<LiveChartPoint[]> | null = null,
   extendToNow = true,
+  extendToStart = true,
   labelAnchor: "first" | "last" = "last",
 ): ThresholdSeriesGeometry {
   const cacheRef = useRef<{
@@ -176,6 +182,19 @@ export function useThresholdSeries(
     );
   });
 
+  const clipLeftX = useDerivedValue(() => {
+    if (extendToStart) return THRESHOLD_NO_CLIP_LEFT;
+    const pts = series ? series.get() : Array.isArray(value) ? value : null;
+    if (pts === null || pts.length === 0) return THRESHOLD_NO_CLIP_LEFT;
+    const win = engine.displayWindow.get();
+    const plotLeft = padding.left;
+    const plotRight = engine.canvasWidth.get() - padding.right;
+    if (!(win > 0) || plotRight <= plotLeft) return THRESHOLD_NO_CLIP_LEFT;
+    const winStart = engine.timestamp.get() - win;
+    const firstT = pts[0].time;
+    return plotLeft + ((firstT - winStart) / win) * (plotRight - plotLeft);
+  });
+
   const clipRightX = useDerivedValue(() => {
     if (extendToNow) return THRESHOLD_NO_CLIP;
     const pts = series ? series.get() : Array.isArray(value) ? value : null;
@@ -206,8 +225,9 @@ export function useThresholdSeries(
     if (n < 2) return EMPTY_PTS;
     const plotLeft = padding.left;
     const plotRight = engine.canvasWidth.get() - padding.right;
+    const startX = Math.max(plotLeft, clipLeftX.get());
     const endX = Math.min(plotRight, clipRightX.get());
-    if (endX <= plotLeft) return EMPTY_PTS;
+    if (endX <= startX) return EMPTY_PTS;
     const cache = cacheRef.current!;
     cache.ptsTick = !cache.ptsTick;
     const buf = cache.ptsTick ? cache.ptsA : cache.ptsB;
@@ -219,11 +239,11 @@ export function useThresholdSeries(
       plotRight,
       n,
     );
-    buf.push(plotLeft, sampleThresholdYAt(s, x0, x1, plotLeft));
+    buf.push(startX, sampleThresholdYAt(s, x0, x1, startX));
     const step = (x1 - x0) / (n - 1);
     for (let i = 0; i < n; i++) {
       const sx = x0 + step * i;
-      if (sx > plotLeft && sx < endX) buf.push(sx, s[i]);
+      if (sx > startX && sx < endX) buf.push(sx, s[i]);
     }
     buf.push(endX, sampleThresholdYAt(s, x0, x1, endX));
     return buf;
@@ -242,10 +262,13 @@ export function useThresholdSeries(
   const badgeValue = useDerivedValue(() => {
     const pts = series ? series.get() : Array.isArray(value) ? value : null;
     if (pts === null) return NaN;
-    const time =
-      labelAnchor === "first"
-        ? engine.timestamp.get() - engine.displayWindow.get()
-        : engine.timestamp.get();
+    let time = engine.timestamp.get();
+    if (labelAnchor === "first") {
+      time -= engine.displayWindow.get();
+      if (!extendToStart && pts.length > 0 && pts[0].time > time) {
+        time = pts[0].time;
+      }
+    }
     return interpolateAtTime(pts, time) ?? NaN;
   });
 
@@ -261,11 +284,11 @@ export function useThresholdSeries(
   );
 
   const badgeVisible = useDerivedValue(() => {
-    if (labelAnchor === "first") {
-      // If the non-extended series ended before this window, there is no left
-      // endpoint to label even though interpolation can still clamp a value.
-      if (screenPts.get().length < 4) return false;
-    } else if (!extendToNow) {
+    // There is no endpoint to label when the series does not intersect the
+    // effective [first point, last point] window, even though interpolation can
+    // still clamp a value outside it.
+    if (screenPts.get().length < 4) return false;
+    if (labelAnchor === "last" && !extendToNow) {
       // The threshold ends at its last point — no badge past it.
       const pts = series ? series.get() : Array.isArray(value) ? value : null;
       if (pts === null || pts.length === 0) return false;
@@ -286,6 +309,7 @@ export function useThresholdSeries(
     badgeValue,
     badgeLineY,
     badgeVisible,
+    clipLeftX,
     clipRightX,
   };
 }
@@ -295,8 +319,8 @@ export function useThresholdSeries(
  * uniforms (one `SharedValue` per paint — stroke vs. the alpha-reduced fill band).
  * The object is rebuilt each frame so the shader re-paints as `samples` advance;
  * `sampleLeft`/`sampleRight` are the gliding pixel-X span of the sample grid and
- * `clipRight`/`restColor` implement the `extendToNow: false` cutoff (plain line
- * color for the stroke, transparent for the band).
+ * `clipLeft`/`clipRight`/`restColor` implement the series endpoint cutoffs
+ * (plain line color for the stroke, transparent for the band).
  */
 export function useThresholdSplitUniforms(
   samples: SharedValue<number[]>,
@@ -305,6 +329,7 @@ export function useThresholdSplitUniforms(
   aboveColor: number[],
   belowColor: number[],
   restColor: number[],
+  clipLeftX: SharedValue<number>,
   clipRightX: SharedValue<number>,
 ): SharedValue<Uniforms> {
   return useDerivedValue<Uniforms>(() => {
@@ -319,6 +344,7 @@ export function useThresholdSplitUniforms(
     return {
       sampleLeft: x0,
       sampleRight: x1,
+      clipLeft: clipLeftX.get(),
       clipRight: clipRightX.get(),
       aboveColor,
       belowColor,

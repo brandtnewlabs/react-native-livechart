@@ -24,6 +24,7 @@ describe("buildReferenceLineSeriesPoints", () => {
       HEIGHT,
       DEFAULT_PADDING,
       true,
+      true,
     );
     const plotRight = WIDTH - DEFAULT_PADDING.right;
     expect(result[0]).toBe(DEFAULT_PADDING.left);
@@ -41,6 +42,7 @@ describe("buildReferenceLineSeriesPoints", () => {
       WIDTH,
       HEIGHT,
       DEFAULT_PADDING,
+      true,
       false,
     );
     const plotWidth = WIDTH - DEFAULT_PADDING.left - DEFAULT_PADDING.right;
@@ -59,6 +61,7 @@ describe("buildReferenceLineSeriesPoints", () => {
         WIDTH,
         HEIGHT,
         DEFAULT_PADDING,
+        true,
         false,
       ),
     ).toEqual([]);
@@ -77,9 +80,49 @@ describe("buildReferenceLineSeriesPoints", () => {
         HEIGHT,
         DEFAULT_PADDING,
         true,
+        true,
         out,
       ),
     ).toBe(out);
     expect(out).not.toContain(999);
+  });
+
+  it("starts at the first point when extendToStart is false", () => {
+    const result = buildReferenceLineSeriesPoints(
+      [
+        { time: 80, value: 6 },
+        { time: 90, value: 8 },
+      ],
+      NOW,
+      WINDOW,
+      0,
+      10,
+      WIDTH,
+      HEIGHT,
+      DEFAULT_PADDING,
+      false,
+      true,
+    );
+    const plotWidth = WIDTH - DEFAULT_PADDING.left - DEFAULT_PADDING.right;
+    const expectedStartX = DEFAULT_PADDING.left + (20 / WINDOW) * plotWidth;
+    expect(result[0]).toBeCloseTo(expectedStartX);
+    expect(result[result.length - 2]).toBe(WIDTH - DEFAULT_PADDING.right);
+  });
+
+  it("returns empty geometry when a non-extended series starts after the window", () => {
+    expect(
+      buildReferenceLineSeriesPoints(
+        [{ time: 120, value: 5 }],
+        NOW,
+        WINDOW,
+        0,
+        10,
+        WIDTH,
+        HEIGHT,
+        DEFAULT_PADDING,
+        false,
+        true,
+      ),
+    ).toEqual([]);
   });
 });

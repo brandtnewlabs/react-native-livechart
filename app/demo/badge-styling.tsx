@@ -12,8 +12,6 @@ import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
-export const options = { title: "Badge styling" };
-
 // ─── Position (tail on "right", plain pill on "left") ───────────────────────
 type Pos = "right" | "left";
 const POSITIONS: { value: Pos; label: string }[] = [

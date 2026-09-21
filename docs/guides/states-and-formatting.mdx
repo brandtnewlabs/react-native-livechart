@@ -61,8 +61,9 @@ same config works on `LiveChartSeries`. The loading→live reveal duration itsel
 
 ## Empty state
 
-When there are fewer than two samples and `loading` is `false`, the chart shows an empty shell
-with a label. Customize the label with `emptyText`.
+When there are no samples and `loading` is `false`, the chart shows an empty shell with a label.
+A single line point or committed candle is valid data and renders normally. Customize the empty
+label with `emptyText`.
 
 ```tsx
 <LiveChart data={data} value={value} emptyText="Waiting for trades…" />

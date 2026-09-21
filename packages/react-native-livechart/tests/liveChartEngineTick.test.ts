@@ -483,6 +483,29 @@ describe("tickLiveChartEngineFrame", () => {
     expect(run(false)).toBeLessThan(100);
   });
 
+  it("skips a not-yet-started threshold series when extendToStart is false", () => {
+    const run = (extend: boolean) => {
+      const s = baseState();
+      tickLiveChartEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 1,
+        exaggerate: false,
+        referenceValue: undefined,
+        thresholdRangePoints: [{ time: 1100, value: 500 }],
+        thresholdRangeExtendToStart: extend,
+        targetValue: 10,
+        points: [{ time: 1000, value: 10 }],
+        nowSeconds: 1000,
+      });
+      return s.displayMax;
+    };
+    expect(run(true)).toBeGreaterThanOrEqual(500);
+    expect(run(false)).toBeLessThan(100);
+  });
+
   it("clamps the lower bound to 0 when nonNegative", () => {
     const s = baseState();
     tickLiveChartEngineFrame(s, {

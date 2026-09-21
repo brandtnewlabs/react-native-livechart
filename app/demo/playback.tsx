@@ -7,8 +7,6 @@ import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT, TIME_WINDOWS } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 
-export const options = { title: "Playback" };
-
 /** Wide sine sweep (≈ -50…200) so the Y-axis clamps below are visibly testable. */
 const wave = (t: number) => 75 + 125 * Math.sin(t / 3);
 
