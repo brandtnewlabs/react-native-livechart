@@ -11,7 +11,7 @@ import {
 } from "react-native-livechart";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
-import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
+import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME } from "../../demo-lib/theme";
 
@@ -118,12 +118,16 @@ function useSmoothPriceFeed() {
 
 /** Initial stepped break-even near CENTER (two points per step → clean risers). */
 function seedBreakEven(now: number): LiveChartPoint[] {
-  const levels = [CENTER - 1.4, CENTER - 0.3, CENTER + 0.8, CENTER - 0.4];
+  // Start only four seconds ago inside the default 30-second window. Most of
+  // the chart is therefore visibly pre-position history, making the difference
+  // between clipping and backfilling with `extendToStart` unmistakable.
+  const levels = [CENTER - 1.4, CENTER + 0.8];
+  const stepSeconds = 2;
   const pts: LiveChartPoint[] = [];
   for (let i = 0; i < levels.length; i++) {
-    const t0 = now - (levels.length - i) * 8;
+    const t0 = now - (levels.length - i) * stepSeconds;
     pts.push({ time: t0, value: levels[i] });
-    pts.push({ time: t0 + 8, value: levels[i] });
+    pts.push({ time: t0 + stepSeconds, value: levels[i] });
   }
   return pts;
 }
@@ -143,6 +147,7 @@ export default function ThresholdScreen() {
   const [fill, setFill] = useState(true);
   const [strongFill, setStrongFill] = useState(false);
   const [includeInRange, setIncludeInRange] = useState(false);
+  const [extendToStart, setExtendToStart] = useState(false);
   const [extendToNow, setExtendToNow] = useState(true);
   const [markerLine, setMarkerLine] = useState(true);
   const [label, setLabel] = useState(true);
@@ -207,6 +212,8 @@ export default function ThresholdScreen() {
             fill: fill ? (strongFill ? { opacity: 0.35 } : true) : false,
             // Fold the threshold into the Y-range fit (like reference lines).
             includeInRange,
+            // Series: begin at the first trade instead of projecting backward.
+            extendToStart,
             // Series: stop at the last point instead of flat-extending to now.
             extendToNow,
             // `true` → dashed line only (no text/badge); object → labelled badge.
@@ -230,15 +237,40 @@ export default function ThresholdScreen() {
         />
       }
     >
-      <ChipRow
+      <ChipRow<ThresholdType>
         label="Threshold value"
         options={[
           { value: "benchmark", label: "Live value" },
           { value: "series", label: "Series (live history)" },
         ]}
         value={thresholdType}
-        onChange={setThresholdType}
+        onChange={(next) => {
+          setThresholdType(next);
+          if (next === "series") {
+            series.set(seedBreakEven(Date.now() / 1000));
+          }
+        }}
       />
+
+      {isSeries && (
+        <ControlRow label="Before first threshold point">
+          <ToggleChip
+            label="Backfill left"
+            value={extendToStart}
+            onChange={setExtendToStart}
+          />
+          <ToggleChip
+            label="Extend to now"
+            value={extendToNow}
+            onChange={setExtendToNow}
+          />
+          <Chip
+            label="New position"
+            active={false}
+            onPress={() => series.set(seedBreakEven(Date.now() / 1000))}
+          />
+        </ControlRow>
+      )}
 
       <ControlRow label="Threshold">
         <ToggleChip label="Fill band" value={fill} onChange={setFill} />
@@ -306,16 +338,6 @@ export default function ThresholdScreen() {
         value={colorMode}
         onChange={setColorMode}
       />
-
-      {isSeries && (
-        <ControlRow label="Series">
-          <ToggleChip
-            label="Extend to now"
-            value={extendToNow}
-            onChange={setExtendToNow}
-          />
-        </ControlRow>
-      )}
 
       {!isSeries && (
         <ChipRow

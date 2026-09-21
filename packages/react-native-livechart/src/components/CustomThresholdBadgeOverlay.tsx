@@ -24,6 +24,7 @@ export function CustomThresholdBadgeOverlay({
   y,
   visible,
   position,
+  leftAnchorX,
 }: {
   element: React.ReactElement;
   engine: ChartEngineLayout;
@@ -31,6 +32,8 @@ export function CustomThresholdBadgeOverlay({
   y: SharedValue<number>;
   visible: SharedValue<boolean>;
   position: "left" | "right";
+  /** Optional first rendered X for a non-extended series badge. */
+  leftAnchorX?: SharedValue<number>;
 }) {
   const size = useSharedValue({ width: 0, height: 0 });
   const onLayout = (event: LayoutChangeEvent) => {
@@ -43,10 +46,14 @@ export function CustomThresholdBadgeOverlay({
     const yy = y.get();
     const measured = size.get();
     const show = visible.get() && canvasWidth > 0 && Number.isFinite(yy);
-    const translateX =
-      position === "right"
-        ? canvasWidth - padding.right - EDGE_INSET - measured.width
-        : EDGE_INSET;
+    let translateX = EDGE_INSET;
+    if (position === "right") {
+      translateX = canvasWidth - padding.right - EDGE_INSET - measured.width;
+    } else if (leftAnchorX) {
+      const minX = padding.left + EDGE_INSET;
+      const maxX = canvasWidth - padding.right - EDGE_INSET - measured.width;
+      translateX = Math.max(minX, Math.min(leftAnchorX.get(), maxX));
+    }
     return {
       opacity: show ? 1 : 0,
       transform: [

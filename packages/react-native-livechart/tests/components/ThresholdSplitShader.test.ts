@@ -53,6 +53,14 @@ describe("ThresholdSplitShader lookup", () => {
     );
   });
 
+  it("returns the rest color outside both series endpoints", () => {
+    expect(THRESHOLD_SPLIT_SKSL).toContain("uniform float clipLeft;");
+    expect(THRESHOLD_SPLIT_SKSL).toContain("uniform float clipRight;");
+    expect(THRESHOLD_SPLIT_SKSL).toContain(
+      "if (xy.x < clipLeft || xy.x > clipRight)",
+    );
+  });
+
   it("rejects an invalid sample count", () => {
     expect(() => buildThresholdLookupTree(1)).toThrow(
       "Threshold shader needs at least two samples",

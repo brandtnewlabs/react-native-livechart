@@ -6,10 +6,21 @@ import { useSharedValue } from "react-native-reanimated";
 // Capture every `useFrameCallback(cb, autostart)` call's autostart flag so we can
 // assert that static charts register their loops inert (autostart === false).
 const frameCallbackCalls: Array<boolean | undefined> = [];
+const animatedReactionDependencies: Array<unknown[] | undefined> = [];
 jest.mock("react-native-reanimated", () => {
   const actual = jest.requireActual("react-native-reanimated");
   return {
     ...actual,
+    useAnimatedReaction: jest.fn(
+      (
+        prepare: () => unknown,
+        react: (current: unknown, previous: unknown) => void,
+        dependencies?: unknown[],
+      ) => {
+        animatedReactionDependencies.push(dependencies);
+        return actual.useAnimatedReaction(prepare, react, dependencies);
+      },
+    ),
     useFrameCallback: jest.fn(
       (cb: (info: unknown) => void, autostart?: boolean) => {
         frameCallbackCalls.push(autostart);
@@ -27,6 +38,7 @@ import { getAllByHostType } from "./rntl14";
 
 beforeEach(() => {
   frameCallbackCalls.length = 0;
+  animatedReactionDependencies.length = 0;
 });
 
 describe("static mode — no per-frame loops", () => {
@@ -53,6 +65,39 @@ describe("static mode — no per-frame loops", () => {
       });
     });
     expect(frameCallbackCalls).toEqual([false]);
+  });
+
+  it("keeps the static settle reaction registered across unrelated renders", async () => {
+    const { rerender } = await renderHook(
+      ({ renderCount }: { renderCount: number }) => {
+        const data = useSharedValue([{ time: 1700000000, value: 1 }]);
+        const value = useSharedValue(1);
+        // Consume the prop so this is unambiguously an unrelated hook render.
+        void renderCount;
+        return useLiveChartEngine({
+          data,
+          value,
+          timeWindow: 30,
+          smoothing: 0.08,
+          static: true,
+        });
+      },
+      { initialProps: { renderCount: 0 } },
+    );
+
+    const initialSettleDependencies = animatedReactionDependencies[1];
+    expect(initialSettleDependencies?.[0]).toBeDefined();
+    expect(initialSettleDependencies?.[1]).toBeDefined();
+
+    await rerender({ renderCount: 1 });
+
+    const rerenderedSettleDependencies = animatedReactionDependencies[3];
+    expect(rerenderedSettleDependencies?.[0]).toBe(
+      initialSettleDependencies?.[0],
+    );
+    expect(rerenderedSettleDependencies?.[1]).toBe(
+      initialSettleDependencies?.[1],
+    );
   });
 
   it("disables every frame-callback loop when LiveChart is static", async () => {

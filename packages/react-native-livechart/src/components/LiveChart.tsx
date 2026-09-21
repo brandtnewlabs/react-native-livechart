@@ -672,6 +672,7 @@ function useThresholdGeometryState({
       thresholdValue,
       thresholdSeriesSV,
       thresholdCfg?.extendToNow ?? true,
+      thresholdCfg?.extendToStart ?? true,
       thresholdCfg?.line?.labelAnchor ?? "last",
     ),
   };
@@ -681,6 +682,7 @@ function useThresholdShaderUniforms({
   engine,
   padding,
   samples,
+  clipLeftX,
   clipRightX,
   thresholdCfg,
   palette,
@@ -689,6 +691,7 @@ function useThresholdShaderUniforms({
   engine: ReturnType<typeof useLiveChartEngine>;
   padding: ChartPadding;
   samples: SharedValue<number[]>;
+  clipLeftX: SharedValue<number>;
   clipRightX: SharedValue<number>;
   thresholdCfg: ReturnType<typeof resolveThreshold>;
   palette: LiveChartPalette;
@@ -714,6 +717,7 @@ function useThresholdShaderUniforms({
       vectors?.strokeAbove ?? THRESHOLD_FALLBACK_COLOR,
       vectors?.strokeBelow ?? THRESHOLD_FALLBACK_COLOR,
       vectors?.strokeRest ?? THRESHOLD_FALLBACK_COLOR,
+      clipLeftX,
       clipRightX,
     ),
     thresholdFillUniforms: useThresholdSplitUniforms(
@@ -723,6 +727,7 @@ function useThresholdShaderUniforms({
       vectors?.fillAbove ?? THRESHOLD_FALLBACK_COLOR,
       vectors?.fillBelow ?? THRESHOLD_FALLBACK_COLOR,
       TRANSPARENT_VEC4,
+      clipLeftX,
       clipRightX,
     ),
   };
@@ -778,6 +783,10 @@ function useThresholdBadgeProjection({
     thresholdSeriesPts: thresholdIsSeries
       ? thresholdSeriesGeom.screenPts
       : undefined,
+    thresholdBadgeLeftAnchorX:
+      thresholdIsSeries && thresholdCfg?.extendToStart === false
+        ? thresholdSeriesGeom.clipLeftX
+        : undefined,
   };
 }
 
@@ -816,6 +825,7 @@ function useLiveChartThresholdModel({
     engine,
     padding,
     samples: thresholdSeriesGeom.samples,
+    clipLeftX: thresholdSeriesGeom.clipLeftX,
     clipRightX: thresholdSeriesGeom.clipRightX,
     thresholdCfg,
     palette,
@@ -1074,6 +1084,7 @@ function resolveLiveEngineModeInputs({
       thresholdInRange && thresholdIsSeries
         ? (thresholdSeriesSV ?? (thresholdCfg?.value as LiveChartPoint[]))
         : undefined,
+    thresholdRangeExtendToStart: thresholdCfg?.extendToStart ?? true,
     thresholdRangeExtendToNow: thresholdCfg?.extendToNow ?? true,
     candles: isCandle ? candlesEngine : candles,
     liveCandle: isCandle ? liveEngine : liveCandle,
@@ -1787,6 +1798,7 @@ function useLiveChartController({
     thresholdMarkerValue,
     thresholdCustomBadge,
     thresholdSeriesPts,
+    thresholdBadgeLeftAnchorX,
     thresholdFillLineY,
     thresholdFillSamples,
   } = useLiveChartThresholdModel({
@@ -2214,6 +2226,7 @@ function useLiveChartController({
     thresholdMarkerValue,
     thresholdCustomBadge,
     thresholdSeriesPts,
+    thresholdBadgeLeftAnchorX,
     badgeUsesRightGutter,
     // theme / layout / fonts
     palette,
@@ -3016,6 +3029,7 @@ function ChartStack({
     thresholdMarkerValue,
     thresholdCustomBadge,
     thresholdSeriesPts,
+    thresholdBadgeLeftAnchorX,
     formatValue,
     lineGroupOpacity,
     seriesOpacity,
@@ -3185,6 +3199,7 @@ function ChartStack({
           palette={palette}
           font={skiaFont}
           formatValue={formatValue}
+          leftAnchorX={thresholdBadgeLeftAnchorX}
         />
       )}
 
@@ -3767,6 +3782,7 @@ function ChartNativeOverlays({ model }: { model: LiveChartModel }) {
     thresholdCfg,
     thresholdMarkerLineY,
     thresholdBadgeVisible,
+    thresholdBadgeLeftAnchorX,
     markersActive,
     renderMarker,
     renderReferenceLine,
@@ -3803,6 +3819,7 @@ function ChartNativeOverlays({ model }: { model: LiveChartModel }) {
           y={thresholdMarkerLineY}
           visible={thresholdBadgeVisible}
           position={thresholdCfg.line.labelPosition}
+          leftAnchorX={thresholdBadgeLeftAnchorX}
         />
       ) : null}
       {hasAnnotations ? <ChartCustomAnnotations model={model} /> : null}

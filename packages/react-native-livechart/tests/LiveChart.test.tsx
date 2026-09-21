@@ -865,10 +865,10 @@ describe("LiveChart", () => {
     await layoutFirst(await render(<LiveSeriesHarness />));
   });
 
-  it("clips the split at the series end with extendToNow: false", async () => {
+  it("wires series endpoint clips into the threshold split shader", async () => {
     const screen = await render(
       <ThresholdSeriesHarness
-        thresholdExtra={{ extendToNow: false } as never}
+        thresholdExtra={{ extendToStart: false, extendToNow: false } as never}
       />,
     );
     await layoutFirst(screen);
@@ -878,6 +878,7 @@ describe("LiveChart", () => {
     // The clip uniforms are wired (their live values are computed on the UI
     // thread post-layout — pinned in the useThresholdSeries hook tests; the
     // jest stub freezes derived values at their pre-layout mount computation).
+    expect(typeof shaders[0].props.uniforms.value.clipLeft).toBe("number");
     expect(typeof shaders[0].props.uniforms.value.clipRight).toBe("number");
     expect(shaders[0].props.uniforms.value.restColor).toHaveLength(4);
   });

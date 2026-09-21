@@ -74,10 +74,16 @@ export interface ReferenceLine {
   /**
    * Form B — a time-varying reference line. Points use unix-second timestamps
    * and should be sorted oldest to newest. The first value extends to the left
-   * edge; the last value extends to the live edge unless {@link extendToNow} is
-   * `false`. Supported by line and candle charts.
+   * edge unless {@link extendToStart} is `false`; the last value extends to the
+   * live edge unless {@link extendToNow} is `false`. Supported by line and
+   * candle charts.
    */
   series?: LiveChartPoint[];
+  /**
+   * Form B — extend the series' first value flat to the chart's left edge.
+   * Set `false` to start at the first point. Default `true`.
+   */
+  extendToStart?: boolean;
   /**
    * Form B — extend the series' last value flat to the chart's live edge.
    * Set `false` to stop at the last point. Default `true`.
@@ -493,8 +499,8 @@ export interface ThresholdConfig {
    * - **`LiveChartPoint[]`** — a *time-varying* threshold (e.g. a historical
    *   break-even that steps up as you average in). The stroke split, fill band
    *   and marker line follow the series point-for-point. The series clamps to its
-   *   first/last value outside its own time range, so a threshold whose last
-   *   point sits behind the live edge extends as a flat line to "now" (see
+   *   first/last value outside its own time range, so it extends flat to the
+   *   visible edges by default (see {@link extendToStart} and
    *   {@link extendToNow}). Flows in on re-render — pass a stable (memoized)
    *   array and reserve it for thresholds that change occasionally; for a
    *   threshold series that updates live, use {@link series} instead.
@@ -531,10 +537,19 @@ export interface ThresholdConfig {
    * Fold the threshold into the Y-axis range fit — like reference lines — so a
    * benchmark outside the data's own range stays on-plot instead of rendering
    * invisibly (marker off-plot, whole line one color). For a series, the values
-   * visible in the current window count (respecting {@link extendToNow}).
+   * visible in the current window count (respecting {@link extendToStart} and
+   * {@link extendToNow}).
    * Default `false` (range fits the data only).
    */
   includeInRange?: boolean;
+  /**
+   * Series forms only: extend the threshold **flat before its first point to the
+   * visible window's left edge**, carrying the first known benchmark backward.
+   * Set `false` when the benchmark did not exist yet (for example, a break-even
+   * before the first trade) — left of the first point the stroke keeps its plain
+   * line color and the band / marker do not begin. Default `true`.
+   */
+  extendToStart?: boolean;
   /**
    * Series forms only: extend the threshold **flat past its last point to
    * "now"**, carrying the last known benchmark forward. Set `false` for a

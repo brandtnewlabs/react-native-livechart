@@ -181,6 +181,7 @@ interface ReferenceLine {
   value?: number;
   // Form B — time-varying line (sorted unix-second points):
   series?: LiveChartPoint[];
+  extendToStart?: boolean;       // flat-extend the first value left; default true
   extendToNow?: boolean;         // flat-extend the last value to live; default true
   // Form C — horizontal band:
   valueFrom?: number;
@@ -388,6 +389,7 @@ interface ThresholdConfig {
   belowColor?: string;        // stroke below value;    default palette down-red
   fill?: boolean | { opacity?: number }; // line↔threshold P/L band; default off, opacity 0.16
   includeInRange?: boolean;   // fold the threshold into the Y-range fit (like reference lines); default false
+  extendToStart?: boolean;    // series: extend first value flat to the window start; default true
   extendToNow?: boolean;      // series: extend flat past the last point to "now"; default true
   line?: boolean | ThresholdLineConfig; // marker line at value; default off
 }

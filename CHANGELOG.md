@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Static line charts no longer draw replacement data for one frame against the
+  previous dataset's Y range after an unrelated React re-render. Resolves
+  [#329](https://github.com/brandtnewlabs/react-native-livechart/issues/329).
+
+## [4.22.1] - 2026-09-18
+
+### Fixed
+
+- Custom-manager chart fonts are reused across renders with unchanged font
+  settings, and loaded typefaces no longer trigger unused fallback font matches.
+
+## [4.22.0] - 2026-09-18
+
+### Added
+
+- Time-varying thresholds and Form-B reference lines now support
+  `extendToStart: false`, which leaves the chart unchanged before the series'
+  first point instead of carrying that first value backward to the visible
+  window start. Threshold stroke coloring, fill, marker, badge, and range fitting
+  all honor the cutoff. Resolves
+  [#326](https://github.com/brandtnewlabs/react-native-livechart/issues/326).
+
 ## [4.21.1] - 2026-09-12
 
 ### Changed

@@ -34,6 +34,7 @@ export function useReferenceLineSeries(
   engine: ChartEngineLayout,
   padding: ChartPadding,
   points: LiveChartPoint[],
+  extendToStart: boolean,
   extendToNow: boolean,
 ): ReferenceLineSeriesGeometry {
   const cacheRef = useRef<{
@@ -57,6 +58,7 @@ export function useReferenceLineSeries(
       engine.canvasWidth.get(),
       engine.canvasHeight.get(),
       padding,
+      extendToStart,
       extendToNow,
       cache.tick ? cache.a : cache.b,
     );
@@ -86,6 +88,9 @@ export function useReferenceLineSeries(
   );
   const currentVisible = useDerivedValue(() => {
     if (points.length === 0) return false;
+    if (!extendToStart && points[0].time > engine.timestamp.get()) {
+      return false;
+    }
     if (!extendToNow && points[points.length - 1].time < engine.timestamp.get()) {
       return false;
     }

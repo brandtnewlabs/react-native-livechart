@@ -156,13 +156,22 @@ const breakEven: LiveChartPoint[] = [
   { time: t3, value: 101.2 },
 ];
 
-<LiveChart data={data} value={value} threshold={{ value: breakEven, fill: true }} />;
+<LiveChart
+  data={data}
+  value={value}
+  threshold={{ value: breakEven, fill: true, extendToStart: false }}
+/>;
 ```
 
-- The series is **clamped to its first/last value** outside its own time range. So
+- By default, the series is **clamped to its first/last value** outside its own time range. So
   a threshold whose last point sits behind the live edge **extends as a flat line
   to "now"** — carrying the last known break-even forward — and a window that
   starts before the first point holds the first value.
+- **`extendToStart: false`** opts out of the backward extension when the benchmark
+  did not exist yet (for example, break-even before the first trade). Left of the
+  first point the stroke keeps its plain line color; the fill and marker are
+  absent, the threshold does not affect range fitting, and a left-positioned
+  badge follows the marker start while remaining inside the plot.
 - Points are connected with **straight segments**. For a step function, emit two
   points at each boundary (same time, old then new value) as above; for a smooth
   benchmark, emit it as you'd sample it.

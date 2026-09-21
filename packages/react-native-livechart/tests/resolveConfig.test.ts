@@ -1930,6 +1930,7 @@ describe("resolveThreshold", () => {
       fill: false,
       fillOpacity: 0.16,
       includeInRange: false,
+      extendToStart: true,
       extendToNow: true,
       line: null,
     });
@@ -1953,6 +1954,7 @@ describe("resolveThreshold", () => {
       fill: true,
       fillOpacity: 0.16,
       includeInRange: false,
+      extendToStart: true,
       extendToNow: true,
       line: null,
     });
@@ -1968,7 +1970,7 @@ describe("resolveThreshold", () => {
     expect(r?.fillOpacity).toBe(0.3);
   });
 
-  it("passes through series / includeInRange / extendToNow", () => {
+  it("passes through series / includeInRange / endpoint extension", () => {
     const series = {
       sentinel: "sv-series",
     } as unknown as import("react-native-reanimated").SharedValue<
@@ -1977,11 +1979,13 @@ describe("resolveThreshold", () => {
     const r = resolveThreshold({
       series,
       includeInRange: true,
+      extendToStart: false,
       extendToNow: false,
     });
     expect(r?.series).toBe(series);
     expect(r?.value).toBeUndefined();
     expect(r?.includeInRange).toBe(true);
+    expect(r?.extendToStart).toBe(false);
     expect(r?.extendToNow).toBe(false);
   });
 
