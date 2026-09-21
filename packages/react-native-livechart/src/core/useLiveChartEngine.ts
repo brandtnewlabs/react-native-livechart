@@ -5,7 +5,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   cancelAnimation,
   Easing,
@@ -550,52 +550,102 @@ export function useLiveChartEngine(
   const isStaticSV = useDerivedValue(() => config.static ?? false);
 
   // Single refs object shared by the frame callback and the settle reaction so
-  // they can never drift out of sync.
-  const frameRefs: EngineFrameRefs = {
-    data,
-    value,
-    displayValue,
-    displayMin,
-    displayMax,
-    displayWindow,
-    timestamp,
-    canvasWidth,
-    canvasHeight,
-    timeWindow,
-    smoothing,
-    adaptiveSpeedBoostSV,
-    exaggerateSV,
-    referenceValue,
-    referenceValues,
-    thresholdRangePoints,
-    thresholdRangeExtendToStart,
-    thresholdRangeExtendToNow,
-    nonNegativeSV,
-    maxValueSV,
-    yRangeScaleSV: config.yRangeScale,
-    nowOverrideSV,
-    windowBufferSV,
-    pausedSV,
-    viewEndSV: viewEnd,
-    allowFutureViewEndSV,
-    returnTSV: returnT,
-    returnFromSV: returnFrom,
-    viewWindowSV: viewWindow,
-    liveEdgeSV: liveEdge,
-    edgeValueSV: edgeValue,
-    snapSV,
-    modeSV,
-    candles,
-    liveCandle,
-    candleGapsSV,
-    candleGapBridgeNoTradesSV,
-    candleGapBridgeUnavailableSV,
-    candleGapBridgeUnknownSV,
-    extremaMinValue,
-    extremaMaxValue,
-    extremaMinTime,
-    extremaMaxTime,
-  };
+  // they can never drift out of sync. Keep its identity stable across unrelated
+  // React renders: Reanimated uses captured closure values as implicit reaction
+  // dependencies, and rebuilding this object would unregister/re-register the
+  // static settle mapper behind its path consumers. See #329.
+  const frameRefs = useMemo<EngineFrameRefs>(
+    () => ({
+      data,
+      value,
+      displayValue,
+      displayMin,
+      displayMax,
+      displayWindow,
+      timestamp,
+      canvasWidth,
+      canvasHeight,
+      timeWindow,
+      smoothing,
+      adaptiveSpeedBoostSV,
+      exaggerateSV,
+      referenceValue,
+      referenceValues,
+      thresholdRangePoints,
+      thresholdRangeExtendToStart,
+      thresholdRangeExtendToNow,
+      nonNegativeSV,
+      maxValueSV,
+      yRangeScaleSV: config.yRangeScale,
+      nowOverrideSV,
+      windowBufferSV,
+      pausedSV,
+      viewEndSV: viewEnd,
+      allowFutureViewEndSV,
+      returnTSV: returnT,
+      returnFromSV: returnFrom,
+      viewWindowSV: viewWindow,
+      liveEdgeSV: liveEdge,
+      edgeValueSV: edgeValue,
+      snapSV,
+      modeSV,
+      candles,
+      liveCandle,
+      candleGapsSV,
+      candleGapBridgeNoTradesSV,
+      candleGapBridgeUnavailableSV,
+      candleGapBridgeUnknownSV,
+      extremaMinValue,
+      extremaMaxValue,
+      extremaMinTime,
+      extremaMaxTime,
+    }),
+    [
+      adaptiveSpeedBoostSV,
+      allowFutureViewEndSV,
+      candleGapBridgeNoTradesSV,
+      candleGapBridgeUnavailableSV,
+      candleGapBridgeUnknownSV,
+      candleGapsSV,
+      candles,
+      canvasHeight,
+      canvasWidth,
+      config.yRangeScale,
+      data,
+      displayMax,
+      displayMin,
+      displayValue,
+      displayWindow,
+      edgeValue,
+      exaggerateSV,
+      extremaMaxTime,
+      extremaMaxValue,
+      extremaMinTime,
+      extremaMinValue,
+      liveCandle,
+      liveEdge,
+      maxValueSV,
+      modeSV,
+      nonNegativeSV,
+      nowOverrideSV,
+      pausedSV,
+      referenceValue,
+      referenceValues,
+      returnFrom,
+      returnT,
+      smoothing,
+      snapSV,
+      thresholdRangeExtendToNow,
+      thresholdRangeExtendToStart,
+      thresholdRangePoints,
+      timestamp,
+      timeWindow,
+      value,
+      viewEnd,
+      viewWindow,
+      windowBufferSV,
+    ],
+  );
   const frameScratchRef = useRef<EngineFrameScratch | null>(null);
   if (frameScratchRef.current === null) {
     // React permits this predictable lazy-ref initialization: https://react.dev/reference/react/useRef#avoiding-recreating-the-ref-contents
@@ -675,6 +725,10 @@ export function useLiveChartEngine(
         frameScratchRef.current!,
       );
     },
+    // Reanimated otherwise derives dependencies from closure values. Keeping
+    // this mapper registered in its original hook-order position ensures range
+    // settling runs before the path mappers on a static data swap. See #329.
+    [frameRefs, frameScratchRef],
   );
 
   return {

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Static line charts no longer draw replacement data for one frame against the
+  previous dataset's Y range after an unrelated React re-render. Resolves
+  [#329](https://github.com/brandtnewlabs/react-native-livechart/issues/329).
+
 ## [4.22.1] - 2026-09-18
 
 ### Fixed
