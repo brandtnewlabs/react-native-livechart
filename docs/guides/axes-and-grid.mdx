@@ -29,6 +29,21 @@ description: "Tune the grid lines, hide or space the axes, float edge labels, an
 Pass `yAxis={false}` or `xAxis={false}` to hide an axis. `gridStyle.intervals` of `[]` renders
 solid grid lines.
 
+## Left-side Y-axis labels
+
+Both `LiveChart` and `LiveChartSeries` accept `yAxis.side`; it defaults to `"right"`.
+Reserve enough room for your widest formatted label with `insets.left`:
+
+```tsx
+<LiveChart data={data} value={value} yAxis={{ side: "left" }} insets={{ left: 64 }} />
+```
+
+Labels are centered in the left gutter. Its width is explicit rather than measured
+automatically, so account for your font and formatter. Grid lines still span the
+plot. Right-label options (`float`, `labelRightMargin`, `gridEndGap`) do not position
+left labels. The live badge and multi-series value labels remain on their existing
+side. Left labels render after the left-edge fade so the gutter stays readable.
+
 ## Fixed Y-axis price count
 
 By default the Y axis picks a dynamic number of "nice"-value grid lines from `minGap`. Pass

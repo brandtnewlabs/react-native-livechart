@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `yAxis.side: "left" | "right"` for single- and multi-series charts. Left labels
+  use the caller-reserved `insets.left` gutter and remain visible above edge fades.
+
 ## [4.22.2] - 2026-09-21
 
 ### Fixed

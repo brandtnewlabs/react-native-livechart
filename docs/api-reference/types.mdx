@@ -512,6 +512,8 @@ interface SelectionDotConfig {
 }
 interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }
 interface YAxisConfig {
+  // Label side; reserve left label width with insets.left. Default "right".
+  side?: "left" | "right";
   minGap?: number; // min px gap between grid lines; default 36
   // Multiplier used to choose dynamic nice intervals without changing plotted
   // values. Pair with formatValue using the same multiplier. Must be positive

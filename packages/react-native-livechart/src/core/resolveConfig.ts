@@ -94,6 +94,7 @@ export interface ResolvedBadgeConfig {
 }
 
 export interface ResolvedYAxisConfig {
+  side: "left" | "right";
   minGap: number;
   /** Multiplier used to choose and align representable dynamic nice intervals. */
   intervalScale: number;
@@ -531,6 +532,7 @@ export function resolveBadge(
 }
 
 const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
+  side: "right",
   minGap: 36,
   intervalScale: 1,
   count: 0,

@@ -60,6 +60,7 @@ export function YAxisOverlay({
   gridStyle,
   variant = "all",
   float = false,
+  side = "right",
   labelRightMargin,
   gridEndGap = 0,
 }: {
@@ -97,6 +98,8 @@ export function YAxisOverlay({
    * plot) instead of centering them in a reserved gutter. See {@link YAxisConfig.float}.
    */
   float?: boolean;
+  /** Render labels in the caller-reserved left gutter without moving the grid. */
+  side?: "left" | "right";
   /** Fixed canvas-edge margin for a shared left-aligned label column. */
   labelRightMargin?: number;
   /** Gap between the grid-line end and the shared label column. */
@@ -109,7 +112,7 @@ export function YAxisOverlay({
   const gridBuilder = usePathBuilder();
 
   const rightAnchoredColumn = useDerivedValue(() => {
-    if (labelRightMargin === undefined) return null;
+    if (side === "left" || labelRightMargin === undefined) return null;
     return rightAnchoredYAxisColumnLayout(
       engine.canvasWidth.get(),
       entries.get(),
@@ -156,20 +159,23 @@ export function YAxisOverlay({
       const e = items[i];
       const textW = measureFontTextWidth(font, e.label);
       const x =
-        columnX !== undefined
-          ? columnX
-          : float
-            ? gutterRightAlignedTextLeftX(w, textW, FLOAT_LABEL_RIGHT_MARGIN)
-            : badge
-              ? pillTextLeftX(w, padding.right, leftInset, textW, badgeMetrics)
-              : seriesLabelInset > 0
-                ? gutterRightAlignedTextLeftX(w, textW)
-                : gutterCenteredTextLeftX(w, padding.right, textW);
+        side === "left"
+          ? (padding.left - textW) / 2
+          : columnX !== undefined
+            ? columnX
+            : float
+              ? gutterRightAlignedTextLeftX(w, textW, FLOAT_LABEL_RIGHT_MARGIN)
+              : badge
+                ? pillTextLeftX(w, padding.right, leftInset, textW, badgeMetrics)
+                : seriesLabelInset > 0
+                  ? gutterRightAlignedTextLeftX(w, textW)
+                  : gutterCenteredTextLeftX(w, padding.right, textW);
       result.push({
         x,
         y: e.y - baselineOffset,
         label: e.label,
         alpha:
+          side !== "left" &&
           resolvedBadgeCenterY !== null &&
           yAxisLabelIntersectsBadge(
             e.y,

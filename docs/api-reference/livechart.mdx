@@ -436,7 +436,8 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 </ParamField>
 
 <ParamField body="yAxis" type="boolean | YAxisConfig" default="true">
-  Value-axis grid + labels. Pass `{ count }` for a fixed number of evenly-spaced
+  Value-axis grid + labels. Set `{ side: "left" }` and reserve label space with
+  `insets.left` for left-side labels; the default side is `"right"`. Pass `{ count }` for a fixed number of evenly-spaced
   prices instead of the dynamic nice-interval grid. Pass `{ intervalScale }`
   with a matching `formatValue` multiplier to choose nice intervals in display
   units without changing plotted values. Scales that would make the current

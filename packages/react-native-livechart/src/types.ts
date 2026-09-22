@@ -707,6 +707,9 @@ export interface VolumeConfig {
 
 /** Y-axis grid configuration. */
 export interface YAxisConfig {
+  /** Price-label side. For left placement, reserve the label gutter with insets.left.
+   * Right-side float/labelRightMargin options do not affect left labels. Default "right". */
+  side?: "left" | "right";
   /** Minimum pixel gap between grid lines. Default `36`. */
   minGap?: number;
   /**

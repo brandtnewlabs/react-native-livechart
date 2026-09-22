@@ -5,11 +5,7 @@
  * @see https://github.com/benjitaylor/liveline
  */
 import { Canvas, Group, Rect, type SkFont } from "@shopify/react-native-skia";
-import {
-  forwardRef,
-  useImperativeHandle,
-  useState,
-} from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -832,6 +828,46 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
 
 type LiveChartSeriesModel = ReturnType<typeof useLiveChartSeriesController>;
 
+/** Share axis configuration between the grid and post-fade label passes. */
+function SeriesYAxisLayer({
+  model,
+  variant,
+}: {
+  model: LiveChartSeriesModel;
+  variant: "all" | "grid" | "labels";
+}) {
+  const {
+    yAxisCfg,
+    reveal,
+    yAxisEntries,
+    engine,
+    effectivePadding,
+    palette,
+    skiaFont,
+    seriesLabelInset,
+    gridStyleCfg,
+  } = model;
+  if (!yAxisCfg) return null;
+  return (
+    <Group opacity={reveal.yAxisOpacity}>
+      <YAxisOverlay
+        variant={variant}
+        side={yAxisCfg.side}
+        entries={yAxisEntries}
+        engine={engine}
+        padding={effectivePadding}
+        palette={palette}
+        font={skiaFont}
+        badge={false}
+        seriesLabelInset={seriesLabelInset}
+        gridStyle={gridStyleCfg}
+        labelRightMargin={yAxisCfg.labelRightMargin}
+        gridEndGap={yAxisCfg.gridEndGap}
+      />
+    </Group>
+  );
+}
+
 /** The shaken multi-series stack: grid, reference/value lines, per-series strokes,
  *  axis, dots, value labels, degen, markers, and the loading/empty art. */
 function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
@@ -844,8 +880,6 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     effectivePadding,
     palette,
     skiaFont,
-    seriesLabelInset,
-    gridStyleCfg,
     allRefLines,
     formatValue,
     dotCfg,
@@ -882,22 +916,10 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
 
   return (
     <Group transform={degenShakeTransform}>
-      {yAxisCfg && (
-        <Group opacity={reveal.yAxisOpacity}>
-          <YAxisOverlay
-            entries={yAxisEntries}
-            engine={engine}
-            padding={effectivePadding}
-            palette={palette}
-            font={skiaFont}
-            badge={false}
-            seriesLabelInset={seriesLabelInset}
-            gridStyle={gridStyleCfg}
-            labelRightMargin={yAxisCfg.labelRightMargin}
-            gridEndGap={yAxisCfg.gridEndGap}
-          />
-        </Group>
-      )}
+      <SeriesYAxisLayer
+        model={model}
+        variant={yAxisCfg?.side === "left" ? "grid" : "all"}
+      />
 
       {/* Fade group lets `scrub.hideOverlaysOnScrub` ease the lines out. Explicit
           ids keep each reference line mounted when the caller reorders it. */}
@@ -1254,6 +1276,12 @@ function SeriesCanvas({ model }: { model: LiveChartSeriesModel }) {
             canvasMode === "opaque" ? palette.bgRgb : undefined
           }
         />
+      ) : null}
+      {/* Keep left-gutter labels above the fade, with grid lines behind the series. */}
+      {model.yAxisCfg?.side === "left" ? (
+        <Group transform={model.degenShakeTransform}>
+          <SeriesYAxisLayer model={model} variant="labels" />
+        </Group>
       ) : null}
       <SeriesRefBadgeLayer model={model} />
       {scrubCfg ? (

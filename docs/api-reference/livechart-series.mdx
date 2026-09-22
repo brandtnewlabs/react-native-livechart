@@ -23,6 +23,9 @@ On Android, the shared experimental `canvasMode="opaque"` option selects an opaq
 paints the palette background inside the canvas. See
 [Android surface rendering](/guides/android-surface-rendering) for constraints and profiling guidance.
 
+`yAxis={{ side: "left" }}` also places multi-series Y-axis labels in the gutter
+reserved by `insets.left`; right-side series value labels remain unchanged.
+
 ## Series opacity
 
 <ParamField body="seriesOpacity" type="SharedValue<number>" default="1">
