@@ -12,6 +12,7 @@ import type { ChartPadding } from "../draw/line";
 import {
   clampToBounds,
   nearestDraggableIndex,
+  referenceDragOwnsTouch,
   referenceValueOut,
   resolveDragIntent,
 } from "../math/referenceDrag";
@@ -257,17 +258,21 @@ export function useReferenceDrag(
     activated.set(false);
   };
 
-  // Geometric hit-test shared with the scrub gesture: is (x,y) within reach of a
-  // draggable line's handle? The scrub's `onStart` consults this to bail on a
-  // press over a line, so it never drops a crosshair there even though it activates
-  // independently of this manual-activation pan (the `Exclusive` priority alone
-  // doesn't hold scrub back while this gesture is merely pressed). x is unused —
-  // a Form-A line spans the full width, so only the y-reach matters.
+  // Hit-test shared with the scrub gesture: does this drag own the touch? The
+  // scrub's `onStart` consults it to bail, so it never drops a crosshair on a
+  // line even though it activates independently of this manual-activation pan
+  // (the `Exclusive` priority alone doesn't hold scrub back — not while this
+  // gesture is merely pressed, and not while it is dragging either). Once a line
+  // is grabbed the answer is yes regardless of position: the scrub asks with its
+  // touch-DOWN point, which a longer drag has carried the line away from, so the
+  // geometric test alone said "no line here" and a crosshair opened mid-drag.
+  // Otherwise it is the y-reach around the handles (x is unused — a Form-A line
+  // spans the full width).
   /* istanbul ignore next -- worklet, runs on the UI thread */
   const hitTest = (_x: number, y: number): boolean => {
     "worklet";
     if (!anyDraggable) return false;
-    return nearestDraggableIndex(handleYs.get(), y, GRAB_SLOP) >= 0;
+    return referenceDragOwnsTouch(dragIndex.get(), handleYs.get(), y, GRAB_SLOP);
   };
 
   const gesture = Gesture.Pan()

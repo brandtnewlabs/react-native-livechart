@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Dragging a reference line no longer opens the scrub crosshair part-way
+  through the drag. The scrub pan can activate while a line is being dragged
+  and asked its guard with its touch-down point, which a longer drag had
+  carried the line away from; a grabbed line now owns the touch outright.
+
 ## [4.22.2] - 2026-09-21
 
 ### Fixed
