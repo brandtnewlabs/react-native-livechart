@@ -4,6 +4,7 @@ import {
   LiveChart,
   LiveChartSeries,
   type AxisLabelConfig,
+  type ChartInsets,
   type GridStyleConfig,
   type YAxisConfig,
 } from "react-native-livechart";
@@ -21,6 +22,7 @@ type GapPreset = "default" | "wide";
 type YCountPreset = "auto" | "3" | "5" | "7";
 type GridLineStyle = "default" | "dotted" | "solid" | "blue";
 type YAxisColumnPreset = "off" | "tight" | "wide";
+type YAxisSide = NonNullable<YAxisConfig["side"]>;
 
 const CHART_OPTIONS: { value: ChartKind; label: string }[] = [
   { value: "single", label: "LiveChart" },
@@ -32,6 +34,11 @@ const VIS_OPTIONS: { value: AxisVis; label: string }[] = [
   { value: "noY", label: "Hide Y" },
   { value: "noX", label: "Hide X" },
   { value: "none", label: "Hide both" },
+];
+
+const Y_AXIS_SIDE_OPTIONS: { value: YAxisSide; label: string }[] = [
+  { value: "right", label: "Right" },
+  { value: "left", label: "Left" },
 ];
 
 const GAP_OPTIONS: { value: GapPreset; label: string }[] = [
@@ -77,10 +84,11 @@ function resolveYAxis(
   gap: GapPreset,
   count: YCountPreset,
   column: YAxisColumnPreset,
+  side: YAxisSide,
 ): YAxisConfig | boolean {
   if (!visible) return false;
 
-  const config: YAxisConfig = {};
+  const config: YAxisConfig = { side };
   if (gap === "wide") config.minGap = 72;
   if (count !== "auto") config.count = Number(count);
   if (column !== "off") {
@@ -116,7 +124,7 @@ type AxesChartProps = {
   xAxis: boolean | { minGap: number };
   gridStyle: GridStyleConfig | undefined;
   leftEdgeFade: { width: number } | undefined;
-  insets: { bottom: number } | undefined;
+  insets: ChartInsets | undefined;
   topLabel: AxisLabelConfig | boolean | undefined;
   bottomLabel: AxisLabelConfig | boolean | undefined;
 };
@@ -156,6 +164,7 @@ function AxesChart({
 
 export default function AxesGridScreen() {
   const [vis, setVis] = useState<AxisVis>("both");
+  const [yAxisSide, setYAxisSide] = useState<YAxisSide>("right");
   const [gap, setGap] = useState<GapPreset>("default");
   const [yCount, setYCount] = useState<YCountPreset>("auto");
   const [which, setWhich] = useState<ChartKind>("single");
@@ -176,6 +185,7 @@ export default function AxesGridScreen() {
     gap,
     yCount,
     yAxisColumn,
+    yAxisSide,
   );
   const xAxis =
     vis === "noX" || vis === "none"
@@ -187,7 +197,14 @@ export default function AxesGridScreen() {
   // An explicit inset overrides the auto-padding — including the live-dot pulse's
   // reserved room — so the plot fills to the edge (the pulse ring may clip there).
   // Pair with "Hide X" to see the bottom space fully reclaimed (#128).
-  const insets = flushBottom ? { bottom: 0 } : undefined;
+  const showLeftYAxis = yAxisSide === "left" && yAxis !== false;
+  const insets: ChartInsets | undefined =
+    showLeftYAxis || flushBottom
+      ? {
+          ...(showLeftYAxis ? { left: 64 } : {}),
+          ...(flushBottom ? { bottom: 0 } : {}),
+        }
+      : undefined;
 
   const { data, value, series } = useSimulatedChartData({
     multiSeries: which === "multi",
@@ -206,7 +223,7 @@ export default function AxesGridScreen() {
     <DemoScreen
       title="Axes & grid"
       docs="guides/axes-and-grid"
-      description="Hide Y, X, or both; axis minGap; a fixed Y-axis price count; explicit insets (bottom 0 fills the plot to the edge). Toggle single vs multi chart, and Robinhood-style high/low edge labels (built-in or a custom render)."
+      description="Hide Y, X, or both; move Y labels left or right; tune axis minGap and fixed price count; and compare explicit insets. Toggle single vs multi chart, plus built-in or custom high/low edge labels."
       chart={
         <AxesChart
           which={which}
@@ -234,6 +251,12 @@ export default function AxesGridScreen() {
         options={VIS_OPTIONS}
         value={vis}
         onChange={setVis}
+      />
+      <ChipRow
+        label="Y-axis side"
+        options={Y_AXIS_SIDE_OPTIONS}
+        value={yAxisSide}
+        onChange={setYAxisSide}
       />
       <ChipRow
         label="Axis minGap (when shown)"
