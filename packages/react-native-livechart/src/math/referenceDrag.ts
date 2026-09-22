@@ -44,6 +44,25 @@ export function nearestDraggableIndex(
 }
 
 /**
+ * Whether the reference-drag gesture owns the current touch — the answer the
+ * scrub's activation guard needs. A **grabbed** line (`dragIndex >= 0`, pressed
+ * or already dragging) owns the touch outright, wherever the asking gesture says
+ * the finger is: the scrub pan can activate mid-drag and asks with its
+ * touch-DOWN point, which a longer drag has carried the line away from. With no
+ * line grabbed, it is the geometric reach test around the handles.
+ */
+export function referenceDragOwnsTouch(
+  dragIndex: number,
+  handleYs: number[],
+  y: number,
+  slop: number,
+): boolean {
+  "worklet";
+  if (dragIndex >= 0) return true;
+  return nearestDraggableIndex(handleYs, y, slop) >= 0;
+}
+
+/**
  * Resolve a grabbed line's drag intent from the touch travel (px) since the grab.
  * Once a line is grabbed it **owns** the touch: any drag past `threshold` px in
  * either axis activates the drag. We deliberately don't fall through to scrub on

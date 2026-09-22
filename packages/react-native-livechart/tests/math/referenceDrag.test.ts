@@ -1,6 +1,7 @@
 import {
   clampToBounds,
   nearestDraggableIndex,
+  referenceDragOwnsTouch,
   referenceValueOut,
   resolveDragIntent,
 } from "../../src/math/referenceDrag";
@@ -44,6 +45,21 @@ describe("nearestDraggableIndex", () => {
 
   it("favors the later (topmost-drawn) index on a tie", () => {
     expect(nearestDraggableIndex([50, 50], 50, 14)).toBe(1);
+  });
+});
+
+describe("referenceDragOwnsTouch", () => {
+  it("falls back to the handle reach when no line is grabbed", () => {
+    expect(referenceDragOwnsTouch(-1, [100, 200], 105, 14)).toBe(true);
+    expect(referenceDragOwnsTouch(-1, [100, 200], 150, 14)).toBe(false);
+    expect(referenceDragOwnsTouch(-1, [], 150, 14)).toBe(false);
+  });
+
+  it("owns the touch while a line is grabbed, wherever the finger is said to be", () => {
+    // The scrub pan asks with its touch-down point; a drag has since carried the
+    // line 80 px away from it — the drag still owns the touch.
+    expect(referenceDragOwnsTouch(0, [180], 100, 14)).toBe(true);
+    expect(referenceDragOwnsTouch(1, [-1, 400], 0, 14)).toBe(true);
   });
 });
 
