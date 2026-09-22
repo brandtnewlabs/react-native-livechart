@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.23.0] - 2026-09-22
+
 ### Added
 
 - `LiveChart.isFrameLoopActive` accepts a `SharedValue<boolean>` that suspends
@@ -1353,6 +1355,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.23.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.23.0
 [4.21.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.21.0
 [4.20.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.20.0
 [4.19.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.19.0
