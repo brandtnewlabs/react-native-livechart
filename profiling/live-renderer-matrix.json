@@ -9,7 +9,8 @@
     "historySpanSeconds": 40,
     "timeWindowSeconds": 30,
     "maxPoints": 2000,
-    "chartHeight": 150
+    "chartHeight": 150,
+    "chartWidth": 330
   },
   "runs": [
     {
@@ -48,6 +49,27 @@
       "id": "live-monotone-round-tall",
       "description": "Doubles the raster mask height while preserving path complexity.",
       "chartHeight": 300
+    },
+    {
+      "id": "idle-publish-live-range",
+      "description": "Idle 60-second window at 120 Hz; measures engine publication independently of feed updates.",
+      "timeWindowSeconds": 60,
+      "baselinePublishedFps": 120,
+      "optimizedPublishedFps": 11
+    },
+    {
+      "id": "idle-publish-one-day",
+      "description": "Idle one-day window at 120 Hz; sub-pixel clock motion should publish no frames during the sample.",
+      "timeWindowSeconds": 86400,
+      "baselinePublishedFps": 120,
+      "optimizedPublishedFps": 0
+    },
+    {
+      "id": "idle-publish-one-year",
+      "description": "Idle one-year window at 120 Hz; sub-pixel clock motion should publish no frames during the sample.",
+      "timeWindowSeconds": 31536000,
+      "baselinePublishedFps": 120,
+      "optimizedPublishedFps": 0
     }
   ]
 }

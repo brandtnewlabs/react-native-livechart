@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "LiveChart Scroll Thread Load",
+    "slug": "live-chart-scroll-thread-load",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "jsEngine": "hermes",
+    "ios": {
+      "bundleIdentifier": "com.livechart.scrollthreadload"
+    }
+  }
+}

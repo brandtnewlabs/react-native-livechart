@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -10,8 +10,14 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LiveChart, LiveChartSeries } from "react-native-livechart";
+import {
+  LiveChart,
+  LiveChartSeries,
+  type LiveChartFrameStats,
+} from "react-native-livechart";
+import { useSharedValue } from "react-native-reanimated";
 
+import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import {
   APP_FONT_FAMILY,
   APP_FONT_FAMILY_MEDIUM,
@@ -22,20 +28,61 @@ import { APP_THEME, colors } from "../../demo-lib/theme";
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
 type ActiveChart = "single" | "series" | "none";
+const WINDOW_OPTIONS = [
+  { value: 30, label: "30s" },
+  { value: 60, label: "60s" },
+  { value: 86_400, label: "1d" },
+] as const;
 
 export default function ScrollInteractionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [gateOnScroll, setGateOnScroll] = useState(false);
+  const [feedPaused, setFeedPaused] = useState(false);
+  const [showFrameStats, setShowFrameStats] = useState(false);
+  const [timeWindow, setTimeWindow] = useState<number>(30);
+  const [scrolling, setScrolling] = useState(false);
+  const [frameRates, setFrameRates] = useState({ published: 0, skipped: 0 });
+  const isFrameLoopActive = useSharedValue(true);
+  const debugFrameStats = useSharedValue<LiveChartFrameStats>({
+    frames: 0,
+    published: 0,
+    skipped: 0,
+  });
   const { data, value, series } = useSimulatedChartData({
     multiSeries: true,
     tradeStream: false,
     historySpanSeconds: 40,
+    paused: feedPaused,
   });
 
   const [scrollOffset, setScrollOffset] = useState(0);
   const [singleScrubs, setSingleScrubs] = useState(0);
   const [seriesScrubs, setSeriesScrubs] = useState(0);
   const [activeChart, setActiveChart] = useState<ActiveChart>("none");
+
+  useEffect(() => {
+    if (!showFrameStats) return;
+    let last = debugFrameStats.get();
+    let lastAt = Date.now();
+    const timer = setInterval(() => {
+      const current = debugFrameStats.get();
+      const now = Date.now();
+      const seconds = (now - lastAt) / 1000;
+      setFrameRates({
+        published: Math.round((current.published - last.published) / seconds),
+        skipped: Math.round((current.skipped - last.skipped) / seconds),
+      });
+      last = current;
+      lastAt = now;
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [debugFrameStats, showFrameStats]);
+
+  const updateScrolling = (next: boolean) => {
+    setScrolling(next);
+    if (gateOnScroll) isFrameLoopActive.set(!next);
+  };
 
   const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     setScrollOffset(Math.round(event.nativeEvent.contentOffset.y));
@@ -57,7 +104,7 @@ export default function ScrollInteractionScreen() {
         <Text style={styles.heading}>Scroll interaction</Text>
         <Text style={styles.description}>
           Both charts are children of this vertical ScrollView. Start every test
-          gesture inside the plot.
+          gesture inside the plot. The frame gate applies to LiveChart only.
         </Text>
       </View>
 
@@ -72,13 +119,58 @@ export default function ScrollInteractionScreen() {
           Single scrubs: {singleScrubs} · Series scrubs: {seriesScrubs} ·
           Active: {activeChart}
         </Text>
+        <Text style={styles.statusSecondary}>
+          LiveChart loop: {gateOnScroll && scrolling ? "suspended" : "running"}
+          {showFrameStats
+            ? ` · ${frameRates.published} published/s · ${frameRates.skipped} unchanged/s`
+            : ""}
+        </Text>
+      </View>
+
+      <View style={styles.controls}>
+        <ControlRow label="Frame loop">
+          <ToggleChip
+            label="Gate during scroll"
+            value={gateOnScroll}
+            onChange={(next) => {
+              setGateOnScroll(next);
+              isFrameLoopActive.set(!next || !scrolling);
+            }}
+          />
+          <ToggleChip
+            label="Freeze feed"
+            value={feedPaused}
+            onChange={setFeedPaused}
+          />
+          <ToggleChip
+            label="Frame stats"
+            value={showFrameStats}
+            onChange={setShowFrameStats}
+          />
+        </ControlRow>
+        <ChipRow
+          label="LiveChart window"
+          options={WINDOW_OPTIONS}
+          value={timeWindow}
+          onChange={setTimeWindow}
+        />
       </View>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
-        onScrollEndDrag={handleScrollEnd}
-        onMomentumScrollEnd={handleScrollEnd}
+        onScrollBeginDrag={() => updateScrolling(true)}
+        onMomentumScrollBegin={() => updateScrolling(true)}
+        onScrollEndDrag={(event) => {
+          handleScrollEnd(event);
+          if (Math.abs(event.nativeEvent.velocity?.y ?? 0) < 0.01) {
+            updateScrolling(false);
+          }
+        }}
+        onMomentumScrollEnd={(event) => {
+          handleScrollEnd(event);
+          updateScrolling(false);
+        }}
         showsVerticalScrollIndicator
       >
         <View style={styles.instructions}>
@@ -103,8 +195,10 @@ export default function ScrollInteractionScreen() {
             value={value}
             accentColor={ACCENT}
             theme={APP_THEME}
-            timeWindow={30}
+            timeWindow={timeWindow}
             scrub
+            isFrameLoopActive={isFrameLoopActive}
+            debugFrameStats={showFrameStats ? debugFrameStats : undefined}
             onGestureStart={() => {
               setSingleScrubs((count) => count + 1);
               setActiveChart("single");
@@ -216,6 +310,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontVariant: ["tabular-nums"],
     fontFamily: APP_FONT_FAMILY,
+  },
+  controls: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   scroll: {
     flex: 1,

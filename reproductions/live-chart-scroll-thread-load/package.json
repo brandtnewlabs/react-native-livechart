@@ -1,0 +1,26 @@
+{
+  "name": "live-chart-scroll-thread-load-repro",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@shopify/flash-list": "2.0.2",
+    "@shopify/react-native-skia": "2.6.2",
+    "expo": "~57.0.24",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-livechart": "file:../../packages/react-native-livechart",
+    "react-native-reanimated": "4.5.1",
+    "react-native-worklets": "0.10.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "babel-preset-expo": "57.0.0",
+    "typescript": "6.0.3"
+  }
+}

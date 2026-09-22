@@ -1,0 +1,66 @@
+---
+title: Scroll interaction
+icon: "arrows-up-down"
+description: "Suspend a live chart's frame work while its parent list scrolls."
+---
+
+`LiveChart` normally follows the clock on every display frame. For a chart inside
+a long vertical list, the experimental `isFrameLoopActive` prop lets the parent
+give scrolling priority to the UI thread. Pass a `SharedValue<boolean>` and set
+it to `false` during the drag or momentum scroll. The chart keeps its data and
+gestures mounted, then catches up when the value becomes `true`.
+
+```tsx
+const frameLoopActive = useSharedValue(true);
+
+<ScrollView
+  onScrollBeginDrag={() => frameLoopActive.set(false)}
+  onMomentumScrollBegin={() => frameLoopActive.set(false)}
+  onScrollEndDrag={(event) => {
+    if (Math.abs(event.nativeEvent.velocity?.y ?? 0) < 0.01) {
+      frameLoopActive.set(true);
+    }
+  }}
+  onMomentumScrollEnd={() => frameLoopActive.set(true)}
+>
+  <LiveChart
+    data={data}
+    value={value}
+    isFrameLoopActive={frameLoopActive}
+    scrub
+  />
+</ScrollView>;
+```
+
+The gate suspends the engine, pulse, candle-width, marker, trade, and degen frame
+callbacks. Feed writes to `data` and `value` continue. Use `static` for charts
+that should have no continuous animation at rest; use `isFrameLoopActive` for a
+temporary pause while a live chart remains mounted.
+
+<Note>
+  **Live example:** The [Scroll interaction
+  demo](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/scroll-interaction.tsx)
+  has a **Gate during scroll** control. **Freeze feed** isolates idle chart
+  behavior, and **Frame stats** displays the active engine callback rate. Use
+  the **LiveChart window** presets to compare 30-second, 60-second, and one-day
+  idle publication rates on the same device.
+</Note>
+
+## Count engine publications during development
+
+Pass a `SharedValue<LiveChartFrameStats>` to `debugFrameStats` to count active
+engine frames. `published` counts callbacks that changed tracked engine values;
+`skipped` counts callbacks whose tracked values were already settled. When the
+frame gate is off, all three totals stop increasing. The counter does not measure
+every Skia redraw and adds one SharedValue write per active frame, so leave it
+out of production performance traces.
+
+```tsx
+const stats = useSharedValue<LiveChartFrameStats>({
+  frames: 0,
+  published: 0,
+  skipped: 0,
+});
+
+<LiveChart data={data} value={value} debugFrameStats={stats} />;
+```

@@ -1,7 +1,62 @@
 import {
+  advanceTimestampByPixel,
+  lerpAndSettle,
   tickLiveChartEngineFrame,
   type EngineTickMutable,
 } from "../src/core/liveChartEngineTick";
+
+describe("pixel-aware engine publication", () => {
+  it("holds a timestamp until the chart advances half a pixel", () => {
+    expect(advanceTimestampByPixel(1000, 1000.04, 0.1)).toBe(1000);
+    expect(advanceTimestampByPixel(1000, 1000.11, 0.1)).toBeCloseTo(1000.1);
+  });
+
+  it("falls back to the target when pixel quantization is unavailable", () => {
+    expect(advanceTimestampByPixel(1000, 1001, 0)).toBe(1001);
+    expect(advanceTimestampByPixel(1000, 1001, Infinity)).toBe(1001);
+    expect(advanceTimestampByPixel(1000, 999, 0.1)).toBe(999);
+  });
+
+  it("lands a lerp exactly on target inside the pixel threshold", () => {
+    expect(lerpAndSettle(99.9, 100, 0.5, 16.67, 1)).toBe(100);
+    expect(lerpAndSettle(0, 100, 0.5, 16.67, 1)).not.toBe(100);
+    expect(lerpAndSettle(99.9, 100, 0.5, 16.67, 0)).not.toBe(100);
+  });
+
+  it("does not publish engine state for a sub-pixel idle frame", () => {
+    const state = {
+      ...baseState(),
+      displayValue: 10,
+      displayMin: 9.8,
+      displayMax: 10.2,
+      liveEdge: 1000,
+      edgeValue: 10,
+      extremaMinValue: 10,
+      extremaMaxValue: 10,
+      extremaMinTime: 1000,
+      extremaMaxTime: 1000,
+      lastYRangeScale: 1,
+      lastCanvasWidth: 200,
+      lastCanvasHeight: 100,
+    };
+    const before = { ...state };
+
+    tickLiveChartEngineFrame(state, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.08,
+      exaggerate: false,
+      referenceValue: undefined,
+      targetValue: 10,
+      points: [{ time: 1000, value: 10 }],
+      nowSeconds: 1000.01,
+    });
+
+    expect(state).toEqual(before);
+  });
+});
 
 function baseState(): EngineTickMutable {
   return {

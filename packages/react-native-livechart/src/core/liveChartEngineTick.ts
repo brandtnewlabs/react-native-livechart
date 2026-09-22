@@ -41,6 +41,10 @@ export interface EngineTickMutable {
   extremaMaxTime: number;
   /** Previous frame's yRangeScale — detects an in-flight scale drag. */
   lastYRangeScale?: number;
+  /** Canvas width observed by the previous measured tick. */
+  lastCanvasWidth?: number;
+  /** Canvas height observed by the previous measured tick. */
+  lastCanvasHeight?: number;
 }
 
 export interface EngineTickInput {
@@ -142,6 +146,40 @@ export interface EngineTickInput {
   candleGapBridgeUnknown?: boolean;
 }
 
+const SUBPIXEL_SETTLE_THRESHOLD = 0.5;
+
+/**
+ * Lerps toward a target, then lands exactly once the remaining distance is
+ * smaller than half a rendered pixel.
+ */
+export function lerpAndSettle(
+  current: number,
+  target: number,
+  speed: number,
+  dt: number,
+  unitsPerPixel: number,
+): number {
+  "worklet";
+  const next = lerp(current, target, speed, dt);
+  const epsilon = Math.abs(unitsPerPixel) * SUBPIXEL_SETTLE_THRESHOLD;
+  return epsilon > 0 && Math.abs(target - next) <= epsilon ? target : next;
+}
+
+/**
+ * Advances a live timestamp only after the chart has moved by half a pixel.
+ */
+export function advanceTimestampByPixel(
+  current: number,
+  target: number,
+  secondsPerPixel: number,
+): number {
+  "worklet";
+  const step = Math.abs(secondsPerPixel) * SUBPIXEL_SETTLE_THRESHOLD;
+  if (!(step > 0) || !Number.isFinite(step) || target <= current) return target;
+  const elapsedSteps = Math.floor((target - current) / step);
+  return elapsedSteps > 0 ? current + elapsedSteps * step : current;
+}
+
 /**
  * One frame of the live chart engine (mirrors `useLiveChartEngine` worklet body).
  * Mutates `state` in place for testability and reuse from the hook.
@@ -153,7 +191,6 @@ export function tickLiveChartEngineFrame(
   "worklet";
   const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
   const liveEdge = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
-  state.liveEdge = liveEdge;
   const viewEnd = input.viewEnd;
   // First time of the visible series' data — the floor a frozen edge must stay
   // at or above. `-Infinity` when there's no data to bound against, so the freeze
@@ -177,6 +214,17 @@ export function tickLiveChartEngineFrame(
     viewEnd != null &&
     viewEnd >= firstDataTime &&
     (viewEnd < liveEdge || input.allowFutureViewEnd === true);
+  const canvasChanged =
+    state.lastCanvasWidth !== input.canvasWidth ||
+    state.lastCanvasHeight !== input.canvasHeight;
+  state.liveEdge =
+    !canvasChanged && input.canvasWidth > 0 && input.timeWindow > 0
+      ? advanceTimestampByPixel(
+          state.liveEdge,
+          liveEdge,
+          input.timeWindow / input.canvasWidth,
+        )
+      : liveEdge;
   if (scrolledBack) {
     state.timestamp = viewEnd;
   } else if (!input.paused) {
@@ -188,6 +236,16 @@ export function tickLiveChartEngineFrame(
     if (returnT != null && returnT < 1 && input.returnFrom != null) {
       state.timestamp =
         input.returnFrom + (liveEdge - input.returnFrom) * returnT;
+    } else if (
+      !canvasChanged &&
+      input.canvasWidth > 0 &&
+      input.timeWindow > 0
+    ) {
+      state.timestamp = advanceTimestampByPixel(
+        state.timestamp,
+        liveEdge,
+        input.timeWindow / input.canvasWidth,
+      );
     } else {
       state.timestamp = liveEdge;
     }
@@ -195,6 +253,8 @@ export function tickLiveChartEngineFrame(
   // else: paused with no active pan → leave the frozen timestamp untouched.
 
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
+  state.lastCanvasWidth = input.canvasWidth;
+  state.lastCanvasHeight = input.canvasHeight;
 
   const speed = input.smoothing;
   // One-shot settle (snapKey change): collapse this frame's easing so the
@@ -214,16 +274,30 @@ export function tickLiveChartEngineFrame(
     (1 - gapRatio) *
       (input.adaptiveSpeedBoost ?? MOTION_METRICS_DEFAULTS.adaptiveSpeedBoost);
 
+  const valueUnitsPerPixel =
+    (state.displayMax - state.displayMin) / input.canvasHeight;
   state.displayValue = snap
     ? target
-    : lerp(state.displayValue, target, adaptiveSpeed, input.dt);
+    : lerpAndSettle(
+        state.displayValue,
+        target,
+        adaptiveSpeed,
+        input.dt,
+        valueUnitsPerPixel,
+      );
 
   // Pinch-zoom: ease toward the zoom override when set, else the configured
   // window. Mirrors the viewEnd freeze above (width vs. right edge).
   const targetWindow = input.viewWindow ?? input.timeWindow;
   state.displayWindow = snap
     ? targetWindow
-    : lerp(state.displayWindow, targetWindow, speed, input.dt);
+    : lerpAndSettle(
+        state.displayWindow,
+        targetWindow,
+        speed,
+        input.dt,
+        targetWindow / input.canvasWidth,
+      );
 
   const winStart = state.timestamp - state.displayWindow;
 
@@ -437,16 +511,29 @@ export function tickLiveChartEngineFrame(
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
+    const rangeUnitsPerPixel = (tMax - tMin) / input.canvasHeight;
     if (snap || yScaleDragging || tMin < state.displayMin) {
       state.displayMin = tMin;
     } else {
-      state.displayMin = lerp(state.displayMin, tMin, speed, input.dt);
+      state.displayMin = lerpAndSettle(
+        state.displayMin,
+        tMin,
+        speed,
+        input.dt,
+        rangeUnitsPerPixel,
+      );
     }
 
     if (snap || yScaleDragging || tMax > state.displayMax) {
       state.displayMax = tMax;
     } else {
-      state.displayMax = lerp(state.displayMax, tMax, speed, input.dt);
+      state.displayMax = lerpAndSettle(
+        state.displayMax,
+        tMax,
+        speed,
+        input.dt,
+        rangeUnitsPerPixel,
+      );
     }
   }
 
@@ -485,6 +572,12 @@ export function tickLiveChartEngineFrame(
     }
     state.edgeValue = snap
       ? edgeTarget
-      : lerp(state.edgeValue, edgeTarget, speed, input.dt);
+      : lerpAndSettle(
+          state.edgeValue,
+          edgeTarget,
+          speed,
+          input.dt,
+          valueUnitsPerPixel,
+        );
   }
 }

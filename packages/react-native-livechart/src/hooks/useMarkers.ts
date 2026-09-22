@@ -55,6 +55,8 @@ export function useMarkers(
   lineLinear = false,
   /** Collision config; default `"anchored"` (no stacking). */
   cluster: ResolvedMarkerCluster = ANCHORED_CLUSTER,
+  /** Runtime gate shared with the chart engine. */
+  isFrameLoopActive?: SharedValue<boolean>,
 ): {
   projected: SharedValue<ProjectedMarker[]>;
   tapGesture: ReturnType<typeof Gesture.Tap>;
@@ -80,6 +82,7 @@ export function useMarkers(
   const markerFrameCallback = useFrameCallback(
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
       "worklet";
+      if (isFrameLoopActive?.get() === false) return;
       const cache = cacheRef.current!;
       if (!active) {
         if (projected.get().length > 0) projected.set([]);

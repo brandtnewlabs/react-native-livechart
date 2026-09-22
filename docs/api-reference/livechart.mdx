@@ -515,6 +515,22 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   [Sparklines guide](/guides/sparklines).
 </ParamField>
 
+<ParamField body="isFrameLoopActive" type="SharedValue<boolean>">
+  Runtime gate for continuous frame work. Set it to `false` while a parent list
+  scrolls; data can still update, and the chart catches up when it becomes
+  `true`. The chart and its gestures stay mounted. Unlike `static`, this can be
+  changed on the UI thread without a React render. Experimental; see
+  [Scroll interaction](/guides/scroll-interaction).
+</ParamField>
+
+<ParamField body="debugFrameStats" type="SharedValue<LiveChartFrameStats>">
+  Optional development counter with `frames`, `published`, and `skipped` totals
+  for active engine callbacks. A gated frame is not counted. `published` tracks
+  changes to engine values, not every possible Skia redraw. The counter itself
+  writes a SharedValue each frame, so omit it from production profiling.
+  Experimental; see [Scroll interaction](/guides/scroll-interaction).
+</ParamField>
+
 <ParamField body="smoothing" type="number" default="0.08">
   Value-lerp speed (0 = frozen, 1 = instant).
 </ParamField>

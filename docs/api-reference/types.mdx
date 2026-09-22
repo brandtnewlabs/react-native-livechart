@@ -13,6 +13,7 @@ import type {
   ChartGap,
   ChartGapsConfig,
   LiveChartHandle,
+  LiveChartFrameStats,
   LiveChartPoint,
   ReferenceLine,
   SeriesConfig,
@@ -94,6 +95,24 @@ While it is below `1`, live dots and pulse rings fade completely out so a dimmed
 stroke cannot show through them; they return once the multiplier reaches `1`.
 See [Line & area](/guides/line-and-area#dimming-replacement-data) or
 [Multi-series](/guides/multi-series#dimming-replacement-data).
+
+The experimental frame-loop controls are available on `LiveChart`:
+
+```ts
+interface LiveChartFrameStats {
+  frames: number;    // active engine callbacks
+  published: number; // callbacks that changed a tracked engine value
+  skipped: number;   // callbacks whose tracked engine values were unchanged
+}
+
+interface LiveChartProps {
+  isFrameLoopActive?: SharedValue<boolean>;
+  debugFrameStats?: SharedValue<LiveChartFrameStats>;
+}
+```
+
+See [Scroll interaction](/guides/scroll-interaction) for the parent-scroll gate
+and the counter's measurement limits.
 
 ## Momentum
 

@@ -9,11 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `LiveChart.isFrameLoopActive` accepts a `SharedValue<boolean>` that suspends
+  continuous frame work without disabling pan, zoom, scrub, or draggable
+  reference lines.
+- `LiveChart.debugFrameStats` exposes optional development counters for active
+  engine frames and tracked engine-state updates.
 - `yAxis.side: "left" | "right"` for single- and multi-series charts. Left labels
   use the caller-reserved `insets.left` gutter and remain visible above edge fades.
 
 ### Fixed
 
+- Idle charts settle sub-pixel engine motion, park invisible pulse frames,
+  finish candle-width interpolation, and reuse text measurements instead of
+  continuously invalidating Skia at the display refresh rate. Resolves
+  [#304](https://github.com/brandtnewlabs/react-native-livechart/issues/304).
 - Dragging a reference line no longer opens the scrub crosshair part-way
   through the drag. The scrub pan can activate while a line is being dragged
   and asked its guard with its touch-down point, which a longer drag had

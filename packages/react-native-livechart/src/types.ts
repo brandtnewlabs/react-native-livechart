@@ -16,6 +16,16 @@ export interface LiveChartPoint {
   value: number;
 }
 
+/** Development counters for continuous engine-frame state updates. */
+export interface LiveChartFrameStats {
+  /** Frame callbacks that ran while the chart was live. */
+  frames: number;
+  /** Frames that changed at least one tracked engine value. */
+  published: number;
+  /** Frames whose tracked engine values were unchanged. */
+  skipped: number;
+}
+
 /** Direction of recent price movement, used for dot/badge coloring and degen effects. */
 export type Momentum = "up" | "down" | "flat";
 
@@ -2667,6 +2677,23 @@ export interface LiveChartProps extends LiveChartCoreProps {
    *  switching back to live restarts the suspended loops and catches up. Frame the data
    *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
   static?: boolean;
+  /**
+   * Runtime gate for continuous frame work. Set this SharedValue to `false`
+   * while a parent scroll gesture needs the UI thread; data keeps updating and
+   * the chart catches up when it becomes `true`. Unlike {@link static}, this
+   * keeps pan, zoom, scrub, and draggable reference-line gestures mounted.
+   *
+   * @experimental
+   */
+  isFrameLoopActive?: SharedValue<boolean>;
+  /**
+   * Optional development counter for engine frames that did or did not change
+   * tracked engine values. It is not a count of Skia redraws. Supplying it adds
+   * one SharedValue write per active engine frame.
+   *
+   * @experimental
+   */
+  debugFrameStats?: SharedValue<LiveChartFrameStats>;
   /**
    * Render a custom overlay floated over the chart canvas, handed a price↔pixel /
    * time↔pixel {@link ChartOverlayContext} so it can track the auto-rescaling axis

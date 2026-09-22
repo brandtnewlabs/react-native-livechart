@@ -1,4 +1,5 @@
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
+import { useRef } from "react";
 
 import type { SkFont } from "@shopify/react-native-skia";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
@@ -7,7 +8,10 @@ import {
   type YAxisEntry,
 } from "../draw/grid";
 import type { ChartPadding } from "../draw/line";
-import { measureFontTextWidth } from "../lib/measureFontTextWidth";
+import {
+  measureFontTextWidth,
+  type TextWidthCache,
+} from "../lib/measureFontTextWidth";
 import {
   classifyReferenceEdge,
   referenceLineForm,
@@ -120,6 +124,7 @@ function badgeGeometry(
   x1: number,
   x2: number,
   font: SkFont,
+  textWidthCache?: TextWidthCache,
 ): BadgeGeometry {
   "worklet";
   // Measure the icon's visual bounds (not just width): `SkiaText` draws from the
@@ -129,7 +134,9 @@ function badgeGeometry(
   // price-pill centering in computeActionBadgeLayout.
   const iconBounds = icon ? font.measureText(icon) : null;
   const iconW = iconBounds ? iconBounds.width : 0;
-  const textW = text ? measureFontTextWidth(font, text) : 0;
+  const textW = text
+    ? measureFontTextWidth(font, text, textWidthCache)
+    : 0;
 
   let contentW = 0;
   let count = 0;
@@ -310,6 +317,7 @@ export function useReferenceLine(
   const form = line ? referenceLineForm(line) : "none";
   // Badge presentation depends only on the (stable) line props — resolve once.
   const badge = line ? resolveReferenceBadge(line) : null;
+  const textWidthCacheRef = useRef<TextWidthCache>({});
 
   return useDerivedValue<ReferenceLineLayout>(() => {
     if (!line || form === "none") return INVISIBLE;
@@ -447,7 +455,16 @@ export function useReferenceLine(
         ? chartTop + OFF_AXIS_EDGE_INSET
         : chartBottom - OFF_AXIS_EDGE_INSET;
       const text = referenceBadgeText(line, badge, v, formatValue, true);
-      const g = badgeGeometry(badge.position, badge.icon, text, true, x1, x2, font);
+      const g = badgeGeometry(
+        badge.position,
+        badge.icon,
+        text,
+        true,
+        x1,
+        x2,
+        font,
+        textWidthCacheRef.current,
+      );
       return {
         ...INVISIBLE,
         visible: true,
@@ -476,7 +493,16 @@ export function useReferenceLine(
     // In-range pill badge (the `badge` config, not the legacy off-axis-only flag).
     if (badge && badge.inRange) {
       const text = referenceBadgeText(line, badge, v, formatValue, false);
-      const g = badgeGeometry(badge.position, badge.icon, text, false, x1, x2, font);
+      const g = badgeGeometry(
+        badge.position,
+        badge.icon,
+        text,
+        false,
+        x1,
+        x2,
+        font,
+        textWidthCacheRef.current,
+      );
       return {
         ...INVISIBLE,
         visible: true,

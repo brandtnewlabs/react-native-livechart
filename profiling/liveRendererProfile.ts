@@ -18,6 +18,11 @@ export interface RendererProfile {
   timeWindowSeconds: number;
   maxPoints: number;
   chartHeight: number;
+  chartWidth: number;
+  /** Deterministic 120 Hz idle-engine baseline before pixel-aware publication. */
+  baselinePublishedFps?: number;
+  /** Deterministic 120 Hz idle-engine result after pixel-aware publication. */
+  optimizedPublishedFps?: number;
 }
 
 type RendererProfileOverrides = Partial<

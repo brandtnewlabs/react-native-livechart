@@ -1,4 +1,5 @@
 import { type SkFont } from "@shopify/react-native-skia";
+import { useRef } from "react";
 import {
   useDerivedValue,
   useSharedValue,
@@ -9,7 +10,10 @@ import {
   MOTION_METRICS_DEFAULTS,
   MS_PER_FRAME_60FPS,
 } from "../constants";
-import { measureFontTextWidth } from "../lib/measureFontTextWidth";
+import {
+  measureFontTextWidth,
+  type TextWidthCache,
+} from "../lib/measureFontTextWidth";
 import type { ChartEngineWithLiveValue } from "../core/useLiveChartEngine";
 import {
   badgeTailAndCap,
@@ -64,6 +68,7 @@ export function useBadge(
   const colorR = useSharedValue(0);
   const colorG = useSharedValue(0);
   const colorB = useSharedValue(0);
+  const textWidthCacheRef = useRef<TextWidthCache>({});
 
   const upRgb = hexToRgb(palette.dotUp);
   const downRgb = hexToRgb(palette.dotDown);
@@ -103,7 +108,7 @@ export function useBadge(
         : padding.top + ((dMax - liveVal) / valRange) * chartH;
 
     const text = formatValue(liveVal);
-    const textW = measureFontTextWidth(font, text);
+    const textW = measureFontTextWidth(font, text, textWidthCacheRef.current);
 
     const pillH = font.getSize() + badgeMetrics.padY * 2;
     // `midY` is the pill's vertical center (the tail anchors here); `capR` is the

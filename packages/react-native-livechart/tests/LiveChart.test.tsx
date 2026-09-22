@@ -1160,6 +1160,7 @@ describe("LiveChart", () => {
       undefined,
       true,
       false,
+      undefined,
     );
 
     await screen.rerender(
@@ -1170,7 +1171,13 @@ describe("LiveChart", () => {
       />,
     );
 
-    expect(widthLerpSpy).toHaveBeenLastCalledWith(86_400, 1, true, true);
+    expect(widthLerpSpy).toHaveBeenLastCalledWith(
+      86_400,
+      1,
+      true,
+      true,
+      undefined,
+    );
     widthLerpSpy.mockRestore();
   });
 

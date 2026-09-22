@@ -1448,6 +1448,8 @@ function useLiveChartController({
   transitions,
   // `static` is a reserved word — alias it so the destructure parses.
   static: isStatic = false,
+  isFrameLoopActive,
+  debugFrameStats,
   snapKey,
   smoothing = 0.08,
   exaggerate = false,
@@ -1726,6 +1728,8 @@ function useLiveChartController({
     timeWindow,
     paused,
     static: isStatic,
+    isFrameLoopActive,
+    debugFrameStats,
     snapKey,
     scrollEnabled: timeScrollEnabled,
     allowFutureViewEnd: timeScrollOverscroll > 0,
@@ -1877,6 +1881,7 @@ function useLiveChartController({
     transitionsCfg.candleLerpSpeed,
     !isStatic,
     isCandle,
+    isFrameLoopActive,
   );
 
   const {
@@ -1919,6 +1924,7 @@ function useLiveChartController({
     !isStatic, // static: no marker-projection loop
     lineIsLinear, // match marker anchoring to the rendered curve
     markerClusterCfg, // co-located marker stacking / collapse
+    isFrameLoopActive,
   );
 
   // Pressable reference-line badges (working orders / alerts). Built before
@@ -2171,6 +2177,7 @@ function useLiveChartController({
     formatTime,
     isCandle,
     isStatic,
+    isFrameLoopActive,
     ...modelDefaults,
     // configs
     yAxisCfg,
@@ -2310,7 +2317,15 @@ function ChartWithDegen({
   model: LiveChartModel;
   yAxisEntries: YAxisEntries | null;
 }) {
-  const { engine, dotX, dotY, momentumSV, degenCfg, onDegenShake } = model;
+  const {
+    engine,
+    dotX,
+    dotY,
+    momentumSV,
+    degenCfg,
+    onDegenShake,
+    isFrameLoopActive,
+  } = model;
   const state = useDegen(
     engine,
     dotX,
@@ -2318,6 +2333,7 @@ function ChartWithDegen({
     momentumSV,
     degenCfg,
     onDegenShake,
+    isFrameLoopActive,
   );
   return <ChartView model={model} yAxisEntries={yAxisEntries} degen={state} />;
 }
@@ -3046,6 +3062,7 @@ function ChartStack({
     dotX,
     liveDotOpacity,
     pulseCfg,
+    isFrameLoopActive,
     dotCfg,
     dotTracksParked,
     degenCfg,
@@ -3154,6 +3171,7 @@ function ChartStack({
             // A tracking dot marks the honest live position while parked, so
             // its heartbeat keeps pulsing (useLiveDot tracks the true point).
             pulseWhileParked={dotTracksParked}
+            isFrameLoopActive={isFrameLoopActive}
           />
         </Group>
       )}
@@ -3251,6 +3269,7 @@ function ChartTradeStreamLayer({
     skiaFont,
     reveal,
     isStatic,
+    isFrameLoopActive,
   } = model;
   // `effectivePadding.bottom` includes the volume reservation so candle prices
   // stop above the bars. The trade tape should still enter at the chart's true
@@ -3269,6 +3288,7 @@ function ChartTradeStreamLayer({
     tradeStreamPadding,
     !isStatic,
     !isStatic,
+    isFrameLoopActive,
   );
   return (
     <Group transform={degen?.shakeTransform}>

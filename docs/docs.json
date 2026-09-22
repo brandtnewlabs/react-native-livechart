@@ -56,6 +56,7 @@
             "group": "Interaction",
             "pages": [
               "guides/scrubbing",
+              "guides/scroll-interaction",
               "guides/order-ticket",
               "guides/time-scroll",
               "guides/y-range-scale",
