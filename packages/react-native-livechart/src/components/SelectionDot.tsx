@@ -18,7 +18,7 @@ export function DefaultSelectionDot({
   x: SharedValue<number>;
   y: SharedValue<number>;
   opacity: SharedValue<number>;
-  color: string;
+  color: string | SharedValue<string>;
   size: number;
   ring: ResolvedSelectionDotConfig["ring"];
 }) {
@@ -56,13 +56,17 @@ export function SelectionDotSlot({
   active,
   opacity,
   color,
+  plainColor,
 }: {
   config?: ResolvedSelectionDotConfig | null;
   x: SharedValue<number>;
   y?: SharedValue<number>;
   active?: SharedValue<number> | SharedValue<boolean>;
   opacity: SharedValue<number>;
-  color: string;
+  color: string | SharedValue<string>;
+  /** Plain-string color for a custom `component`, whose `color` prop is a
+   *  string, used when `color` is animated. */
+  plainColor: string;
 }) {
   if (!config || y === undefined || !active) return null;
   const dotColor = config.color ?? color;
@@ -74,7 +78,7 @@ export function SelectionDotSlot({
         y={y}
         active={active as SharedValue<boolean>}
         opacity={opacity}
-        color={dotColor}
+        color={typeof dotColor === "string" ? dotColor : plainColor}
         size={config.size}
       />
     );

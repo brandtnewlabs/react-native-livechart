@@ -472,10 +472,11 @@ export interface LineConfig {
    *
    * Pass a `SharedValue<string>` to animate the stroke color on the UI thread
    * (for example with `interpolateColor`) without re-rendering. The animated
-   * color reaches the stroke only; the parts that derive from the line color
-   * at render time (the scrub selection dot, the segment base color, the
-   * area-dot tint, and the threshold split stroke's rest color) use the
-   * palette line color instead.
+   * color reaches the stroke and the built-in scrub selection dot. The parts
+   * that derive from the line color at render time (a custom
+   * `selectionDot.component`'s `color`, the segment base color, the area-dot
+   * tint, and the threshold split stroke's rest color) use the palette line
+   * color instead.
    */
   color?: string | SharedValue<string>;
   /**

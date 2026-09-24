@@ -12,10 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `gradient.colors` accepts a `SharedValue<string[]>`, so the area fill can
   change color on the UI thread without a re-render. Keep at least 2 stops in
   it; its `positions` apply as given.
-- `line.color` accepts a `SharedValue<string>`, so the stroke can change color
-  on the UI thread without a re-render. Parts that read the line color at render
-  time (scrub selection dot, segment base color, area-dot tint, threshold rest
-  color) use the palette line color when `line.color` is animated.
+- `line.color` accepts a `SharedValue<string>`, so the stroke and the built-in
+  scrub selection dot can change color on the UI thread without a re-render.
+  Parts that read the line color at render time (a custom selection dot's
+  `color`, segment base color, area-dot tint, threshold rest color) use the
+  palette line color when `line.color` is animated.
 
 ## [4.23.0] - 2026-09-22
 

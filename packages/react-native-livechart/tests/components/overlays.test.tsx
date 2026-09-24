@@ -1055,6 +1055,66 @@ describe("CrosshairOverlay", () => {
     await render(<Fixture />);
   });
 
+  it("gives a custom selection dot the palette line color when selectionColor is animated", async () => {
+    const received: string[] = [];
+    const Custom = ({ x, y, color, size }: SelectionDotProps) => {
+      received.push(color);
+      return <Circle cx={x} cy={y} r={size} color={color} />;
+    };
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      const selectionColor = useSharedValue("#abcdef");
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          selectionDot={resolveSelectionDot({ component: Custom })}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+          selectionColor={selectionColor}
+        />
+      );
+    }
+    await render(<Fixture />);
+    expect(received.at(-1)).toBe(palette.line);
+  });
+
+  it("renders the built-in selection dot with an animated selectionColor", async () => {
+    function Fixture() {
+      const scrubX = useSharedValue(100);
+      const crosshairOpacity = useSharedValue(1);
+      const scrubActive = useSharedValue(true);
+      const selectionY = useSharedValue(140);
+      const selectionColor = useSharedValue("#abcdef");
+      const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
+      return (
+        <CrosshairOverlay
+          scrubX={scrubX}
+          crosshairOpacity={crosshairOpacity}
+          tooltipLayout={tooltipLayout}
+          engine={engine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          selectionDot={resolveSelectionDot(true)}
+          selectionY={selectionY}
+          scrubActive={scrubActive}
+          selectionColor={selectionColor}
+        />
+      );
+    }
+    await render(<Fixture />);
+  });
+
   it("renders a custom tooltip body via renderTooltip", async () => {
     function Fixture() {
       const scrubX = useSharedValue(100);

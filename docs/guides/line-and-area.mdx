@@ -67,12 +67,12 @@ const fill = useDerivedValue(() => [
 </>;
 ```
 
-An animated `line.color` reaches the stroke only. The parts that read the line
-color at render time — the scrub selection dot, the segment base color, the
-area-dot tint, and the threshold split stroke's rest color — use the palette
-line color (from `accentColor`) instead. An animated `gradient.colors` must
-hold at least 2 stops at all times, and its `positions` apply as given, so keep
-their lengths equal.
+An animated `line.color` reaches the stroke and the built-in scrub selection
+dot. The parts that read the line color at render time — a custom
+`selectionDot.component`'s `color`, the segment base color, the area-dot tint,
+and the threshold split stroke's rest color — use the palette line color (from
+`accentColor`) instead. An animated `gradient.colors` must hold at least 2 stops
+at all times, and its `positions` apply as given, so keep their lengths equal.
 
 ## Dimming replacement data
 

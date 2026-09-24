@@ -1139,7 +1139,8 @@ function resolveCrosshairControllerSettings({
 
 /**
  * The line color as a plain string, for the consumers that parse or pass it on
- * the JS thread. An animated `line.color` reaches the stroke only, so those
+ * the JS thread. An animated `line.color` reaches only the Skia paints that
+ * take a `SharedValue` (the stroke and the built-in selection dot), so those
  * consumers get `undefined` and fall back to the palette line color.
  */
 function staticLineColor(lineProp: LiveChartProps["line"]): string | undefined {
@@ -1413,7 +1414,7 @@ function resolveLiveChartModelDefaults({
     volumeOpacity: volumeCfg?.opacity ?? 1,
     volumeUpColor: volumeCfg?.upColor ?? palette.candleUp,
     volumeDownColor: volumeCfg?.downColor ?? palette.candleDown,
-    selectionColor: staticLineColor(lineProp) ?? palette.line,
+    selectionColor: lineProp?.color ?? palette.line,
   };
 }
 
