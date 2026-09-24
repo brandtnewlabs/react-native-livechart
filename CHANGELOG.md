@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `color`, segment base color, area-dot tint, threshold rest color) use the
   palette line color when `line.color` is animated.
 
+### Fixed
+
+- Static single-series charts now re-settle when `maxValue`, `referenceValue`, or
+  reference range values change, including bounds arriving after a data update.
+
 ## [4.23.0] - 2026-09-22
 
 ### Added

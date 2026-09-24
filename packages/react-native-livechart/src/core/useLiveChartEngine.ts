@@ -782,6 +782,12 @@ export function useLiveChartEngine(
         canvasWidth.get(),
         canvasHeight.get(),
         timeWindow.get(),
+        // Range props can arrive after the data shared value. Re-settle when
+        // those bounds change too, rather than retaining the previous scale
+        // until another data/layout update (static charts have no frame loop).
+        maxValueSV.get(),
+        referenceValue.get(),
+        ...(referenceValues.get() ?? []),
       ].join(",");
     },
     (curr, prev) => {
