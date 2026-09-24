@@ -686,6 +686,24 @@ describe("LiveChart", () => {
     );
   });
 
+  it("accepts an animated line color and gradient stops", async () => {
+    function AnimatedColorHarness() {
+      const color = useSharedValue("#ff0000");
+      const colors = useSharedValue(["rgba(255,0,0,0.4)", "rgba(255,0,0,0)"]);
+      return (
+        <Harness
+          areaDots
+          gradient={{ colors, positions: [0, 1] }}
+          line={{ color }}
+          scrub
+          segments={[{ from: 1699999990, to: 1700000000, active: true }]}
+        />
+      );
+    }
+    const screen = await render(<AnimatedColorHarness />);
+    await layoutFirst(screen);
+  });
+
   it("accepts PulseConfig", async () => {
     await render(<Harness pulse={{ interval: 2000, maxRadius: 30 }} />);
   });

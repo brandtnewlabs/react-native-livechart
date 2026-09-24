@@ -467,8 +467,17 @@ export interface LineConfig {
    * noise reduction.
    */
   simplify?: number;
-  /** Line color override. Defaults to palette-derived accent. */
-  color?: string;
+  /**
+   * Line color override. Defaults to palette-derived accent.
+   *
+   * Pass a `SharedValue<string>` to animate the stroke color on the UI thread
+   * (for example with `interpolateColor`) without re-rendering. The animated
+   * color reaches the stroke only; the parts that derive from the line color
+   * at render time (the scrub selection dot, the segment base color, the
+   * area-dot tint, and the threshold split stroke's rest color) use the
+   * palette line color instead.
+   */
+  color?: string | SharedValue<string>;
   /**
    * Two or more CSS color strings → horizontal gradient along the stroke
    * (left → right). Takes precedence over `color` when set.

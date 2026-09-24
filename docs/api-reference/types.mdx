@@ -367,7 +367,10 @@ type ChartGapStyle = CandleGapStyle;
 type ChartGapsConfig = CandleGapsConfig;
 interface LineConfig {
   width?: number;   // stroke width in px; default 2
-  color?: string;   // line color override; defaults to palette accent
+  color?: string | SharedValue<string>; // line color override; defaults to palette
+                    //   accent. A SharedValue animates the stroke on the UI thread;
+                    //   selection dot, segment base, area-dot tint, and threshold
+                    //   rest color then use the palette line color
   colors?: string[];// per-point gradient stops (left → right); wins over color
   curve?: "monotone" | "linear"; // point interpolation; default "monotone"
                     //   (smooth cubic). "linear" = straight segments / hard-edged.
