@@ -382,10 +382,13 @@ interface LineConfig {
 interface GradientConfig {
   topOpacity?: number;    // accent-derived top fill opacity
   bottomOpacity?: number; // accent-derived bottom fill opacity
-  colors?: string[];      // explicit gradient stops (top → bottom), ≥ 2 entries;
-                          //   overrides topOpacity/bottomOpacity when provided
+  colors?: string[] | SharedValue<string[]>; // explicit gradient stops (top →
+                          //   bottom), ≥ 2 entries; overrides topOpacity/
+                          //   bottomOpacity when provided. A SharedValue animates
+                          //   the stops on the UI thread; keep ≥ 2 entries in it
   positions?: number[];   // optional stop positions (0..1, ascending), same
                           //   length as colors; ignored if the lengths differ
+                          //   (with animated colors, applied as given)
 }
 interface AreaDotsConfig {  // dot-lattice fill of the area beneath the line
   spacing?: number; // lattice pitch (px) between dots, both axes; default 12

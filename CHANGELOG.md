@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `gradient.colors` accepts a `SharedValue<string[]>`, so the area fill can
+  change color on the UI thread without a re-render. Keep at least 2 stops in
+  it; its `positions` apply as given.
+
 ## [4.23.0] - 2026-09-22
 
 ### Added

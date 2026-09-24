@@ -638,10 +638,18 @@ export interface GradientConfig {
   topOpacity?: number;
   /** Opacity at the bottom of the gradient. Default `0`. */
   bottomOpacity?: number;
-  /** Explicit gradient color stops (top → bottom) for the area fill. Overrides
-   *  topOpacity/bottomOpacity when provided. Must have at least 2 entries. */
-  colors?: string[];
-  /** Optional stop positions (0..1, ascending) matching `colors` length. */
+  /**
+   * Explicit gradient color stops (top → bottom) for the area fill. Overrides
+   * topOpacity/bottomOpacity when provided. Must have at least 2 entries.
+   *
+   * Pass a `SharedValue<string[]>` to animate the stops on the UI thread
+   * without re-rendering. Keep at least 2 entries in it at all times.
+   */
+  colors?: string[] | SharedValue<string[]>;
+  /**
+   * Optional stop positions (0..1, ascending) matching `colors` length. With
+   * animated `colors`, the positions apply as given, so keep the lengths equal.
+   */
   positions?: number[];
 }
 
