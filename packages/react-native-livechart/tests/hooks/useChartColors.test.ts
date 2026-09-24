@@ -1,5 +1,6 @@
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import { renderHook } from "@testing-library/react-native";
+import type { SharedValue } from "react-native-reanimated";
 import { resolveTheme } from "../../src/theme";
 import { useChartColors } from "../../src/hooks/useChartColors";
 
@@ -174,5 +175,26 @@ describe("useChartColors", () => {
       ),
     );
     expect(result.current.gradientPositions).toBeUndefined();
+  });
+
+  it("passes animated colors and their positions through as given", async () => {
+    const colors = { value: ["#fff", "#000"] } as unknown as SharedValue<string[]>;
+    const positions = [0, 1];
+    const { result } = await renderHook(() =>
+      useChartColors(
+        palette,
+        {
+          topOpacity: undefined,
+          bottomOpacity: undefined,
+          colors,
+          positions,
+        },
+        "#3b82f6",
+        300,
+        DEFAULT_PADDING,
+      ),
+    );
+    expect(result.current.gradientColors).toBe(colors);
+    expect(result.current.gradientPositions).toBe(positions);
   });
 });

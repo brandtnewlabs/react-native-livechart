@@ -1,3 +1,4 @@
+import type { SharedValue } from "react-native-reanimated";
 import type { ResolvedGradientConfig } from "../core/resolveConfig";
 import type { ChartPadding } from "../draw/line";
 import { parseColorRgb } from "../theme";
@@ -12,9 +13,10 @@ export interface ChartColors {
   gradientTopColor: string;
   /** Bottom gradient stop — custom opacity or palette default. */
   gradientBottomColor: string;
-  /** Gradient color stops (top → bottom). Custom `colors` when provided, else the
-   *  2-stop `[gradientTopColor, gradientBottomColor]` fallback. */
-  gradientColors: string[];
+  /** Gradient color stops (top → bottom). Custom `colors` when provided (static
+   *  or animated), else the 2-stop `[gradientTopColor, gradientBottomColor]`
+   *  fallback. */
+  gradientColors: string[] | SharedValue<string[]>;
   /** Stop positions matching `gradientColors`, or undefined for even spacing. */
   gradientPositions: number[] | undefined;
 }
@@ -45,16 +47,28 @@ export function useChartColors(
       : palette.fillBottom;
 
   const customColors = gradientCfg?.colors;
-  const hasCustomColors = Array.isArray(customColors) && customColors.length >= 2;
-  const gradientColors = hasCustomColors
-    ? customColors
-    : [gradientTopColor, gradientBottomColor];
-  const gradientPositions =
-    hasCustomColors &&
-    gradientCfg?.positions !== undefined &&
-    gradientCfg.positions.length === customColors.length
-      ? gradientCfg.positions
-      : undefined;
+  const positions = gradientCfg?.positions;
+  const staticColors = Array.isArray(customColors) ? customColors : undefined;
+  const hasStaticColors = staticColors !== undefined && staticColors.length >= 2;
+  // An animated `colors` can't be measured on the JS thread without reading it
+  // during render, so it's trusted to hold ≥2 stops and to match `positions`.
+  const isAnimatedColors = customColors !== undefined && staticColors === undefined;
+
+  let gradientColors: string[] | SharedValue<string[]> = [
+    gradientTopColor,
+    gradientBottomColor,
+  ];
+  let gradientPositions: number[] | undefined;
+  if (isAnimatedColors) {
+    gradientColors = customColors;
+    gradientPositions = positions;
+  } else if (hasStaticColors) {
+    gradientColors = staticColors;
+    gradientPositions =
+      positions !== undefined && positions.length === staticColors.length
+        ? positions
+        : undefined;
+  }
 
   return {
     backgroundColor,

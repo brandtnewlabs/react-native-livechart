@@ -296,7 +296,7 @@ export interface ResolvedGradientConfig {
   /** undefined → use palette.fillBottom (transparent) at render time */
   bottomOpacity: number | undefined;
   /** Explicit color stops (top → bottom); overrides the opacity stops. */
-  colors: string[] | undefined;
+  colors: string[] | SharedValue<string[]> | undefined;
   /** Stop positions (0..1) matching `colors` length. */
   positions: number[] | undefined;
 }

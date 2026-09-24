@@ -84,12 +84,18 @@ provided; everything else has a default.
   source data, fitted range, markers, or scrub values. See
   [Line denoising](/guides/line-denoising). Pair `curve: "linear"` with
   `join: "miter"` + `cap: "butt"` for a fully hard-edged ("edgy") line.
+  `color` also accepts a `SharedValue<string>` to animate the stroke and the
+  built-in scrub selection dot. See [Line & area](/guides/line-and-area#animating-the-line-and-fill-color)
+  for an example and the [`LineConfig`](/api-reference/types#config-objects)
+  for fallback behavior.
 </ParamField>
 
 <ParamField body="gradient" type="boolean | GradientConfig" default="true">
   Area fill under the line. Pass a `GradientConfig` with `colors` (≥ 2 stops, top
   → bottom) for a custom multi-color fill; otherwise the fill is derived from the
-  accent color.
+  accent color. `colors` also accepts a `SharedValue<string[]>` to animate the
+  fill stops. See [Line & area](/guides/line-and-area#animating-the-line-and-fill-color)
+  for an example; keep at least two stops in the shared value.
 </ParamField>
 
 <ParamField body="areaDots" type="boolean | AreaDotsConfig" default="false">

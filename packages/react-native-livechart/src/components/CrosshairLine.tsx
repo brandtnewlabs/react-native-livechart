@@ -46,8 +46,9 @@ export function CrosshairLine({
   /** Whether scrubbing is active (passed through to a custom dot). */
   scrubActive: SharedValue<number> | SharedValue<boolean>;
   /** Fallback selection-dot color (leading-series color), used when the config's
-   *  own `color` is unset. */
-  selectionColor?: string;
+   *  own `color` is unset. A `SharedValue` animates the built-in dot; a custom
+   *  dot component gets `palette.line`. */
+  selectionColor?: string | SharedValue<string>;
   /** Opacity of content right of the crosshair (dstOut fade). Default 0.3. */
   dimOpacity?: number;
   /** How far the live series dots extend past the plot's right edge. The dim
@@ -183,6 +184,7 @@ export function CrosshairLine({
           active={scrubActive}
           opacity={visibleOpacity}
           color={selectionColor ?? palette.line}
+          plainColor={palette.line}
         />
       </Group>
     </>

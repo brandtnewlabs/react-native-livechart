@@ -47,8 +47,9 @@ type CrosshairOverlayProps = {
   /** Whether scrubbing is active (passed through to a custom dot). */
   scrubActive: SharedValue<number> | SharedValue<boolean>;
   /** Fallback selection-dot color (accent / leading-series color), used when the
-   *  config's own `color` is unset. */
-  selectionColor?: string;
+   *  config's own `color` is unset. A `SharedValue` animates the built-in dot;
+   *  a custom dot component gets `palette.line`. */
+  selectionColor?: string | SharedValue<string>;
   /** Opacity of content right of the crosshair (dstOut fade). Default 0.3. */
   dimOpacity?: number;
   /** How far the live dot (and its pulse ring) extends past the plot's right
@@ -360,7 +361,7 @@ function CrosshairVisibleLayer({
   scrubX: SharedValue<number>;
   selectionY?: SharedValue<number>;
   scrubActive: SharedValue<number> | SharedValue<boolean>;
-  selectionColor?: string;
+  selectionColor?: string | SharedValue<string>;
   showTooltip: boolean;
   tipX: SharedValue<number>;
   tipY: SharedValue<number>;
@@ -400,6 +401,7 @@ function CrosshairVisibleLayer({
         active={scrubActive}
         opacity={opacity}
         color={selectionColor ?? palette.line}
+        plainColor={palette.line}
       />
       <CrosshairTooltip
         show={showTooltip}

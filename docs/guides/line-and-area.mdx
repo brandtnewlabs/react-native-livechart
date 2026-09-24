@@ -36,6 +36,49 @@ Override the stroke with the `line` prop, and the area fill with `gradient`:
 
 Pass `gradient={false}` to remove the area fill entirely.
 
+### Animating the line and fill color
+
+`line.color` also accepts a `SharedValue<string>`, and `gradient.colors` a
+`SharedValue<string[]>`. The chart hands them to Skia as they are, so the stroke
+and the area fill change color on the UI thread with no re-render. Drive both
+from one progress value to keep them in step:
+
+```tsx
+const progress = useSharedValue(0);
+const color = useDerivedValue(() =>
+  interpolateColor(progress.get(), [0, 1], ["#a1a1aa", "#22c55e"]),
+);
+const fill = useDerivedValue(() => [
+  interpolateColor(progress.get(), [0, 1], ["rgba(161, 161, 170, 0.35)", "rgba(34, 197, 94, 0.35)"]),
+  interpolateColor(progress.get(), [0, 1], ["rgba(161, 161, 170, 0)", "rgba(34, 197, 94, 0)"]),
+]);
+
+<>
+  <LiveChart
+    data={data}
+    value={value}
+    line={{ color }}
+    gradient={{ colors: fill }}
+    scrub
+  />
+  <Button
+    title="Fade to green"
+    onPress={() => progress.set(withTiming(1, { duration: 400 }))}
+  />
+</>;
+```
+
+An animated `line.color` reaches the stroke and the built-in scrub selection
+dot. The parts that read the line color at render time — a custom
+`selectionDot.component`'s `color`, the segment base color, the area-dot tint,
+and the threshold split stroke's rest color — use the palette line color (from
+`accentColor`) instead. An animated `gradient.colors` must hold at least 2 stops
+at all times, and its `positions` apply as given, so keep their lengths equal.
+In the Line & area demo, select **Animated** line and **Default** gradient fill.
+Tap **Fade to green**, then drag horizontally across the chart while it fades to
+see the selection dot follow the stroke. The demo offers **Default** and **Off**
+fill in Animated mode; **Custom** is available with the static line modes.
+
 ## Dimming replacement data
 
 Keep the current chart visible while fetching a replacement range, then dim only

@@ -8,7 +8,12 @@ import type {
 } from "react-native-livechart";
 import { LiveChart } from "react-native-livechart";
 import { StyleSheet, TextInput } from "react-native";
-import { useSharedValue, withTiming } from "react-native-reanimated";
+import {
+  interpolateColor,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
@@ -18,7 +23,13 @@ import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
 type BadgeMode = "on" | "off" | "left" | "minimal" | "noTail" | "customBg";
 
-type LineMode = "default" | "solid" | "gradient" | "tricolor" | "custom";
+type LineMode =
+  | "default"
+  | "solid"
+  | "gradient"
+  | "tricolor"
+  | "custom"
+  | "animated";
 
 type CustomColor = {
   id: number;
@@ -31,6 +42,7 @@ const LINE_OPTIONS: { value: LineMode; label: string }[] = [
   { value: "gradient", label: "Gradient" },
   { value: "tricolor", label: "3-color" },
   { value: "custom", label: "Custom" },
+  { value: "animated", label: "Animated" },
 ];
 
 type CurveMode = "monotone" | "linear";
@@ -106,6 +118,12 @@ const GRADIENT_OPTIONS: { value: GradientMode; label: string }[] = [
   { value: "custom", label: "Custom" },
 ];
 
+// The Animated line mode pairs with the animated Default fill. Keep Custom
+// available for static line modes, where its three-stop palette is rendered.
+const ANIMATED_GRADIENT_OPTIONS = GRADIENT_OPTIONS.filter(
+  (option) => option.value !== "custom",
+);
+
 function resolveGradient(mode: GradientMode): boolean | GradientConfig {
   if (mode === "off") return false;
   if (mode === "default") return true;
@@ -131,6 +149,15 @@ function resolveAreaDots(mode: AreaDotsMode): boolean | AreaDotsConfig {
   if (mode === "on") return true;
   return { spacing: 7, size: 1.4 };
 }
+
+// Animated line + fill color (guide's "Animating the line and fill color"):
+// `line.color` and `gradient.colors` take SharedValues, so one progress value
+// fades the stroke and the area fill together on the UI thread.
+const FADE_TO = "#16a34a";
+const FADE_DURATION_MS = 1800;
+const FADE_LINE = [ACCENT, FADE_TO];
+const FADE_FILL_TOP = ["rgba(51, 35, 230, 0.35)", "rgba(22, 163, 74, 0.35)"];
+const FADE_FILL_BOTTOM = ["rgba(51, 35, 230, 0)", "rgba(22, 163, 74, 0)"];
 
 function resolveBadge(mode: BadgeMode): boolean | BadgeConfig {
   switch (mode) {
@@ -195,6 +222,16 @@ export default function LineScreen() {
   const [replacementLoading, setReplacementLoading] = useState(false);
   const [replacementRevision, setReplacementRevision] = useState(0);
   const seriesOpacity = useSharedValue(1);
+  const [colorFaded, setColorFaded] = useState(false);
+  const colorProgress = useSharedValue(0);
+  const animatedLineColor = useDerivedValue(() =>
+    interpolateColor(colorProgress.get(), [0, 1], FADE_LINE),
+  );
+  const animatedFillColors = useDerivedValue(() => [
+    interpolateColor(colorProgress.get(), [0, 1], FADE_FILL_TOP),
+    interpolateColor(colorProgress.get(), [0, 1], FADE_FILL_BOTTOM),
+  ]);
+  const colorAnimated = lineMode === "animated";
 
   const { data, value } = useSimulatedChartData({
     multiSeries: false,
@@ -219,14 +256,25 @@ export default function LineScreen() {
           value={value}
           accentColor={ACCENT}
           theme={APP_THEME}
-          line={resolveLine(
-            lineMode,
-            customColors.map((color) => color.value),
-            curve,
-            join,
-            cap,
-          )}
-          gradient={resolveGradient(gradientMode)}
+          line={
+            colorAnimated
+              ? {
+                  ...resolveLine("default", [], curve, join, cap),
+                  color: animatedLineColor,
+                }
+              : resolveLine(
+                  lineMode,
+                  customColors.map((color) => color.value),
+                  curve,
+                  join,
+                  cap,
+                )
+          }
+          gradient={
+            colorAnimated && gradientMode === "default"
+              ? { colors: animatedFillColors }
+              : resolveGradient(gradientMode)
+          }
           areaDots={resolveAreaDots(areaDotsMode)}
           badge={resolveBadge(badgeMode)}
           pulse={resolvePulse(pulseMode)}
@@ -236,7 +284,7 @@ export default function LineScreen() {
           valueMomentumColor={valueMomentumColor}
           seriesOpacity={seriesOpacity}
           paused={replacementLoading}
-          scrub={false}
+          scrub={colorAnimated}
         />
       }
     >
@@ -263,7 +311,12 @@ export default function LineScreen() {
         label="Line"
         options={LINE_OPTIONS}
         value={lineMode}
-        onChange={setLineMode}
+        onChange={(mode) => {
+          if (mode === "animated" && gradientMode === "custom") {
+            setGradientMode("default");
+          }
+          setLineMode(mode);
+        }}
       />
       <ChipRow
         label="Curve"
@@ -285,7 +338,7 @@ export default function LineScreen() {
       />
       <ChipRow
         label="Gradient fill"
-        options={GRADIENT_OPTIONS}
+        options={colorAnimated ? ANIMATED_GRADIENT_OPTIONS : GRADIENT_OPTIONS}
         value={gradientMode}
         onChange={setGradientMode}
       />
@@ -295,6 +348,20 @@ export default function LineScreen() {
         value={areaDotsMode}
         onChange={setAreaDotsMode}
       />
+      {colorAnimated && (
+        <ControlRow label="Animated color">
+          <ToggleChip
+            label="Fade to green"
+            value={colorFaded}
+            onChange={(faded) => {
+              setColorFaded(faded);
+              colorProgress.set(
+                withTiming(faded ? 1 : 0, { duration: FADE_DURATION_MS }),
+              );
+            }}
+          />
+        </ControlRow>
+      )}
       {lineMode === "custom" && (
         <ControlRow label="Gradient colors">
           {customColors.map((color, i) => (

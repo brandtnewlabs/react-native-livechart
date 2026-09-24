@@ -634,7 +634,7 @@ function resolveThresholdColorConfig(
       ? (thresholdCfg.belowColor ?? palette.candleDown)
       : null,
     fillOpacity: thresholdCfg?.fillOpacity ?? THRESHOLD_FILL_OPACITY_DEFAULT,
-    lineColor: lineProp?.color ?? palette.line,
+    lineColor: staticLineColor(lineProp) ?? palette.line,
   };
 }
 
@@ -1137,12 +1137,22 @@ function resolveCrosshairControllerSettings({
   };
 }
 
+/**
+ * The line color as a plain string, for the consumers that parse or pass it on
+ * the JS thread. An animated `line.color` reaches only the Skia paints that
+ * take a `SharedValue` (the stroke and the built-in selection dot), so those
+ * consumers get `undefined` and fall back to the palette line color.
+ */
+function staticLineColor(lineProp: LiveChartProps["line"]): string | undefined {
+  return typeof lineProp?.color === "string" ? lineProp.color : undefined;
+}
+
 function resolveAreaDotColorVec(
   areaDotsCfg: ReturnType<typeof resolveAreaDots>,
   lineProp: LiveChartProps["line"],
   palette: LiveChartPalette,
 ) {
-  const rgb = parseColorRgb(lineProp?.color ?? palette.line);
+  const rgb = parseColorRgb(staticLineColor(lineProp) ?? palette.line);
   const [r, g, b, a] = parseColorRgba(
     areaDotsCfg?.color ?? `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.22)`,
   );
@@ -2935,7 +2945,7 @@ function ChartLineStrokeShader({ model }: { model: LiveChartModel }) {
         engine={engine}
         segments={resolvedSegments}
         padding={effectivePadding}
-        baseColor={lineProp?.color ?? palette.line}
+        baseColor={staticLineColor(lineProp) ?? palette.line}
         scrubX={crosshair.scrubX}
         scrubActive={crosshair.scrubActive}
       />

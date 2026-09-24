@@ -467,8 +467,18 @@ export interface LineConfig {
    * noise reduction.
    */
   simplify?: number;
-  /** Line color override. Defaults to palette-derived accent. */
-  color?: string;
+  /**
+   * Line color override. Defaults to palette-derived accent.
+   *
+   * Pass a `SharedValue<string>` to animate the stroke color on the UI thread
+   * (for example with `interpolateColor`) without re-rendering. The animated
+   * color reaches the stroke and the built-in scrub selection dot. The parts
+   * that derive from the line color at render time (a custom
+   * `selectionDot.component`'s `color`, the segment base color, the area-dot
+   * tint, and the threshold split stroke's rest color) use the palette line
+   * color instead.
+   */
+  color?: string | SharedValue<string>;
   /**
    * Two or more CSS color strings → horizontal gradient along the stroke
    * (left → right). Takes precedence over `color` when set.
@@ -638,10 +648,18 @@ export interface GradientConfig {
   topOpacity?: number;
   /** Opacity at the bottom of the gradient. Default `0`. */
   bottomOpacity?: number;
-  /** Explicit gradient color stops (top → bottom) for the area fill. Overrides
-   *  topOpacity/bottomOpacity when provided. Must have at least 2 entries. */
-  colors?: string[];
-  /** Optional stop positions (0..1, ascending) matching `colors` length. */
+  /**
+   * Explicit gradient color stops (top → bottom) for the area fill. Overrides
+   * topOpacity/bottomOpacity when provided. Must have at least 2 entries.
+   *
+   * Pass a `SharedValue<string[]>` to animate the stops on the UI thread
+   * without re-rendering. Keep at least 2 entries in it at all times.
+   */
+  colors?: string[] | SharedValue<string[]>;
+  /**
+   * Optional stop positions (0..1, ascending) matching `colors` length. With
+   * animated `colors`, the positions apply as given, so keep the lengths equal.
+   */
   positions?: number[];
 }
 
