@@ -26,7 +26,7 @@ import {
 } from "../../src/core/resolveConfig";
 import { resolveTheme } from "../../src/theme";
 import { View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 import { getAllByHostType } from "../rntl14";
 
@@ -1088,13 +1088,15 @@ describe("CrosshairOverlay", () => {
     expect(received.at(-1)).toBe(palette.line);
   });
 
-  it("renders the built-in selection dot with an animated selectionColor", async () => {
+  it("passes the animated selectionColor to both built-in dot circles", async () => {
+    let animatedColor: SharedValue<string> | undefined;
     function Fixture() {
       const scrubX = useSharedValue(100);
       const crosshairOpacity = useSharedValue(1);
       const scrubActive = useSharedValue(true);
       const selectionY = useSharedValue(140);
       const selectionColor = useSharedValue("#abcdef");
+      animatedColor = selectionColor;
       const tooltipLayout = useSharedValue<TooltipLayout>(hiddenTooltip);
       return (
         <CrosshairOverlay
@@ -1112,7 +1114,12 @@ describe("CrosshairOverlay", () => {
         />
       );
     }
-    await render(<Fixture />);
+    const screen = await render(<Fixture />);
+    const dotRadii = getAllByHostType(screen, View)
+      .filter((node) => node.props.color === animatedColor)
+      .map((node) => node.props.r);
+    expect(dotRadii).toEqual(expect.arrayContaining([4, 6]));
+    expect(dotRadii).toHaveLength(2);
   });
 
   it("renders a custom tooltip body via renderTooltip", async () => {

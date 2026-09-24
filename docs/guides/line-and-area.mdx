@@ -59,9 +59,10 @@ const fill = useDerivedValue(() => [
     value={value}
     line={{ color }}
     gradient={{ colors: fill }}
+    scrub
   />
   <Button
-    title="Show data"
+    title="Fade to green"
     onPress={() => progress.set(withTiming(1, { duration: 400 }))}
   />
 </>;
@@ -73,6 +74,10 @@ dot. The parts that read the line color at render time — a custom
 and the threshold split stroke's rest color — use the palette line color (from
 `accentColor`) instead. An animated `gradient.colors` must hold at least 2 stops
 at all times, and its `positions` apply as given, so keep their lengths equal.
+In the Line & area demo, select **Animated** line and **Default** gradient fill.
+Tap **Fade to green**, then drag horizontally across the chart while it fades to
+see the selection dot follow the stroke. The demo offers **Default** and **Off**
+fill in Animated mode; **Custom** is available with the static line modes.
 
 ## Dimming replacement data
 
