@@ -17,13 +17,30 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 type DegenPack = SharedValue<Float64Array<ArrayBuffer>>;
 
+type DegenParticlesOverlayProps = {
+  pack: DegenPack;
+  packRevision: SharedValue<number>;
+  engine: ChartEngineLayout;
+  palette: LiveChartPalette;
+  particleSlotCount: number;
+  particleBurstDurationSec: number;
+  particleOpacity: number;
+  colors: string[] | null;
+};
+
 type ParticlePool = {
-  a: { transforms: SkRSXform[]; sprites: SkRect[]; colors: SkColor[] };
-  b: { transforms: SkRSXform[]; sprites: SkRect[]; colors: SkColor[] };
+  a: ParticleFrame;
+  b: ParticleFrame;
   tick: boolean;
   instances: ReturnType<typeof buildParticleInstances>;
   instancePool: ReturnType<typeof buildParticleInstances>;
-  spriteRect: SkRect;
+};
+
+type ParticleFrame = {
+  transforms: SkRSXform[];
+  sprites: SkRect[];
+  colors: SkColor[];
+  activeCount: number;
 };
 
 function makeParticlePool(
@@ -37,13 +54,21 @@ function makeParticlePool(
     alpha: 0,
     colorIndex: 0,
   }));
+  const spriteRect = Skia.XYWHRect(0, 0, spriteSize, spriteSize);
+  const hiddenTransform = Skia.RSXform(0, 0, 0, 0);
+  const hiddenColor = Skia.Color("rgba(0, 0, 0, 0)");
+  const makeFrame = (): ParticleFrame => ({
+    transforms: Array.from({ length: particleSlotCount }, () => hiddenTransform),
+    sprites: Array.from({ length: particleSlotCount }, () => spriteRect),
+    colors: Array.from({ length: particleSlotCount }, () => hiddenColor),
+    activeCount: 0,
+  });
   return {
-    a: { transforms: [], sprites: [], colors: [] },
-    b: { transforms: [], sprites: [], colors: [] },
+    a: makeFrame(),
+    b: makeFrame(),
     tick: false,
     instances: [],
     instancePool,
-    spriteRect: Skia.XYWHRect(0, 0, spriteSize, spriteSize),
   };
 }
 
@@ -64,7 +89,12 @@ function makeParticlePool(
  * correctly-faded particle, visually equivalent to the old `<Circle color
  * opacity>`.
  */
-export function DegenParticlesOverlay({
+export function DegenParticlesOverlay(props: DegenParticlesOverlayProps) {
+  // Replace the Atlas and its derived values together when the array size changes.
+  return <ParticleAtlas key={props.particleSlotCount} {...props} />;
+}
+
+function ParticleAtlas({
   pack,
   packRevision,
   engine,
@@ -73,16 +103,7 @@ export function DegenParticlesOverlay({
   particleBurstDurationSec,
   particleOpacity,
   colors,
-}: {
-  pack: DegenPack;
-  packRevision: SharedValue<number>;
-  engine: ChartEngineLayout;
-  palette: LiveChartPalette;
-  particleSlotCount: number;
-  particleBurstDurationSec: number;
-  particleOpacity: number;
-  colors: string[] | null;
-}) {
+}: DegenParticlesOverlayProps) {
   /* istanbul ignore next -- branch depends on render-time props */
   const colorList = colors && colors.length > 0 ? colors : [palette.line];
 
@@ -110,11 +131,8 @@ export function DegenParticlesOverlay({
     pool.tick = !pool.tick;
     const frame = pool.tick ? pool.a : pool.b;
     const transforms = frame.transforms;
-    const sprites = frame.sprites;
     const colorsOut = frame.colors;
-    transforms.length = 0;
-    sprites.length = 0;
-    colorsOut.length = 0;
+    let activeCount = 0;
     if (rev >= 0) {
       const instances = buildParticleInstances(
         pack.get(),
@@ -127,22 +145,25 @@ export function DegenParticlesOverlay({
         pool.instancePool,
       );
       const half = sprite.size / 2;
-      for (let i = 0; i < instances.length; i++) {
+      activeCount = instances.length;
+      for (let i = 0; i < activeCount; i++) {
         const inst = instances[i];
         // Center the scaled sprite on (x, y); RSXform has no rotation.
-        transforms.push(
-          Skia.RSXform(
-            inst.scale,
-            0,
-            inst.x - inst.scale * half,
-            inst.y - inst.scale * half,
-          ),
+        transforms[i] = Skia.RSXform(
+          inst.scale,
+          0,
+          inst.x - inst.scale * half,
+          inst.y - inst.scale * half,
         );
-        sprites.push(pool.spriteRect);
         const [r, g, b] = colorRgb[inst.colorIndex % colorRgb.length];
-        colorsOut.push(Skia.Color(`rgba(${r}, ${g}, ${b}, ${inst.alpha})`));
+        colorsOut[i] = Skia.Color(`rgba(${r}, ${g}, ${b}, ${inst.alpha})`);
       }
     }
+    for (let i = activeCount; i < frame.activeCount; i++) {
+      transforms[i] = Skia.RSXform(0, 0, 0, 0);
+      colorsOut[i] = Skia.Color("rgba(0, 0, 0, 0)");
+    }
+    frame.activeCount = activeCount;
     return frame;
   }, [
     pack,
