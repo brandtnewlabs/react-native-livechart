@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Particle bursts keep Skia Atlas color, sprite, and transform arrays at the
+  same length across frames, preventing a native crash when the active particle
+  count changes.
+
 ## [4.24.0] - 2026-09-24
 
 ### Added
