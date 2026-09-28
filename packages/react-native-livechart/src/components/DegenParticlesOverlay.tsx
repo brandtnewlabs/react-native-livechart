@@ -17,6 +17,17 @@ import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 type DegenPack = SharedValue<Float64Array<ArrayBuffer>>;
 
+type DegenParticlesOverlayProps = {
+  pack: DegenPack;
+  packRevision: SharedValue<number>;
+  engine: ChartEngineLayout;
+  palette: LiveChartPalette;
+  particleSlotCount: number;
+  particleBurstDurationSec: number;
+  particleOpacity: number;
+  colors: string[] | null;
+};
+
 type ParticlePool = {
   a: ParticleFrame;
   b: ParticleFrame;
@@ -78,7 +89,12 @@ function makeParticlePool(
  * correctly-faded particle, visually equivalent to the old `<Circle color
  * opacity>`.
  */
-export function DegenParticlesOverlay({
+export function DegenParticlesOverlay(props: DegenParticlesOverlayProps) {
+  // Replace the Atlas and its derived values together when the array size changes.
+  return <ParticleAtlas key={props.particleSlotCount} {...props} />;
+}
+
+function ParticleAtlas({
   pack,
   packRevision,
   engine,
@@ -87,16 +103,7 @@ export function DegenParticlesOverlay({
   particleBurstDurationSec,
   particleOpacity,
   colors,
-}: {
-  pack: DegenPack;
-  packRevision: SharedValue<number>;
-  engine: ChartEngineLayout;
-  palette: LiveChartPalette;
-  particleSlotCount: number;
-  particleBurstDurationSec: number;
-  particleOpacity: number;
-  colors: string[] | null;
-}) {
+}: DegenParticlesOverlayProps) {
   /* istanbul ignore next -- branch depends on render-time props */
   const colorList = colors && colors.length > 0 ? colors : [palette.line];
 
@@ -109,10 +116,7 @@ export function DegenParticlesOverlay({
   const colorRgb = colorList.map((c) => parseColorRgb(c));
 
   const poolRef = useRef<ParticlePool | null>(null);
-  if (
-    poolRef.current === null ||
-    poolRef.current.a.transforms.length !== particleSlotCount
-  ) {
+  if (poolRef.current === null) {
     // React permits this predictable lazy-ref initialization: https://react.dev/reference/react/useRef#avoiding-recreating-the-ref-contents
     // react-doctor-disable-next-line react-doctor/no-ref-current-in-render -- false positive for React's documented lazy-ref exception
     poolRef.current = makeParticlePool(particleSlotCount, sprite.size);
