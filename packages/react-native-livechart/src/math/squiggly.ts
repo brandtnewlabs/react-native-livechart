@@ -28,6 +28,18 @@ export function squigglyYAt(
 }
 
 /**
+ * The squiggle's clock, in seconds: wall time. The loading shell
+ * (`LoadingOverlay`) and the reveal's morph (`useChartPaths`) both phase their
+ * wave on it rather than on `engine.timestamp`, which a `nowOverride` freezes
+ * between data updates (freezing the loading line with it). Sharing one clock
+ * keeps the wave continuous where the shell hands over to the morph.
+ */
+export function squiggleClockSeconds(): number {
+  "worklet";
+  return Date.now() / 1000;
+}
+
+/**
  * Build a flat [x0,y0,x1,y1,...] point array for a standalone squiggly line
  * spanning the full chart area (used in loading / empty state).
  * Points are spaced ~4px apart for smooth curves.

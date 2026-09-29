@@ -8,8 +8,15 @@ import {
   vec,
   type SkFont,
 } from "@shopify/react-native-skia";
-import { useRef } from "react";
-import { useDerivedValue, type SharedValue } from "react-native-reanimated";
+import { useCallback, useRef } from "react";
+import {
+  useAnimatedReaction,
+  useDerivedValue,
+  useFrameCallback,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import {
   BADGE_METRICS_DEFAULTS,
   EMPTY_STATE_METRICS_DEFAULTS,
@@ -25,7 +32,7 @@ import {
   type ReanimatedPathBuilder,
 } from "../hooks/usePathBuilder";
 import { drawSpline } from "../math/spline";
-import { buildSquigglyPts } from "../math/squiggly";
+import { buildSquigglyPts, squiggleClockSeconds } from "../math/squiggly";
 import type {
   BadgeMetrics,
   EmptyStateMetrics,
@@ -64,6 +71,8 @@ export function LoadingOverlay({
   badgeMetrics = BADGE_METRICS_DEFAULTS,
   emptyMetrics = EMPTY_STATE_METRICS_DEFAULTS,
   showAxisLabels = true,
+  isStatic = false,
+  isFrameLoopActive,
   lineColor,
   lineStrokeWidth,
   waveAmplitude = 14,
@@ -100,6 +109,10 @@ export function LoadingOverlay({
   emptyMetrics?: EmptyStateMetrics;
   /** Draw the skeleton Y-axis label placeholders. Default `true`. */
   showAxisLabels?: boolean;
+  /** `static` chart: no per-frame loops, so the squiggle holds still. */
+  isStatic?: boolean;
+  /** The chart's frame-loop gate: the squiggle holds still while it is off. */
+  isFrameLoopActive?: SharedValue<boolean>;
 }) {
   // Same left-inset formula as GridOverlay (only used when badge=true)
   const leftInset =
@@ -124,7 +137,37 @@ export function LoadingOverlay({
   const squigglyBuilder = usePathBuilder();
   const squigglyPtsRef = useRef<number[]>([]);
 
-  // Squiggly path — animated each frame via timestamp
+  // Squiggle clock: wall time, not `engine.timestamp` — a `nowOverride` freezes
+  // the engine clock between data updates, which froze the loading line with it
+  // (the pulse clock in DotOverlay has the same fix). Ticks only while the shell
+  // shows (loading, empty, or mid-reveal) on a chart whose frame loops run: never
+  // on a `static` chart, while `isFrameLoopActive` is off, or at wave speed 0.
+  const squiggleClock = useSharedValue(squiggleClockSeconds());
+  /* istanbul ignore next -- frame-callback worklet runs on the UI thread, not in Jest */
+  const squiggleFrames = useFrameCallback(() => {
+    if (isFrameLoopActive?.get() === false) return;
+    squiggleClock.value = squiggleClockSeconds();
+  }, false);
+  const setSquiggleTicking = useCallback(
+    (on: boolean) => squiggleFrames.setActive(on),
+    [squiggleFrames],
+  );
+  useAnimatedReaction(
+    () =>
+      !isStatic &&
+      waveSpeed !== 0 &&
+      isFrameLoopActive?.get() !== false &&
+      (isLoading.get() || isEmpty.value || morphT.get() < 1),
+    (ticking, previous) => {
+      if (ticking === previous) return;
+      // Start from now, not from wherever the clock stopped when the shell last hid:
+      // the callback only starts after a UI → JS → UI round trip.
+      if (ticking) squiggleClock.set(squiggleClockSeconds());
+      scheduleOnRN(setSquiggleTicking, ticking);
+    },
+  );
+
+  // Squiggly path — animated each frame by the squiggle clock
   const squigglyPath = useDerivedValue(() => {
     const b = squigglyBuilder.value;
     if (!isLoading.get() && !isEmpty.value && morphT.get() >= 1) {
@@ -134,7 +177,7 @@ export function LoadingOverlay({
       engine.canvasWidth.get(),
       engine.canvasHeight.get(),
       padding,
-      engine.timestamp.get(),
+      squiggleClock.get(),
       waveAmplitude,
       waveSpeed,
       squigglyPtsRef.current,
