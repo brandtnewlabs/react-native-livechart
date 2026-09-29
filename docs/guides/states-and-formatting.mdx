@@ -54,8 +54,9 @@ Y-axis placeholders. Every field is optional:
 
 Pass `true` for the defaults, the object to restyle, and `false` (or omit) for "not loading" — so
 `loading={!ready && cfg}` toggles the styled shell as data arrives. Set `axisLabels: false` to drop the
-skeleton Y-axis placeholders and show only the breathing squiggle. `color`, `amplitude`, and `speed`
-also flow into the brief reveal morph, so the squiggle keeps its look as it melts into the line. The
+skeleton Y-axis placeholders and show only the breathing squiggle. `amplitude` and `speed` also flow
+into the brief reveal morph, so the squiggle keeps its wave as it melts into the line. The shell keeps
+the whole config while it fades out, after `loading` has turned off. The
 same config works on `LiveChartSeries`. The loading→live reveal duration itself is controlled by the
 [`transitions.reveal`](/guides/transitions) prop.
 
@@ -63,7 +64,8 @@ same config works on `LiveChartSeries`. The loading→live reveal duration itsel
 
 When there are no samples and `loading` is `false`, the chart shows an empty shell with a label.
 A single line point or committed candle is valid data and renders normally. Customize the empty
-label with `emptyText`.
+label with `emptyText`. A chart that has been loading keeps that `loading` config's look (color,
+stroke, wave, placeholders) on its empty shell; one that never loaded uses the defaults.
 
 ```tsx
 <LiveChart data={data} value={value} emptyText="Waiting for trades…" />

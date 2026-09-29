@@ -59,6 +59,7 @@ import { useChartOverlayContext } from "../hooks/useChartOverlayContext";
 import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
 import { useCrosshairSeries } from "../hooks/useCrosshairSeries";
 import { useCrosshairVisibleOpacity } from "../hooks/useCrosshairVisibleOpacity";
+import { useLoadingLook } from "../hooks/useLoadingLook";
 import { useMarkers } from "../hooks/useMarkers";
 import { useMultiSeriesDegen } from "../hooks/useMultiSeriesDegen";
 import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
@@ -517,6 +518,9 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   // Resolve the loading shell: null = not loading, else the styled config.
   const loadingCfg = resolveLoading(loading);
   const loadingActive = loadingCfg !== null;
+  // The shell fades after `loading` turns off: it keeps the last loading
+  // config's look instead of the defaults.
+  const loadingLook = useLoadingLook(loadingCfg);
   // Multi-series is always lines, so only the reveal transition applies (no
   // candle↔line crossfade); `transitions.mode` is accepted but inert here.
   const transitionsCfg = resolveTransitions(transitions);
@@ -786,11 +790,11 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     reveal,
     loadingActive,
     // loading shell styling (null → not loading)
-    loadingLineColor: loadingCfg?.color,
-    loadingStrokeWidth: loadingCfg?.strokeWidth,
-    loadingAmplitude: loadingCfg?.amplitude,
-    loadingSpeed: loadingCfg?.speed,
-    loadingAxisLabels: loadingCfg?.axisLabels ?? true,
+    loadingLineColor: loadingLook?.color,
+    loadingStrokeWidth: loadingLook?.strokeWidth,
+    loadingAmplitude: loadingLook?.amplitude,
+    loadingSpeed: loadingLook?.speed,
+    loadingAxisLabels: loadingLook?.axisLabels ?? true,
     effectiveSeries,
     layoutHeight,
     onLayout,
