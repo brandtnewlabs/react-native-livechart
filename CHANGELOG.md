@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   starts at 15 and grows to what the grid produces, up to what the plot can
   hold (labelled lines at least half a `minGap` apart). The fixed-`count` mode
   is unchanged (at most 15).
+- Idle charts with an x-axis no longer repaint at the display refresh rate. The
+  axis deleted its off-plot tick labels (one interval past each edge, at alpha
+  0) and re-created them on the next run, so every run rewrote the label cache
+  its own mapper reads. A remaining case of
+  [#304](https://github.com/brandtnewlabs/react-native-livechart/issues/304).
 
 ## [4.24.1] - 2026-09-28
 
