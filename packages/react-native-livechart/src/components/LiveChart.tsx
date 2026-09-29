@@ -2435,6 +2435,7 @@ function ChartYAxisLayer({
         gridStyle={gridStyleCfg}
         labelRightMargin={yAxisCfg?.labelRightMargin}
         gridEndGap={yAxisCfg?.gridEndGap}
+        minGap={yAxisCfg?.minGap}
       />
     </Group>
   );
