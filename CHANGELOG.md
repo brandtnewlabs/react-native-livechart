@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A styled loading shell keeps its look while it fades out and the reveal morph
+  melts it into the line. Both run after `loading` has turned off, when the
+  config is gone, so the squiggle snapped to the default color, stroke, wave
+  height and speed as the data arrived, and `axisLabels: false` flashed the
+  skeleton Y-axis placeholders. `LiveChart` and `LiveChartSeries` now keep the
+  last `loading` config for the shell's look, the empty shell shown later
+  included. The loading guide no longer claims `color` reaches the reveal morph
+  (only `amplitude` and `speed` do).
+
 ## [4.24.1] - 2026-09-28
 
 ### Fixed
