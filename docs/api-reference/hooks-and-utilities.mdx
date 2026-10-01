@@ -80,3 +80,11 @@ import { MONO_FONT_FAMILY } from "react-native-livechart";
   these hooks up for you. The hooks are exported only for advanced custom compositions and their
   signatures depend on internal engine types.
 </Warning>
+
+## Experimental marker scheduling
+
+The lower-level `useMarkers` hook accepts a final optional `autoSleep` boolean
+(default `false`). When enabled, marker projection runs on changes to the marker
+list, chart geometry, data, or frame gate instead of a continuous callback.
+The `LiveChart.autoSleep` prop wires this automatically. Static mode still disables
+marker projection. Most applications should use the component prop.

@@ -5,7 +5,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   cancelAnimation,
   Easing,
@@ -16,6 +16,7 @@ import {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
+import { useDemandFrameLoop } from "../hooks/useDemandFrameLoop";
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type {
   CandleGap,
@@ -96,6 +97,12 @@ export interface EngineConfig {
   static?: boolean;
   /** Runtime gate for the frame loop. Gestures and configuration stay mounted. */
   isFrameLoopActive?: SharedValue<boolean>;
+  /** Experimental automatic idle scheduling, single-series only. */
+  autoSleep?: boolean;
+  /** Effects that require continuous engine work. */
+  keepAwake?: SharedValue<boolean>;
+  /** Appearance/reveal changes that should wake a settled engine. */
+  wakeSignal?: SharedValue<unknown>;
   /** Optional development-only frame publication counters. */
   debugFrameStats?: SharedValue<LiveChartFrameStats>;
   /**
@@ -416,7 +423,7 @@ export function applyLiveChartEngineFrame(
 
 export function useLiveChartEngine(
   config: EngineConfig,
-): SingleEngineState & ChartEngineScroll & ChartEngineEdge {
+): SingleEngineState & ChartEngineScroll & ChartEngineEdge & { wake: () => void } {
   const {
     data,
     value,
@@ -442,6 +449,9 @@ export function useLiveChartEngine(
     static: isStatic,
     isFrameLoopActive,
     debugFrameStats,
+    autoSleep = false,
+    keepAwake,
+    wakeSignal,
     snapKey,
     mode,
     candles,
@@ -696,41 +706,76 @@ export function useLiveChartEngine(
     frameScratchRef.current = makeEngineFrameScratch();
   }
 
-  // `autostart=false` registers the frame callback without running it — the live
-  // loop is fully inert in static mode (the invariant that makes this worth it).
+  const tickFrame = useCallback((dt: number): boolean => {
+    "worklet";
+    if (isFrameLoopActive?.get() === false) return false;
+    if (!autoSleep && !debugFrameStats) {
+      applyLiveChartEngineFrame({ timeSincePreviousFrame: dt }, frameRefs, frameScratchRef.current!);
+      return true;
+    }
+    const beforeValue = displayValue.get();
+    const beforeMin = displayMin.get();
+    const beforeMax = displayMax.get();
+    const beforeWindow = displayWindow.get();
+    const beforeTimestamp = timestamp.get();
+    const beforeLiveEdge = liveEdge.get();
+    const beforeEdgeValue = edgeValue.get();
+    applyLiveChartEngineFrame({ timeSincePreviousFrame: dt }, frameRefs, frameScratchRef.current!);
+    const changed = beforeValue !== displayValue.get() || beforeMin !== displayMin.get() ||
+      beforeMax !== displayMax.get() || beforeWindow !== displayWindow.get() ||
+      beforeTimestamp !== timestamp.get() || beforeEdgeValue !== edgeValue.get();
+    if (debugFrameStats) {
+      const didPublish = changed || beforeLiveEdge !== liveEdge.get();
+      const previous = debugFrameStats.get();
+      debugFrameStats.set({ frames: previous.frames + 1, published: previous.published + (didPublish ? 1 : 0), skipped: previous.skipped + (didPublish ? 0 : 1) });
+    }
+    // The liveEdge clock alone is not a visible animation while parked/paused.
+    // Do not sleep if a stranded viewEnd actually fell back to following live.
+    const parked = viewEnd.get() !== null && timestamp.get() === viewEnd.get();
+    const clockMoves = nowOverrideSV.get() === undefined && !pausedSV.get() && !parked;
+    return changed || clockMoves || keepAwake?.get() === true || returnT.get() < 1;
+  }, [autoSleep, isFrameLoopActive, displayValue, displayMin, displayMax, displayWindow, timestamp,
+    liveEdge, edgeValue, frameRefs, frameScratchRef, debugFrameStats, viewEnd, nowOverrideSV, pausedSV, keepAwake, returnT]);
+
+  const prepareWake = useCallback(() => {
+    "worklet";
+    // Read the arrays themselves, not a length/endpoints fingerprint: modify()
+    // can change an interior value without changing any of those quantities.
+    return [data.get(), value.get(), candles?.get(), liveCandle?.get(), canvasWidth.get(),
+      canvasHeight.get(), timeWindow.get(), smoothing.get(), adaptiveSpeedBoostSV.get(),
+      exaggerateSV.get(), referenceValue.get(), referenceValues.get(), thresholdRangePoints.get(),
+      thresholdRangeExtendToStart.get(), thresholdRangeExtendToNow.get(), nonNegativeSV.get(),
+      maxValueSV.get(), yRangeScale?.get(), nowOverrideSV.get(), windowBufferSV.get(), pausedSV.get(),
+      viewEnd.get(), viewWindow.get(), allowFutureViewEndSV.get(), returnT.get(), returnFrom.get(),
+      snapSV.get(), modeSV.get(), candleGapsSV.get(), candleGapBridgeNoTradesSV.get(),
+      candleGapBridgeUnavailableSV.get(), candleGapBridgeUnknownSV.get(), isFrameLoopActive?.get(),
+      keepAwake?.get(), wakeSignal?.get()];
+  }, [data, value, candles, liveCandle, canvasWidth, canvasHeight, timeWindow, smoothing,
+    adaptiveSpeedBoostSV, exaggerateSV, referenceValue, referenceValues, thresholdRangePoints,
+    thresholdRangeExtendToStart, thresholdRangeExtendToNow, nonNegativeSV, maxValueSV, yRangeScale,
+    nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, allowFutureViewEndSV, returnT,
+    returnFrom, snapSV, modeSV, candleGapsSV, candleGapBridgeNoTradesSV, candleGapBridgeUnavailableSV,
+    candleGapBridgeUnknownSV, isFrameLoopActive, keepAwake, wakeSignal]);
+
+  const wakeLoop = useDemandFrameLoop(autoSleep && !isStatic, prepareWake, tickFrame);
+  const wake = useCallback(() => {
+    "worklet";
+    if (!autoSleep || isStatic) return;
+    // Gestures need a fresh live boundary BEFORE clamping their first delta.
+    if (isFrameLoopActive?.get() !== false) {
+      liveEdge.set((nowOverrideSV.get() ?? Date.now() / 1000) + windowBufferSV.get() * timeWindow.get());
+    }
+    wakeLoop();
+  }, [autoSleep, isStatic, isFrameLoopActive, liveEdge, nowOverrideSV, windowBufferSV, timeWindow, wakeLoop]);
+
+  const legacyActive = !isStatic && !autoSleep;
   const engineFrameCallback = useFrameCallback((frameInfo) => {
     "worklet";
-    if (isFrameLoopActive?.get() === false) return;
-    const beforeValue = debugFrameStats ? displayValue.get() : 0;
-    const beforeMin = debugFrameStats ? displayMin.get() : 0;
-    const beforeMax = debugFrameStats ? displayMax.get() : 0;
-    const beforeWindow = debugFrameStats ? displayWindow.get() : 0;
-    const beforeTimestamp = debugFrameStats ? timestamp.get() : 0;
-    const beforeLiveEdge = debugFrameStats ? liveEdge.get() : 0;
-    const beforeEdgeValue = debugFrameStats ? edgeValue.get() : 0;
-    applyLiveChartEngineFrame(frameInfo, frameRefs, frameScratchRef.current!);
-    if (debugFrameStats) {
-      const didPublish =
-        beforeValue !== displayValue.get() ||
-        beforeMin !== displayMin.get() ||
-        beforeMax !== displayMax.get() ||
-        beforeWindow !== displayWindow.get() ||
-        beforeTimestamp !== timestamp.get() ||
-        beforeLiveEdge !== liveEdge.get() ||
-        beforeEdgeValue !== edgeValue.get();
-      const previous = debugFrameStats.get();
-      debugFrameStats.set({
-        frames: previous.frames + 1,
-        published: previous.published + (didPublish ? 1 : 0),
-        skipped: previous.skipped + (didPublish ? 0 : 1),
-      });
-    }
-  }, !isStatic);
+    tickFrame(frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS);
+  }, legacyActive);
   useEffect(() => {
-    // Reanimated only seeds `isActive` from `autostart` on mount. Keep the
-    // imperative state aligned when a chart switches between static and live.
-    engineFrameCallback.setActive(!isStatic);
-  }, [isStatic, engineFrameCallback]);
+    engineFrameCallback.setActive(legacyActive);
+  }, [legacyActive, engineFrameCallback]);
 
   // When time-scroll is disabled while scrolled back, return the window to the
   // live edge. With a positive duration this glides: snapshot the frozen edge into
@@ -805,6 +850,7 @@ export function useLiveChartEngine(
   );
 
   return {
+    wake,
     data,
     value,
     displayValue,

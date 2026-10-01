@@ -94,6 +94,7 @@
             "pages": [
               "guides/loading-data-on-scroll",
               "guides/playback",
+              "guides/auto-sleep",
               "guides/historical-data",
               "guides/states-and-formatting",
               "guides/transitions"

@@ -1460,6 +1460,7 @@ function useLiveChartController({
   static: isStatic = false,
   isFrameLoopActive,
   debugFrameStats,
+  autoSleep = false,
   snapKey,
   smoothing = 0.08,
   exaggerate = false,
@@ -1732,6 +1733,13 @@ function useLiveChartController({
     thresholdSeriesSV,
     thresholdCfg,
   });
+  // Conservative prototype: unknown-duration trade/degen effects stay awake.
+  // Reanimated-owned overlay transitions continue independently of engine ticks.
+  const continuousEffects = pulseCfg !== null || degenCfg !== null || tradeStreamResolved !== null;
+  const idleKeepAwake = useDerivedValue(() =>
+    continuousEffects || loadingActive || !hasData.get() || reveal.morphT.get() < 1,
+  );
+  const idleWakeSignal = useDerivedValue<unknown>(() => [theme, accentColor, paletteOverride, metrics, reveal.morphT.get()]);
   const engine = useLiveChartEngine({
     ...engineModeInputs,
     value,
@@ -1740,6 +1748,9 @@ function useLiveChartController({
     static: isStatic,
     isFrameLoopActive,
     debugFrameStats,
+    autoSleep,
+    keepAwake: idleKeepAwake,
+    wakeSignal: idleWakeSignal,
     snapKey,
     scrollEnabled: timeScrollEnabled,
     allowFutureViewEnd: timeScrollOverscroll > 0,
@@ -1892,6 +1903,7 @@ function useLiveChartController({
     !isStatic,
     isCandle,
     isFrameLoopActive,
+    autoSleep,
   );
 
   const {
@@ -1935,6 +1947,7 @@ function useLiveChartController({
     lineIsLinear, // match marker anchoring to the rendered curve
     markerClusterCfg, // co-located marker stacking / collapse
     isFrameLoopActive,
+    autoSleep,
   );
 
   // Pressable reference-line badges (working orders / alerts). Built before
@@ -2031,6 +2044,13 @@ function useLiveChartController({
   // object (which holds a non-serializable `gesture`), throwing
   // "[Worklets] Cannot copy value of type `PanGesture`" on worklets >=0.10.
   const crosshairScrubActive = crosshair.scrubActive;
+  const wakeEngine = engine.wake;
+  useAnimatedReaction(
+    () => crosshairScrubActive.get(),
+    (active, previous) => {
+      if (active && !previous) wakeEngine();
+    },
+  );
 
   // ── Time-scroll (drag back through history) ───────────────────────────────
   // Experimental: a pan freezes the window at an absolute time and resumes

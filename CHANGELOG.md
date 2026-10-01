@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A discoverable Automatic sleep demo with a live simulated price feed, Pause/Resume,
+  an automatic-sleep switch, and a measured engine activity readout.
+- Experimental `LiveChart.autoSleep` (off by default): settled paused, parked, or
+  fixed-time charts stop engine frame requests and wake on input or gesture changes.
+  Includes demand-driven candle width and event-driven marker projection. Live
+  scrolling, pulses, and configured continuous effects remain awake.
+
+### Fixed
+
+- Settled X-axis labels no longer repeatedly invalidate their own cache when
+  invisible labels are added and removed within the same calculation.
+
 ## [4.24.1] - 2026-09-28
 
 ### Fixed
