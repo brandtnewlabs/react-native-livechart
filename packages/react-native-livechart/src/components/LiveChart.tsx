@@ -3077,6 +3077,7 @@ function ChartStack({
     liveDotOpacity,
     pulseCfg,
     isFrameLoopActive,
+    isStatic,
     dotCfg,
     dotTracksParked,
     degenCfg,
@@ -3260,6 +3261,8 @@ function ChartStack({
         waveAmplitude={loadingAmplitude}
         waveSpeed={loadingSpeed}
         opaqueCanvas={canvasMode === "opaque"}
+        isStatic={isStatic}
+        isFrameLoopActive={isFrameLoopActive}
       />
     </Group>
   );

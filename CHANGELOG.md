@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   last `loading` config for the shell's look, the empty shell shown later
   included. The loading guide no longer claims `color` reaches the reveal morph
   (only `amplitude` and `speed` do).
+- The loading line keeps moving under a `nowOverride`. The squiggle took its
+  phase from the engine clock, which a `nowOverride` pins between data updates,
+  so the loading line stood still, as the live dot's pulse once did. The
+  squiggle and the reveal's morph now share a wall clock. The loading shell
+  ticks it only while it shows, and never on a `static` chart, while
+  `isFrameLoopActive` is off, or at `loading.speed` 0.
 
 ## [4.24.1] - 2026-09-28
 
