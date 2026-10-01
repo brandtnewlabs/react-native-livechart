@@ -181,3 +181,14 @@ See the full prop list in the [`LiveChart` reference](/api-reference/livechart).
 For intervals without OHLC—no trades, exchange maintenance, or incomplete feed
 coverage—use [`candleGaps`](/guides/empty-candles) instead of fabricating normal
 bullish/bearish candles.
+
+## Candle path construction
+
+Sharp candle bodies reuse a plain rectangle input within each body-path rebuild.
+This avoids creating a Skia rectangle wrapper for every candle. The chart still
+uses four batched paths for up/down bodies and wicks, and returns fresh immutable
+paths so live updates repaint normally. Rounded bodies and volume bars retain
+their existing drawing behavior. No configuration change is required.
+
+See [Candle work benchmark](/guides/candle-work) for the measurement demo and its
+limits. Its rebuild timings do not measure whole-chart FPS or battery use.

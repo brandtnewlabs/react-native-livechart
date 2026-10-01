@@ -8,6 +8,7 @@ import {
 } from "react-native-reanimated";
 import { CANDLE_METRICS_DEFAULTS, MS_PER_FRAME_60FPS } from "../constants";
 import type { SingleEngineState } from "../core/useLiveChartEngine";
+import { buildCandleBodyPath } from "../draw/candleBodyPath";
 import { buildCandleGeometry } from "../draw/candle";
 import { buildVolumeGeometry } from "../draw/volume";
 import type { ChartPadding } from "../draw/line";
@@ -118,50 +119,24 @@ export function useCandlePaths(
   });
 
   /* istanbul ignore next -- worklet */
-  const upBodiesPath = useDerivedValue(() => {
-    const b = upBodiesBuilder.value;
-    const { bodies } = geometry.value;
-    const radius = candleMetrics.bodyRadius;
-    for (let i = 0; i < bodies.length; i++) {
-      if (bodies[i].up) {
-        const bd = bodies[i];
-        const rr = radius > 0 ? Math.min(radius, bd.w / 2, bd.h / 2) : 0;
-        if (rr > 0) {
-          b.addRRect({
-            rect: { x: bd.x, y: bd.y, width: bd.w, height: bd.h },
-            rx: rr,
-            ry: rr,
-          });
-        } else {
-          b.addRect(Skia.XYWHRect(bd.x, bd.y, bd.w, bd.h));
-        }
-      }
-    }
-    return b.detach();
-  });
+  const upBodiesPath = useDerivedValue(() =>
+    buildCandleBodyPath(
+      upBodiesBuilder.get(),
+      geometry.get().bodies,
+      true,
+      candleMetrics.bodyRadius,
+    ),
+  );
 
   /* istanbul ignore next -- worklet */
-  const downBodiesPath = useDerivedValue(() => {
-    const b = downBodiesBuilder.value;
-    const { bodies } = geometry.value;
-    const radius = candleMetrics.bodyRadius;
-    for (let i = 0; i < bodies.length; i++) {
-      if (!bodies[i].up) {
-        const bd = bodies[i];
-        const rr = radius > 0 ? Math.min(radius, bd.w / 2, bd.h / 2) : 0;
-        if (rr > 0) {
-          b.addRRect({
-            rect: { x: bd.x, y: bd.y, width: bd.w, height: bd.h },
-            rx: rr,
-            ry: rr,
-          });
-        } else {
-          b.addRect(Skia.XYWHRect(bd.x, bd.y, bd.w, bd.h));
-        }
-      }
-    }
-    return b.detach();
-  });
+  const downBodiesPath = useDerivedValue(() =>
+    buildCandleBodyPath(
+      downBodiesBuilder.get(),
+      geometry.get().bodies,
+      false,
+      candleMetrics.bodyRadius,
+    ),
+  );
 
   /* istanbul ignore next -- worklet */
   const upWicksPath = useDerivedValue(() => {
