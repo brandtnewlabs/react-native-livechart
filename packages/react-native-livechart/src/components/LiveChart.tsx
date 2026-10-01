@@ -1080,6 +1080,8 @@ function resolveLiveEngineModeInputs({
 }) {
   return {
     data: isCandle ? data : lineEngineData,
+    dataChangeSource: data,
+    candlesChangeSource: candles,
     thresholdRangePoints:
       thresholdInRange && thresholdIsSeries
         ? (thresholdSeriesSV ?? (thresholdCfg?.value as LiveChartPoint[]))

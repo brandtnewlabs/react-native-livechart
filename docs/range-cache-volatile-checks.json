@@ -1,0 +1,136 @@
+{
+  "device": "Dedicated iPhone 17 Pro simulator, iOS 26.5",
+  "date": "2026-10-01",
+  "method": "Each actual engine frame compared against an uncached tick from the same pre-tick state and inputs. All engine output fields compared with Object.is. Temporary audit instrumentation removed after validation.",
+  "before": "21 mismatches in 2983 frames with derived revision tracking",
+  "after": [
+    {
+      "label": "Spike to 400",
+      "audit": "5431 frames checked \u00b7 0 mismatches\nLine 5431 \u00b7 Candle 0",
+      "frames": 5431,
+      "mismatches": 0,
+      "lineFrames": 5431,
+      "candleFrames": 0
+    },
+    {
+      "label": "Crash to 8",
+      "audit": "5647 frames checked \u00b7 0 mismatches\nLine 5647 \u00b7 Candle 0",
+      "frames": 5647,
+      "mismatches": 0,
+      "lineFrames": 5647,
+      "candleFrames": 0
+    },
+    {
+      "label": "Correct visible history in place",
+      "audit": "5892 frames checked \u00b7 0 mismatches\nLine 5892 \u00b7 Candle 0",
+      "frames": 5892,
+      "mismatches": 0,
+      "lineFrames": 5892,
+      "candleFrames": 0
+    },
+    {
+      "label": "Pause",
+      "audit": "6139 frames checked \u00b7 0 mismatches\nLine 6139 \u00b7 Candle 0",
+      "frames": 6139,
+      "mismatches": 0,
+      "lineFrames": 6139,
+      "candleFrames": 0
+    },
+    {
+      "label": "Correct visible history in place",
+      "audit": "6387 frames checked \u00b7 0 mismatches\nLine 6387 \u00b7 Candle 0",
+      "frames": 6387,
+      "mismatches": 0,
+      "lineFrames": 6387,
+      "candleFrames": 0
+    },
+    {
+      "label": "Zoom out",
+      "audit": "6633 frames checked \u00b7 0 mismatches\nLine 6633 \u00b7 Candle 0",
+      "frames": 6633,
+      "mismatches": 0,
+      "lineFrames": 6633,
+      "candleFrames": 0
+    },
+    {
+      "label": "Resume",
+      "audit": "6848 frames checked \u00b7 0 mismatches\nLine 6848 \u00b7 Candle 0",
+      "frames": 6848,
+      "mismatches": 0,
+      "lineFrames": 6848,
+      "candleFrames": 0
+    },
+    {
+      "label": "Show candles",
+      "audit": "7090 frames checked \u00b7 0 mismatches\nLine 6930 \u00b7 Candle 160",
+      "frames": 7090,
+      "mismatches": 0,
+      "lineFrames": 6930,
+      "candleFrames": 160
+    },
+    {
+      "label": "Candle: Spike to 400",
+      "audit": "8821 frames checked \u00b7 0 mismatches\nLine 6930 \u00b7 Candle 1891",
+      "frames": 8821,
+      "mismatches": 0,
+      "lineFrames": 6930,
+      "candleFrames": 1891
+    },
+    {
+      "label": "Candle: Crash to 8",
+      "audit": "9069 frames checked \u00b7 0 mismatches\nLine 6930 \u00b7 Candle 2139",
+      "frames": 9069,
+      "mismatches": 0,
+      "lineFrames": 6930,
+      "candleFrames": 2139
+    },
+    {
+      "label": "Candle: Correct visible history in place",
+      "audit": "9348 frames checked \u00b7 0 mismatches\nLine 6930 \u00b7 Candle 2418",
+      "frames": 9348,
+      "mismatches": 0,
+      "lineFrames": 6930,
+      "candleFrames": 2418
+    },
+    {
+      "label": "Candle: Pause",
+      "audit": "9596 frames checked \u00b7 0 mismatches\nLine 6930 \u00b7 Candle 2666",
+      "frames": 9596,
+      "mismatches": 0,
+      "lineFrames": 6930,
+      "candleFrames": 2666
+    },
+    {
+      "label": "Candle: Correct visible history in place",
+      "audit": "9874 frames checked \u00b7 0 mismatches\nLine 6930 \u00b7 Candle 2944",
+      "frames": 9874,
+      "mismatches": 0,
+      "lineFrames": 6930,
+      "candleFrames": 2944
+    },
+    {
+      "label": "Candle: Zoom in",
+      "audit": "10152 frames checked \u00b7 0 mismatches\nLine 6930 \u00b7 Candle 3222",
+      "frames": 10152,
+      "mismatches": 0,
+      "lineFrames": 6930,
+      "candleFrames": 3222
+    },
+    {
+      "label": "Candle: Resume",
+      "audit": "10399 frames checked \u00b7 0 mismatches\nLine 6930 \u00b7 Candle 3469",
+      "frames": 10399,
+      "mismatches": 0,
+      "lineFrames": 6930,
+      "candleFrames": 3469
+    },
+    {
+      "label": "Final sustained live candle run",
+      "audit": "12966 frames checked \u00b7 0 mismatches\nLine 6930 \u00b7 Candle 6036",
+      "frames": 12966,
+      "mismatches": 0,
+      "lineFrames": 6930,
+      "candleFrames": 6036
+    }
+  ]
+}

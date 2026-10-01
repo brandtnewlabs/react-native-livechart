@@ -1,0 +1,74 @@
+[
+  {
+    "label": "Interior edit",
+    "ranges": [
+      "Range 76.8 to 213.2"
+    ],
+    "expected": "76.8 to 213.2",
+    "pass": true
+  },
+  {
+    "label": "Same-length replacement",
+    "ranges": [
+      "Range 70.8 to 269.2"
+    ],
+    "expected": "70.8 to 269.2",
+    "pass": true
+  },
+  {
+    "label": "Static",
+    "ranges": [
+      "Range 70.8 to 269.2"
+    ],
+    "expected": "70.8 to 269.2",
+    "pass": true
+  },
+  {
+    "label": "Static interior edit",
+    "ranges": [
+      "Range 76.8 to 213.2"
+    ],
+    "expected": "76.8 to 213.2",
+    "pass": true
+  },
+  {
+    "label": "Candles",
+    "ranges": [
+      "Range 71.2 to 213.8"
+    ],
+    "expected": "71.2 to 213.8",
+    "pass": true
+  },
+  {
+    "label": "Candle interior edit",
+    "ranges": [
+      "Range 78.4 to 146.6"
+    ],
+    "expected": "78.4 to 146.6",
+    "pass": true
+  },
+  {
+    "label": "Animation on",
+    "ranges": [
+      "Range 78.4 to 146.6"
+    ],
+    "expected": "78.4 to 146.6",
+    "pass": true
+  },
+  {
+    "label": "Live candle only",
+    "ranges": [
+      "Range 56.8 to 348.2"
+    ],
+    "expected": "56.8 to 348.2",
+    "pass": true
+  },
+  {
+    "label": "Reference only",
+    "ranges": [
+      "Range 47.2 to 437.8"
+    ],
+    "expected": "47.2 to 437.8",
+    "pass": true
+  }
+]

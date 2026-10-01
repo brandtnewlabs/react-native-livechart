@@ -200,6 +200,11 @@ const SECTIONS: DemoSection[] = [
           "REST history pages prepend as you pan left while a live subscription keeps appending.",
       },
       {
+        href: "/demo/range-stress" as Href,
+        title: "Volatile range stress",
+        blurb: "30 updates/sec, 6,000 rolling points, spikes, crashes, and live candles.",
+      },
+      {
         href: "/demo/playback",
         title: "Playback",
         blurb: "timeWindow, paused, smoothing, exaggerate, range clamps.",

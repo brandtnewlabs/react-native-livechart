@@ -30,7 +30,18 @@ import {
   type EngineTickMutable,
 } from "./liveChartEngineTick";
 
+import {
+  makeHistoryRangeCache,
+  type HistoryRangeCache,
+  type HistoryRevision,
+} from "./historyRangeCache";
+
+import { useHistoryRevision } from "./useHistoryRevision";
+
 export interface EngineConfig {
+  /** Original inputs before a reveal/stash bridge that may suppress same-array notifications. */
+  dataChangeSource?: SharedValue<LiveChartPoint[]>;
+  candlesChangeSource?: SharedValue<CandlePoint[]>;
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   timeWindow: number;
@@ -185,13 +196,17 @@ export interface ChartEngineEdge {
   edgeValue: SharedValue<number>;
 }
 
-export interface SingleEngineState extends ChartEngineLayout, ChartEngineExtrema {
+export interface SingleEngineState
+  extends ChartEngineLayout,
+    ChartEngineExtrema {
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   displayValue: SharedValue<number>;
 }
 
-export interface MultiEngineState extends ChartEngineLayout, ChartEngineExtrema {
+export interface MultiEngineState
+  extends ChartEngineLayout,
+    ChartEngineExtrema {
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   displayValue: SharedValue<number>;
@@ -208,6 +223,8 @@ export type ChartEngineWithLiveValue = ChartEngineLayout & {
 };
 
 export interface EngineFrameRefs {
+  pointHistory?: SharedValue<HistoryRevision<LiveChartPoint> | undefined>;
+  candleHistory?: SharedValue<HistoryRevision<CandlePoint> | undefined>;
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   displayValue: SharedValue<number>;
@@ -268,6 +285,7 @@ export interface EngineFrameRefs {
 
 /** Stable state/input containers reused by the UI-thread frame callback. */
 export interface EngineFrameScratch {
+  historyCache: HistoryRangeCache;
   state: EngineTickMutable;
   input: EngineTickInput;
 }
@@ -275,6 +293,7 @@ export interface EngineFrameScratch {
 /** Allocate one single-series frame scratch. Call once per engine instance. */
 export function makeEngineFrameScratch(): EngineFrameScratch {
   return {
+    historyCache: makeHistoryRangeCache(),
     state: {
       displayValue: 0,
       displayMin: 0,
@@ -375,7 +394,9 @@ export function applyLiveChartEngineFrame(
   input.nowOverride = sv.nowOverrideSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
   input.targetValue = sv.value.value;
-  input.points = sv.data.value;
+  const pointHistory = sv.pointHistory?.value;
+  const candleHistory = sv.candleHistory?.value;
+  input.points = pointHistory?.data ?? sv.data.value;
   input.nowSeconds = Date.now() / 1000;
   input.paused = sv.pausedSV.value;
   input.snap = snap;
@@ -385,15 +406,16 @@ export function applyLiveChartEngineFrame(
   input.returnFrom = sv.returnFromSV?.value;
   input.viewWindow = sv.viewWindowSV?.value;
   input.mode = sv.modeSV.value;
-  input.candles = sv.candles?.value;
+  input.candles = candleHistory?.data ?? sv.candles?.value;
+  input.historyRevision =
+    input.mode === "candle" ? candleHistory : pointHistory;
   input.liveCandle = sv.liveCandle?.value;
   input.candleGaps = sv.candleGapsSV?.value;
-  input.candleGapBridgeNoTrades =
-    sv.candleGapBridgeNoTradesSV?.value ?? false;
+  input.candleGapBridgeNoTrades = sv.candleGapBridgeNoTradesSV?.value ?? false;
   input.candleGapBridgeUnavailable =
     sv.candleGapBridgeUnavailableSV?.value ?? false;
   input.candleGapBridgeUnknown = sv.candleGapBridgeUnknownSV?.value ?? false;
-  tickLiveChartEngineFrame(state, input);
+  tickLiveChartEngineFrame(state, input, scratch?.historyCache);
   sv.displayValue.value = state.displayValue;
   sv.displayMin.value = state.displayMin;
   sv.displayMax.value = state.displayMax;
@@ -409,7 +431,12 @@ export function applyLiveChartEngineFrame(
   // once a real (measured) frame consumed it. The tick early-returns on a
   // zero-size canvas (before applying the snap), so keep the flag pending until
   // the canvas has laid out, or a snap arriving pre-layout would be dropped.
-  if (snap && sv.snapSV && sv.canvasWidth.value !== 0 && sv.canvasHeight.value !== 0) {
+  if (
+    snap &&
+    sv.snapSV &&
+    sv.canvasWidth.value !== 0 &&
+    sv.canvasHeight.value !== 0
+  ) {
     sv.snapSV.value = false;
   }
 }
@@ -419,6 +446,7 @@ export function useLiveChartEngine(
 ): SingleEngineState & ChartEngineScroll & ChartEngineEdge {
   const {
     data,
+    dataChangeSource = data,
     value,
     timeWindow: configuredTimeWindow,
     smoothing: configuredSmoothing,
@@ -445,6 +473,7 @@ export function useLiveChartEngine(
     snapKey,
     mode,
     candles,
+    candlesChangeSource = candles,
     liveCandle,
     candleGaps,
     candleGapBridgeNoTrades,
@@ -472,9 +501,7 @@ export function useLiveChartEngine(
   );
   // Static charts snap to their target in one tick (smoothing=1), so the single
   // settle reaction below produces the final state with no per-frame easing.
-  const smoothing = useDerivedValue(() =>
-    isStatic ? 1 : configuredSmoothing,
-  );
+  const smoothing = useDerivedValue(() => (isStatic ? 1 : configuredSmoothing));
   const adaptiveSpeedBoostSV = useDerivedValue(() => adaptiveSpeedBoost);
   const exaggerateSV = useDerivedValue(() => exaggerate ?? false);
   const referenceValue = useDerivedValue(() => configuredReferenceValue);
@@ -597,8 +624,14 @@ export function useLiveChartEngine(
   // React renders: Reanimated uses captured closure values as implicit reaction
   // dependencies, and rebuilding this object would unregister/re-register the
   // static settle mapper behind its path consumers. See #329.
+  // Observe original feeds as well as reveal bridges: same-array assignments
+  // may suppress bridge notifications. Live candle changes stay uncached.
+  const pointHistory = useHistoryRevision(data, dataChangeSource);
+  const candleHistory = useHistoryRevision(candles, candlesChangeSource);
   const frameRefs = useMemo<EngineFrameRefs>(
     () => ({
+      pointHistory,
+      candleHistory,
       data,
       value,
       displayValue,
@@ -644,6 +677,8 @@ export function useLiveChartEngine(
       extremaMaxTime,
     }),
     [
+      pointHistory,
+      candleHistory,
       adaptiveSpeedBoostSV,
       allowFutureViewEndSV,
       candleGapBridgeNoTradesSV,
@@ -769,29 +804,32 @@ export function useLiveChartEngine(
   // constant so it never fires.
   useAnimatedReaction(
     () => {
-      if (!isStaticSV.get()) return 0; // inert when not static — never changes
-      const d = data.get();
-      const n = d.length;
-      return [
-        n,
-        n ? d[0].time : 0,
-        n ? d[0].value : 0,
-        n ? d[n - 1].time : 0,
-        n ? d[n - 1].value : 0,
-        value.get(),
-        canvasWidth.get(),
-        canvasHeight.get(),
-        timeWindow.get(),
-        // Range props can arrive after the data shared value. Re-settle when
-        // those bounds change too, rather than retaining the previous scale
-        // until another data/layout update (static charts have no frame loop).
-        maxValueSV.get(),
-        referenceValue.get(),
-        ...(referenceValues.get() ?? []),
-      ].join(",");
+      if (!isStaticSV.get()) return null; // inert when not static
+      return {
+        revision:
+          modeSV.get() === "candle" ? candleHistory.get() : pointHistory.get(),
+        fingerprint: [
+          value.get(),
+          canvasWidth.get(),
+          canvasHeight.get(),
+          timeWindow.get(),
+          // Range props can arrive after the data shared value. Re-settle when
+          // those bounds change too, rather than retaining the previous scale
+          // until another data/layout update (static charts have no frame loop).
+          maxValueSV.get(),
+          referenceValue.get(),
+          ...(referenceValues.get() ?? []),
+        ].join(","),
+      };
     },
     (curr, prev) => {
-      if (!isStaticSV.get() || curr === prev) return;
+      if (
+        !isStaticSV.get() ||
+        curr === null ||
+        (curr.revision === prev?.revision &&
+          curr.fingerprint === prev?.fingerprint)
+      )
+        return;
       applyLiveChartEngineFrame(
         { timeSincePreviousFrame: MS_PER_FRAME_60FPS },
         frameRefs,

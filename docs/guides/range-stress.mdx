@@ -1,0 +1,48 @@
+---
+title: "Volatile range stress"
+description: "Exercise range fitting with fast updates, sudden swings, and in-place history edits."
+---
+
+Open **Volatile range stress** from the demo app's home screen, or open
+`/demo/range-stress` in the running app.
+
+The synthetic feed targets 30 updates per second and keeps 6,000 rolling line
+points. Prices swing sharply. One-second candles change in place between commits.
+
+- **Run Y-axis outlier test:** reset to prices near 100 and a 12-second window.
+  At 3 seconds, send 1,000 for one second. At 7 seconds, send −500 for one second.
+  Watch the actual Y-range readout expand in both directions, then recover after
+  those outliers leave the window. The sequence resumes the feed automatically.
+  Run it in either line or candle mode. Negative values are enabled in this demo
+  to exercise the lower bound.
+- **Volatile feed:** leave the outlier sequence and restore the random-looking swings.
+- **Spike to 400 / Crash to 8:** force the next live price, then let the feed recover.
+- **Pause / Resume:** stop and restart the feed and chart's time movement.
+- **Show candles / Show line:** switch between the two views of the same feed.
+- **Zoom out / Zoom in:** change the visible window between 12 and 30 seconds.
+- **Correct visible history in place:** alternate an interior history value between
+  500 and 40 using `.modify()`, without changing the array length. Candle corrections
+  also retain their open/close values inside the high/low range.
+
+Try pausing before a history correction. The fitted range should respond even
+though the feed is stopped. Resume and check that live prices and candles keep
+moving. Spike/crash buttons queue a value until the next running feed update.
+
+History range caching is automatic. It reuses committed-history low/high results
+between data notifications while live values, live candles, and range animation
+continue updating. See [Historical data](/guides/historical-data).
+
+This screen uses synthetic data and is a visual correctness stress test. A smooth
+simulator recording alone does not measure device CPU, battery, or release FPS.
+
+## What to expect from the outlier test
+
+The fitted Y-range starts near **90–110**, grows to about **−680–1,180** with
+both outliers present, then returns near **90–110** by 27 seconds. The extra
+space around the data is the normal chart margin. Upper and lower bounds recover
+separately as each outlier leaves the visible history. The X-axis remains a
+12-second time window; the price outliers change the Y-axis.
+
+For a repeatable run, leave the other controls alone until recovery completes.
+The visible range readout samples the chart scale four times per second and is
+part of the demo, not library instrumentation.

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A volatile range stress demo with rolling data, live candles, forced spikes and
+  crashes, pause/resume, zoom, and in-place history corrections. A repeatable
+  outlier sequence and fitted Y-range readout show expansion and recovery.
+
+### Changed
+
+- Single-series line and candle charts reuse committed-history range scans while
+  the data revision and visible index bounds remain unchanged. Live candles,
+  reference values, and animation continue updating each frame. Same-length
+  replacements and notified in-place edits invalidate the cache automatically.
+
+### Fixed
+
+- Static single-series charts refresh their range after an interior history edit,
+  even when array length and endpoint values stay unchanged.
+
 ## [4.24.1] - 2026-09-28
 
 ### Fixed
