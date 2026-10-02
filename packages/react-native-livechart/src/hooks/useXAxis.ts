@@ -187,7 +187,12 @@ export function useXAxis(
       }
     }
 
-    if (cacheChanged) labelAlphas.set(alphas);
+    // Publish only a changed final cache so this derived value cannot keep
+    // waking itself after the engine sleeps. Off-screen target keys are retained
+    // above; this equality check also guards against other no-op cache updates.
+    if (cacheChanged && !sameXAxisLabels(previousAlphas, alphas)) {
+      labelAlphas.set(alphas);
+    }
 
     // Collect visible labels
     const raw: XAxisEntry[] = [];
@@ -230,4 +235,18 @@ export function useXAxis(
   });
 
   return { xAxisEntries, font };
+}
+
+export function sameXAxisLabels(
+  previous: Record<number, { alpha: number; text: string }>,
+  next: Record<number, { alpha: number; text: string }>,
+): boolean {
+  "worklet";
+  const keys = Object.keys(next);
+  if (keys.length !== Object.keys(previous).length) return false;
+  for (let i = 0; i < keys.length; i++) {
+    const key = Number(keys[i]);
+    if (!previous[key] || previous[key].alpha !== next[key].alpha || previous[key].text !== next[key].text) return false;
+  }
+  return true;
 }

@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react-native";
 
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { EngineState } from "../../src/core/useLiveChartEngine";
-import { reformatXAxisLabels, useXAxis } from "../../src/hooks/useXAxis";
+import { reformatXAxisLabels, sameXAxisLabels, useXAxis } from "../../src/hooks/useXAxis";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 const font = {
@@ -180,5 +180,21 @@ describe("useXAxis", () => {
     await act(async () => {
       await rerender({ f: (t: number) => `B${Math.floor(t)}` });
     });
+  });
+});
+
+// A settled cache must not self-publish just because invisible target labels
+// were transiently created and deleted. That used to repaint forever at rest.
+describe("X-axis idle cache", () => {
+  it("recognizes an unchanged final cache, including an empty one", () => {
+    expect(sameXAxisLabels({}, {})).toBe(true);
+    expect(sameXAxisLabels({ 1: { alpha: 1, text: "one" } }, { 1: { alpha: 1, text: "one" } })).toBe(true);
+  });
+  it("preserves fades, formatter changes, and tick replacement", () => {
+    const old = { 1: { alpha: 0.5, text: "one" } };
+    expect(sameXAxisLabels(old, { 1: { alpha: 1, text: "one" } })).toBe(false);
+    expect(sameXAxisLabels(old, { 1: { alpha: 0.5, text: "uno" } })).toBe(false);
+    expect(sameXAxisLabels(old, { 2: { alpha: 0.5, text: "one" } })).toBe(false);
+    expect(sameXAxisLabels(old, {})).toBe(false);
   });
 });

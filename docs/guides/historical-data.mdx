@@ -36,6 +36,39 @@ engine's clock with `nowOverride` and reserve a little right-edge space with `wi
 See the full prop list in the [`LiveChart` reference](/api-reference/livechart), and the live
 [Playback](/guides/playback) controls for tuning the window, smoothing, and Y-axis range.
 
+## Experimental automatic sleep
+
+Use `autoSleep` to keep an interactive historical chart asleep when its engine has
+settled. Unlike setting `static`, this preserves easing and wakes automatically:
+
+```tsx
+<LiveChart
+  data={history}
+  value={lastValue}
+  timeWindow={span}
+  nowOverride={lastTime}
+  autoSleep
+  pulse={false}
+/>
+```
+
+The engine waits for 160 ms of unchanged state before it stops requesting frames.
+Data (including `SharedValue.modify`), chart size, range inputs, theme, pan, pinch,
+and scrub activation wake it. Paused wall-clock charts and charts parked in history
+can sleep too. Live scrolling remains active. Existing Reanimated animations can
+finish independently of the engine.
+
+This prototype is **off by default** and applies to `LiveChart` line and candle
+modes, not `LiveChartSeries`. A configured pulse keeps it awake, so use `pulse={false}`
+when a still historical chart is intended. Loading/empty charts and enabled degen
+or trade-stream effects conservatively remain awake. `static` takes priority, and
+`isFrameLoopActive={false}` still gates work until re-enabled.
+
+The example app's `/idle-profile` route provides a deterministic 6,000-point chart
+with an A/B toggle and an engine-tick readout. That readout is **not screen FPS**.
+The local prototype report at `docs/auto-sleep-prototype.html` includes agent-device
+CPU samples and videos. Simulator debug measurements do not establish device
+battery savings or production frame health.
 
 ## Reusing history calculations
 

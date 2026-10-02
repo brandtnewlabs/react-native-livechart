@@ -106,6 +106,7 @@ interface LiveChartFrameStats {
 }
 
 interface LiveChartProps {
+  autoSleep?: boolean; // experimental; default false; single-series only
   isFrameLoopActive?: SharedValue<boolean>;
   debugFrameStats?: SharedValue<LiveChartFrameStats>;
 }

@@ -22,6 +22,8 @@ export type PanScrollGestureMode = "holdToScrub" | "axisDrag";
 
 /** Engine SharedValues the pan-scroll gesture reads/writes (subset of the engine state). */
 export interface PanScrollEngineRefs {
+  /** Wake a demand-driven engine before reading the gesture bounds. */
+  wake?: () => void;
   /** Absolute right-edge time to freeze at, or `null` to follow the live edge. */
   viewEnd: SharedValue<number | null>;
   /** Right-edge time the engine would use if following live (advances each frame). */
@@ -263,10 +265,13 @@ export function usePanScroll({
     },
   );
 
+  const wakeEngine = engine.wake;
+
   const onStart =
     /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
     () => {
       "worklet";
+      wakeEngine?.();
       // Stop an in-flight fling FIRST. `withDecay` keeps writing `viewEnd` after
       // the finger lifts, and `Gesture.Race` declares no relation between the two
       // pans, so this can run while a scrub is already engaged. Bailing out below

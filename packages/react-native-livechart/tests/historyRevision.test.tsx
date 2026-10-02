@@ -2,6 +2,15 @@ import { renderHook } from "@testing-library/react-native";
 import type { SharedValue } from "react-native-reanimated";
 import type { LiveChartPoint } from "../src/types";
 import { withSharedValueAccessors } from "./support/sharedValueMock";
+let mockSleepPrepare: () => unknown[];
+let mockSleepTick: (dt: number) => boolean;
+jest.mock("../src/hooks/useDemandFrameLoop", () => ({
+  useDemandFrameLoop: (_enabled: boolean, prepare: typeof mockSleepPrepare, tick: typeof mockSleepTick) => {
+    mockSleepPrepare = prepare;
+    mockSleepTick = tick;
+    return () => {};
+  },
+}));
 jest.mock("react-native-worklets", () => ({
   ...jest.requireActual("react-native-worklets"),
   scheduleOnUI: (fn: () => void) => fn(),
@@ -160,3 +169,40 @@ it("keeps subscriptions separate across charts and removes them on source change
   await hook.unmount();
   expect(second.listeners.size).toBe(0);
 });
+
+it.each(["line", "candle"] as const)(
+  "wakes sleeping %s charts for source edits suppressed by the reveal bridge",
+  async (mode) => {
+    const points = [{ time: 1, value: 10 }, { time: 2, value: 20 }, { time: 3, value: 10 }];
+    const bars = points.map((p) => ({ time: p.time, open: p.value, close: p.value, high: p.value, low: p.value }));
+    const raw = feed(points);
+    const bridged = feed(points);
+    const rawCandles = feed(bars);
+    const bridgedCandles = feed(bars);
+    const { result } = await renderHook(() => useLiveChartEngine({
+      data: bridged as unknown as SharedValue<typeof points>,
+      dataChangeSource: raw as unknown as SharedValue<typeof points>,
+      candles: bridgedCandles as unknown as SharedValue<typeof bars>,
+      candlesChangeSource: rawCandles as unknown as SharedValue<typeof bars>,
+      value: feed(10) as unknown as SharedValue<number>,
+      mode,
+      autoSleep: true,
+      timeWindow: 3,
+      nowOverride: 3,
+      smoothing: 1,
+    }));
+    result.current.canvasWidth.set(300);
+    result.current.canvasHeight.set(200);
+    mockSleepTick(16.67);
+    expect(mockSleepTick(16.67)).toBe(false);
+    const before = mockSleepPrepare();
+    if (mode === "line") raw.modify((items) => { items[1].value = 200; return items; });
+    else rawCandles.modify((items) => { items[1].high = 200; return items; });
+    // Neither bridged array changes identity or emits a notification. The
+    // revision must nevertheless be an input to the demand-loop wake mapper.
+    expect(mockSleepPrepare().some((input, i) => input !== before[i])).toBe(true);
+    expect(mockSleepTick(16.67)).toBe(true);
+    expect(result.current.extremaMaxValue.get()).toBe(200);
+    expect(mockSleepTick(16.67)).toBe(false);
+  },
+);

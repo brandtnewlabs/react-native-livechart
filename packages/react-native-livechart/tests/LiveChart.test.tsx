@@ -1180,6 +1180,7 @@ describe("LiveChart", () => {
       true,
       false,
       undefined,
+      false, // automatic sleep remains opt-in
     );
 
     await screen.rerender(
@@ -1196,6 +1197,7 @@ describe("LiveChart", () => {
       true,
       true,
       undefined,
+      false, // automatic sleep remains opt-in
     );
     widthLerpSpy.mockRestore();
   });

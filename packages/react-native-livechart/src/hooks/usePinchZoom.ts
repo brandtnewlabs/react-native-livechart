@@ -10,6 +10,8 @@ import { FOLLOW_SNAP, panLowerBound, panUpperBound } from "./usePanScroll";
 
 /** Engine SharedValues the pinch-zoom gesture reads/writes. */
 export interface PinchZoomEngineRefs {
+  /** Wake a demand-driven engine before reading the gesture bounds. */
+  wake?: () => void;
   /** Visible-window width override in seconds, or `null` to follow `timeWindow`. */
   viewWindow: SharedValue<number | null>;
   /** Absolute right-edge time, or `null` to follow the live edge (shared with pan). */
@@ -170,10 +172,13 @@ export function usePinchZoom({
   const startWindow = useSharedValue(timeWindow);
   const startViewEnd = useSharedValue(0);
 
+  const wakeEngine = engine.wake;
+
   const onStart =
     /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
     () => {
       "worklet";
+      wakeEngine?.();
       cancelAnimation(viewEnd);
       cancelAnimation(viewWindow);
       const edge = liveEdge.get();

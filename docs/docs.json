@@ -97,6 +97,7 @@
             "pages": [
               "guides/loading-data-on-scroll",
               "guides/playback",
+              "guides/auto-sleep",
               "guides/historical-data",
               "guides/range-stress",
               "guides/states-and-formatting",

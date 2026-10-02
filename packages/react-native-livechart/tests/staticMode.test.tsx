@@ -85,13 +85,13 @@ describe("static mode — no per-frame loops", () => {
       { initialProps: { renderCount: 0 } },
     );
 
-    const initialSettleDependencies = animatedReactionDependencies[1];
+    const initialSettleDependencies = animatedReactionDependencies.at(-1);
     expect(initialSettleDependencies?.[0]).toBeDefined();
     expect(initialSettleDependencies?.[1]).toBeDefined();
 
     await rerender({ renderCount: 1 });
 
-    const rerenderedSettleDependencies = animatedReactionDependencies[3];
+    const rerenderedSettleDependencies = animatedReactionDependencies.at(-1);
     expect(rerenderedSettleDependencies?.[0]).toBe(
       initialSettleDependencies?.[0],
     );

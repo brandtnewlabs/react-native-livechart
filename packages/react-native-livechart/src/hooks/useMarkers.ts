@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
+  useAnimatedReaction,
   useFrameCallback,
   useSharedValue,
   type SharedValue,
@@ -57,6 +58,8 @@ export function useMarkers(
   cluster: ResolvedMarkerCluster = ANCHORED_CLUSTER,
   /** Runtime gate shared with the chart engine. */
   isFrameLoopActive?: SharedValue<boolean>,
+  /** Experimental input-driven projection instead of continuous frames; defaults to false. */
+  autoSleep = false,
 ): {
   projected: SharedValue<ProjectedMarker[]>;
   tapGesture: ReturnType<typeof Gesture.Tap>;
@@ -79,7 +82,7 @@ export function useMarkers(
       onMarkerPress?.(event);
     };
 
-  const markerFrameCallback = useFrameCallback(
+  const project =
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
       "worklet";
       if (isFrameLoopActive?.get() === false) return;
@@ -111,13 +114,24 @@ export function useMarkers(
         maxY: engine.canvasHeight.get(),
       });
       projected.set(buf);
+    };
+  const legacyActive = autostart && !autoSleep;
+  const markerFrameCallback = useFrameCallback(project, legacyActive);
+  useAnimatedReaction(
+    () => {
+      if (!autoSleep || !autostart) return null;
+      return [active, markers.get(), engine.canvasWidth.get(), engine.canvasHeight.get(),
+        engine.timestamp.get(), engine.displayWindow.get(), engine.displayMin.get(),
+        engine.displayMax.get(), seriesSV?.get(), lineData?.get(), isFrameLoopActive?.get()];
     },
-    autostart,
+    (inputs) => {
+      if (inputs !== null) project();
+    },
   );
   useEffect(() => {
     // Reanimated does not reactively apply later `autostart` values.
-    markerFrameCallback.setActive(autostart);
-  }, [autostart, markerFrameCallback]);
+    markerFrameCallback.setActive(legacyActive);
+  }, [legacyActive, markerFrameCallback]);
 
   const tapGesture = Gesture.Tap().onEnd(
     /* istanbul ignore next -- gesture worklet runs on UI thread, not in Jest */ (

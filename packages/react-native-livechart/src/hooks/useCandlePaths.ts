@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import {
   useDerivedValue,
   useFrameCallback,
@@ -15,6 +15,7 @@ import { lerp } from "../math/lerp";
 import type { CandleMetrics, CandlePoint } from "../types";
 import { useVolumeRange } from "./useVolumeRange";
 import { usePathBuilder } from "./usePathBuilder";
+import { useDemandFrameLoop } from "./useDemandFrameLoop";
 
 const CANDLE_WIDTH_LERP_SPEED = 0.08;
 
@@ -41,6 +42,7 @@ export function useCandleWidthLerp(
   active: boolean,
   /** Runtime gate shared with the chart engine. */
   isFrameLoopActive?: SharedValue<boolean>,
+  autoSleep = false,
 ): SharedValue<number> {
   const targetCandleWidth = useDerivedValue(() => candleWidthSecs);
   const displayCandleWidth = useSharedValue(candleWidthSecs);
@@ -52,10 +54,10 @@ export function useCandleWidthLerp(
     () => candleLerpSpeed ?? CANDLE_WIDTH_LERP_SPEED,
   );
 
-  const widthFrameCallback = useFrameCallback((frameInfo) => {
+  const tickWidth = useCallback((dt: number) => {
     "worklet";
-    if (!active || isFrameLoopActive?.get() === false) return;
-    const dt = frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS;
+    if (!active || isFrameLoopActive?.get() === false) return false;
+    const previous = displayCandleWidth.get();
     const target = targetCandleWidth.get();
     const next = lerp(
       displayCandleWidth.get(),
@@ -63,12 +65,24 @@ export function useCandleWidthLerp(
       widthLerpSpeed.get(),
       dt,
     );
-    displayCandleWidth.set(Math.abs(target - next) < 0.01 ? target : next);
-  }, autostart);
+    const settled = Math.abs(target - next) < 0.01 ? target : next;
+    displayCandleWidth.set(settled);
+    return previous !== settled;
+  }, [active, isFrameLoopActive, displayCandleWidth, targetCandleWidth, widthLerpSpeed]);
+  const prepareWidth = useCallback(() => {
+    "worklet";
+    return [targetCandleWidth.get(), widthLerpSpeed.get(), isFrameLoopActive?.get()];
+  }, [targetCandleWidth, widthLerpSpeed, isFrameLoopActive]);
+  useDemandFrameLoop(autoSleep && autostart && active, prepareWidth, tickWidth);
+  const legacyActive = autostart && !autoSleep;
+  const widthFrameCallback = useFrameCallback((frameInfo) => {
+    "worklet";
+    tickWidth(frameInfo.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS);
+  }, legacyActive);
   useEffect(() => {
     // `autostart` is an initial seed in Reanimated, not a reactive switch.
-    widthFrameCallback.setActive(autostart);
-  }, [autostart, widthFrameCallback]);
+    widthFrameCallback.setActive(legacyActive);
+  }, [legacyActive, widthFrameCallback]);
 
   return displayCandleWidth;
 }

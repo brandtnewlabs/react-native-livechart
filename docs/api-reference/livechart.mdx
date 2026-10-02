@@ -521,6 +521,17 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   [Sparklines guide](/guides/sparklines).
 </ParamField>
 
+<ParamField body="autoSleep" type="boolean" default="false">
+  Experimental, single-series sleep/wake scheduling. Paused, parked, and fixed-time
+  charts stop requesting engine frames after settling for 160 ms. Data, layout,
+  range, theme, and gesture changes wake the engine on the UI thread. Candle width
+  settles on demand; marker positions update when their inputs change.
+  Live scrolling and configured pulse, degen, trade-stream, loading, and empty
+  effects keep it awake. `static` takes priority; the manual frame gate still applies.
+  This does not cache a bitmap or stop Reanimated-owned overlay animations.
+  See [Historical data](/guides/historical-data#experimental-automatic-sleep).
+</ParamField>
+
 <ParamField body="isFrameLoopActive" type="SharedValue<boolean>">
   Runtime gate for continuous frame work. Set it to `false` while a parent list
   scrolls; data can still update, and the chart catches up when it becomes

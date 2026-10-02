@@ -2705,6 +2705,15 @@ export interface LiveChartProps extends LiveChartCoreProps {
    */
   isFrameLoopActive?: SharedValue<boolean>;
   /**
+   * Experimental single-series demand scheduling. Stop engine frames after a
+   * paused, parked, or fixed-time chart settles; shared input changes and
+   * gestures wake it on the UI thread. Default false. Live scrolling, pulse,
+   * loading/reveal, and enabled degen/trade effects keep the engine awake.
+   * Does not cache a bitmap or disable gestures. `static` takes precedence.
+   * @experimental
+   */
+  autoSleep?: boolean;
+  /**
    * Optional development counter for engine frames that did or did not change
    * tracked engine values. It is not a count of Skia redraws. Supplying it adds
    * one SharedValue write per active engine frame.

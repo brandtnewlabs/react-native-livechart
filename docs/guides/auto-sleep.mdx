@@ -1,0 +1,54 @@
+---
+title: Automatic sleep
+icon: "moon"
+description: "Pause a live chart, let its engine sleep, and resume animation."
+---
+
+Open **Demos → Live data & engine → Automatic sleep** in the example app.
+The screen receives 12 simulated prices per second and shows the last 15 seconds,
+so both the live tip and the scrolling time axis are easy to see.
+
+1. Watch the live chart move.
+2. Tap **Pause live feed**. This demo stops the simulated feed and sets `paused`.
+   Existing easing finishes, then the readout changes to **Asleep** with zero engine ticks.
+3. Tap **Resume live feed**. New prices arrive, the window catches up to real time,
+   and the chart animates again.
+4. Pause again and turn **Automatic sleep** off. The picture stays still, but the
+   original engine loop keeps running. Turn it on to let the engine sleep again.
+
+The chart stays mounted throughout the comparison. The activity readout is sampled
+in a separate component so its updates do not re-render the chart. It measures
+engine ticks, **not display FPS**. The pulse is disabled because a continuous pulse
+intentionally keeps the engine awake.
+
+## Recorded example
+
+<video controls playsInline preload="metadata" src="/media/auto-sleep-live-demo-preview.mp4" />
+
+The recording shows live updates, pause at about 7 seconds, resume at 16 seconds,
+and the sleep switch comparison at 29–36 seconds. Agent-device observed
+60 → 0 → 60 engine ticks per second on a dedicated iOS debug simulator. Two
+settled chart captures 1.5 seconds apart were pixel-identical. This verifies the
+tested interaction; physical-device performance and battery use still need testing.
+
+```tsx
+const { data, value } = useSimulatedChartData({ paused, tradesPerSecond: 12 });
+
+<LiveChart
+  data={data}
+  value={value}
+  timeWindow={15}
+  paused={paused}
+  autoSleep
+  pulse={false}
+/>
+```
+
+`useSimulatedChartData` is an example-app helper, not a library export. In a real app,
+pausing the chart does not automatically stop your data source: continued data
+changes wake the engine as needed.
+
+`autoSleep` is experimental, defaults to `false`, and currently applies only to
+single-series `LiveChart`. See the [API reference](/api-reference/livechart) and
+[Historical data](/guides/historical-data#experimental-automatic-sleep) for its
+continuous-effect and static-mode rules.
