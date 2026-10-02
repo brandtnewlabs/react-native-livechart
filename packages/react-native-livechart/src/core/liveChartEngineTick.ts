@@ -1,4 +1,9 @@
-import type { CandleGap, CandlePoint, LiveChartPoint } from "../types";
+import type {
+  CandleGap,
+  CandlePoint,
+  LiveChartPoint,
+  RangeAnimationConfig,
+} from "../types";
 
 import {
   historyRange,
@@ -8,6 +13,7 @@ import {
 
 import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
+import { rangeAnimationSpeed } from "../math/rangeAnimation";
 import { thresholdRangeMinMax } from "../math/threshold";
 import { previousCandleCloseAtTime } from "../math/candleGaps";
 
@@ -59,6 +65,7 @@ export interface EngineTickInput {
   canvasHeight: number;
   timeWindow: number;
   smoothing: number;
+  rangeAnimation?: RangeAnimationConfig;
   exaggerate: boolean;
   /** Extra catch-up speed added to `smoothing` when the live value lags. Default `0.12`. */
   adaptiveSpeedBoost?: number;
@@ -479,25 +486,25 @@ export function tickLiveChartEngineFrame(
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
     const rangeUnitsPerPixel = (tMax - tMin) / input.canvasHeight;
-    if (snap || yScaleDragging || tMin < state.displayMin) {
+    if (snap || yScaleDragging) {
       state.displayMin = tMin;
     } else {
       state.displayMin = lerpAndSettle(
         state.displayMin,
         tMin,
-        speed,
+        rangeAnimationSpeed(speed, input.rangeAnimation, tMin < state.displayMin),
         input.dt,
         rangeUnitsPerPixel,
       );
     }
 
-    if (snap || yScaleDragging || tMax > state.displayMax) {
+    if (snap || yScaleDragging) {
       state.displayMax = tMax;
     } else {
       state.displayMax = lerpAndSettle(
         state.displayMax,
         tMax,
-        speed,
+        rangeAnimationSpeed(speed, input.rangeAnimation, tMax > state.displayMax),
         input.dt,
         rangeUnitsPerPixel,
       );

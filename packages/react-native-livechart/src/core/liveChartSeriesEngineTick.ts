@@ -1,6 +1,7 @@
 import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
-import type { SeriesConfig } from "../types";
+import { rangeAnimationSpeed } from "../math/rangeAnimation";
+import type { RangeAnimationConfig, SeriesConfig } from "../types";
 
 export interface MultiEngineTickMutable {
   displayMin: number;
@@ -35,6 +36,7 @@ export interface MultiEngineTickInput {
   canvasHeight: number;
   timeWindow: number;
   smoothing: number;
+  rangeAnimation?: RangeAnimationConfig;
   exaggerate: boolean;
   /** Extra catch-up speed added to `smoothing` when a series tip lags. Default `0.12`. */
   adaptiveSpeedBoost?: number;
@@ -332,16 +334,26 @@ export function tickLiveChartSeriesEngineFrame(
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
-    if (snap || yScaleDragging || tMin < state.displayMin) {
+    if (snap || yScaleDragging) {
       state.displayMin = tMin;
     } else {
-      state.displayMin = lerp(state.displayMin, tMin, speed, input.dt);
+      state.displayMin = lerp(
+        state.displayMin,
+        tMin,
+        rangeAnimationSpeed(speed, input.rangeAnimation, tMin < state.displayMin),
+        input.dt,
+      );
     }
 
-    if (snap || yScaleDragging || tMax > state.displayMax) {
+    if (snap || yScaleDragging) {
       state.displayMax = tMax;
     } else {
-      state.displayMax = lerp(state.displayMax, tMax, speed, input.dt);
+      state.displayMax = lerp(
+        state.displayMax,
+        tMax,
+        rangeAnimationSpeed(speed, input.rangeAnimation, tMax > state.displayMax),
+        input.dt,
+      );
     }
   }
 }

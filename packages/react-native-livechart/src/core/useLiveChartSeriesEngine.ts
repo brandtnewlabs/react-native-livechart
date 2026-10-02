@@ -10,7 +10,7 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
-import type { LiveChartPoint, SeriesConfig } from "../types";
+import type { LiveChartPoint, RangeAnimationConfig, SeriesConfig } from "../types";
 import {
   tickLiveChartSeriesEngineFrame,
   type MultiEngineTickInput,
@@ -22,6 +22,7 @@ export interface MultiSeriesEngineConfig {
   series: SharedValue<SeriesConfig[]>;
   timeWindow: number;
   smoothing: number;
+  rangeAnimation?: RangeAnimationConfig;
   /** Extra catch-up speed added to `smoothing` when a series tip lags. */
   adaptiveSpeedBoost?: number;
   exaggerate?: boolean;
@@ -76,6 +77,7 @@ export interface MultiEngineFrameRefs {
   canvasHeight: SharedValue<number>;
   timeWindow: SharedValue<number>;
   smoothing: SharedValue<number>;
+  rangeAnimationSV?: SharedValue<RangeAnimationConfig | undefined>;
   adaptiveSpeedBoostSV?: SharedValue<number | undefined>;
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
@@ -240,6 +242,7 @@ export function applyLiveChartSeriesEngineFrame(
   input.canvasHeight = sv.canvasHeight.value;
   input.timeWindow = sv.timeWindow.value;
   input.smoothing = sv.smoothing.value;
+  input.rangeAnimation = sv.rangeAnimationSV?.value;
   input.adaptiveSpeedBoost = sv.adaptiveSpeedBoostSV?.value;
   input.exaggerate = sv.exaggerateSV.value;
   input.referenceValue = sv.referenceValue.value;
@@ -301,6 +304,7 @@ export function useLiveChartSeriesEngine(
   const viewWindow = useSharedValue<number | null>(null);
   const timeWindow = useDerivedValue(() => viewWindow.value ?? config.timeWindow);
   const smoothing = useDerivedValue(() => config.smoothing);
+  const rangeAnimationSV = useDerivedValue(() => config.rangeAnimation);
   const adaptiveSpeedBoostSV = useDerivedValue(() => config.adaptiveSpeedBoost);
   const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
   const referenceValue = useDerivedValue(() => config.referenceValue);
@@ -388,6 +392,7 @@ export function useLiveChartSeriesEngine(
     canvasHeight,
     timeWindow,
     smoothing,
+    rangeAnimationSV,
     adaptiveSpeedBoostSV,
     exaggerateSV,
     referenceValue,

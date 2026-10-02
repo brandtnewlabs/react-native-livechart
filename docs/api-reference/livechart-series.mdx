@@ -11,7 +11,7 @@ import { LiveChartSeries } from "react-native-livechart";
 `LiveChartSeries` draws several line series sharing an axis, time window, and crosshair. It
 accepts all the shared theming, axis, range, layout, and text props from
 [`LiveChart`](/api-reference/livechart) (`theme`, `accentColor`, `palette`, `metrics`, `font`,
-`canvasMode`, `timeWindow`, `smoothing`, [`snapKey`](/api-reference/livechart#param-snap-key),
+`canvasMode`, `timeWindow`, `smoothing`, `rangeAnimation`, [`snapKey`](/api-reference/livechart#param-snap-key),
 [`yRangeScale`](/guides/y-range-scale), `line`, `yAxis`,
 `referenceLines`, `formatValue`, …), plus the multi-series props below.
 
@@ -39,6 +39,18 @@ reserved by `insets.left`; right-side series value labels remain unchanged.
 </ParamField>
 
 ## Manual Y-range scaling
+
+<ParamField body="rangeAnimation" type="RangeAnimationConfig">
+  Ease the shared fitted Y-range independently of series-tip and time-window
+  smoothing. `animateExpansion: true` opts into outward easing;
+  `expansionSmoothing` and `contractionSmoothing` override each direction's
+  per-60fps-frame speed (0..1). Omitted speeds inherit `smoothing`. Omission of
+  the config preserves instant expansion and eased contraction. `smoothing: 1`,
+  explicit `snapKey` changes, and active `yRangeScale` dragging remain immediate.
+  Custom overlays keep following the animated `ChartOverlayContext.scale`.
+  See [Y-range animation](/guides/y-range-scale#animating-automatic-range-changes)
+  for a hold/release example without a return timer.
+</ParamField>
 
 <ParamField body="yRangeScale" type="SharedValue<number>" default="1">
   Multiplies the shared fitted Y-range around its midpoint. Drive it from a
