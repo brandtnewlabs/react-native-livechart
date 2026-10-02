@@ -12,7 +12,11 @@ import { buildLineGapSegmentRanges } from "../draw/lineGap";
 import { makeLineSimplifyScratch, simplifyLinePoints } from "../math/simplify";
 import { makeSplineScratch } from "../math/spline";
 import { thresholdSampleSpanX } from "../math/threshold";
-import { blendPtsY, squigglifyPts } from "../math/squiggly";
+import {
+  blendPtsY,
+  squiggleClockSeconds,
+  squigglifyPts,
+} from "../math/squiggly";
 import { usePathBuilder } from "./usePathBuilder";
 import type { CandleGap } from "../types";
 
@@ -170,9 +174,11 @@ export function useChartPaths(
     // Compute squiggly Y values at the same X positions as the real line
     const centerY =
       (engine.canvasHeight.get() - padding.bottom + padding.top) / 2;
+    // Same wall clock as the loading shell's squiggle, so the wave stays
+    // continuous where the shell hands over to the morph.
     const squigglyPts = squigglifyPts(
       renderPts,
-      engine.timestamp.get(),
+      squiggleClockSeconds(),
       centerY,
       squiggleAmplitude,
       squiggleSpeed,

@@ -28,7 +28,15 @@ export function useYAxis(
   const yAxisEntries = useDerivedValue(() => {
     const dt = MS_PER_FRAME_60FPS;
 
-    const alphas = labelAlphas.get();
+    // SharedValue payloads may be frozen after crossing the JS/UI boundary.
+    // Copy before computeGridEntries adds, updates, or removes label keys.
+    const previousAlphas = labelAlphas.get();
+    const alphas: Record<number, number> = {};
+    const previousKeys = Object.keys(previousAlphas);
+    for (let i = 0; i < previousKeys.length; i++) {
+      const key = Number(previousKeys[i]);
+      alphas[key] = previousAlphas[key];
+    }
     const result = computeGridEntries(
       engine.displayMin.get(),
       engine.displayMax.get(),
@@ -46,7 +54,15 @@ export function useYAxis(
     );
 
     prevInterval.set(result.interval);
-    labelAlphas.set(alphas);
+    // This derived value also reads the cache. Only publish actual changes so
+    // a settled axis doesn't keep scheduling itself with fresh object identities.
+    const nextKeys = Object.keys(alphas);
+    let cacheChanged = nextKeys.length !== previousKeys.length;
+    for (let i = 0; i < nextKeys.length && !cacheChanged; i++) {
+      const key = Number(nextKeys[i]);
+      if (alphas[key] !== previousAlphas[key]) cacheChanged = true;
+    }
+    if (cacheChanged) labelAlphas.set(alphas);
 
     return result.entries;
   });

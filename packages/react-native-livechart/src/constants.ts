@@ -10,9 +10,9 @@ import type {
 export const MS_PER_FRAME_60FPS = 16.67;
 
 /**
- * Size of the pre-allocated Y-axis label pool — the most price labels the axis
- * ever renders at once. Caps both the dynamic (nice-interval) grid and the
- * fixed-`count` mode (see {@link YAxisConfig.count}).
+ * Initial size of the Y-axis label pool. The pool grows when the dynamic
+ * (nice-interval) grid produces more labels (a tall plot or a small `minGap`);
+ * the fixed-`count` mode stays capped at this (see {@link YAxisConfig.count}).
  */
 export const MAX_Y_LABELS = 15;
 
