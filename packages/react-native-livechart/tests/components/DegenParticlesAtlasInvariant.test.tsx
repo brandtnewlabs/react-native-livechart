@@ -71,7 +71,6 @@ jest.mock('react-native-reanimated', () => ({
 }));
 
 import { DegenParticlesOverlay } from '../../src/components/DegenParticlesOverlay';
-import type { ChartEngineLayout } from '../../src/core/useLiveChartEngine';
 import type { LiveChartPalette } from '../../src/types';
 
 it('keeps Atlas prop lengths equal when Skia reads colors from one frame and transforms from the next', async () => {
@@ -85,7 +84,7 @@ it('keeps Atlas prop lengths equal when Skia reads colors from one frame and tra
     <DegenParticlesOverlay
       pack={{ get: () => buffer } as SharedValue<Float64Array<ArrayBuffer>>}
       packRevision={revision as SharedValue<number>}
-      engine={{ timestamp: { get: () => 0 } } as ChartEngineLayout}
+      particleTimestamp={{ get: () => 0 } as SharedValue<number>}
       palette={{ line: '#ffffff' } as LiveChartPalette}
       particleSlotCount={4}
       particleBurstDurationSec={1}
@@ -117,7 +116,7 @@ it('remounts Atlas when the configured particle slot count changes', async () =>
   const props = {
     pack: { get: () => buffer } as SharedValue<Float64Array<ArrayBuffer>>,
     packRevision: revision as SharedValue<number>,
-    engine: { timestamp: { get: () => 0 } } as ChartEngineLayout,
+    particleTimestamp: { get: () => 0 } as SharedValue<number>,
     palette: { line: '#ffffff' } as LiveChartPalette,
     particleBurstDurationSec: 1,
     particleOpacity: 1,

@@ -190,11 +190,8 @@ uses four batched paths for up/down bodies and wicks, and returns fresh immutabl
 paths so live updates repaint normally. Rounded bodies and volume bars retain
 their existing drawing behavior. No configuration change is required.
 
-See [Candle work benchmark](/guides/candle-work) for the measurement demo and its
-limits. Its rebuild timings do not measure whole-chart FPS or battery use.
-
 Volume bars use the same rectangle reuse for sharp bars. The largest visible
 historical volume is recalculated when candle data notifies a change or the
 visible bucket bounds change. Live volume is included on every geometry update.
 Use normal SharedValue updates or `.modify()` for in-place edits; array length is
-not used as a data revision. See [Volume and line work](/guides/volume-line-work).
+not used as a data revision.

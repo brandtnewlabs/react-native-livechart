@@ -405,6 +405,39 @@ describe("LoadingOverlay", () => {
     }) as unknown as EngineState;
   }
 
+  it.each([false, true])("aligns the empty-state gap gradient to its rectangle (opaque=%s)", async (opaqueCanvas) => {
+    function Fixture() {
+      return (
+        <LoadingOverlay
+          engine={makeLoadingEngine()}
+          padding={DEFAULT_PADDING}
+          palette={palette}
+          font={font}
+          morphT={useSharedValue(1)}
+          isLoading={useSharedValue(false)}
+          isEmpty={useSharedValue(true)}
+          emptyText="No data"
+          strokeWidth={2}
+          opaqueCanvas={opaqueCanvas}
+        />
+      );
+    }
+    const screen = await render(<Fixture />);
+    const views = getAllByHostType(screen, View);
+    const gradient = views.find((view) => Array.isArray(view.props.colors))!;
+    const mask = views.find((view) => view.props.height?.get?.() > 4)!;
+    const left = mask.props.x.get();
+    const right = left + mask.props.width.get();
+    expect(left).toBeGreaterThan(0);
+    expect(gradient.props.start.get()).toEqual({ x: left, y: 0 });
+    expect(gradient.props.end.get()).toEqual({ x: right, y: 0 });
+    // Both outer edges fade to transparent, with a solid gap beneath the text.
+    expect(gradient.props.colors[0]).toMatch(/,0\)$/);
+    expect(gradient.props.colors[3]).toMatch(/,0\)$/);
+    expect(gradient.props.positions.get()[0]).toBe(0);
+    expect(gradient.props.positions.get()[3]).toBe(1);
+  });
+
   it("renders in loading state with badge alignment (badge=true)", async () => {
     function Fixture() {
       const morphT = useSharedValue(0);

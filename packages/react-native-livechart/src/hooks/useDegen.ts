@@ -50,6 +50,7 @@ export function useDegen(
 ): {
   pack: SharedValue<Float64Array<ArrayBuffer>>;
   packRevision: SharedValue<number>;
+  particleTimestamp: SharedValue<number>;
   shakeTransform: DerivedValue<
     [{ translateX: number }, { translateY: number }]
   >;
@@ -57,6 +58,7 @@ export function useDegen(
   const MAX_SLOTS = 80;
   const pack = useSharedValue(new Float64Array(MAX_SLOTS * DEGEN_STRIDE));
   const packRevision = useSharedValue(0);
+  const particleTimestamp = useSharedValue(0);
   const prevM = useSharedValue<Momentum>("flat");
   const writeRot = useSharedValue(0);
   const enabledSV = useSharedValue(0);
@@ -185,10 +187,12 @@ export function useDegen(
   // ChartWithDegen only mounts while the resolved effect is enabled; static
   // charts force that config to null and unmount this callback entirely.
   useFrameCallback(
-    /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
+    /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ (frame) => {
       "worklet";
       if (isFrameLoopActive?.get() === false) return;
-      const now = engine.timestamp.get();
+      // The viewport clock advances in half-pixel steps and may be pinned by
+      // nowOverride or pan. Effects need the continuous display-frame clock.
+      const now = frame.timestamp / 1000;
       const buf = pack.get();
       const slots = slotCountSV.get();
 
@@ -273,10 +277,10 @@ export function useDegen(
       );
 
       // Repaint only while particles are alive (or on the frame they all expire,
-      // so the overlay clears). When the field is empty the 4 derived values per
-      // slot stay subscribed to `packRevision` alone and freeze — no per-frame
-      // worklet churn for an idle particle system.
+      // so the overlay clears). Publish the same clock for Atlas size/opacity,
+      // only while particles are alive, to keep an idle field from repainting.
       if (activeCount > 0 || prevActiveCount.get() > 0) {
+        particleTimestamp.set(now);
         packRevision.set(packRevision.get() + 1);
       }
       prevActiveCount.set(activeCount);
@@ -291,5 +295,5 @@ export function useDegen(
     ];
   });
 
-  return { pack, packRevision, shakeTransform };
+  return { pack, packRevision, particleTimestamp, shakeTransform };
 }

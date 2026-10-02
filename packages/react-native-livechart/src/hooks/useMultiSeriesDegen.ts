@@ -30,6 +30,7 @@ export function useMultiSeriesDegen(
 ): {
   pack: SharedValue<Float64Array<ArrayBuffer>>;
   packRevision: SharedValue<number>;
+  particleTimestamp: SharedValue<number>;
   shakeTransform: DerivedValue<
     [{ translateX: number }, { translateY: number }]
   >;
@@ -37,6 +38,7 @@ export function useMultiSeriesDegen(
   const MAX_SLOTS = 80;
   const pack = useSharedValue(new Float64Array(MAX_SLOTS * DEGEN_STRIDE));
   const packRevision = useSharedValue(0);
+  const particleTimestamp = useSharedValue(0);
   // Per-series previous momentum (0 = flat, 1 = up, 2 = down), index-aligned to series.
   const prevMoms = useSharedValue<number[]>([]);
   const writeRot = useSharedValue(0);
@@ -131,9 +133,10 @@ export function useMultiSeriesDegen(
   ]);
 
   useFrameCallback(
-    /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
+    /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ (frame) => {
       "worklet";
-      const now = engine.timestamp.get();
+      // Effect timing is independent of the quantized/pinned viewport clock.
+      const now = frame.timestamp / 1000;
       const buf = pack.get();
       const slots = slotCountSV.get();
 
@@ -242,6 +245,7 @@ export function useMultiSeriesDegen(
       );
 
       if (activeCount > 0 || prevActiveCount.get() > 0) {
+        particleTimestamp.set(now);
         packRevision.set(packRevision.get() + 1);
       }
       prevActiveCount.set(activeCount);
@@ -256,5 +260,5 @@ export function useMultiSeriesDegen(
     ];
   });
 
-  return { pack, packRevision, shakeTransform };
+  return { pack, packRevision, particleTimestamp, shakeTransform };
 }

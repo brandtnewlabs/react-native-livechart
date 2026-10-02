@@ -286,12 +286,10 @@ export function LoadingOverlay({
     return [0, t1, t2, 1];
   });
 
-  const gapGradEnd = useDerivedValue(() =>
-    vec(
-      Math.max(1, emptyGapLayout.get().gapRight - emptyGapLayout.get().gapLeft),
-      0,
-    ),
-  );
+  // Gradient coordinates are canvas coordinates, not relative to the Rect.
+  // Starting at (0, 0) shifts the mask left and exposes a rectangular band.
+  const gapGradStart = useDerivedValue(() => vec(emptyGapLayout.get().gapLeft, 0));
+  const gapGradEnd = useDerivedValue(() => vec(emptyGapLayout.get().gapRight, 0));
 
   const emptyLabelText = useDerivedValue(() =>
     isEmpty.value ? emptyText : "",
@@ -319,7 +317,7 @@ export function LoadingOverlay({
       >
         <Rect x={gapLeft} y={gapTop} width={gapWidth} height={gapHeight}>
           <LinearGradient
-            start={vec(0, 0)}
+            start={gapGradStart}
             end={gapGradEnd}
             colors={gapMaskColors}
             positions={gapGradientPositions}
