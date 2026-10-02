@@ -545,7 +545,7 @@ const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
  * Resolves `yAxis` prop to a fully-typed config or null (disabled).
  * `true` → defaults, object → merged with defaults, falsy → null.
  * `count` is normalized to a non-negative integer (the grid math clamps the
- * upper bound to the label pool size).
+ * upper bound to `MAX_Y_LABELS`).
  */
 export function resolveYAxis(
   prop: boolean | YAxisConfig | undefined,

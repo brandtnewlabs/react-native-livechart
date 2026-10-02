@@ -1,0 +1,31 @@
+{
+  "device": "Dedicated iPhone 17 Pro simulator, iOS 26.5",
+  "method": "Temporary audit of actual useCandlePaths body results versus old body builder commands. SVG comparison after detach. Removed after recording; audit overhead excluded from performance measurements.",
+  "steps": [
+    {
+      "label": "Sharp",
+      "audit": "1024 paths checked · 0 mismatches\nSharp 1305 · Rounded 6799 · Empty 0"
+    },
+    {
+      "label": "5m · 15s",
+      "audit": "1422 paths checked · 0 mismatches\nSharp 5322 · Rounded 6799 · Empty 0"
+    },
+    {
+      "label": "6px",
+      "audit": "1778 paths checked · 0 mismatches\nSharp 6015 · Rounded 9844 · Empty 0"
+    },
+    {
+      "label": "1h · 5m",
+      "audit": "2202 paths checked · 0 mismatches\nSharp 6015 · Rounded 12565 · Empty 1"
+    },
+    {
+      "label": "Sharp",
+      "audit": "2578 paths checked · 0 mismatches\nSharp 7743 · Rounded 13093 · Empty 1"
+    }
+  ],
+  "additionalActions": [
+    "Empty candles on/off",
+    "Snap-to-candle scrub long press"
+  ],
+  "final": "10826 paths checked · 0 mismatches\nSharp 57710 · Rounded 13093 · Empty 527"
+}

@@ -2,6 +2,11 @@ import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
 import { useLiveChartEngine } from "../src/core/useLiveChartEngine";
 
+jest.mock("react-native-worklets", () => ({
+  ...jest.requireActual("react-native-worklets"),
+  scheduleOnUI: (fn: () => void) => fn(),
+}));
+
 let mockTick: (dt: number) => boolean;
 let mockPrepare: () => unknown[];
 let mockEnabled: boolean;
@@ -18,7 +23,15 @@ jest.mock("react-native-reanimated", () => {
   return {
     ...jest.requireActual("react-native-reanimated"),
     useSharedValue: <T,>(initial: T) => {
-      const ref = React.useRef({ value: initial, get() { return this.value; }, set(next: T) { this.value = next; } });
+      const listeners = new Map<number, (mockValue: T) => void>();
+      const ref = React.useRef({
+        value: initial,
+        get() { return this.value; },
+        set(next: T) { this.value = next; listeners.forEach((fn) => fn(next)); },
+        modify(fn: (mockValue: T) => T) { this.set(fn(this.value)); },
+        addListener(id: number, fn: (mockValue: T) => void) { listeners.set(id, fn); },
+        removeListener(id: number) { listeners.delete(id); },
+      });
       return ref.current;
     },
     useDerivedValue: <T,>(fn: () => T) => {
@@ -50,7 +63,7 @@ it("lets fixed time settle, then recomputes an interior data edit with unchanged
   mockTick(16.67);
   expect(mockTick(16.67)).toBe(false);
   const before = view.engine.displayMax.get();
-  view.data.get()[1].value = 500;
+  view.data.modify((points) => { points[1].value = 500; return points; });
   // The wake subscription reads the actual data, including same-array edits.
   expect(mockPrepare()).toContain(view.data.get());
   expect(mockTick(16.67)).toBe(true);

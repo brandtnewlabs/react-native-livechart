@@ -757,8 +757,8 @@ export interface YAxisConfig {
    * numbers; they track the live range each frame.
    *
    * `minGap` still acts as a floor: if `count` labels won't fit at least
-   * `minGap` px apart, the count is reduced to what fits. Clamped to at most 15
-   * (the label pool size). Omit (or `0`) for the default dynamic grid.
+   * `minGap` px apart, the count is reduced to what fits. Clamped to at most 15.
+   * Omit (or `0`) for the default dynamic grid.
    */
   count?: number;
   /**

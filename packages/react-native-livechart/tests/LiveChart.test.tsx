@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { LiveChart } from "../src/components/LiveChart";
 import { getAllByHostType } from "./rntl14";
+import * as engineHooks from "../src/core/useLiveChartEngine";
 import * as badgeHooks from "../src/hooks/useBadge";
 import * as candlePathHooks from "../src/hooks/useCandlePaths";
 import * as chartOverlayHooks from "../src/hooks/useChartOverlayContext";
@@ -1349,4 +1350,17 @@ describe("LiveChart", () => {
       });
     }
   });
+});
+
+// A reveal bridge can forward the same array after modify(). The range cache
+// must still observe the original SharedValue notification.
+it("passes original data sources through the reveal bridge for range revisions", async () => {
+  const spy = jest.spyOn(engineHooks, "useLiveChartEngine");
+  await render(<CandleHarness />);
+  const config = spy.mock.calls.at(-1)![0];
+  expect(config.dataChangeSource).toBeDefined();
+  expect(config.candlesChangeSource).toBeDefined();
+  expect(config.candlesChangeSource).not.toBe(config.candles);
+  expect(config.candlesChangeSource!.get()).toHaveLength(2);
+  spy.mockRestore();
 });

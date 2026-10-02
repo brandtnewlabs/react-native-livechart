@@ -167,11 +167,16 @@ export function useXAxis(
       const edgeAlpha =
         fromEdge >= fadeZone ? 1 : fromEdge <= 0 ? 0 : fromEdge / fadeZone;
 
-      const target = xAxisKeyIsTarget(key, targetKeys) ? edgeAlpha : 0;
+      const isTarget = xAxisKeyIsTarget(key, targetKeys);
+      const target = isTarget ? edgeAlpha : 0;
       let next = lerp(label.alpha, target, FADE, MS_PER_FRAME_60FPS);
       if (Math.abs(next - target) < 0.02) next = target;
 
-      if (next < 0.01 && target === 0) {
+      // Only a key that left the target set is deleted once it has faded out. A
+      // target key can sit at alpha 0 (the set spans one interval past each edge,
+      // outside the plot); deleting it would re-create it on the next run and
+      // write `labelAlphas`, this mapper's own input, every frame.
+      if (next < 0.01 && !isTarget) {
         delete alphas[key];
         cacheChanged = true;
       } else {
@@ -182,9 +187,9 @@ export function useXAxis(
       }
     }
 
-    // Off-screen target keys can be added and deleted in the same pass. Only
-    // publish a change to the FINAL cache, otherwise this derived value wakes
-    // itself forever and redraws a settled chart even after its engine sleeps.
+    // Publish only a changed final cache so this derived value cannot keep
+    // waking itself after the engine sleeps. Off-screen target keys are retained
+    // above; this equality check also guards against other no-op cache updates.
     if (cacheChanged && !sameXAxisLabels(previousAlphas, alphas)) {
       labelAlphas.set(alphas);
     }

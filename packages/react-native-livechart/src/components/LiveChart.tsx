@@ -106,6 +106,7 @@ import { useDegen } from "../hooks/useDegen";
 import { useLiveChartHasData } from "../hooks/useLiveChartHasData";
 import { useLiveDot } from "../hooks/useLiveDot";
 import { useLineGapPaths } from "../hooks/useLineGapPaths";
+import { useLoadingLook } from "../hooks/useLoadingLook";
 import { useMarkers } from "../hooks/useMarkers";
 import { useReferenceDrag } from "../hooks/useReferenceDrag";
 import { useReferenceLinePress } from "../hooks/useReferenceLinePress";
@@ -1080,6 +1081,8 @@ function resolveLiveEngineModeInputs({
 }) {
   return {
     data: isCandle ? data : lineEngineData,
+    dataChangeSource: data,
+    candlesChangeSource: candles,
     thresholdRangePoints:
       thresholdInRange && thresholdIsSeries
         ? (thresholdSeriesSV ?? (thresholdCfg?.value as LiveChartPoint[]))
@@ -1693,6 +1696,9 @@ function useLiveChartController({
   // non-null result is the "is loading" flag and carries the look).
   const loadingCfg = resolveLoading(loading);
   const loadingActive = loadingCfg !== null;
+  // The shell fades and the reveal morph runs after `loading` turns off: both
+  // keep the last loading config's look instead of the defaults.
+  const loadingLook = useLoadingLook(loadingCfg);
   const transitionsCfg = resolveTransitions(transitions);
   const reveal = useChartReveal(
     loadingActive,
@@ -1855,8 +1861,8 @@ function useLiveChartController({
     // The plotted line independently selects the visible edge while historical;
     // badge/live-indicator options affect overlays only.
     // Match the standalone loading squiggle's wave during the reveal morph.
-    loadingCfg?.amplitude,
-    loadingCfg?.speed,
+    loadingLook?.amplitude,
+    loadingLook?.speed,
     // Time-varying threshold band: bottom edge built from the shader's samples
     // (so the band matches the shader and doesn't bleed at step risers). An empty
     // series builds no band (its samples are all the far-below fallback, which
@@ -2186,7 +2192,7 @@ function useLiveChartController({
   const modelDefaults = resolveLiveChartModelDefaults({
     isCandle,
     candleWidth,
-    loadingCfg,
+    loadingCfg: loadingLook,
     volumeCfg,
     palette,
     lineProp,
@@ -2451,6 +2457,7 @@ function ChartYAxisLayer({
         gridStyle={gridStyleCfg}
         labelRightMargin={yAxisCfg?.labelRightMargin}
         gridEndGap={yAxisCfg?.gridEndGap}
+        minGap={yAxisCfg?.minGap}
       />
     </Group>
   );
@@ -3093,6 +3100,7 @@ function ChartStack({
     liveDotOpacity,
     pulseCfg,
     isFrameLoopActive,
+    isStatic,
     dotCfg,
     dotTracksParked,
     degenCfg,
@@ -3276,6 +3284,8 @@ function ChartStack({
         waveAmplitude={loadingAmplitude}
         waveSpeed={loadingSpeed}
         opaqueCanvas={canvasMode === "opaque"}
+        isStatic={isStatic}
+        isFrameLoopActive={isFrameLoopActive}
       />
     </Group>
   );

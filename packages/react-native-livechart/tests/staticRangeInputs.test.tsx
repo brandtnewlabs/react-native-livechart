@@ -25,13 +25,38 @@ jest.mock("react-native-reanimated", () => {
     useDerivedValue: <T,>(fn: () => T) => {
       const latest = React.useRef(fn);
       latest.current = fn;
+      const revision = React.useRef<{ data: unknown; source: unknown } | null>(
+        null,
+      );
+      const read = () => {
+        const next = latest.current();
+        // Native derived values retain their object until an input notification.
+        // This suite changes arrays by replacement; modify() notifications have
+        // separate coverage in historyRevision.test.tsx and on the simulator.
+        if (
+          next &&
+          typeof next === "object" &&
+          "data" in next &&
+          "source" in next
+        ) {
+          if (
+            revision.current?.data === next.data &&
+            revision.current?.source === next.source
+          )
+            return revision.current;
+          revision.current = next;
+        }
+        return next;
+      };
+      const latestRead = React.useRef(read);
+      latestRead.current = read;
       return React.useMemo(
         () => ({
           get value() {
-            return latest.current();
+            return latestRead.current();
           },
           get() {
-            return latest.current();
+            return latestRead.current();
           },
         }),
         [],
@@ -41,6 +66,18 @@ jest.mock("react-native-reanimated", () => {
     useFrameCallback: () => React.useMemo(() => ({ setActive: jest.fn() }), []),
   };
 });
+
+// This suite exercises static range props; native listener ordering is covered
+// by historyRevision.test.tsx. Model stable revisions on array replacement here.
+jest.mock("../src/core/useHistoryRevision", () => ({
+  useHistoryRevision: (data?: SharedValue<unknown[]>) => {
+    const { useDerivedValue } = jest.requireMock("react-native-reanimated");
+    return useDerivedValue(() => ({
+      data: data?.get() ?? [],
+      source: data?.get(),
+    }));
+  },
+}));
 
 function shared<T>(value: T) {
   return {
@@ -81,13 +118,16 @@ async function setup(bounds: Bounds) {
   );
   hook.result.current.canvasWidth.value = 300;
   hook.result.current.canvasHeight.value = 200;
-  let previous: unknown = null;
+  type Signature = { revision: object; fingerprint: string } | null;
+  let previous: Signature = null;
   const settle = () => {
     const calls = jest.mocked(useAnimatedReaction).mock.calls;
     const [prepare, react] = calls[calls.length - 1];
-    const current = prepare();
-    if (current !== previous) react(current, previous);
-    const changed = current !== previous;
+    const current = prepare() as Signature;
+    react(current, previous);
+    const changed =
+      current?.revision !== previous?.revision ||
+      current?.fingerprint !== previous?.fingerprint;
     previous = current;
     return changed;
   };

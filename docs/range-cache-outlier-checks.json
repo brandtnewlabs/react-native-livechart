@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-01",
+  "device": "Dedicated iPhone 17 Pro simulator, iOS 26.5",
+  "method": "Agent-device reads the real ChartOverlayContext.scale bounds at five stages in each mode. Assert narrow baseline, upper expansion, lower expansion, upper recovery, and return to initial bounds within 1 unit.",
+  "result": "All 10 stage checks passed",
+  "windowSeconds": 12,
+  "feedUpdatesPerSecond": 30,
+  "checks": [
+    {
+      "mode": "line",
+      "sec": 2,
+      "label": "Y range 90.1 to 109.9\nBaseline · 2s",
+      "min": 90.1,
+      "max": 109.9
+    },
+    {
+      "mode": "line",
+      "sec": 5,
+      "label": "Y range -17.0 to 1109.0\nHigh stays in history · 5s",
+      "min": -17,
+      "max": 1109
+    },
+    {
+      "mode": "line",
+      "sec": 10,
+      "label": "Y range -680.0 to 1180.0\nOutliers leaving window · 10s",
+      "min": -680,
+      "max": 1180
+    },
+    {
+      "mode": "line",
+      "sec": 18,
+      "label": "Y range -573.0 to 181.0\nOutliers leaving window · 18s",
+      "min": -573,
+      "max": 181
+    },
+    {
+      "mode": "line",
+      "sec": 27,
+      "label": "Y range 90.1 to 109.9\nRecovering baseline · 27s",
+      "min": 90.1,
+      "max": 109.9
+    },
+    {
+      "mode": "candle",
+      "sec": 2,
+      "label": "Y range 90.1 to 109.9\nBaseline · 2s",
+      "min": 90.1,
+      "max": 109.9
+    },
+    {
+      "mode": "candle",
+      "sec": 5,
+      "label": "Y range -17.0 to 1109.0\nHigh stays in history · 5s",
+      "min": -17,
+      "max": 1109
+    },
+    {
+      "mode": "candle",
+      "sec": 10,
+      "label": "Y range -680.0 to 1180.0\nOutliers leaving window · 10s",
+      "min": -680,
+      "max": 1180
+    },
+    {
+      "mode": "candle",
+      "sec": 18,
+      "label": "Y range -573.0 to 181.0\nOutliers leaving window · 18s",
+      "min": -573,
+      "max": 181
+    },
+    {
+      "mode": "candle",
+      "sec": 27,
+      "label": "Y range 90.1 to 109.9\nRecovering baseline · 27s",
+      "min": 90.1,
+      "max": 109.9
+    }
+  ]
+}

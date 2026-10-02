@@ -53,6 +53,16 @@ const SECTIONS: DemoSection[] = [
         blurb: "mode=candle: timeframes, candle colors, OHLC bodies + wicks.",
       },
       {
+        href: "/demo/candle-work" as Href,
+        title: "Candle work benchmark",
+        blurb: "Compare batched candle prototypes with real UI-thread Skia measurements.",
+      },
+      {
+        href: "/demo/volume-line-work" as Href,
+        title: "Volume and line work",
+        blurb: "Measure rectangle reuse, range caching and shared curve work.",
+      },
+      {
         href: "/demo/empty-candles" as Href,
         title: "Chart gaps",
         blurb: "Review semantic line/candle gaps and configurable bridge, band, and label styles against a live feed.",
@@ -203,6 +213,11 @@ const SECTIONS: DemoSection[] = [
         href: "/demo/auto-sleep" as Href,
         title: "Automatic sleep",
         blurb: "Live prices → pause → sleep → resume. Compare engine activity with automatic sleep on or off.",
+      },
+      {
+        href: "/demo/range-stress" as Href,
+        title: "Volatile range stress",
+        blurb: "30 updates/sec, 6,000 rolling points, spikes, crashes, and live candles.",
       },
       {
         href: "/demo/playback",

@@ -33,6 +33,14 @@ Update the series the same way you feed a single chart — append points in plac
 `series.modify(...)` (mutating each entry's `data` array and `value`), or replace the whole array
 with `series.set(...)`. Avoid `series.value = ...`.
 
+For a dataset or unit change (for example Price → Market Cap), replace each
+series' history array and live value together. Replacement entries reach drawing
+on the next measured engine frame, alongside that frame's Y range and tips.
+History arrays remain shared, so this does not isolate in-place edits to existing
+points. Normal live appends with `series.modify(...)` remain supported. Use
+`snapKey` when the replacement should settle immediately instead of easing with
+the configured `smoothing`.
+
 ## Series options
 
 Each `SeriesConfig` supports:
