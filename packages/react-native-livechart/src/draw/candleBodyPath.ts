@@ -2,7 +2,7 @@ import type { SkPathBuilder } from "@shopify/react-native-skia";
 import type { CandleRect } from "./candle";
 
 /**
- * Build one color's body batch. Skia copies addRect's coordinates synchronously,
+ * Build one color's candle-body or volume-bar batch. Skia copies addRect's coordinates synchronously,
  * so one plain rectangle can serve every sharp body in this rebuild. Keep it
  * local to the worklet invocation: derived initializers also run on React's
  * runtime, where mutating a previously serialized scratch object is unsafe.

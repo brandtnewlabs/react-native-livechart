@@ -48,6 +48,8 @@
               "guides/line-denoising",
               "guides/candlestick",
               "guides/candle-work",
+              "guides/volume-line-work",
+              "guides/volume-line-qa",
               "guides/empty-candles",
               "guides/multi-series",
               "guides/sparklines"

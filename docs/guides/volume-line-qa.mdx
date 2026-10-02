@@ -1,0 +1,22 @@
+---
+title: "Volume and line QA"
+description: "Exercise real live charts with volume spikes and changing geometry."
+---
+
+From [Volume and line work](/guides/volume-line-work), open **Live QA charts**
+(`/demo/volume-line-qa`). These are the production `LiveChart` components.
+
+1. **Spike price + volume** pushes the price axis outward and raises the live
+   volume to 6,000, shrinking the other bars relative to it.
+2. **Pause feed**, then **Edit history in place**. Alternating edits raise and
+   lower existing historical volumes without appending candles. The bars must
+   rescale even though the candle count stays the same.
+3. **Resume feed**, switch rounding and time window, then switch smooth/linear
+   curves and add a gap. Line and fill must follow the same shape.
+4. **Empty data**, then **Restore data**, to catch stale paths and stale maxima.
+5. Drag the plot to scroll into history, pinch to zoom, and hold to scrub.
+   The chart labels show whether the viewport is following live data or history
+   and show its visible duration.
+
+The page is a QA fixture, not a frame-rate benchmark. Use the separate native
+measurement screen for isolated rebuilding costs.

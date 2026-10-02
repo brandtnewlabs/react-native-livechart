@@ -1,0 +1,18 @@
+{
+  "checks": 240,
+  "mismatches": 0,
+  "audit": {
+    "scans": 8,
+    "glideScans": 1
+  },
+  "scenarios": [
+    "fractional scroll",
+    "same-object volume spike",
+    "same-object maximum decrease",
+    "pan",
+    "width",
+    "empty",
+    "restore",
+    "same-length replacement"
+  ]
+}
