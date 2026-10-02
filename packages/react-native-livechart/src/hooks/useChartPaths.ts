@@ -1,3 +1,4 @@
+import { buildLineFillPaths } from "../draw/lineFillPaths";
 import { Skia, type SkPath } from "@shopify/react-native-skia";
 import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
@@ -8,12 +9,9 @@ import type {
 } from "../core/useLiveChartEngine";
 import { buildLinePoints, type ChartPadding } from "../draw/line";
 import { buildLineGapSegmentRanges } from "../draw/lineGap";
-import {
-  makeLineSimplifyScratch,
-  simplifyLinePoints,
-} from "../math/simplify";
-import { drawSpline, makeSplineScratch } from "../math/spline";
-import { sampleThresholdYAt, thresholdSampleSpanX } from "../math/threshold";
+import { makeLineSimplifyScratch, simplifyLinePoints } from "../math/simplify";
+import { makeSplineScratch } from "../math/spline";
+import { thresholdSampleSpanX } from "../math/threshold";
 import {
   blendPtsY,
   squiggleClockSeconds,
@@ -35,7 +33,7 @@ export function resolveLineTipValue(
 
 /**
  * Builds the `linePath` / `fillPath` with `Skia.PathBuilder`s reused across
- * frames (one per curve, held in a SharedValue) and finalized with `detach()` —
+ * geometry updates (one per curve, held in a SharedValue) and finalized with `detach()` —
  * which returns a fresh immutable `SkPath` each frame and resets the builder.
  * The fresh reference makes Reanimated notify subscribers (re-record + repaint)
  * without the two-SkPath ping-pong the mutable-path pool needed.
@@ -73,6 +71,12 @@ export function useChartPaths(
 
   const cacheRef = useRef<{
     emptyPath: SkPath;
+    lastPts: number[] | null;
+    lastRanges: number[] | null;
+    lastLinear: boolean;
+    lastBottom: number;
+    lineOutput: SkPath | null;
+    fillOutput: SkPath | null;
     ptsA: number[];
     ptsB: number[];
     rawPts: number[];
@@ -91,6 +95,12 @@ export function useChartPaths(
   if (cacheRef.current === null) {
     cacheRef.current = {
       emptyPath: Skia.Path.Make(),
+      lastPts: null,
+      lastRanges: null,
+      lastLinear: false,
+      lastBottom: NaN,
+      lineOutput: null,
+      fillOutput: null,
       ptsA: [] as number[],
       ptsB: [] as number[],
       rawPts: [] as number[],
@@ -206,117 +216,77 @@ export function useChartPaths(
     );
   });
 
-  const linePath = useDerivedValue(() => {
+  // One derived rebuild keeps curve inputs and all outputs in the same revision.
+  // The spline solver emits to separate builders without extra command buffers.
+  const paths = useDerivedValue(() => {
     const cache = cacheRef.current!;
     const pts = flatPts.get();
-    const n = pts.length >> 1;
-    if (n < 2) return cache.emptyPath;
-    const b = lineBuilder.value;
     const ranges = segmentRanges.get();
-    if (ranges.length === 0) return cache.emptyPath;
-    for (let i = 0; i < ranges.length; i += 2) {
-      const start = ranges[i];
-      const end = ranges[i + 1];
-      b.moveTo(pts[start * 2], pts[start * 2 + 1]);
-      drawSpline(b, pts, cache.scratch, linear, start, end);
+    if (pts.length < 4 || ranges.length === 0) {
+      cache.lastPts = null;
+      return {
+        line: cache.emptyPath,
+        fill: cache.emptyPath,
+        band: cache.emptyPath,
+      };
     }
-    return b.detach();
-  });
-
-  const fillPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    const pts = flatPts.get();
-    const n = pts.length >> 1;
-    if (n < 2) return cache.emptyPath;
-    const b = fillBuilder.value;
-    const ranges = segmentRanges.get();
-    if (ranges.length === 0) return cache.emptyPath;
     const bottom = engine.canvasHeight.get() - padding.bottom;
-    for (let i = 0; i < ranges.length; i += 2) {
-      const start = ranges[i];
-      const end = ranges[i + 1];
-      const first = start * 2;
-      const last = (end - 1) * 2;
-      b.moveTo(pts[first], pts[first + 1]);
-      drawSpline(b, pts, cache.scratch, linear, start, end);
-      b.lineTo(pts[last], bottom);
-      b.lineTo(pts[first], bottom);
-      b.close();
-    }
-    return b.detach();
-  });
-
-  // Threshold-anchored fill: the same spline, closed along the threshold instead
-  // of the baseline, so the band lies between the line and the threshold (the
-  // profit/loss area). Painted with the split gradient/shader, the part above the
-  // split shows the above-color and the part below shows the below-color.
-  //
-  // `thresholdPts` (a time-varying series) closes the band along that polyline,
-  // right-to-left; otherwise `thresholdY` closes it at a single horizontal Y.
-  const thresholdFillPath = useDerivedValue(() => {
-    const cache = cacheRef.current!;
-    const pts = flatPts.get();
-    const n = pts.length >> 1;
-    if (n < 2) return cache.emptyPath;
-    const ranges = segmentRanges.get();
-    if (ranges.length === 0) return cache.emptyPath;
-
-    const tsamples = thresholdSamples?.get();
-    if (tsamples && tsamples.length >= 2) {
-      const b = thresholdFillBuilder.value;
-      // Band bottom = the SAMPLED threshold (identical to what the split shader
-      // reads), pinned to the LINE's x-range. Because the geometry and the shader
-      // use the same evenly-spaced, linearly-interpolated samples, a step riser
-      // ramps the same way in both — no green/red sliver bleeds through — and the
-      // x-range pin keeps the band closing with clean vertical sides (no wedge).
-      const count = tsamples.length;
-      // The samples live on the time-anchored, gliding grid — interpolate them
-      // across that span (same as the shader), not the static plot edges.
-      const [x0, x1] = thresholdSampleSpanX(
-        engine.timestamp.get(),
-        engine.displayWindow.get(),
-        padding.left,
-        engine.canvasWidth.get() - padding.right,
-        count,
+    // Buffers alternate on each geometry update. Identical references here
+    // therefore mean only the threshold changed, not the line geometry.
+    const bandOnly =
+      cache.lastPts === pts &&
+      cache.lastRanges === ranges &&
+      cache.lastLinear === linear &&
+      cache.lastBottom === bottom;
+    const samples = thresholdSamples?.get();
+    const sampled = samples != null && samples.length >= 2;
+    const y = thresholdY?.get() ?? NaN;
+    const hasBand = sampled || Number.isFinite(y);
+    const span = sampled
+      ? thresholdSampleSpanX(
+          engine.timestamp.get(),
+          engine.displayWindow.get(),
+          padding.left,
+          engine.canvasWidth.get() - padding.right,
+          samples.length,
+        )
+      : [0, 0];
+    const line = lineBuilder.get(),
+      fill = fillBuilder.get();
+    const band = hasBand ? thresholdFillBuilder.get() : undefined;
+    if (!bandOnly || band)
+      buildLineFillPaths(
+        line,
+        fill,
+        band,
+        pts,
+        ranges,
+        cache.scratch,
+        linear,
+        bottom,
+        y,
+        samples,
+        span[0],
+        span[1],
+        bandOnly,
       );
-      const step = (x1 - x0) / (count - 1);
-      for (let range = 0; range < ranges.length; range += 2) {
-        const start = ranges[range];
-        const end = ranges[range + 1];
-        const first = start * 2;
-        const last = (end - 1) * 2;
-        const leftX = pts[first];
-        const rightX = pts[last];
-        b.moveTo(leftX, pts[first + 1]);
-        drawSpline(b, pts, cache.scratch, linear, start, end);
-        b.lineTo(rightX, sampleThresholdYAt(tsamples, x0, x1, rightX));
-        for (let i = count - 1; i >= 0; i--) {
-          const sx = x0 + step * i;
-          if (sx > leftX && sx < rightX) b.lineTo(sx, tsamples[i]);
-        }
-        b.lineTo(leftX, sampleThresholdYAt(tsamples, x0, x1, leftX));
-        b.close();
-      }
-      return b.detach();
+    if (!bandOnly) {
+      cache.lineOutput = line.detach();
+      cache.fillOutput = fill.detach();
     }
-
-    if (!thresholdY) return cache.emptyPath;
-    const yT = thresholdY.get();
-    if (!Number.isFinite(yT)) return cache.emptyPath;
-    const b = thresholdFillBuilder.value;
-    for (let i = 0; i < ranges.length; i += 2) {
-      const start = ranges[i];
-      const end = ranges[i + 1];
-      const first = start * 2;
-      const last = (end - 1) * 2;
-      b.moveTo(pts[first], pts[first + 1]);
-      drawSpline(b, pts, cache.scratch, linear, start, end);
-      b.lineTo(pts[last], yT);
-      b.lineTo(pts[first], yT);
-      b.close();
-    }
-    return b.detach();
+    cache.lastPts = pts;
+    cache.lastRanges = ranges;
+    cache.lastLinear = linear;
+    cache.lastBottom = bottom;
+    return {
+      line: cache.lineOutput!,
+      fill: cache.fillOutput!,
+      band: band?.detach() ?? cache.emptyPath,
+    };
   });
+  const linePath = useDerivedValue(() => paths.get().line);
+  const fillPath = useDerivedValue(() => paths.get().fill);
+  const thresholdFillPath = useDerivedValue(() => paths.get().band);
 
   return { linePath, fillPath, thresholdFillPath } as const;
 }

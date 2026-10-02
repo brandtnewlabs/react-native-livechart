@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- An experimental candle work benchmark comparing current batched paths,
+  one-pass worklet geometry, and rectangle input reuse on the native UI runtime.
+  Includes a paired visual preview and native path-equivalence checks.
+
+### Changed
+
+- Volume bars reuse rectangle inputs, and their historical maximum is reused
+  while data and visible bucket bounds stay unchanged. Live volume still rescales
+  the band immediately; notified same-length edits invalidate the maximum.
+- Line, area fill and threshold bands share each segment's curve calculations.
+  Threshold-only updates retain existing line/fill outputs. Gap boundaries,
+  independent fill closures and immutable path outputs are preserved.
+
+- Sharp candle bodies reuse a plain rectangle input within each path rebuild,
+  avoiding per-candle Skia rectangle factory calls. The four batched paths,
+  rounded bodies, wicks, and volume rendering keep their existing behavior.
+
 ### Fixed
 
 - Y-axis labels no longer mutate a SharedValue's published cache. Toggling the
