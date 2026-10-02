@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Y-axis labels no longer mutate a SharedValue's published cache. Toggling the
+  axis off and on while values change could throw `cannot add a new property`
+  in development builds when a new tick was added. Both `LiveChart` and
+  `LiveChartSeries` now copy the cache before updating label fades (#343).
 - A styled loading shell keeps its look while it fades out and the reveal morph
   melts it into the line. Both run after `loading` has turned off, when the
   config is gone, so the squiggle snapped to the default color, stroke, wave
