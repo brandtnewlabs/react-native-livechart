@@ -46,6 +46,10 @@ directional; `lookback` is how many recent points feed the range calculation.
 Degen mode adds a particle burst (and, by default, a screen shake) on momentum swings — great
 for trading / meme-market UIs.
 
+Particle motion, shrinking, fading, and shake follow the display-frame clock.
+Pinning the chart with `nowOverride` or panning through history does not freeze
+an in-progress burst.
+
 ```tsx
 <LiveChart data={data} value={value} degen />
 ```

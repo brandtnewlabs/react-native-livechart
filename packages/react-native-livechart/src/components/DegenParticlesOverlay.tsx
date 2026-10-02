@@ -13,14 +13,14 @@ import {
 } from "../draw/particleAtlas";
 import { parseColorRgb } from "../theme";
 import type { LiveChartPalette } from "../types";
-import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 
 type DegenPack = SharedValue<Float64Array<ArrayBuffer>>;
 
 type DegenParticlesOverlayProps = {
   pack: DegenPack;
   packRevision: SharedValue<number>;
-  engine: ChartEngineLayout;
+  /** Display-frame seconds, matching the particle pack's spawn timestamps. */
+  particleTimestamp: SharedValue<number>;
   palette: LiveChartPalette;
   particleSlotCount: number;
   particleBurstDurationSec: number;
@@ -97,7 +97,7 @@ export function DegenParticlesOverlay(props: DegenParticlesOverlayProps) {
 function ParticleAtlas({
   pack,
   packRevision,
-  engine,
+  particleTimestamp,
   palette,
   particleSlotCount,
   particleBurstDurationSec,
@@ -137,7 +137,7 @@ function ParticleAtlas({
       const instances = buildParticleInstances(
         pack.get(),
         particleSlotCount,
-        engine.timestamp.get(),
+        particleTimestamp.get(),
         particleBurstDurationSec,
         particleOpacity,
         sprite.radius,
@@ -168,7 +168,7 @@ function ParticleAtlas({
   }, [
     pack,
     packRevision,
-    engine,
+    particleTimestamp,
     particleSlotCount,
     particleBurstDurationSec,
     particleOpacity,

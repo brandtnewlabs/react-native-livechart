@@ -18,9 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A volatile range stress demo with rolling data, live candles, forced spikes and
   crashes, pause/resume, zoom, and in-place history corrections. A repeatable
   outlier sequence and fitted Y-range readout show expansion and recovery.
-- An experimental candle work benchmark comparing current batched paths,
-  one-pass worklet geometry, and rectangle input reuse on the native UI runtime.
-  Includes a paired visual preview and native path-equivalence checks.
 
 ### Changed
 
@@ -39,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   avoiding per-candle Skia rectangle factory calls. The four batched paths,
   rounded bodies, wicks, and volume rendering keep their existing behavior.
 
+### Removed
+
+- The Candle work benchmark and Volume and line work demo screens, their
+  menu entries, measurement-only components, and guide links.
+
 ### Fixed
 
 - Settled X-axis labels no longer repeatedly invalidate their own cache when
@@ -54,6 +56,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Market Cap) no longer exposes new histories against the previous frame's
   Y scale. Series entries are copied each measured frame; history arrays
   remain shared (#346).
+- Degen particles and shake use a continuous display-frame clock, including
+  particle fading and shrinking in the Atlas. The viewport clock advances in
+  half-pixel steps, which made effects stutter despite healthy UI/JS FPS, and
+  can be pinned by `nowOverride` or panning. Both chart types now animate effects
+  independently while retaining the fixed-length Atlas arrays that prevent
+  native crashes.
+- The empty-state label's gap gradient follows its rectangle's canvas
+  coordinates, removing the misplaced white/black band to the left of the text
+  on transparent and opaque canvases.
 - A styled loading shell keeps its look while it fades out and the reveal morph
   melts it into the line. Both run after `loading` has turned off, when the
   config is gone, so the squiggle snapped to the default color, stroke, wave

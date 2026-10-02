@@ -587,6 +587,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   const {
     pack: degenPack,
     packRevision: degenPackRevision,
+    particleTimestamp: degenParticleTimestamp,
     shakeTransform: degenShakeTransform,
   } = useMultiSeriesDegen(engine, effectivePadding, degenCfg, onDegenShake);
 
@@ -804,6 +805,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     lineStyles,
     degenPack,
     degenPackRevision,
+    degenParticleTimestamp,
     degenShakeTransform,
     yAxisEntries,
     xAxisEntries,
@@ -898,6 +900,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     degenCfg,
     degenPack,
     degenPackRevision,
+    degenParticleTimestamp,
     markersActive,
     markersSV,
     markerClusterCfg,
@@ -1012,7 +1015,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
           <DegenParticlesOverlay
             pack={degenPack}
             packRevision={degenPackRevision}
-            engine={engine}
+            particleTimestamp={degenParticleTimestamp}
             palette={palette}
             particleSlotCount={degenCfg.particleSlotCount}
             particleBurstDurationSec={degenCfg.particleBurstDurationSec}

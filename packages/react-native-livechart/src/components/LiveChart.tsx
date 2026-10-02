@@ -3219,7 +3219,7 @@ function ChartStack({
           <DegenParticlesOverlay
             pack={degen!.pack}
             packRevision={degen!.packRevision}
-            engine={engine}
+            particleTimestamp={degen!.particleTimestamp}
             palette={palette}
             particleSlotCount={degenCfg.particleSlotCount}
             particleBurstDurationSec={degenCfg.particleBurstDurationSec}
