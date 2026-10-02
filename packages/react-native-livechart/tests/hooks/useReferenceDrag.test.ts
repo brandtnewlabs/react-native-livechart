@@ -3,6 +3,7 @@ import { useSharedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { DEFAULT_PADDING } from "../../src/draw/line";
+import { computeScrubDotY } from "../../src/hooks/crosshairShared";
 import { useReferenceDrag } from "../../src/hooks/useReferenceDrag";
 import type { ReferenceLine } from "../../src/types";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
@@ -53,6 +54,36 @@ describe("useReferenceDrag", () => {
       { value: 70, onDragIn: () => {} },
     ]);
     expect(result.current).toBeTruthy();
+  });
+
+  it("hitTest grabs a line with a grabRange only inside it", async () => {
+    const { result } = await setup([
+      { value: 50, draggable: true, grabRange: [0, 80] },
+    ]);
+    const y = computeScrubDotY(
+      50,
+      0,
+      100,
+      300,
+      DEFAULT_PADDING.top,
+      DEFAULT_PADDING.bottom,
+    );
+    expect(result.current.hitTest(40, y)).toBe(true);
+    expect(result.current.hitTest(200, y)).toBe(false);
+  });
+
+  it("hitTest grabs a line without a grabRange anywhere along it", async () => {
+    const { result } = await setup([{ value: 50, draggable: true }]);
+    const y = computeScrubDotY(
+      50,
+      0,
+      100,
+      300,
+      DEFAULT_PADDING.top,
+      DEFAULT_PADDING.bottom,
+    );
+    expect(result.current.hitTest(40, y)).toBe(true);
+    expect(result.current.hitTest(200, y)).toBe(true);
   });
 
   it("is inert for a static chart (enabled = false)", async () => {

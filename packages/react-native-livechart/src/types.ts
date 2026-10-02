@@ -192,6 +192,18 @@ export interface ReferenceLine {
    */
   draggable?: boolean;
   /**
+   * Where along a draggable line a press may grab it: a canvas x-range in px,
+   * `[from, to]`, ends included — typically the span of a custom tag drawn with
+   * `renderReferenceLine` (measure it with `onLayout`; a left-pinned tag starts 2 px
+   * inside the plot's left edge). Omit to grab the line anywhere along it (the
+   * default). With a range, a pan, scrub or page scroll that merely starts near the
+   * line no longer moves it; a press inside the range grabs it as before (same Y
+   * reach). `from > to` makes the line ungrabbable. A JS value: leave a little
+   * slack for a tag that changes width (off-axis, a live price). Applies only to
+   * draggable Form-A lines.
+   */
+  grabRange?: [number, number];
+  /**
    * Snap the dragged value to this increment (e.g. `0.01` for cents, `0.5` for a
    * tick size) so drops land on round levels. Omit for free dragging. Applies only
    * while {@link draggable}.

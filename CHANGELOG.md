@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ReferenceLine.grabRange` (`[from, to]`, canvas px): where along a draggable
+  line a press may grab it, typically the span of a custom tag. A pan, scrub or
+  page scroll that merely starts near the line no longer moves it; inside the
+  range a press grabs it as before. Omitted, a line is grabbed anywhere along
+  it, as today.
+
 ## [4.25.0] — 2026-10-02
 
 ### Added

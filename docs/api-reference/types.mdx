@@ -234,6 +234,7 @@ interface ReferenceLine {
   offAxisBadgeLabel?: string;
   // Draggable (Form A only) — grab the line and drag it along the Y-axis:
   draggable?: boolean;             // default false
+  grabRange?: [number, number];    // canvas x px where a press may grab it; default anywhere
   snap?: number;                   // round the dragged value to this increment
   bounds?: [number, number];       // hard-clamp the draggable value
   onChange?: (value: number) => void;  // during drag (de-duped to value changes)

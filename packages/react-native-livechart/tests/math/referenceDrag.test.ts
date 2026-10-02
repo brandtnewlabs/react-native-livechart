@@ -46,6 +46,33 @@ describe("nearestDraggableIndex", () => {
   it("favors the later (topmost-drawn) index on a tie", () => {
     expect(nearestDraggableIndex([50, 50], 50, 14)).toBe(1);
   });
+
+  it("with grab ranges, grabs a line only inside its range (ends included)", () => {
+    const ranges: [number, number][] = [[10, 90]];
+    expect(nearestDraggableIndex([50], 52, 14, { x: 40, ranges })).toBe(0);
+    expect(nearestDraggableIndex([50], 52, 14, { x: 10, ranges })).toBe(0);
+    expect(nearestDraggableIndex([50], 52, 14, { x: 90, ranges })).toBe(0);
+    expect(nearestDraggableIndex([50], 52, 14, { x: 91, ranges })).toBe(-1);
+    expect(nearestDraggableIndex([50], 52, 14, { x: 9, ranges })).toBe(-1);
+    expect(nearestDraggableIndex([50], 52, 14, { x: 300, ranges })).toBe(-1);
+  });
+
+  it("with grab ranges, a line without one is grabbed anywhere along it", () => {
+    expect(
+      nearestDraggableIndex([50], 52, 14, { x: 300, ranges: [null] }),
+    ).toBe(0);
+    expect(nearestDraggableIndex([50], 52, 14, { x: 300, ranges: [] })).toBe(0);
+  });
+
+  it("skips an out-of-range line for one in reach whose range holds the touch", () => {
+    // Two lines 8 px apart: the touch is nearer line 1, but outside its range.
+    const ranges: ([number, number] | null)[] = [
+      [0, 120],
+      [0, 60],
+    ];
+    expect(nearestDraggableIndex([50, 58], 57, 14, { x: 100, ranges })).toBe(0);
+    expect(nearestDraggableIndex([50, 58], 57, 14, { x: 40, ranges })).toBe(1);
+  });
 });
 
 describe("referenceDragOwnsTouch", () => {
@@ -60,6 +87,15 @@ describe("referenceDragOwnsTouch", () => {
     // line 80 px away from it — the drag still owns the touch.
     expect(referenceDragOwnsTouch(0, [180], 100, 14)).toBe(true);
     expect(referenceDragOwnsTouch(1, [-1, 400], 0, 14)).toBe(true);
+  });
+
+  it("respects grab ranges when no line is grabbed, and ignores them while one is", () => {
+    const grab = { x: 300, ranges: [[10, 90] as [number, number]] };
+    expect(referenceDragOwnsTouch(-1, [100], 102, 14, grab)).toBe(false);
+    expect(referenceDragOwnsTouch(-1, [100], 102, 14, { ...grab, x: 50 })).toBe(
+      true,
+    );
+    expect(referenceDragOwnsTouch(0, [100], 102, 14, grab)).toBe(true);
   });
 });
 
