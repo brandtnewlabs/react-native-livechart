@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Y-axis labels no longer mutate a SharedValue's published cache. Toggling the
+  axis off and on while values change could throw `cannot add a new property`
+  in development builds when a new tick was added. Both `LiveChart` and
+  `LiveChartSeries` now copy the cache before updating label fades (#343).
 - `LiveChartSeries` publishes replacement series with the matching engine
   range and tips. Switching datasets with different units (such as Price to
   Market Cap) no longer exposes new histories against the previous frame's
