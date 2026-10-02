@@ -2271,7 +2271,8 @@ export interface RangeAnimationConfig {
   /**
    * Fraction of the remaining gap closed per 60fps frame when a bound contracts.
    * Inherits `smoothing`. Finite values are clamped to 0..1; non-finite values
-   * inherit `smoothing`.
+   * inherit `smoothing`. While animated expansion moves toward a disjoint fit,
+   * contraction is limited to the expansion speed so bounds cannot cross.
    */
   contractionSmoothing?: number;
 }

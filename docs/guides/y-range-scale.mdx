@@ -122,6 +122,11 @@ Omitted direction speeds inherit `smoothing`; `expansionSmoothing` only takes ef
 `animateExpansion` is true. Each bound chooses its own direction, so one can expand while the
 other contracts. Finite speeds clamp to 0..1; non-finite speeds inherit `smoothing`.
 
+On initial fitting or a data change that moves the fitted range wholly above or below
+the displayed range, contraction is limited to the animated expansion speed until
+the ranges overlap. This keeps the Y-axis bounds ordered even with very slow or frozen
+expansion; normal independent speeds resume once the ranges overlap.
+
 These speeds are frame-rate-independent exponential easing fractions, **not fixed durations**.
 The 300 ms calculation assumes a stationary target; live data can continue moving the fit.
 `smoothing={1}` takes precedence over the overrides, as do `snapKey` changes, static mode,

@@ -47,6 +47,8 @@ reserved by `insets.left`; right-side series value labels remain unchanged.
   per-60fps-frame speed (0..1). Omitted speeds inherit `smoothing`. Omission of
   the config preserves instant expansion and eased contraction. `smoothing: 1`,
   explicit `snapKey` changes, and active `yRangeScale` dragging remain immediate.
+  While the fitted and displayed ranges do not overlap, contraction is limited
+  to the animated expansion speed so the bounds cannot cross.
   Custom overlays keep following the animated `ChartOverlayContext.scale`.
   See [Y-range animation](/guides/y-range-scale#animating-automatic-range-changes)
   for a hold/release example without a return timer.

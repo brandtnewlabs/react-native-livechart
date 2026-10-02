@@ -12,7 +12,7 @@ import type { RangeAnimationConfig } from "../src";
 // Real frames catch outward snapping, wrong-direction speeds, global-smoothing
 // leaks, and lost snap/drag overrides that mocked chart renders cannot observe.
 type FrameOptions = Partial<Pick<EngineTickInput,
-  "dt" | "smoothing" | "referenceValues" | "snap" | "yRangeScale" |
+  "dt" | "canvasHeight" | "smoothing" | "referenceValues" | "snap" | "yRangeScale" |
   "timeWindow" | "targetValue" | "nonNegative" | "maxValue"
 >> & { rangeAnimation?: RangeAnimationConfig };
 
@@ -48,6 +48,63 @@ function chart(kind: "single" | "multi") {
 }
 
 describe.each(["single", "multi"] as const)("%s range animation", (kind) => {
+  it.each([
+    { min: 0, max: 1, canvasHeight: 280 },
+    { min: 79, max: 80, canvasHeight: 280 },
+    { min: 0, max: 1, canvasHeight: 1 },
+    { min: 79, max: 80, canvasHeight: 1 },
+  ])("keeps an initial disjoint fit ordered from [$min, $max] at height $canvasHeight", ({ min, max, canvasHeight }) => {
+    const { state, tick } = chart(kind);
+    state.displayMin = min;
+    state.displayMax = max;
+    for (let i = 0; i < 120; i++) {
+      tick({ canvasHeight, rangeAnimation: { animateExpansion: true, expansionSmoothing: 0.08, contractionSmoothing: 0.319 } });
+      expect(Number.isFinite(state.displayMin)).toBe(true);
+      expect(Number.isFinite(state.displayMax)).toBe(true);
+      expect(state.displayMin).toBeLessThan(state.displayMax);
+    }
+    expect(state.displayMin).toBeCloseTo(17.6, 2);
+    expect(state.displayMax).toBeCloseTo(42.4, 2);
+  });
+
+  it.each([
+    { direction: "up", shift: 80, expansionSmoothing: 0 },
+    { direction: "down", shift: -80, expansionSmoothing: 0 },
+    { direction: "up", shift: 80, expansionSmoothing: 0.01 },
+    { direction: "down", shift: -80, expansionSmoothing: 0.01 },
+  ])("keeps a disjoint data change $direction ordered with expansion speed $expansionSmoothing", ({ shift, expansionSmoothing }) => {
+    const { state, points, tick } = chart(kind);
+    for (const point of points) point.value += shift;
+    for (let i = 0; i < 120; i++) {
+      tick({ targetValue: 40 + shift, rangeAnimation: { animateExpansion: true, expansionSmoothing, contractionSmoothing: 0.319 } });
+      expect(Number.isFinite(state.displayMin)).toBe(true);
+      expect(Number.isFinite(state.displayMax)).toBe(true);
+      expect(state.displayMin).toBeLessThan(state.displayMax);
+    }
+  });
+
+  it.each([
+    { min: 16.6, max: 17.6 },
+    { min: 42.4, max: 43.4 },
+  ])("keeps a touching fit ordered when expansion is frozen from [$min, $max]", ({ min, max }) => {
+    const { state, tick } = chart(kind);
+    state.displayMin = min;
+    state.displayMax = max;
+    tick({ rangeAnimation: { animateExpansion: true, expansionSmoothing: 0, contractionSmoothing: 1 } });
+    expect(state.displayMin).toBe(min);
+    expect(state.displayMax).toBe(max);
+  });
+
+  it("keeps frozen contraction stationary while a disjoint fit expands", () => {
+    const { state, tick } = chart(kind);
+    state.displayMin = 0;
+    state.displayMax = 1;
+    tick({ rangeAnimation: { animateExpansion: true, expansionSmoothing: 0.08, contractionSmoothing: 0 } });
+    expect(state.displayMin).toBe(0);
+    expect(state.displayMax).toBeGreaterThan(1);
+    expect(state.displayMax).toBeLessThan(42.4);
+  });
+
   it.each([undefined, {}, { animateExpansion: false }])(
     "preserves immediate expansion with config %j", (rangeAnimation) => {
       const { state, tick } = chart(kind);

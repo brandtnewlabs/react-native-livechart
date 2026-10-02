@@ -334,13 +334,14 @@ export function tickLiveChartSeriesEngineFrame(
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
+    const disjoint = tMin >= state.displayMax || tMax <= state.displayMin;
     if (snap || yScaleDragging) {
       state.displayMin = tMin;
     } else {
       state.displayMin = lerp(
         state.displayMin,
         tMin,
-        rangeAnimationSpeed(speed, input.rangeAnimation, tMin < state.displayMin),
+        rangeAnimationSpeed(speed, input.rangeAnimation, tMin < state.displayMin, disjoint),
         input.dt,
       );
     }
@@ -351,7 +352,7 @@ export function tickLiveChartSeriesEngineFrame(
       state.displayMax = lerp(
         state.displayMax,
         tMax,
-        rangeAnimationSpeed(speed, input.rangeAnimation, tMax > state.displayMax),
+        rangeAnimationSpeed(speed, input.rangeAnimation, tMax > state.displayMax, disjoint),
         input.dt,
       );
     }

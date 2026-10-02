@@ -485,14 +485,18 @@ export function tickLiveChartEngineFrame(
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
 
-    const rangeUnitsPerPixel = (tMax - tMin) / input.canvasHeight;
+    const disjoint = tMin >= state.displayMax || tMax <= state.displayMin;
+    // A subpixel settle must not jump across the other bound of a disjoint fit.
+    const rangeUnitsPerPixel = disjoint && input.rangeAnimation?.animateExpansion
+      ? 0
+      : (tMax - tMin) / input.canvasHeight;
     if (snap || yScaleDragging) {
       state.displayMin = tMin;
     } else {
       state.displayMin = lerpAndSettle(
         state.displayMin,
         tMin,
-        rangeAnimationSpeed(speed, input.rangeAnimation, tMin < state.displayMin),
+        rangeAnimationSpeed(speed, input.rangeAnimation, tMin < state.displayMin, disjoint),
         input.dt,
         rangeUnitsPerPixel,
       );
@@ -504,7 +508,7 @@ export function tickLiveChartEngineFrame(
       state.displayMax = lerpAndSettle(
         state.displayMax,
         tMax,
-        rangeAnimationSpeed(speed, input.rangeAnimation, tMax > state.displayMax),
+        rangeAnimationSpeed(speed, input.rangeAnimation, tMax > state.displayMax, disjoint),
         input.dt,
         rangeUnitsPerPixel,
       );
