@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   squiggle and the reveal's morph now share a wall clock. The loading shell
   ticks it only while it shows, and never on a `static` chart, while
   `isFrameLoopActive` is off, or at `loading.speed` 0.
+- A tall chart's Y axis labels every grid line it draws. Labels came from a
+  fixed pool of 15, and a tall plot (or a small `minGap`) can carry more
+  labelled lines: a step is kept while its spacing stays within 0.5-4x
+  `minGap`, so a full-height phone chart can show 20 or more. The extra lines
+  were drawn without labels, and which ones depended on key order. The pool now
+  starts at 15 and grows to what the grid produces, up to what the plot can
+  hold (labelled lines at least half a `minGap` apart). The fixed-`count` mode
+  is unchanged (at most 15).
 
 ## [4.24.1] - 2026-09-28
 

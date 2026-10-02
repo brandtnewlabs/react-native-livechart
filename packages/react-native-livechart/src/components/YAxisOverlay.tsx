@@ -4,7 +4,13 @@ import {
   Path,
   type SkFont,
 } from "@shopify/react-native-skia";
-import { useDerivedValue, type SharedValue } from "react-native-reanimated";
+import { useState } from "react";
+import {
+  useAnimatedReaction,
+  useDerivedValue,
+  type SharedValue,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { BADGE_METRICS_DEFAULTS, MAX_Y_LABELS } from "../constants";
 import type { ResolvedGridStyleConfig } from "../core/resolveConfig";
 import {
@@ -63,6 +69,7 @@ export function YAxisOverlay({
   side = "right",
   labelRightMargin,
   gridEndGap = 0,
+  minGap = 36,
 }: {
   entries: SharedValue<YAxisEntry[]>;
   engine: ChartEngineLayout;
@@ -104,6 +111,8 @@ export function YAxisOverlay({
   labelRightMargin?: number;
   /** Gap between the grid-line end and the shared label column. */
   gridEndGap?: number;
+  /** The grid's `minGap`: bounds how many labelled lines the plot can hold. */
+  minGap?: number;
 }) {
   const gridColor = gridStyle?.color ?? palette.gridLine;
   const gridWidth = gridStyle?.strokeWidth ?? 1;
@@ -190,6 +199,33 @@ export function YAxisOverlay({
     return result;
   });
 
+  // The label pool starts at MAX_Y_LABELS and grows to the number of labels the
+  // grid produces. A tall plot (or a small `minGap`) carries more labelled grid
+  // lines than a fixed pool held, and the extra lines were drawn without labels —
+  // which ones depended on key order. It grows no further than a settled grid
+  // can need: labelled lines stay at least half a `minGap` apart (the grid's
+  // hysteresis floor). Lines still fading out after a zoom can briefly outnumber
+  // that; for those frames some lines go unlabelled, as before. The pool never
+  // shrinks: a chart that fits keeps its cost, and zooming back and forth
+  // doesn't remount labels.
+  const [labelSlots, setLabelSlots] = useState(MAX_Y_LABELS);
+  const growLabelSlots = (slots: number) =>
+    setLabelSlots((current) => Math.max(current, slots));
+  useAnimatedReaction(
+    () => {
+      const plotHeight =
+        engine.canvasHeight.get() - padding.top - padding.bottom;
+      const settledMax = Math.floor(plotHeight / (minGap / 2)) + 1;
+      return Math.min(labelEntries.get().length, settledMax);
+    },
+    // Runs on every pass of the mapper: ask once per new size.
+    (slots, previous) => {
+      if (slots > labelSlots && slots !== previous) {
+        scheduleOnRN(growLabelSlots, slots);
+      }
+    },
+  );
+
   return (
     <Group>
       {variant !== "labels" && (
@@ -207,7 +243,7 @@ export function YAxisOverlay({
         </Group>
       )}
       {variant !== "grid" &&
-        Array.from({ length: MAX_Y_LABELS }, (_, i) => (
+        Array.from({ length: labelSlots }, (_, i) => (
           <AnimatedLabel
             key={i}
             entries={labelEntries}
