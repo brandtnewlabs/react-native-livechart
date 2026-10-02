@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A draggable reference line far above the visible range (e.g. one with
+  `excludeFromRange`) can now be grabbed at the top edge of the plot, as a line
+  below the range already could at the bottom.
+- With `referenceLineGrouping`, badged lines far above the visible range now
+  group at the top edge like lines below it do, instead of drawing their pinned
+  badges on top of each other.
+
 ## [4.25.0] — 2026-10-02
 
 ### Added

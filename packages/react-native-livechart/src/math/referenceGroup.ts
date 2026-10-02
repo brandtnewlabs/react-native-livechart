@@ -26,8 +26,8 @@ export interface ReferenceGrouping {
 
 /**
  * Single-linkage cluster of reference-line handle Ys: lines whose sorted Y gaps are
- * all `<= radius` chain into one group. Entries `< 0` (not a Form-A line / off the
- * canvas) are ignored. Returns which lines are collapsed (`hidden`) plus a centroid
+ * all `<= radius` chain into one group. Entries `< 0` (not a Form-A line / not laid
+ * out) are ignored. Returns which lines are collapsed (`hidden`) plus a centroid
  * + count per multi-line cluster. A non-positive `radius` disables grouping.
  */
 export function groupReferenceLines(
