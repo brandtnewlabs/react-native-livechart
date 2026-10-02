@@ -98,6 +98,7 @@
               "guides/loading-data-on-scroll",
               "guides/playback",
               "guides/historical-data",
+              "guides/range-stress",
               "guides/states-and-formatting",
               "guides/transitions"
             ]

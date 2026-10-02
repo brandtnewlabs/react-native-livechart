@@ -35,3 +35,31 @@ engine's clock with `nowOverride` and reserve a little right-edge space with `wi
 
 See the full prop list in the [`LiveChart` reference](/api-reference/livechart), and the live
 [Playback](/guides/playback) controls for tuning the window, smoothing, and Y-axis range.
+
+
+## Reusing history calculations
+
+`LiveChart` reuses the lowest and highest history values while the data revision
+and visible index bounds stay the same. Small viewport movements and value/range
+animation can reuse this work. Crossing a data boundary or editing history triggers
+a new scan. Line and candle history have separate revisions.
+
+This is automatic and adds no prop. The live candle, animated value, reference
+lines, threshold range and gap anchors are still evaluated each tick, so changing
+them does not require rescanning history. `LiveChartSeries` is unchanged.
+
+Publish data changes through the SharedValue: replace the array with `.set(...)`,
+or use `.modify(...)` for an in-place edit. The cache follows notifications, not
+array length or endpoint values. Do not mutate a nested value silently without
+notifying the SharedValue; consumers cannot reliably observe that change.
+
+```tsx
+data.modify((points) => {
+  "worklet";
+  points[index].value = correctedPrice;
+  return points;
+});
+```
+
+Static charts also refresh their fitted range for notified interior edits, even
+when the array length and first/last points are unchanged.

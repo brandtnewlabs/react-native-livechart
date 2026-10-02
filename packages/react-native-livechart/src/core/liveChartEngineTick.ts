@@ -1,5 +1,11 @@
 import type { CandleGap, CandlePoint, LiveChartPoint } from "../types";
 
+import {
+  historyRange,
+  makeHistoryRangeCache,
+  type HistoryRangeCache,
+} from "./historyRangeCache";
+
 import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
 import { thresholdRangeMinMax } from "../math/threshold";
@@ -79,6 +85,8 @@ export interface EngineTickInput {
   yRangeScale?: number;
   targetValue: number;
   points: LiveChartPoint[];
+  /** Internal notification revision for the selected history; omit to disable reuse. */
+  historyRevision?: object;
   /** Seconds since Unix epoch; defaults to `Date.now() / 1000` */
   nowSeconds?: number;
   /** Override the engine's "now" (unix seconds) — e.g. fill historical data edge-to-edge. */
@@ -187,6 +195,7 @@ export function advanceTimestampByPixel(
 export function tickLiveChartEngineFrame(
   state: EngineTickMutable,
   input: EngineTickInput,
+  historyCache?: HistoryRangeCache,
 ): void {
   "worklet";
   const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
@@ -301,39 +310,22 @@ export function tickLiveChartEngineFrame(
 
   const winStart = state.timestamp - state.displayWindow;
 
-  let tMin = Infinity;
-  let tMax = -Infinity;
-  // Time of the running min / max — captured alongside the value so an extrema
-  // label can be pinned at the point's x. Holds the data extrema only (folded
-  // below with the live value / references for the Y range, but snapshotted
-  // before that into `extrema*` so the label tracks the real high/low).
-  let minTime = 0;
-  let maxTime = 0;
+  const candleMode = input.mode === "candle";
+  const history = historyRange(
+    candleMode ? (input.candles ?? []) : input.points,
+    candleMode,
+    winStart,
+    // Line feeds may lead the local clock. Preserve their inclusive live tail.
+    candleMode || scrolledBack ? state.timestamp : Infinity,
+    input.historyRevision,
+    historyCache ?? makeHistoryRangeCache(),
+  );
+  let tMin = history.min;
+  let tMax = history.max;
+  let minTime = history.minTime;
+  let maxTime = history.maxTime;
 
-  if (input.mode === "candle") {
-    const candles = input.candles;
-    if (candles && candles.length > 0) {
-      let lo = 0;
-      let hi = candles.length;
-      while (lo < hi) {
-        const mid = (lo + hi) >> 1;
-        if (candles[mid].time < winStart) lo = mid + 1;
-        else hi = mid;
-      }
-      for (let i = lo; i < candles.length; i++) {
-        if (candles[i].time > state.timestamp) break;
-        /* istanbul ignore next -- trivial min/max */
-        if (candles[i].low < tMin) {
-          tMin = candles[i].low;
-          minTime = candles[i].time;
-        }
-        /* istanbul ignore next -- trivial min/max */
-        if (candles[i].high > tMax) {
-          tMax = candles[i].high;
-          maxTime = candles[i].time;
-        }
-      }
-    }
+  if (candleMode) {
     const lc = input.liveCandle;
     // Fold the in-progress candle in only while its bucket is visible — when
     // scrolled back past it, the live candle must not stretch the Y range.
@@ -347,31 +339,6 @@ export function tickLiveChartEngineFrame(
       if (lc.high > tMax) {
         tMax = lc.high;
         maxTime = lc.time;
-      }
-    }
-  } else {
-    const points = input.points;
-    let lo = 0;
-    let hi = points.length;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (points[mid].time < winStart) lo = mid + 1;
-      else hi = mid;
-    }
-    for (let i = lo; i < points.length; i++) {
-      // While scrolled back, stop at the frozen right edge (mirrors the candle
-      // scan) so newer points don't inflate the visible Y range. Following
-      // live, keep the tail inclusive — feed timestamps can run slightly ahead
-      // of the local clock and must not flicker out of the range.
-      if (scrolledBack && points[i].time > state.timestamp) break;
-      const v = points[i].value;
-      if (v < tMin) {
-        tMin = v;
-        minTime = points[i].time;
-      }
-      if (v > tMax) {
-        tMax = v;
-        maxTime = points[i].time;
       }
     }
   }

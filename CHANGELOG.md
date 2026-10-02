@@ -9,12 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A volatile range stress demo with rolling data, live candles, forced spikes and
+  crashes, pause/resume, zoom, and in-place history corrections. A repeatable
+  outlier sequence and fitted Y-range readout show expansion and recovery.
 - An experimental candle work benchmark comparing current batched paths,
   one-pass worklet geometry, and rectangle input reuse on the native UI runtime.
   Includes a paired visual preview and native path-equivalence checks.
 
 ### Changed
 
+- Single-series line and candle charts reuse committed-history range scans while
+  the data revision and visible index bounds remain unchanged. Live candles,
+  reference values, and animation continue updating each frame. Same-length
+  replacements and notified in-place edits invalidate the cache automatically.
 - Volume bars reuse rectangle inputs, and their historical maximum is reused
   while data and visible bucket bounds stay unchanged. Live volume still rescales
   the band immediately; notified same-length edits invalidate the maximum.
@@ -28,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Static single-series charts refresh their range after an interior history edit,
+  even when array length and endpoint values stay unchanged.
 - Y-axis labels no longer mutate a SharedValue's published cache. Toggling the
   axis off and on while values change could throw `cannot add a new property`
   in development builds when a new tick was added. Both `LiveChart` and
