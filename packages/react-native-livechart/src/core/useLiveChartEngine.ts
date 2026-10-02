@@ -23,6 +23,7 @@ import type {
   CandlePoint,
   LiveChartFrameStats,
   LiveChartPoint,
+  RangeAnimationConfig,
   SeriesConfig,
 } from "../types";
 import {
@@ -47,6 +48,7 @@ export interface EngineConfig {
   value: SharedValue<number>;
   timeWindow: number;
   smoothing: number;
+  rangeAnimation?: RangeAnimationConfig;
   /** Extra catch-up speed added to `smoothing` when the live value lags. */
   adaptiveSpeedBoost?: number;
   exaggerate?: boolean;
@@ -244,6 +246,7 @@ export interface EngineFrameRefs {
   timestamp: SharedValue<number>;
   timeWindow: SharedValue<number>;
   smoothing: SharedValue<number>;
+  rangeAnimationSV?: SharedValue<RangeAnimationConfig | undefined>;
   adaptiveSpeedBoostSV?: SharedValue<number | undefined>;
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
@@ -388,6 +391,7 @@ export function applyLiveChartEngineFrame(
   input.canvasHeight = sv.canvasHeight.value;
   input.timeWindow = sv.timeWindow.value;
   input.smoothing = sv.smoothing.value;
+  input.rangeAnimation = sv.rangeAnimationSV?.value;
   input.adaptiveSpeedBoost = sv.adaptiveSpeedBoostSV?.value;
   input.exaggerate = sv.exaggerateSV.value;
   input.referenceValue = sv.referenceValue.value;
@@ -458,6 +462,7 @@ export function useLiveChartEngine(
     value,
     timeWindow: configuredTimeWindow,
     smoothing: configuredSmoothing,
+    rangeAnimation,
     adaptiveSpeedBoost,
     exaggerate,
     referenceValue: configuredReferenceValue,
@@ -513,6 +518,7 @@ export function useLiveChartEngine(
   // Static charts snap to their target in one tick (smoothing=1), so the single
   // settle reaction below produces the final state with no per-frame easing.
   const smoothing = useDerivedValue(() => (isStatic ? 1 : configuredSmoothing));
+  const rangeAnimationSV = useDerivedValue(() => rangeAnimation);
   const adaptiveSpeedBoostSV = useDerivedValue(() => adaptiveSpeedBoost);
   const exaggerateSV = useDerivedValue(() => exaggerate ?? false);
   const referenceValue = useDerivedValue(() => configuredReferenceValue);
@@ -654,6 +660,7 @@ export function useLiveChartEngine(
       canvasHeight,
       timeWindow,
       smoothing,
+      rangeAnimationSV,
       adaptiveSpeedBoostSV,
       exaggerateSV,
       referenceValue,
@@ -722,6 +729,7 @@ export function useLiveChartEngine(
       returnFrom,
       returnT,
       smoothing,
+      rangeAnimationSV,
       snapSV,
       thresholdRangeExtendToNow,
       thresholdRangeExtendToStart,
@@ -780,7 +788,7 @@ export function useLiveChartEngine(
     // History revisions also notify when a reveal bridge suppresses a same-array
     // source update. A sleeping engine must wake to consume that invalidation.
     return [pointHistory.get(), candleHistory.get(), data.get(), value.get(), candles?.get(), liveCandle?.get(), canvasWidth.get(),
-      canvasHeight.get(), timeWindow.get(), smoothing.get(), adaptiveSpeedBoostSV.get(),
+      canvasHeight.get(), timeWindow.get(), smoothing.get(), rangeAnimationSV.get(), adaptiveSpeedBoostSV.get(),
       exaggerateSV.get(), referenceValue.get(), referenceValues.get(), thresholdRangePoints.get(),
       thresholdRangeExtendToStart.get(), thresholdRangeExtendToNow.get(), nonNegativeSV.get(),
       maxValueSV.get(), yRangeScale?.get(), nowOverrideSV.get(), windowBufferSV.get(), pausedSV.get(),
@@ -788,7 +796,7 @@ export function useLiveChartEngine(
       snapSV.get(), modeSV.get(), candleGapsSV.get(), candleGapBridgeNoTradesSV.get(),
       candleGapBridgeUnavailableSV.get(), candleGapBridgeUnknownSV.get(), isFrameLoopActive?.get(),
       keepAwake?.get(), wakeSignal?.get()];
-  }, [pointHistory, candleHistory, data, value, candles, liveCandle, canvasWidth, canvasHeight, timeWindow, smoothing,
+  }, [pointHistory, candleHistory, data, value, candles, liveCandle, canvasWidth, canvasHeight, timeWindow, smoothing, rangeAnimationSV,
     adaptiveSpeedBoostSV, exaggerateSV, referenceValue, referenceValues, thresholdRangePoints,
     thresholdRangeExtendToStart, thresholdRangeExtendToNow, nonNegativeSV, maxValueSV, yRangeScale,
     nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, allowFutureViewEndSV, returnT,

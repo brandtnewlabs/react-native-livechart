@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Shared `rangeAnimation` config on `LiveChart` and `LiveChartSeries`, with
+  opt-in animated expansion and independent expansion/contraction smoothing.
+  Range easing no longer requires changing live-value or time-window smoothing
+  to implement a faster return after releasing a held reference line (#351).
+
+### Fixed
+
+- Independent Y-range easing keeps bounds ordered on initial fits and disjoint
+  data changes, including slow or frozen expansion.
+
 ## [4.25.0] — 2026-10-02
 
 ### Added

@@ -2258,6 +2258,25 @@ export interface LoadingConfig {
   axisLabels?: boolean;
 }
 
+/** Y-range easing shared by both charts, independent of value/window tracking. */
+export interface RangeAnimationConfig {
+  /** Ease outward bounds instead of snapping. Default `false`. */
+  animateExpansion?: boolean;
+  /**
+   * Fraction of the remaining gap closed per 60fps frame when a bound expands.
+   * Inherits `smoothing`; only used with `animateExpansion: true`. Finite values
+   * are clamped to 0..1; non-finite values inherit `smoothing`.
+   */
+  expansionSmoothing?: number;
+  /**
+   * Fraction of the remaining gap closed per 60fps frame when a bound contracts.
+   * Inherits `smoothing`. Finite values are clamped to 0..1; non-finite values
+   * inherit `smoothing`. While animated expansion moves toward a disjoint fit,
+   * contraction is limited to the expansion speed so bounds cannot cross.
+   */
+  contractionSmoothing?: number;
+}
+
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
@@ -2324,6 +2343,14 @@ export interface LiveChartCoreProps {
    * `lerpSpeed`. Default `0.08`.
    */
   smoothing?: number;
+  /**
+   * Control Y-range expansion and contraction independently of `smoothing` for
+   * value/window tracking. Omission preserves instant expansion and eased
+   * contraction. Uses frame-rate-independent exponential easing, not a fixed
+   * duration. `smoothing: 1`, explicit `snapKey` changes, static charts, and active
+   * manual Y-scale dragging remain immediate. Axis-label fades use `metrics.grid`.
+   */
+  rangeAnimation?: RangeAnimationConfig;
   /**
    * Snap the framing to its target in a single frame whenever this key changes —
    * without giving up smooth live ticks. On a timeframe / dataset switch, the
