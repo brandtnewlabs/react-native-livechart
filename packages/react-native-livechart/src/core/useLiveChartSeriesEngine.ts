@@ -64,6 +64,8 @@ export interface MultiSeriesEngineConfig {
 
 export interface MultiEngineFrameRefs {
   series: SharedValue<SeriesConfig[]>;
+  /** Drawing input published with this frame's range/tips. Optional for standalone callers. */
+  renderedSeries?: SharedValue<SeriesConfig[]>;
   displaySeriesValues: SharedValue<number[]>;
   seriesOpacities: SharedValue<number[]>;
   displayMin: SharedValue<number>;
@@ -268,6 +270,17 @@ export function applyLiveChartSeriesEngineFrame(
   sv.extremaMaxValue.value = state.extremaMaxValue;
   sv.extremaMinTime.value = state.extremaMinTime;
   sv.extremaMaxTime.value = state.extremaMaxTime;
+  // Drawing must not react to replacement histories before the engine has
+  // calculated their range and tips. Publish from the same measured frame and
+  // the same input read above. Copy entries because producers can mutate live
+  // values in place; retain history arrays to avoid copying every point per frame.
+  if (sv.renderedSeries && input.canvasWidth !== 0 && input.canvasHeight !== 0) {
+    const rendered: SeriesConfig[] = [];
+    for (let i = 0; i < seriesSnap.length; i++) {
+      rendered.push({ ...seriesSnap[i] });
+    }
+    sv.renderedSeries.value = rendered;
+  }
   // Clear the one-shot snap so the next frame eases normally again — but only
   // once a real (measured) frame consumed it (the tick early-returns on a
   // zero-size canvas before applying the snap). See applyLiveChartEngineFrame.
@@ -328,6 +341,7 @@ export function useLiveChartSeriesEngine(
 
   const displaySeriesValues = useSharedValue<number[]>([]);
   const seriesOpacities = useSharedValue<number[]>([]);
+  const renderedSeries = useSharedValue<SeriesConfig[]>([]);
 
   // Live data extrema (value + time of the visible high / low across series).
   const extremaMinValue = useSharedValue(NaN);
@@ -363,6 +377,7 @@ export function useLiveChartSeriesEngine(
 
   const frameRefs: MultiEngineFrameRefs = {
     series,
+    renderedSeries,
     displaySeriesValues,
     seriesOpacities,
     displayMin,
@@ -448,7 +463,7 @@ export function useLiveChartSeriesEngine(
     viewEnd,
     viewWindow,
     liveEdge,
-    series,
+    series: renderedSeries,
     displaySeriesValues,
     seriesOpacities,
     extremaMinValue,

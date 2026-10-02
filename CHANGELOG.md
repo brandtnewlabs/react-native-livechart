@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `LiveChartSeries` publishes replacement series with the matching engine
+  range and tips. Switching datasets with different units (such as Price to
+  Market Cap) no longer exposes new histories against the previous frame's
+  Y scale. Series entries are copied each measured frame; history arrays
+  remain shared (#346).
 - A styled loading shell keeps its look while it fades out and the reveal morph
   melts it into the line. Both run after `loading` has turned off, when the
   config is gone, so the squiggle snapped to the default color, stroke, wave
