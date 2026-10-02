@@ -137,7 +137,7 @@ import {
   candleGapBucketStartAtTime,
   candleGapDefaultLabel,
 } from "../math/candleGaps";
-import { computeScrubDotY } from "../hooks/crosshairShared";
+import { pinnedPlotY } from "../hooks/crosshairShared";
 import {
   groupReferenceLines,
   type ReferenceGrouping,
@@ -1247,7 +1247,6 @@ function useReferenceLineGrouping({
     const displayMin = engine.displayMin.get();
     const displayMax = engine.displayMax.get();
     const top = padding.top;
-    const bottom = canvasHeight - padding.bottom;
     const yPositions: number[] = [];
     for (let index = 0; index < lines.length; index++) {
       const line = lines[index];
@@ -1261,15 +1260,16 @@ function useReferenceLineGrouping({
         continue;
       }
       const value = dragValues.get()[index] ?? line.value;
-      const y = computeScrubDotY(
-        value,
-        displayMin,
-        displayMax,
-        canvasHeight,
-        top,
-        padding.bottom,
+      yPositions.push(
+        pinnedPlotY(
+          value,
+          displayMin,
+          displayMax,
+          canvasHeight,
+          top,
+          padding.bottom,
+        ),
       );
-      yPositions.push(y < 0 ? -1 : Math.min(bottom, Math.max(top, y)));
     }
     return groupReferenceLines(yPositions, radius);
   });

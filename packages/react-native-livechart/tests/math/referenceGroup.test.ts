@@ -29,7 +29,7 @@ describe("groupReferenceLines", () => {
     expect(r.groups[0].count).toBe(2);
   });
 
-  it("skips -1 (non-Form-A / off-canvas) entries", () => {
+  it("skips -1 (non-Form-A / not laid out) entries", () => {
     const r = groupReferenceLines([-1, 100, 110, -1], 18);
     expect(r.hidden).toEqual([false, true, true, false]);
     expect(r.groups).toHaveLength(1);

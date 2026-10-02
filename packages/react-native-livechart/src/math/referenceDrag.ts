@@ -20,8 +20,8 @@ export function clampToBounds(
 /**
  * Index of the draggable line whose handle-Y is nearest the touch `y`, within
  * `slop` px — or `-1` when none is in reach. `handleYs` is index-aligned with the
- * chart's `referenceLines`; entries `< 0` (not draggable / off-screen / not laid
- * out) are skipped. Ties favor the later (topmost-drawn) line.
+ * chart's `referenceLines`; entries `< 0` (not draggable / not laid out) are
+ * skipped — an off-screen line is pinned to the nearest plot edge, not dropped. Ties favor the later (topmost-drawn) line.
  */
 export function nearestDraggableIndex(
   handleYs: number[],
