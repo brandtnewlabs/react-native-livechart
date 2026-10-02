@@ -60,6 +60,9 @@ export function drawSpline(
   startPoint = 0,
   /** Last point index to draw (exclusive). Defaults to the full array. */
   endPoint = pts.length >> 1,
+  /** Optional paired sinks receive identical verbs from the same curve math. */
+  second?: SplinePathSink,
+  third?: SplinePathSink,
 ) {
   "worklet";
   const start = Math.max(0, startPoint);
@@ -70,12 +73,16 @@ export function drawSpline(
     for (let i = 1; i < n; i++) {
       const point = (start + i) * 2;
       path.lineTo(pts[point], pts[point + 1]);
+      second?.lineTo(pts[point], pts[point + 1]);
+      third?.lineTo(pts[point], pts[point + 1]);
     }
     return;
   }
   if (n === 2) {
     const point = (start + 1) * 2;
     path.lineTo(pts[point], pts[point + 1]);
+    second?.lineTo(pts[point], pts[point + 1]);
+    third?.lineTo(pts[point], pts[point + 1]);
     return;
   }
 
@@ -123,14 +130,15 @@ export function drawSpline(
     const i2 = (start + i) * 2;
     const j2 = i2 + 2;
     const hi = h[i];
-    path.cubicTo(
-      pts[i2] + hi / 3,
-      pts[i2 + 1] + (m[i] * hi) / 3,
-      pts[j2] - hi / 3,
-      pts[j2 + 1] - (m[i + 1] * hi) / 3,
-      pts[j2],
-      pts[j2 + 1],
-    );
+    const x1 = pts[i2] + hi / 3;
+    const y1 = pts[i2 + 1] + (m[i] * hi) / 3;
+    const x2 = pts[j2] - hi / 3;
+    const y2 = pts[j2 + 1] - (m[i + 1] * hi) / 3;
+    const x = pts[j2],
+      y = pts[j2 + 1];
+    path.cubicTo(x1, y1, x2, y2, x, y);
+    second?.cubicTo(x1, y1, x2, y2, x, y);
+    third?.cubicTo(x1, y1, x2, y2, x, y);
   }
 }
 

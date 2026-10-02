@@ -1,0 +1,38 @@
+---
+title: "Volume and line work"
+description: "Reproduce native path timings and check cache invalidation."
+---
+
+Open **Volume and line work** from the demo home screen (`/demo/volume-line-work`).
+Press **Run measurements** for real UI-runtime Skia timings. **Show raw samples**
+reveals every round. This deliberately blocks the UI briefly during measurement;
+use the separate [live QA demo](/guides/volume-line-qa) to inspect animation.
+
+The benchmark compares frozen code from `2a512fc` with the production helpers:
+
+- Sharp volume bars reuse one rectangle input per color batch.
+- A cached historical maximum avoids rescanning the same visible candles.
+  The production hook depends on data notifications and primitive visible bounds;
+  same-length replacement and `.modify()` both invalidate it. Live volume is
+  folded in separately.
+- Lines and area fills share each segment's slope, tangent and control-point math.
+  Paths remain separate immutable outputs. Gaps, linear mode, and threshold
+  closures keep their original behavior.
+
+Volume measurements include **rectangle only**, **cache only**, and **both**.
+The rectangle-only variant rescans each rebuild and also represents a cache-miss
+workload. Nine rounds of 40 rebuilds rotate variant order after warm-up. Workloads
+use 6,000 retained candles with about 40, 200 or 1,000 visible, or that many line
+points. The timing includes geometry, builder calls and detach; it excludes the
+engine, Reanimated mapper scheduling, rendering, GPU and React.
+
+The two automatic native probes exercise the actual hooks. One checks data edits,
+scroll bounds, width, empty history and replacement against an uncached maximum.
+The other verifies threshold-only updates keep line/fill output references,
+including data changes and empty/restore transitions.
+
+In the recorded iPhone 17 Pro iOS simulator development build, rectangle reuse
+provided the largest gain. Cache-only timing differences were small, although
+instrumentation confirmed scans were skipped. Rounded bars were essentially
+unchanged. Physical-device release performance, frame hitches, CPU, battery and
+long-run memory improvements have not been established.

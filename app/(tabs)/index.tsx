@@ -53,6 +53,16 @@ const SECTIONS: DemoSection[] = [
         blurb: "mode=candle: timeframes, candle colors, OHLC bodies + wicks.",
       },
       {
+        href: "/demo/candle-work" as Href,
+        title: "Candle work benchmark",
+        blurb: "Compare batched candle prototypes with real UI-thread Skia measurements.",
+      },
+      {
+        href: "/demo/volume-line-work" as Href,
+        title: "Volume and line work",
+        blurb: "Measure rectangle reuse, range caching and shared curve work.",
+      },
+      {
         href: "/demo/empty-candles" as Href,
         title: "Chart gaps",
         blurb: "Review semantic line/candle gaps and configurable bridge, band, and label styles against a live feed.",

@@ -210,6 +210,7 @@ export interface MultiEngineState
   data: SharedValue<LiveChartPoint[]>;
   value: SharedValue<number>;
   displayValue: SharedValue<number>;
+  /** Entries captured by the last measured engine frame; history arrays remain shared. */
   series: SharedValue<SeriesConfig[]>;
   displaySeriesValues: SharedValue<number[]>;
   seriesOpacities: SharedValue<number[]>;

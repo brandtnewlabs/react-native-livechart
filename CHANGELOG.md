@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A volatile range stress demo with rolling data, live candles, forced spikes and
   crashes, pause/resume, zoom, and in-place history corrections. A repeatable
   outlier sequence and fitted Y-range readout show expansion and recovery.
+- An experimental candle work benchmark comparing current batched paths,
+  one-pass worklet geometry, and rectangle input reuse on the native UI runtime.
+  Includes a paired visual preview and native path-equivalence checks.
 
 ### Changed
 
@@ -19,11 +22,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the data revision and visible index bounds remain unchanged. Live candles,
   reference values, and animation continue updating each frame. Same-length
   replacements and notified in-place edits invalidate the cache automatically.
+- Volume bars reuse rectangle inputs, and their historical maximum is reused
+  while data and visible bucket bounds stay unchanged. Live volume still rescales
+  the band immediately; notified same-length edits invalidate the maximum.
+- Line, area fill and threshold bands share each segment's curve calculations.
+  Threshold-only updates retain existing line/fill outputs. Gap boundaries,
+  independent fill closures and immutable path outputs are preserved.
+
+- Sharp candle bodies reuse a plain rectangle input within each path rebuild,
+  avoiding per-candle Skia rectangle factory calls. The four batched paths,
+  rounded bodies, wicks, and volume rendering keep their existing behavior.
 
 ### Fixed
 
 - Static single-series charts refresh their range after an interior history edit,
   even when array length and endpoint values stay unchanged.
+- Y-axis labels no longer mutate a SharedValue's published cache. Toggling the
+  axis off and on while values change could throw `cannot add a new property`
+  in development builds when a new tick was added. Both `LiveChart` and
+  `LiveChartSeries` now copy the cache before updating label fades (#343).
+- `LiveChartSeries` publishes replacement series with the matching engine
+  range and tips. Switching datasets with different units (such as Price to
+  Market Cap) no longer exposes new histories against the previous frame's
+  Y scale. Series entries are copied each measured frame; history arrays
+  remain shared (#346).
+- A styled loading shell keeps its look while it fades out and the reveal morph
+  melts it into the line. Both run after `loading` has turned off, when the
+  config is gone, so the squiggle snapped to the default color, stroke, wave
+  height and speed as the data arrived, and `axisLabels: false` flashed the
+  skeleton Y-axis placeholders. `LiveChart` and `LiveChartSeries` now keep the
+  last `loading` config for the shell's look, the empty shell shown later
+  included. The loading guide no longer claims `color` reaches the reveal morph
+  (only `amplitude` and `speed` do).
+- The loading line keeps moving under a `nowOverride`. The squiggle took its
+  phase from the engine clock, which a `nowOverride` pins between data updates,
+  so the loading line stood still, as the live dot's pulse once did. The
+  squiggle and the reveal's morph now share a wall clock. The loading shell
+  ticks it only while it shows, and never on a `static` chart, while
+  `isFrameLoopActive` is off, or at `loading.speed` 0.
+- A tall chart's Y axis labels every grid line it draws. Labels came from a
+  fixed pool of 15, and a tall plot (or a small `minGap`) can carry more
+  labelled lines: a step is kept while its spacing stays within 0.5-4x
+  `minGap`, so a full-height phone chart can show 20 or more. The extra lines
+  were drawn without labels, and which ones depended on key order. The pool now
+  starts at 15 and grows to what the grid produces, up to what the plot can
+  hold (labelled lines at least half a `minGap` apart). The fixed-`count` mode
+  is unchanged (at most 15).
+- Idle charts with an x-axis no longer repaint at the display refresh rate. The
+  axis deleted its off-plot tick labels (one interval past each edge, at alpha
+  0) and re-created them on the next run, so every run rewrote the label cache
+  its own mapper reads. A remaining case of
+  [#304](https://github.com/brandtnewlabs/react-native-livechart/issues/304).
 
 ## [4.24.1] - 2026-09-28
 
