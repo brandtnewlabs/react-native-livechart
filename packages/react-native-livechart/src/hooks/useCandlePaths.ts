@@ -1,4 +1,3 @@
-import { Skia } from "@shopify/react-native-skia";
 import { useEffect } from "react";
 import {
   useDerivedValue,
@@ -14,6 +13,7 @@ import { buildVolumeGeometry } from "../draw/volume";
 import type { ChartPadding } from "../draw/line";
 import { lerp } from "../math/lerp";
 import type { CandleMetrics, CandlePoint } from "../types";
+import { useVolumeRange } from "./useVolumeRange";
 import { usePathBuilder } from "./usePathBuilder";
 
 const CANDLE_WIDTH_LERP_SPEED = 0.08;
@@ -167,6 +167,13 @@ export function useCandlePaths(
   // Volume bars share the candle window + (lerped) candle width so each bar sits
   // directly under its candle body. Empty unless a volume band is reserved.
   /* istanbul ignore next -- worklet */
+  const volumeRange = useVolumeRange(
+    candles,
+    engine.timestamp,
+    engine.displayWindow,
+    displayCandleWidth,
+    active && volumeBandHeight > 0,
+  );
   const volumeGeometry = useDerivedValue(() => {
     if (!active || !candles || volumeBandHeight <= 0) return { bars: [] };
     return buildVolumeGeometry(
@@ -180,54 +187,32 @@ export function useCandlePaths(
       volumeBandHeight,
       displayCandleWidth.get(),
       candleMetrics,
+      {
+        start: volumeRange.start.get(),
+        end: volumeRange.end.get(),
+        max: volumeRange.max.get(),
+      },
     );
   });
 
   /* istanbul ignore next -- worklet */
-  const upBarsPath = useDerivedValue(() => {
-    const b = upBarsBuilder.value;
-    const { bars } = volumeGeometry.value;
-    for (let i = 0; i < bars.length; i++) {
-      if (bars[i].up) {
-        const bar = bars[i];
-        const rr =
-          volumeRadius > 0 ? Math.min(volumeRadius, bar.w / 2, bar.h / 2) : 0;
-        if (rr > 0) {
-          b.addRRect({
-            rect: { x: bar.x, y: bar.y, width: bar.w, height: bar.h },
-            rx: rr,
-            ry: rr,
-          });
-        } else {
-          b.addRect(Skia.XYWHRect(bar.x, bar.y, bar.w, bar.h));
-        }
-      }
-    }
-    return b.detach();
-  });
-
+  const upBarsPath = useDerivedValue(() =>
+    buildCandleBodyPath(
+      upBarsBuilder.get(),
+      volumeGeometry.get().bars,
+      true,
+      volumeRadius,
+    ),
+  );
   /* istanbul ignore next -- worklet */
-  const downBarsPath = useDerivedValue(() => {
-    const b = downBarsBuilder.value;
-    const { bars } = volumeGeometry.value;
-    for (let i = 0; i < bars.length; i++) {
-      if (!bars[i].up) {
-        const bar = bars[i];
-        const rr =
-          volumeRadius > 0 ? Math.min(volumeRadius, bar.w / 2, bar.h / 2) : 0;
-        if (rr > 0) {
-          b.addRRect({
-            rect: { x: bar.x, y: bar.y, width: bar.w, height: bar.h },
-            rx: rr,
-            ry: rr,
-          });
-        } else {
-          b.addRect(Skia.XYWHRect(bar.x, bar.y, bar.w, bar.h));
-        }
-      }
-    }
-    return b.detach();
-  });
+  const downBarsPath = useDerivedValue(() =>
+    buildCandleBodyPath(
+      downBarsBuilder.get(),
+      volumeGeometry.get().bars,
+      false,
+      volumeRadius,
+    ),
+  );
 
   return {
     upBodiesPath,

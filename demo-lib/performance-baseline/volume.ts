@@ -1,12 +1,7 @@
-import {
-  volumeStartIndex,
-  volumeEndIndex,
-  visibleMaxVolume,
-  type VolumeRange,
-} from "./volumeRange";
-import { CANDLE_METRICS_DEFAULTS } from "../constants";
-import type { CandleMetrics, CandlePoint } from "../types";
-import type { ChartPadding } from "./line";
+// Frozen baseline from 2a512fc for reproducible comparisons.
+import { CANDLE_METRICS_DEFAULTS } from "../../packages/react-native-livechart/src/constants";
+import type { CandleMetrics, CandlePoint } from "../../packages/react-native-livechart/src/types";
+import type { ChartPadding } from "../../packages/react-native-livechart/src/draw/line";
 
 export interface VolumeBar {
   x: number;
@@ -111,8 +106,6 @@ export function buildVolumeGeometry(
   bandHeight: number,
   candleWidthSecs: number,
   metrics: CandleMetrics = CANDLE_METRICS_DEFAULTS,
-  /** Internal cached history range. Live volume is always folded in below. */
-  history?: VolumeRange,
 ): VolumeGeometry {
   "worklet";
   const chartW = canvasW - padding.left - padding.right;
@@ -134,14 +127,25 @@ export function buildVolumeGeometry(
   const padLeft = padding.left;
   const baseline = canvasH - padding.bottom + bandHeight;
 
-  const lo =
-    history?.start ?? volumeStartIndex(candles, winStart, candleWidthSecs);
-  const end = history?.end ?? volumeEndIndex(candles, winEnd);
-  let maxVol = history?.max ?? visibleMaxVolume(candles, lo, end);
-  if (
-    liveCandle &&
-    candleVisible(liveCandle, winStart, winEnd, candleWidthSecs)
-  ) {
+  // Binary search for the first candle overlapping the window (same as candles).
+  let lo = 0;
+  let hi = candles.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (candles[mid].time + candleWidthSecs < winStart) lo = mid + 1;
+    else hi = mid;
+  }
+
+  // Pass 1 — largest visible volume (the bar that fills the band). The live
+  // candle counts too so a tall in-progress bar doesn't overflow the band.
+  let maxVol = 0;
+  for (let i = lo; i < candles.length; i++) {
+    /* istanbul ignore next -- past visible window */
+    if (candles[i].time > winEnd) break;
+    const v = candles[i].volume ?? 0;
+    if (v > maxVol) maxVol = v;
+  }
+  if (liveCandle && candleVisible(liveCandle, winStart, winEnd, candleWidthSecs)) {
     const v = liveCandle.volume ?? 0;
     if (v > maxVol) maxVol = v;
   }
@@ -150,7 +154,9 @@ export function buildVolumeGeometry(
 
   // Pass 2 — build the bars normalized to maxVol.
   const bars: VolumeBar[] = [];
-  for (let i = lo; i < end; i++) {
+  for (let i = lo; i < candles.length; i++) {
+    /* istanbul ignore next -- past visible window */
+    if (candles[i].time > winEnd) break;
     appendVolumeBar(
       candles[i],
       winStart,
@@ -167,10 +173,7 @@ export function buildVolumeGeometry(
       bars,
     );
   }
-  if (
-    liveCandle &&
-    candleVisible(liveCandle, winStart, winEnd, candleWidthSecs)
-  ) {
+  if (liveCandle && candleVisible(liveCandle, winStart, winEnd, candleWidthSecs)) {
     appendVolumeBar(
       liveCandle,
       winStart,
