@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Scrubbing a draggable reference line with `grabRange` uses the touch-down
+  point to decide ownership. Starting outside the range and moving into it
+  before scrub activation now starts a scrub instead of losing the gesture.
+- Draggable reference lines above the visible range remain grabbable at the
+  top edge, including when their projected Y is negative.
 - Independent Y-range easing keeps bounds ordered on initial fits and disjoint
   data changes, including slow or frozen expansion.
 

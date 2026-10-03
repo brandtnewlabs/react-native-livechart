@@ -202,6 +202,9 @@ const [tagWidth, setTagWidth] = useState(100); // until the tag reports its widt
 ```
 
 The Y reach is unchanged: a press still has to land within the grab band around the line's value.
+Off-axis lines use the nearest plot edge for that grab band.
+Ownership is decided at touch-down. A scrub that starts outside the range can move into it;
+a line grabbed inside the range keeps the touch even when the finger leaves it.
 `grabRange` is a JS value, so leave a little slack for a tag whose width changes on the UI thread
 (an off-axis chevron, a live price).
 

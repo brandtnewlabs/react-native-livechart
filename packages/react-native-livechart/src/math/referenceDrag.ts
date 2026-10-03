@@ -30,7 +30,7 @@ export interface GrabRangeProbe {
 /**
  * Index of the draggable line whose handle-Y is nearest the touch `y`, within
  * `slop` px — or `-1` when none is in reach. `handleYs` is index-aligned with the
- * chart's `referenceLines`; entries `< 0` (not draggable / off-screen / not laid
+ * chart's `referenceLines`; entries `< 0` (not draggable / not laid
  * out) are skipped. Ties favor the later (topmost-drawn) line. With `grab`, a line
  * whose `grabRange` does not contain the touch `x` is skipped too.
  */

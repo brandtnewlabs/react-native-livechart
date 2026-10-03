@@ -87,6 +87,7 @@ export function useReferenceDrag(
     const dMax = engine.displayMax.get();
     const top = padding.top;
     const bottom = ch - padding.bottom;
+    if (bottom <= top) return EMPTY;
     const out: number[] = [];
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i];
@@ -100,7 +101,9 @@ export function useReferenceDrag(
       }
       const v = dragValues.get()[i] ?? l.value;
       const y = computeScrubDotY(v, dMin, dMax, ch, top, padding.bottom);
-      out.push(y < 0 ? -1 : Math.min(bottom, Math.max(top, y)));
+      // A valid above-range price can project to a negative canvas Y. Pin it
+      // to the top edge, just as the visible tag is pinned there.
+      out.push(Math.min(bottom, Math.max(top, y)));
     }
     return out;
   });

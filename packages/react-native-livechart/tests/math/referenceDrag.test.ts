@@ -73,6 +73,14 @@ describe("nearestDraggableIndex", () => {
     expect(nearestDraggableIndex([50, 58], 57, 14, { x: 100, ranges })).toBe(0);
     expect(nearestDraggableIndex([50, 58], 57, 14, { x: 40, ranges })).toBe(1);
   });
+
+  it("never grabs a reversed range, and includes a zero-width range's point", () => {
+    for (const x of [0, 10, 50, 90, 100]) {
+      expect(nearestDraggableIndex([50], 50, 14, { x, ranges: [[90, 10]] })).toBe(-1);
+    }
+    expect(nearestDraggableIndex([50], 50, 14, { x: 10, ranges: [[10, 10]] })).toBe(0);
+    expect(nearestDraggableIndex([50], 50, 14, { x: 11, ranges: [[10, 10]] })).toBe(-1);
+  });
 });
 
 describe("referenceDragOwnsTouch", () => {
