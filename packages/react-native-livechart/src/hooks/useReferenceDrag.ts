@@ -18,11 +18,7 @@ import {
 } from "../math/referenceDrag";
 import { referenceLineForm } from "../math/referenceLines";
 import type { ReferenceLine } from "../types";
-import {
-  computeScrubDotY,
-  computeValueAtY,
-  snapPrice,
-} from "./crosshairShared";
+import { computeValueAtY, pinnedPlotY, snapPrice } from "./crosshairShared";
 
 /** Vertical reach (px) around a line within which a touch grabs it. */
 const GRAB_SLOP = 14;
@@ -37,7 +33,7 @@ const EMPTY: never[] = [];
  * Builds the per-line **drag** gesture for draggable Form-A reference lines: grab a
  * line near its value-Y and drag vertically to set a new value, with optional
  * `snap` + `bounds` clamp. Mirrors the order-ticket reticle in {@link useCrosshair}
- * (value↔Y via `computeValueAtY` / `computeScrubDotY`, frozen value re-projected
+ * (value↔Y via `computeValueAtY` / `pinnedPlotY`, frozen value re-projected
  * each frame) but per line, writing into the shared `dragValues` array the layout
  * and overlays read.
  *
@@ -100,10 +96,7 @@ export function useReferenceDrag(
         continue;
       }
       const v = dragValues.get()[i] ?? l.value;
-      const y = computeScrubDotY(v, dMin, dMax, ch, top, padding.bottom);
-      // A valid above-range price can project to a negative canvas Y. Pin it
-      // to the top edge, just as the visible tag is pinned there.
-      out.push(Math.min(bottom, Math.max(top, y)));
+      out.push(pinnedPlotY(v, dMin, dMax, ch, top, padding.bottom));
     }
     return out;
   });

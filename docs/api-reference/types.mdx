@@ -275,6 +275,8 @@ interface ReferenceLineRenderProps {
 // keeps the built-in in-range tag and shows the custom element only for edge !== "in".
 
 interface ReferenceLineGroupingConfig {
+  // Off-axis badge / offAxisBadge tags group at either plot edge. Hidden plain
+  // off-axis lines and custom-rendered tags do not count toward a group.
   radius?: number;             // collapse lines whose value-Y are within this many px; default 18
   badge?: ReferenceLineBadgeConfig;   // count-pill styling (same style/shape config as a
                                       //   per-line badge: position, icon, colors, radius,

@@ -5,6 +5,7 @@ import {
   computeScrubDotY,
   computeTimeBadgeLayout,
   computeValueAtY,
+  pinnedPlotY,
   pointInRect,
   snapPrice,
   snapScrubXToCandleCenter,
@@ -16,6 +17,38 @@ const font = {
   measureText: (s: string) => ({ x: 0, y: 0, width: s.length * 7, height: 12 }),
   getMetrics: () => ({ ascent: -9.6, descent: 2.4, leading: 0 }),
 } as unknown as SkFont;
+
+describe("pinnedPlotY", () => {
+  // 0–100 on a 300 px canvas with 12 / 28 px padding: the plot runs y 12 → 272.
+  it("is the projected Y for a value in range", () => {
+    // 12 + (100 − 50) / 100 × 260
+    expect(pinnedPlotY(50, 0, 100, 300, 12, 28)).toBe(142);
+  });
+
+  it("pins a value far above the range to the top edge", () => {
+    expect(computeScrubDotY(200, 0, 100, 300, 12, 28)).toBeLessThan(0);
+    expect(pinnedPlotY(200, 0, 100, 300, 12, 28)).toBe(12);
+  });
+
+  it("pins a value below the range to the bottom edge", () => {
+    expect(pinnedPlotY(-100, 0, 100, 300, 12, 28)).toBe(272);
+  });
+
+  it("pins a valid projection of exactly -1 rather than treating it as missing layout", () => {
+    expect(computeScrubDotY(105, 0, 100, 300, 12, 28)).toBe(-1);
+    expect(pinnedPlotY(105, 0, 100, 300, 12, 28)).toBe(12);
+  });
+
+  it("preserves the centered flat range and NaN projection", () => {
+    expect(pinnedPlotY(50, 50, 50, 300, 12, 28)).toBe(142);
+    expect(pinnedPlotY(NaN, 0, 100, 300, 12, 28)).toBeNaN();
+  });
+
+  it("is -1 when there is no plot height", () => {
+    expect(pinnedPlotY(50, 0, 100, 40, 12, 28)).toBe(-1);
+    expect(pinnedPlotY(50, 0, 100, 0, 12, 28)).toBe(-1);
+  });
+});
 
 describe("computeValueAtY", () => {
   it("returns null when the canvas is not laid out (chartH <= 0)", () => {

@@ -8,7 +8,7 @@ import {
 } from "react-native-livechart";
 
 import { AnimatedTrendTextInput } from "../../demo-lib/AnimatedTrendTextInput";
-import { Chip, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
+import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { ACCENT } from "../../demo-lib/shared";
 import { APP_THEME, colors } from "../../demo-lib/theme";
@@ -24,6 +24,13 @@ const TAG_INSET = 2;
 const GRAB_SLOP = 8;
 
 type Side = "BUY" | "SELL";
+type AlertPosition = "visible" | "above" | "below";
+
+const ALERT_LEVELS: Record<AlertPosition, number[]> = {
+  visible: [1.055, 1.07, 1.085],
+  above: [2, 2.2, 2.4],
+  below: [0.4, 0.3, 0.2],
+};
 
 type LogEvent = {
   id: number;
@@ -83,6 +90,9 @@ export default function WorkingOrdersScreen() {
   const [chartWidth, setChartWidth] = useState(0);
   const [buyTagWidth, setBuyTagWidth] = useState(100);
   const [sellTagWidth, setSellTagWidth] = useState(100);
+  const [offAxisOrders, setOffAxisOrders] = useState(false);
+  const [alertPosition, setAlertPosition] = useState<AlertPosition>("visible");
+  const [plainAlert, setPlainAlert] = useState(false);
 
   // Committed order prices (set by onCommit → controlled lines).
   const [buy, setBuy] = useState(() => round(START * 0.97));
@@ -111,6 +121,14 @@ export default function WorkingOrdersScreen() {
     );
   };
 
+  const placeOrders = (edge: "above" | "below") => {
+    setBuy(START * (edge === "above" ? 2 : 0.4));
+    setSell(START * (edge === "above" ? 2.2 : 0.3));
+    setOffAxisOrders(true);
+    setLive(null);
+    log(`Orders ${edge} chart — drag the pinned tags back in`);
+  };
+
   /** Build the per-line drag callbacks for one side. */
   const handlers = (side: Side, commit: (v: number) => void) => ({
     onChange: (v: number) => {
@@ -136,6 +154,7 @@ export default function WorkingOrdersScreen() {
       label: "BUY",
       color: BUY_COLOR,
       draggable: true,
+      excludeFromRange: offAxisOrders,
       snap: 0.05,
       bounds: [START * 0.9, START], // drag to either end → onDragOut / onDragIn
       badge: { position: "left" },
@@ -150,6 +169,7 @@ export default function WorkingOrdersScreen() {
       label: "SELL",
       color: SELL_COLOR,
       draggable: true,
+      excludeFromRange: offAxisOrders,
       snap: 0.05,
       bounds: [START, START * 1.1],
       badge: { position: "right" },
@@ -179,10 +199,22 @@ export default function WorkingOrdersScreen() {
     },
     // Badge-less line: plain gutter label when custom is off, PlainTag when on.
     { value: START * 1.04, label: "Stop", color: "#94a3b8" },
-    // A tight stack of alerts → collapses into one count handle when grouping is on.
-    { value: START * 1.055, label: "alert", color: "#a855f7", badge: true },
-    { value: START * 1.07, label: "alert", color: "#a855f7", badge: true },
-    { value: START * 1.085, label: "alert", color: "#a855f7", badge: true },
+    // Off-axis alerts are excluded from the fit so their tags pin to an edge.
+    ...ALERT_LEVELS[alertPosition].map((level, index) => ({
+      id: `alert-${index}`,
+      value: START * level,
+      label: "alert",
+      color: "#a855f7",
+      badge: true,
+      excludeFromRange: alertPosition !== "visible",
+    })),
+    ...(plainAlert ? [{
+      id: "plain-alert",
+      value: START * ALERT_LEVELS[alertPosition][0],
+      label: "Plain alert",
+      color: "#a855f7",
+      excludeFromRange: alertPosition !== "visible",
+    }] : []),
   ];
 
   const renderReferenceLine = (ctx: ReferenceLineRenderProps) => {
@@ -279,6 +311,10 @@ export default function WorkingOrdersScreen() {
           value={paused}
           onChange={(enabled) => setPausedAt(enabled ? Date.now() / 1000 : undefined)}
         />
+      </ControlRow>
+      <ControlRow label="Order position">
+        <Chip label="Orders above" active={false} onPress={() => placeOrders("above")} />
+        <Chip label="Orders below" active={false} onPress={() => placeOrders("below")} />
         <Chip
           label="Reset orders"
           active={false}
@@ -287,6 +323,7 @@ export default function WorkingOrdersScreen() {
             setSell(round(START * 1.03));
             setLive(null);
             setEvents([]);
+            setOffAxisOrders(false);
           }}
         />
       </ControlRow>
@@ -304,32 +341,60 @@ export default function WorkingOrdersScreen() {
           value={grouping}
           onChange={setGrouping}
         />
+        <ToggleChip label="Plain alert" value={plainAlert} onChange={setPlainAlert} />
       </ControlRow>
+      <ChipRow<AlertPosition>
+        label="Alert position"
+        options={[
+          { label: "In chart", value: "visible" },
+          { label: "Above chart", value: "above" },
+          { label: "Below chart", value: "below" },
+        ]}
+        value={alertPosition}
+        onChange={setAlertPosition}
+      />
+      {alertPosition !== "visible" ? (
+        <Text style={styles.hint}>
+          With Group alerts on, the three pinned badges collapse into one count.
+          Plain alert has no off-chart badge, so the count should stay at 3.
+        </Text>
+      ) : null}
 
-      <View style={styles.panel}>
-        <View style={styles.row}>
-          <OrderStat side="BUY" color={BUY_COLOR} committed={buy} live={live} />
-          <OrderStat
-            side="SELL"
-            color={SELL_COLOR}
-            committed={sell}
-            live={live}
-          />
-        </View>
-        <Text style={styles.logTitle}>Interactions</Text>
-        {events.length === 0 ? (
-          <Text style={styles.logEmpty}>
-            Drag a tag and release, or scrub away from it. Events appear here.
-          </Text>
-        ) : (
-          events.map((event) => (
-            <Text key={event.id} style={styles.logLine}>
-              {event.message}
-            </Text>
-          ))
-        )}
-      </View>
+      <OrderFeedback buy={buy} sell={sell} live={live} events={events} />
     </DemoScreen>
+  );
+}
+
+function OrderFeedback({ buy, sell, live, events }: {
+  buy: number;
+  sell: number;
+  live: { side: Side; value: number } | null;
+  events: LogEvent[];
+}) {
+  return (
+    <View style={styles.panel}>
+      <View style={styles.row}>
+        <OrderStat side="BUY" color={BUY_COLOR} committed={buy} live={live} />
+        <OrderStat
+          side="SELL"
+          color={SELL_COLOR}
+          committed={sell}
+          live={live}
+        />
+      </View>
+      <Text style={styles.logTitle}>Interactions</Text>
+      {events.length === 0 ? (
+        <Text style={styles.logEmpty}>
+          Drag a tag and release, or scrub away from it. Events appear here.
+        </Text>
+      ) : (
+        events.map((event) => (
+          <Text key={event.id} style={styles.logLine}>
+            {event.message}
+          </Text>
+        ))
+      )}
+    </View>
   );
 }
 

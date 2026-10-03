@@ -329,6 +329,17 @@ the count reflects only collapsed built-in tags. The count pill takes the same s
 ([`ReferenceLineBadgeConfig`](/api-reference/types#annotations)) via `badge`, plus a `format` fn
 for the count label.
 
+Badged lines far above the visible range group at the top edge, just as lines below it group
+at the bottom. Off-axis lines without `badge` or `offAxisBadge` are hidden, so they do not
+increase a visible group's count.
+
+In **Working orders**, select **Orders above** or **Orders below** to put the draggable orders
+outside the chart without expanding its range. Pull either pinned tag back into the plot and
+release to commit; **Reset orders** restores the starting prices. Under **Alert position**,
+choose **Above chart** or **Below chart**, then toggle **Group alerts** to compare the overlapping
+badges with a single **3 alerts** pill. Enable **Plain alert**: it has no off-chart badge, so the
+count remains 3. These checks also work with **Candles** on.
+
 <Note>
   Need an overlay the built-in lines and badges can't express — your own draggable order book or
   liquidation chrome? See [Overlay bridge](/guides/overlay-bridge).

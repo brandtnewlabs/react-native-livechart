@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Working orders demo presets for orders and alerts above/below the chart, plus
+  a plain alert toggle to check off-axis grouping counts.
 - Working orders demo controls for tag-only grabbing versus whole-line grabbing,
   time scrolling, candles, pausing the feed, and resetting orders, with an
   interaction log for manual QA.
@@ -24,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- With `referenceLineGrouping`, badged lines far above the visible range now
+  group at the top edge like lines below it do, instead of drawing their pinned
+  badges on top of each other.
+- Hidden off-axis lines without a badge no longer inflate reference-line group
+  counts at either edge.
 - Scrubbing a draggable reference line with `grabRange` uses the touch-down
   point to decide ownership. Starting outside the range and moving into it
   before scrub activation now starts a scrub instead of losing the gesture.

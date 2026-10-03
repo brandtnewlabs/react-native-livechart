@@ -148,7 +148,7 @@ describe("useReferenceDrag", () => {
     expect(result.current.hitTest(150, y)).toBe(true);
   });
 
-  it.each([120, -20])("grabs an off-axis line at the pinned edge (value=%s)", async (value) => {
+  it.each([120, 200, -20, -100])("grabs an off-axis line at the pinned edge (value=%s)", async (value) => {
     const { result } = await setup([
       { value, draggable: true, grabRange: [0, 80] },
     ]);
@@ -157,10 +157,10 @@ describe("useReferenceDrag", () => {
     expect(result.current.hitTest(200, y)).toBe(false);
   });
 
-  it("does not grab lines before the canvas has a drawable height", async () => {
+  it.each([0, DEFAULT_PADDING.top + DEFAULT_PADDING.bottom])("does not grab lines before the canvas has a drawable height (height=%s)", async (height) => {
     const { result } = await setup([
       { value: 120, draggable: true, grabRange: [0, 80] },
-    ], true, 0);
+    ], true, height);
     expect(result.current.hitTest(40, DEFAULT_PADDING.top)).toBe(false);
   });
 

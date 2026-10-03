@@ -245,6 +245,35 @@ export function computeScrubDotY(
 }
 
 /**
+ * A reference value's canvas Y pinned to the plot: a value off the visible range
+ * sits on the nearest plot edge. `-1` when there is no plot height (not laid out,
+ * or shorter than its padding) — decided from the layout, not from the projected
+ * Y: {@link computeScrubDotY} returns a negative Y for a value far above the range
+ * too, and that one must pin to the top edge as a value below pins to the bottom.
+ */
+export function pinnedPlotY(
+  value: number,
+  displayMin: number,
+  displayMax: number,
+  canvasHeight: number,
+  padTop: number,
+  padBottom: number,
+): number {
+  "worklet";
+  const bottom = canvasHeight - padBottom;
+  if (bottom - padTop <= 0) return -1;
+  const y = computeScrubDotY(
+    value,
+    displayMin,
+    displayMax,
+    canvasHeight,
+    padTop,
+    padBottom,
+  );
+  return Math.min(bottom, Math.max(padTop, y));
+}
+
+/**
  * Inverse of {@link computeScrubDotY}: maps a canvas Y pixel back to a value (a
  * free price *level*, used by scrub-action mode where the reticle Y is the chosen
  * price, not the line value at the reticle X). Returns null when the canvas isn't

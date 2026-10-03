@@ -346,7 +346,9 @@ export interface ReferenceLineRenderProps {
  * lines whose handles fall within {@link ReferenceLineGroupingConfig.radius} px of
  * each other collapse into a single count handle, so a cluster of nearby orders /
  * alerts reads as one tag instead of an unreadable pile. Pass `true` for defaults
- * or an object to tune the proximity radius.
+ * or an object to tune the proximity radius. Badged off-axis lines group at either
+ * plot edge; off-axis lines with no badge are hidden and do not count. Custom tags
+ * are excluded.
  */
 export interface ReferenceLineGroupingConfig {
   /**
