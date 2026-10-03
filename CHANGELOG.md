@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Working orders demo controls for tag-only grabbing versus whole-line grabbing,
+  time scrolling, candles, pausing the feed, and resetting orders, with an
+  interaction log for manual QA.
+- `ReferenceLine.grabRange` (`[from, to]`, canvas px): where along a draggable
+  line a press may grab it, typically the span of a custom tag. A pan, scrub or
+  page scroll that merely starts near the line no longer moves it; inside the
+  range a press grabs it as before. Omitted, a line is grabbed anywhere along
+  it, as today.
 - Shared `rangeAnimation` config on `LiveChart` and `LiveChartSeries`, with
   opt-in animated expansion and independent expansion/contraction smoothing.
   Range easing no longer requires changing live-value or time-window smoothing
@@ -16,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Scrubbing a draggable reference line with `grabRange` uses the touch-down
+  point to decide ownership. Starting outside the range and moving into it
+  before scrub activation now starts a scrub instead of losing the gesture.
+- Draggable reference lines above the visible range remain grabbable at the
+  top edge, including when their projected Y is negative.
 - Independent Y-range easing keeps bounds ordered on initial fits and disjoint
   data changes, including slow or frozen expansion.
 

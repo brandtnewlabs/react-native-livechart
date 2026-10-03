@@ -171,6 +171,56 @@ draggable line grabs the line and any drag moves it (in any direction), while a 
 scrubs as usual. So you can keep `scrub` enabled alongside draggable orders — only the thin grab
 band around each draggable line is reserved for the drag.
 
+### Grab only at the handle (`grabRange`)
+
+That grab band runs the whole width of the line. On a chart that also pans (`timeScroll`), or one
+inside a scrolling page, a gesture that merely starts near a line can catch it. Give the line a
+`grabRange` — an x-span in the canvas's own px, ends included — and only a press inside it grabs the
+line; anywhere else the touch is the chart's (pan, scrub, page scroll), as if the line were not
+there. Typically the span is a [custom tag](#custom-tags-renderreferenceline) measured with
+`onLayout`: a left-pinned tag starts 2 px inside the plot's left edge, which is 14 px from the
+canvas edge with the default insets (`insets.left + 2` otherwise):
+
+```tsx
+const [tagWidth, setTagWidth] = useState(100); // until the tag reports its width
+
+<LiveChart
+  referenceLines={[
+    {
+      id: "stop-order",
+      value: stopPrice,
+      label: "Stop",
+      draggable: true,
+      badge: { position: "left" },
+      grabRange: [0, 14 + tagWidth + 8], // the left-pinned tag (default insets), a little past it
+      onCommit: setStopPrice,
+    },
+  ]}
+  renderReferenceLine={(ctx) => (
+    <View onLayout={(e) => setTagWidth(e.nativeEvent.layout.width)}>{/* … */}</View>
+  )}
+/>
+```
+
+The Y reach is unchanged: a press still has to land within the grab band around the line's value.
+Off-axis lines use the nearest plot edge for that grab band.
+Ownership is decided at touch-down. A scrub that starts outside the range can move into it;
+a line grabbed inside the range keeps the touch even when the finger leaves it.
+`grabRange` is a JS value, so leave a little slack for a tag whose width changes on the UI thread
+(an off-axis chevron, a live price).
+Give the order a stable `id` so changing its price or measured grab span keeps the custom tag
+mounted.
+
+Try **Working orders** in the example app: **Tag only** measures both custom tags and limits
+grabbing to their spans; **Whole line** omits `grabRange` to compare the original behavior.
+With **Time scroll** off, scrub through an order line away from its tag: the order price should
+stay unchanged, and the Interactions log should show a scrub. Turn **Time scroll** on and swipe
+horizontally from the same spot to browse history. Drag either tag vertically, then move your
+finger away from it before releasing: the order should keep following and commit once.
+Repeat with **Candles** on. **Pause feed** holds the chart steady, and **Reset orders** restores
+the starting prices and clears the log. Selecting **Tag only** enables custom tags; disabling
+**Custom tags** switches back to **Whole line**.
+
 ## Custom tags (`renderReferenceLine`)
 
 On both `LiveChart` and `LiveChartSeries`, replace a line's built-in pill / gutter label with any
