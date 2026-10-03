@@ -18,15 +18,27 @@ export function clampToBounds(
 }
 
 /**
+ * Where a touch may grab each line: the touch `x` and, index-aligned with the
+ * chart's `referenceLines`, each line's `grabRange` (`[from, to]`, canvas px) —
+ * `null` / `undefined` for a line grabbed anywhere along it.
+ */
+export interface GrabRangeProbe {
+  x: number;
+  ranges: readonly (readonly [number, number] | null | undefined)[];
+}
+
+/**
  * Index of the draggable line whose handle-Y is nearest the touch `y`, within
  * `slop` px — or `-1` when none is in reach. `handleYs` is index-aligned with the
- * chart's `referenceLines`; entries `< 0` (not draggable / off-screen / not laid
- * out) are skipped. Ties favor the later (topmost-drawn) line.
+ * chart's `referenceLines`; entries `< 0` (not draggable / not laid
+ * out) are skipped. Ties favor the later (topmost-drawn) line. With `grab`, a line
+ * whose `grabRange` does not contain the touch `x` is skipped too.
  */
 export function nearestDraggableIndex(
   handleYs: number[],
   y: number,
   slop: number,
+  grab?: GrabRangeProbe,
 ): number {
   "worklet";
   let best = -1;
@@ -34,6 +46,8 @@ export function nearestDraggableIndex(
   for (let i = 0; i < handleYs.length; i++) {
     const hy = handleYs[i];
     if (hy < 0) continue;
+    const range = grab?.ranges[i];
+    if (range && (grab.x < range[0] || grab.x > range[1])) continue;
     const d = Math.abs(hy - y);
     if (d <= bestDist) {
       bestDist = d;
@@ -49,17 +63,19 @@ export function nearestDraggableIndex(
  * or already dragging) owns the touch outright, wherever the asking gesture says
  * the finger is: the scrub pan can activate mid-drag and asks with its
  * touch-DOWN point, which a longer drag has carried the line away from. With no
- * line grabbed, it is the geometric reach test around the handles.
+ * line grabbed, it is the geometric reach test around the handles (and, with
+ * `grab`, inside each line's `grabRange`).
  */
 export function referenceDragOwnsTouch(
   dragIndex: number,
   handleYs: number[],
   y: number,
   slop: number,
+  grab?: GrabRangeProbe,
 ): boolean {
   "worklet";
   if (dragIndex >= 0) return true;
-  return nearestDraggableIndex(handleYs, y, slop) >= 0;
+  return nearestDraggableIndex(handleYs, y, slop, grab) >= 0;
 }
 
 /**

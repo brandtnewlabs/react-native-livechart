@@ -42,7 +42,8 @@ const EMPTY: never[] = [];
  * and overlays read.
  *
  * The pan uses `manualActivation`: it grabs only when a touch starts within
- * {@link GRAB_SLOP} of a draggable line, then **owns** that touch — any drag past
+ * {@link GRAB_SLOP} of a draggable line (and inside its `grabRange`, when it has
+ * one), then **owns** that touch — any drag past
  * {@link DRAG_ACTIVATE_PX} (in either axis) drags the line. A touch off every line
  * fails fast so the chart's other gestures (scrub / scroll) run everywhere else
  * (compose this ahead of them via `Gesture.Exclusive`). Crucially it no longer
@@ -86,6 +87,7 @@ export function useReferenceDrag(
     const dMax = engine.displayMax.get();
     const top = padding.top;
     const bottom = ch - padding.bottom;
+    if (bottom <= top) return EMPTY;
     const out: number[] = [];
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i];
@@ -99,10 +101,17 @@ export function useReferenceDrag(
       }
       const v = dragValues.get()[i] ?? l.value;
       const y = computeScrubDotY(v, dMin, dMax, ch, top, padding.bottom);
-      out.push(y < 0 ? -1 : Math.min(bottom, Math.max(top, y)));
+      // A valid above-range price can project to a negative canvas Y. Pin it
+      // to the top edge, just as the visible tag is pinned there.
+      out.push(Math.min(bottom, Math.max(top, y)));
     }
     return out;
   });
+
+  // Per-line grab x-ranges (`ReferenceLine.grabRange`), index-aligned with
+  // `lines`; null = anywhere along the line. Read by the gesture worklets below,
+  // which close over this render's `lines` as the callbacks do.
+  const grabRanges = lines.map((l) => l.grabRange ?? null);
 
   const dragIndex = useSharedValue(-1);
   const startX = useSharedValue(0);
@@ -175,7 +184,10 @@ export function useReferenceDrag(
     "worklet";
     const t = e.changedTouches[0];
     if (!t) return;
-    const i = nearestDraggableIndex(handleYs.get(), t.y, GRAB_SLOP);
+    const i = nearestDraggableIndex(handleYs.get(), t.y, GRAB_SLOP, {
+      x: t.x,
+      ranges: grabRanges,
+    });
     if (i < 0) {
       manager.fail();
       return;
@@ -266,13 +278,22 @@ export function useReferenceDrag(
   // is grabbed the answer is yes regardless of position: the scrub asks with its
   // touch-DOWN point, which a longer drag has carried the line away from, so the
   // geometric test alone said "no line here" and a crosshair opened mid-drag.
-  // Otherwise it is the y-reach around the handles (x is unused — a Form-A line
-  // spans the full width).
+  // Otherwise it is the y-reach around the handles, along the whole line — or,
+  // for a line with a `grabRange`, only inside it.
   /* istanbul ignore next -- worklet, runs on the UI thread */
-  const hitTest = (_x: number, y: number): boolean => {
+  const hitTest = (x: number, y: number): boolean => {
     "worklet";
     if (!anyDraggable) return false;
-    return referenceDragOwnsTouch(dragIndex.get(), handleYs.get(), y, GRAB_SLOP);
+    return referenceDragOwnsTouch(
+      dragIndex.get(),
+      handleYs.get(),
+      y,
+      GRAB_SLOP,
+      {
+        x,
+        ranges: grabRanges,
+      },
+    );
   };
 
   const gesture = Gesture.Pan()

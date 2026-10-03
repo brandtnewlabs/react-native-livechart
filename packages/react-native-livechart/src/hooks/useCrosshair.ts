@@ -214,8 +214,8 @@ export function useCrosshair(
   // lifecycle helpers are also used by LiveChartSeries and unit-tested directly.
   const fingerDown = useSharedValue(false);
   const panActivated = useSharedValue(false);
-  // Where and when the current touch went down, for the stationary-hold and
-  // stale-timer guards (see delayedPanGuard).
+  // Where and when the current touch went down, for overlay arbitration and
+  // the stationary-hold / stale-timer guards (see delayedPanGuard).
   const downX = useSharedValue(0);
   const downY = useSharedValue(0);
   const downAtMs = useSharedValue(0);
@@ -661,6 +661,14 @@ export function useCrosshair(
     .onTouchesDown(
       /* istanbul ignore next */ (e) => {
         "worklet";
+        // Overlay drags decide ownership at touch-down. Preserve that point
+        // even without a hold: the finger can enter a grabRange before the
+        // scrub reaches its horizontal activation threshold.
+        const touch = e.changedTouches[0];
+        if (touch) {
+          downX.set(touch.x);
+          downY.set(touch.y);
+        }
         delayedPanTouchDown(
           longPressMs,
           e,
@@ -751,7 +759,11 @@ export function useCrosshair(
         // overlay tap. `scrubActive` is only set here, so bailing in `onStart`
         // also keeps a follow-on drag from showing a crosshair — no `onUpdate`
         // guard needed. (Plain-scrub counterpart of the scrub-action tap defer.)
-        if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
+        if (
+          deferTapHit !== undefined &&
+          deferTapHit(downX.get(), downY.get())
+        )
+          return;
         startPlainScrub(
           snapCandleX(e.x),
           padding,
