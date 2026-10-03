@@ -66,7 +66,7 @@ outside the chart lets you choose its hit area and compose it with the rest of y
   tracking the visible data while scaled.
 - On `LiveChartSeries`, the multiplier applies to the shared range after hidden series are excluded.
 - While the SharedValue changes, the displayed range tracks it without frame-lag. Once it stops,
-  ordinary live-data changes use the chart's configured `smoothing` again.
+  ordinary range changes use `smoothing` or the optional `rangeAnimation` overrides.
 - Reset with an animation such as `withTiming(1)` for the same smooth result whether the current
   scale is above or below `1`.
 - On a `nonNegative` chart, zoom-out stops when the lower bound reaches `0`. The upper bound does
@@ -78,3 +78,62 @@ outside the chart lets you choose its hit area and compose it with the rest of y
 
 `yRangeScale` changes the value range only. It composes with [`timeScroll` and `zoom`](/guides/time-scroll),
 which control the visible time window.
+
+## Animating automatic range changes
+
+By default, both charts snap outward bounds immediately and ease inward bounds with `smoothing`.
+Opt into outward easing with `rangeAnimation={{ animateExpansion: true }}`. This also applies
+when a reference line enters the fit, without changing recorded values or moving the time window.
+
+For separate speeds, use the exported `RangeAnimationConfig`:
+
+```tsx
+import { useState } from "react";
+import { LiveChartSeries, type RangeAnimationConfig } from "react-native-livechart";
+import { useReducedMotion } from "react-native-reanimated";
+
+const RETURN_MS = 300;
+// Close 99.9% of a stationary gap over this window, rather than setting a duration.
+const RETURN_SPEED = 1 - 0.001 ** (1000 / 60 / RETURN_MS);
+
+// Inside your component; series is your existing SharedValue<SeriesConfig[]>.
+const [held, setHeld] = useState(false);
+const reduceMotion = useReducedMotion();
+const rangeAnimation: RangeAnimationConfig = {
+  animateExpansion: held && !reduceMotion,
+  expansionSmoothing: 0.08,
+  contractionSmoothing: RETURN_SPEED,
+};
+
+<LiveChartSeries
+  series={series}
+  referenceLines={[{ id: "consensus", value: 80, excludeFromRange: !held }]}
+  rangeAnimation={rangeAnimation}
+  smoothing={reduceMotion ? 1 : 0.08}
+  scrub={{ panGestureDelay: 250 }}
+  onGestureStart={() => setHeld(true)}
+  onGestureEnd={() => setHeld(false)}
+/>;
+```
+
+The return speed applies directly to contraction on the UI thread, so release needs no timer
+or temporary change to global `smoothing`. It also applies to other inward fits while configured.
+Omitted direction speeds inherit `smoothing`; `expansionSmoothing` only takes effect while
+`animateExpansion` is true. Each bound chooses its own direction, so one can expand while the
+other contracts. Finite speeds clamp to 0..1; non-finite speeds inherit `smoothing`.
+
+On initial fitting or a data change that moves the fitted range wholly above or below
+the displayed range, contraction is limited to the animated expansion speed until
+the ranges overlap. This keeps the Y-axis bounds ordered even with very slow or frozen
+expansion; normal independent speeds resume once the ranges overlap.
+
+These speeds are frame-rate-independent exponential easing fractions, **not fixed durations**.
+The 300 ms calculation assumes a stationary target; live data can continue moving the fit.
+`smoothing={1}` takes precedence over the overrides, as do `snapKey` changes, static mode,
+and active manual `yRangeScale` dragging. For reduced motion, use `smoothing={1}` and configure
+axis-label fades with `metrics={{ grid: { fadeInSpeed: 1, fadeOutSpeed: 1 } }}` as needed.
+
+Axis-label alpha transitions remain controlled by `metrics.grid.fadeInSpeed` and
+`fadeOutSpeed`. The chart, reference lines, and overlays using `ChartOverlayContext.scale`
+share the interpolated bounds throughout expansion and contraction. `transitions` continues
+to control reveal/mode changes separately.

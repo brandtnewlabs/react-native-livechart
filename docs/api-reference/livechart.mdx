@@ -552,6 +552,24 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   Value-lerp speed (0 = frozen, 1 = instant).
 </ParamField>
 
+<ParamField body="rangeAnimation" type="RangeAnimationConfig">
+  Control Y-range easing independently of live-value and time-window smoothing.
+  `animateExpansion` defaults to `false` (outward bounds snap); set it to `true`
+  to ease expansion. `expansionSmoothing` and `contractionSmoothing` independently
+  override the per-60fps-frame fraction of the remaining gap closed; omitted
+  speeds inherit `smoothing`. Finite overrides clamp to 0..1, and non-finite
+  overrides inherit `smoothing`. This is frame-rate-independent exponential
+  easing, not a duration in milliseconds.
+
+  While the fitted and displayed ranges do not overlap, contraction is limited
+  to the animated expansion speed so the bounds cannot cross.
+
+  `smoothing: 1`, `snapKey` changes, static mode, and active manual Y-scale dragging
+  remain immediate. Axis-label fades stay under `metrics.grid`. Shared with
+  `LiveChartSeries`; see [Y-range animation](/guides/y-range-scale#animating-automatic-range-changes)
+  and [`RangeAnimationConfig`](/api-reference/types#rangeanimationconfig).
+</ParamField>
+
 <ParamField body="snapKey" type="string | number">
   Snap the framing (time window, Y-range, value) to its target in one frame
   whenever this key changes — **without** giving up smooth live ticks. On a
