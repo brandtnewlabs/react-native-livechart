@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Working orders demo controls for tag-only grabbing versus whole-line grabbing,
+  time scrolling, candles, pausing the feed, and resetting orders, with an
+  interaction log for manual QA.
 - `ReferenceLine.grabRange` (`[from, to]`, canvas px): where along a draggable
   line a press may grab it, typically the span of a custom tag. A pan, scrub or
   page scroll that merely starts near the line no longer moves it; inside the

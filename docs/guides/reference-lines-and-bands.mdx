@@ -187,6 +187,7 @@ const [tagWidth, setTagWidth] = useState(100); // until the tag reports its widt
 <LiveChart
   referenceLines={[
     {
+      id: "stop-order",
       value: stopPrice,
       label: "Stop",
       draggable: true,
@@ -207,6 +208,18 @@ Ownership is decided at touch-down. A scrub that starts outside the range can mo
 a line grabbed inside the range keeps the touch even when the finger leaves it.
 `grabRange` is a JS value, so leave a little slack for a tag whose width changes on the UI thread
 (an off-axis chevron, a live price).
+Give the order a stable `id` so changing its price or measured grab span keeps the custom tag
+mounted.
+
+Try **Working orders** in the example app: **Tag only** measures both custom tags and limits
+grabbing to their spans; **Whole line** omits `grabRange` to compare the original behavior.
+With **Time scroll** off, scrub through an order line away from its tag: the order price should
+stay unchanged, and the Interactions log should show a scrub. Turn **Time scroll** on and swipe
+horizontally from the same spot to browse history. Drag either tag vertically, then move your
+finger away from it before releasing: the order should keep following and commit once.
+Repeat with **Candles** on. **Pause feed** holds the chart steady, and **Reset orders** restores
+the starting prices and clears the log. Selecting **Tag only** enables custom tags; disabling
+**Custom tags** switches back to **Whole line**.
 
 ## Custom tags (`renderReferenceLine`)
 
