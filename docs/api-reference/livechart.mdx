@@ -299,6 +299,8 @@ provided; everything else has a default.
   Collapse Form-A lines whose handles sit near the same value into a single count
   handle — a stack of working orders at adjacent prices reads as one tag. Pass an
   object to tune the proximity `radius` (px). Single-series only.
+  Badged lines above or below the visible range group at the nearest plot edge.
+  Off-axis lines with no badge are hidden and do not count; custom tags are excluded.
 </ParamField>
 
 <ParamField body="segments" type="ChartSegment[]">
@@ -550,6 +552,24 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 
 <ParamField body="smoothing" type="number" default="0.08">
   Value-lerp speed (0 = frozen, 1 = instant).
+</ParamField>
+
+<ParamField body="rangeAnimation" type="RangeAnimationConfig">
+  Control Y-range easing independently of live-value and time-window smoothing.
+  `animateExpansion` defaults to `false` (outward bounds snap); set it to `true`
+  to ease expansion. `expansionSmoothing` and `contractionSmoothing` independently
+  override the per-60fps-frame fraction of the remaining gap closed; omitted
+  speeds inherit `smoothing`. Finite overrides clamp to 0..1, and non-finite
+  overrides inherit `smoothing`. This is frame-rate-independent exponential
+  easing, not a duration in milliseconds.
+
+  While the fitted and displayed ranges do not overlap, contraction is limited
+  to the animated expansion speed so the bounds cannot cross.
+
+  `smoothing: 1`, `snapKey` changes, static mode, and active manual Y-scale dragging
+  remain immediate. Axis-label fades stay under `metrics.grid`. Shared with
+  `LiveChartSeries`; see [Y-range animation](/guides/y-range-scale#animating-automatic-range-changes)
+  and [`RangeAnimationConfig`](/api-reference/types#rangeanimationconfig).
 </ParamField>
 
 <ParamField body="snapKey" type="string | number">

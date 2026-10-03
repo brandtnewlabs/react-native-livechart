@@ -25,6 +25,21 @@ import {
   useCrosshair,
 } from "../../src/hooks/useCrosshair";
 
+// Keep gesture state mutable when driving callbacks directly in Jest. The
+// native Worklets shim freezes the normal SharedValue doubles on serialization.
+jest.mock("react-native-reanimated", () => {
+  const React = jest.requireActual<typeof import("react")>("react");
+  return {
+    ...jest.requireActual("react-native-reanimated"),
+    useSharedValue: <T,>(initial: T) => React.useRef({
+      value: initial,
+      get() { return this.value; },
+      set(next: T) { this.value = next; },
+    }).current,
+    useAnimatedReaction: jest.fn(),
+  };
+});
+
 jest.mock("react-native-gesture-handler", () => {
   let lastPanCalls: Record<string, unknown[]>;
   let lastTapCalls: Record<string, unknown[]>;
@@ -1108,6 +1123,43 @@ describe("useCrosshair (hook)", () => {
     expect(config.minDistance).toBeUndefined();
     expect(config.activeOffsetX).toEqual([[-20, 20]]);
     expect(config.failOffsetY).toEqual([[-10, 10]]);
+  });
+
+  it.each([
+    { down: { x: 100, y: 100 }, active: { x: 70, y: 100 }, scrubs: true },
+    { down: { x: 40, y: 130 }, active: { x: 70, y: 100 }, scrubs: true },
+    { down: { x: 40, y: 100 }, active: { x: 100, y: 100 }, scrubs: false },
+  ])("arbitrates overlays at touch-down ($down → $active)", async ({ down, active, scrubs }) => {
+    const deferTapHit = jest.fn(
+      (x: number, y: number) => x >= 10 && x <= 90 && Math.abs(y - 100) <= 14,
+    );
+    const { result } = await renderHook(() =>
+      useCrosshair(
+        makeEngine(),
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+        undefined,
+        undefined,
+        0,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        deferTapHit,
+      ),
+    );
+    const config = getGestureConfig(result.current.gesture);
+    const touchDown = config.onTouchesDown[0] as (e: unknown) => void;
+    const start = config.onStart[0] as (e: unknown) => void;
+    touchDown({ changedTouches: [down], allTouches: [down], numberOfTouches: 1 });
+    start(active);
+    expect(result.current.scrubActive.get()).toBe(scrubs);
+    expect(deferTapHit).toHaveBeenLastCalledWith(down.x, down.y);
   });
 
   it("does not build a tap gesture or lock state without scrubAction", async () => {

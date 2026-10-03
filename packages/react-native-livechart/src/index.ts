@@ -97,6 +97,7 @@ export type {
   MultiSeriesDotConfig,
   PerSeriesTooltipConfig,
   PulseConfig,
+  RangeAnimationConfig,
   ReferenceLine,
   ReferenceLineBadgeConfig,
   ReferenceLineGroupingConfig,

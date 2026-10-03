@@ -34,6 +34,16 @@ describe("pinnedPlotY", () => {
     expect(pinnedPlotY(-100, 0, 100, 300, 12, 28)).toBe(272);
   });
 
+  it("pins a valid projection of exactly -1 rather than treating it as missing layout", () => {
+    expect(computeScrubDotY(105, 0, 100, 300, 12, 28)).toBe(-1);
+    expect(pinnedPlotY(105, 0, 100, 300, 12, 28)).toBe(12);
+  });
+
+  it("preserves the centered flat range and NaN projection", () => {
+    expect(pinnedPlotY(50, 50, 50, 300, 12, 28)).toBe(142);
+    expect(pinnedPlotY(NaN, 0, 100, 300, 12, 28)).toBeNaN();
+  });
+
   it("is -1 when there is no plot height", () => {
     expect(pinnedPlotY(50, 0, 100, 40, 12, 28)).toBe(-1);
     expect(pinnedPlotY(50, 0, 100, 0, 12, 28)).toBe(-1);

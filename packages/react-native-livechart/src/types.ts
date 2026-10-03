@@ -192,6 +192,18 @@ export interface ReferenceLine {
    */
   draggable?: boolean;
   /**
+   * Where along a draggable line a press may grab it: a canvas x-range in px,
+   * `[from, to]`, ends included — typically the span of a custom tag drawn with
+   * `renderReferenceLine` (measure it with `onLayout`; a left-pinned tag starts 2 px
+   * inside the plot's left edge). Omit to grab the line anywhere along it (the
+   * default). With a range, a pan, scrub or page scroll that merely starts near the
+   * line no longer moves it; a press inside the range grabs it as before (same Y
+   * reach). `from > to` makes the line ungrabbable. A JS value: leave a little
+   * slack for a tag that changes width (off-axis, a live price). Applies only to
+   * draggable Form-A lines.
+   */
+  grabRange?: [number, number];
+  /**
    * Snap the dragged value to this increment (e.g. `0.01` for cents, `0.5` for a
    * tick size) so drops land on round levels. Omit for free dragging. Applies only
    * while {@link draggable}.
@@ -334,7 +346,9 @@ export interface ReferenceLineRenderProps {
  * lines whose handles fall within {@link ReferenceLineGroupingConfig.radius} px of
  * each other collapse into a single count handle, so a cluster of nearby orders /
  * alerts reads as one tag instead of an unreadable pile. Pass `true` for defaults
- * or an object to tune the proximity radius.
+ * or an object to tune the proximity radius. Badged off-axis lines group at either
+ * plot edge; off-axis lines with no badge are hidden and do not count. Custom tags
+ * are excluded.
  */
 export interface ReferenceLineGroupingConfig {
   /**
@@ -2258,6 +2272,25 @@ export interface LoadingConfig {
   axisLabels?: boolean;
 }
 
+/** Y-range easing shared by both charts, independent of value/window tracking. */
+export interface RangeAnimationConfig {
+  /** Ease outward bounds instead of snapping. Default `false`. */
+  animateExpansion?: boolean;
+  /**
+   * Fraction of the remaining gap closed per 60fps frame when a bound expands.
+   * Inherits `smoothing`; only used with `animateExpansion: true`. Finite values
+   * are clamped to 0..1; non-finite values inherit `smoothing`.
+   */
+  expansionSmoothing?: number;
+  /**
+   * Fraction of the remaining gap closed per 60fps frame when a bound contracts.
+   * Inherits `smoothing`. Finite values are clamped to 0..1; non-finite values
+   * inherit `smoothing`. While animated expansion moves toward a disjoint fit,
+   * contraction is limited to the expansion speed so bounds cannot cross.
+   */
+  contractionSmoothing?: number;
+}
+
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
@@ -2324,6 +2357,14 @@ export interface LiveChartCoreProps {
    * `lerpSpeed`. Default `0.08`.
    */
   smoothing?: number;
+  /**
+   * Control Y-range expansion and contraction independently of `smoothing` for
+   * value/window tracking. Omission preserves instant expansion and eased
+   * contraction. Uses frame-rate-independent exponential easing, not a fixed
+   * duration. `smoothing: 1`, explicit `snapKey` changes, static charts, and active
+   * manual Y-scale dragging remain immediate. Axis-label fades use `metrics.grid`.
+   */
+  rangeAnimation?: RangeAnimationConfig;
   /**
    * Snap the framing to its target in a single frame whenever this key changes —
    * without giving up smooth live ticks. On a timeframe / dataset switch, the

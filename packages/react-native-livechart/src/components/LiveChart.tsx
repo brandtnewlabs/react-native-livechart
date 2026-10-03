@@ -137,11 +137,7 @@ import {
   candleGapBucketStartAtTime,
   candleGapDefaultLabel,
 } from "../math/candleGaps";
-import { pinnedPlotY } from "../hooks/crosshairShared";
-import {
-  groupReferenceLines,
-  type ReferenceGrouping,
-} from "../math/referenceGroup";
+import { useReferenceLineGrouping } from "../hooks/useReferenceLineGrouping";
 import {
   collectReferenceValues,
   referenceLineForm,
@@ -204,10 +200,6 @@ import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
 import { XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
-
-/** Stable empty grouping result (identity-stable so downstream worklets don't
- *  re-run) used when reference-line grouping is off. */
-const EMPTY_GROUPING: ReferenceGrouping = { hidden: [], groups: [] };
 
 /** Stable empty number array so the live-reference-values worklet stays
  *  referentially stable (no engine re-fit) when no line is draggable. */
@@ -1224,59 +1216,6 @@ function useLiveIndicatorOpacities({
   };
 }
 
-function useReferenceLineGrouping({
-  radius,
-  engine,
-  padding,
-  lines,
-  custom,
-  offAxisCustom,
-  dragValues,
-}: {
-  radius: number | null;
-  engine: ReturnType<typeof useLiveChartEngine>;
-  padding: ChartPadding;
-  lines: ReferenceLine[];
-  custom: boolean[];
-  offAxisCustom: boolean[];
-  dragValues: SharedValue<number[]>;
-}) {
-  const result = useDerivedValue<ReferenceGrouping>(() => {
-    if (radius == null) return EMPTY_GROUPING;
-    const canvasHeight = engine.canvasHeight.get();
-    const displayMin = engine.displayMin.get();
-    const displayMax = engine.displayMax.get();
-    const top = padding.top;
-    const yPositions: number[] = [];
-    for (let index = 0; index < lines.length; index++) {
-      const line = lines[index];
-      if (
-        referenceLineForm(line) !== "line" ||
-        line.value === undefined ||
-        custom[index] ||
-        offAxisCustom[index]
-      ) {
-        yPositions.push(-1);
-        continue;
-      }
-      const value = dragValues.get()[index] ?? line.value;
-      yPositions.push(
-        pinnedPlotY(
-          value,
-          displayMin,
-          displayMax,
-          canvasHeight,
-          top,
-          padding.bottom,
-        ),
-      );
-    }
-    return groupReferenceLines(yPositions, radius);
-  });
-  const hidden = useDerivedValue<boolean[]>(() => result.get().hidden);
-  return { refGroupResult: result, groupHidden: hidden };
-}
-
 function useLiveChartLayoutResources({
   value,
   fontProp,
@@ -1466,6 +1405,7 @@ function useLiveChartController({
   autoSleep = false,
   snapKey,
   smoothing = 0.08,
+  rangeAnimation,
   exaggerate = false,
   nonNegative = false,
   maxValue,
@@ -1762,6 +1702,7 @@ function useLiveChartController({
     allowFutureViewEnd: timeScrollOverscroll > 0,
     returnToLiveMs,
     smoothing,
+    rangeAnimation,
     adaptiveSpeedBoost: metricsCfg.motion.adaptiveSpeedBoost,
     exaggerate,
     referenceValues: refValues,

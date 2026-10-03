@@ -234,6 +234,7 @@ interface ReferenceLine {
   offAxisBadgeLabel?: string;
   // Draggable (Form A only) — grab the line and drag it along the Y-axis:
   draggable?: boolean;             // default false
+  grabRange?: [number, number];    // canvas x px where a press may grab it; default anywhere
   snap?: number;                   // round the dragged value to this increment
   bounds?: [number, number];       // hard-clamp the draggable value
   onChange?: (value: number) => void;  // during drag (de-duped to value changes)
@@ -274,6 +275,8 @@ interface ReferenceLineRenderProps {
 // keeps the built-in in-range tag and shows the custom element only for edge !== "in".
 
 interface ReferenceLineGroupingConfig {
+  // Off-axis badge / offAxisBadge tags group at either plot edge. Hidden plain
+  // off-axis lines and custom-rendered tags do not count toward a group.
   radius?: number;             // collapse lines whose value-Y are within this many px; default 18
   badge?: ReferenceLineBadgeConfig;   // count-pill styling (same style/shape config as a
                                       //   per-line badge: position, icon, colors, radius,
@@ -677,6 +680,26 @@ interface FontConfig {
   fontManager?: SkFontMgr | null;
 }
 ```
+
+## RangeAnimationConfig
+
+Exported config for the shared `rangeAnimation` prop on `LiveChart` and `LiveChartSeries`.
+
+```ts
+interface RangeAnimationConfig {
+  animateExpansion?: boolean;    // default false; outward bounds snap
+  expansionSmoothing?: number;   // inherits smoothing; only used with animateExpansion
+  contractionSmoothing?: number; // inherits smoothing
+}
+```
+
+Speeds are per-60fps-frame fractions of the remaining gap, using frame-rate-independent
+exponential easing. Finite overrides clamp to 0..1; non-finite overrides inherit `smoothing`.
+While the fitted and displayed ranges do not overlap, contraction is limited to the
+animated expansion speed so the bounds cannot cross.
+`smoothing: 1`, explicit snaps, static mode, and active manual Y-scale dragging take precedence.
+Axis-label fades remain under `metrics.grid`. See
+[Y-range animation](/guides/y-range-scale#animating-automatic-range-changes).
 
 ## Imperative handle
 

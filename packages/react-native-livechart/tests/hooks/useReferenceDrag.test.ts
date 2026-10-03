@@ -3,9 +3,26 @@ import { useSharedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { DEFAULT_PADDING } from "../../src/draw/line";
+import { computeScrubDotY } from "../../src/hooks/crosshairShared";
 import { useReferenceDrag } from "../../src/hooks/useReferenceDrag";
 import type { ReferenceLine } from "../../src/types";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
+
+// Execute gesture worklets against mutable JS values; the native test shim
+// freezes SharedValues when serializing handlers and cannot drive their state.
+jest.mock("react-native-reanimated", () => {
+  const React = jest.requireActual<typeof import("react")>("react");
+  return {
+    ...jest.requireActual("react-native-reanimated"),
+    useSharedValue: <T,>(initial: T) => React.useRef({
+      value: initial,
+      get() { return this.value; },
+      set(next: T) { this.value = next; },
+    }).current,
+    useDerivedValue: (updater: () => unknown) => ({ get: updater }),
+    useAnimatedReaction: jest.fn(),
+  };
+});
 
 function engine(canvasHeight = 300): ChartEngineLayout {
   return withSharedValueAccessors({
@@ -18,11 +35,7 @@ function engine(canvasHeight = 300): ChartEngineLayout {
   }) as unknown as ChartEngineLayout;
 }
 
-async function setup(
-  lines: ReferenceLine[],
-  enabled = true,
-  canvasHeight = 300,
-) {
+async function setup(lines: ReferenceLine[], enabled = true, canvasHeight = 300) {
   return await renderHook(() => {
     const dragValues = useSharedValue<number[]>(lines.map((l) => l.value ?? 0));
     const dragActive = useSharedValue<boolean[]>(lines.map(() => false));
@@ -59,24 +72,96 @@ describe("useReferenceDrag", () => {
     expect(result.current).toBeTruthy();
   });
 
-  it("pins a line far above the visible range to the top edge, where it stays grabbable", async () => {
-    // 0–100 visible: 200 projects well above the canvas (a negative Y).
-    const { result } = await setup([{ value: 200, draggable: true }]);
-    expect(result.current.hitTest(40, DEFAULT_PADDING.top)).toBe(true);
+  it("hitTest grabs a line with a grabRange only inside it", async () => {
+    const { result } = await setup([
+      { value: 50, draggable: true, grabRange: [0, 80] },
+    ]);
+    const y = computeScrubDotY(
+      50,
+      0,
+      100,
+      300,
+      DEFAULT_PADDING.top,
+      DEFAULT_PADDING.bottom,
+    );
+    expect(result.current.hitTest(40, y)).toBe(true);
+    expect(result.current.hitTest(200, y)).toBe(false);
   });
 
-  it("pins a line far below the visible range to the bottom edge", async () => {
-    const { result } = await setup([{ value: -100, draggable: true }]);
-    expect(result.current.hitTest(40, 300 - DEFAULT_PADDING.bottom)).toBe(true);
+  it("hitTest grabs a line without a grabRange anywhere along it", async () => {
+    const { result } = await setup([{ value: 50, draggable: true }]);
+    const y = computeScrubDotY(
+      50,
+      0,
+      100,
+      300,
+      DEFAULT_PADDING.top,
+      DEFAULT_PADDING.bottom,
+    );
+    expect(result.current.hitTest(40, y)).toBe(true);
+    expect(result.current.hitTest(200, y)).toBe(true);
   });
 
-  it("grabs nothing on a canvas with no plot height", async () => {
-    // Exactly as tall as its padding: a pinned handle would sit on the top edge.
-    const height = DEFAULT_PADDING.top + DEFAULT_PADDING.bottom;
-    const flat = await setup([{ value: 50, draggable: true }], true, height);
-    expect(flat.result.current.hitTest(40, DEFAULT_PADDING.top)).toBe(false);
-    const unmeasured = await setup([{ value: 50, draggable: true }], true, 0);
-    expect(unmeasured.result.current.hitTest(40, 0)).toBe(false);
+  it.each([40, 200])("decides drag ownership at touch-down x=%s", async (x) => {
+    const { result } = await setup([
+      { value: 50, draggable: true, grabRange: [0, 80] },
+    ]);
+    const y = computeScrubDotY(
+      50, 0, 100, 300, DEFAULT_PADDING.top, DEFAULT_PADDING.bottom,
+    );
+    const fail = jest.fn();
+    const touchDown = result.current.gesture.handlers.onTouchesDown as unknown as (
+      e: { changedTouches: { x: number; y: number }[] },
+      manager: { fail: () => void },
+    ) => void;
+    touchDown({ changedTouches: [{ x, y }] }, { fail });
+    expect(fail).toHaveBeenCalledTimes(x === 40 ? 0 : 1);
+    // A grabbed line keeps ownership beyond both its X and Y grab bands.
+    expect(result.current.hitTest(200, y + 50)).toBe(x === 40);
+    (result.current.gesture.handlers.onFinalize as () => void)();
+    expect(result.current.hitTest(200, y + 50)).toBe(false);
+  });
+
+  it("uses an updated grabRange after a controlled rerender", async () => {
+    const { result, rerender } = await renderHook(
+      ({ range }: { range: [number, number] }) => {
+        const values = useSharedValue([50]);
+        const active = useSharedValue([false]);
+        return useReferenceDrag(
+          engine(),
+          DEFAULT_PADDING,
+          [{ value: 50, draggable: true, grabRange: range }],
+          values,
+          active,
+          true,
+        );
+      },
+      { initialProps: { range: [0, 80] as [number, number] } },
+    );
+    const y = computeScrubDotY(
+      50, 0, 100, 300, DEFAULT_PADDING.top, DEFAULT_PADDING.bottom,
+    );
+    expect(result.current.hitTest(40, y)).toBe(true);
+    expect(result.current.hitTest(150, y)).toBe(false);
+    await rerender({ range: [120, 200] });
+    expect(result.current.hitTest(40, y)).toBe(false);
+    expect(result.current.hitTest(150, y)).toBe(true);
+  });
+
+  it.each([120, 200, -20, -100])("grabs an off-axis line at the pinned edge (value=%s)", async (value) => {
+    const { result } = await setup([
+      { value, draggable: true, grabRange: [0, 80] },
+    ]);
+    const y = value > 100 ? DEFAULT_PADDING.top : 300 - DEFAULT_PADDING.bottom;
+    expect(result.current.hitTest(40, y)).toBe(true);
+    expect(result.current.hitTest(200, y)).toBe(false);
+  });
+
+  it.each([0, DEFAULT_PADDING.top + DEFAULT_PADDING.bottom])("does not grab lines before the canvas has a drawable height (height=%s)", async (height) => {
+    const { result } = await setup([
+      { value: 120, draggable: true, grabRange: [0, 80] },
+    ], true, height);
+    expect(result.current.hitTest(40, DEFAULT_PADDING.top)).toBe(false);
   });
 
   it("is inert for a static chart (enabled = false)", async () => {
