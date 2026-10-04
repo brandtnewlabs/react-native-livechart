@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Markers now leave the plot at its left and right edges, with the data they
+  mark, instead of being drawn up to 24 px past them: a panned chart no longer
+  slides a marker over the y-axis labels or the live badge, and a marker past
+  the edge can no longer be tapped. The 24 px allowance above and below the
+  plot is unchanged.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added

@@ -1,3 +1,4 @@
+import { advanceTimestampByPixel } from "../../src/core/liveChartEngineTick";
 import {
   markersSignature,
   nearestMarkerIndex,
@@ -129,6 +130,68 @@ describe("projectMarkers", () => {
     const out: ProjectedMarker[] = [];
     projectMarkers([{ id: "a", time: 500, kind: "trade", value: 50 }], out, BASE);
     expect(out[0].visible).toBe(false);
+  });
+
+  describe("plot edges", () => {
+    // BASE plot: x 12…320 (chartW 308) over the window 970…1000, y 12…272. The
+    // right gutter (padRight 80) is where the y-axis labels and live badge sit.
+    const PX = 30 / 308; // seconds per px across the plot
+
+    function visibleAt(time: number, value = 50, opts = BASE): boolean {
+      const out: ProjectedMarker[] = [];
+      projectMarkers([{ id: "a", time, kind: "trade", value }], out, opts);
+      return out[0].visible;
+    }
+
+    it("hides a marker once its anchor passes the plot's right edge", () => {
+      expect(visibleAt(1000 + PX)).toBe(false); // x = 321: 1 px into the gutter
+      expect(visibleAt(1000 + 20 * PX)).toBe(false); // over the y-axis labels
+    });
+
+    it("hides a marker once its anchor passes the plot's left edge", () => {
+      expect(visibleAt(970 - PX)).toBe(false); // x = 11: 1 px into the inset
+      expect(visibleAt(970 - 20 * PX)).toBe(false);
+    });
+
+    it("keeps a marker anchored exactly on either edge", () => {
+      expect(visibleAt(970)).toBe(true); // x = 12
+      expect(visibleAt(1000)).toBe(true); // x = 320
+    });
+
+    it("keeps a marker stamped now while the live edge trails it", () => {
+      // The live edge advances in half-pixel steps: on a 1 h window (9 s per
+      // canvas px here) it can trail the clock by ~4.5 s.
+      const now = 1004.49;
+      const timestamp = advanceTimestampByPixel(1000, now, 3600 / 400);
+      expect(timestamp).toBe(1000); // not stepped yet: `now` is past the edge
+      const opts = { ...BASE, displayWindow: 3600, timestamp };
+      expect(visibleAt(now, 50, opts)).toBe(true);
+    });
+
+    it("keeps the 24 px margin above and below the plot", () => {
+      // 1 value unit = 2.6 px (chartH 260 over 0…100).
+      expect(visibleAt(990, 100 + 20 / 2.6)).toBe(true); // 20 px above
+      expect(visibleAt(990, 0 - 20 / 2.6)).toBe(true); // 20 px below
+      expect(visibleAt(990, 100 + 30 / 2.6)).toBe(false); // 30 px above
+      expect(visibleAt(990, 0 - 30 / 2.6)).toBe(false); // 30 px below
+    });
+
+    it("does not hit-test a marker past the edge", () => {
+      const out: ProjectedMarker[] = [];
+      projectMarkers(
+        [{ id: "a", time: 1000 + 10 * PX, kind: "trade", value: 50 }],
+        out,
+        BASE,
+      );
+      // A tap right on its (would-be) glyph in the gutter misses.
+      expect(nearestMarkerIndex(out, out[0].x, out[0].y, 16)).toBe(-1);
+    });
+
+    it("culls a single projected point the same way", () => {
+      expect(projectPoint(1000 + PX, 50, undefined, BASE).visible).toBe(false);
+      expect(projectPoint(970 - PX, 50, undefined, BASE).visible).toBe(false);
+      expect(projectPoint(1000, 50, undefined, BASE).visible).toBe(true);
+    });
   });
 
   it("marks invisible on a degenerate canvas / range", () => {

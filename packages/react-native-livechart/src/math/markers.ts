@@ -6,6 +6,9 @@ import { splineValueAtTime } from "./spline";
 export interface ProjectedMarker {
   x: number;
   y: number;
+  /** The anchor is on the plot: across within `EDGE_SLOP` of it, up and down
+   *  within `CULL_MARGIN`. Only visible markers are drawn, clustered, or
+   *  hit-tested. */
   visible: boolean;
   /** Collapsed cluster member that the representative stands in for — not drawn,
    *  not hit-tested. Set by the cluster pass; `false` outside `markerCluster`. */
@@ -41,8 +44,21 @@ export interface ProjectMarkersOpts {
   lineLinear?: boolean;
 }
 
-/** How far off-chart (px) a marker may sit before it is culled. */
+/**
+ * How far above / below the plot (px) a marker's anchor may sit before it is
+ * culled. Vertical only: across, the anchor must stay on the plot (see
+ * {@link EDGE_SLOP}).
+ */
 const CULL_MARGIN = 24;
+
+/**
+ * Slack (px) past the plot's left / right edge before a marker is culled. A
+ * live chart's right edge advances in half-pixel steps
+ * (`advanceTimestampByPixel`), so a marker stamped with the current time can
+ * sit up to half a pixel past it until the next step — on a wide window, for
+ * seconds. Also absorbs float rounding of a marker exactly on an edge.
+ */
+const EDGE_SLOP = 0.5;
 
 /**
  * Project one marker (given its primitive anchor fields) into `target`,
@@ -115,9 +131,14 @@ function projectInto(
   const y = chartTop + ((opts.displayMax - v) / valRange) * chartH;
   target.x = x;
   target.y = y;
+  // Across, a marker shows only while its anchor is on the plot, so it leaves
+  // at the plot's left / right edge with the data it marks instead of sliding
+  // over the y-axis gutter / live badge or the left inset. Up and down keep
+  // CULL_MARGIN: a marker's value can sit just outside the fitted Y range, or
+  // lead it while the range eases out.
   target.visible =
-    x >= chartLeft - CULL_MARGIN &&
-    x <= chartRight + CULL_MARGIN &&
+    x >= chartLeft - EDGE_SLOP &&
+    x <= chartRight + EDGE_SLOP &&
     y >= chartTop - CULL_MARGIN &&
     y <= chartBottom + CULL_MARGIN;
 }
