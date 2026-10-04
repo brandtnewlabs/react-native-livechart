@@ -153,7 +153,7 @@ referenceLines={[
     draggable: true,
     snap: 0.05,                   // round drops to a tick size
     bounds: [0, lastPrice],       // hard-clamp the drag range
-    onChange: (v) => {},          // as the finger moves it (de-duped); + once on release if needed
+    onChange: (v) => {},          // as the finger moves it (de-duped); + once on release if the line ended elsewhere
     onCommit: setLimitPrice,      // on release — persist the move
     onDragIn: (v) => {},          // value (re-)entered the visible range / bounds
     onDragOut: (v) => {},         // value left the visible range / hit a bound

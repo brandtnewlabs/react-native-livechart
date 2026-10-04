@@ -24,10 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   even a coarse `snap` can widen the range.
 - If lines added or removed mid-drag move a dragged line with an `id` to
   another index, the drag lets go: it stops following the finger and commits
-  nothing, instead of moving and committing the line that took that index.
-  (That line still shows the dragged value it inherits by index, as before.)
-- Removing the line being dragged mid-drag no longer throws on the UI thread
-  (reading `snap` on the next move, or `value` on release); the drag lets go.
+  nothing, instead of moving and committing the line that took that index. On
+  release that line gets its own `value` back in place of the dragged value it
+  inherited by index.
+- Removing the line being grabbed or dragged no longer throws on the UI thread
+  (reading `value` as the drag starts or on release, or `snap` on the next
+  move); the drag lets go.
 
 ## [4.26.0] — 2026-10-03
 

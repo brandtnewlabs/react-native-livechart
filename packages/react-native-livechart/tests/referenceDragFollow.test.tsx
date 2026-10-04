@@ -65,12 +65,10 @@ describe("draggable reference lines on LiveChart", () => {
       set() {},
     };
     const useReferenceDrag = dragHooks.useReferenceDrag;
-    jest
-      .spyOn(dragHooks, "useReferenceDrag")
-      .mockImplementation((...args) => ({
-        ...useReferenceDrag(...args),
-        drawnValues: drawn as never,
-      }));
+    jest.spyOn(dragHooks, "useReferenceDrag").mockImplementation((...args) => ({
+      ...useReferenceDrag(...args),
+      drawnValues: drawn as never,
+    }));
     const engine = jest.spyOn(engineHooks, "useLiveChartEngine");
     const grouping = jest.spyOn(groupingHooks, "useReferenceLineGrouping");
     const press = jest.spyOn(pressHooks, "useReferenceLinePress");

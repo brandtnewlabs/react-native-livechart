@@ -94,7 +94,8 @@ function dragValueAtY(
  * finger's last Y whenever the range changes, or the plot is resized, while the
  * finger rests. `dragValues` keeps the value the finger last set. If another line
  * takes the dragged line's index mid-drag (lines added or removed before it, told
- * apart by `id`), the drag lets go: it moves and commits nothing.
+ * apart by `id`), the drag lets go: it moves and commits nothing, and on release
+ * gives that line back its own value.
  *
  * Also fires the per-line drag callbacks: `onChange` (as the finger moves the
  * line, de-duped to value changes, and once more on release if the line was
@@ -353,36 +354,44 @@ export function useReferenceDrag(
     "worklet";
     const i = dragIndex.get();
     const l = lines[i];
-    if (
-      i >= 0 &&
-      activated.get() &&
-      l !== undefined &&
-      l.id === grabbedId.get()
-    ) {
-      // Commit what is drawn: the range may have moved under a still finger
-      // since its last move. It stays there once released.
-      const v =
-        dragValueAtY(
-          l,
-          lastY.get(),
-          displayMin.get(),
-          displayMax.get(),
-          canvasHeight.get(),
-          padding.top,
-          padding.bottom,
-          false,
-        ) ??
-        dragValues.get()[i] ??
-        l.value ??
-        0;
-      if (dragValues.get()[i] !== v) {
-        const values = dragValues.get().slice();
-        values[i] = v;
-        dragValues.set(values);
+    if (i >= 0 && activated.get() && l !== undefined) {
+      if (l.id === grabbedId.get()) {
+        // Commit what is drawn: the range may have moved under a still finger
+        // since its last move. It stays there once released.
+        const v =
+          dragValueAtY(
+            l,
+            lastY.get(),
+            displayMin.get(),
+            displayMax.get(),
+            canvasHeight.get(),
+            padding.top,
+            padding.bottom,
+            false,
+          ) ??
+          dragValues.get()[i] ??
+          l.value ??
+          0;
+        if (dragValues.get()[i] !== v) {
+          const values = dragValues.get().slice();
+          values[i] = v;
+          dragValues.set(values);
+        }
+        // An `onChange`-only consumer ends where the line is drawn.
+        if (v !== lastChange.get() && l.onChange) {
+          scheduleOnRN(emitChange, i, v);
+        }
+        if (l.onCommit) scheduleOnRN(emitCommit, i, v);
+      } else {
+        // Another line took the dragged one's index mid-drag, and drag values
+        // follow lines by index: give it back its own value, not the dragged one.
+        const own = l.value ?? 0;
+        if (i < dragValues.get().length && dragValues.get()[i] !== own) {
+          const values = dragValues.get().slice();
+          values[i] = own;
+          dragValues.set(values);
+        }
       }
-      // An `onChange`-only consumer ends where the line is drawn.
-      if (v !== lastChange.get() && l.onChange) scheduleOnRN(emitChange, i, v);
-      if (l.onCommit) scheduleOnRN(emitCommit, i, v);
     }
     if (i >= 0 && activated.get()) {
       const arr = dragActive.get().slice();

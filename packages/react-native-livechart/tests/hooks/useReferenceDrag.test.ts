@@ -115,6 +115,8 @@ async function setupDrag(initial: ReferenceLine[]) {
     setValues: (values: number[]) => result.current.values.set(values),
     /** Which lines the drag marks as dragging. */
     active: () => result.current.active.get(),
+    /** Stands in for the chart re-seeding its flags for new `lines`. */
+    setActive: (active: boolean[]) => result.current.active.set(active),
     /** The values the lines are drawn at. */
     drawn: () => result.current.drag.drawnValues.get(),
     setRange(min: number, max: number) {
@@ -398,8 +400,11 @@ describe("useReferenceDrag", () => {
     };
     const t = await setupDrag([order]);
     t.dragTo(yOf(60));
-    // A line is added before the dragged one: "alert" takes index 0.
+    // A line is added before the dragged one: "alert" takes index 0, and the
+    // chart carries the dragged value and flag over to it by index.
     await t.rerender({ lines: [alert, order] });
+    t.setValues([60, 50]);
+    t.setActive([true, false]);
     t.setRange(0, 200);
     expect(t.drawn()).toBe(t.values()); // nothing re-mapped
     t.handlers().onUpdate({ y: yOf(150, 0, 200) });
@@ -408,6 +413,9 @@ describe("useReferenceDrag", () => {
     await flushCallbacks();
     expect(alertCommit).not.toHaveBeenCalled();
     expect(orderCommit).not.toHaveBeenCalled();
+    // Released, "alert" is back at its own value, not the dragged one.
+    expect(t.values()).toEqual([10, 50]);
+    expect(t.active()).toEqual([false, false]);
   });
 
   it("does not start a drag whose line is gone by the time it activates", async () => {
@@ -434,11 +442,13 @@ describe("useReferenceDrag", () => {
     t.dragTo(yOf(60));
     await t.rerender({ lines: [] });
     t.setValues([]);
+    t.setActive([]);
     t.setRange(0, 200);
     expect(() => t.handlers().onUpdate({ y: yOf(150, 0, 200) })).not.toThrow();
     expect(() => t.handlers().onFinalize()).not.toThrow();
     await flushCallbacks();
     expect(t.values()).toEqual([]);
+    expect(t.active()).toEqual([]);
     expect(t.drawn()).toEqual([]);
     expect(onCommit).not.toHaveBeenCalled();
   });
