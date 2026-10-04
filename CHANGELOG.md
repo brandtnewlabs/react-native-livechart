@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `DotConfig`, `DotRingConfig`, `LineStyleConfig`, and `TimeScrollConfig` are
+  now exported from the package root, as the API reference and guides already
+  document. Importing them from `react-native-livechart` no longer fails to
+  typecheck.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added
