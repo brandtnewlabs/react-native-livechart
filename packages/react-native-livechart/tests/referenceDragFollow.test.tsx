@@ -20,16 +20,31 @@ jest.mock("react-native-reanimated", () => {
     useSharedValue: <T,>(initial: T) => {
       const ref = React.useRef({
         value: initial,
-        get() { return this.value; },
-        set(next: T) { this.value = next; },
-        addListener() {}, removeListener() {},
+        get() {
+          return this.value;
+        },
+        set(next: T) {
+          this.value = next;
+        },
+        addListener() {},
+        removeListener() {},
       });
       return ref.current;
     },
     useDerivedValue: <T,>(fn: () => T) => {
       const latest = React.useRef(fn);
       latest.current = fn;
-      return React.useMemo(() => ({ get value() { return latest.current(); }, get() { return latest.current(); } }), []);
+      return React.useMemo(
+        () => ({
+          get value() {
+            return latest.current();
+          },
+          get() {
+            return latest.current();
+          },
+        }),
+        [],
+      );
     },
     useFrameCallback: jest.fn(() => ({ setActive: jest.fn() })),
     useAnimatedReaction: jest.fn(),
@@ -42,11 +57,20 @@ describe("draggable reference lines on LiveChart", () => {
   it("draw, group and hit-test at the drag's drawn values; the range fits the dragged values", async () => {
     // Where the drag draws its line (under the finger after the range moved),
     // apart from the value the finger set (`dragValues`, here the prop's 50).
-    const drawn = { value: [120], get() { return this.value; }, set() {} };
+    const drawn = {
+      value: [120],
+      get() {
+        return this.value;
+      },
+      set() {},
+    };
     const useReferenceDrag = dragHooks.useReferenceDrag;
     jest
       .spyOn(dragHooks, "useReferenceDrag")
-      .mockImplementation((...args) => ({ ...useReferenceDrag(...args), drawnValues: drawn as never }));
+      .mockImplementation((...args) => ({
+        ...useReferenceDrag(...args),
+        drawnValues: drawn as never,
+      }));
     const engine = jest.spyOn(engineHooks, "useLiveChartEngine");
     const grouping = jest.spyOn(groupingHooks, "useReferenceLineGrouping");
     const press = jest.spyOn(pressHooks, "useReferenceLinePress");
@@ -64,10 +88,13 @@ describe("draggable reference lines on LiveChart", () => {
       );
     }
     await render(<Harness />);
-    expect(grouping.mock.calls[grouping.mock.calls.length - 1][0].dragValues).toBe(drawn);
+    expect(
+      grouping.mock.calls[grouping.mock.calls.length - 1][0].dragValues,
+    ).toBe(drawn);
     expect(press.mock.calls[press.mock.calls.length - 1][8]).toBe(drawn);
     expect(tag.mock.calls[tag.mock.calls.length - 1][0].dragValues).toBe(drawn);
-    const fit = engine.mock.calls[engine.mock.calls.length - 1][0].liveReferenceValues!;
+    const fit =
+      engine.mock.calls[engine.mock.calls.length - 1][0].liveReferenceValues!;
     expect(fit.get()).toEqual([50]);
   });
 });

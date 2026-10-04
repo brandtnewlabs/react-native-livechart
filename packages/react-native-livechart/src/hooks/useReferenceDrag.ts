@@ -323,7 +323,8 @@ export function useReferenceDrag(
   const onUpdate = (e: { y: number }) => {
     "worklet";
     const i = dragIndex.get();
-    if (i < 0) return;
+    // Not after an `onStart` that let go (the line gone or replaced by then).
+    if (i < 0 || !activated.get()) return;
     lastY.set(e.y);
     const l = lines[i];
     if (l === undefined || l.id !== grabbedId.get()) return;
@@ -385,8 +386,10 @@ export function useReferenceDrag(
     }
     if (i >= 0 && activated.get()) {
       const arr = dragActive.get().slice();
-      arr[i] = false;
-      dragActive.set(arr);
+      if (i < arr.length) {
+        arr[i] = false;
+        dragActive.set(arr);
+      }
     }
     dragIndex.set(-1);
     activated.set(false);

@@ -99,7 +99,7 @@ async function setupDrag(initial: ReferenceLine[]) {
         active,
         true,
       );
-      return { drag, values };
+      return { drag, values, active };
     },
     { initialProps: { lines: initial } },
   );
@@ -113,6 +113,8 @@ async function setupDrag(initial: ReferenceLine[]) {
     values: () => result.current.values.get(),
     /** Stands in for the chart re-seeding its values for new `lines`. */
     setValues: (values: number[]) => result.current.values.set(values),
+    /** Which lines the drag marks as dragging. */
+    active: () => result.current.active.get(),
     /** The values the lines are drawn at. */
     drawn: () => result.current.drag.drawnValues.get(),
     setRange(min: number, max: number) {
@@ -423,6 +425,69 @@ describe("useReferenceDrag", () => {
     t.handlers().onFinalize();
     await flushCallbacks();
     expect(t.values()).toEqual([]);
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("lets go, without throwing, when the dragged line is removed mid-drag", async () => {
+    const onCommit = jest.fn();
+    const t = await setupDrag([{ value: 50, draggable: true, onCommit }]);
+    t.dragTo(yOf(60));
+    await t.rerender({ lines: [] });
+    t.setValues([]);
+    t.setRange(0, 200);
+    expect(() => t.handlers().onUpdate({ y: yOf(150, 0, 200) })).not.toThrow();
+    expect(() => t.handlers().onFinalize()).not.toThrow();
+    await flushCallbacks();
+    expect(t.values()).toEqual([]);
+    expect(t.drawn()).toEqual([]);
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("does not catch onChange up on release when the line ends where the finger set it", async () => {
+    const onChange = jest.fn();
+    const t = await setupDrag([{ value: 50, draggable: true, onChange }]);
+    t.dragTo(yOf(60));
+    t.handlers().onUpdate({ y: yOf(70) });
+    t.handlers().onFinalize();
+    await flushCallbacks();
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange.mock.calls[0][0]).toBeCloseTo(60);
+    expect(onChange.mock.calls[1][0]).toBeCloseTo(70);
+  });
+
+  it("does not take over a line that replaced the grabbed one before the drag started", async () => {
+    const onChange = jest.fn();
+    const onCommit = jest.fn();
+    const order = {
+      id: "order",
+      value: 50,
+      draggable: true,
+      onChange,
+      onCommit,
+    };
+    const alert = {
+      id: "alert",
+      value: 50,
+      draggable: true,
+      onChange,
+      onCommit,
+    };
+    const t = await setupDrag([order]);
+    t.handlers().onTouchesDown(
+      { changedTouches: [{ x: 40, y: yOf(50) }] },
+      { fail: jest.fn() },
+    );
+    // "alert" takes the grabbed index before the finger has moved far enough.
+    await t.rerender({ lines: [alert] });
+    t.handlers().onStart({ y: yOf(60) });
+    expect(t.active()).toEqual([false]);
+    // Even if the grabbed line comes back, a drag that never started moves nothing.
+    await t.rerender({ lines: [order] });
+    t.handlers().onUpdate({ y: yOf(70) });
+    t.handlers().onFinalize();
+    await flushCallbacks();
+    expect(t.values()).toEqual([50]);
+    expect(onChange).not.toHaveBeenCalled();
     expect(onCommit).not.toHaveBeenCalled();
   });
 

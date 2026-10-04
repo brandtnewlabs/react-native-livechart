@@ -224,7 +224,8 @@ export interface ReferenceLine {
    * to a new (snapped, clamped) value. De-duplicated to value changes — not every
    * frame. When the range moves under a still finger the line follows it without
    * firing this; on release it fires once more if the line ended elsewhere, with
-   * the value {@link onCommit} gets. Form-A draggable only.
+   * the value {@link onCommit} gets (its first call, if the finger never changed
+   * the value). Form-A draggable only.
    */
   onChange?: (value: number) => void;
   /**
