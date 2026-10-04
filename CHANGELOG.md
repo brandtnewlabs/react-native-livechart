@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Markers now leave the plot at its left and right edges, with the data they
-  mark, instead of being drawn up to 24 px past them: a panned chart no longer
-  slides a marker over the y-axis labels or the live badge, and a marker past
-  the edge can no longer be tapped. The 24 px allowance above and below the
-  plot is unchanged.
+- Markers are no longer drawn up to 24 px past the plot's left and right edges.
+  A marker now disappears as soon as its anchor leaves the plot, so panning
+  back no longer slides it over the y-axis labels in a right- or left-side
+  gutter, and `onMarkerPress` no longer fires for it there. A glyph anchored
+  just inside an edge still overhangs it by up to half its width. On the left
+  this is a visible change: with the default 12 px inset, a marker scrolling
+  out used to slide off the canvas; it now disappears at the plot's left edge.
+  A marker dated after the chart's current time appears once that time is
+  reached, at the right edge. The 24 px allowance above and below the plot is
+  unchanged.
 
 ## [4.26.0] — 2026-10-03
 
