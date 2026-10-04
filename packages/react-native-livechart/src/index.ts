@@ -120,6 +120,7 @@ export type {
   ThemeMode,
   ThresholdConfig,
   ThresholdBadgeRenderProps,
+  ThresholdFillConfig,
   ThresholdLineConfig,
   TimeScrollConfig,
   TooltipRenderProps,

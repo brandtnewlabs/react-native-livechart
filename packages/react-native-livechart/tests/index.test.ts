@@ -1,12 +1,14 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import * as entry from "../src/index";
 import * as hooks from "../src/hooks";
-import type {
-  DotConfig,
-  DotRingConfig,
-  LineStyleConfig,
-  LiveChartProps,
-  TimeScrollConfig,
-} from "../src/index";
+
+/** Types declared in `src/types.ts` that are deliberately not public. */
+const INTERNAL_TYPES: string[] = [];
+
+function readSource(file: string): string {
+  return readFileSync(join(__dirname, "../src", file), "utf8");
+}
 
 describe("package entry", () => {
   it("exports LiveChart and LiveChartSeries", () => {
@@ -14,20 +16,28 @@ describe("package entry", () => {
     expect(entry.LiveChartSeries).toBeDefined();
   });
 
-  it("exports the config types the docs name", () => {
-    // Compile-time check (`npm run typecheck`): each type must be importable
-    // from the entry and accepted where the public props use it.
-    const ring: DotRingConfig = { width: 2 };
-    const dot: DotConfig = { radius: 4, ring };
-    const timeScroll: TimeScrollConfig = { gesture: "axisDrag" };
-    const connector: LineStyleConfig = { intervals: [3, 3] };
-    const props: Pick<LiveChartProps, "dot" | "timeScroll" | "topLabel"> = {
-      dot,
-      timeScroll,
-      topLabel: { connector },
-    };
+  // Type-only exports are erased before Jest runs, so read the sources: a type
+  // added to types.ts must also be listed in the entry (or in INTERNAL_TYPES).
+  it("re-exports every type declared in types.ts", () => {
+    const declared = [
+      ...readSource("types.ts").matchAll(/^export\s+(?:interface|type)\s+(\w+)/gm),
+    ].map((m) => m[1]);
+    const list = /export\s+type\s*\{([^}]*)\}\s*from\s*"\.\/types"/.exec(
+      readSource("index.ts"),
+    );
+    expect(declared.length).toBeGreaterThan(0);
+    expect(list).not.toBeNull();
 
-    expect(props).toEqual({ dot, timeScroll, topLabel: { connector } });
+    const exported = new Set(
+      (list?.[1] ?? "")
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean),
+    );
+    const missing = declared.filter(
+      (name) => !exported.has(name) && !INTERNAL_TYPES.includes(name),
+    );
+    expect(missing).toEqual([]);
   });
 });
 
