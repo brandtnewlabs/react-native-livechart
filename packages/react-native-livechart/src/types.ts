@@ -205,7 +205,10 @@ export interface ReferenceLine {
   grabRange?: [number, number];
   /**
    * Snap the dragged value to this increment (e.g. `0.01` for cents, `0.5` for a
-   * tick size) so drops land on round levels. Omit for free dragging. Applies only
+   * tick size) so drops land on round levels. At the plot's edge the line is drawn
+   * and dropped on the nearest increment inside the visible range; dragged past
+   * the edge, the value the finger sets (and {@link onChange} reports) rounds
+   * outward, so the range can widen to it. Omit for free dragging. Applies only
    * while {@link draggable}.
    */
   snap?: number;
@@ -217,15 +220,17 @@ export interface ReferenceLine {
    */
   bounds?: [number, number];
   /**
-   * Fired on the JS thread *while* dragging, each time the (snapped, clamped)
-   * value changes. De-duplicated to value changes — not every frame. Form-A
-   * draggable only.
+   * Fired on the JS thread *while* dragging, each time the finger moves the line
+   * to a new (snapped, clamped) value. De-duplicated to value changes — not every
+   * frame. When the range moves under a still finger the line follows it without
+   * firing this; on release it fires once more if the line ended elsewhere, with
+   * the value {@link onCommit} gets. Form-A draggable only.
    */
   onChange?: (value: number) => void;
   /**
    * Fired once on the JS thread when the drag ends (finger up), with the final
-   * (snapped, clamped) value. Pair with a controlled `value` to persist the move.
-   * Form-A draggable only.
+   * (snapped, clamped) value — the one under the finger. Pair with a controlled
+   * `value` to persist the move. Form-A draggable only.
    */
   onCommit?: (value: number) => void;
   /**

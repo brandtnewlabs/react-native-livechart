@@ -18,7 +18,12 @@ import {
 } from "../math/referenceDrag";
 import { referenceLineForm } from "../math/referenceLines";
 import type { ReferenceLine } from "../types";
-import { computeValueAtY, pinnedPlotY, snapPrice } from "./crosshairShared";
+import {
+  computeValueAtY,
+  pinnedPlotY,
+  snapPriceOutward,
+  snapPriceWithin,
+} from "./crosshairShared";
 
 /** Vertical reach (px) around a line within which a touch grabs it. */
 const GRAB_SLOP = 14;
@@ -30,12 +35,51 @@ const DRAG_ACTIVATE_PX = 4;
 const EMPTY: never[] = [];
 
 /**
+ * The value a drag at canvas `y` gives `line` against the current range: the
+ * price at that Y, snapped to `line.snap` and clamped to `line.bounds`. Null
+ * before the canvas is laid out. `atFinger`: the value the finger sets (what the
+ * range fits and `onChange` reports) — the nearest increment, rounded outward
+ * once the finger is past the plot's edge so even a coarse `snap` can widen the
+ * range. Otherwise the value the line is drawn and committed at — rounded inward
+ * at the edges, so the line stays on the plot.
+ */
+function dragValueAtY(
+  line: ReferenceLine,
+  y: number,
+  displayMin: number,
+  displayMax: number,
+  canvasHeight: number,
+  padTop: number,
+  padBottom: number,
+  atFinger: boolean,
+): number | null {
+  "worklet";
+  const raw = computeValueAtY(
+    y,
+    displayMin,
+    displayMax,
+    canvasHeight,
+    padTop,
+    padBottom,
+  );
+  if (raw === null) return null;
+  const snapped = atFinger
+    ? snapPriceOutward(
+        raw,
+        line.snap,
+        y < padTop ? 1 : y > canvasHeight - padBottom ? -1 : 0,
+      )
+    : snapPriceWithin(raw, line.snap, displayMin, displayMax);
+  return clampToBounds(snapped, line.bounds);
+}
+
+/**
  * Builds the per-line **drag** gesture for draggable Form-A reference lines: grab a
  * line near its value-Y and drag vertically to set a new value, with optional
  * `snap` + `bounds` clamp. Mirrors the order-ticket reticle in {@link useCrosshair}
  * (value↔Y via `computeValueAtY` / `pinnedPlotY`, frozen value re-projected
- * each frame) but per line, writing into the shared `dragValues` array the layout
- * and overlays read.
+ * each frame) but per line, writing the value the finger sets into the shared
+ * `dragValues` array (what the range fit reads). The overlays read `drawnValues`.
  *
  * The pan uses `manualActivation`: it grabs only when a touch starts within
  * {@link GRAB_SLOP} of a draggable line (and inside its `grabRange`, when it has
@@ -46,8 +90,16 @@ const EMPTY: never[] = [];
  * falls through to scrub on a horizontal start, so a drag begun on a line always
  * wins the race rather than dropping a scrub crosshair (#163).
  *
- * Also fires the per-line drag callbacks: `onChange` (de-duped during drag),
- * `onCommit` (on release), and `onDragIn` / `onDragOut` (value crossing the visible
+ * The dragged line stays under the finger: `drawnValues` re-maps it from the
+ * finger's last Y whenever the range changes, or the plot is resized, while the
+ * finger rests. `dragValues` keeps the value the finger last set. If another line
+ * takes the dragged line's index mid-drag (lines added or removed before it, told
+ * apart by `id`), the drag lets go: it moves and commits nothing.
+ *
+ * Also fires the per-line drag callbacks: `onChange` (as the finger moves the
+ * line, de-duped to value changes, and once more on release if the line was
+ * drawn elsewhere), `onCommit` (on release, with the value under the finger),
+ * and `onDragIn` / `onDragOut` (drawn value crossing the visible
  * range or a `bounds`, from a drag or the axis rescaling — edge-detected each frame).
  */
 export function useReferenceDrag(
@@ -62,6 +114,10 @@ export function useReferenceDrag(
   /** True when a touch at (x,y) would grab a draggable line — lets the scrub
    *  gesture decline that press so it never drops a crosshair on a line (#163). */
   hitTest: (x: number, y: number) => boolean;
+  /** `dragValues` with the line being dragged kept under the finger, re-mapped
+   *  against the current range. What the lines' overlays, grouping and press
+   *  hit-test read; the range fit reads `dragValues`. */
+  drawnValues: SharedValue<number[]>;
 } {
   const anyDraggable =
     enabled &&
@@ -111,6 +167,41 @@ export function useReferenceDrag(
   const startY = useSharedValue(0);
   const activated = useSharedValue(false);
   const lastChange = useSharedValue(0);
+  // The finger's latest Y during a drag, and the grabbed line's `id`: lines are
+  // index-aligned, so a line added or removed before it mid-drag hands its index
+  // to another line, and the drag must not move that one.
+  const lastY = useSharedValue(0);
+  const grabbedId = useSharedValue<string | undefined>(undefined);
+  const { displayMin, displayMax, canvasHeight } = engine;
+
+  // The dragged line under the finger. The range (live data, a range animation)
+  // can move, or the plot be resized, while the finger rests, and the gesture maps
+  // the finger only when it moves, so re-map from its last Y here. Being a
+  // derived value, everything that reads it is ordered after it and draws this
+  // frame's value. `dragValues` keeps the value the finger last set: the range
+  // fits that one (fitting this one would let a line held near the plot edge push
+  // the range out every frame) and `onChange` reports it.
+  const drawnValues = useDerivedValue<number[]>(() => {
+    const values = dragValues.get();
+    const i = dragIndex.get();
+    if (i < 0 || !activated.get()) return values;
+    const l = lines[i];
+    if (l === undefined || l.id !== grabbedId.get()) return values;
+    const v = dragValueAtY(
+      l,
+      lastY.get(),
+      displayMin.get(),
+      displayMax.get(),
+      canvasHeight.get(),
+      padding.top,
+      padding.bottom,
+      false,
+    );
+    if (v === null || v === values[i]) return values;
+    const out = values.slice();
+    out[i] = v;
+    return out;
+  });
 
   // JS-thread callback dispatch — closes over the latest `lines` each render.
   /* istanbul ignore next -- runs via scheduleOnRN from the UI-thread gesture */
@@ -149,7 +240,7 @@ export function useReferenceDrag(
           out.push(false);
           continue;
         }
-        const v = dragValues.get()[i] ?? l.value;
+        const v = drawnValues.get()[i] ?? l.value;
         out.push(referenceValueOut(v, dMin, dMax, l.bounds));
       }
       return out;
@@ -160,7 +251,7 @@ export function useReferenceDrag(
       for (let i = 0; i < curr.length; i++) {
         if (prev[i] === undefined || curr[i] === prev[i]) continue;
         const l = lines[i];
-        const v = dragValues.get()[i] ?? l.value ?? 0;
+        const v = drawnValues.get()[i] ?? l.value ?? 0;
         if (curr[i]) scheduleOnRN(emitDragOut, i, v);
         else scheduleOnRN(emitDragIn, i, v);
       }
@@ -181,11 +272,13 @@ export function useReferenceDrag(
       x: t.x,
       ranges: grabRanges,
     });
-    if (i < 0) {
+    const l = lines[i];
+    if (l === undefined) {
       manager.fail();
       return;
     }
     dragIndex.set(i);
+    grabbedId.set(l.id);
     startX.set(t.x);
     startY.set(t.y);
   };
@@ -212,15 +305,18 @@ export function useReferenceDrag(
   };
 
   /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-  const onStart = () => {
+  const onStart = (e: { y: number }) => {
     "worklet";
     const i = dragIndex.get();
-    if (i < 0) return;
+    const l = lines[i];
+    // The line may be gone, or another have taken its index, since the grab.
+    if (l === undefined || l.id !== grabbedId.get()) return;
+    lastY.set(e.y);
     activated.set(true);
     const arr = dragActive.get().slice();
     arr[i] = true;
     dragActive.set(arr);
-    lastChange.set(dragValues.get()[i] ?? lines[i].value ?? 0);
+    lastChange.set(dragValues.get()[i] ?? l.value ?? 0);
   };
 
   /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
@@ -228,17 +324,20 @@ export function useReferenceDrag(
     "worklet";
     const i = dragIndex.get();
     if (i < 0) return;
+    lastY.set(e.y);
     const l = lines[i];
-    const raw = computeValueAtY(
+    if (l === undefined || l.id !== grabbedId.get()) return;
+    const v = dragValueAtY(
+      l,
       e.y,
-      engine.displayMin.get(),
-      engine.displayMax.get(),
-      engine.canvasHeight.get(),
+      displayMin.get(),
+      displayMax.get(),
+      canvasHeight.get(),
       padding.top,
       padding.bottom,
+      true,
     );
-    if (raw === null) return;
-    const v = clampToBounds(snapPrice(raw, l.snap), l.bounds);
+    if (v === null) return;
     const arr = dragValues.get().slice();
     arr[i] = v;
     dragValues.set(arr);
@@ -252,12 +351,42 @@ export function useReferenceDrag(
   const onFinalize = () => {
     "worklet";
     const i = dragIndex.get();
+    const l = lines[i];
+    if (
+      i >= 0 &&
+      activated.get() &&
+      l !== undefined &&
+      l.id === grabbedId.get()
+    ) {
+      // Commit what is drawn: the range may have moved under a still finger
+      // since its last move. It stays there once released.
+      const v =
+        dragValueAtY(
+          l,
+          lastY.get(),
+          displayMin.get(),
+          displayMax.get(),
+          canvasHeight.get(),
+          padding.top,
+          padding.bottom,
+          false,
+        ) ??
+        dragValues.get()[i] ??
+        l.value ??
+        0;
+      if (dragValues.get()[i] !== v) {
+        const values = dragValues.get().slice();
+        values[i] = v;
+        dragValues.set(values);
+      }
+      // An `onChange`-only consumer ends where the line is drawn.
+      if (v !== lastChange.get() && l.onChange) scheduleOnRN(emitChange, i, v);
+      if (l.onCommit) scheduleOnRN(emitCommit, i, v);
+    }
     if (i >= 0 && activated.get()) {
-      const v = dragValues.get()[i] ?? lines[i].value ?? 0;
       const arr = dragActive.get().slice();
       arr[i] = false;
       dragActive.set(arr);
-      if (lines[i].onCommit) scheduleOnRN(emitCommit, i, v);
     }
     dragIndex.set(-1);
     activated.set(false);
@@ -299,5 +428,5 @@ export function useReferenceDrag(
     .onUpdate(onUpdate)
     .onFinalize(onFinalize);
 
-  return { gesture, hitTest };
+  return { gesture, hitTest, drawnValues };
 }

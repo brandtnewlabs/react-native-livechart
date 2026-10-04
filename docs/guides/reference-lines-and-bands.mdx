@@ -153,7 +153,7 @@ referenceLines={[
     draggable: true,
     snap: 0.05,                   // round drops to a tick size
     bounds: [0, lastPrice],       // hard-clamp the drag range
-    onChange: (v) => {},          // during drag (de-duped to value changes)
+    onChange: (v) => {},          // as the finger moves it (de-duped to value changes)
     onCommit: setLimitPrice,      // on release — persist the move
     onDragIn: (v) => {},          // value (re-)entered the visible range / bounds
     onDragOut: (v) => {},         // value left the visible range / hit a bound
@@ -165,6 +165,15 @@ The line is **uncontrolled** by default (it stays where you drop it); pair `onCo
 the value back into `value` to make it controlled. `onDragIn` / `onDragOut` are edge-triggered and
 also fire when the axis rescales under a fixed value (e.g. an order scrolling off the top), so
 they're a clean "is my order still on screen" signal even without dragging.
+
+The line stays under the finger for the whole drag, also when the price range changes under a
+still finger (live data, a [`rangeAnimation`](/guides/y-range-scale#animating-automatic-range-changes)
+easing) or the plot is resized; `onCommit` gets the value under the finger. Near the top or bottom
+edge, a line that counts in the range widens it only as the finger moves, so holding it there
+doesn't keep pushing the range out; dropped there, it widens the range once and settles a little
+inside the edge (eased with `rangeAnimation={{ animateExpansion: true }}`). Give draggable lines a
+stable `id`: if lines added or removed mid-drag move the dragged line to another index, the drag
+then lets go instead of moving the line that took its place.
 
 Dragging coexists with [scrubbing](/guides/scrubbing): a press that lands within reach of a
 draggable line grabs the line and any drag moves it (in any direction), while a press anywhere else

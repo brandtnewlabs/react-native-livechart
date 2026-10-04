@@ -237,7 +237,7 @@ interface ReferenceLine {
   grabRange?: [number, number];    // canvas x px where a press may grab it; default anywhere
   snap?: number;                   // round the dragged value to this increment
   bounds?: [number, number];       // hard-clamp the draggable value
-  onChange?: (value: number) => void;  // during drag (de-duped to value changes)
+  onChange?: (value: number) => void;  // as the finger moves it (de-duped to value changes)
   onCommit?: (value: number) => void;  // on release — pair with a controlled `value`
   onDragIn?: (value: number) => void;  // value entered the visible range / bounds
   onDragOut?: (value: number) => void; // value left the visible range / hit a bound
