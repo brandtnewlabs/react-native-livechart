@@ -108,6 +108,41 @@ default edge margin.
 Plain horizontal `referenceLines` stop at the same X as the grid, keeping the gap consistent.
 `fullWidth` reference lines and value/time bands keep their existing extents.
 
+### Badge value in the column
+
+By default the live badge centers its value in the pill. To line it up with the label column, set
+`badge={{ textAlign: "yAxisColumn" }}`: the value starts at the labels' left X, and a value wider
+than every axis label ends at the column's right edge. Two trade-offs make this opt-in:
+
+- The pill keeps its shape and the value stays within its `padX` padding (a value that doesn't fit
+  there is centered), so the room on each side comes from the right inset and the badge metrics.
+  The automatic right inset reserves room for one more digit, which ends up left of the value. For
+  even padding, size `insets.right` for your widest price and set `metrics.badge` so
+  `marginEdge + padX` equals `labelRightMargin`.
+- The value moves sideways whenever the column's width changes: a wider label entering or leaving
+  the axis (`99.95` → `100.00`), or digits of different widths in a proportional font.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  yAxis={{ labelRightMargin: 8, gridEndGap: 6 }}
+  badge={{ textAlign: "yAxisColumn" }}
+  metrics={{ badge: { marginEdge: 4, padX: 4 } }}
+  insets={{
+    right: 72, // size it for the widest price the chart shows
+  }}
+/>
+```
+
+It applies to the default right-gutter badge with the column on the right. With
+`yAxis.side: "left"`, while the axis floats (`yAxis.float`; with `timeScroll`, only while scrolled
+back), and with `badge={{ position: "left" }}`, the value stays centered. `badge.offsetX` moves the
+value with the pill. To place a pill relative to the column yourself, turn the badge off and anchor
+your own pill to the column in `renderOverlay`, as the
+[Phantom showcase](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/phantom-up-down.tsx)
+does for its target pill.
+
 ## Axis edge labels
 
 `topLabel` and `bottomLabel` float a value at the top / bottom edge of the plot — the

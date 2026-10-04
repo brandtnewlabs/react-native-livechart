@@ -1,13 +1,20 @@
 import { BADGE_DOT_GAP, BADGE_PILL_PAD_X } from "../../src/constants";
+import {
+  rightAnchoredYAxisColumnLayout,
+  type YAxisEntry,
+} from "../../src/draw/grid";
 import { DEFAULT_PADDING, badgeTailAndCap, pillTextLeftX } from "../../src/draw/line";
 
 import type { SkFont } from "@shopify/react-native-skia";
-import { renderHook } from "@testing-library/react-native";
-import { useSharedValue } from "react-native-reanimated";
+import { render, renderHook } from "@testing-library/react-native";
+import { View } from "react-native";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { measureFontTextWidth } from "../../src/lib/measureFontTextWidth";
 import { resolveTheme } from "../../src/theme";
 import type { EngineState } from "../../src/core/useLiveChartEngine";
+import { YAxisOverlay } from "../../src/components/YAxisOverlay";
 import { useBadge } from "../../src/hooks/useBadge";
+import { getAllByHostType } from "../rntl14";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 const font = {
@@ -377,5 +384,217 @@ describe("useBadge", () => {
       ),
     );
     expect(result.current.value.textColor).toBe("#00ff00");
+  });
+});
+
+// `textAlign: "yAxisColumn"` — LiveChart hands useBadge the Y-axis entries,
+// `labelRightMargin` and the axis font only when the option is on.
+describe("useBadge in the right-anchored Y-axis label column", () => {
+  const palette = resolveTheme("#3b82f6", "dark");
+  const w = 400;
+  const labelRightMargin = 14;
+  // A right inset wider than "50.00" (35 px with the mock font) needs: the pill
+  // body runs 331..396, so a centered value has spare room on both sides. With
+  // the default 10 px padX the value may sit anywhere from 341 to 351.
+  const pad = { ...DEFAULT_PADDING, right: 95 };
+  const paddedLeft = 331 + BADGE_PILL_PAD_X;
+  const paddedRight = 396 - BADGE_PILL_PAD_X;
+  const formatValue = (v: number) => v.toFixed(2);
+  const textW = measureFontTextWidth(font, "50.00");
+  const centered = pillTextLeftX(
+    w,
+    pad.right,
+    BADGE_DOT_GAP + badgeTailAndCap(font.getSize()),
+    textW,
+  );
+
+  function entriesOf(labels: string[]): SharedValue<YAxisEntry[]> {
+    return withSharedValueAccessors({
+      entries: {
+        value: labels.map((label, i) => ({ y: 40 + i * 40, label, alpha: 1 })),
+      },
+    }).entries as unknown as SharedValue<YAxisEntry[]>;
+  }
+
+  function columnLabelX(labels: string[], margin = labelRightMargin) {
+    return rightAnchoredYAxisColumnLayout(
+      w,
+      entriesOf(labels).value,
+      font,
+      margin,
+    ).labelX;
+  }
+
+  async function renderBadge(
+    labels: string[],
+    {
+      badgeFont = font,
+      position = "right",
+      float = false,
+      margin = labelRightMargin,
+      padRight = pad.right,
+    }: {
+      badgeFont?: SkFont;
+      position?: "right" | "left";
+      float?: boolean;
+      /** `null` → no labelRightMargin (option off). */
+      margin?: number | null;
+      padRight?: number;
+    } = {},
+  ) {
+    const { result } = await renderHook(() =>
+      useBadge(
+        makeEngine(w, 300),
+        { ...pad, right: padRight },
+        palette,
+        formatValue,
+        badgeFont,
+        "default",
+        true,
+        undefined,
+        position,
+        undefined,
+        undefined,
+        undefined,
+        float,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        margin === null ? undefined : entriesOf(labels),
+        margin ?? undefined,
+        font,
+      ),
+    );
+    return result.current.value;
+  }
+
+  it("starts the value at the X where YAxisOverlay draws the labels", async () => {
+    const labels = ["10", "100000"];
+    function Axis() {
+      return (
+        <YAxisOverlay
+          entries={entriesOf(labels)}
+          engine={makeEngine(w, 300)}
+          padding={pad}
+          palette={palette}
+          font={font}
+          labelRightMargin={8}
+        />
+      );
+    }
+    const screen = await render(<Axis />);
+    const labelXs = getAllByHostType(screen, View)
+      .filter((view) => labels.includes(view.props.text?.value))
+      .map((view) => view.props.x.value);
+    const badge = await renderBadge(labels, { margin: 8 });
+
+    // 400 canvas - 8 margin - 42 widest label = 350 for both labels.
+    expect(labelXs).toEqual([350, 350]);
+    expect(badge.textX).toBe(350);
+    expect(centered).not.toBeCloseTo(350, 4);
+  });
+
+  it("ends the value where the labels end, not centered in the wider pill body", async () => {
+    const labels = ["40.00", "60.00"];
+    const badge = await renderBadge(labels);
+
+    expect(badge.text).toBe("50.00");
+    expect(badge.textX).toBeCloseTo(columnLabelX(labels), 4);
+    expect(badge.textX + textW).toBeCloseTo(w - labelRightMargin, 4);
+    // Centering leaves the value 5 px short of the column's right edge.
+    expect(centered + textW).toBeCloseTo(w - labelRightMargin - 5, 4);
+  });
+
+  it("starts the value at the labels' shared left X when the widest label is wider", async () => {
+    const labels = ["100.00", "40.00"];
+    const badge = await renderBadge(labels);
+
+    // "100.00" fills the column; "40.00" and the value both start at its left X.
+    expect(badge.textX).toBeCloseTo(
+      w - labelRightMargin - measureFontTextWidth(font, "100.00"),
+      4,
+    );
+  });
+
+  it("ends a value wider than every label at the column's right edge", async () => {
+    const labels = ["5.00"];
+    const badge = await renderBadge(labels);
+
+    expect(badge.textX).toBeLessThan(columnLabelX(labels));
+    expect(badge.textX + textW).toBeCloseTo(w - labelRightMargin, 4);
+  });
+
+  it("measures the column with the Y-axis font, not the badge font", async () => {
+    const badgeFont = {
+      ...font,
+      getSize: () => 14,
+      measureText: (s: string) => ({
+        x: 0,
+        y: 0,
+        width: s.length * 8,
+        height: 14,
+      }),
+    } as unknown as SkFont;
+    const labels = ["1000.00"];
+    // A wider inset (pill body 307..396) keeps both candidates inside the padding.
+    const badge = await renderBadge(labels, { badgeFont, padRight: 120 });
+
+    // Axis font: "1000.00" is 49 px → labelX 337. Measuring it with the badge
+    // font (56 px) would put the column — and the value — at 330.
+    expect(badge.textX).toBeCloseTo(columnLabelX(labels), 4);
+    expect(badge.textX).toBeCloseTo(337, 4);
+  });
+
+  it("keeps the value inside the pill's padding when the column ends past it", async () => {
+    // Column edge 398 is past the pill (body ends at 396): the value ends padX
+    // short of the pill's end instead, clear of the rounded cap.
+    const badge = await renderBadge(["40.00"], { margin: 2 });
+
+    expect(columnLabelX(["40.00"], 2)).toBeCloseTo(363, 4);
+    expect(badge.textX + textW).toBeCloseTo(paddedRight, 4);
+  });
+
+  it("keeps the value inside the pill's padding when the column starts left of it", async () => {
+    // Column 305..340 starts left of the pill body (331).
+    const badge = await renderBadge(["40.00"], { margin: 60 });
+
+    expect(columnLabelX(["40.00"], 60)).toBeCloseTo(305, 4);
+    expect(badge.textX).toBeCloseTo(paddedLeft, 4);
+  });
+
+  it("centers a value that doesn't fit inside the pill's padding", async () => {
+    // Right inset 75 → pill body 351..396: 45 px holds the 35 px value but not
+    // with 10 px of padding on each side.
+    const badge = await renderBadge(["40.00"], { padRight: 75 });
+
+    expect(badge.textX).toBeCloseTo(
+      pillTextLeftX(w, 75, BADGE_DOT_GAP + badgeTailAndCap(12), textW),
+      4,
+    );
+  });
+
+  it("keeps the value centered without the column (textAlign off)", async () => {
+    const badge = await renderBadge(["40.00"], { margin: null });
+
+    expect(badge.textX).toBeCloseTo(centered, 4);
+  });
+
+  it("leaves the floating badge at its own position", async () => {
+    // A column 20 px from the edge, so it differs from the floating pill's text.
+    const badge = await renderBadge(["40.00"], { float: true, margin: 20 });
+    const floatRight = w - 4;
+    const floatLeft = floatRight - (2 * BADGE_PILL_PAD_X + textW);
+
+    expect(badge.textX).toBeCloseTo((floatLeft + floatRight - textW) / 2, 4);
+    expect(badge.textX).not.toBeCloseTo(columnLabelX(["40.00"], 20), 4);
+  });
+
+  it("leaves the left-position badge at its own position", async () => {
+    const badge = await renderBadge(["40.00"], { position: "left" });
+    const right = w - pad.right - BADGE_DOT_GAP;
+    const left = right - (2 * BADGE_PILL_PAD_X + textW);
+
+    expect(badge.textX).toBeCloseTo((left + right - textW) / 2, 4);
   });
 });

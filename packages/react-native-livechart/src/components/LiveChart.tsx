@@ -3442,9 +3442,11 @@ function ChartValueOverlay({
 function ChartBadgeLayer({
   model,
   degen,
+  yAxisEntries,
 }: {
   model: LiveChartModel;
   degen: DegenState | null;
+  yAxisEntries: YAxisEntries | null;
 }) {
   const {
     badgeFont,
@@ -3456,8 +3458,27 @@ function ChartBadgeLayer({
     metricsCfg,
     yAxisFloat,
     liveBadgeOpacity,
+    skiaFont,
+    yAxisCfg,
+    badgeUsesRightGutter,
   } = model;
   const badgeCfg = model.badgeCfg!;
+  // textAlign "yAxisColumn": hand the right-gutter badge the label column only
+  // while YAxisOverlay draws one (right side + labelRightMargin, axis not
+  // floating), so other charts' badges get no extra mapper input.
+  const labelColumn =
+    badgeCfg.textAlign === "yAxisColumn" &&
+    badgeUsesRightGutter &&
+    !yAxisFloat &&
+    yAxisEntries &&
+    yAxisCfg?.side !== "left" &&
+    yAxisCfg?.labelRightMargin !== undefined
+      ? {
+          entries: yAxisEntries,
+          labelRightMargin: yAxisCfg.labelRightMargin,
+          font: skiaFont,
+        }
+      : null;
   const badgeData = useBadge(
     engine,
     effectivePadding,
@@ -3476,6 +3497,9 @@ function ChartBadgeLayer({
     badgeCfg.followViewEdge,
     badgeCfg.radius,
     badgeCfg.textColor,
+    labelColumn?.entries,
+    labelColumn?.labelRightMargin,
+    labelColumn?.font,
   );
   return (
     <Group transform={degen?.shakeTransform}>
@@ -3766,7 +3790,13 @@ function ChartCanvas({
         <ChartTradeStreamLayer model={model} degen={degen} />
       ) : null}
       <ChartScrubLayer model={model} degen={degen} />
-      {model.badgeCfg ? <ChartBadgeLayer model={model} degen={degen} /> : null}
+      {model.badgeCfg ? (
+        <ChartBadgeLayer
+          model={model}
+          degen={degen}
+          yAxisEntries={yAxisEntries}
+        />
+      ) : null}
       <ChartScrubActionLayer model={model} />
     </Canvas>
   );

@@ -44,8 +44,10 @@ export function badgeTailAndCap(
 /**
  * Text left-edge X so the label is horizontally centered in the badge pill.
  * Uses the ASYMMETRIC layout: tail gap (`tl`) on the left, `BADGE_MARGIN_RIGHT` on
- * the right. Both `useBadge` and `GridOverlay` (when badge is shown) call this so
+ * the right. Both `useBadge` and `YAxisOverlay` (when badge is shown) call this so
  * the badge text and y-axis labels share the exact same horizontal position.
+ * With `yAxis.labelRightMargin` the labels use `rightAnchoredYAxisColumnLayout`
+ * instead, and so does the badge text with `badge.textAlign: "yAxisColumn"`.
  *
  * Layout: |dot| tl |PAD_X| text |PAD_X| BADGE_MARGIN_RIGHT |canvas edge
  *                         ↑ same x for grid labels and badge text

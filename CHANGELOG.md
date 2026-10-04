@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `BadgeConfig.textAlign` (`"center" | "yAxisColumn"`, default `"center"`):
+  `"yAxisColumn"` lines the right-gutter live badge's value up with a
+  right-anchored Y-axis label column (`yAxis.labelRightMargin`). The value
+  starts at the labels' left X, a value wider than every axis label ends at the
+  column's right edge, and it stays within the pill's padding. Centered, the
+  value sits half the pill's spare room off the column even with matching badge
+  metrics, and the automatic right inset leaves a digit spare (it sizes for the
+  value ×10). The value moves with the column's width; the axes guide shows a
+  matching `metrics.badge` and `insets.right` setup.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added

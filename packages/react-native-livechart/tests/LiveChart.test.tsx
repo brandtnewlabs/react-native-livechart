@@ -1,3 +1,4 @@
+import { matchFont } from "@shopify/react-native-skia";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import React from "react";
@@ -655,6 +656,108 @@ describe("LiveChart", () => {
         valueLine={{ strokeWidth: 2, intervals: [6, 3] }}
       />,
     );
+  });
+
+  it.each<[string, Partial<LiveChartProps>]>([
+    [
+      "for textAlign yAxisColumn",
+      { badge: { textAlign: "yAxisColumn" }, yAxis: { labelRightMargin: 8 } },
+    ],
+    // Explicit `undefined`s resolve to the defaults the axis and badge draw with.
+    [
+      "when side and position are left undefined",
+      {
+        badge: { textAlign: "yAxisColumn", position: undefined },
+        yAxis: { side: undefined, labelRightMargin: 8 },
+      },
+    ],
+  ])("hands the badge the Y-axis label column %s", async (_, props) => {
+    const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
+    const yAxisSpy = jest.spyOn(yAxisHooks, "useYAxis");
+    await render(<Harness {...props} />);
+
+    const [entries, labelRightMargin, yAxisFont] = badgeSpy.mock.calls
+      .at(-1)!
+      .slice(17);
+    // The badge reads the same entries and font the axis labels are laid out with.
+    expect(entries).toBeDefined();
+    expect(entries).toBe(yAxisSpy.mock.results.at(-1)!.value.yAxisEntries);
+    expect(yAxisFont).toBe(yAxisSpy.mock.calls.at(-1)![3]);
+    expect(labelRightMargin).toBe(8);
+    jest.restoreAllMocks();
+  });
+
+  it("measures the badge's label column with the axis font, not a badge font", async () => {
+    const mockedMatchFont = jest.mocked(matchFont);
+    const axisFont = mockedMatchFont();
+    mockedMatchFont.mockImplementation(
+      (descriptor) =>
+        (descriptor?.fontSize === 17
+          ? { ...axisFont, getSize: () => 17 }
+          : axisFont) as ReturnType<typeof matchFont>,
+    );
+    try {
+      const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
+      const yAxisSpy = jest.spyOn(yAxisHooks, "useYAxis");
+      await render(
+        <Harness
+          badge={{ textAlign: "yAxisColumn", fontSize: 17 }}
+          yAxis={{ labelRightMargin: 8 }}
+        />,
+      );
+
+      const args = badgeSpy.mock.calls.at(-1)!;
+      const badgeFont = args[4];
+      const yAxisFont = args[19];
+      expect(badgeFont.getSize()).toBe(17);
+      expect(yAxisFont).not.toBe(badgeFont);
+      expect(yAxisFont).toBe(yAxisSpy.mock.calls.at(-1)![3]);
+    } finally {
+      jest.restoreAllMocks();
+      mockedMatchFont.mockImplementation(() => axisFont);
+    }
+  });
+
+  it.each<[string, Partial<LiveChartProps>]>([
+    ["by default", { yAxis: { labelRightMargin: 8 } }],
+    [
+      "with textAlign center",
+      { badge: { textAlign: "center" }, yAxis: { labelRightMargin: 8 } },
+    ],
+    ["without labelRightMargin", { badge: { textAlign: "yAxisColumn" } }],
+    [
+      "for left-side labels",
+      {
+        badge: { textAlign: "yAxisColumn" },
+        yAxis: { side: "left", labelRightMargin: 8 },
+      },
+    ],
+    [
+      "for a left-position badge",
+      {
+        badge: { textAlign: "yAxisColumn", position: "left" },
+        yAxis: { labelRightMargin: 8 },
+      },
+    ],
+    [
+      "while the axis floats",
+      {
+        badge: { textAlign: "yAxisColumn" },
+        yAxis: { labelRightMargin: 8, float: true },
+      },
+    ],
+    ["without a Y-axis", { badge: { textAlign: "yAxisColumn" }, yAxis: false }],
+  ])("hands the badge no label column %s", async (_, props) => {
+    const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
+    await render(<Harness {...props} />);
+
+    const [entries, labelRightMargin, yAxisFont] = badgeSpy.mock.calls
+      .at(-1)!
+      .slice(17);
+    expect(entries).toBeUndefined();
+    expect(labelRightMargin).toBeUndefined();
+    expect(yAxisFont).toBeUndefined();
+    jest.restoreAllMocks();
   });
 
   it("accepts left-position badge", async () => {
