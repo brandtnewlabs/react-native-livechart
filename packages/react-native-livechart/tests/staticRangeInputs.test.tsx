@@ -92,6 +92,8 @@ type Bounds = {
   maxValue?: number;
   referenceValue?: number;
   referenceValues?: number[];
+  nowOverride?: number;
+  windowBuffer?: number;
   static?: boolean;
 };
 
@@ -176,6 +178,18 @@ it("settles reference bound changes and removal, but ignores identical values", 
   await view.rerender({ maxValue: 6000 });
   expect(view.settle()).toBe(true);
   expect(view.result.current.displayMax.value).toBeLessThan(100);
+});
+
+it("folds a nowOverride change into the buffered right edge", async () => {
+  const buffer = 0.25;
+  const view = await setup({ windowBuffer: buffer });
+  view.settle();
+  // 100 + 0.25 * 100. Not the override itself, and not the series' last time.
+  expect(view.result.current.timestamp.value).toBe(125);
+
+  await view.rerender({ windowBuffer: buffer, nowOverride: 40 });
+  view.settle();
+  expect(view.result.current.timestamp.value).toBe(65);
 });
 
 it("keeps the static reaction inert for live charts", async () => {

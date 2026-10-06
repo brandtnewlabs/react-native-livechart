@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Static single-series charts now re-settle when `nowOverride` changes, and a
+  chart that becomes `static` in the same render as new data (e.g. a recycled
+  list cell) lands fully on the new window instead of stopping part way or
+  keeping the previous right edge.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added
