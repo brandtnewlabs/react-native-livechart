@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `LiveChart` is memoized, so a parent render with unchanged props no longer
+  re-runs the chart. Pass stable references (memoized arrays and callbacks) to
+  benefit; live data still flows through SharedValues as before.
+- Reference lines, gap bands and the `renderReferenceLine` /
+  `renderOffAxisReferenceLine` probes are only re-resolved when
+  `referenceLines`, `candleGaps` / `lineGaps` or those renderers change, not on
+  every render. A chart without gaps also keeps a stable crosshair gap list.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added
