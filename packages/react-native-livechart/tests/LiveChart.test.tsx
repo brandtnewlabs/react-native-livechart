@@ -3,11 +3,13 @@ import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
+import type { TestInstance } from "test-renderer";
 import { LiveChart } from "../src/components/LiveChart";
 import { getAllByHostType } from "./rntl14";
 import * as engineHooks from "../src/core/useLiveChartEngine";
 import * as badgeHooks from "../src/hooks/useBadge";
 import * as candlePathHooks from "../src/hooks/useCandlePaths";
+import * as chartPathHooks from "../src/hooks/useChartPaths";
 import * as chartOverlayHooks from "../src/hooks/useChartOverlayContext";
 import * as degenHooks from "../src/hooks/useDegen";
 import * as tradeStreamHooks from "../src/hooks/useTradeStream";
@@ -1363,4 +1365,81 @@ it("passes original data sources through the reveal bridge for range revisions",
   expect(config.candlesChangeSource).not.toBe(config.candles);
   expect(config.candlesChangeSource!.get()).toHaveLength(2);
   spy.mockRestore();
+});
+
+describe("series plot clip", () => {
+  const useActualEngine = engineHooks.useLiveChartEngine;
+
+  // Derived values freeze at mount under the Jest stub, so seed the canvas
+  // size the clip reads before the first render.
+  function sizeCanvas(width: number, height: number) {
+    return jest
+      .spyOn(engineHooks, "useLiveChartEngine")
+      .mockImplementation((config) => {
+        const engine = useActualEngine(config);
+        engine.canvasWidth.value = width;
+        engine.canvasHeight.value = height;
+        return engine;
+      });
+  }
+
+  function pathView(screen: Awaited<ReturnType<typeof render>>, path: unknown) {
+    const view = getAllByHostType(screen, View).find(
+      (v) => v.props.path === path,
+    );
+    expect(view).toBeDefined();
+    return view!;
+  }
+
+  function clipAbove(node: TestInstance) {
+    for (let n = node.parent; n; n = n.parent) {
+      if (n.props.clip) return n.props.clip as SharedValue<unknown>;
+    }
+    return undefined;
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it("clips the line and fill to the plot's vertical extent", async () => {
+    sizeCanvas(400, 300);
+    const pathsSpy = jest.spyOn(chartPathHooks, "useChartPaths");
+    const screen = await render(
+      <Harness insets={{ top: 10, bottom: 30 }} yAxis={false} />,
+    );
+    const { linePath, fillPath } = pathsSpy.mock.results.at(-1)!.value;
+
+    const lineClip = clipAbove(pathView(screen, linePath));
+    const fillClip = clipAbove(pathView(screen, fillPath));
+    expect(lineClip).toBe(fillClip);
+    expect(lineClip!.value).toEqual({
+      x: -400,
+      y: 10,
+      width: 1200,
+      height: 260,
+    });
+  });
+
+  it("stops the candle clip at the price plot, above the volume band", async () => {
+    sizeCanvas(400, 300);
+    const pathsSpy = jest.spyOn(candlePathHooks, "useCandlePaths");
+    const screen = await render(
+      <VolumeCandleHarness
+        insets={{ top: 10 }}
+        volume={{ maxHeight: 40 }}
+        yAxis={false}
+      />,
+    );
+    const paths = pathsSpy.mock.results.at(-1)!.value;
+
+    const candleClip = clipAbove(pathView(screen, paths.upBodiesPath));
+    expect(candleClip!.value).toEqual({
+      x: -400,
+      y: 10,
+      width: 1200,
+      // Default x-axis gutter (28) plus the 40px volume band.
+      height: 300 - 10 - 28 - 40,
+    });
+    expect(clipAbove(pathView(screen, paths.downWicksPath))).toBe(candleClip);
+    expect(clipAbove(pathView(screen, paths.upBarsPath))).toBeUndefined();
+  });
 });

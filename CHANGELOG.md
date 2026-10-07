@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- With `yRangeScale` below `1`, the line, area fill, candles and gap bridges
+  are now clipped to the plot's vertical extent instead of drawing past its top
+  and bottom and over the time axis. In candle mode the clip stops at the price
+  plot, above the volume band. Applies to `LiveChart` and `LiveChartSeries`.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added
