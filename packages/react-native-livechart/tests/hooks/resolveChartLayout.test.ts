@@ -6,7 +6,10 @@ import {
 
 import type { SkFont } from "@shopify/react-native-skia";
 import { resolveTheme } from "../../src/theme";
-import { resolveChartLayout } from "../../src/hooks/resolveChartLayout";
+import {
+  resolveChartLayout,
+  shouldResampleLayoutValue,
+} from "../../src/hooks/resolveChartLayout";
 
 const palette = resolveTheme("#3b82f6", "dark");
 
@@ -501,5 +504,27 @@ describe("resolveChartLayout", () => {
       badge: true,
     });
     expect(explicit.padding.right).toBe(implicit.padding.right);
+  });
+});
+
+describe("shouldResampleLayoutValue", () => {
+  it("skips zero and non-finite placeholders", () => {
+    expect(shouldResampleLayoutValue(0, 0)).toBe(false);
+    expect(shouldResampleLayoutValue(NaN, 0)).toBe(false);
+    expect(shouldResampleLayoutValue(Infinity, 87_000)).toBe(false);
+  });
+
+  it("takes the first real value", () => {
+    expect(shouldResampleLayoutValue(87_000, 0)).toBe(true);
+    expect(shouldResampleLayoutValue(-0.5, 0)).toBe(true);
+  });
+
+  it("re-samples only after a full order-of-magnitude move", () => {
+    expect(shouldResampleLayoutValue(99_999, 87_000)).toBe(false);
+    expect(shouldResampleLayoutValue(100_001, 99_999)).toBe(false);
+    expect(shouldResampleLayoutValue(8_701, 87_000)).toBe(false);
+    expect(shouldResampleLayoutValue(870_000, 87_000)).toBe(true);
+    expect(shouldResampleLayoutValue(8_700, 87_000)).toBe(true);
+    expect(shouldResampleLayoutValue(-870_000, 87_000)).toBe(true);
   });
 });

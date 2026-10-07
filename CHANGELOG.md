@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The right gutter for y-axis labels and the value badge now re-measures once
+  the first real value arrives, instead of staying sized for a `0` placeholder
+  and clipping labels like `$87,000`. `LiveChart` and `LiveChartSeries` skip
+  `0` and non-finite values when sampling, and re-measure only when the value
+  moves a full order of magnitude.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added
