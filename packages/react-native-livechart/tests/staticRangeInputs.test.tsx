@@ -90,6 +90,7 @@ function shared<T>(value: T) {
 
 type Bounds = {
   maxValue?: number;
+  minRange?: number;
   referenceValue?: number;
   referenceValues?: number[];
   static?: boolean;
@@ -152,6 +153,16 @@ it("settles when a ceiling arrives after replacement data, in both directions", 
   expect(view.settle()).toBe(true);
   expect(view.result.current.displayMax.value).toBe(60);
   expect(view.settle()).toBe(false);
+});
+
+it("settles when minRange changes without replacing data", async () => {
+  const view = await setup({});
+  view.settle();
+  expect(view.result.current.displayMax.value).toBeLessThan(100);
+  await view.rerender({ minRange: 1000 });
+  expect(view.settle()).toBe(true);
+  expect(view.result.current.displayMin.value).toBe(0);
+  expect(view.result.current.displayMax.value).toBeCloseTo(1000);
 });
 
 it("settles scalar reference changes without replacing data", async () => {

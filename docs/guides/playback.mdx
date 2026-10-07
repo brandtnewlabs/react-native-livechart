@@ -46,11 +46,12 @@ The live tip eases toward the latest `value` instead of snapping. `smoothing` is
 
 ## Y-axis range
 
-By default the Y-axis fits the visible data with a little headroom. Three props reshape it:
+By default the Y-axis fits the visible data with a little headroom. Four props reshape it:
 
 - **`exaggerate`** — tighten the axis so small moves fill the height.
 - **`nonNegative`** — clamp the lower bound at `0`.
 - **`maxValue`** — pin a hard upper bound.
+- **`minRange`** — keep the fitted span at least this tall, in data units.
 
 ```tsx
 <LiveChart data={data} value={value} exaggerate nonNegative maxValue={150} />

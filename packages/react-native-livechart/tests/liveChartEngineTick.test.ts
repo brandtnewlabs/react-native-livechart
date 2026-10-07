@@ -1523,3 +1523,84 @@ describe("tickLiveChartEngineFrame — snap (one-shot settle)", () => {
     });
   });
 });
+
+describe("tickLiveChartEngineFrame — minRange", () => {
+  const rangeInput = (over: Record<string, unknown> = {}) => ({
+    dt: 16.67,
+    canvasWidth: 200,
+    canvasHeight: 100,
+    timeWindow: 30,
+    smoothing: 0.3,
+    exaggerate: false,
+    referenceValue: undefined,
+    snap: true,
+    targetValue: 87000.3,
+    points: [
+      { time: 990, value: 87000 },
+      { time: 995, value: 87000.2 },
+    ],
+    nowSeconds: 1000,
+    ...over,
+  });
+
+  it("widens a near-flat fit to the floor, centred on the data", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, rangeInput({ minRange: 4 }));
+    expect(s.displayMax - s.displayMin).toBeCloseTo(4);
+    expect((s.displayMin + s.displayMax) / 2).toBeCloseTo(87000.15);
+  });
+
+  it("leaves a fit already wider than the floor untouched", () => {
+    const auto = baseState();
+    tickLiveChartEngineFrame(auto, rangeInput());
+    const floored = baseState();
+    tickLiveChartEngineFrame(floored, rangeInput({ minRange: 0.1 }));
+    expect(floored.displayMin).toBe(auto.displayMin);
+    expect(floored.displayMax).toBe(auto.displayMax);
+  });
+
+  it.each([0, -4, NaN, Infinity])("ignores a minRange of %p", (minRange) => {
+    const auto = baseState();
+    tickLiveChartEngineFrame(auto, rangeInput());
+    const floored = baseState();
+    tickLiveChartEngineFrame(floored, rangeInput({ minRange }));
+    expect(floored.displayMin).toBe(auto.displayMin);
+    expect(floored.displayMax).toBe(auto.displayMax);
+  });
+
+  it("slides the span up off the zero floor on nonNegative charts", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(
+      s,
+      rangeInput({
+        minRange: 10,
+        nonNegative: true,
+        targetValue: 1,
+        points: [{ time: 990, value: 1 }],
+      }),
+    );
+    expect(s.displayMin).toBe(0);
+    expect(s.displayMax).toBeCloseTo(10);
+  });
+
+  it("slides the span down under maxValue", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(
+      s,
+      rangeInput({
+        minRange: 0.5,
+        maxValue: 1,
+        targetValue: 0.99,
+        points: [{ time: 990, value: 1 }],
+      }),
+    );
+    expect(s.displayMax).toBe(1);
+    expect(s.displayMin).toBeCloseTo(0.5);
+  });
+
+  it("lets yRangeScale zoom in past the floor", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, rangeInput({ minRange: 4, yRangeScale: 0.5 }));
+    expect(s.displayMax - s.displayMin).toBeCloseTo(2);
+  });
+});

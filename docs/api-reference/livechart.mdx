@@ -597,6 +597,14 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   Hard upper bound for the Y-axis range.
 </ParamField>
 
+<ParamField body="minRange" type="number">
+  Smallest Y span the auto-fit shows, in data units. Near-flat data widens to
+  this span around its midpoint, so grid labels stay distinct. `nonNegative`
+  and `maxValue` shift the span rather than shrink it; `yRangeScale` applies on
+  top. Shared with `LiveChartSeries`. See
+  [Axes & grid](/guides/axes-and-grid#minimum-y-range).
+</ParamField>
+
 <ParamField body="yRangeScale" type="SharedValue<number>" default="1">
   Manual Y-range multiplier around the fitted midpoint (`1` = auto-fit). Drive
   it from a gesture (e.g. dragging the price axis) to stretch or compress the

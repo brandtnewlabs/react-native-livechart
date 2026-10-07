@@ -136,4 +136,23 @@ describe("computeRange", () => {
     const r = computeRange([{ time: 0, value: 10 }], 10, undefined, false, false, 1000);
     expect(r.max).toBeLessThan(1000);
   });
+
+  it("widens a near-flat range to minRange around the data", () => {
+    const r = computeRange([{ time: 0, value: 100 }], 100.2, undefined, false, false, undefined, 4);
+    expect(r.max - r.min).toBeCloseTo(4);
+    expect((r.min + r.max) / 2).toBeCloseTo(100.1);
+  });
+
+  it("ignores minRange when the range is already wider or it is not finite", () => {
+    const auto = computeRange([{ time: 0, value: 0 }], 100, undefined, false);
+    expect(computeRange([{ time: 0, value: 0 }], 100, undefined, false, false, undefined, 50)).toEqual(auto);
+    expect(computeRange([{ time: 0, value: 0 }], 100, undefined, false, false, undefined, Infinity)).toEqual(auto);
+  });
+
+  it("slides a minRange span off the zero floor and under maxValue", () => {
+    expect(computeRange([{ time: 0, value: 1 }], 1, undefined, false, true, undefined, 10)).toEqual({ min: 0, max: 10 });
+    const r = computeRange([{ time: 0, value: 1 }], 1, undefined, false, false, 1, 0.5);
+    expect(r.max).toBe(1);
+    expect(r.min).toBeCloseTo(0.5);
+  });
 });

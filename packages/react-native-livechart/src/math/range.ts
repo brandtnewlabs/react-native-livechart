@@ -11,6 +11,7 @@ export function computeRange(
   exaggerate?: boolean,
   nonNegative?: boolean,
   maxValue?: number,
+  floorRange?: number,
 ): { min: number; max: number } {
   "worklet";
   let targetMin = Infinity;
@@ -45,6 +46,25 @@ export function computeRange(
     const margin = rawRange * marginFactor;
     targetMin -= margin;
     targetMax += margin;
+  }
+
+  // `minRange` floor: widen around the midpoint, sliding off the 0 / maxValue bounds.
+  if (
+    floorRange !== undefined &&
+    floorRange > targetMax - targetMin &&
+    Number.isFinite(floorRange)
+  ) {
+    const mid = (targetMin + targetMax) / 2;
+    targetMin = mid - floorRange / 2;
+    targetMax = mid + floorRange / 2;
+    if (nonNegative && targetMin < 0) {
+      targetMax -= targetMin;
+      targetMin = 0;
+    }
+    if (maxValue !== undefined && targetMax > maxValue) {
+      targetMin -= targetMax - maxValue;
+      targetMax = maxValue;
+    }
   }
 
   if (nonNegative && targetMin < 0) targetMin = 0;

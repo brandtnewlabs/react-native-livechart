@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `minRange` on `LiveChart` and `LiveChartSeries`: the smallest Y span the
+  auto-fit shows, in data units. Near-flat data widens to it around its
+  midpoint instead of zooming in until every grid label reads the same, e.g.
+  `minRange={priceIncrement * 4}`. On a `nonNegative` chart or under
+  `maxValue` the span slides off the bound rather than shrinking. Omitted, the
+  fit is unchanged.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added

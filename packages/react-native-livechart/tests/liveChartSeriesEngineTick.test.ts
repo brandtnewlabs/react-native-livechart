@@ -1072,4 +1072,67 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       });
     });
   });
+
+  describe("minRange", () => {
+    const flatSeries = (value: number) => [
+      {
+        id: "a",
+        data: [
+          { time: 980, value },
+          { time: 1000, value },
+        ],
+        value,
+        color: "#00f",
+      },
+    ];
+    const rangeInput = (
+      over: Partial<Parameters<typeof tickLiveChartSeriesEngineFrame>[1]> = {},
+    ) => ({
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.3,
+      exaggerate: false,
+      referenceValue: undefined,
+      snap: true,
+      series: flatSeries(50),
+      nowSeconds: 1000,
+      ...over,
+    });
+
+    it("widens a flat shared fit to the floor, centred on the data", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, rangeInput({ minRange: 4 }));
+      expect(s.displayMin).toBeCloseTo(48);
+      expect(s.displayMax).toBeCloseTo(52);
+    });
+
+    it.each([0.1, Infinity])("leaves the fit alone for a minRange of %p", (minRange) => {
+      const auto = baseMulti();
+      tickLiveChartSeriesEngineFrame(auto, rangeInput());
+      const floored = baseMulti();
+      tickLiveChartSeriesEngineFrame(floored, rangeInput({ minRange }));
+      expect(floored.displayMin).toBe(auto.displayMin);
+      expect(floored.displayMax).toBe(auto.displayMax);
+    });
+
+    it("slides the span off the zero floor and under maxValue", () => {
+      const low = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        low,
+        rangeInput({ minRange: 10, nonNegative: true, series: flatSeries(1) }),
+      );
+      expect(low.displayMin).toBe(0);
+      expect(low.displayMax).toBeCloseTo(10);
+
+      const high = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        high,
+        rangeInput({ minRange: 10, nonNegative: true, maxValue: 100, series: flatSeries(99) }),
+      );
+      expect(high.displayMax).toBe(100);
+      expect(high.displayMin).toBeCloseTo(90);
+    });
+  });
 });

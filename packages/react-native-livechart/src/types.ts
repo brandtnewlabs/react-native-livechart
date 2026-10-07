@@ -2406,6 +2406,14 @@ export interface LiveChartCoreProps {
    */
   maxValue?: number;
   /**
+   * Smallest Y span the auto-fit will show, in data units. When the visible data
+   * moves less than this, the axis widens around it, so a near-flat window keeps
+   * distinct grid labels (e.g. pass a few multiples of the display precision).
+   * `nonNegative` and `maxValue` shift the span rather than shrink it; manual
+   * `yRangeScale` zoom applies on top. Omit for no floor.
+   */
+  minRange?: number;
+  /**
    * Live manual Y-range multiplier around the fitted midpoint (`1` = auto-fit).
    * Drive it from a gesture (e.g. dragging the price axis) to stretch or
    * compress the price scale TradingView-style; the auto-fit keeps tracking

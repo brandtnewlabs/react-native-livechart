@@ -88,6 +88,8 @@ export interface EngineTickInput {
   nonNegative?: boolean;
   /** Hard cap for the computed upper bound. */
   maxValue?: number;
+  /** Smallest fitted span, in data units; widened around the data. */
+  minRange?: number;
   /** Positive, finite Y-range multiplier around the fitted midpoint (1 = auto-fit). */
   yRangeScale?: number;
   targetValue: number;
@@ -443,6 +445,27 @@ export function tickLiveChartEngineFrame(
       const margin = rawRange * marginFactor;
       tMin -= margin;
       tMax += margin;
+    }
+
+    // Widen a fit narrower than the consumer's floor around its midpoint, then
+    // slide it off the zero floor / ceiling so the clamps below can't shrink it.
+    const floorRange = input.minRange;
+    if (
+      floorRange !== undefined &&
+      floorRange > tMax - tMin &&
+      Number.isFinite(floorRange)
+    ) {
+      const mid = (tMin + tMax) / 2;
+      tMin = mid - floorRange / 2;
+      tMax = mid + floorRange / 2;
+      if (input.nonNegative && tMin < 0) {
+        tMax -= tMin;
+        tMin = 0;
+      }
+      if (input.maxValue !== undefined && tMax > input.maxValue) {
+        tMin -= tMax - input.maxValue;
+        tMax = input.maxValue;
+      }
     }
 
     // Treat malformed gesture output as auto-fit. A zero/negative multiplier

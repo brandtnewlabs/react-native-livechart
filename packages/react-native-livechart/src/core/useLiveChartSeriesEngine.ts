@@ -30,6 +30,7 @@ export interface MultiSeriesEngineConfig {
   referenceValues?: number[];
   nonNegative?: boolean;
   maxValue?: number;
+  minRange?: number;
   /** Positive, finite live Y-range multiplier (1 = auto-fit); read each frame. */
   yRangeScale?: SharedValue<number>;
   nowOverride?: number;
@@ -84,6 +85,7 @@ export interface MultiEngineFrameRefs {
   referenceValues?: SharedValue<number[] | undefined>;
   nonNegativeSV?: SharedValue<boolean>;
   maxValueSV?: SharedValue<number | undefined>;
+  minRangeSV?: SharedValue<number | undefined>;
   yRangeScaleSV?: SharedValue<number>;
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
@@ -249,6 +251,7 @@ export function applyLiveChartSeriesEngineFrame(
   input.referenceValues = sv.referenceValues?.value;
   input.nonNegative = sv.nonNegativeSV?.value ?? false;
   input.maxValue = sv.maxValueSV?.value;
+  input.minRange = sv.minRangeSV?.value;
   input.yRangeScale = sv.yRangeScaleSV?.value ?? 1;
   input.nowOverride = sv.nowOverrideSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
@@ -311,6 +314,7 @@ export function useLiveChartSeriesEngine(
   const referenceValues = useDerivedValue(() => config.referenceValues);
   const nonNegativeSV = useDerivedValue(() => config.nonNegative ?? false);
   const maxValueSV = useDerivedValue(() => config.maxValue);
+  const minRangeSV = useDerivedValue(() => config.minRange);
   const nowOverrideSV = useDerivedValue(() => config.nowOverride);
   const windowBufferSV = useDerivedValue(() => config.windowBuffer ?? 0);
   const pausedSV = useDerivedValue(() => config.paused ?? false);
@@ -399,6 +403,7 @@ export function useLiveChartSeriesEngine(
     referenceValues,
     nonNegativeSV,
     maxValueSV,
+    minRangeSV,
     yRangeScaleSV: config.yRangeScale,
     nowOverrideSV,
     windowBufferSV,
