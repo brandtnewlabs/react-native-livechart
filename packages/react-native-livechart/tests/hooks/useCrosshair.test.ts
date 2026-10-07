@@ -1,6 +1,7 @@
 import { type SkFont } from "@shopify/react-native-skia";
-import { renderHook } from "@testing-library/react-native";
+import { act, renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
+import { useAnimatedReaction } from "react-native-reanimated";
 import { interpolateAtTime } from "../../src/math/interpolate";
 import { resolveTheme } from "../../src/theme";
 import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
@@ -1251,6 +1252,103 @@ describe("useCrosshair (hook)", () => {
 
     expect(getLastPanCalls().hitSlop?.[0]).toEqual({ bottom: -24 });
     expect(getLastTapCalls().hitSlop?.[0]).toEqual({ bottom: -24 });
+  });
+});
+
+// ─── onScrubCandleChange ─────────────────────────────────────────────────────
+
+describe("useCrosshair onScrubCandleChange", () => {
+  const first = { time: 1_700_000_000, open: 1, high: 3, low: 0, close: 2 };
+  const second = { time: 1_700_000_060, open: 2, high: 4, low: 1, close: 3 };
+
+  // Renders the hook, then drives its candle-change reaction (the last one it
+  // registers) by hand: Jest never runs the UI-thread reactions, and the
+  // `scheduleOnRN` it calls is a microtask here.
+  async function setup(
+    mode: "line" | "candle",
+    onScrubCandleChange?: (candle: unknown) => void,
+  ) {
+    jest.mocked(useAnimatedReaction).mockClear();
+    const { result } = await renderHook(() =>
+      useCrosshair(
+        makeEngine(),
+        padding,
+        palette,
+        formatValue,
+        formatTime,
+        font,
+        true,
+        undefined,
+        { mode },
+        0,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "side",
+        true,
+        true,
+        8,
+        0,
+        undefined,
+        false,
+        false,
+        onScrubCandleChange,
+      ),
+    );
+    const calls = jest.mocked(useAnimatedReaction).mock.calls;
+    const [prepare, react] = calls[calls.length - 1];
+    let prev: unknown = null;
+    const step = async () => {
+      const curr = prepare();
+      await act(async () => {
+        react(curr, prev);
+      });
+      prev = curr;
+      return curr;
+    };
+    return { crosshair: result.current, step };
+  }
+
+  it("fires once per candle entered and with null when the scrub ends", async () => {
+    const onScrubCandleChange = jest.fn();
+    const { crosshair, step } = await setup("candle", onScrubCandleChange);
+    const scrubCandle = crosshair.scrubCandle!;
+
+    await step();
+    expect(onScrubCandleChange).not.toHaveBeenCalled();
+
+    crosshair.scrubActive.set(true);
+    scrubCandle.set(first);
+    await step();
+    expect(onScrubCandleChange).toHaveBeenLastCalledWith(first);
+
+    // The forming candle ticking under a still finger is the same candle.
+    scrubCandle.set({ ...first, close: 2.5 });
+    await step();
+    expect(onScrubCandleChange).toHaveBeenCalledTimes(1);
+
+    scrubCandle.set(second);
+    await step();
+    expect(onScrubCandleChange).toHaveBeenLastCalledWith(second);
+
+    crosshair.scrubActive.set(false);
+    await step();
+    expect(onScrubCandleChange).toHaveBeenLastCalledWith(null);
+    expect(onScrubCandleChange).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([
+    ["in line mode", "line" as const, jest.fn()],
+    ["without a callback", "candle" as const, undefined],
+  ])("stays idle %s", async (_label, mode, onScrubCandleChange) => {
+    const { crosshair, step } = await setup(mode, onScrubCandleChange);
+    crosshair.scrubActive.set(true);
+    crosshair.scrubCandle!.set(first);
+    expect(await step()).toBeNull();
+    expect(onScrubCandleChange ?? jest.fn()).not.toHaveBeenCalled();
   });
 });
 

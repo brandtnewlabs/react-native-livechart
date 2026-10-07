@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `onScrubCandleChange` on `LiveChart` (candle mode): called when the scrub
+  crosshair moves onto a different candle, and with `null` when the scrub ends.
+  Unlike `onScrub`, which fires every frame on a live chart, it fires once per
+  candle, e.g. for a haptic tick per candle.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added

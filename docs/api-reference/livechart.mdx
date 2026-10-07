@@ -355,6 +355,12 @@ provided; everything else has a default.
   Fires while scrubbing; `null` when it ends.
 </ParamField>
 
+<ParamField body="onScrubCandleChange" type="(candle: CandlePoint | null) => void">
+  Candle mode: fires when the crosshair moves onto a different candle, and with
+  `null` when the scrub ends or leaves the candles. Once per candle rather than
+  every frame. See [Scrubbing](/guides/scrubbing#per-candle-callback-onscrubcandlechange).
+</ParamField>
+
 <ParamField body="scrubAction" type="boolean | ScrubActionConfig" default="false">
   **Order-ticket** mode: tap to drop a locked crosshair, drag to fine-tune a
   **price level**, then press the right-gutter action badge to fire `onScrubAction`.
