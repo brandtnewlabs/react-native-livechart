@@ -67,6 +67,7 @@ export function useXAxis(
   padding: ChartPadding,
   formatTime: (t: number) => string,
   font: SkFont,
+  minGap = 60,
 ) {
   const labelAlphas = useSharedValue<
     Record<number, { alpha: number; text: string }>
@@ -111,7 +112,7 @@ export function useXAxis(
     // and independent of the window we're animating from.
     const targetPxPerSec = chartW / targetWindow;
     let interval = niceTimeInterval(targetWindow);
-    while (interval * targetPxPerSec < 60 && interval < targetWindow) {
+    while (interval * targetPxPerSec < minGap && interval < targetWindow) {
       interval *= 2;
     }
 

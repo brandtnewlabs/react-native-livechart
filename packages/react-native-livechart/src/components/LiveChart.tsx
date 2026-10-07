@@ -2413,12 +2413,14 @@ function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
     skiaFont,
     palette,
     volumeBandHeight,
+    xAxisCfg,
   } = model;
   const { xAxisEntries } = useXAxis(
     engine,
     effectivePadding,
     formatTime,
     skiaFont,
+    xAxisCfg?.minGap,
   );
   return (
     // Axis auto-hide fade (1 when the feature is off).

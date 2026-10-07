@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `xAxis.minGap` now sets the minimum spacing between time labels on
+  `LiveChart` and `LiveChartSeries`. It was resolved but never applied, so the
+  labels always kept the default 60 px spacing.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added
