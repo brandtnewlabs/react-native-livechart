@@ -2742,7 +2742,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
    *  but `scrub` / `scrubAction` stay available — they're on-demand touch gestures with
    *  no per-frame cost, so a still chart is still scrubbable. May be toggled at runtime:
    *  switching back to live restarts the suspended loops and catches up. Frame the data
-   *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
+   *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). Data,
+   *  layout, `timeWindow`, and `nowOverride` changes re-settle without restarting the
+   *  loop. Entering static mode lands on the new window even when data and framing
+   *  change in the same render (for example, a recycled list cell). */
   static?: boolean;
   /**
    * Runtime gate for continuous frame work. Set this SharedValue to `false`

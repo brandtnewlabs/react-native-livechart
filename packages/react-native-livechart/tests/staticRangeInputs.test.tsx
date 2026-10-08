@@ -1,5 +1,9 @@
 import { renderHook } from "@testing-library/react-native";
-import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
+import {
+  useAnimatedReaction,
+  useDerivedValue,
+  type SharedValue,
+} from "react-native-reanimated";
 import { useLiveChartEngine } from "../src/core/useLiveChartEngine";
 import type { LiveChartPoint } from "../src/types";
 
@@ -22,7 +26,7 @@ jest.mock("react-native-reanimated", () => {
       });
       return ref.current;
     },
-    useDerivedValue: <T,>(fn: () => T) => {
+    useDerivedValue: jest.fn(<T,>(fn: () => T) => {
       const latest = React.useRef(fn);
       latest.current = fn;
       const revision = React.useRef<{ data: unknown; source: unknown } | null>(
@@ -61,7 +65,7 @@ jest.mock("react-native-reanimated", () => {
         }),
         [],
       );
-    },
+    }),
     useAnimatedReaction: jest.fn(),
     useFrameCallback: () => React.useMemo(() => ({ setActive: jest.fn() }), []),
   };
@@ -94,6 +98,8 @@ type Bounds = {
   referenceValues?: number[];
   nowOverride?: number;
   windowBuffer?: number;
+  timeWindow?: number;
+  smoothing?: number;
   static?: boolean;
 };
 
@@ -133,7 +139,7 @@ async function setup(bounds: Bounds) {
     previous = current;
     return changed;
   };
-  return { ...hook, data, settle };
+  return { ...hook, data, value, settle };
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -188,8 +194,49 @@ it("folds a nowOverride change into the buffered right edge", async () => {
   expect(view.result.current.timestamp.value).toBe(125);
 
   await view.rerender({ windowBuffer: buffer, nowOverride: 40 });
-  view.settle();
+  expect(view.settle()).toBe(true);
   expect(view.result.current.timestamp.value).toBe(65);
+
+  await view.rerender({ windowBuffer: buffer, nowOverride: 40 });
+  expect(view.settle()).toBe(false);
+});
+
+it("re-settles when static smoothing lands after a same-render data and window swap", async () => {
+  const view = await setup({ static: false, smoothing: 0.25 });
+  view.settle();
+  // Hold the smoothing mapper at its live value while other prop mappers land.
+  // This models the ordering race explicitly; the Jest getters otherwise read
+  // every new prop synchronously and hide the incomplete one-shot settle.
+  const smoothing = jest.mocked(useDerivedValue).mock.results.find(
+    (result) => result.type === "return" && result.value.get() === 0.25,
+  )?.value as SharedValue<number>;
+  expect(smoothing).toBeDefined();
+  let smoothingValue = 0.25;
+  Object.defineProperty(smoothing, "value", { get: () => smoothingValue });
+  smoothing.get = () => smoothingValue;
+
+  view.data.value = [
+    { time: 150, value: 100 },
+    { time: 200, value: 300 },
+  ];
+  view.value.value = 300;
+  await view.rerender({
+    static: true,
+    smoothing: 0.25,
+    timeWindow: 50,
+    nowOverride: 200,
+    windowBuffer: 0.25,
+  });
+  expect(view.settle()).toBe(true);
+  expect(view.result.current.displayWindow.value).toBeGreaterThan(50);
+  expect(view.result.current.displayWindow.value).toBeLessThan(100);
+
+  smoothingValue = 1;
+  expect(view.settle()).toBe(true);
+  expect(view.result.current.displayWindow.value).toBe(50);
+  expect(view.result.current.displayValue.value).toBe(300);
+  expect(view.result.current.timestamp.value).toBe(212.5);
+  expect(view.settle()).toBe(false);
 });
 
 it("keeps the static reaction inert for live charts", async () => {
@@ -197,6 +244,8 @@ it("keeps the static reaction inert for live charts", async () => {
   view.settle();
   await view.rerender({
     static: false,
+    smoothing: 0.25,
+    nowOverride: 40,
     maxValue: 6000,
     referenceValues: [0, 6000],
   });

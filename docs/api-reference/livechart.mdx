@@ -521,6 +521,10 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   it at runtime; switching back to live restarts the suspended loops and catches
   up. Frame the data edge-to-edge with `timeWindow` + `nowOverride`. See the
   [Sparklines guide](/guides/sparklines).
+
+  Data, layout, `timeWindow`, and `nowOverride` changes re-settle without restarting
+  the loop. Entering static mode lands on the new window even when data and
+  framing change in the same render, as in a recycled list cell.
 </ParamField>
 
 <ParamField body="autoSleep" type="boolean" default="false">
