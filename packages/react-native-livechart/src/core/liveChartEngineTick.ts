@@ -207,6 +207,12 @@ export function tickLiveChartEngineFrame(
   "worklet";
   const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
   const liveEdge = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
+  const targetWindow = input.viewWindow ?? input.timeWindow;
+  // Keep clock rounding below half a pixel of the displayed window as it
+  // changes. Using only the target window during expansion can leave "now"
+  // several visible pixels past the edge and hide a live marker.
+  const timestampSecondsPerPixel =
+    Math.min(state.displayWindow, targetWindow) / input.canvasWidth;
   const viewEnd = input.viewEnd;
   // First time of the visible series' data — the floor a frozen edge must stay
   // at or above. `-Infinity` when there's no data to bound against, so the freeze
@@ -238,7 +244,7 @@ export function tickLiveChartEngineFrame(
       ? advanceTimestampByPixel(
           state.liveEdge,
           liveEdge,
-          input.timeWindow / input.canvasWidth,
+          timestampSecondsPerPixel,
         )
       : liveEdge;
   if (scrolledBack) {
@@ -260,7 +266,7 @@ export function tickLiveChartEngineFrame(
       state.timestamp = advanceTimestampByPixel(
         state.timestamp,
         liveEdge,
-        input.timeWindow / input.canvasWidth,
+        timestampSecondsPerPixel,
       );
     } else {
       state.timestamp = liveEdge;
@@ -304,7 +310,6 @@ export function tickLiveChartEngineFrame(
 
   // Pinch-zoom: ease toward the zoom override when set, else the configured
   // window. Mirrors the viewEnd freeze above (width vs. right edge).
-  const targetWindow = input.viewWindow ?? input.timeWindow;
   state.displayWindow = snap
     ? targetWindow
     : lerpAndSettle(

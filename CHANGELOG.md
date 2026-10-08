@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   out used to slide off the canvas; it now disappears at the plot's left edge.
   A marker dated after the chart's current time appears once that time is
   reached, at the right edge. The 24 px allowance above and below the plot is
-  unchanged.
+  unchanged. Live markers stay visible while the time window expands, including
+  during pinch zoom, by keeping timestamp rounding below half a visible pixel.
 - `DotConfig`, `DotRingConfig`, `LineStyleConfig`, `ThresholdFillConfig`, and
   `TimeScrollConfig` are now exported from the package root, which the Types
   reference says holds every type. Importing them from `react-native-livechart`

@@ -1,4 +1,8 @@
-import { advanceTimestampByPixel } from "../../src/core/liveChartEngineTick";
+import {
+  advanceTimestampByPixel,
+  tickLiveChartEngineFrame,
+  type EngineTickMutable,
+} from "../../src/core/liveChartEngineTick";
 import {
   markersSignature,
   nearestMarkerIndex,
@@ -167,6 +171,43 @@ describe("projectMarkers", () => {
       const opts = { ...BASE, displayWindow: 3600, timestamp };
       expect(visibleAt(now, 50, opts)).toBe(true);
     });
+
+    it.each(["timeframe", "pinch zoom"])(
+      "keeps a marker stamped now visible during %s expansion",
+      (source) => {
+        const now = 1004.49;
+        const state: EngineTickMutable = {
+          displayValue: 50,
+          displayMin: BASE.displayMin,
+          displayMax: BASE.displayMax,
+          displayWindow: BASE.displayWindow,
+          timestamp: BASE.timestamp,
+          liveEdge: BASE.timestamp,
+          edgeValue: 50,
+          extremaMinValue: NaN,
+          extremaMaxValue: NaN,
+          extremaMinTime: NaN,
+          extremaMaxTime: NaN,
+          lastCanvasWidth: BASE.canvasWidth,
+          lastCanvasHeight: BASE.canvasHeight,
+        };
+        tickLiveChartEngineFrame(state, {
+          dt: 16.67,
+          canvasWidth: BASE.canvasWidth,
+          canvasHeight: BASE.canvasHeight,
+          timeWindow: source === "timeframe" ? 3600 : BASE.displayWindow,
+          viewWindow: source === "pinch zoom" ? 3600 : undefined,
+          smoothing: 0.08,
+          exaggerate: false,
+          referenceValue: undefined,
+          targetValue: 50,
+          points: [{ time: 900, value: 50 }, { time: now, value: 50 }],
+          nowOverride: now,
+        });
+        expect(state.displayWindow).toBeLessThan(3600);
+        expect(visibleAt(now, 50, { ...BASE, ...state })).toBe(true);
+      },
+    );
 
     it("keeps the 24 px margin above and below the plot", () => {
       // 1 value unit = 2.6 px (chartH 260 over 0…100).
