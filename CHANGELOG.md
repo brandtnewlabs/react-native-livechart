@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Static single-series charts now re-settle when `nowOverride` changes, and a
+  chart that becomes `static` in the same render as new data (e.g. a recycled
+  list cell) lands fully on the new window instead of stopping part way or
+  keeping the previous right edge.
 - A dragged reference line stays under the finger when the price range changes
   or the plot is resized while the finger rests (live data, a `rangeAnimation`
   easing): it is re-mapped from the finger's position with the same `snap` and
