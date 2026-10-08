@@ -408,7 +408,7 @@ describe("useReferenceDrag", () => {
     t.setRange(0, 200);
     expect(t.drawn()).toBe(t.values()); // nothing re-mapped
     t.handlers().onUpdate({ y: yOf(150, 0, 200) });
-    expect(t.values()[0]).toBeCloseTo(60); // nothing moved
+    expect(t.values()[0]).toBeCloseTo(10); // replacement restored on cancellation
     t.handlers().onFinalize();
     await flushCallbacks();
     expect(alertCommit).not.toHaveBeenCalled();
@@ -433,6 +433,61 @@ describe("useReferenceDrag", () => {
     t.handlers().onFinalize();
     await flushCallbacks();
     expect(t.values()).toEqual([]);
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("does not resume an invalidated drag when its original line returns", async () => {
+    const onChange = jest.fn();
+    const onCommit = jest.fn();
+    const order = { id: "order", value: 50, draggable: true, onChange, onCommit };
+    const alert = { id: "alert", value: 10, draggable: true };
+    const t = await setupDrag([order]);
+    t.dragTo(yOf(60));
+    await flushCallbacks();
+    onChange.mockClear();
+
+    await t.rerender({ lines: [alert, order] });
+    t.setValues([60, 50]);
+    t.setActive([true, false]);
+    t.handlers().onUpdate({ y: yOf(70) });
+    expect(t.active()).toEqual([false, false]);
+    expect(t.values()).toEqual([10, 50]);
+
+    await t.rerender({ lines: [order] });
+    t.setValues([50]);
+    t.setActive([false]);
+    t.handlers().onUpdate({ y: yOf(80) });
+    t.handlers().onFinalize();
+    await flushCallbacks();
+    expect(t.values()).toEqual([50]);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("cancels a reordered drag while the finger rests", async () => {
+    const onCommit = jest.fn();
+    const order = { id: "order", value: 50, draggable: true, onCommit };
+    const alert = { id: "alert", value: 10, draggable: true };
+    const t = await setupDrag([order]);
+    t.dragTo(yOf(60));
+    const replacement = [alert, order];
+    await t.rerender({ lines: replacement });
+    t.setValues([60, 50]);
+    t.setActive([true, false]);
+
+    // Drive the identity reaction as Reanimated does after the new lines arrive;
+    // no gesture update is needed to release the old index.
+    const [prepare, react] = jest.mocked(useAnimatedReaction).mock.calls
+      .filter(([, , deps]) => deps?.length === 1 && deps[0] === replacement)
+      .at(-1)!;
+    const invalid = prepare();
+    expect(invalid).toBe(true);
+    react(invalid, false);
+    expect(t.values()).toEqual([10, 50]);
+    expect(t.drawn()).toEqual([10, 50]);
+    expect(t.active()).toEqual([false, false]);
+    expect(t.handlers().onFinalize).not.toThrow();
+    await flushCallbacks();
     expect(onCommit).not.toHaveBeenCalled();
   });
 

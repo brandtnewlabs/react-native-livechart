@@ -94,8 +94,9 @@ function dragValueAtY(
  * finger's last Y whenever the range changes, or the plot is resized, while the
  * finger rests. `dragValues` keeps the value the finger last set. If another line
  * takes the dragged line's index mid-drag (lines added or removed before it, told
- * apart by `id`), the drag lets go: it moves and commits nothing, and on release
- * gives that line back its own value.
+ * apart by `id`), the drag lets go: it moves and commits nothing, and
+ * gives that line back its own value immediately. This touch stays cancelled if
+ * the original line later returns to the grabbed index.
  *
  * Also fires the per-line drag callbacks: `onChange` (as the finger moves the
  * line, de-duped to value changes, and once more on release if the line was
@@ -204,6 +205,47 @@ export function useReferenceDrag(
     return out;
   });
 
+  // Once the grabbed identity is lost, this touch cannot resume a drag if that
+  // line later returns. Restore a replacement's own value and clear ownership.
+  const clearDrag = () => {
+    "worklet";
+    const i = dragIndex.get();
+    const l = lines[i];
+    if (i >= 0 && activated.get()) {
+      if (l !== undefined && l.id !== grabbedId.get()) {
+        const own = l.value ?? 0;
+        const values = dragValues.get();
+        if (i < values.length && values[i] !== own) {
+          const restored = values.slice();
+          restored[i] = own;
+          dragValues.set(restored);
+        }
+      }
+      const active = dragActive.get();
+      if (i < active.length && active[i]) {
+        const next = active.slice();
+        next[i] = false;
+        dragActive.set(next);
+      }
+    }
+    dragIndex.set(-1);
+    activated.set(false);
+  };
+
+  // Reordering/removal must also cancel while the finger is resting. Derived
+  // drawing alone cannot reset the gesture state or the range-fit override.
+  useAnimatedReaction(
+    () => {
+      const i = dragIndex.get();
+      const l = lines[i];
+      return i >= 0 && (l === undefined || l.id !== grabbedId.get());
+    },
+    (invalid) => {
+      if (invalid) clearDrag();
+    },
+    [lines],
+  );
+
   // JS-thread callback dispatch — closes over the latest `lines` each render.
   /* istanbul ignore next -- runs via scheduleOnRN from the UI-thread gesture */
   function emitChange(i: number, v: number) {
@@ -311,7 +353,10 @@ export function useReferenceDrag(
     const i = dragIndex.get();
     const l = lines[i];
     // The line may be gone, or another have taken its index, since the grab.
-    if (l === undefined || l.id !== grabbedId.get()) return;
+    if (l === undefined || l.id !== grabbedId.get()) {
+      clearDrag();
+      return;
+    }
     lastY.set(e.y);
     activated.set(true);
     const arr = dragActive.get().slice();
@@ -328,7 +373,10 @@ export function useReferenceDrag(
     if (i < 0 || !activated.get()) return;
     lastY.set(e.y);
     const l = lines[i];
-    if (l === undefined || l.id !== grabbedId.get()) return;
+    if (l === undefined || l.id !== grabbedId.get()) {
+      clearDrag();
+      return;
+    }
     const v = dragValueAtY(
       l,
       e.y,
@@ -382,26 +430,9 @@ export function useReferenceDrag(
           scheduleOnRN(emitChange, i, v);
         }
         if (l.onCommit) scheduleOnRN(emitCommit, i, v);
-      } else {
-        // Another line took the dragged one's index mid-drag, and drag values
-        // follow lines by index: give it back its own value, not the dragged one.
-        const own = l.value ?? 0;
-        if (i < dragValues.get().length && dragValues.get()[i] !== own) {
-          const values = dragValues.get().slice();
-          values[i] = own;
-          dragValues.set(values);
-        }
       }
     }
-    if (i >= 0 && activated.get()) {
-      const arr = dragActive.get().slice();
-      if (i < arr.length) {
-        arr[i] = false;
-        dragActive.set(arr);
-      }
-    }
-    dragIndex.set(-1);
-    activated.set(false);
+    clearDrag();
   };
 
   // Hit-test shared with the scrub gesture: does this drag own the touch? The

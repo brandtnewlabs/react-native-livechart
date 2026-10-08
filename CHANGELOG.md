@@ -24,12 +24,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   even a coarse `snap` can widen the range.
 - If lines added or removed mid-drag move a dragged line with an `id` to
   another index, the drag lets go: it stops following the finger and commits
-  nothing, instead of moving and committing the line that took that index. On
-  release that line gets its own `value` back in place of the dragged value it
-  inherited by index.
+  nothing, instead of moving and committing the line that took that index. That
+  line immediately gets its own `value` back in place of the dragged value it
+  inherited by index, even while the finger rests. Bringing the original line
+  back before release does not resume the cancelled drag.
 - Removing the line being grabbed or dragged no longer throws on the UI thread
   (reading `value` as the drag starts or on release, or `snap` on the next
   move); the drag lets go.
+- Markers are no longer drawn up to 24 px past the plot's left and right edges.
+  A marker now disappears as soon as its anchor leaves the plot, so panning
+  back no longer slides it over the y-axis labels in a right- or left-side
+  gutter, and `onMarkerPress` no longer fires for it there. A glyph anchored
+  just inside an edge still overhangs it by up to half its width. On the left
+  this is a visible change: with the default 12 px inset, a marker scrolling
+  out used to slide off the canvas; it now disappears at the plot's left edge.
+  A marker dated after the chart's current time appears once that time is
+  reached, at the right edge. The 24 px allowance above and below the plot is
+  unchanged. Live markers stay visible while the time window expands, including
+  during pinch zoom, by keeping timestamp rounding below half a visible pixel.
+- `DotConfig`, `DotRingConfig`, `LineStyleConfig`, `ThresholdFillConfig`, and
+  `TimeScrollConfig` are now exported from the package root, which the Types
+  reference says holds every type. Importing them from `react-native-livechart`
+  no longer fails to typecheck.
+- The extrema labels guide's `LineStyleConfig` link points at the Config objects
+  section of the Types reference instead of a missing anchor.
 
 ## [4.26.0] — 2026-10-03
 

@@ -173,9 +173,14 @@ finger's moves, and fires once more on release if the line ended elsewhere (its 
 finger never changed the value). Near the top or bottom edge, a line that counts in the range
 widens it only as the finger moves, so holding it there doesn't keep pushing the range out;
 dropped there, it widens the range once and settles a little inside the edge (eased with
-`rangeAnimation={{ animateExpansion: true }}`). Give draggable lines a stable `id`: if lines added
+`rangeAnimation={{ animateExpansion: true }}`). With `snap`, a line at an edge is drawn and
+dropped on the nearest increment inside the visible range when one fits. Moving past the edge
+rounds the finger's value outward so a coarse increment can still widen the range.
+
+Give draggable lines a stable `id`: if lines added
 or removed mid-drag move the dragged line to another index, the drag then lets go instead of
-moving the line that took its place.
+moving the line that took its place. The replacement immediately gets its own value back,
+including under a resting finger; bringing the original line back does not resume that touch.
 
 Dragging coexists with [scrubbing](/guides/scrubbing): a press that lands within reach of a
 draggable line grabs the line and any drag moves it (in any direction), while a press anywhere else

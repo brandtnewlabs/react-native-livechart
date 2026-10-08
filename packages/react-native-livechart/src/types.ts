@@ -77,6 +77,8 @@ export interface ReferenceLine {
   /**
    * Stable identifier for this line. Supply a unique value when `referenceLines`
    * may be reordered so the chart preserves the line's rendered identity.
+   * If this line is removed or moves to another index during a drag, that touch
+   * is cancelled without committing, even if the line later returns.
    */
   id?: string;
   /** Form A — the Y-axis value where the horizontal line is drawn. */

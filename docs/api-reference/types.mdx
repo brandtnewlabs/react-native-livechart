@@ -197,6 +197,7 @@ interface TradeEvent {
 
 interface ReferenceLine {
   id?: string;                   // stable identity; supply when lines may reorder
+                                  // removal/reindexing cancels the current drag; no commit
   // Form A — horizontal line:
   value?: number;
   // Form B — time-varying line (sorted unix-second points):
@@ -235,7 +236,8 @@ interface ReferenceLine {
   // Draggable (Form A only) — grab the line and drag it along the Y-axis:
   draggable?: boolean;             // default false
   grabRange?: [number, number];    // canvas x px where a press may grab it; default anywhere
-  snap?: number;                   // round the dragged value to this increment
+  snap?: number;                   // tick increment; draw/drop inside the visible edges when a tick fits;
+                                   // round the finger's value outward past the plot to widen the range
   bounds?: [number, number];       // hard-clamp the draggable value
   onChange?: (value: number) => void;  // as the finger moves it (de-duped); + once on release if the line ended elsewhere
   onCommit?: (value: number) => void;  // on release — pair with a controlled `value`
@@ -417,12 +419,14 @@ interface ThresholdConfig {
   series?: SharedValue<LiveChartPoint[]>;
   aboveColor?: string;        // stroke at/above value; default palette up-green
   belowColor?: string;        // stroke below value;    default palette down-red
-  fill?: boolean | { opacity?: number }; // line↔threshold P/L band; default off, opacity 0.16
+  fill?: boolean | ThresholdFillConfig; // line↔threshold P/L band; default off
   includeInRange?: boolean;   // fold the threshold into the Y-range fit (like reference lines); default false
   extendToStart?: boolean;    // series: extend first value flat to the window start; default true
   extendToNow?: boolean;      // series: extend flat past the last point to "now"; default true
   line?: boolean | ThresholdLineConfig; // marker line at value; default off
 }
+// Object form of `fill`: band opacity (0..1) on the above/below colors; default 0.16.
+interface ThresholdFillConfig { opacity?: number }
 interface ThresholdLineConfig {
   label?: string;                    // label text, e.g. "Break-even"
   labelPosition?: "left" | "right";  // "left" = inside plot (clear of y-axis); default "left"
