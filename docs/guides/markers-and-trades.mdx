@@ -150,6 +150,11 @@ single-series chart, omitting `value` anchors the marker to the line at `time` (
 `data`); in multi-series, set `seriesId` to anchor to that series' line. So for a marker that should
 always sit on the line, just give it a `time` and `kind`.
 
+**Plot edges:** markers disappear when their time anchor leaves the plot's left or right
+edge, with half a pixel of tolerance for the live clock. This applies to built-in and custom
+markers, clustering, and `onMarkerPress`. A glyph anchored inside the plot may still extend
+past an edge; vertical anchors keep a 24 px allowance above and below the plot.
+
 ### Custom marker rendering
 
 Built-in glyphs are drawn into the Skia canvas. When you need something the canvas **can't** draw —
