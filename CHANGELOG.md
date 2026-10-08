@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A dragged reference line stays under the finger when the price range changes
+  or the plot is resized while the finger rests (live data, a `rangeAnimation`
+  easing): it is re-mapped from the finger's position with the same `snap` and
+  `bounds`, and its tag, grouping, press target and `onDragIn` / `onDragOut`
+  follow it in the same frame. `onCommit` gets the value under the finger.
+  `onChange` still reports finger moves (plus one catch-up on release if the
+  line ended elsewhere), and the range still fits the value the finger last set,
+  so a line held near the plot's edge doesn't push the range out every frame;
+  dropped there, it widens the range once.
+- With `snap`, a line dragged to the plot's top or bottom edge is drawn and
+  dropped on the nearest increment inside the visible range instead of just
+  past it. Dragged past the edge, the value the finger sets rounds outward, so
+  even a coarse `snap` can widen the range.
+- If lines added or removed mid-drag move a dragged line with an `id` to
+  another index, the drag lets go: it stops following the finger and commits
+  nothing, instead of moving and committing the line that took that index. That
+  line immediately gets its own `value` back in place of the dragged value it
+  inherited by index, even while the finger rests. Bringing the original line
+  back before release does not resume the cancelled drag.
+- Removing the line being grabbed or dragged no longer throws on the UI thread
+  (reading `value` as the drag starts or on release, or `snap` on the next
+  move); the drag lets go.
 - Markers are no longer drawn up to 24 px past the plot's left and right edges.
   A marker now disappears as soon as its anchor leaves the plot, so panning
   back no longer slides it over the y-axis labels in a right- or left-side

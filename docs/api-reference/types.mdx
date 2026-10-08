@@ -197,6 +197,7 @@ interface TradeEvent {
 
 interface ReferenceLine {
   id?: string;                   // stable identity; supply when lines may reorder
+                                  // removal/reindexing cancels the current drag; no commit
   // Form A — horizontal line:
   value?: number;
   // Form B — time-varying line (sorted unix-second points):
@@ -235,9 +236,10 @@ interface ReferenceLine {
   // Draggable (Form A only) — grab the line and drag it along the Y-axis:
   draggable?: boolean;             // default false
   grabRange?: [number, number];    // canvas x px where a press may grab it; default anywhere
-  snap?: number;                   // round the dragged value to this increment
+  snap?: number;                   // tick increment; draw/drop inside the visible edges when a tick fits;
+                                   // round the finger's value outward past the plot to widen the range
   bounds?: [number, number];       // hard-clamp the draggable value
-  onChange?: (value: number) => void;  // during drag (de-duped to value changes)
+  onChange?: (value: number) => void;  // as the finger moves it (de-duped); + once on release if the line ended elsewhere
   onCommit?: (value: number) => void;  // on release — pair with a controlled `value`
   onDragIn?: (value: number) => void;  // value entered the visible range / bounds
   onDragOut?: (value: number) => void; // value left the visible range / hit a bound

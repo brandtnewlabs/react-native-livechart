@@ -8,6 +8,8 @@ import {
   pinnedPlotY,
   pointInRect,
   snapPrice,
+  snapPriceOutward,
+  snapPriceWithin,
   snapScrubXToCandleCenter,
 } from "../../src/hooks/crosshairShared";
 import type { CandlePoint } from "../../src/types";
@@ -115,6 +117,55 @@ describe("snapPrice", () => {
     expect(snapPrice(64.3, 0.5)).toBe(64.5);
     expect(snapPrice(64.1, 0.5)).toBe(64);
     expect(snapPrice(64.236, 0.01)).toBeCloseTo(64.24);
+  });
+});
+
+describe("snapPriceWithin", () => {
+  it("rounds like snapPrice inside the range", () => {
+    expect(snapPriceWithin(64.237, undefined, 60, 70)).toBe(64.237);
+    expect(snapPriceWithin(64.3, 0.5, 60, 70)).toBe(64.5);
+    expect(snapPriceWithin(64.1, 0.5, 60, 70)).toBe(64);
+  });
+
+  it("rounds one increment inward instead of past either edge", () => {
+    expect(snapPriceWithin(101.23, 0.05, 89.96, 101.23)).toBeCloseTo(101.2);
+    expect(snapPriceWithin(89.96, 0.05, 89.96, 101.23)).toBeCloseTo(90);
+  });
+
+  it("returns the edge when only float noise puts the rounding past it", () => {
+    // 90.05 / 0.05 rounds back to 90.05000000000001.
+    expect(snapPrice(90.05, 0.05)).toBeGreaterThan(90.05);
+    expect(snapPriceWithin(90.05, 0.05, 80, 90.05)).toBe(90.05);
+    expect(snapPriceWithin(90.05, 0.05, 90.05, 100)).toBeCloseTo(90.05);
+  });
+
+  it("scales the float-noise allowance with the price", () => {
+    // At 100,000 the rounding is off by more than a billionth of a cent.
+    expect(snapPrice(100000.01, 0.01)).toBeGreaterThan(100000.01);
+    expect(snapPriceWithin(100000.01, 0.01, 99990, 100000.01)).toBe(100000.01);
+  });
+
+  it("leaves the rounding alone when no increment fits inside the range", () => {
+    expect(snapPriceWithin(100.02, 0.05, 100.01, 100.03)).toBeCloseTo(100);
+  });
+});
+
+describe("snapPriceOutward", () => {
+  it("rounds to the nearest increment for side 0 or without an increment", () => {
+    expect(snapPriceOutward(106.3, 1, 0)).toBe(106);
+    expect(snapPriceOutward(106.3, undefined, 1)).toBe(106.3);
+  });
+
+  it("rounds up for side 1 and down for side -1", () => {
+    expect(snapPriceOutward(106.3, 1, 1)).toBe(107);
+    expect(snapPriceOutward(106.7, 1, 1)).toBe(107);
+    expect(snapPriceOutward(93.7, 1, -1)).toBe(93);
+  });
+
+  it("keeps a price already on the grid, float noise included", () => {
+    expect(snapPriceOutward(106, 1, 1)).toBe(106);
+    expect(snapPriceOutward(90.05, 0.05, -1)).toBeCloseTo(90.05);
+    expect(snapPriceOutward(100000.01, 0.01, 1)).toBeCloseTo(100000.01);
   });
 });
 
