@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `DotConfig`, `DotRingConfig`, `LineStyleConfig`, `ThresholdFillConfig`, and
+  `TimeScrollConfig` are now exported from the package root, which the Types
+  reference says holds every type. Importing them from `react-native-livechart`
+  no longer fails to typecheck.
+- The extrema labels guide's `LineStyleConfig` link points at the Config objects
+  section of the Types reference instead of a missing anchor.
+
 ## [4.26.0] — 2026-10-03
 
 ### Added
