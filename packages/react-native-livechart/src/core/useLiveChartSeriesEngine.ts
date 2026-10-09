@@ -10,7 +10,7 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
-import type { LiveChartPoint, RangeAnimationConfig, SeriesConfig } from "../types";
+import type { LiveChartPoint, SeriesRangeAnimationConfig, SeriesConfig } from "../types";
 import {
   tickLiveChartSeriesEngineFrame,
   type MultiEngineTickInput,
@@ -23,7 +23,7 @@ export interface MultiSeriesEngineConfig {
   timeWindow: number;
   historyStartTime?: number;
   smoothing: number;
-  rangeAnimation?: RangeAnimationConfig;
+  rangeAnimation?: SeriesRangeAnimationConfig;
   /** Extra catch-up speed added to `smoothing` when a series tip lags. */
   adaptiveSpeedBoost?: number;
   exaggerate?: boolean;
@@ -73,13 +73,16 @@ export interface MultiEngineFrameRefs {
   seriesOpacities: SharedValue<number[]>;
   displayMin: SharedValue<number>;
   displayMax: SharedValue<number>;
+  /** Persist untransformed fitted bounds even without a scratch container. */
+  fittedMinSV?: SharedValue<number | undefined>;
+  fittedMaxSV?: SharedValue<number | undefined>;
   displayWindow: SharedValue<number>;
   timestamp: SharedValue<number>;
   canvasWidth: SharedValue<number>;
   canvasHeight: SharedValue<number>;
   timeWindow: SharedValue<number>;
   smoothing: SharedValue<number>;
-  rangeAnimationSV?: SharedValue<RangeAnimationConfig | undefined>;
+  rangeAnimationSV?: SharedValue<SeriesRangeAnimationConfig | undefined>;
   adaptiveSpeedBoostSV?: SharedValue<number | undefined>;
   exaggerateSV: SharedValue<boolean>;
   referenceValue: SharedValue<number | undefined>;
@@ -223,6 +226,8 @@ export function applyLiveChartSeriesEngineFrame(
   };
   state.displayMin = sv.displayMin.value;
   state.displayMax = sv.displayMax.value;
+  state.fittedMin = sv.fittedMinSV?.value ?? state.fittedMin;
+  state.fittedMax = sv.fittedMaxSV?.value ?? state.fittedMax;
   state.displayWindow = sv.displayWindow.value;
   state.timestamp = sv.timestamp.value;
   state.liveEdge = sv.liveEdgeSV?.value ?? 0;
@@ -272,6 +277,8 @@ export function applyLiveChartSeriesEngineFrame(
   tickLiveChartSeriesEngineFrame(state, input);
   sv.displayMin.value = state.displayMin;
   sv.displayMax.value = state.displayMax;
+  if (sv.fittedMinSV) sv.fittedMinSV.value = state.fittedMin;
+  if (sv.fittedMaxSV) sv.fittedMaxSV.value = state.fittedMax;
   sv.displayWindow.value = state.displayWindow;
   sv.timestamp.value = state.timestamp;
   if (sv.liveEdgeSV) sv.liveEdgeSV.value = state.liveEdge;
@@ -345,6 +352,8 @@ export function useLiveChartSeriesEngine(
 
   const displayMin = useSharedValue(0);
   const displayMax = useSharedValue(1);
+  const fittedMinSV = useSharedValue<number | undefined>(undefined);
+  const fittedMaxSV = useSharedValue<number | undefined>(undefined);
   const displayWindow = useSharedValue(config.timeWindow);
   const canvasWidth = useSharedValue(0);
   const canvasHeight = useSharedValue(0);
@@ -404,6 +413,8 @@ export function useLiveChartSeriesEngine(
     seriesOpacities,
     displayMin,
     displayMax,
+    fittedMinSV,
+    fittedMaxSV,
     displayWindow,
     timestamp,
     canvasWidth,

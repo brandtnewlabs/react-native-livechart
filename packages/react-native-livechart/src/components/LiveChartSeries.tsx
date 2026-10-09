@@ -72,7 +72,7 @@ import { useLoadingLook } from "../hooks/useLoadingLook";
 import { useMarkers } from "../hooks/useMarkers";
 import { useMultiSeriesDegen } from "../hooks/useMultiSeriesDegen";
 import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
-import { usePanScroll } from "../hooks/usePanScroll";
+import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { resetPinchZoom, usePinchZoom } from "../hooks/usePinchZoom";
 import { useMultiSeriesReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import {
@@ -713,6 +713,9 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     scrubCfg?.clampToPlot ?? false,
     resolveScrubMarkerOptions(scrubCfg, markersSV),
     axisScaleActive,
+    timeScrollEnabled && scrollGestureMode === "axisDrag"
+      ? Math.max(effectivePadding.bottom, AXIS_GRAB_MIN_PX)
+      : 0,
   );
 
   // Capture only the shared value in the worklets below. Referencing

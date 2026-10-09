@@ -1,7 +1,7 @@
 import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
 import { rangeAnimationSpeed } from "../math/rangeAnimation";
-import type { RangeAnimationConfig, SeriesConfig } from "../types";
+import type { SeriesRangeAnimationConfig, SeriesConfig } from "../types";
 
 export interface MultiEngineTickMutable {
   displayMin: number;
@@ -10,6 +10,9 @@ export interface MultiEngineTickMutable {
   currentTime?: number;
   /** Unzoomed authoritative-history span, including buffer. */
   fullHistoryWindow?: number | null;
+  /** Untransformed eased bounds, kept separate from presentation output. */
+  fittedMin?: number;
+  fittedMax?: number;
   displayWindow: number;
   timestamp: number;
   /**
@@ -42,7 +45,7 @@ export interface MultiEngineTickInput {
   /** Authoritative Unix-second start for an expanding live history. */
   historyStartTime?: number;
   smoothing: number;
-  rangeAnimation?: RangeAnimationConfig;
+  rangeAnimation?: SeriesRangeAnimationConfig;
   exaggerate: boolean;
   /** Extra catch-up speed added to `smoothing` when a series tip lags. Default `0.12`. */
   adaptiveSpeedBoost?: number;
@@ -165,6 +168,11 @@ export function tickLiveChartSeriesEngineFrame(
 
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
 
+  // Never ease/fit against the previous frame's transformed output. Retain these
+  // even after removing the callback, so its expansion disappears in one frame.
+  state.displayMin = state.fittedMin ?? state.displayMin;
+  state.displayMax = state.fittedMax ?? state.displayMax;
+
   const speed = input.smoothing;
   // One-shot settle (snapKey change): collapse this frame's easing so the
   // window / range / tips land on target instantly. See `MultiEngineTickInput.snap`.
@@ -224,7 +232,14 @@ export function tickLiveChartSeriesEngineFrame(
       (1 - gapRatio) *
         (input.adaptiveSpeedBoost ??
           MOTION_METRICS_DEFAULTS.adaptiveSpeedBoost);
-    state.displayValues[i] = snap
+    // History already owns the authoritative target at this timestamp. Easing
+    // it again would put the synthetic tip/dot behind the newest recorded point.
+    // Unrecorded prices and historical viewport edges retain normal smoothing.
+    const pts = series[i].data;
+    const latest = pts[pts.length - 1];
+    const targetIsRecorded = !scrolledBack && latest != null &&
+      latest.time <= Math.min(state.timestamp, baseNow) && latest.value === target;
+    state.displayValues[i] = snap || targetIsRecorded
       ? target
       : lerp(cur, target, adaptiveSpeed, input.dt);
 
@@ -411,6 +426,27 @@ export function tickLiveChartSeriesEngineFrame(
         rangeAnimationSpeed(speed, input.rangeAnimation, tMax > state.displayMax, disjoint),
         input.dt,
       );
+    }
+  }
+
+  state.fittedMin = state.displayMin;
+  state.fittedMax = state.displayMax;
+  const transform = input.rangeAnimation?.transform;
+  if (transform) {
+    const result = transform({
+      min: state.fittedMin,
+      max: state.fittedMax,
+      from: winStart,
+      to: state.timestamp,
+    });
+    if (
+      result &&
+      Number.isFinite(result.min) &&
+      Number.isFinite(result.max) &&
+      result.min < result.max
+    ) {
+      state.displayMin = result.min;
+      state.displayMax = result.max;
     }
   }
 }
