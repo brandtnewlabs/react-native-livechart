@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The right gutter for y-axis labels and the value badge now re-measures once
+  the first real value arrives, instead of staying sized for a `0` placeholder
+  and clipping labels like `$87,000`. `LiveChart` and `LiveChartSeries` skip
+  `0` and non-finite values when sampling, and re-measure only when the value
+  moves a full order of magnitude. Multi-series charts sample the largest finite
+  magnitude, so negative values alongside zero placeholders are measured too.
 - With `yRangeScale` below `1`, the line, area fill, candles and gap bridges
   are now clipped to the plot's vertical extent instead of drawing past its top
   and bottom and over the time axis. In candle mode the clip stops at the price

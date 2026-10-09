@@ -34,6 +34,14 @@ Changing it updates the label set immediately on both chart components, includin
 paused charts and views parked by scrolling or zooming. Labels can be spaced
 farther apart when their text would otherwise overlap.
 
+The right gutter is measured with your `formatValue` and font once a finite,
+nonzero live value arrives. A `0` loading placeholder does not lock it to a short
+label. It measures again after the value moves by a factor of ten in either
+direction from the last sample, keeping ordinary ticks and small changes around
+a power of ten from moving the plot's edge. `LiveChartSeries` samples the largest
+finite absolute value across its series, including negative values alongside
+zero placeholders. An explicit `insets.right` overrides automatic measurement.
+
 ## Left-side Y-axis labels
 
 Both `LiveChart` and `LiveChartSeries` accept `yAxis.side`; it defaults to `"right"`.

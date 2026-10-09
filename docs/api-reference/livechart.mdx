@@ -445,6 +445,8 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 </ParamField>
 
 <ParamField body="yAxis" type="boolean | YAxisConfig" default="true">
+  The right gutter re-measures after the first finite, nonzero live value and
+  subsequent factor-of-ten moves; `insets.right` overrides automatic sizing.
   Value-axis grid + labels. Set `{ side: "left" }` and reserve label space with
   `insets.left` for left-side labels; the default side is `"right"`. Pass `{ count }` for a fixed number of evenly-spaced
   prices instead of the dynamic nice-interval grid. Pass `{ intervalScale }`

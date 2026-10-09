@@ -92,7 +92,10 @@ import {
   seriesPlotClip,
   type ChartPadding,
 } from "../draw/line";
-import { resolveChartLayout } from "../hooks/resolveChartLayout";
+import {
+  resolveChartLayout,
+  shouldResampleLayoutValue,
+} from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
 import { useCandleGapPaths } from "../hooks/useCandleGapPaths";
 import { useCandlePaths, useCandleWidthLerp } from "../hooks/useCandlePaths";
@@ -1284,7 +1287,7 @@ function useLiveChartLayoutResources({
   const refGroupBadgeFont = refGroupBadgeHasFont
     ? refGroupBadgeFontOverride
     : skiaFont;
-  const valueLayoutSample = useInitialSharedValueSample(value);
+  const valueLayoutSample = useLayoutValueSample(value);
   const [scrolledBack, setScrolledBack] = useState(false);
   const effectiveYAxisFloat =
     yAxisFloat && (!timeScrollEnabled || scrolledBack);
@@ -1317,17 +1320,17 @@ function useLiveChartLayoutResources({
   };
 }
 
-function useInitialSharedValueSample(value: SharedValue<number>) {
+function useLayoutValueSample(value: SharedValue<number>) {
   const [sample, setSample] = useState<number | undefined>(undefined);
-  const captured = useSharedValue(false);
+  const sampled = useSharedValue(0);
   useAnimatedReaction(
-    () => (captured.get() ? null : value.get()),
+    () => value.get(),
     (current) => {
-      if (current === null) return;
-      captured.set(true);
+      if (!shouldResampleLayoutValue(current, sampled.get())) return;
+      sampled.set(current);
       scheduleOnRN(setSample, current);
     },
-    [captured, value],
+    [sampled, value],
   );
   return sample;
 }
