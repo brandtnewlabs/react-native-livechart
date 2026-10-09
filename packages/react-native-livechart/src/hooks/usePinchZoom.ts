@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   cancelAnimation,
@@ -174,69 +175,89 @@ export function usePinchZoom({
 
   const wakeEngine = engine.wake;
 
-  const onStart =
-    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-    () => {
-      "worklet";
-      wakeEngine?.();
-      cancelAnimation(viewEnd);
-      cancelAnimation(viewWindow);
-      const edge = liveEdge.get();
-      startWindow.set(viewWindow.get() ?? timeWindow);
-      startViewEnd.set(viewEnd.get() ?? edge);
-      onZoomStart?.();
-    };
+  return useMemo(() => {
+    const onStart =
+      /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+      () => {
+        "worklet";
+        wakeEngine?.();
+        cancelAnimation(viewEnd);
+        cancelAnimation(viewWindow);
+        const edge = liveEdge.get();
+        startWindow.set(viewWindow.get() ?? timeWindow);
+        startViewEnd.set(viewEnd.get() ?? edge);
+        onZoomStart?.();
+      };
 
-  const onChange =
-    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-    (e: { scale: number; focalX: number; numberOfPointers: number }) => {
-      "worklet";
-      // When a finger lifts at the end of the pinch, the recognizer's focal
-      // point jumps from the two-finger midpoint to the remaining finger. A
-      // change event computed from that jumped focal throws the window
-      // sideways (and can even snap it back to following live). Ignore
-      // change events once fewer than two pointers remain.
-      if (e.numberOfPointers < 2) return;
-      const chartW = canvasWidth.get() - padLeft - padRight;
-      if (chartW <= 0 || e.scale <= 0) return;
-      const edge = liveEdge.get();
-      const sWin = startWindow.get();
-      const sEnd = startViewEnd.get();
-      const span = edge - minTime.get();
-      const [minWin, maxWin] = zoomWindowBounds(
-        timeWindow,
-        span,
-        minTimeWindow,
-        maxTimeWindow,
-      );
-      // Pinch out (scale > 1) ⇒ narrower window ⇒ zoom in.
-      const newWin = clampWindow(sWin / e.scale, minWin, maxWin);
-      // Time under the fingers, mapped through the START window so the anchor
-      // doesn't compound; the right edge then keeps it under the (live) focal.
-      const focalT = focalTime(e.focalX, padLeft, chartW, sEnd - sWin, sWin);
-      let newEnd = zoomViewEnd(focalT, e.focalX, padLeft, chartW, newWin);
-      const lo = panLowerBound(minTime.get(), newWin, edge, overscroll);
-      if (newEnd < lo) newEnd = lo;
-      const hi = overscroll > 0 ? panUpperBound(newWin, edge, overscroll) : edge;
-      if (newEnd > hi) newEnd = hi;
-      viewWindow.set(newWin);
-      // Track the displayed window 1:1 (bypass the frame-loop lerp lag) so the
-      // focal anchor is pixel-accurate during the gesture.
-      displayWindow.set(newWin);
-      // Unlike the pan (see nextViewEnd), snapping to `null` mid-gesture is safe
-      // here: the pinch maps cumulative scale/focal from a gesture-START snapshot
-      // (`startViewEnd`), not per-frame deltas, so a snap can't re-anchor it.
-      // With overscroll, snap within the FOLLOW_SNAP zone; without, at the edge.
-      viewEnd.set(
-        overscroll > 0
-          ? Math.abs(newEnd - edge) <= newWin * FOLLOW_SNAP
-            ? null
-            : newEnd
-          : newEnd >= edge
-            ? null
-            : newEnd,
-      );
-    };
+    const onChange =
+      /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+      (e: { scale: number; focalX: number; numberOfPointers: number }) => {
+        "worklet";
+        // When a finger lifts at the end of the pinch, the recognizer's focal
+        // point jumps from the two-finger midpoint to the remaining finger. A
+        // change event computed from that jumped focal throws the window
+        // sideways (and can even snap it back to following live). Ignore
+        // change events once fewer than two pointers remain.
+        if (e.numberOfPointers < 2) return;
+        const chartW = canvasWidth.get() - padLeft - padRight;
+        if (chartW <= 0 || e.scale <= 0) return;
+        const edge = liveEdge.get();
+        const sWin = startWindow.get();
+        const sEnd = startViewEnd.get();
+        const span = edge - minTime.get();
+        const [minWin, maxWin] = zoomWindowBounds(
+          timeWindow,
+          span,
+          minTimeWindow,
+          maxTimeWindow,
+        );
+        // Pinch out (scale > 1) ⇒ narrower window ⇒ zoom in.
+        const newWin = clampWindow(sWin / e.scale, minWin, maxWin);
+        // Time under the fingers, mapped through the START window so the anchor
+        // doesn't compound; the right edge then keeps it under the (live) focal.
+        const focalT = focalTime(e.focalX, padLeft, chartW, sEnd - sWin, sWin);
+        let newEnd = zoomViewEnd(focalT, e.focalX, padLeft, chartW, newWin);
+        const lo = panLowerBound(minTime.get(), newWin, edge, overscroll);
+        if (newEnd < lo) newEnd = lo;
+        const hi = overscroll > 0 ? panUpperBound(newWin, edge, overscroll) : edge;
+        if (newEnd > hi) newEnd = hi;
+        viewWindow.set(newWin);
+        // Track the displayed window 1:1 (bypass the frame-loop lerp lag) so the
+        // focal anchor is pixel-accurate during the gesture.
+        displayWindow.set(newWin);
+        // Unlike the pan (see nextViewEnd), snapping to `null` mid-gesture is safe
+        // here: the pinch maps cumulative scale/focal from a gesture-START snapshot
+        // (`startViewEnd`), not per-frame deltas, so a snap can't re-anchor it.
+        // With overscroll, snap within the FOLLOW_SNAP zone; without, at the edge.
+        viewEnd.set(
+          overscroll > 0
+            ? Math.abs(newEnd - edge) <= newWin * FOLLOW_SNAP
+              ? null
+              : newEnd
+            : newEnd >= edge
+              ? null
+              : newEnd,
+        );
+      };
 
-  return Gesture.Pinch().enabled(enabled).onStart(onStart).onChange(onChange);
+    return Gesture.Pinch().enabled(enabled).onStart(onStart).onChange(onChange);
+  }, [
+    canvasWidth,
+    displayWindow,
+    enabled,
+    liveEdge,
+    maxTimeWindow,
+    minTime,
+    minTimeWindow,
+    onZoomStart,
+    overscroll,
+    padLeft,
+    padRight,
+    startViewEnd,
+    startWindow,
+    timeWindow,
+    viewEnd,
+    viewWindow,
+    wakeEngine,
+  ]);
 }

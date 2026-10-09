@@ -1,6 +1,7 @@
 import {
   forwardRef,
   memo,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -947,7 +948,8 @@ function resolveLiveChartInteractionConfig({
 }
 
 function composeLiveChartRootGesture({
-  crosshair,
+  crosshairGesture,
+  crosshairTapGesture,
   markerTapGesture,
   refLineTapGesture,
   refDragGesture,
@@ -961,7 +963,8 @@ function composeLiveChartRootGesture({
   scrollGestureMode,
   zoomEnabled,
 }: {
-  crosshair: ReturnType<typeof useCrosshair>;
+  crosshairGesture: ReturnType<typeof useCrosshair>["gesture"];
+  crosshairTapGesture: ReturnType<typeof useCrosshair>["tapGesture"];
   markerTapGesture: ReturnType<typeof useMarkers>["tapGesture"];
   refLineTapGesture: ReturnType<typeof useReferenceLinePress>["tapGesture"];
   refDragGesture: ReturnType<typeof useReferenceDrag>["gesture"];
@@ -976,9 +979,9 @@ function composeLiveChartRootGesture({
   zoomEnabled: boolean;
 }) {
   const baseGesture =
-    scrubActionActive && crosshair.tapGesture
-      ? Gesture.Exclusive(crosshair.tapGesture, crosshair.gesture)
-      : crosshair.gesture;
+    scrubActionActive && crosshairTapGesture
+      ? Gesture.Exclusive(crosshairTapGesture, crosshairGesture)
+      : crosshairGesture;
   const overlayTaps = [
     markersActive ? markerTapGesture : null,
     refPressActive ? refLineTapGesture : null,
@@ -1309,7 +1312,7 @@ function useLiveChartLayoutResources({
   const [scrolledBack, setScrolledBack] = useState(false);
   const effectiveYAxisFloat =
     yAxisFloat && (!timeScrollEnabled || scrolledBack);
-  const layout = resolveChartLayout({
+  const layout = useMemo(() => resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,
     insetsOverride: insets,
@@ -1326,7 +1329,23 @@ function useLiveChartLayoutResources({
     pulse: pulseConfig,
     dotGlow: dotCfg.glow,
     volumeBandHeight,
-  });
+  }), [
+    badgeCfg,
+    badgeUsesRightGutter,
+    dotCfg.glow,
+    effectiveYAxisFloat,
+    formatValue,
+    insets,
+    lineProp?.width,
+    metricsCfg.badge,
+    palette,
+    pulseConfig,
+    skiaFont,
+    valueLayoutSample,
+    volumeBandHeight,
+    xAxisCfg,
+    yAxisCfg,
+  ]);
   return {
     skiaFont,
     valueFont,
@@ -1533,7 +1552,7 @@ function useLiveChartController({
     degenCfg,
     tradeStreamResolved,
     metricsCfg,
-  } = resolveLiveChartFeatureConfig({
+  } = useMemo(() => resolveLiveChartFeatureConfig({
     mode,
     yAxis,
     xAxis,
@@ -1556,7 +1575,30 @@ function useLiveChartController({
     degen,
     tradeStream,
     metrics,
-  });
+  }), [
+    areaDots,
+    badge,
+    bottomLabel,
+    chartGapsCfg,
+    degen,
+    dot,
+    gradient,
+    gridStyle,
+    isStatic,
+    metrics,
+    mode,
+    pulse,
+    scrub,
+    scrubAction,
+    selectionDot,
+    threshold,
+    topLabel,
+    tradeStream,
+    valueLine,
+    volume,
+    xAxis,
+    yAxis,
+  ]);
 
   // Probing the custom renderers calls them once per line, so only re-resolve
   // when the lines or renderers change, not on every parent render.
@@ -1591,11 +1633,15 @@ function useLiveChartController({
     refGroupBadge,
     refGroupFormat,
     badgeUsesRightGutter,
-  } = resolveLiveChartReferenceConfig({
+  } = useMemo(() => resolveLiveChartReferenceConfig({
     thresholdCfg,
     referenceLineGrouping,
     badgeCfg,
-  });
+  }), [
+    badgeCfg,
+    referenceLineGrouping,
+    thresholdCfg,
+  ]);
 
   const { dragValues, dragActive, refLineCustomTagWidths, liveRefValues } =
     useLiveReferenceState(allRefLines, draggableRefIdx, thresholdRangeValueSV);
@@ -1618,7 +1664,7 @@ function useLiveChartController({
     zoomCfg,
     zoomEnabled,
     yAxisFloat,
-  } = resolveLiveChartPresentationConfig({
+  } = useMemo(() => resolveLiveChartPresentationConfig({
     accentColor,
     theme,
     paletteOverride,
@@ -1634,7 +1680,23 @@ function useLiveChartController({
     returnToLive,
     zoom,
     yAxisCfg,
-  });
+  }), [
+    accentColor,
+    badgeCfg,
+    fontProp,
+    isStatic,
+    leftEdgeFade,
+    paletteOverride,
+    pulseCfg,
+    refGroupBadge,
+    returnToLive,
+    segments,
+    theme,
+    timeScroll,
+    viewport,
+    yAxisCfg,
+    zoom,
+  ]);
 
   const {
     skiaFont,
@@ -1936,7 +1998,7 @@ function useLiveChartController({
     refDragEnabled,
     scrollGestureMode,
     scrubHoldMs,
-  } = resolveLiveChartInteractionConfig({
+  } = useMemo(() => resolveLiveChartInteractionConfig({
     isCandle,
     mode,
     candlesEngine,
@@ -1952,7 +2014,23 @@ function useLiveChartController({
     timeScroll,
     timeScrollEnabled,
     scrubCfg,
-  });
+  }), [
+    allRefLines,
+    candleGapsCfg,
+    candleWidth,
+    candlesEngine,
+    isCandle,
+    isStatic,
+    lineGapsCfg,
+    liveEngine,
+    markerCluster,
+    markers,
+    mode,
+    onReferenceLinePress,
+    scrubCfg,
+    timeScroll,
+    timeScrollEnabled,
+  ]);
   // `projected` is used internally by the hit-test gesture; the overlay
   // self-projects, so we only need the gesture + hit-test here. Built BEFORE
   // `useCrosshair` so the scrub-action tap can defer to a marker under the finger.
@@ -1992,10 +2070,10 @@ function useLiveChartController({
   // a press there is routed to that overlay / drag instead of dropping a reticle or
   // crosshair. (Each hit-test returns false when its feature is off.)
   /* istanbul ignore next -- worklet runs on the UI thread, not in Jest */
-  const deferTapHit = (x: number, y: number): boolean => {
+  const deferTapHit = useCallback((x: number, y: number): boolean => {
     "worklet";
     return markerHitTest(x, y) || refLineHitTest(x, y) || refDragHitTest(x, y);
-  };
+  }, [markerHitTest, refLineHitTest, refDragHitTest]);
 
   // Cross-gesture arbitration for the one-finger touch. `Gesture.Race` below is
   // NOT arbitration — RNGH's Race adds no relation between its children, so both
@@ -2070,6 +2148,10 @@ function useLiveChartController({
     const src = isCandle ? candlesEngine.get() : lineEngineData.get();
     return src.length > 0 ? src[0].time : engine.liveEdge.get();
   });
+  const clearCrosshair = useCallback(() => {
+    "worklet";
+    crosshairScrubActive.set(false);
+  }, [crosshairScrubActive]);
   const panScrollGesture = usePanScroll({
     engine,
     padding: effectivePadding,
@@ -2084,10 +2166,7 @@ function useLiveChartController({
     // finger only moves the price indicator across a fixed window.
     scrubActive: crosshairScrubActive,
     // Clear any live crosshair when a scroll drag takes over.
-    onScrollStart: () => {
-      "worklet";
-      crosshairScrubActive.set(false);
-    },
+    onScrollStart: clearCrosshair,
   });
 
   // Pinch-to-zoom the visible window (two-finger). Anchors at the focal point and
@@ -2102,10 +2181,7 @@ function useLiveChartController({
     minTimeWindow: zoomCfg?.minTimeWindow,
     maxTimeWindow: zoomCfg?.maxTimeWindow,
     overscroll: timeScrollOverscroll,
-    onZoomStart: () => {
-      "worklet";
-      crosshairScrubActive.set(false);
-    },
+    onZoomStart: clearCrosshair,
   });
 
   const axisAutoHideOpacity = useAxisAutoHide({
@@ -2128,8 +2204,11 @@ function useLiveChartController({
   // ahead of the pan via Exclusive, so a tap is tried first and only becomes a
   // drag (live-scrub, or lock-adjust once placed) if the finger moves. `Exclusive`
   // (not `Race`) prevents a jittery tap from being swallowed by the pan.
-  const rootGesture = composeLiveChartRootGesture({
-    crosshair,
+  const crosshairGesture = crosshair.gesture;
+  const crosshairTapGesture = crosshair.tapGesture;
+  const rootGesture = useMemo(() => composeLiveChartRootGesture({
+    crosshairGesture,
+    crosshairTapGesture,
     markerTapGesture,
     refLineTapGesture,
     refDragGesture,
@@ -2142,7 +2221,22 @@ function useLiveChartController({
     timeScrollEnabled,
     scrollGestureMode,
     zoomEnabled,
-  });
+  }), [
+    crosshairGesture,
+    crosshairTapGesture,
+    markerTapGesture,
+    markersActive,
+    panScrollGesture,
+    pinchZoomGesture,
+    refDragEnabled,
+    refDragGesture,
+    refLineTapGesture,
+    refPressActive,
+    scrollGestureMode,
+    scrubActionCfg,
+    timeScrollEnabled,
+    zoomEnabled,
+  ]);
 
   // ── Derived render values ──────────────────────────────────────────────
   const {

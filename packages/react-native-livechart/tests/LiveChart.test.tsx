@@ -3,6 +3,7 @@ import { fireEvent, render } from "@testing-library/react-native";
 
 import React from "react";
 import { View } from "react-native";
+import { Gesture } from "react-native-gesture-handler";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import type { TestInstance } from "test-renderer";
 import { LiveChart } from "../src/components/LiveChart";
@@ -1297,6 +1298,40 @@ describe("LiveChart", () => {
     );
     expect(spy.mock.calls.length).toBeGreaterThan(calls);
     spy.mockRestore();
+  });
+
+  it("reuses gestures when reference levels and inline JS callbacks change", async () => {
+    const constructors = ["Pan", "Tap", "Pinch", "Exclusive", "Simultaneous", "Race"] as const;
+    const spies = constructors.map((name) => jest.spyOn(Gesture, name));
+    const props = {
+      timeScroll: true,
+      zoom: true,
+      scrubAction: true,
+      onScrub: jest.fn(),
+      onGestureStart: jest.fn(),
+      onGestureEnd: jest.fn(),
+      onMarkerPress: jest.fn(),
+      onReferenceLinePress: jest.fn(),
+    };
+    const screen = await render(<Harness {...props} referenceLines={[
+      { id: "level", value: 50, draggable: true, onChange: jest.fn() },
+    ]} />);
+    const counts = spies.map((spy) => spy.mock.calls.length);
+    expect(counts.every((count) => count > 0)).toBe(true);
+
+    for (let value = 51; value <= 55; value++) {
+      await screen.rerender(<Harness {...props}
+        referenceLines={[{ id: "level", value, draggable: true, onChange: jest.fn() }]}
+        onScrub={jest.fn()} onGestureStart={jest.fn()} onGestureEnd={jest.fn()}
+        onMarkerPress={jest.fn()} onReferenceLinePress={jest.fn()}
+      />);
+    }
+    expect(spies.map((spy) => spy.mock.calls.length)).toEqual(counts);
+
+    // Recognition changes must still rebuild the affected gestures.
+    await screen.rerender(<Harness {...props} scrub={{ panGestureDelay: 250 }} />);
+    expect(spies[0].mock.calls.length).toBeGreaterThan(counts[0]);
+    for (const spy of spies) spy.mockRestore();
   });
 
   it("re-probes custom reference-line renderers only when their inputs change", async () => {

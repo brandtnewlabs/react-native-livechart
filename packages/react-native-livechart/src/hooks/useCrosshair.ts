@@ -1,5 +1,5 @@
 import { type SkFont } from "@shopify/react-native-skia";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
@@ -60,6 +60,8 @@ import {
   shouldStartDelayedPan,
 } from "./delayedPanGuard";
 import { useScrubMarkers, type ScrubMarkerOptions } from "./useScrubMarkers";
+
+import { useLatestCallback } from "./useLatestCallback";
 
 const ACTION_HIT_SLOP = 6;
 const RETICLE_HIT = 14;
@@ -540,21 +542,21 @@ export function useCrosshair(
   );
 
   /* istanbul ignore next -- invoked only via scheduleOnRN from UI-thread gesture */
-  function handleScrubAction(
+  const handleScrubAction = useLatestCallback((
     price: number,
     time: number,
     x: number,
     y: number,
     candleJson: string | null,
-  ) {
+  ) => {
     const candle: CandlePoint | undefined = candleJson
       ? (JSON.parse(candleJson) as CandlePoint)
       : undefined;
     onScrubAction?.({ price, time, x, y, candle });
-  }
+  });
 
   /* istanbul ignore next -- invoked only via scheduleOnRN from UI-thread gesture */
-  function handleScrub(
+  const handleScrub = useLatestCallback((
     x: number,
     y: number,
     time: number,
@@ -562,7 +564,7 @@ export function useCrosshair(
     candleJson: string | null,
     gapJson: string | null,
     markerUpdate: Marker[] | undefined,
-  ) {
+  ) => {
     const candle: CandlePoint | undefined = candleJson
       ? (JSON.parse(candleJson) as CandlePoint)
       : undefined;
@@ -574,28 +576,28 @@ export function useCrosshair(
       time, value, x, y, candle, gap,
       ...(markerOptions ? { markers: jsScrubMarkers.current } : {}),
     });
-  }
+  });
 
-  function handleScrubCandleChange(candleJson: string | null) {
+  const handleScrubCandleChange = useLatestCallback((candleJson: string | null) => {
     onScrubCandleChange?.(
       candleJson ? (JSON.parse(candleJson) as CandlePoint) : null,
     );
-  }
+  });
 
   /* istanbul ignore next */
-  function handleScrubEnd() {
+  const handleScrubEnd = useLatestCallback(() => {
     onScrub?.(null);
-  }
+  });
 
   /* istanbul ignore next */
-  function handleGestureStart() {
+  const handleGestureStart = useLatestCallback(() => {
     onGestureStart?.();
-  }
+  });
 
   /* istanbul ignore next */
-  function handleGestureEnd() {
+  const handleGestureEnd = useLatestCallback(() => {
     onGestureEnd?.();
-  }
+  });
 
   const hasOnScrub = onScrub != null;
   const hasOnGestureStart = onGestureStart != null;
@@ -694,309 +696,368 @@ export function useCrosshair(
       ? SCRUB_ACTION_PRESS_HOLD_MS
       : panGestureDelay;
 
-  // `scrub.snapToCandles`: quantize the scrub X to the hovered candle's center
-  // before it enters `scrubX`, so the crosshair — and everything derived from
-  // it (time, tooltip, dim edge) — jumps candle-to-candle instead of gliding.
-  // Line mode and gaps between candles pass the raw X through.
-  /* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
-  const snapCandleX = (x: number): number => {
-    "worklet";
-    if (!snapToCandles || !isCandleMode || !candlesSV) return x;
-    return snapScrubXToCandleCenter(
-      x,
-      candlesSV.get(),
-      liveCandleSV?.get() ?? null,
-      candleWidthSecs,
-      padding,
-      engine.canvasWidth.get(),
-      engine.timestamp.get(),
-      engine.displayWindow.get(),
-      chartGaps,
-    );
-  };
+  const {
+    canvasWidth: canvasWidthSV,
+    canvasHeight: canvasHeightSV,
+    displayMin: displayMinSV,
+    displayMax: displayMaxSV,
+    timestamp: timestampSV,
+    displayWindow: displayWindowSV,
+  } = engine;
+  const { gesture, tapGesture } = useMemo(() => {
+    // `scrub.snapToCandles`: quantize the scrub X to the hovered candle's center
+    // before it enters `scrubX`, so the crosshair — and everything derived from
+    // it (time, tooltip, dim edge) — jumps candle-to-candle instead of gliding.
+    // Line mode and gaps between candles pass the raw X through.
+    /* istanbul ignore next -- worklet, called only from UI-thread gesture handlers */
+    const snapCandleX = (x: number): number => {
+      "worklet";
+      if (!snapToCandles || !isCandleMode || !candlesSV) return x;
+      return snapScrubXToCandleCenter(
+        x,
+        candlesSV.get(),
+        liveCandleSV?.get() ?? null,
+        candleWidthSecs,
+        padding,
+        canvasWidthSV.get(),
+        timestampSV.get(),
+        displayWindowSV.get(),
+        chartGaps,
+      );
+    };
 
-  let gesture = Gesture.Pan()
-    .maxPointers(1)
-    .shouldCancelWhenOutside(false)
-    .onTouchesDown(
-      /* istanbul ignore next */ (e) => {
-        "worklet";
-        // Overlay drags decide ownership at touch-down. Preserve that point
-        // even without a hold: the finger can enter a grabRange before the
-        // scrub reaches its horizontal activation threshold.
-        const touch = e.changedTouches[0];
-        if (touch) {
-          downX.set(touch.x);
-          downY.set(touch.y);
-        }
-        delayedPanTouchDown(
-          longPressMs,
-          e,
-          fingerDown,
-          downX,
-          downY,
-          downAtMs,
-          holdBroken,
-        );
-      },
-    )
-    // Stationary hold: drift beyond the slop while the long-press is still
-    // pending fails the pan, so a drag can never mature into a scrub.
-    .onTouchesMove(
-      /* istanbul ignore next */ (e, manager) => {
-        "worklet";
-        delayedPanTouchMove(
-          longPressMs,
-          e,
-          manager,
-          panActivated,
-          downX,
-          downY,
-          holdBroken,
-        );
-      },
-    )
-    .onTouchesUp(
-      /* istanbul ignore next */ (e, manager) => {
-        "worklet";
-        delayedPanTouchUp(longPressMs, e, manager, fingerDown, panActivated);
-      },
-    )
-    .onTouchesCancelled(
-      /* istanbul ignore next */ () => {
-        "worklet";
-        delayedPanTouchCancelled(longPressMs, fingerDown);
-      },
-    )
-    // Start scrubbing on ACTIVE (onStart), not on touch-down (onBegin):
-    // `activateAfterLongPress` only delays activation, so onBegin still fires
-    // immediately — using it would scrub instantly and ignore panGestureDelay,
-    // and leave scrubActive stuck for taps that never reach the long-press.
-    .onStart(
-      /* istanbul ignore next */ (e) => {
-        "worklet";
-        if (
-          !shouldStartDelayedPan(
+    let gesture = Gesture.Pan()
+      .maxPointers(1)
+      .shouldCancelWhenOutside(false)
+      .onTouchesDown(
+        /* istanbul ignore next */ (e) => {
+          "worklet";
+          // Overlay drags decide ownership at touch-down. Preserve that point
+          // even without a hold: the finger can enter a grabRange before the
+          // scrub reaches its horizontal activation threshold.
+          const touch = e.changedTouches[0];
+          if (touch) {
+            downX.set(touch.x);
+            downY.set(touch.y);
+          }
+          delayedPanTouchDown(
             longPressMs,
+            e,
             fingerDown,
-            panActivated,
+            downX,
+            downY,
             downAtMs,
             holdBroken,
-            scrollActiveSV,
+          );
+        },
+      )
+      // Stationary hold: drift beyond the slop while the long-press is still
+      // pending fails the pan, so a drag can never mature into a scrub.
+      .onTouchesMove(
+        /* istanbul ignore next */ (e, manager) => {
+          "worklet";
+          delayedPanTouchMove(
+            longPressMs,
+            e,
+            manager,
+            panActivated,
+            downX,
+            downY,
+            holdBroken,
+          );
+        },
+      )
+      .onTouchesUp(
+        /* istanbul ignore next */ (e, manager) => {
+          "worklet";
+          delayedPanTouchUp(longPressMs, e, manager, fingerDown, panActivated);
+        },
+      )
+      .onTouchesCancelled(
+        /* istanbul ignore next */ () => {
+          "worklet";
+          delayedPanTouchCancelled(longPressMs, fingerDown);
+        },
+      )
+      // Start scrubbing on ACTIVE (onStart), not on touch-down (onBegin):
+      // `activateAfterLongPress` only delays activation, so onBegin still fires
+      // immediately — using it would scrub instantly and ignore panGestureDelay,
+      // and leave scrubActive stuck for taps that never reach the long-press.
+      .onStart(
+        /* istanbul ignore next */ (e) => {
+          "worklet";
+          if (
+            !shouldStartDelayedPan(
+              longPressMs,
+              fingerDown,
+              panActivated,
+              downAtMs,
+              holdBroken,
+              scrollActiveSV,
+            )
           )
-        )
-          return;
-        if (!enabled) return;
-        // Scrub-action: once a reticle is placed, drag adjusts it (2D — the Y is
-        // the price). The ephemeral live-scrub never engages, so scrubActive
-        // stays false and the live crosshair hides itself.
-        if (hasScrubAction && lockActive.get()) {
-          lockX.set(
-            clampPlotX(
-              e.x,
-              padding.left,
-              engine.canvasWidth.get(),
-              padding.right,
-            ),
+            return;
+          if (!enabled) return;
+          // Scrub-action: once a reticle is placed, drag adjusts it (2D — the Y is
+          // the price). The ephemeral live-scrub never engages, so scrubActive
+          // stays false and the live crosshair hides itself.
+          if (hasScrubAction && lockActive.get()) {
+            lockX.set(
+              clampPlotX(
+                e.x,
+                padding.left,
+                canvasWidthSV.get(),
+                padding.right,
+              ),
+            );
+            // Freeze the chosen price (value at the pointer Y); the line's Y is
+            // re-derived from it so the level stays put in PRICE as the axis rescales.
+            {
+              const p = computeValueAtY(
+                e.y,
+                displayMinSV.get(),
+                displayMaxSV.get(),
+                canvasHeightSV.get(),
+                padding.top,
+                padding.bottom,
+              );
+              if (p !== null) lockPriceValue.set(p);
+            }
+            return;
+          }
+          // Defer to a marker / pressable badge under the finger: don't start a
+          // live scrub (or drop a crosshair) where the press is routed to an
+          // overlay tap. `scrubActive` is only set here, so bailing in `onStart`
+          // also keeps a follow-on drag from showing a crosshair — no `onUpdate`
+          // guard needed. (Plain-scrub counterpart of the scrub-action tap defer.)
+          if (
+            deferTapHit !== undefined &&
+            deferTapHit(downX.get(), downY.get())
+          )
+            return;
+          startPlainScrub(
+            snapCandleX(e.x),
+            padding,
+            canvasWidthSV.get(),
+            clampPlainScrubToPlot,
+            scrubX,
+            scrubActive,
+            gestureStarted,
           );
-          // Freeze the chosen price (value at the pointer Y); the line's Y is
-          // re-derived from it so the level stays put in PRICE as the axis rescales.
-          {
-            const p = computeValueAtY(
-              e.y,
-              engine.displayMin.get(),
-              engine.displayMax.get(),
-              engine.canvasHeight.get(),
-              padding.top,
-              padding.bottom,
+          if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
+        },
+      )
+      .onUpdate(
+        /* istanbul ignore next */ (e) => {
+          "worklet";
+          if (!enabled) return;
+          if (hasScrubAction && lockActive.get()) {
+            lockX.set(
+              clampPlotX(
+                e.x,
+                padding.left,
+                canvasWidthSV.get(),
+                padding.right,
+              ),
             );
-            if (p !== null) lockPriceValue.set(p);
+            // Freeze the chosen price (value at the pointer Y); the line's Y is
+            // re-derived from it so the level stays put in PRICE as the axis rescales.
+            {
+              const p = computeValueAtY(
+                e.y,
+                displayMinSV.get(),
+                displayMaxSV.get(),
+                canvasHeightSV.get(),
+                padding.top,
+                padding.bottom,
+              );
+              if (p !== null) lockPriceValue.set(p);
+            }
+            return;
           }
-          return;
-        }
-        // Defer to a marker / pressable badge under the finger: don't start a
-        // live scrub (or drop a crosshair) where the press is routed to an
-        // overlay tap. `scrubActive` is only set here, so bailing in `onStart`
-        // also keeps a follow-on drag from showing a crosshair — no `onUpdate`
-        // guard needed. (Plain-scrub counterpart of the scrub-action tap defer.)
-        if (
-          deferTapHit !== undefined &&
-          deferTapHit(downX.get(), downY.get())
-        )
-          return;
-        startPlainScrub(
-          snapCandleX(e.x),
-          padding,
-          engine.canvasWidth.get(),
-          clampPlainScrubToPlot,
-          scrubX,
-          scrubActive,
-          gestureStarted,
-        );
-        if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
-      },
-    )
-    .onUpdate(
-      /* istanbul ignore next */ (e) => {
-        "worklet";
-        if (!enabled) return;
-        if (hasScrubAction && lockActive.get()) {
-          lockX.set(
-            clampPlotX(
-              e.x,
-              padding.left,
-              engine.canvasWidth.get(),
-              padding.right,
-            ),
+          updatePlainScrub(
+            snapCandleX(e.x),
+            padding,
+            canvasWidthSV.get(),
+            clampPlainScrubToPlot,
+            scrubX,
+            scrubActive,
           );
-          // Freeze the chosen price (value at the pointer Y); the line's Y is
-          // re-derived from it so the level stays put in PRICE as the axis rescales.
-          {
-            const p = computeValueAtY(
-              e.y,
-              engine.displayMin.get(),
-              engine.displayMax.get(),
-              engine.canvasHeight.get(),
-              padding.top,
-              padding.bottom,
-            );
-            if (p !== null) lockPriceValue.set(p);
+        },
+      )
+      .onFinalize(
+        /* istanbul ignore next */ () => {
+          "worklet";
+          resetDelayedPanGuard(fingerDown, panActivated, holdBroken);
+          // A lock-adjust drag leaves the reticle in place (scrubActive was never
+          // set); a live-scrub clears its crosshair. Always clear scrubActive so a
+          // stray scrub can never linger behind a placed reticle.
+          if (scrubActive.get()) {
+            scrubActive.set(false);
+            if (hasOnScrub) scheduleOnRN(handleScrubEnd);
           }
-          return;
-        }
-        updatePlainScrub(
-          snapCandleX(e.x),
-          padding,
-          engine.canvasWidth.get(),
-          clampPlainScrubToPlot,
-          scrubX,
-          scrubActive,
-        );
-      },
-    )
-    .onFinalize(
-      /* istanbul ignore next */ () => {
-        "worklet";
-        resetDelayedPanGuard(fingerDown, panActivated, holdBroken);
-        // A lock-adjust drag leaves the reticle in place (scrubActive was never
-        // set); a live-scrub clears its crosshair. Always clear scrubActive so a
-        // stray scrub can never linger behind a placed reticle.
-        if (scrubActive.get()) {
-          scrubActive.set(false);
-          if (hasOnScrub) scheduleOnRN(handleScrubEnd);
-        }
-        if (gestureStarted.get()) {
-          gestureStarted.set(false);
-          if (hasOnGestureEnd) scheduleOnRN(handleGestureEnd);
-        }
-      },
-    );
-
-  // Passing zero-valued activation modifiers lets RNGH's iOS pan recognizer
-  // activate before the axis constraints classify the drag. Only configure a
-  // hold when one is requested, and reserve minDistance(0) for scrub-action's
-  // deliberate press-hold interaction.
-  if (longPressMs > 0) {
-    gesture = gesture.activateAfterLongPress(longPressMs);
-  }
-
-  if (hasScrubAction) {
-    gesture = gesture.minDistance(0);
-  } else {
-    // Lock mode needs free vertical drag (Y = price), so the failOffsetY clamp —
-    // which would kill a vertical adjust — is applied only outside scrub-action.
-    gesture = gesture
-      .activeOffsetX([-SCRUB_ACTIVATE_X_PX, SCRUB_ACTIVATE_X_PX])
-      .failOffsetY([-SCRUB_FAIL_Y_PX, SCRUB_FAIL_Y_PX]);
-  }
-
-  // Restrict recognition by touch-down position. This rejects before ACTIVE,
-  // leaving outside starts to competing/parent gestures. Once accepted,
-  // `shouldCancelWhenOutside(false)` keeps tracking beyond these bounds.
-  const scrubHitSlop = resolveScrubHitSlop(
-    padding,
-    clampPlainScrubToPlot,
-    scrubBottomExclude,
-  );
-  if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);
-
-  // Tap: place/move the reticle, press the action badge, or dismiss the lock.
-  // Composed ahead of the pan by the controller, so a tap is never swallowed.
-  // Built only in scrub-action mode (the plain-scrub path never constructs a Tap).
-  /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-  const handleActionTap = (e: { x: number; y: number }, success: boolean) => {
-    "worklet";
-    if (!enabled || !hasScrubAction || !success) return;
-    if (lockActive.get()) {
-      // 1. Action-badge press → fire onScrubAction with the chosen price.
-      const rect = actionBadge.get();
-      if (rect.visible && pointInRect(e.x, e.y, rect, ACTION_HIT_SLOP)) {
-        const price = lockPrice.get();
-        if (price !== null) {
-          let candleJson: string | null = null;
-          if (isCandleMode) {
-            const c = lockCandle.get();
-            if (c) candleJson = JSON.stringify(c);
+          if (gestureStarted.get()) {
+            gestureStarted.set(false);
+            if (hasOnGestureEnd) scheduleOnRN(handleGestureEnd);
           }
-          if (hasOnScrubAction)
-            scheduleOnRN(
-              handleScrubAction,
-              price,
-              lockTime.get(),
-              lockX.get(),
-              lockY.get(),
-              candleJson,
-            );
-          // Clear the reticle once the action fires, so no crosshair lingers after
-          // the order is placed via the badge.
-          if (dismissOnAction) lockActive.set(false);
-        }
-        return;
-      }
-      // 2. Dismiss: tap the reticle itself, or any empty tap when configured.
-      const onReticle =
-        Math.abs(e.x - lockX.get()) <= RETICLE_HIT &&
-        Math.abs(e.y - lockY.get()) <= RETICLE_HIT;
-      if (onReticle || dismissOnTapOutside) {
-        lockActive.set(false);
-        return;
-      }
+        },
+      );
+
+    // Passing zero-valued activation modifiers lets RNGH's iOS pan recognizer
+    // activate before the axis constraints classify the drag. Only configure a
+    // hold when one is requested, and reserve minDistance(0) for scrub-action's
+    // deliberate press-hold interaction.
+    if (longPressMs > 0) {
+      gesture = gesture.activateAfterLongPress(longPressMs);
     }
-    // 2.5. Defer to a marker / reference-line badge under the tap: when one
-    //      coexists, the tap fires both this handler and that overlay's tap
-    //      (Simultaneous) — yield so it acts instead of dropping a reticle on top.
-    if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
-    // 3. Place / move the reticle. Clear any in-progress live-scrub so its
-    //    crosshair never shows behind the placed reticle.
-    scrubActive.set(false);
-    lockX.set(
-      clampPlotX(e.x, padding.left, engine.canvasWidth.get(), padding.right),
-    );
-    // Freeze the chosen price at the tap Y; the line's Y derives from it (see
-    // `lockY`). No-op until the canvas is laid out (price === null).
-    const placedPrice = computeValueAtY(
-      e.y,
-      engine.displayMin.get(),
-      engine.displayMax.get(),
-      engine.canvasHeight.get(),
-      padding.top,
-      padding.bottom,
-    );
-    if (placedPrice === null) return;
-    lockPriceValue.set(placedPrice);
-    lockActive.set(true);
-  };
 
-  let tapGesture = hasScrubAction
-    ? Gesture.Tap()
-        .maxDuration(250)
-        .maxDistance(SCRUB_ACTION_TAP_SLOP)
-        .onEnd(handleActionTap)
-    : undefined;
-  // Keep the bottom axis scroll-only. Do not apply horizontal plot bounds here:
-  // the action badge is intentionally tappable in the right gutter.
-  const tapHitSlop = resolveScrubHitSlop(padding, false, scrubBottomExclude);
-  if (tapGesture && tapHitSlop) tapGesture = tapGesture.hitSlop(tapHitSlop);
+    if (hasScrubAction) {
+      gesture = gesture.minDistance(0);
+    } else {
+      // Lock mode needs free vertical drag (Y = price), so the failOffsetY clamp —
+      // which would kill a vertical adjust — is applied only outside scrub-action.
+      gesture = gesture
+        .activeOffsetX([-SCRUB_ACTIVATE_X_PX, SCRUB_ACTIVATE_X_PX])
+        .failOffsetY([-SCRUB_FAIL_Y_PX, SCRUB_FAIL_Y_PX]);
+    }
+
+    // Restrict recognition by touch-down position. This rejects before ACTIVE,
+    // leaving outside starts to competing/parent gestures. Once accepted,
+    // `shouldCancelWhenOutside(false)` keeps tracking beyond these bounds.
+    const scrubHitSlop = resolveScrubHitSlop(
+      padding,
+      clampPlainScrubToPlot,
+      scrubBottomExclude,
+    );
+    if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);
+
+    // Tap: place/move the reticle, press the action badge, or dismiss the lock.
+    // Composed ahead of the pan by the controller, so a tap is never swallowed.
+    // Built only in scrub-action mode (the plain-scrub path never constructs a Tap).
+    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+    const handleActionTap = (e: { x: number; y: number }, success: boolean) => {
+      "worklet";
+      if (!enabled || !hasScrubAction || !success) return;
+      if (lockActive.get()) {
+        // 1. Action-badge press → fire onScrubAction with the chosen price.
+        const rect = actionBadge.get();
+        if (rect.visible && pointInRect(e.x, e.y, rect, ACTION_HIT_SLOP)) {
+          const price = lockPrice.get();
+          if (price !== null) {
+            let candleJson: string | null = null;
+            if (isCandleMode) {
+              const c = lockCandle.get();
+              if (c) candleJson = JSON.stringify(c);
+            }
+            if (hasOnScrubAction)
+              scheduleOnRN(
+                handleScrubAction,
+                price,
+                lockTime.get(),
+                lockX.get(),
+                lockY.get(),
+                candleJson,
+              );
+            // Clear the reticle once the action fires, so no crosshair lingers after
+            // the order is placed via the badge.
+            if (dismissOnAction) lockActive.set(false);
+          }
+          return;
+        }
+        // 2. Dismiss: tap the reticle itself, or any empty tap when configured.
+        const onReticle =
+          Math.abs(e.x - lockX.get()) <= RETICLE_HIT &&
+          Math.abs(e.y - lockY.get()) <= RETICLE_HIT;
+        if (onReticle || dismissOnTapOutside) {
+          lockActive.set(false);
+          return;
+        }
+      }
+      // 2.5. Defer to a marker / reference-line badge under the tap: when one
+      //      coexists, the tap fires both this handler and that overlay's tap
+      //      (Simultaneous) — yield so it acts instead of dropping a reticle on top.
+      if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
+      // 3. Place / move the reticle. Clear any in-progress live-scrub so its
+      //    crosshair never shows behind the placed reticle.
+      scrubActive.set(false);
+      lockX.set(
+        clampPlotX(e.x, padding.left, canvasWidthSV.get(), padding.right),
+      );
+      // Freeze the chosen price at the tap Y; the line's Y derives from it (see
+      // `lockY`). No-op until the canvas is laid out (price === null).
+      const placedPrice = computeValueAtY(
+        e.y,
+        displayMinSV.get(),
+        displayMaxSV.get(),
+        canvasHeightSV.get(),
+        padding.top,
+        padding.bottom,
+      );
+      if (placedPrice === null) return;
+      lockPriceValue.set(placedPrice);
+      lockActive.set(true);
+    };
+
+    let tapGesture = hasScrubAction
+      ? Gesture.Tap()
+          .maxDuration(250)
+          .maxDistance(SCRUB_ACTION_TAP_SLOP)
+          .onEnd(handleActionTap)
+      : undefined;
+    // Keep the bottom axis scroll-only. Do not apply horizontal plot bounds here:
+    // the action badge is intentionally tappable in the right gutter.
+    const tapHitSlop = resolveScrubHitSlop(padding, false, scrubBottomExclude);
+    if (tapGesture && tapHitSlop) tapGesture = tapGesture.hitSlop(tapHitSlop);
+    return { gesture, tapGesture };
+  }, [
+    actionBadge,
+    candleWidthSecs,
+    candlesSV,
+    canvasHeightSV,
+    canvasWidthSV,
+    chartGaps,
+    clampPlainScrubToPlot,
+    deferTapHit,
+    dismissOnAction,
+    dismissOnTapOutside,
+    displayMaxSV,
+    displayMinSV,
+    displayWindowSV,
+    downAtMs,
+    downX,
+    downY,
+    enabled,
+    fingerDown,
+    gestureStarted,
+    handleGestureEnd,
+    handleGestureStart,
+    handleScrubAction,
+    handleScrubEnd,
+    hasOnGestureEnd,
+    hasOnGestureStart,
+    hasOnScrub,
+    hasOnScrubAction,
+    hasScrubAction,
+    holdBroken,
+    isCandleMode,
+    liveCandleSV,
+    lockActive,
+    lockCandle,
+    lockPrice,
+    lockPriceValue,
+    lockTime,
+    lockX,
+    lockY,
+    longPressMs,
+    padding,
+    panActivated,
+    scrollActiveSV,
+    scrubActive,
+    scrubBottomExclude,
+    scrubX,
+    snapToCandles,
+    timestampSV,
+  ]);
 
   return {
     scrubMarkers,

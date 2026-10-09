@@ -67,6 +67,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `LiveChart` reuses its gesture configurations and composition across reference
+  level updates and replacement JS callbacks. Cached config/layout results avoid
+  rebuilding unrelated interaction inputs. Reference drags read current line
+  props on the UI thread; JS callbacks use the latest committed props. Gesture
+  recognition and layout changes still invalidate the relevant configuration.
+  Completes the gesture follow-up to #383 ([#373](https://github.com/brandtnewlabs/react-native-livechart/issues/373)).
 - `LiveChart` is memoized, so a parent render with unchanged props no longer
   re-runs the chart. Pass stable references (memoized arrays and callbacks) to
   benefit; live data still flows through SharedValues as before.

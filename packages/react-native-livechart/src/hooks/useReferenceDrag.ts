@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
@@ -24,6 +25,8 @@ import {
   snapPriceOutward,
   snapPriceWithin,
 } from "./crosshairShared";
+
+import { useLatestCallback } from "./useLatestCallback";
 
 /** Vertical reach (px) around a line within which a touch grabs it. */
 const GRAB_SLOP = 14;
@@ -130,6 +133,10 @@ export function useReferenceDrag(
       (l.onDragIn != null || l.onDragOut != null),
   );
 
+  // The gesture retains this container while committed line props change.
+  // Reanimated updates it on the UI thread without rebuilding the recognizer.
+  const linesSV = useDerivedValue(() => lines);
+
   // Per-line handle Y (canvas px), index-aligned with `lines`; -1 when the line
   // isn't draggable or the canvas isn't laid out. Off-screen lines pin to the
   // nearest plot edge so they stay grabbable. Recomputed each frame (UI thread).
@@ -143,8 +150,8 @@ export function useReferenceDrag(
     const bottom = ch - padding.bottom;
     if (bottom <= top) return EMPTY;
     const out: number[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      const l = lines[i];
+    for (let i = 0; i < linesSV.get().length; i++) {
+      const l = linesSV.get()[i];
       if (
         !l.draggable ||
         referenceLineForm(l) !== "line" ||
@@ -161,8 +168,12 @@ export function useReferenceDrag(
 
   // Per-line grab x-ranges (`ReferenceLine.grabRange`), index-aligned with
   // `lines`; null = anywhere along the line. Read by the gesture worklets below,
-  // which close over this render's `lines` as the callbacks do.
-  const grabRanges = lines.map((l) => l.grabRange ?? null);
+  // through shared values so line updates do not rebuild the recognizer.
+  const grabRanges = useDerivedValue(() => {
+    const ranges: (ReferenceLine["grabRange"] | null)[] = [];
+    for (const line of linesSV.get()) ranges.push(line.grabRange ?? null);
+    return ranges;
+  });
 
   const dragIndex = useSharedValue(-1);
   const startX = useSharedValue(0);
@@ -187,7 +198,7 @@ export function useReferenceDrag(
     const values = dragValues.get();
     const i = dragIndex.get();
     if (i < 0 || !activated.get()) return values;
-    const l = lines[i];
+    const l = linesSV.get()[i];
     if (l === undefined || l.id !== grabbedId.get()) return values;
     const v = dragValueAtY(
       l,
@@ -207,10 +218,10 @@ export function useReferenceDrag(
 
   // Once the grabbed identity is lost, this touch cannot resume a drag if that
   // line later returns. Restore a replacement's own value and clear ownership.
-  const clearDrag = () => {
+  const clearDrag = useCallback(() => {
     "worklet";
     const i = dragIndex.get();
-    const l = lines[i];
+    const l = linesSV.get()[i];
     if (i >= 0 && activated.get()) {
       if (l !== undefined && l.id !== grabbedId.get()) {
         const own = l.value ?? 0;
@@ -230,39 +241,50 @@ export function useReferenceDrag(
     }
     dragIndex.set(-1);
     activated.set(false);
-  };
+  }, [
+    activated,
+    dragActive,
+    dragIndex,
+    dragValues,
+    grabbedId,
+    linesSV,
+  ]);
 
   // Reordering/removal must also cancel while the finger is resting. Derived
   // drawing alone cannot reset the gesture state or the range-fit override.
   useAnimatedReaction(
     () => {
       const i = dragIndex.get();
-      const l = lines[i];
+      const l = linesSV.get()[i];
       return i >= 0 && (l === undefined || l.id !== grabbedId.get());
     },
     (invalid) => {
       if (invalid) clearDrag();
     },
-    [lines],
   );
 
-  // JS-thread callback dispatch — closes over the latest `lines` each render.
+  // JS dispatchers always use the latest committed callback, and reject an
+  // event queued for a line that has since been replaced.
   /* istanbul ignore next -- runs via scheduleOnRN from the UI-thread gesture */
-  function emitChange(i: number, v: number) {
-    lines[i]?.onChange?.(v);
-  }
+  const emitChange = useLatestCallback((i: number, id: string | undefined, v: number) => {
+    const line = lines[i];
+    if (line && line.id === id) line.onChange?.(v);
+  });
   /* istanbul ignore next -- runs via scheduleOnRN from the UI-thread gesture */
-  function emitCommit(i: number, v: number) {
-    lines[i]?.onCommit?.(v);
-  }
+  const emitCommit = useLatestCallback((i: number, id: string | undefined, v: number) => {
+    const line = lines[i];
+    if (line && line.id === id) line.onCommit?.(v);
+  });
   /* istanbul ignore next -- runs via scheduleOnRN from the UI-thread reaction */
-  function emitDragOut(i: number, v: number) {
-    lines[i]?.onDragOut?.(v);
-  }
+  const emitDragOut = useLatestCallback((i: number, id: string | undefined, v: number) => {
+    const line = lines[i];
+    if (line && line.id === id) line.onDragOut?.(v);
+  });
   /* istanbul ignore next -- runs via scheduleOnRN from the UI-thread reaction */
-  function emitDragIn(i: number, v: number) {
-    lines[i]?.onDragIn?.(v);
-  }
+  const emitDragIn = useLatestCallback((i: number, id: string | undefined, v: number) => {
+    const line = lines[i];
+    if (line && line.id === id) line.onDragIn?.(v);
+  });
 
   // onDragIn / onDragOut — edge-detect each line's "out of the watched interval"
   // state (from a drag or the axis rescaling under a fixed value).
@@ -273,8 +295,8 @@ export function useReferenceDrag(
       const dMin = engine.displayMin.get();
       const dMax = engine.displayMax.get();
       const out: boolean[] = [];
-      for (let i = 0; i < lines.length; i++) {
-        const l = lines[i];
+      for (let i = 0; i < linesSV.get().length; i++) {
+        const l = linesSV.get()[i];
         if (
           referenceLineForm(l) !== "line" ||
           l.value === undefined ||
@@ -293,183 +315,208 @@ export function useReferenceDrag(
       if (!prev || curr === prev) return;
       for (let i = 0; i < curr.length; i++) {
         if (prev[i] === undefined || curr[i] === prev[i]) continue;
-        const l = lines[i];
+        const l = linesSV.get()[i];
         const v = drawnValues.get()[i] ?? l.value ?? 0;
-        if (curr[i]) scheduleOnRN(emitDragOut, i, v);
-        else scheduleOnRN(emitDragIn, i, v);
+        if (curr[i]) scheduleOnRN(emitDragOut, i, l.id, v);
+        else scheduleOnRN(emitDragIn, i, l.id, v);
       }
     },
-    [lines, anyDragInOut],
   );
 
-  // ── Gesture callbacks (UI-thread worklets — excluded from Jest coverage) ──────
-  /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-  const onTouchesDown = (
-    e: { changedTouches: { x: number; y: number }[] },
-    manager: { fail: () => void },
-  ) => {
-    "worklet";
-    const t = e.changedTouches[0];
-    if (!t) return;
-    const i = nearestDraggableIndex(handleYs.get(), t.y, GRAB_SLOP, {
-      x: t.x,
-      ranges: grabRanges,
-    });
-    const l = lines[i];
-    if (l === undefined) {
-      manager.fail();
-      return;
-    }
-    dragIndex.set(i);
-    grabbedId.set(l.id);
-    startX.set(t.x);
-    startY.set(t.y);
-  };
-
-  /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-  const onTouchesMove = (
-    e: { allTouches: { x: number; y: number }[] },
-    manager: { activate: () => void },
-  ) => {
-    "worklet";
-    if (dragIndex.get() < 0) return;
-    const t = e.allTouches[0];
-    if (!t) return;
-    // A line is grabbed → it owns the touch: any drag past the threshold drags it.
-    // We don't fail on horizontal intent (which used to hand the touch to scrub) —
-    // that let the scrub crosshair win the race even on a vertical drag started on
-    // the line (#163). Scrub / scroll still run off a line's grab band.
-    const intent = resolveDragIntent(
-      t.x - startX.get(),
-      t.y - startY.get(),
-      DRAG_ACTIVATE_PX,
-    );
-    if (intent === "activate") manager.activate();
-  };
-
-  /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-  const onStart = (e: { y: number }) => {
-    "worklet";
-    const i = dragIndex.get();
-    const l = lines[i];
-    // The line may be gone, or another have taken its index, since the grab.
-    if (l === undefined || l.id !== grabbedId.get()) {
-      clearDrag();
-      return;
-    }
-    lastY.set(e.y);
-    activated.set(true);
-    const arr = dragActive.get().slice();
-    arr[i] = true;
-    dragActive.set(arr);
-    lastChange.set(dragValues.get()[i] ?? l.value ?? 0);
-  };
-
-  /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-  const onUpdate = (e: { y: number }) => {
-    "worklet";
-    const i = dragIndex.get();
-    // Not after an `onStart` that let go (the line gone or replaced by then).
-    if (i < 0 || !activated.get()) return;
-    lastY.set(e.y);
-    const l = lines[i];
-    if (l === undefined || l.id !== grabbedId.get()) {
-      clearDrag();
-      return;
-    }
-    const v = dragValueAtY(
-      l,
-      e.y,
-      displayMin.get(),
-      displayMax.get(),
-      canvasHeight.get(),
-      padding.top,
-      padding.bottom,
-      true,
-    );
-    if (v === null) return;
-    const arr = dragValues.get().slice();
-    arr[i] = v;
-    dragValues.set(arr);
-    if (v !== lastChange.get()) {
-      lastChange.set(v);
-      if (l.onChange) scheduleOnRN(emitChange, i, v);
-    }
-  };
-
-  /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-  const onFinalize = () => {
-    "worklet";
-    const i = dragIndex.get();
-    const l = lines[i];
-    if (i >= 0 && activated.get() && l !== undefined) {
-      if (l.id === grabbedId.get()) {
-        // Commit what is drawn: the range may have moved under a still finger
-        // since its last move. It stays there once released.
-        const v =
-          dragValueAtY(
-            l,
-            lastY.get(),
-            displayMin.get(),
-            displayMax.get(),
-            canvasHeight.get(),
-            padding.top,
-            padding.bottom,
-            false,
-          ) ??
-          dragValues.get()[i] ??
-          l.value ??
-          0;
-        if (dragValues.get()[i] !== v) {
-          const values = dragValues.get().slice();
-          values[i] = v;
-          dragValues.set(values);
-        }
-        // An `onChange`-only consumer ends where the line is drawn.
-        if (v !== lastChange.get() && l.onChange) {
-          scheduleOnRN(emitChange, i, v);
-        }
-        if (l.onCommit) scheduleOnRN(emitCommit, i, v);
+  const { gesture, hitTest } = useMemo(() => {
+    // ── Gesture callbacks (UI-thread worklets — excluded from Jest coverage) ──────
+    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+    const onTouchesDown = (
+      e: { changedTouches: { x: number; y: number }[] },
+      manager: { fail: () => void },
+    ) => {
+      "worklet";
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const i = nearestDraggableIndex(handleYs.get(), t.y, GRAB_SLOP, {
+        x: t.x,
+        ranges: grabRanges.get(),
+      });
+      const l = linesSV.get()[i];
+      if (l === undefined) {
+        manager.fail();
+        return;
       }
-    }
-    clearDrag();
-  };
+      dragIndex.set(i);
+      grabbedId.set(l.id);
+      startX.set(t.x);
+      startY.set(t.y);
+    };
 
-  // Hit-test shared with the scrub gesture: does this drag own the touch? The
-  // scrub's `onStart` consults it to bail, so it never drops a crosshair on a
-  // line even though it activates independently of this manual-activation pan
-  // (the `Exclusive` priority alone doesn't hold scrub back — not while this
-  // gesture is merely pressed, and not while it is dragging either). Once a line
-  // is grabbed the answer is yes regardless of position: the scrub asks with its
-  // touch-DOWN point, which a longer drag has carried the line away from, so the
-  // geometric test alone said "no line here" and a crosshair opened mid-drag.
-  // Otherwise it is the y-reach around the handles, along the whole line — or,
-  // for a line with a `grabRange`, only inside it.
-  /* istanbul ignore next -- worklet, runs on the UI thread */
-  const hitTest = (x: number, y: number): boolean => {
-    "worklet";
-    if (!anyDraggable) return false;
-    return referenceDragOwnsTouch(
-      dragIndex.get(),
-      handleYs.get(),
-      y,
-      GRAB_SLOP,
-      {
-        x,
-        ranges: grabRanges,
-      },
-    );
-  };
+    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+    const onTouchesMove = (
+      e: { allTouches: { x: number; y: number }[] },
+      manager: { activate: () => void },
+    ) => {
+      "worklet";
+      if (dragIndex.get() < 0) return;
+      const t = e.allTouches[0];
+      if (!t) return;
+      // A line is grabbed → it owns the touch: any drag past the threshold drags it.
+      // We don't fail on horizontal intent (which used to hand the touch to scrub) —
+      // that let the scrub crosshair win the race even on a vertical drag started on
+      // the line (#163). Scrub / scroll still run off a line's grab band.
+      const intent = resolveDragIntent(
+        t.x - startX.get(),
+        t.y - startY.get(),
+        DRAG_ACTIVATE_PX,
+      );
+      if (intent === "activate") manager.activate();
+    };
 
-  const gesture = Gesture.Pan()
-    .enabled(anyDraggable)
-    .maxPointers(1)
-    .manualActivation(true)
-    .onTouchesDown(onTouchesDown)
-    .onTouchesMove(onTouchesMove)
-    .onStart(onStart)
-    .onUpdate(onUpdate)
-    .onFinalize(onFinalize);
+    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+    const onStart = (e: { y: number }) => {
+      "worklet";
+      const i = dragIndex.get();
+      const l = linesSV.get()[i];
+      // The line may be gone, or another have taken its index, since the grab.
+      if (l === undefined || l.id !== grabbedId.get()) {
+        clearDrag();
+        return;
+      }
+      lastY.set(e.y);
+      activated.set(true);
+      const arr = dragActive.get().slice();
+      arr[i] = true;
+      dragActive.set(arr);
+      lastChange.set(dragValues.get()[i] ?? l.value ?? 0);
+    };
+
+    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+    const onUpdate = (e: { y: number }) => {
+      "worklet";
+      const i = dragIndex.get();
+      // Not after an `onStart` that let go (the line gone or replaced by then).
+      if (i < 0 || !activated.get()) return;
+      lastY.set(e.y);
+      const l = linesSV.get()[i];
+      if (l === undefined || l.id !== grabbedId.get()) {
+        clearDrag();
+        return;
+      }
+      const v = dragValueAtY(
+        l,
+        e.y,
+        displayMin.get(),
+        displayMax.get(),
+        canvasHeight.get(),
+        padding.top,
+        padding.bottom,
+        true,
+      );
+      if (v === null) return;
+      const arr = dragValues.get().slice();
+      arr[i] = v;
+      dragValues.set(arr);
+      if (v !== lastChange.get()) {
+        lastChange.set(v);
+        if (l.onChange) scheduleOnRN(emitChange, i, l.id, v);
+      }
+    };
+
+    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+    const onFinalize = () => {
+      "worklet";
+      const i = dragIndex.get();
+      const l = linesSV.get()[i];
+      if (i >= 0 && activated.get() && l !== undefined) {
+        if (l.id === grabbedId.get()) {
+          // Commit what is drawn: the range may have moved under a still finger
+          // since its last move. It stays there once released.
+          const v =
+            dragValueAtY(
+              l,
+              lastY.get(),
+              displayMin.get(),
+              displayMax.get(),
+              canvasHeight.get(),
+              padding.top,
+              padding.bottom,
+              false,
+            ) ??
+            dragValues.get()[i] ??
+            l.value ??
+            0;
+          if (dragValues.get()[i] !== v) {
+            const values = dragValues.get().slice();
+            values[i] = v;
+            dragValues.set(values);
+          }
+          // An `onChange`-only consumer ends where the line is drawn.
+          if (v !== lastChange.get() && l.onChange) {
+            scheduleOnRN(emitChange, i, l.id, v);
+          }
+          if (l.onCommit) scheduleOnRN(emitCommit, i, l.id, v);
+        }
+      }
+      clearDrag();
+    };
+
+    // Hit-test shared with the scrub gesture: does this drag own the touch? The
+    // scrub's `onStart` consults it to bail, so it never drops a crosshair on a
+    // line even though it activates independently of this manual-activation pan
+    // (the `Exclusive` priority alone doesn't hold scrub back — not while this
+    // gesture is merely pressed, and not while it is dragging either). Once a line
+    // is grabbed the answer is yes regardless of position: the scrub asks with its
+    // touch-DOWN point, which a longer drag has carried the line away from, so the
+    // geometric test alone said "no line here" and a crosshair opened mid-drag.
+    // Otherwise it is the y-reach around the handles, along the whole line — or,
+    // for a line with a `grabRange`, only inside it.
+    /* istanbul ignore next -- worklet, runs on the UI thread */
+    const hitTest = (x: number, y: number): boolean => {
+      "worklet";
+      if (!anyDraggable) return false;
+      return referenceDragOwnsTouch(
+        dragIndex.get(),
+        handleYs.get(),
+        y,
+        GRAB_SLOP,
+        {
+          x,
+          ranges: grabRanges.get(),
+        },
+      );
+    };
+
+    const gesture = Gesture.Pan()
+      .enabled(anyDraggable)
+      .maxPointers(1)
+      .manualActivation(true)
+      .onTouchesDown(onTouchesDown)
+      .onTouchesMove(onTouchesMove)
+      .onStart(onStart)
+      .onUpdate(onUpdate)
+      .onFinalize(onFinalize);
+
+    return { gesture, hitTest };
+  }, [
+    activated,
+    anyDraggable,
+    canvasHeight,
+    clearDrag,
+    displayMax,
+    displayMin,
+    dragActive,
+    dragIndex,
+    dragValues,
+    emitChange,
+    emitCommit,
+    grabRanges,
+    grabbedId,
+    handleYs,
+    lastChange,
+    lastY,
+    linesSV,
+    padding.bottom,
+    padding.top,
+    startX,
+    startY,
+  ]);
 
   return { gesture, hitTest, drawnValues };
 }

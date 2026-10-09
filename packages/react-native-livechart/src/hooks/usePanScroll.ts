@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   cancelAnimation,
@@ -271,142 +272,165 @@ export function usePanScroll({
 
   const wakeEngine = engine.wake;
 
-  const onStart =
-    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-    () => {
-      "worklet";
-      wakeEngine?.();
-      // Stop an in-flight fling FIRST. `withDecay` keeps writing `viewEnd` after
-      // the finger lifts, and `Gesture.Race` declares no relation between the two
-      // pans, so this can run while a scrub is already engaged. Bailing out below
-      // without cancelling left the decay sliding the window underneath the
-      // crosshair — the opposite of the lock the scrub is meant to hold.
-      cancelAnimation(viewEnd);
-      // An engaged scrub locks the chart: the finger moves the price indicator
-      // across a fixed window, so a scroll that activates underneath it must do
-      // nothing further (and must not claim the touch via `scrollActive`).
-      if (scrubActive?.get()) return;
-      scrollActive?.set(true);
-      // Keep `null` while following live. `onChange` resolves it to the current
-      // live edge before applying the first delta. Materializing that same edge
-      // here would falsely signal "scrolled back" between start and change,
-      // briefly collapsing the floating-axis gutter on a forward-only overdrag.
-      onScrollStart?.();
-    };
+  return useMemo(() => {
+    const onStart =
+      /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+      () => {
+        "worklet";
+        wakeEngine?.();
+        // Stop an in-flight fling FIRST. `withDecay` keeps writing `viewEnd` after
+        // the finger lifts, and `Gesture.Race` declares no relation between the two
+        // pans, so this can run while a scrub is already engaged. Bailing out below
+        // without cancelling left the decay sliding the window underneath the
+        // crosshair — the opposite of the lock the scrub is meant to hold.
+        cancelAnimation(viewEnd);
+        // An engaged scrub locks the chart: the finger moves the price indicator
+        // across a fixed window, so a scroll that activates underneath it must do
+        // nothing further (and must not claim the touch via `scrollActive`).
+        if (scrubActive?.get()) return;
+        scrollActive?.set(true);
+        // Keep `null` while following live. `onChange` resolves it to the current
+        // live edge before applying the first delta. Materializing that same edge
+        // here would falsely signal "scrolled back" between start and change,
+        // briefly collapsing the floating-axis gutter on a forward-only overdrag.
+        onScrollStart?.();
+      };
 
-  const onChange =
-    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-    (e: { changeX: number }) => {
-      "worklet";
-      if (scrubActive?.get()) return;
-      const win = displayWindow.get();
-      const chartW = canvasWidth.get() - padLeft - padRight;
-      if (chartW <= 0) return;
-      const edge = liveEdge.get();
-      const cur = viewEnd.get() ?? edge;
-      const lo = panLowerBound(minTime.get(), win, edge, overscroll);
-      viewEnd.set(nextViewEnd(cur, e.changeX, chartW, win, edge, lo, overscroll));
-    };
+    const onChange =
+      /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+      (e: { changeX: number }) => {
+        "worklet";
+        if (scrubActive?.get()) return;
+        const win = displayWindow.get();
+        const chartW = canvasWidth.get() - padLeft - padRight;
+        if (chartW <= 0) return;
+        const edge = liveEdge.get();
+        const cur = viewEnd.get() ?? edge;
+        const lo = panLowerBound(minTime.get(), win, edge, overscroll);
+        viewEnd.set(nextViewEnd(cur, e.changeX, chartW, win, edge, lo, overscroll));
+      };
 
-  const onEnd =
-    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-    (e: { velocityX: number }) => {
-      "worklet";
-      if (scrubActive?.get()) return;
-      if (viewEnd.get() == null) return;
-      const win = displayWindow.get();
-      const chartW = canvasWidth.get() - padLeft - padRight;
-      if (chartW <= 0) return;
-      const edge = liveEdge.get();
-      const lo = panLowerBound(minTime.get(), win, edge, overscroll);
-      const hi = overscroll > 0 ? panUpperBound(win, edge, overscroll) : edge;
-      // With overscroll the snap-to-follow zone widens from the exact live edge
-      // to FOLLOW_SNAP of the window around it — this release callback is the
-      // ONLY place that re-attaches to live (never mid-drag, see nextViewEnd).
-      const snapZone = overscroll > 0 ? win * FOLLOW_SNAP : 1e-3;
-      // `fling: false` → zero velocity: the decay resolves immediately where
-      // the finger lifted, and the completion callback below still re-attaches
-      // to live when the release lands inside the snap zone.
-      const velocity = fling ? flingVelocity(e.velocityX, chartW, win) : 0;
-      cancelAnimation(viewEnd);
-      viewEnd.set(
-        withDecay({ velocity, clamp: [lo, hi] }, (finished) => {
-          "worklet";
-          // Landed near the live edge → resume following; stopped short (or
-          // past, with overscroll) → stay frozen where inertia died.
-          if (finished && Math.abs((viewEnd.get() ?? edge) - edge) <= snapZone) {
-            viewEnd.set(null);
-          }
-        }),
-      );
-    };
+    const onEnd =
+      /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+      (e: { velocityX: number }) => {
+        "worklet";
+        if (scrubActive?.get()) return;
+        if (viewEnd.get() == null) return;
+        const win = displayWindow.get();
+        const chartW = canvasWidth.get() - padLeft - padRight;
+        if (chartW <= 0) return;
+        const edge = liveEdge.get();
+        const lo = panLowerBound(minTime.get(), win, edge, overscroll);
+        const hi = overscroll > 0 ? panUpperBound(win, edge, overscroll) : edge;
+        // With overscroll the snap-to-follow zone widens from the exact live edge
+        // to FOLLOW_SNAP of the window around it — this release callback is the
+        // ONLY place that re-attaches to live (never mid-drag, see nextViewEnd).
+        const snapZone = overscroll > 0 ? win * FOLLOW_SNAP : 1e-3;
+        // `fling: false` → zero velocity: the decay resolves immediately where
+        // the finger lifted, and the completion callback below still re-attaches
+        // to live when the release lands inside the snap zone.
+        const velocity = fling ? flingVelocity(e.velocityX, chartW, win) : 0;
+        cancelAnimation(viewEnd);
+        viewEnd.set(
+          withDecay({ velocity, clamp: [lo, hi] }, (finished) => {
+            "worklet";
+            // Landed near the live edge → resume following; stopped short (or
+            // past, with overscroll) → stay frozen where inertia died.
+            if (finished && Math.abs((viewEnd.get() ?? edge) - edge) <= snapZone) {
+              viewEnd.set(null);
+            }
+          }),
+        );
+      };
 
-  // Release the touch claim on every terminal state (END, FAIL, CANCEL), not just
-  // onEnd — a scroll that fails its offset clamps never reaches onEnd, and a
-  // stuck `scrollActive` would block scrub for the rest of the session.
-  const onFinalize =
-    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-    () => {
-      "worklet";
-      scrollActive?.set(false);
-    };
+    // Release the touch claim on every terminal state (END, FAIL, CANCEL), not just
+    // onEnd — a scroll that fails its offset clamps never reaches onEnd, and a
+    // stuck `scrollActive` would block scrub for the rest of the session.
+    const onFinalize =
+      /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+      () => {
+        "worklet";
+        scrollActive?.set(false);
+      };
 
-  if (mode === "axisDrag") {
+    if (mode === "axisDrag") {
+      return Gesture.Pan()
+        .enabled(enabled)
+        .maxPointers(1)
+        // Position-gate a one-finger pan: only a drag that starts in the bottom
+        // axis band scrolls; everything else fails fast so scrub/parent gestures run.
+        .manualActivation(true)
+        .onTouchesDown(
+          /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+          (e, manager) => {
+            "worklet";
+            const t = e.changedTouches[0];
+            if (!t) return;
+            if (t.y < axisBandTop(canvasHeight.get(), padBottom)) {
+              armed.set(false);
+              manager.fail();
+              return;
+            }
+            armed.set(true);
+            startX.set(t.x);
+            startY.set(t.y);
+          },
+        )
+        .onTouchesMove(
+          /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+          (e, manager) => {
+            "worklet";
+            if (!armed.get()) return;
+            const t = e.allTouches[0];
+            if (!t) return;
+            const dx = Math.abs(t.x - startX.get());
+            const dy = Math.abs(t.y - startY.get());
+            if (dx > AXIS_ACTIVATE_PX && dx >= dy) {
+              manager.activate(); // horizontal intent → take the gesture
+            } else if (dy > AXIS_ACTIVATE_PX) {
+              manager.fail(); // vertical intent → release to parent/scroll
+            }
+          },
+        )
+        .onStart(onStart)
+        .onChange(onChange)
+        .onEnd(onEnd)
+        .onFinalize(onFinalize);
+    }
+
+    // holdToScrub (default): a one-finger drag anywhere scrolls. Activate on
+    // horizontal travel so a quick one-finger drag scrolls; a still press-hold
+    // crosses no offset and falls through to the scrub gesture (which owns the
+    // long-press). Vertical travel fails it so a parent vertical scroll wins.
     return Gesture.Pan()
       .enabled(enabled)
       .maxPointers(1)
-      // Position-gate a one-finger pan: only a drag that starts in the bottom
-      // axis band scrolls; everything else fails fast so scrub/parent gestures run.
-      .manualActivation(true)
-      .onTouchesDown(
-        /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-        (e, manager) => {
-          "worklet";
-          const t = e.changedTouches[0];
-          if (!t) return;
-          if (t.y < axisBandTop(canvasHeight.get(), padBottom)) {
-            armed.set(false);
-            manager.fail();
-            return;
-          }
-          armed.set(true);
-          startX.set(t.x);
-          startY.set(t.y);
-        },
-      )
-      .onTouchesMove(
-        /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-        (e, manager) => {
-          "worklet";
-          if (!armed.get()) return;
-          const t = e.allTouches[0];
-          if (!t) return;
-          const dx = Math.abs(t.x - startX.get());
-          const dy = Math.abs(t.y - startY.get());
-          if (dx > AXIS_ACTIVATE_PX && dx >= dy) {
-            manager.activate(); // horizontal intent → take the gesture
-          } else if (dy > AXIS_ACTIVATE_PX) {
-            manager.fail(); // vertical intent → release to parent/scroll
-          }
-        },
-      )
+      .activeOffsetX([-AXIS_ACTIVATE_PX, AXIS_ACTIVATE_PX])
+      .failOffsetY([-HOLD_SCRUB_FAIL_Y_PX, HOLD_SCRUB_FAIL_Y_PX])
       .onStart(onStart)
       .onChange(onChange)
       .onEnd(onEnd)
       .onFinalize(onFinalize);
-  }
-
-  // holdToScrub (default): a one-finger drag anywhere scrolls. Activate on
-  // horizontal travel so a quick one-finger drag scrolls; a still press-hold
-  // crosses no offset and falls through to the scrub gesture (which owns the
-  // long-press). Vertical travel fails it so a parent vertical scroll wins.
-  return Gesture.Pan()
-    .enabled(enabled)
-    .maxPointers(1)
-    .activeOffsetX([-AXIS_ACTIVATE_PX, AXIS_ACTIVATE_PX])
-    .failOffsetY([-HOLD_SCRUB_FAIL_Y_PX, HOLD_SCRUB_FAIL_Y_PX])
-    .onStart(onStart)
-    .onChange(onChange)
-    .onEnd(onEnd)
-    .onFinalize(onFinalize);
+  }, [
+    armed,
+    canvasHeight,
+    canvasWidth,
+    displayWindow,
+    enabled,
+    fling,
+    liveEdge,
+    minTime,
+    mode,
+    onScrollStart,
+    overscroll,
+    padBottom,
+    padLeft,
+    padRight,
+    scrollActive,
+    scrubActive,
+    startX,
+    startY,
+    viewEnd,
+    wakeEngine,
+  ]);
 }

@@ -182,6 +182,13 @@ or removed mid-drag move the dragged line to another index, the drag then lets g
 moving the line that took its place. The replacement immediately gets its own value back,
 including under a resting finger; bringing the original line back does not resume that touch.
 
+`LiveChart` reuses its gesture configurations when controlled reference levels or
+JS callbacks change. An active drag reads updated line settings, and callback
+dispatch uses the latest committed props. Pass a new `referenceLines` array when
+levels change; keep arrays and custom renderers stable when their contents have
+not changed to avoid repeating reference-tag probes. Changes to gesture
+recognition settings or chart layout still update the affected configuration.
+
 Dragging coexists with [scrubbing](/guides/scrubbing): a press that lands within reach of a
 draggable line grabs the line and any drag moves it (in any direction), while a press anywhere else
 scrubs as usual. So you can keep `scrub` enabled alongside draggable orders — only the thin grab

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { SkFont } from "@shopify/react-native-skia";
 import { Gesture } from "react-native-gesture-handler";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
@@ -11,6 +12,8 @@ import {
   computeReferenceBadgeRect,
   type ReferenceBadgeRect,
 } from "./useReferenceLine";
+
+import { useLatestCallback } from "./useLatestCallback";
 
 /**
  * Builds a tap gesture that hit-tests a chart's reference-line **badges** (the
@@ -69,38 +72,52 @@ export function useReferenceLinePress(
     return out;
   });
 
-  // Topmost badge under (x, y), or -1. Last drawn = last in the array = topmost.
-  /* istanbul ignore next -- worklet, runs on the UI thread */
-  const indexAt = (x: number, y: number): number => {
-    "worklet";
-    const rs = rects.value;
-    for (let i = rs.length - 1; i >= 0; i--) {
-      const r = rs[i];
-      if (r && pointInRect(x, y, r, hitSlop)) return i;
-    }
-    return -1;
-  };
+  const emitPress = useLatestCallback((index: number, id: string | undefined) => {
+    const line = lines[index];
+    // A queued tap must not target a replacement at the same array index.
+    if (line && line.id === id) onPress?.(line, index);
+  });
+  const lineIds = useDerivedValue(() => {
+    const ids: (string | undefined)[] = [];
+    for (const line of lines) ids.push(line.id);
+    return ids;
+  });
 
-  /* istanbul ignore next -- worklet, runs on the UI thread */
-  const hitTest = (x: number, y: number): boolean => {
-    "worklet";
-    return indexAt(x, y) >= 0;
-  };
-
-  /* istanbul ignore next -- runs only via scheduleOnRN from the UI-thread tap */
-  function emitPress(index: number) {
-    onPress?.(lines[index], index);
-  }
-
-  /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-  const tapGesture = Gesture.Tap()
-    .maxDuration(250)
-    .onEnd((e, success) => {
+  return useMemo(() => {
+    // Topmost badge under (x, y), or -1. Last drawn = last in the array = topmost.
+    /* istanbul ignore next -- worklet, runs on the UI thread */
+    const indexAt = (x: number, y: number): number => {
       "worklet";
-      if (!active || !success) return;
-      const i = indexAt(e.x, e.y);
-      if (i >= 0) scheduleOnRN(emitPress, i);
-    });
+      const rs = rects.get();
+      for (let i = rs.length - 1; i >= 0; i--) {
+        const r = rs[i];
+        if (r && pointInRect(x, y, r, hitSlop)) return i;
+      }
+      return -1;
+    };
 
-  return { tapGesture, hitTest };
+    /* istanbul ignore next -- worklet, runs on the UI thread */
+    const hitTest = (x: number, y: number): boolean => {
+      "worklet";
+      return indexAt(x, y) >= 0;
+    };
+
+    /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
+    const tapGesture = Gesture.Tap()
+      .maxDuration(250)
+      .onEnd((e, success) => {
+        "worklet";
+        if (!active || !success) return;
+        const i = indexAt(e.x, e.y);
+        if (i >= 0) scheduleOnRN(emitPress, i, lineIds.get()[i]);
+      });
+
+    return { tapGesture, hitTest };
+  }, [
+    active,
+    emitPress,
+    hitSlop,
+    lineIds,
+    rects,
+  ]);
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
@@ -22,6 +22,8 @@ import type {
   MarkerPressEvent,
   SeriesConfig,
 } from "../types";
+
+import { useLatestCallback } from "./useLatestCallback";
 
 const ANCHORED_CLUSTER: ResolvedMarkerCluster = {
   mode: "anchored",
@@ -76,11 +78,12 @@ export function useMarkers(
     cacheRef.current = { a: [] as ProjectedMarker[], b: [] as ProjectedMarker[], tick: false };
   }
 
-  const emitPress =
+  const emitPress = useLatestCallback(
     /* istanbul ignore next -- invoked only from the UI-thread tap worklet */
     (event: MarkerPressEvent | null) => {
       onMarkerPress?.(event);
-    };
+    },
+  );
 
   const project =
     /* istanbul ignore next -- worklet runs on UI thread, not in Jest */ () => {
@@ -133,43 +136,52 @@ export function useMarkers(
     markerFrameCallback.setActive(legacyActive);
   }, [legacyActive, markerFrameCallback]);
 
-  const tapGesture = Gesture.Tap().onEnd(
-    /* istanbul ignore next -- gesture worklet runs on UI thread, not in Jest */ (
-      e,
-    ) => {
-      "worklet";
-      const proj = projected.get();
-      const idx = nearestMarkerIndex(proj, e.x, e.y, hitRadius);
-      if (idx < 0) {
-        runOnJS(emitPress)(null);
-        return;
-      }
-      const ms = markers.get();
-      const m = ms[idx];
-      const p = proj[idx];
-      const isGrouped = p.isGrouped;
-      // Collapsed cluster: surface the whole bucket so the consumer can list it.
-      const members = isGrouped ? clusterMembers(ms, proj, idx) : undefined;
-      runOnJS(emitPress)({
-        marker: m,
-        point: { x: p.x, y: p.y },
-        index: idx,
-        isGrouped,
-        members,
-      });
-    },
-  );
+  const { tapGesture, hitTest } = useMemo(() => {
+    const tapGesture = Gesture.Tap().onEnd(
+      /* istanbul ignore next -- gesture worklet runs on UI thread, not in Jest */ (
+        e,
+      ) => {
+        "worklet";
+        const proj = projected.get();
+        const idx = nearestMarkerIndex(proj, e.x, e.y, hitRadius);
+        if (idx < 0) {
+          runOnJS(emitPress)(null);
+          return;
+        }
+        const ms = markers.get();
+        const m = ms[idx];
+        const p = proj[idx];
+        const isGrouped = p.isGrouped;
+        // Collapsed cluster: surface the whole bucket so the consumer can list it.
+        const members = isGrouped ? clusterMembers(ms, proj, idx) : undefined;
+        runOnJS(emitPress)({
+          marker: m,
+          point: { x: p.x, y: p.y },
+          index: idx,
+          isGrouped,
+          members,
+        });
+      },
+    );
 
-  // Lets a coexisting gesture (e.g. the scrub-action tap) defer to a marker
-  // under the finger instead of acting on it.
-  const hitTest =
-    /* istanbul ignore next -- worklet, runs on the UI thread, not in Jest */ (
-      x: number,
-      y: number,
-    ) => {
-      "worklet";
-      return nearestMarkerIndex(projected.get(), x, y, hitRadius) >= 0;
-    };
+    // Lets a coexisting gesture (e.g. the scrub-action tap) defer to a marker
+    // under the finger instead of acting on it.
+    const hitTest =
+      /* istanbul ignore next -- worklet, runs on the UI thread, not in Jest */ (
+        x: number,
+        y: number,
+      ) => {
+        "worklet";
+        return nearestMarkerIndex(projected.get(), x, y, hitRadius) >= 0;
+      };
+
+    return { tapGesture, hitTest };
+  }, [
+    emitPress,
+    hitRadius,
+    markers,
+    projected,
+  ]);
 
   return { projected, tapGesture, hitTest };
 }
