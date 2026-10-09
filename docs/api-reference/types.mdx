@@ -592,6 +592,9 @@ interface YAxisScaleGestureConfig {
   doubleTapReset?: boolean; // animate to clamped 1 over 240ms; default true
 }
 interface YAxisConfig {
+  // Chart formatValue(value, tickStep?) receives this grid's source-unit step.
+  // Fixed count supplies the evenly spaced step; dynamic ticks supply the fine
+  // interval. Badges/tooltips/layout samples omit it; one-arg formatters work.
   // Built-in vertical price-axis drag; writes yRangeScale or internal state.
   // Down zooms out, up zooms in. Default false. See the Y-range scaling guide.
   scaleGesture?: boolean | YAxisScaleGestureConfig;

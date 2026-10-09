@@ -2546,8 +2546,12 @@ export interface LiveChartCoreProps {
    * points or committed candles. Default `"No data"`.
    */
   emptyText?: string;
-  /** Custom formatter for value labels (axes, badge, tooltips). Default `v => v.toFixed(2)`. */
-  formatValue?: (v: number) => string;
+  /**
+   * Worklet formatter for value labels. Y-axis ticks pass their interval in
+   * source units as `tickStep`; badges, tooltips and layout samples omit it.
+   * Existing one-argument formatters remain valid. Default `v => v.toFixed(2)`.
+   */
+  formatValue?: (v: number, tickStep?: number) => string;
   /** Custom formatter for time labels. Default renders `HH:MM:SS`. */
   formatTime?: (t: number) => string;
   /** Y-axis grid lines + labels. `true` = defaults, `false` = hidden, or pass `YAxisConfig`. Default `true`. */

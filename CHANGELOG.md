@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Y-axis ticks pass an optional source-unit `tickStep` to `formatValue`, allowing
+  compact formatters to keep nearby labels distinct. One-argument formatters and
+  badge/tooltip formatting keep their existing behavior.
+  ([#397](https://github.com/brandtnewlabs/react-native-livechart/issues/397))
+
 ## [4.27.0] — 2026-10-09
 
 ### Added
