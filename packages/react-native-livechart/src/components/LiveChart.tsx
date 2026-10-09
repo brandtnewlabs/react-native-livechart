@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  memo,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -279,8 +280,7 @@ function resolveLiveChartFeatureConfig({
   scrub,
   scrubAction,
   volume,
-  candleGaps,
-  lineGaps,
+  chartGapsCfg,
   gradient,
   areaDots,
   threshold,
@@ -304,8 +304,6 @@ function resolveLiveChartFeatureConfig({
   | "scrub"
   | "scrubAction"
   | "volume"
-  | "candleGaps"
-  | "lineGaps"
   | "gradient"
   | "areaDots"
   | "threshold"
@@ -317,10 +315,12 @@ function resolveLiveChartFeatureConfig({
   | "degen"
   | "tradeStream"
   | "metrics"
-> & { isStatic: boolean }) {
+> & {
+  isStatic: boolean;
+  chartGapsCfg: ResolvedCandleGapsConfig | null;
+}) {
   const isCandle = mode === "candle";
   const badgeCfg = resolveBadge(badge);
-  const chartGapsCfg = resolveCandleGaps(isCandle ? candleGaps : lineGaps);
   const thresholdCfg = isCandle ? null : resolveThreshold(threshold);
   const thresholdSeriesSV = thresholdCfg?.series ?? null;
   const dotCfg = resolveDot(dot);
@@ -336,7 +336,6 @@ function resolveLiveChartFeatureConfig({
     scrubCfg: resolveScrub(scrub),
     scrubActionCfg: resolveScrubAction(scrubAction),
     volumeCfg,
-    chartGapsCfg,
     candleGapsCfg: isCandle ? chartGapsCfg : null,
     lineGapsCfg: isCandle ? null : chartGapsCfg,
     volumeBandHeight: volumeCfg?.maxHeight ?? 0,
@@ -365,22 +364,16 @@ function resolveLiveChartFeatureConfig({
   };
 }
 
-function resolveLiveChartReferenceConfig({
+function resolveLiveChartReferenceLines({
   chartGapsCfg,
   referenceLines,
   renderReferenceLine,
   renderOffAxisReferenceLine,
-  thresholdCfg,
-  referenceLineGrouping,
-  badgeCfg,
 }: {
   chartGapsCfg: ReturnType<typeof resolveCandleGaps>;
   referenceLines: LiveChartProps["referenceLines"];
   renderReferenceLine: LiveChartProps["renderReferenceLine"];
   renderOffAxisReferenceLine: LiveChartProps["renderOffAxisReferenceLine"];
-  thresholdCfg: ReturnType<typeof resolveThreshold>;
-  referenceLineGrouping: LiveChartProps["referenceLineGrouping"];
-  badgeCfg: ReturnType<typeof resolveBadge>;
 }) {
   const chartGapBands: ReferenceLine[] =
     chartGapsCfg?.gaps.flatMap((gap) => {
@@ -433,6 +426,26 @@ function resolveLiveChartReferenceConfig({
       draggableRefIdx.push(index);
     }
   }
+
+  return {
+    allRefLines,
+    refValues: collectReferenceValues(allRefLines),
+    refLineCustom,
+    refLineOffAxisCustom,
+    refLineKeys: referenceLineReactKeys(allRefLines),
+    draggableRefIdx,
+  };
+}
+
+function resolveLiveChartReferenceConfig({
+  thresholdCfg,
+  referenceLineGrouping,
+  badgeCfg,
+}: {
+  thresholdCfg: ReturnType<typeof resolveThreshold>;
+  referenceLineGrouping: LiveChartProps["referenceLineGrouping"];
+  badgeCfg: ReturnType<typeof resolveBadge>;
+}) {
   const thresholdInRange = thresholdCfg?.includeInRange === true;
   const thresholdRangeValueSV =
     thresholdInRange &&
@@ -446,13 +459,6 @@ function resolveLiveChartReferenceConfig({
       : undefined;
 
   return {
-    chartGapBands,
-    allRefLines,
-    refValues: collectReferenceValues(allRefLines),
-    refLineCustom,
-    refLineOffAxisCustom,
-    refLineKeys: referenceLineReactKeys(allRefLines),
-    draggableRefIdx,
     thresholdInRange,
     thresholdRangeValueSV,
     refGroupingCfg,
@@ -1479,6 +1485,10 @@ function useLiveChartController({
   // Stand-in threshold value so `useThreshold` can be called unconditionally
   // (hooks can't be); the geometry is ignored when no threshold is configured.
   const emptyThresholdValue = useSharedValue(0);
+  // Memoized on the gaps prop so the gap bands, the reference lines built from
+  // them and the crosshair's gap list keep their identity across re-renders.
+  const gapsProp = mode === "candle" ? candleGaps : lineGaps;
+  const chartGapsCfg = useMemo(() => resolveCandleGaps(gapsProp), [gapsProp]);
   const {
     isCandle,
     yAxisCfg,
@@ -1489,7 +1499,6 @@ function useLiveChartController({
     scrubCfg,
     scrubActionCfg,
     volumeCfg,
-    chartGapsCfg,
     candleGapsCfg,
     lineGapsCfg,
     volumeBandHeight,
@@ -1518,8 +1527,7 @@ function useLiveChartController({
     scrub,
     scrubAction,
     volume,
-    candleGaps,
-    lineGaps,
+    chartGapsCfg,
     gradient,
     areaDots,
     threshold,
@@ -1534,14 +1542,32 @@ function useLiveChartController({
     metrics,
   });
 
+  // Probing the custom renderers calls them once per line, so only re-resolve
+  // when the lines or renderers change, not on every parent render.
   const {
-    chartGapBands,
     allRefLines,
     refValues,
     refLineCustom,
     refLineOffAxisCustom,
     refLineKeys,
     draggableRefIdx,
+  } = useMemo(
+    () =>
+      resolveLiveChartReferenceLines({
+        chartGapsCfg,
+        referenceLines,
+        renderReferenceLine,
+        renderOffAxisReferenceLine,
+      }),
+    [
+      chartGapsCfg,
+      referenceLines,
+      renderReferenceLine,
+      renderOffAxisReferenceLine,
+    ],
+  );
+
+  const {
     thresholdInRange,
     thresholdRangeValueSV,
     refGroupingCfg,
@@ -1550,10 +1576,6 @@ function useLiveChartController({
     refGroupFormat,
     badgeUsesRightGutter,
   } = resolveLiveChartReferenceConfig({
-    chartGapsCfg,
-    referenceLines,
-    renderReferenceLine,
-    renderOffAxisReferenceLine,
     thresholdCfg,
     referenceLineGrouping,
     badgeCfg,
@@ -3911,8 +3933,10 @@ function ChartView({
   );
 }
 
-export const LiveChart = forwardRef<LiveChartHandle, LiveChartProps>(
-  function LiveChart(props, ref) {
+// Memoized so a parent render with unchanged props skips the controller; the
+// chart's live data flows through SharedValues, not props.
+export const LiveChart = memo(
+  forwardRef<LiveChartHandle, LiveChartProps>(function LiveChart(props, ref) {
     const model = useLiveChartController(props);
     const { viewEnd, viewWindow } = model.engine;
     useImperativeHandle(
@@ -3929,5 +3953,5 @@ export const LiveChart = forwardRef<LiveChartHandle, LiveChartProps>(
       return <ChartWithDegen model={model} yAxisEntries={null} />;
     }
     return <ChartView model={model} yAxisEntries={null} degen={null} />;
-  },
+  }),
 );

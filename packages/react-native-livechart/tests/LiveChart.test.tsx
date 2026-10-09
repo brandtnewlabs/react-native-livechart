@@ -6,6 +6,7 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import type { TestInstance } from "test-renderer";
 import { LiveChart } from "../src/components/LiveChart";
 import { getAllByHostType } from "./rntl14";
+import * as customReferenceLines from "../src/components/CustomReferenceLineOverlay";
 import * as engineHooks from "../src/core/useLiveChartEngine";
 import * as badgeHooks from "../src/hooks/useBadge";
 import * as candlePathHooks from "../src/hooks/useCandlePaths";
@@ -1086,6 +1087,68 @@ describe("LiveChart", () => {
         ([ctx]) => ctx.line.from !== undefined || ctx.line.to !== undefined,
       ),
     ).toBe(false);
+  });
+
+  it("skips re-rendering when the parent re-renders with unchanged props", async () => {
+    const spy = jest.spyOn(engineHooks, "useLiveChartEngine");
+    const referenceLines = [{ value: 50, label: "Entry" }];
+    const screen = await render(<Harness referenceLines={referenceLines} />);
+    const calls = spy.mock.calls.length;
+    expect(calls).toBeGreaterThan(0);
+
+    await screen.rerender(<Harness referenceLines={referenceLines} />);
+    expect(spy).toHaveBeenCalledTimes(calls);
+
+    await screen.rerender(
+      <Harness referenceLines={[{ value: 51, label: "Entry" }]} />,
+    );
+    expect(spy.mock.calls.length).toBeGreaterThan(calls);
+    spy.mockRestore();
+  });
+
+  it("re-probes custom reference-line renderers only when their inputs change", async () => {
+    const flagsSpy = jest.spyOn(
+      customReferenceLines,
+      "customReferenceLineFlags",
+    );
+    const referenceLines = [{ value: 50, label: "Entry" }];
+    const lineGaps = [
+      { from: 1699999940, to: 1699999970, kind: "unavailable" as const },
+    ];
+    const renderReferenceLine = () => <View />;
+    const renderOffAxisReferenceLine = () => <View />;
+    const props = {
+      referenceLines,
+      lineGaps,
+      renderReferenceLine,
+      renderOffAxisReferenceLine,
+    };
+    const screen = await render(<Harness {...props} timeWindow={30} />);
+    const probes = flagsSpy.mock.calls.length;
+    expect(probes).toBe(2);
+
+    await screen.rerender(<Harness {...props} timeWindow={60} />);
+    expect(flagsSpy).toHaveBeenCalledTimes(probes);
+
+    await screen.rerender(
+      <Harness {...props} timeWindow={60} referenceLines={[...referenceLines]} />,
+    );
+    expect(flagsSpy).toHaveBeenCalledTimes(probes + 2);
+
+    await screen.rerender(
+      <Harness {...props} timeWindow={60} lineGaps={[...lineGaps]} />,
+    );
+    expect(flagsSpy).toHaveBeenCalledTimes(probes + 4);
+
+    await screen.rerender(
+      <Harness
+        {...props}
+        timeWindow={60}
+        renderOffAxisReferenceLine={() => null}
+      />,
+    );
+    expect(flagsSpy).toHaveBeenCalledTimes(probes + 6);
+    flagsSpy.mockRestore();
   });
 
   it("renders candle mode with scrub enabled", async () => {
