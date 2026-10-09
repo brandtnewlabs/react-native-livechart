@@ -7,7 +7,7 @@ import { CustomTooltipOverlay } from "../../src/components/CustomTooltipOverlay"
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { TooltipLayout } from "../../src/hooks/crosshairShared";
-import type { CandlePoint, TooltipRenderProps } from "../../src/types";
+import type { CandlePoint, Marker, TooltipRenderProps } from "../../src/types";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
 function engine(): ChartEngineLayout {
@@ -40,6 +40,7 @@ function Fixture({
   renderTooltip,
   placement = "side",
   candle,
+  markers,
   captureLineTop,
   scrubDotY,
   crosshairFade,
@@ -51,6 +52,7 @@ function Fixture({
   ) => React.ReactElement | null | undefined;
   placement?: "side" | "top" | "bottom" | "point";
   candle?: CandlePoint | null;
+  markers?: SharedValue<Marker[]>;
   captureLineTop?: (lineTop: SharedValue<number>) => void;
   scrubDotY?: number;
   crosshairFade?: boolean;
@@ -78,6 +80,7 @@ function Fixture({
       // Only wire scrubCandle when a candle is supplied, so the line-mode tests
       // also exercise the `?? nullCandle` fallback (candle prop omitted).
       scrubCandle={candle === undefined ? undefined : scrubCandle}
+      scrubMarkers={markers}
       tooltipLayout={tooltipLayout}
       engine={engine()}
       padding={DEFAULT_PADDING}
@@ -91,6 +94,14 @@ function Fixture({
 }
 
 describe("CustomTooltipOverlay", () => {
+  it("passes through the live marker selection and supplies an empty fallback", async () => {
+    const selection = withSharedValueAccessors({ markers: { value: [{ id: "trade", time: 985, kind: "trade", data: { size: 2 } }] } }).markers as SharedValue<Marker[]>;
+    const renderTooltip = jest.fn<React.ReactElement, [TooltipRenderProps]>(() => <Text>Details</Text>);
+    const { rerender } = await render(<Fixture markers={selection} renderTooltip={renderTooltip} />);
+    expect(renderTooltip.mock.calls.at(-1)![0].markers).toBe(selection);
+    await rerender(<Fixture renderTooltip={renderTooltip} />);
+    expect(renderTooltip.mock.calls.at(-1)![0].markers.get()).toEqual([]);
+  });
   it("floats the consumer's element over the canvas", async () => {
     const { getByTestId } = await render(
       <Fixture renderTooltip={() => <Text testID="custom-tip">tip</Text>} />,

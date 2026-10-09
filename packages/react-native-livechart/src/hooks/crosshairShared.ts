@@ -10,7 +10,7 @@ import {
   pickCandleGapAtTime,
 } from "../math/candleGaps";
 import { pickCandleAtTime } from "../math/pickCandle";
-import type { CandleGap, CandlePoint } from "../types";
+import type { CandleGap, CandlePoint, Marker } from "../types";
 
 const TOOLTIP_PAD_X = 8;
 const TOOLTIP_PAD_Y = 6;
@@ -177,6 +177,7 @@ export const HIDDEN_TOOLTIP: TooltipLayout = {
 };
 
 export interface CrosshairState {
+  scrubMarkers: SharedValue<Marker[]>;
   scrubX: SharedValue<number>;
   scrubActive: SharedValue<boolean>;
   scrubTime: SharedValue<number>;

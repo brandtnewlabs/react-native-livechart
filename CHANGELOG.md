@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Opt-in `scrub.markers` on `LiveChart` and `LiveChartSeries`, with exported
+  `ScrubMarkerConfig`: return timestamp-matched markers and their `data` through
+  `onScrub`, plus a UI-thread `markers` shared value in `LiveChart.renderTooltip`.
+  Line charts use a configurable horizontal radius (default 16 px); candle
+  charts select the hovered bucket. Matches include stacked/collapsed members
+  in input order. The Markers & trades demo includes line/candle inspection.
+  ([#366](https://github.com/brandtnewlabs/react-native-livechart/issues/366))
 - `xAxis.gridLines` on `LiveChart` and `LiveChartSeries`: vertical grid lines at
   the time labels, drawn behind the series in the horizontal grid's layer and
   fading with their labels at the plot edges. `true` uses the `gridStyle` look;

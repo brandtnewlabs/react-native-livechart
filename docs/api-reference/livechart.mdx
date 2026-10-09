@@ -243,7 +243,9 @@ provided; everything else has a default.
   the [`TooltipRenderProps`](/api-reference/types#tooltiprenderprops) `SharedValue`s
   to animated text so the value/date update on the UI thread too — smooth, unlike
   rebuilding the tooltip from the JS-thread `onScrub`. Return `null`/`undefined` to
-  fall back to the built-in pill. **Line mode only** (candle keeps its OHLC stack).
+  hide the custom tooltip; it does not restore the built-in pill. Works in line
+  and candle mode (`ctx.candle` supplies OHLC). Enable `scrub.markers` to read
+  matching trades through `ctx.markers`, including their `data`.
   See [Custom tooltip](/guides/scrubbing#custom-tooltip-rendertooltip).
 </ParamField>
 
@@ -340,6 +342,9 @@ provided; everything else has a default.
 ## Scrubbing
 
 <ParamField body="scrub" type="boolean | ScrubConfig" default="true">
+  Set `markers: true` (or `{ radius: 24 }`) to include marker details in
+  `renderTooltip` and `onScrub`. Off by default. See
+  [Inspecting markers while scrubbing](/guides/markers-and-trades#inspecting-markers-while-scrubbing).
   Crosshair scrubbing on drag. `crosshairFadeDistance` controls the visible
   line/dot/tooltip fade near the live edge, and `crosshairLineCap` selects a
   `"butt"`, `"round"`, or `"square"` vertical-line cap. See
@@ -353,7 +358,13 @@ provided; everything else has a default.
 </ParamField>
 
 <ParamField body="onScrub" type="(point: ScrubPoint | null) => void">
-  Fires while scrubbing; `null` when it ends.
+  Fires on the JS thread while scrubbing; `null` when it ends. With
+  `scrub.markers` enabled, `point.markers` contains all timestamp matches,
+  including `data`, or `[]` when none match. Omitted when disabled. Marker
+  payloads are transferred only when the selection or marker input changes;
+  callbacks for subsequent scalar point updates reuse that selection.
+  When marker matching is enabled, entering a region with no valid price also
+  sends `null` to clear an external trade readout.
 </ParamField>
 
 <ParamField body="onScrubCandleChange" type="(candle: CandlePoint | null) => void">

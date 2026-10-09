@@ -44,6 +44,95 @@ const markers = useSharedValue<Marker[]>([
   old `onMarkerHover`.)
 </Note>
 
+### Attaching trade details
+
+Use `marker.data` for your trade metadata, or use `marker.id` to look up a full
+record in your application. `onMarkerPress` runs on the JS thread and receives
+the marker plus its chart-local position **at tap time**. A collapsed group's
+`event.members` contains all its markers, so a detail sheet can list them:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  markers={markers}
+  onMarkerPress={(event) => {
+    setSelectedMarkers(event ? event.members ?? [event.marker] : []);
+  }}
+/>
+```
+
+### Inspecting markers while scrubbing
+
+Enable `scrub.markers` to include trades in the existing tooltip and scrub
+callback. This is off by default and does not change marker taps or the built-in
+tooltip's content.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  markers={markers}
+  scrub={{ markers: true }} // or markers: { radius: 24 }
+  onScrub={(point) => setSelectedMarkers(point?.markers ?? [])}
+  renderTooltip={(ctx) => <TradeTooltip {...ctx} />}
+/>
+```
+
+In **line mode**, the crosshair selects timestamps within 16 canvas pixels on
+either side (configurable through `radius`), inside the drawn time window. The
+tolerance follows zoom and layout changes. In **candle mode**, it selects all
+trades in the hovered candle's `[time, time + candleWidth)` bucket. A trade
+exactly at the end belongs to the next candle. Gaps select none.
+With matching enabled, `onScrub` sends `null` when a valid point becomes
+unavailable (for example an unpriced gap), clearing an external selection.
+
+Results preserve marker input order and `data`. They include co-located trades
+and members hidden by stacking, grouping, or `maxVisible`; glyph Y positions and
+offsets do not affect a time-based scrub. This is independent of
+`markerHitRadius`, which continues to control taps.
+
+`TooltipRenderProps.markers` is a shared value. Bind it inside an animated
+component so the count/details update on the UI thread:
+
+```tsx
+import { TextInput } from "react-native";
+import Animated, { useAnimatedProps } from "react-native-reanimated";
+import type { TooltipRenderProps } from "react-native-livechart";
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+function TradeTooltip({ markers }: TooltipRenderProps) {
+  const animatedProps = useAnimatedProps(() => {
+    const text = `${markers.get().length} trades`;
+    return { text, defaultValue: text };
+  });
+  return (
+    <AnimatedTextInput
+      editable={false}
+      animatedProps={animatedProps}
+      style={{ width: 120, color: "white", backgroundColor: "#1e293b", padding: 8 }}
+    />
+  );
+}
+```
+
+The tooltip selection is `[]` while disabled, inactive, or without a match. Its
+array stays stable while movement/price ticks leave the selection unchanged;
+marker input changes refresh the details. Read metadata in the same worklet
+(for example `(marker.data as { quantity: number }).quantity`). For a React list,
+use `onScrub` or bridge a `useAnimatedReaction` only when the selection changes;
+reading `markers.get()` during React render does not subscribe the component.
+
+`LiveChartSeries` supports `scrub.markers` through its **UI-thread** `onScrub`
+worklet; it does not expose `renderTooltip`. All supplied marker timestamps are
+eligible, including those associated with hidden series.
+
+The **Markers & trades** demo has **Scrub details** and **Candles** switches.
+Hold briefly (150 ms), then drag across the plot to inspect trades while keeping
+quick marker taps available. Try a burst with stacking enabled to inspect every
+trade in the tooltip.
+
 ### Stacking co-located markers
 
 By default markers draw at their anchor and overlap. Set `markerCluster="stacked"` to fan

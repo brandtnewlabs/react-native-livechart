@@ -201,6 +201,14 @@ function OhlcTooltip({ candle }: TooltipRenderProps) {
 that only shows the close + date needs no candle-specific code at all. This is handy when the active
 candle is shown elsewhere in your UI and you want a minimal (or empty) in-chart tooltip.
 
+## Marker details
+
+Set `scrub={{ markers: true }}` to read nearby trades from
+`renderTooltip`'s `markers` shared value and `onScrub`'s `point.markers`.
+Line charts use a configurable horizontal tolerance; candle charts select the
+hovered time bucket. See [Inspecting markers while scrubbing](/guides/markers-and-trades#inspecting-markers-while-scrubbing)
+for metadata, multiple matches, and an animated tooltip example.
+
 ## Scrub dimming (`dimTarget`, `dimOpacity`)
 
 By default, scrubbing fades chart content to the **right** of the crosshair (the "future") so the

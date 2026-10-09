@@ -6,14 +6,15 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import {
   LiveChart,
   type Marker,
   type MarkerClusterConfig,
   type MarkerKind,
+  type TooltipRenderProps,
 } from "react-native-livechart";
-import { useSharedValue } from "react-native-reanimated";
+import Animated, { useAnimatedProps, useSharedValue } from "react-native-reanimated";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
@@ -88,6 +89,36 @@ const CUSTOM_GROUP_BADGE = { icon: "★", pill: true, color: "#a855f7" } as cons
 
 /** Visible time window (s). Markers are kept until they scroll just past it. */
 const WINDOW = 30;
+const CANDLE_WIDTH = 5;
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+function TradeTooltip({ markers, valueStr }: TooltipRenderProps) {
+  const animatedProps = useAnimatedProps(() => {
+    const matches = markers.get();
+    let buys = 0;
+    let sells = 0;
+    for (const marker of matches) {
+      const side = (marker.data as { side?: Side })?.side;
+      if (side === "buy") buys++;
+      if (side === "sell") sells++;
+    }
+    const text = `${valueStr.get()} · ${matches.length} markers\n${buys} buys · ${sells} sells`;
+    return { text, defaultValue: text };
+  });
+  return (
+    <View pointerEvents="none" style={glass.tooltip}>
+      <AnimatedTextInput
+        editable={false}
+        multiline
+        accessibilityLabel="Marker scrub details"
+        animatedProps={animatedProps}
+        style={glass.tooltipText}
+      />
+    </View>
+  );
+}
+
+const renderTradeTooltip = (ctx: TooltipRenderProps) => <TradeTooltip {...ctx} />;
 
 /** Live "now" in unix seconds — module-scope so `Date.now()` stays out of render. */
 const nowSec = () => Date.now() / 1000;
@@ -168,6 +199,10 @@ function resolveMarkerCluster(
 }
 
 type MarkersChartProps = {
+  candles: ReturnType<typeof useSimulatedChartData>["candles"];
+  liveCandle: ReturnType<typeof useSimulatedChartData>["liveCandle"];
+  candleMode: boolean;
+  scrubDetails: boolean;
   data: ReturnType<typeof useSimulatedChartData>["data"];
   value: ReturnType<typeof useSimulatedChartData>["value"];
   tradeStream: ReturnType<typeof useSimulatedChartData>["tradeStream"];
@@ -191,6 +226,10 @@ function MarkersChart(props: MarkersChartProps) {
       accentColor={ACCENT}
       theme={APP_THEME}
       timeWindow={WINDOW}
+      mode={props.candleMode ? "candle" : "line"}
+      candles={props.candles}
+      liveCandle={props.liveCandle}
+      candleWidth={CANDLE_WIDTH}
       markers={props.markers}
       markerHitRadius={props.hitRadius}
       markerCluster={resolveMarkerCluster(
@@ -211,6 +250,7 @@ function MarkersChart(props: MarkersChartProps) {
       }
       tradeStream={props.streamOn ? props.tradeStream : undefined}
       onMarkerPress={(event) => {
+        if (props.scrubDetails && !event) return;
         const side = (event?.marker.data as { side?: Side } | undefined)?.side;
         props.setHover(
           event
@@ -220,7 +260,10 @@ function MarkersChart(props: MarkersChartProps) {
             : "missed — tap a pill",
         );
       }}
-      scrub={false}
+      scrub={props.scrubDetails
+        ? { markers: true, tooltipPlacement: "top", panGestureDelay: 150 }
+        : false}
+      renderTooltip={props.scrubDetails ? renderTradeTooltip : undefined}
     />
   );
 }
@@ -315,6 +358,8 @@ export default function MarkersScreen() {
   const [hover, setHover] = useState("Tap a marker");
   const [streamOn, setStreamOn] = useState(false);
   const [custom, setCustom] = useState(false);
+  const [scrubDetails, setScrubDetails] = useState(false);
+  const [candleMode, setCandleMode] = useState(false);
   const [stacked, setStacked] = useState(false);
   const [vertical, setVertical] = useState(false);
   const [overlap, setOverlap] = useState(0.75);
@@ -323,9 +368,10 @@ export default function MarkersScreen() {
   const [hitRadius, setHitRadius] = useState(22);
   const [vol, setVol] = useState<(typeof VOLATILITY_MODES)[number]>("normal");
 
-  const { data, value, tradeStream } = useSimulatedChartData({
+  const { data, value, tradeStream, candles, liveCandle } = useSimulatedChartData({
     multiSeries: false,
-    candleAggregation: false,
+    candleAggregation: candleMode,
+    candleWidth: CANDLE_WIDTH,
     tradeStream: streamOn,
     volatilityMode: vol,
     tradesPerSecond: 5,
@@ -405,13 +451,17 @@ export default function MarkersScreen() {
     <DemoScreen
       title="Markers & trades"
       docs="guides/markers-and-trades"
-      description="Buy / sell markers anchored to the line — green + pill (buy), red − pill (sell). Tap a pill to hover; optional tradeStream overlay."
+      description="Tap a buy/sell marker for details. Enable scrub details, then hold and drag to inspect trades. Candles select the whole 5-second bucket."
       chart={
         <MarkersChart
           data={data}
           value={value}
           tradeStream={tradeStream}
           markers={markers}
+          candles={candles}
+          liveCandle={liveCandle}
+          candleMode={candleMode}
+          scrubDetails={scrubDetails}
           hitRadius={hitRadius}
           stacked={stacked}
           vertical={vertical}
@@ -424,7 +474,11 @@ export default function MarkersScreen() {
         />
       }
     >
-      <Text style={demoStyles.sectionLabel}>Hover readout</Text>
+      <ControlRow label="Inspection">
+        <ToggleChip label="Scrub details" value={scrubDetails} onChange={setScrubDetails} />
+        <ToggleChip label="Candles" value={candleMode} onChange={setCandleMode} />
+      </ControlRow>
+      <Text style={demoStyles.sectionLabel}>Selected markers</Text>
       <Text style={[demoStyles.chipText, { marginBottom: 8 }]}>{hover}</Text>
 
       <ControlRow label="Markers">
@@ -512,6 +566,15 @@ export default function MarkersScreen() {
 }
 
 const glass = StyleSheet.create({
+  tooltip: { backgroundColor: "#1e293b", borderRadius: 10, padding: 10 },
+  tooltipText: {
+    width: 200,
+    height: 38,
+    color: "#fff",
+    fontSize: 13,
+    padding: 0,
+    fontVariant: ["tabular-nums"],
+  },
   badge: {
     flexDirection: "row",
     alignItems: "center",

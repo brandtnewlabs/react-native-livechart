@@ -197,6 +197,7 @@ export interface ResolvedXAxisConfig {
 }
 
 export interface ResolvedScrubConfig {
+  markers: { radius: number } | null;
   tooltip: boolean;
   /** Opt-in per-series pill tooltip for LiveChartSeries; null keeps guide-only behavior. */
   seriesTooltip: ResolvedPerSeriesTooltipConfig | null;
@@ -979,6 +980,7 @@ export function resolveXAxisGridStyle(
 }
 
 const SCRUB_DEFAULTS: ResolvedScrubConfig = {
+  markers: null,
   tooltip: true,
   seriesTooltip: null,
   dimTarget: "future",
@@ -1067,6 +1069,11 @@ export function resolveScrub(
     const seriesTooltip =
       typeof prop === "object" ? prop.seriesTooltip : undefined;
     resolved.seriesTooltip = resolvePerSeriesTooltip(seriesTooltip);
+    const markers = typeof prop === "object" ? prop.markers : undefined;
+    const radius = typeof markers === "object" ? markers.radius : undefined;
+    resolved.markers = markers
+      ? { radius: radius !== undefined && Number.isFinite(radius) ? Math.max(0, radius) : 16 }
+      : null;
     // `resolveToggle` shallow-merges object props, so an explicitly undefined
     // optional field replaces its default. Restore the public defaults before
     // normalizing; otherwise the numeric clamps produce NaN and an undefined

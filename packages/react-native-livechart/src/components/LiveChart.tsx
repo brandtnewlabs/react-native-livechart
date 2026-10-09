@@ -109,6 +109,7 @@ import { useChartPaths } from "../hooks/useChartPaths";
 import { useChartReveal } from "../hooks/useChartReveal";
 import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
 import { useCrosshair } from "../hooks/useCrosshair";
+import { resolveScrubMarkerOptions } from "../hooks/useScrubMarkers";
 import { useDegen } from "../hooks/useDegen";
 import { useLiveChartHasData } from "../hooks/useLiveChartHasData";
 import { useLiveDot } from "../hooks/useLiveDot";
@@ -2045,6 +2046,7 @@ function useLiveChartController({
     crosshairSettings.clampToPlot,
     crosshairSettings.snapToCandles,
     onScrubCandleChange,
+    resolveScrubMarkerOptions(scrubCfg, markersSV),
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -4047,6 +4049,7 @@ function ChartNativeOverlays({ model }: { model: LiveChartModel }) {
           scrubActive={crosshair.scrubActive}
           scrubCandle={crosshair.scrubCandle}
           scrubGap={crosshair.scrubGap}
+          scrubMarkers={crosshair.scrubMarkers}
           tooltipLayout={crosshair.tooltipLayout}
           engine={engine}
           padding={effectivePadding}
