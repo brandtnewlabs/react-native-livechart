@@ -1,6 +1,13 @@
-import { Group, Path, type SkFont } from "@shopify/react-native-skia";
+import {
+  DashPathEffect,
+  Group,
+  Path,
+  type SkFont,
+  type SkPath,
+} from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { X_AXIS_LABEL_OFFSET_Y } from "../constants";
+import type { ResolvedGridStyleConfig } from "../core/resolveConfig";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import type { XAxisEntry } from "../hooks/useXAxis";
@@ -92,6 +99,89 @@ export function XAxisOverlay({
           color={palette.timeLabel}
         />
       ))}
+    </Group>
+  );
+}
+
+/**
+ * Vertical grid lines at the time-axis ticks (`xAxis.gridLines`). The chart
+ * draws this behind the series, in the horizontal grid's layer; the axis line,
+ * ticks, and labels stay in {@link XAxisOverlay} above it. One pooled line per
+ * label slot, so each line fades with its label instead of popping in at the
+ * plot edges.
+ */
+export function XAxisGridLines({
+  entries,
+  engine,
+  padding,
+  palette,
+  gridStyle,
+  volumeBandHeight = 0,
+}: {
+  entries: SharedValue<XAxisEntry[]>;
+  engine: ChartEngineLayout;
+  padding: ChartPadding;
+  palette: LiveChartPalette;
+  gridStyle: ResolvedGridStyleConfig;
+  /** Reserved volume-band height (px); the lines run through it to the axis line. */
+  volumeBandHeight?: number;
+}) {
+  const segmentBuilder = usePathBuilder();
+
+  // One vertical segment, from the plot top down to the axis line, shared by
+  // the whole pool: each line only translates it to its tick.
+  const segment = useDerivedValue(() => {
+    "worklet";
+    const b = segmentBuilder.value;
+    b.moveTo(0, padding.top);
+    b.lineTo(
+      0,
+      engine.canvasHeight.get() - padding.bottom + volumeBandHeight,
+    );
+    return b.detach();
+  });
+
+  return (
+    <Group opacity={gridStyle.opacity}>
+      {Array.from({ length: MAX_X_LABELS }, (_, i) => (
+        <XAxisGridLine
+          key={i}
+          entries={entries}
+          index={i}
+          segment={segment}
+          color={gridStyle.color ?? palette.gridLine}
+          strokeWidth={gridStyle.strokeWidth}
+          intervals={gridStyle.intervals}
+        />
+      ))}
+    </Group>
+  );
+}
+
+function XAxisGridLine({
+  entries,
+  index,
+  segment,
+  color,
+  strokeWidth,
+  intervals,
+}: {
+  entries: SharedValue<XAxisEntry[]>;
+  index: number;
+  segment: SharedValue<SkPath>;
+  color: string;
+  strokeWidth: number;
+  intervals: number[];
+}) {
+  const transform = useDerivedValue(() => [
+    { translateX: entries.get()[index]?.x ?? -200 },
+  ]);
+  const opacity = useDerivedValue(() => entries.get()[index]?.alpha ?? 0);
+  return (
+    <Group transform={transform} opacity={opacity}>
+      <Path path={segment} style="stroke" strokeWidth={strokeWidth} color={color}>
+        {intervals.length > 0 && <DashPathEffect intervals={intervals} />}
+      </Path>
     </Group>
   );
 }

@@ -31,6 +31,7 @@ import {
   resolveValueLine,
   resolveVolume,
   resolveXAxis,
+  resolveXAxisGridStyle,
   resolveYAxis,
   resolveZoom,
 } from "../src/core/resolveConfig";
@@ -1328,7 +1329,7 @@ describe("resolvePulse", () => {
 
 describe("resolveXAxis", () => {
   it("returns defaults for undefined (time axis is on by default)", () => {
-    expect(resolveXAxis(undefined)).toEqual({ minGap: 60 });
+    expect(resolveXAxis(undefined)).toEqual({ minGap: 60, gridLines: null });
   });
 
   it("returns null for false", () => {
@@ -1336,11 +1337,53 @@ describe("resolveXAxis", () => {
   });
 
   it("returns defaults for true", () => {
-    expect(resolveXAxis(true)).toEqual({ minGap: 60 });
+    expect(resolveXAxis(true)).toEqual({ minGap: 60, gridLines: null });
   });
 
   it("merges custom minGap", () => {
-    expect(resolveXAxis({ minGap: 80 })).toEqual({ minGap: 80 });
+    expect(resolveXAxis({ minGap: 80 })).toEqual({
+      minGap: 80,
+      gridLines: null,
+    });
+  });
+
+  it("leaves the vertical grid off unless gridLines is set", () => {
+    expect(resolveXAxis({ gridLines: false })?.gridLines).toBeNull();
+    expect(resolveXAxis({ gridLines: undefined })?.gridLines).toBeNull();
+  });
+
+  it("keeps gridLines overrides, and gridLines: true overrides nothing", () => {
+    expect(resolveXAxis({ gridLines: true })?.gridLines).toEqual({});
+    expect(
+      resolveXAxis({ gridLines: { intervals: [2, 4] } })?.gridLines,
+    ).toEqual({ intervals: [2, 4] });
+  });
+});
+
+describe("resolveXAxisGridStyle", () => {
+  const base = resolveGridStyle({
+    color: "#123",
+    strokeWidth: 2,
+    intervals: [1, 3],
+    opacity: 0.5,
+  });
+
+  it("returns null when the vertical grid is off", () => {
+    expect(resolveXAxisGridStyle(null, base)).toBeNull();
+  });
+
+  it("reuses the gridStyle config for gridLines: true", () => {
+    const gridLines = resolveXAxis({ gridLines: true })!.gridLines;
+    expect(resolveXAxisGridStyle(gridLines, base)).toBe(base);
+  });
+
+  it("overrides only the fields gridLines sets", () => {
+    expect(
+      resolveXAxisGridStyle({ color: "#fff", intervals: [] }, base),
+    ).toEqual({ color: "#fff", strokeWidth: 2, intervals: [], opacity: 0.5 });
+    expect(resolveXAxisGridStyle({ strokeWidth: 3, opacity: 1 }, base)).toEqual(
+      { color: "#123", strokeWidth: 3, intervals: [1, 3], opacity: 1 },
+    );
   });
 });
 

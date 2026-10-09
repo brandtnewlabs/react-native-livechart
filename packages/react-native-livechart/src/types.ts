@@ -885,6 +885,14 @@ export interface AxisLabelConfig {
 export interface XAxisConfig {
   /** Minimum pixel gap between time labels. Changes apply immediately, even while paused. Default `60`. */
   minGap?: number;
+  /**
+   * Vertical grid lines at the time-axis ticks, drawn behind the series in the
+   * same layer as the horizontal grid. Each line sits under a time label and
+   * fades with it. `true` = the {@link LiveChartCoreProps.gridStyle} look, or
+   * pass a `GridStyleConfig` to override fields of it (omitted fields fall back
+   * to `gridStyle`). Default `false`.
+   */
+  gridLines?: boolean | GridStyleConfig;
 }
 
 /**

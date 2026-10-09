@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `xAxis.gridLines` on `LiveChart` and `LiveChartSeries`: vertical grid lines at
+  the time labels, drawn behind the series in the horizontal grid's layer and
+  fading with their labels at the plot edges. `true` uses the `gridStyle` look;
+  a `GridStyleConfig` overrides only the fields it sets. They run through a
+  candle chart's volume band to the axis line and follow `axisAutoHide`. Off by
+  default. The Axes & grid demo has a toggle for them.
 - `minRange` on `LiveChart` and `LiveChartSeries`: the smallest Y span the
   auto-fit shows, in data units. Near-flat data widens to it around its
   midpoint instead of zooming in until every grid label reads the same, e.g.

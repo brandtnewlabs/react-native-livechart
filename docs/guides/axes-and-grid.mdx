@@ -42,6 +42,35 @@ a power of ten from moving the plot's edge. `LiveChartSeries` samples the larges
 finite absolute value across its series, including negative values alongside
 zero placeholders. An explicit `insets.right` overrides automatic measurement.
 
+## Vertical grid lines
+
+`xAxis.gridLines` adds a vertical line under each time label, so the grid runs in
+both directions. The lines draw behind the series, in the same layer as the
+horizontal grid, and fade in and out with their labels at the plot edges.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  gridStyle={{ intervals: [1, 3], opacity: 0.8 }}
+  xAxis={{ gridLines: true }} // same look as gridStyle
+/>
+
+<LiveChart
+  data={data}
+  value={value}
+  gridStyle={{ intervals: [1, 3], opacity: 0.8 }}
+  xAxis={{ gridLines: { intervals: [] } }} // solid verticals, dotted horizontals
+/>
+```
+
+`gridLines: true` styles the lines with `gridStyle`. A `GridStyleConfig` overrides
+only the fields it sets; the rest still come from `gridStyle`. The lines follow
+the label spacing (`xAxis.minGap`), run down through a candle chart's volume
+band to the axis line, and hide with the axis (`xAxis={false}`) and under
+`axisAutoHide`. They are off by default, on both `LiveChart` and
+`LiveChartSeries`.
+
 ## Left-side Y-axis labels
 
 Both `LiveChart` and `LiveChartSeries` accept `yAxis.side`; it defaults to `"right"`.

@@ -13,7 +13,10 @@ import { ReferenceLineOverlay } from "../../src/components/ReferenceLineOverlay"
 import { Circle, Skia } from "@shopify/react-native-skia";
 import type { TooltipLayout } from "../../src/hooks/crosshairShared";
 import { ValueLineOverlay } from "../../src/components/ValueLineOverlay";
-import { XAxisOverlay } from "../../src/components/XAxisOverlay";
+import {
+  XAxisGridLines,
+  XAxisOverlay,
+} from "../../src/components/XAxisOverlay";
 import {
   YAxisOverlay,
   yAxisLabelIntersectsBadge,
@@ -1360,6 +1363,82 @@ describe("XAxisOverlay", () => {
       );
     }
     await render(<Fixture />);
+  });
+});
+
+describe("XAxisGridLines", () => {
+  const gridStyle = {
+    color: undefined as string | undefined,
+    strokeWidth: 2,
+    intervals: [2, 4],
+    opacity: 0.5,
+  };
+
+  function Fixture({ style = gridStyle }: { style?: typeof gridStyle }) {
+    const entries = useSharedValue([
+      { x: 50, label: "12:00", alpha: 1 },
+      { x: 120, label: "12:01", alpha: 0.4 },
+    ]);
+    return (
+      <XAxisGridLines
+        entries={entries}
+        engine={engine()}
+        padding={DEFAULT_PADDING}
+        palette={palette}
+        gridStyle={style}
+        volumeBandHeight={20}
+      />
+    );
+  }
+
+  it("shares one segment from the plot top down through the volume band", async () => {
+    const makeBuilder = Skia.PathBuilder.Make as jest.Mock;
+    const resultIndex = makeBuilder.mock.results.length;
+    await render(<Fixture />);
+    const builder = makeBuilder.mock.results[resultIndex].value;
+    expect(builder.moveTo).toHaveBeenCalledWith(0, DEFAULT_PADDING.top);
+    expect(builder.lineTo).toHaveBeenCalledWith(
+      0,
+      300 - DEFAULT_PADDING.bottom + 20,
+    );
+  });
+
+  it("moves each pooled line to its tick and fades it with the label", async () => {
+    const screen = await render(<Fixture />);
+    const lines = getAllByHostType(screen, View).filter(
+      (view) => view.props.transform != null,
+    );
+    expect(lines).toHaveLength(10);
+    expect(lines.map((v) => v.props.transform.value[0].translateX)).toEqual([
+      50, 120, -200, -200, -200, -200, -200, -200, -200, -200,
+    ]);
+    expect(lines.map((v) => v.props.opacity.value)).toEqual([
+      1, 0.4, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]);
+  });
+
+  it("strokes with the grid style, falling back to the palette color", async () => {
+    const screen = await render(<Fixture />);
+    const views = getAllByHostType(screen, View);
+    const strokes = views.filter((view) => view.props.path != null);
+    expect(strokes).toHaveLength(10);
+    expect(strokes[0].props.color).toBe(palette.gridLine);
+    expect(strokes[0].props.strokeWidth).toBe(2);
+    expect(views.filter((view) => view.props.intervals != null)).toHaveLength(
+      10,
+    );
+    expect(views.some((view) => view.props.opacity === 0.5)).toBe(true);
+  });
+
+  it("draws solid lines without a dash effect", async () => {
+    const screen = await render(
+      <Fixture style={{ ...gridStyle, color: "#abcdef", intervals: [] }} />,
+    );
+    const views = getAllByHostType(screen, View);
+    expect(
+      views.filter((view) => view.props.color === "#abcdef"),
+    ).toHaveLength(10);
+    expect(views.some((view) => view.props.intervals != null)).toBe(false);
   });
 });
 
