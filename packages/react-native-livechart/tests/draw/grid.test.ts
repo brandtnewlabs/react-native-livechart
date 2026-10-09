@@ -87,6 +87,23 @@ describe("pickInterval", () => {
 describe("computeGridEntries", () => {
   const fmt = (v: number) => v.toFixed(0);
 
+  it("forwards the fine tick interval in source units, including intervalScale", () => {
+    const format = jest.fn((value: number, step?: number) => `${value}:${step}`);
+    const result = computeGridEntries(0, 100, 400, 12, 28, 0, {}, format, 16.67, 36, undefined, 0, 1000);
+    expect(format).toHaveBeenCalled();
+    for (const [, step] of format.mock.calls) expect(step).toBe(result.interval / 1000 / 2);
+  });
+
+  it("keeps compact million labels distinct for a meaningful narrow range", () => {
+    const compact = (value: number, step?: number) => {
+      const decimals = step ? Math.max(2, Math.ceil(-Math.log10(step / 1e6))) : 2;
+      return `$${Number((value / 1e6).toFixed(decimals))}M`;
+    };
+    const labels = fixedGridEntries(7_672_000, 4000, 300, 12, 3, 36, compact).map(entry => entry.label);
+    expect(labels).toEqual(["$7.672M", "$7.67M", "$7.668M"]);
+    expect(compact(7_672_000)).toBe("$7.67M");
+  });
+
   it("returns empty when chart height invalid", () => {
     const alphas: Record<number, number> = {};
     const r = computeGridEntries(0, 10, 0, 0, 0, 0, alphas, fmt, 16.67);

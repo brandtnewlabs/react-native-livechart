@@ -59,7 +59,7 @@ export function fixedGridEntries(
   padTop: number,
   count: number,
   minGap: number,
-  formatValue: (v: number) => string,
+  formatValue: (v: number, tickStep?: number) => string,
 ): YAxisEntry[] {
   "worklet";
   // minGap floor: at most `floor(chartH / minGap)` gaps fit ⇒ that many + 1 labels.
@@ -73,7 +73,7 @@ export function fixedGridEntries(
   for (let i = 0; i < n; i++) {
     const y = padTop + i * stepPx;
     const val = displayMax - i * stepVal;
-    entries.push({ y, label: formatValue(val), alpha: 1 });
+    entries.push({ y, label: formatValue(val, stepVal), alpha: 1 });
   }
   return entries;
 }
@@ -164,7 +164,7 @@ export function computeGridEntries(
   padBottom: number,
   prevInterval: number,
   labelAlphas: Record<number, number>,
-  formatValue: (v: number) => string,
+  formatValue: (v: number, tickStep?: number) => string,
   dt: number,
   minGap = 36,
   grid: GridMetrics = GRID_METRICS_DEFAULTS,
@@ -299,7 +299,7 @@ export function computeGridEntries(
     const y = gridValueToY(val, displayMax, valRange, padTop, chartH);
     /* istanbul ignore next -- vertical clip; y stays in-band when val comes from tracked keys */
     if (y < padTop - 10 || y > canvasHeight - padBottom + 10) continue;
-    entries.push({ y, label: formatValue(val), alpha });
+    entries.push({ y, label: formatValue(val, fine), alpha });
   }
 
   return { entries, interval };

@@ -1,15 +1,20 @@
 import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
 import { rangeAnimationSpeed } from "../math/rangeAnimation";
-import type { RangeAnimationConfig, SeriesConfig } from "../types";
+import type { SeriesRangeAnimationConfig, SeriesConfig } from "../types";
 
 export interface MultiEngineTickMutable {
   displayMin: number;
   displayMax: number;
+  /** Current clock before breathing-room buffer. */
+  currentTime?: number;
+  /** Unzoomed authoritative-history span, including buffer. */
+  fullHistoryWindow?: number | null;
+  /** Untransformed eased bounds, kept separate from presentation output. */
+  fittedMin?: number;
+  fittedMax?: number;
   displayWindow: number;
   timestamp: number;
-  /** Clock before breathing-room buffer. */
-  currentTime?: number;
   /**
    * The right-edge time the engine would use if following live (`now (+ buffer)`).
    * Equals {@link timestamp} while following; keeps advancing while `timestamp`
@@ -37,8 +42,10 @@ export interface MultiEngineTickInput {
   canvasWidth: number;
   canvasHeight: number;
   timeWindow: number;
+  /** Authoritative Unix-second start for an expanding live history. */
+  historyStartTime?: number;
   smoothing: number;
-  rangeAnimation?: RangeAnimationConfig;
+  rangeAnimation?: SeriesRangeAnimationConfig;
   exaggerate: boolean;
   /** Extra catch-up speed added to `smoothing` when a series tip lags. Default `0.12`. */
   adaptiveSpeedBoost?: number;
@@ -115,8 +122,14 @@ export function tickLiveChartSeriesEngineFrame(
 ): void {
   "worklet";
   const baseNow = input.presentationTime ?? input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
+  const buffer = input.windowBuffer ?? 0;
+  const start = input.historyStartTime;
+  const fullWindow = start != null && Number.isFinite(start) && start < baseNow &&
+    buffer >= 0 && buffer < 1 ? (baseNow - start) / (1 - buffer) : null;
   state.currentTime = baseNow;
-  const liveEdge = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
+  state.fullHistoryWindow = fullWindow;
+  const liveWindow = input.viewWindow ?? fullWindow ?? input.timeWindow;
+  const liveEdge = baseNow + buffer * liveWindow;
   state.liveEdge = liveEdge;
   const viewEnd = input.viewEnd;
   // Earliest first-point time across visible series — the floor a frozen edge
@@ -128,6 +141,7 @@ export function tickLiveChartSeriesEngineFrame(
     const d = input.series[i].data;
     if (d.length > 0 && d[0].time < firstDataTime) firstDataTime = d[0].time;
   }
+  if (fullWindow != null) firstDataTime = Math.min(firstDataTime, start!);
   if (firstDataTime === Infinity) firstDataTime = -Infinity;
   // Freeze the right edge while the gesture has parked `viewEnd` behind the live
   // edge AND that edge still sits within the data; a stranded edge falls through
@@ -156,6 +170,11 @@ export function tickLiveChartSeriesEngineFrame(
 
   if (input.canvasWidth === 0 || input.canvasHeight === 0) return;
 
+  // Never ease/fit against the previous frame's transformed output. Retain these
+  // even after removing the callback, so its expansion disappears in one frame.
+  state.displayMin = state.fittedMin ?? state.displayMin;
+  state.displayMax = state.fittedMax ?? state.displayMax;
+
   const speed = input.smoothing;
   // One-shot settle (snapKey change): collapse this frame's easing so the
   // window / range / tips land on target instantly. See `MultiEngineTickInput.snap`.
@@ -175,8 +194,13 @@ export function tickLiveChartSeriesEngineFrame(
 
   // Pinch-zoom: ease toward the zoom override when set, else the configured
   // window (mirrors the single-series tick).
-  const targetWindow = input.viewWindow ?? input.timeWindow;
-  state.displayWindow = snap
+  const anchoredFollowing = fullWindow != null && input.viewWindow == null &&
+    !scrolledBack && !input.paused && (input.returnT == null || input.returnT >= 1);
+  // Park the unzoomed width with a frozen edge. Resuming live restores the exact
+  // anchored span; easing a growing target would continuously lose the start.
+  const targetWindow = input.viewWindow ??
+    (fullWindow != null && (scrolledBack || input.paused) ? state.displayWindow : liveWindow);
+  state.displayWindow = snap || anchoredFollowing
     ? targetWindow
     : lerp(state.displayWindow, targetWindow, speed, input.dt);
 
@@ -208,7 +232,14 @@ export function tickLiveChartSeriesEngineFrame(
       (1 - gapRatio) *
         (input.adaptiveSpeedBoost ??
           MOTION_METRICS_DEFAULTS.adaptiveSpeedBoost);
-    state.displayValues[i] = snap
+    // History already owns the authoritative target at this timestamp. Easing
+    // it again would put the synthetic tip/dot behind the newest recorded point.
+    // Unrecorded prices and historical viewport edges retain normal smoothing.
+    const pts = series[i].data;
+    const latest = pts[pts.length - 1];
+    const targetIsRecorded = !scrolledBack && latest != null &&
+      latest.time <= Math.min(state.timestamp, baseNow) && latest.value === target;
+    state.displayValues[i] = snap || targetIsRecorded
       ? target
       : lerp(cur, target, adaptiveSpeed, input.dt);
 
@@ -396,6 +427,27 @@ export function tickLiveChartSeriesEngineFrame(
         rangeAnimationSpeed(speed, input.rangeAnimation, tMax > state.displayMax, disjoint),
         input.dt,
       );
+    }
+  }
+
+  state.fittedMin = state.displayMin;
+  state.fittedMax = state.displayMax;
+  const transform = input.rangeAnimation?.transform;
+  if (transform) {
+    const result = transform({
+      min: state.fittedMin,
+      max: state.fittedMax,
+      from: winStart,
+      to: state.timestamp,
+    });
+    if (
+      result &&
+      Number.isFinite(result.min) &&
+      Number.isFinite(result.max) &&
+      result.min < result.max
+    ) {
+      state.displayMin = result.min;
+      state.displayMax = result.max;
     }
   }
 }

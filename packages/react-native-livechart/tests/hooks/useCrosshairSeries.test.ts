@@ -718,6 +718,22 @@ describe("useCrosshairSeries (hook)", () => {
     });
   });
 
+  it.each([false, true])("reserves the axis strip with plot clamping %s", async (clamp) => {
+    await renderHook(() => useCrosshairSeries(
+      makeEngine(), padding, true, undefined, 350, undefined, undefined,
+      undefined, undefined, clamp, undefined, undefined, 48,
+    ));
+    expect(getLastPanCalls().hitSlop?.[0]).toEqual({
+      ...(clamp ? { left: -padding.left, right: -padding.right } : {}),
+      bottom: -48,
+    });
+  });
+
+  it("keeps unrestricted recognition when no axis strip is reserved", async () => {
+    await renderHook(() => useCrosshairSeries(makeEngine(), padding, true));
+    expect(getLastPanCalls().hitSlop).toBeUndefined();
+  });
+
   it("only configures a long-press modifier for a positive delay", async () => {
     const engine = makeEngine({
       series: {

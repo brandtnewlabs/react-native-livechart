@@ -291,8 +291,9 @@ default; the example app's **Time scroll** screen includes a **Dot tracks live p
 - **Coexists with scrubbing.** Plot-area scrub (and the [order ticket](/guides/order-ticket))
   work alongside time-scroll — the gestures are disambiguated by region (`axisDrag`) or press-hold
   (`holdToScrub`). Pinch-zoom is two-finger, so it stays out of the one-finger gestures' way.
-- **`axisDrag` in multi-series** doesn't yet exclude the bottom-band from scrub; `holdToScrub` (the
-  default) is the recommended gesture for `LiveChartSeries`.
+- **`axisDrag` reserves the time ruler in both charts.** Scrubbing excludes the bottom
+  strip (the bottom inset or 44 layout points, whichever is larger), including stationary
+  holds. Scrub the plot above it; drag the ruler to scroll.
 - See the [`LiveChart` reference](/api-reference/livechart#scrubbing) and
   [`TimeScrollConfig`](/api-reference/types#config-objects) / [`ZoomConfig`](/api-reference/types#config-objects)
   for every field.

@@ -15,6 +15,10 @@ accepts all the shared theming, axis, range, layout, and text props from
 [`yRangeScale`](/guides/y-range-scale), [`minRange`](/api-reference/livechart#param-min-range), `line`, `yAxis`, `xAxis`,
 `referenceLines`, `formatValue`, …), plus the multi-series props below.
 
+`formatValue(value, tickStep?)` receives the source-unit interval for Y-axis
+ticks, letting compact labels adapt precision. Badges and tooltips omit the
+second argument; one-argument formatters remain compatible.
+
 The inherited `yAxis.intervalScale` chooses dynamic nice intervals in display units without
 changing any series values. Pair it with a `formatValue` that applies the same multiplier. If the
 scaled live range cannot be represented, interval selection safely falls back to source units.
@@ -46,6 +50,19 @@ see [Axes & grid](/guides/axes-and-grid).
   [Replay clock](/guides/multi-series#replay-clock).
 </ParamField>
 
+## Growing history window
+
+<ParamField body="historyStartTime" type="number">
+  Authoritative history start in Unix seconds. While following without a zoom
+  override, `window = (now - historyStartTime) / (1 - windowBuffer)` keeps this
+  timestamp at the left edge as time advances. Use `0 <= windowBuffer < 1`.
+  Pan freezes the edge and unzoomed width; pinch overrides remain active.
+  `ref.current?.resetZoom()` restores the growing live window. Default zoom-out
+  bounds include this full span, even when the retained first sample starts later.
+  Non-finite or future starts fall back to `timeWindow`. See
+  [All history](/guides/multi-series#all-history).
+</ParamField>
+
 ## Series opacity
 
 <ParamField body="seriesOpacity" type="SharedValue<number>" default="1">
@@ -60,7 +77,7 @@ see [Axes & grid](/guides/axes-and-grid).
 
 ## Manual Y-range scaling
 
-<ParamField body="rangeAnimation" type="RangeAnimationConfig">
+<ParamField body="rangeAnimation" type="SeriesRangeAnimationConfig">
   Ease the shared fitted Y-range independently of series-tip and time-window
   smoothing. `animateExpansion: true` opts into outward easing;
   `expansionSmoothing` and `contractionSmoothing` override each direction's
@@ -70,6 +87,13 @@ see [Axes & grid](/guides/axes-and-grid).
   While the fitted and displayed ranges do not overlap, contraction is limited
   to the animated expansion speed so the bounds cannot cross.
   Custom overlays keep following the animated `ChartOverlayContext.scale`.
+  An optional `transform` worklet receives `{ min, max, from, to }` after fitting
+  and easing. Return finite increasing `{ min, max }` presentation bounds; invalid
+  results are ignored. The untransformed fit is retained separately, so expansions
+  never accumulate and removing the callback restores it. The callback may read
+  SharedValues and receives the visible Unix-second interval. Hard bounds apply
+  to the underlying fit before transforming. See the
+  [overlay range example](/guides/multi-series#transforming-the-presentation-range).
   See [Y-range animation](/guides/y-range-scale#animating-automatic-range-changes)
   for a hold/release example without a return timer.
 </ParamField>
@@ -229,6 +253,8 @@ default off.
 </ParamField>
 
 <ParamField body="timeScroll" type="boolean | TimeScrollConfig" default="false">
+  With `gesture: "axisDrag"`, the bottom time-axis strip is reserved for scrolling
+  and excluded from scrub recognition, including stationary holds.
   Pan back through history (same as `LiveChart`). Drag (or fling) to scroll; the
   chart stops auto-following until you return to the live edge. Setting it back to
   `false` while scrolled back glides the window back to the live edge (eased, not
@@ -255,7 +281,7 @@ default off.
 </ParamField>
 
 Attach a `ref` typed as [`LiveChartHandle`](/api-reference/types#imperative-handle) and call
-`ref.current?.resetZoom()` to return the shared window to `timeWindow` and the live edge. This is
+`ref.current?.resetZoom()` to return the shared window to `timeWindow` (or the growing `historyStartTime` span) and the live edge. This is
 the same imperative reset exposed by `LiveChart`. See
 [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button).
 

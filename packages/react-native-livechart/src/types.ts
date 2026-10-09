@@ -228,8 +228,13 @@ export interface ReferenceLine {
    * can't be dragged past either end. Omit for unbounded (clamped only to the
    * visible range). Reaching a bound fires {@link onDragOut}. Applies only while
    * {@link draggable}.
+   *
+   * Pass a `SharedValue<[number, number]>` for a bound that follows a live value
+   * (e.g. a stop that can't cross the current price): the clamp and
+   * {@link onDragIn} / {@link onDragOut} read it on the UI thread, so moving it
+   * doesn't need a new `referenceLines` array or a re-render.
    */
-  bounds?: [number, number];
+  bounds?: [number, number] | SharedValue<[number, number]>;
   /**
    * Fired on the JS thread *while* dragging, each time the finger moves the line
    * to a new (snapped, clamped) value. De-duplicated to value changes — not every
@@ -2272,7 +2277,9 @@ export interface ZoomConfig {
   minTimeWindow?: number;
   /**
    * Widest visible window in seconds (max zoom-out). Defaults to the full data
-   * span (you can zoom out to all retained history), never below `timeWindow`.
+   * span (you can zoom out to all retained history), never below `timeWindow`
+   * unless explicitly set. LiveChartSeries also includes
+   * its anchored full-history span when historyStartTime is supplied.
    */
   maxTimeWindow?: number;
 }
@@ -2280,7 +2287,8 @@ export interface ZoomConfig {
 /** Imperative methods exposed by `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartHandle {
   /**
-   * Reset built-in pinch/time-window zoom to the configured `timeWindow` and
+   * Reset built-in pinch/time-window zoom to the configured `timeWindow`
+   * (or LiveChartSeries historyStartTime span) and
    * clear the focal-point offset so the chart follows the live edge again.
    * On LiveChart with viewport, clears the supplied end/window shared values.
    * Safe to call when already reset. A paused chart remains paused.
@@ -2398,6 +2406,21 @@ export interface RangeAnimationConfig {
    * contraction is limited to the expansion speed so bounds cannot cross.
    */
   contractionSmoothing?: number;
+}
+
+/** Y-range easing and optional presentation transform for {@link LiveChartSeries}. */
+export interface SeriesRangeAnimationConfig extends RangeAnimationConfig {
+  /**
+   * UI-thread worklet applied after normal fitting/easing. Receives untransformed
+   * display bounds and the visible Unix-second interval; may read SharedValues.
+   * Returned finite, increasing bounds affect presentation only and never feed
+   * back into fitting. Invalid results are ignored. Removing it restores the
+   * untransformed range. Hard bounds are applied to the fit before this transform.
+   */
+  transform?: (range: { min: number; max: number; from: number; to: number }) => {
+    min: number;
+    max: number;
+  };
 }
 
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
@@ -2546,8 +2569,12 @@ export interface LiveChartCoreProps {
    * points or committed candles. Default `"No data"`.
    */
   emptyText?: string;
-  /** Custom formatter for value labels (axes, badge, tooltips). Default `v => v.toFixed(2)`. */
-  formatValue?: (v: number) => string;
+  /**
+   * Worklet formatter for value labels. Y-axis ticks pass their interval in
+   * source units as `tickStep`; badges, tooltips and layout samples omit it.
+   * Existing one-argument formatters remain valid. Default `v => v.toFixed(2)`.
+   */
+  formatValue?: (v: number, tickStep?: number) => string;
   /** Custom formatter for time labels. Default renders `HH:MM:SS`. */
   formatTime?: (t: number) => string;
   /** Y-axis grid lines + labels. `true` = defaults, `false` = hidden, or pass `YAxisConfig`. Default `true`. */
@@ -3039,6 +3066,18 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
    * render is required for clock updates.
    */
   presentationTime?: SharedValue<number | undefined>;
+  /**
+   * Authoritative history start (Unix seconds). While following without a zoom
+   * override, grows the window to keep this time at the left edge, including
+   * `windowBuffer` (must be < 1). Pan/zoom overrides remain usable; resetZoom()
+   * restores following. A non-finite or future start falls back to timeWindow.
+   */
+  historyStartTime?: number;
+  /**
+   * Shared-range easing plus an optional reversible UI-thread presentation
+   * transform. See {@link SeriesRangeAnimationConfig}; recorded values remain unchanged.
+   */
+  rangeAnimation?: SeriesRangeAnimationConfig;
   /** Array of series definitions. Must be a SharedValue for UI-thread reads. */
   series: SharedValue<SeriesConfig[]>;
   /**

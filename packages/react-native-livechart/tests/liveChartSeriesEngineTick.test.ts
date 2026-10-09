@@ -20,6 +20,70 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     };
   }
 
+  it("reversibly transforms fitted bounds without accumulating expansion", () => {
+    const state = baseMulti();
+    let reveal = 1;
+    const transform = jest.fn(({ min, max }: { min: number; max: number }) => ({ min: min - reveal * 10, max: max + reveal * 10 }));
+    const input = {
+      dt: 16.67, canvasWidth: 320, canvasHeight: 200, timeWindow: 30,
+      smoothing: 1, exaggerate: false, referenceValue: undefined, nowOverride: 1030,
+      series: [{ id: "a", value: 40, data: [{ time: 1000, value: 20 }, { time: 1030, value: 40 }] }],
+      rangeAnimation: { transform },
+    };
+    for (let i = 0; i < 20; i++) {
+      tickLiveChartSeriesEngineFrame(state, input);
+      expect(state.displayMin).toBeCloseTo(7.6);
+      expect(state.displayMax).toBeCloseTo(52.4);
+    }
+    expect(transform).toHaveBeenLastCalledWith({ min: 17.6, max: 42.4, from: 1000, to: 1030 });
+    reveal = 0.5;
+    tickLiveChartSeriesEngineFrame(state, input);
+    expect(state.displayMin).toBeCloseTo(12.6);
+    expect(state.displayMax).toBeCloseTo(47.4);
+    tickLiveChartSeriesEngineFrame(state, { ...input, rangeAnimation: undefined });
+    expect(state.displayMin).toBeCloseTo(17.6);
+    expect(state.displayMax).toBeCloseTo(42.4);
+    expect(input.series[0].data.map(point => point.value)).toEqual([20, 40]);
+  });
+
+  it.each([
+    { min: NaN, max: 100 }, { min: 0, max: Infinity },
+    { min: 50, max: 20 }, { min: 20, max: 20 }, null,
+  ])("ignores invalid transformed bounds %s", result => {
+    const state = baseMulti();
+    tickLiveChartSeriesEngineFrame(state, {
+      dt: 16.67, canvasWidth: 320, canvasHeight: 200, timeWindow: 30,
+      smoothing: 1, exaggerate: false, referenceValue: undefined, nowOverride: 1030,
+      series: [{ id: "a", value: 40, data: [{ time: 1000, value: 20 }, { time: 1030, value: 40 }] }],
+      rangeAnimation: { transform: () => result as { min: number; max: number } },
+    });
+    expect(state.displayMin).toBeCloseTo(17.6);
+    expect(state.displayMax).toBeCloseTo(42.4);
+  });
+
+  it("keeps underlying animated fits and explicit snaps equal to the untransformed control", () => {
+    const control = baseMulti();
+    const transformed = baseMulti();
+    const easing = { animateExpansion: true, expansionSmoothing: 0.1, contractionSmoothing: 0.2 };
+    for (let i = 0; i < 10; i++) {
+      const input = {
+        dt: 16.67, canvasWidth: 320, canvasHeight: 200, timeWindow: 30,
+        smoothing: 0.05, exaggerate: false, referenceValue: undefined, nowOverride: 1030,
+        series: [{ id: "a", value: i < 5 ? 40 : 80, data: [{ time: 1000, value: 20 }, { time: 1030, value: 40 }] }],
+        rangeAnimation: easing, snap: i === 8,
+      };
+      tickLiveChartSeriesEngineFrame(control, input);
+      tickLiveChartSeriesEngineFrame(transformed, { ...input, rangeAnimation: {
+        ...easing, transform: ({ min, max }) => ({ min: min - 10, max: max + 10 }),
+      } });
+      expect(transformed.fittedMin).toBe(control.displayMin);
+      expect(transformed.fittedMax).toBe(control.displayMax);
+      expect(transformed.displayMin).toBe(control.displayMin - 10);
+      expect(transformed.displayMax).toBe(control.displayMax + 10);
+      expect(transformed.displayValues).toEqual(control.displayValues);
+    }
+  });
+
   it("lerps per-series tips and updates combined Y-range", () => {
     const s = baseMulti();
     tickLiveChartSeriesEngineFrame(s, {
@@ -55,6 +119,41 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     expect(s.displayValues.length).toBe(2);
     expect(s.displayValues[0]).toBeGreaterThan(10);
     expect(s.displayMax).toBeGreaterThanOrEqual(55);
+  });
+
+  it.each([
+    [75, 3760, undefined, 75],
+    [50, 3760, undefined, null],
+    [75, 3761, undefined, null],
+    [75, 3760, 3750, null],
+  ])("only bypasses smoothing for an already recorded live target (%s at %s, edge %s)", (recorded, time, viewEnd, expected) => {
+    const s = baseMulti();
+    s.displayValues = [50];
+    s.opacities = [1];
+    tickLiveChartSeriesEngineFrame(s, {
+      dt: 16, canvasWidth: 320, canvasHeight: 200, timeWindow: 60,
+      smoothing: 0.05, exaggerate: false, referenceValue: undefined,
+      nowOverride: 3760, viewEnd,
+      series: [{ id: "a", value: 75, data: [{ time: 3700, value: 20 }, { time, value: recorded }] }],
+    });
+    if (expected != null) expect(s.displayValues[0]).toBe(expected);
+    else if (viewEnd != null) {
+      expect(s.displayValues[0]).toBeLessThan(50);
+      expect(s.timestamp).toBe(3750);
+    } else expect(s.displayValues[0]).toBeCloseTo(53.3692740209399);
+  });
+
+  it("keeps smoothing a future recorded target that falls inside the breathing-room buffer", () => {
+    const s = baseMulti();
+    s.displayValues = [50]; s.opacities = [1];
+    tickLiveChartSeriesEngineFrame(s, {
+      dt: 16, canvasWidth: 320, canvasHeight: 200, timeWindow: 60,
+      smoothing: 0.05, exaggerate: false, referenceValue: undefined,
+      nowOverride: 3760, windowBuffer: 0.1,
+      series: [{ id: "a", value: 75, data: [{ time: 3700, value: 20 }, { time: 3761, value: 75 }] }],
+    });
+    expect(s.timestamp).toBe(3766);
+    expect(s.displayValues[0]).toBeCloseTo(53.3692740209399);
   });
 
   it("includes referenceValues array, clamps with nonNegative + maxValue", () => {
