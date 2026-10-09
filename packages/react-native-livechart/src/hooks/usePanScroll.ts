@@ -90,6 +90,8 @@ export interface UsePanScrollOptions {
    * (see `resolveFling`). Default `true`.
    */
   fling?: boolean;
+  /** Re-clamp parked state on config changes. False for an app-owned viewport. Default true. */
+  clampOnOverscrollChange?: boolean;
 }
 
 /**
@@ -228,6 +230,7 @@ export function usePanScroll({
   scrubActive,
   overscroll = 0,
   fling = true,
+  clampOnOverscrollChange = true,
 }: UsePanScrollOptions): ReturnType<typeof Gesture.Pan> {
   const { viewEnd, liveEdge, displayWindow, canvasWidth, canvasHeight } = engine;
   const padLeft = padding.left;
@@ -249,6 +252,7 @@ export function usePanScroll({
     () => overscrollSV.value,
     /* istanbul ignore next -- UI-thread config reaction; pure clamp is unit-tested */
     (nextOverscroll) => {
+      if (!clampOnOverscrollChange) return;
       const cur = viewEnd.get();
       if (cur == null) return;
       const next = clampViewEndForOverscroll(

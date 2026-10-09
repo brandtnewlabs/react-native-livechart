@@ -86,6 +86,7 @@ export function aggregateCandles(
   ticks: LiveChartPoint[],
   candleWidth: number,
 ): CandleResult {
+  "worklet";
   if (ticks.length === 0) {
     const now = Date.now() / 1000;
     return {

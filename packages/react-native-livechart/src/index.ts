@@ -61,6 +61,7 @@ export type {
   ChartPlotRect,
   ChartScale,
   ChartSegment,
+  ChartViewportControl,
   DegenOptions,
   DegenShakePayload,
   DotConfig,
