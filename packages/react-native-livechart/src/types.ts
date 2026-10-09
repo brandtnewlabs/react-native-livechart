@@ -2682,6 +2682,13 @@ export interface ChartViewportControl {
   end: SharedValue<number | null>;
   /** Positive, finite visible width in seconds; null uses the timeWindow prop. */
   window: SharedValue<number | null>;
+}
+
+/** External viewport state and optional behavior settings for {@link LiveChart}.
+ * Pass an object to adopt its shared values; false/omitted uses private state.
+ * @experimental
+ */
+export interface ViewportConfig extends ChartViewportControl {
   /** Ease non-null window overrides using the chart's smoothing. Default true.
    * Set false on followers copying a leader's drawn width to avoid easing twice.
    * Null windows still ease back to timeWindow; Y-range/value smoothing is unchanged. */
@@ -2695,9 +2702,11 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * values; resetZoom() clears both. Non-null overrides survive timeWindow changes
    * and timeScroll being disabled. External writes work without enabling gestures
    * and wake autoSleep charts. Single-series line/candle only.
+   * Pass a ViewportConfig object to enable; false/omitted uses private state.
+   * Both shared values are required, so this prop has no true shorthand.
    * @experimental
    */
-  viewport?: ChartViewportControl;
+  viewport?: false | ViewportConfig;
   /** Area gradient fill under the line. `true` = defaults, or pass `GradientConfig`. Default `true`. */
   gradient?: boolean | GradientConfig;
   /**

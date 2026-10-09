@@ -3,7 +3,8 @@ import { useSharedValue } from "react-native-reanimated";
 import { useLiveChartEngine } from "../src/core/useLiveChartEngine";
 import { usePanScroll } from "../src/hooks/usePanScroll";
 import { resetPinchZoom, usePinchZoom } from "../src/hooks/usePinchZoom";
-import type { ChartViewportControl } from "../src";
+import type { ViewportConfig } from "../src";
+import { resolveViewport } from "../src/core/resolveConfig";
 
 let mockTick: (dt: number) => boolean;
 let mockPrepare: () => unknown[];
@@ -112,9 +113,11 @@ async function setup(
     ({
       timeWindow,
       scrollEnabled,
+      viewportEnabled,
     }: {
       timeWindow: number;
       scrollEnabled: boolean;
+      viewportEnabled?: boolean;
     }) => {
       const data = useSharedValue([
         { time: 0, value: 10 },
@@ -127,17 +130,22 @@ async function setup(
       ]);
       const end = useSharedValue<number | null>(80);
       const window = useSharedValue<number | null>(40);
-      const viewport: ChartViewportControl = {
+      const viewport: ViewportConfig = {
         end,
         window,
         windowSmoothing: initial.windowSmoothing,
       };
+      const viewportCfg = resolveViewport(
+        initial.controlled === false || viewportEnabled === false
+          ? false
+          : viewport,
+      );
       const engine = useLiveChartEngine({
         data,
         value,
         candles,
         mode: initial.mode,
-        viewport: initial.controlled === false ? undefined : viewport,
+        viewport: viewportCfg,
         timeWindow,
         smoothing: initial.smoothing ?? 1,
         nowOverride: 100,
@@ -151,7 +159,7 @@ async function setup(
         minTime,
         padding,
         enabled: scrollEnabled,
-        clampOnOverscrollChange: initial.controlled === false,
+        clampOnOverscrollChange: viewportCfg === null,
       });
       const pinch = usePinchZoom({
         engine,
@@ -193,6 +201,33 @@ it.each(["line", "candle"] as const)(
     expect(viewport.end.get()).toBe(-1); // fallback does not clear app state
   },
 );
+
+it("can disable and re-enable external control without mutating the supplied pair", async () => {
+  const { result, rerender } = await setup();
+  const { viewport } = result.current;
+  mockTick(16.67);
+  await rerender({
+    timeWindow: 100,
+    scrollEnabled: true,
+    viewportEnabled: false,
+  });
+  expect(result.current.engine.viewEnd).not.toBe(viewport.end);
+  expect(result.current.engine.viewWindow).not.toBe(viewport.window);
+  mockTick(16.67);
+  expect(result.current.engine.timestamp.get()).toBe(100);
+  expect(result.current.engine.displayWindow.get()).toBe(100);
+  expect(viewport.end.get()).toBe(80);
+  expect(viewport.window.get()).toBe(40);
+  await rerender({
+    timeWindow: 100,
+    scrollEnabled: true,
+    viewportEnabled: true,
+  });
+  mockTick(16.67);
+  expect(result.current.engine.viewEnd).toBe(viewport.end);
+  expect(result.current.engine.timestamp.get()).toBe(80);
+  expect(result.current.engine.displayWindow.get()).toBe(40);
+});
 
 it("preserves external values through base-window and gesture-config changes", async () => {
   const { result, rerender } = await setup();

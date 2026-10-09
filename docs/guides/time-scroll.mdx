@@ -178,7 +178,9 @@ readout so the behavior can be exercised directly.
 ## Synced charts
 
 `LiveChart` can adopt a pair of shared values through the experimental `viewport`
-prop. The same values receive its pan/pinch gestures and drive its visible range
+prop (`false | ViewportConfig`). Pass an object to enable external control, or
+`false`/omit it to keep private gesture state. The same values receive its pan/pinch
+gestures and drive its visible range
 when your app writes them. Use separate pairs for each pane, choose one leader,
 and copy the leader's drawn `renderOverlay` scale (`now`, `window`) to its followers
 with `useAnimatedReaction`. Set `windowSmoothing: false` on followers to avoid

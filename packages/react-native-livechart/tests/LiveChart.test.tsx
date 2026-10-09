@@ -176,6 +176,17 @@ async function layoutFirst(screen: Awaited<ReturnType<typeof render>>) {
 }
 
 describe("LiveChart", () => {
+  it("resolves an explicitly disabled viewport to private engine state", async () => {
+    const spy = jest.spyOn(engineHooks, "useLiveChartEngine");
+    await render(<Harness viewport={false} />);
+    const config = spy.mock.calls.at(-1)![0];
+    const engine = spy.mock.results.at(-1)!.value;
+    expect(config.viewport).toBeNull();
+    expect(engine.viewEnd.get()).toBeNull();
+    expect(engine.viewWindow.get()).toBeNull();
+    spy.mockRestore();
+  });
+
   it("passes a supplied viewport to the engine without replacing its shared values", async () => {
     const spy = jest.spyOn(engineHooks, "useLiveChartEngine");
     function ViewportHarness() {

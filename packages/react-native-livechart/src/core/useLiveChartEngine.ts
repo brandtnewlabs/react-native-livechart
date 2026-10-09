@@ -21,7 +21,6 @@ import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type {
   CandleGap,
   CandlePoint,
-  ChartViewportControl,
   LiveChartFrameStats,
   LiveChartPoint,
   RangeAnimationConfig,
@@ -40,10 +39,11 @@ import {
 } from "./historyRangeCache";
 
 import { useHistoryRevision } from "./useHistoryRevision";
+import type { ResolvedViewportConfig } from "./resolveConfig";
 
 export interface EngineConfig {
   /** External scroll/zoom values adopted in place of private gesture state. */
-  viewport?: ChartViewportControl;
+  viewport?: ResolvedViewportConfig | null;
   /** Original inputs before a reveal/stash bridge that may suppress same-array notifications. */
   dataChangeSource?: SharedValue<LiveChartPoint[]>;
   candlesChangeSource?: SharedValue<CandlePoint[]>;
@@ -512,7 +512,7 @@ export function useLiveChartEngine(
   // charts without `zoom` behave exactly as before.
   const internalViewWindow = useSharedValue<number | null>(null);
   const viewWindow = viewport?.window ?? internalViewWindow;
-  const hasViewport = viewport !== undefined;
+  const hasViewport = viewport != null;
   const windowSmoothing = viewport?.windowSmoothing ?? true;
   const viewWindowSmoothingSV = useDerivedValue(() => windowSmoothing);
   // A change to the `timeWindow` prop (a range / timeframe selector) is an explicit

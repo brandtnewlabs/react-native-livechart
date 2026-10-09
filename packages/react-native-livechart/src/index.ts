@@ -128,6 +128,7 @@ export type {
   TradeEvent,
   TransitionConfig,
   ValueLineConfig,
+  ViewportConfig,
   VisibleRange,
   VolumeConfig,
   XAxisConfig,

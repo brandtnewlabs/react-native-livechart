@@ -653,6 +653,10 @@ interface ZoomConfig {
 interface ChartViewportControl {
   end: SharedValue<number | null>;    // right-edge unix seconds; null = follow live
   window: SharedValue<number | null>; // positive, finite width in seconds; null = timeWindow
+}
+// The viewport prop accepts false | ViewportConfig; false/omitted uses private state.
+// Both shared values are required, so there is no true shorthand.
+interface ViewportConfig extends ChartViewportControl {
   windowSmoothing?: boolean;          // default true; false copies non-null widths immediately
 }
 // Gestures write this pair; resetZoom() nulls both. Non-null values survive

@@ -9,9 +9,15 @@ description: "Share the visible time range across single-series charts on the UI
   candle modes. Its API may change. `LiveChartSeries` does not yet support it.
 </Warning>
 
-Give each pane its own `ChartViewportControl`: two Reanimated shared values that
+Give each pane its own `ViewportConfig`: two Reanimated shared values that
 the engine adopts as its scroll/zoom state. Updating them moves the chart on the
 UI thread, and the chart's pan/pinch gestures write those same values.
+
+`ViewportConfig` extends `ChartViewportControl` (the shared-value pair) with optional
+behavior settings. Like the other chart features, pass an object to configure it
+or `viewport={false}` to disable external control; omitted also uses private state.
+There is no `true` shorthand because the two shared values are required. Configuration
+preserves those shared values by reference; their contents stay on the UI thread.
 
 | Field             | Meaning                                                                      |
 | ----------------- | ---------------------------------------------------------------------------- |
@@ -40,6 +46,7 @@ import {
   type ChartOverlayContext,
   type ChartViewportControl,
   type LiveChartPoint,
+  type ViewportConfig,
 } from "react-native-livechart";
 import {
   cancelAnimation,
@@ -85,11 +92,11 @@ function SyncedCharts({
   const leaderWindow = useSharedValue<number | null>(null);
   const followerEnd = useSharedValue<number | null>(null);
   const followerWindow = useSharedValue<number | null>(null);
-  const leader = useMemo<ChartViewportControl>(
+  const leader = useMemo<ViewportConfig>(
     () => ({ end: leaderEnd, window: leaderWindow }),
     [leaderEnd, leaderWindow],
   );
-  const follower = useMemo<ChartViewportControl>(
+  const follower = useMemo<ViewportConfig>(
     () => ({
       end: followerEnd,
       window: followerWindow,

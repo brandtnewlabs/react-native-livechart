@@ -7,6 +7,7 @@ import {
   type ChartViewportControl,
   type LiveChartFrameStats,
   type LiveChartHandle,
+  type ViewportConfig,
 } from "react-native-livechart";
 import {
   cancelAnimation,
@@ -85,7 +86,7 @@ export default function SyncedChartsScreen() {
     published: 0,
     skipped: 0,
   });
-  const topViewport = useMemo<ChartViewportControl>(
+  const topViewport = useMemo<ViewportConfig>(
     () => ({
       end: topEnd,
       window: topWindow,
@@ -93,7 +94,7 @@ export default function SyncedChartsScreen() {
     }),
     [topEnd, topWindow, leaderId, immediateWidth],
   );
-  const bottomViewport = useMemo<ChartViewportControl>(
+  const bottomViewport = useMemo<ViewportConfig>(
     () => ({
       end: bottomEnd,
       window: bottomWindow,
