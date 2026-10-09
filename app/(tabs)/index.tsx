@@ -174,6 +174,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "BadgeConfig shape knobs: radius, background, border, text color, font, offset.",
       },
       {
+        href: "/demo/badge-alignment" as Href,
+        title: "Badge alignment",
+        blurb: "Compare centered vs. Y-axis column prices, including the transition across $100.",
+      },
+      {
         href: "/demo/axes-and-grid",
         title: "Axes & grid",
         blurb: "Hide X/Y, minGap, insets; LiveChart vs LiveChartSeries.",

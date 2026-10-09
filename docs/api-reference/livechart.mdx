@@ -441,10 +441,13 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 ## Axes, grid & range
 
 <ParamField body="xAxis" type="boolean | XAxisConfig" default="true">
-  Time-axis labels.
+  Time-axis labels. Pass `{ minGap }` to set their minimum pixel spacing
+  (default `60`). Changing the gap updates the labels immediately, even while paused.
 </ParamField>
 
 <ParamField body="yAxis" type="boolean | YAxisConfig" default="true">
+  The right gutter re-measures after the first finite, nonzero live value and
+  subsequent factor-of-ten moves; `insets.right` overrides automatic sizing.
   Value-axis grid + labels. Set `{ side: "left" }` and reserve label space with
   `insets.left` for left-side labels; the default side is `"right"`. Pass `{ count }` for a fixed number of evenly-spaced
   prices instead of the dynamic nice-interval grid. Pass `{ intervalScale }`
@@ -524,6 +527,10 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   it at runtime; switching back to live restarts the suspended loops and catches
   up. Frame the data edge-to-edge with `timeWindow` + `nowOverride`. See the
   [Sparklines guide](/guides/sparklines).
+
+  Data, layout, `timeWindow`, and `nowOverride` changes re-settle without restarting
+  the loop. Entering static mode lands on the new window even when data and
+  framing change in the same render, as in a recycled list cell.
 </ParamField>
 
 <ParamField body="autoSleep" type="boolean" default="false">
@@ -606,6 +613,9 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   price scale TradingView-style; the auto-fit keeps tracking the visible window
   underneath. Values must be positive and finite; invalid values safely fall
   back to `1`. On a `nonNegative` chart, zoom-out stops at the zero floor.
+  Series drawing is clipped vertically to the price plot, above the automatically
+  reserved candle-volume band, so values outside the visible range cannot cover
+  the time labels. An explicit bottom inset keeps its existing layout override.
   Read on the UI thread each frame. Shared with `LiveChartSeries`.
   **@experimental.** See
   [Manual Y-range scaling](/guides/y-range-scale).

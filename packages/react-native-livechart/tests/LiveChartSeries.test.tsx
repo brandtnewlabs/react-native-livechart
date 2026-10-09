@@ -5,6 +5,7 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import { LiveChartSeries } from "../src/components/LiveChartSeries";
+import * as seriesEngineHooks from "../src/core/useLiveChartSeriesEngine";
 import type {
   ChartOverlayContext,
   LiveChartHandle,
@@ -522,5 +523,59 @@ describe("LiveChartSeries", () => {
     }
     const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
+  });
+});
+
+describe("LiveChartSeries series plot clip", () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it("clips the series strokes to the plot's vertical extent", async () => {
+    const useActualEngine = seriesEngineHooks.useLiveChartSeriesEngine;
+    // Derived values freeze at mount under the Jest stub, so seed the canvas
+    // size the clip reads before the first render.
+    jest
+      .spyOn(seriesEngineHooks, "useLiveChartSeriesEngine")
+      .mockImplementation((config) => {
+        const engine = useActualEngine(config);
+        engine.canvasWidth.value = 400;
+        engine.canvasHeight.value = 300;
+        return engine;
+      });
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [
+          { time: 1_700_000_000, value: 10 },
+          { time: 1_700_000_030, value: 12 },
+        ],
+        value: 12,
+        color: "#3b82f6",
+      },
+    ];
+    function H() {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return (
+        <LiveChartSeries
+          series={series}
+          insets={{ top: 10, bottom: 30 }}
+          yAxis={false}
+        />
+      );
+    }
+
+    // Only the stroke group is clipped. Its strokes mount from a UI-thread
+    // series snapshot, which doesn't run under Jest.
+    const screen = await render(<H />);
+    const clipped = getAllByHostType(screen, View).filter(
+      (v) => v.props.clip != null,
+    );
+    expect(clipped).toHaveLength(1);
+    expect(clipped[0].props.clip.value).toEqual({
+      x: -400,
+      y: 10,
+      width: 1200,
+      height: 260,
+    });
   });
 });

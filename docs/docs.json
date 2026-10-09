@@ -85,6 +85,7 @@
             "pages": [
               "guides/theming",
               "guides/badge-styling",
+              "guides/badge-alignment",
               "guides/axes-and-grid",
               "guides/extrema-labels",
               "guides/android-surface-rendering"

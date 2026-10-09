@@ -4,11 +4,14 @@ import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
+import type { TestInstance } from "test-renderer";
 import { LiveChart } from "../src/components/LiveChart";
 import { getAllByHostType } from "./rntl14";
+import * as customReferenceLines from "../src/components/CustomReferenceLineOverlay";
 import * as engineHooks from "../src/core/useLiveChartEngine";
 import * as badgeHooks from "../src/hooks/useBadge";
 import * as candlePathHooks from "../src/hooks/useCandlePaths";
+import * as chartPathHooks from "../src/hooks/useChartPaths";
 import * as chartOverlayHooks from "../src/hooks/useChartOverlayContext";
 import * as degenHooks from "../src/hooks/useDegen";
 import * as tradeStreamHooks from "../src/hooks/useTradeStream";
@@ -1189,6 +1192,68 @@ describe("LiveChart", () => {
     ).toBe(false);
   });
 
+  it("skips re-rendering when the parent re-renders with unchanged props", async () => {
+    const spy = jest.spyOn(engineHooks, "useLiveChartEngine");
+    const referenceLines = [{ value: 50, label: "Entry" }];
+    const screen = await render(<Harness referenceLines={referenceLines} />);
+    const calls = spy.mock.calls.length;
+    expect(calls).toBeGreaterThan(0);
+
+    await screen.rerender(<Harness referenceLines={referenceLines} />);
+    expect(spy).toHaveBeenCalledTimes(calls);
+
+    await screen.rerender(
+      <Harness referenceLines={[{ value: 51, label: "Entry" }]} />,
+    );
+    expect(spy.mock.calls.length).toBeGreaterThan(calls);
+    spy.mockRestore();
+  });
+
+  it("re-probes custom reference-line renderers only when their inputs change", async () => {
+    const flagsSpy = jest.spyOn(
+      customReferenceLines,
+      "customReferenceLineFlags",
+    );
+    const referenceLines = [{ value: 50, label: "Entry" }];
+    const lineGaps = [
+      { from: 1699999940, to: 1699999970, kind: "unavailable" as const },
+    ];
+    const renderReferenceLine = () => <View />;
+    const renderOffAxisReferenceLine = () => <View />;
+    const props = {
+      referenceLines,
+      lineGaps,
+      renderReferenceLine,
+      renderOffAxisReferenceLine,
+    };
+    const screen = await render(<Harness {...props} timeWindow={30} />);
+    const probes = flagsSpy.mock.calls.length;
+    expect(probes).toBe(2);
+
+    await screen.rerender(<Harness {...props} timeWindow={60} />);
+    expect(flagsSpy).toHaveBeenCalledTimes(probes);
+
+    await screen.rerender(
+      <Harness {...props} timeWindow={60} referenceLines={[...referenceLines]} />,
+    );
+    expect(flagsSpy).toHaveBeenCalledTimes(probes + 2);
+
+    await screen.rerender(
+      <Harness {...props} timeWindow={60} lineGaps={[...lineGaps]} />,
+    );
+    expect(flagsSpy).toHaveBeenCalledTimes(probes + 4);
+
+    await screen.rerender(
+      <Harness
+        {...props}
+        timeWindow={60}
+        renderOffAxisReferenceLine={() => null}
+      />,
+    );
+    expect(flagsSpy).toHaveBeenCalledTimes(probes + 6);
+    flagsSpy.mockRestore();
+  });
+
   it("renders candle mode with scrub enabled", async () => {
     await render(<CandleHarness scrub />);
   });
@@ -1466,4 +1531,81 @@ it("passes original data sources through the reveal bridge for range revisions",
   expect(config.candlesChangeSource).not.toBe(config.candles);
   expect(config.candlesChangeSource!.get()).toHaveLength(2);
   spy.mockRestore();
+});
+
+describe("series plot clip", () => {
+  const useActualEngine = engineHooks.useLiveChartEngine;
+
+  // Derived values freeze at mount under the Jest stub, so seed the canvas
+  // size the clip reads before the first render.
+  function sizeCanvas(width: number, height: number) {
+    return jest
+      .spyOn(engineHooks, "useLiveChartEngine")
+      .mockImplementation((config) => {
+        const engine = useActualEngine(config);
+        engine.canvasWidth.value = width;
+        engine.canvasHeight.value = height;
+        return engine;
+      });
+  }
+
+  function pathView(screen: Awaited<ReturnType<typeof render>>, path: unknown) {
+    const view = getAllByHostType(screen, View).find(
+      (v) => v.props.path === path,
+    );
+    expect(view).toBeDefined();
+    return view!;
+  }
+
+  function clipAbove(node: TestInstance) {
+    for (let n = node.parent; n; n = n.parent) {
+      if (n.props.clip) return n.props.clip as SharedValue<unknown>;
+    }
+    return undefined;
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it("clips the line and fill to the plot's vertical extent", async () => {
+    sizeCanvas(400, 300);
+    const pathsSpy = jest.spyOn(chartPathHooks, "useChartPaths");
+    const screen = await render(
+      <Harness insets={{ top: 10, bottom: 30 }} yAxis={false} />,
+    );
+    const { linePath, fillPath } = pathsSpy.mock.results.at(-1)!.value;
+
+    const lineClip = clipAbove(pathView(screen, linePath));
+    const fillClip = clipAbove(pathView(screen, fillPath));
+    expect(lineClip).toBe(fillClip);
+    expect(lineClip!.value).toEqual({
+      x: -400,
+      y: 10,
+      width: 1200,
+      height: 260,
+    });
+  });
+
+  it("stops the candle clip at the price plot, above the volume band", async () => {
+    sizeCanvas(400, 300);
+    const pathsSpy = jest.spyOn(candlePathHooks, "useCandlePaths");
+    const screen = await render(
+      <VolumeCandleHarness
+        insets={{ top: 10 }}
+        volume={{ maxHeight: 40 }}
+        yAxis={false}
+      />,
+    );
+    const paths = pathsSpy.mock.results.at(-1)!.value;
+
+    const candleClip = clipAbove(pathView(screen, paths.upBodiesPath));
+    expect(candleClip!.value).toEqual({
+      x: -400,
+      y: 10,
+      width: 1200,
+      // Default x-axis gutter (28) plus the 40px volume band.
+      height: 300 - 10 - 28 - 40,
+    });
+    expect(clipAbove(pathView(screen, paths.downWicksPath))).toBe(candleClip);
+    expect(clipAbove(pathView(screen, paths.upBarsPath))).toBeUndefined();
+  });
 });
