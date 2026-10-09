@@ -77,6 +77,21 @@ stroke, wave, placeholders) on its empty shell; one that never loaded uses the d
 UI thread, so **they must be worklet-safe** — mark them with the `"worklet"` directive and keep
 them pure (no JS-thread closures).
 
+Y-axis calls also provide an optional `tickStep` in source units. Use it to choose
+enough precision for nearby compact labels; badges, tooltips and layout samples
+omit it. For example, this preserves `$7.672M / $7.67M / $7.668M` for ticks
+2,000 units apart, while the ordinary value label remains `$7.67M`:
+
+```tsx
+const formatMillions = (value: number, tickStep?: number) => {
+  "worklet";
+  const decimals = tickStep
+    ? Math.min(12, Math.max(2, Math.ceil(-Math.log10(tickStep / 1e6))))
+    : 2;
+  return `$${Number((value / 1e6).toFixed(decimals))}M`;
+};
+```
+
 ```tsx
 <LiveChart
   data={data}

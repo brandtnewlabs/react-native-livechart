@@ -249,7 +249,8 @@ interface ReferenceLine {
   grabRange?: [number, number];    // canvas x px where a press may grab it; default anywhere
   snap?: number;                   // tick increment; draw/drop inside the visible edges when a tick fits;
                                    // round the finger's value outward past the plot to widen the range
-  bounds?: [number, number];       // hard-clamp the draggable value
+  bounds?: [number, number] | SharedValue<[number, number]>; // hard-clamp the draggable value;
+                                   // a SharedValue follows a live bound on the UI thread
   onChange?: (value: number) => void;  // as the finger moves it (de-duped); + once on release if the line ended elsewhere
   onCommit?: (value: number) => void;  // on release — pair with a controlled `value`
   onDragIn?: (value: number) => void;  // value entered the visible range / bounds
@@ -592,6 +593,9 @@ interface YAxisScaleGestureConfig {
   doubleTapReset?: boolean; // animate to clamped 1 over 240ms; default true
 }
 interface YAxisConfig {
+  // Chart formatValue(value, tickStep?) receives this grid's source-unit step.
+  // Fixed count supplies the evenly spaced step; dynamic ticks supply the fine
+  // interval. Badges/tooltips/layout samples omit it; one-arg formatters work.
   // Built-in vertical price-axis drag; writes yRangeScale or internal state.
   // Down zooms out, up zooms in. Default false. See the Y-range scaling guide.
   scaleGesture?: boolean | YAxisScaleGestureConfig;

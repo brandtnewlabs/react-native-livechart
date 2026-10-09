@@ -121,6 +121,41 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     expect(s.displayMax).toBeGreaterThanOrEqual(55);
   });
 
+  it.each([
+    [75, 3760, undefined, 75],
+    [50, 3760, undefined, null],
+    [75, 3761, undefined, null],
+    [75, 3760, 3750, null],
+  ])("only bypasses smoothing for an already recorded live target (%s at %s, edge %s)", (recorded, time, viewEnd, expected) => {
+    const s = baseMulti();
+    s.displayValues = [50];
+    s.opacities = [1];
+    tickLiveChartSeriesEngineFrame(s, {
+      dt: 16, canvasWidth: 320, canvasHeight: 200, timeWindow: 60,
+      smoothing: 0.05, exaggerate: false, referenceValue: undefined,
+      nowOverride: 3760, viewEnd,
+      series: [{ id: "a", value: 75, data: [{ time: 3700, value: 20 }, { time, value: recorded }] }],
+    });
+    if (expected != null) expect(s.displayValues[0]).toBe(expected);
+    else if (viewEnd != null) {
+      expect(s.displayValues[0]).toBeLessThan(50);
+      expect(s.timestamp).toBe(3750);
+    } else expect(s.displayValues[0]).toBeCloseTo(53.3692740209399);
+  });
+
+  it("keeps smoothing a future recorded target that falls inside the breathing-room buffer", () => {
+    const s = baseMulti();
+    s.displayValues = [50]; s.opacities = [1];
+    tickLiveChartSeriesEngineFrame(s, {
+      dt: 16, canvasWidth: 320, canvasHeight: 200, timeWindow: 60,
+      smoothing: 0.05, exaggerate: false, referenceValue: undefined,
+      nowOverride: 3760, windowBuffer: 0.1,
+      series: [{ id: "a", value: 75, data: [{ time: 3700, value: 20 }, { time: 3761, value: 75 }] }],
+    });
+    expect(s.timestamp).toBe(3766);
+    expect(s.displayValues[0]).toBeCloseTo(53.3692740209399);
+  });
+
   it("includes referenceValues array, clamps with nonNegative + maxValue", () => {
     const s = baseMulti();
     tickLiveChartSeriesEngineFrame(s, {

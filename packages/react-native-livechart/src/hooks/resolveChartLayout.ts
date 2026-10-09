@@ -39,7 +39,7 @@ export interface ChartLayoutConfig {
   /** Skia font for measuring label width. When provided with formatValue + currentValue, padding auto-sizes. */
   font?: SkFont;
   /** Worklet formatter — called on JS thread here to measure label width */
-  formatValue?: (v: number) => string;
+  formatValue?: (v: number, tickStep?: number) => string;
   /** Current value read from SharedValue on JS thread — used to produce a sample label for measurement */
   currentValue?: number;
   /**
@@ -111,7 +111,7 @@ export function resolveChartLayout(
     (badgeUsesRightGutter || !config.badge || config.yAxis)
   ) {
     const v = config.currentValue;
-    const samples = [v, v / 10, v / 100, v * 10].map(config.formatValue);
+    const samples = [v, v / 10, v / 100, v * 10].map(value => config.formatValue!(value));
     measuredYAxisLabelWidth = Math.max(
       ...samples.map((s) => measureFontTextWidth(config.font!, s)),
     );

@@ -77,6 +77,8 @@ export function useCrosshairSeries(
   markerOptions?: ScrubMarkerOptions,
   /** Price-axis ownership also guards against stale native long-press events. */
   axisScaleActive?: SharedValue<boolean>,
+  /** Bottom strip reserved for the time-axis drag gesture, in layout points. */
+  scrubBottomExclude = 0,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -368,7 +370,7 @@ export function useCrosshairSeries(
   // Gate by touch-down position so outside starts fail before activation and
   // remain available to competing/parent gestures. Accepted pans keep tracking
   // outside because `shouldCancelWhenOutside(false)` is set above.
-  const scrubHitSlop = resolveScrubHitSlop(padding, clampToPlot);
+  const scrubHitSlop = resolveScrubHitSlop(padding, clampToPlot, scrubBottomExclude);
   if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);
 
   return {

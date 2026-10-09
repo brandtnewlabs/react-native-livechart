@@ -1,3 +1,5 @@
+import { isSharedValue } from "react-native-reanimated";
+
 import type {
   FontWeight,
   ReferenceLine,
@@ -94,6 +96,9 @@ export function referenceLineReactKeys(
 
 /** Serializes render-relevant config without callback identity churn. */
 function stableReferenceLineSignature(value: unknown): string {
+  // A SharedValue (e.g. live `bounds`) holds UI-thread data, not identity, and
+  // reading it here would read `.value` during render.
+  if (isSharedValue(value)) return "shared";
   if (Array.isArray(value)) {
     return `[${value.map(stableReferenceLineSignature).join(",")}]`;
   }
