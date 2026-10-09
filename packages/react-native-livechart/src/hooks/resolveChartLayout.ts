@@ -10,13 +10,19 @@ import {
   resolvePadding,
   type ChartPadding,
 } from "../draw/line";
-import type { BadgeMetrics, ChartInsets, LiveChartPalette } from "../types";
+import type { BadgeMetrics, ChartInsets, LiveChartPalette, YAxisConfig } from "../types";
 
 export interface ChartLayoutConfig {
   palette: LiveChartPalette;
   lineWidthOverride?: number;
   insetsOverride?: ChartInsets;
   yAxis: boolean;
+  /** Explicit canvas-edge margin for a right-anchored tick column. */
+  labelRightMargin?: number;
+  /** Widest actual tick string measured on the UI thread; undefined uses a sample. */
+  yAxisLabelWidth?: number;
+  /** Outer dot/ring radius, before optional pulse/glow. */
+  dotRadius?: number;
   /** Float the y-axis over a full-width plot (no reserved right gutter). */
   yAxisFloat?: boolean;
   badge: boolean;
@@ -63,6 +69,16 @@ export interface ChartLayoutConfig {
   multiSeriesValueLabel?: boolean;
   /** Measured width of the widest series label (e.g. "Maybe"). Used when `multiSeriesValueLabel` is true. */
   multiSeriesMaxLabelWidth?: number;
+}
+
+/** Only auto-size a gutter for a non-floating, right-anchored tick column. */
+export function shouldMeasureYAxisLabels(
+  axis: Pick<YAxisConfig, "side" | "labelRightMargin" | "float"> | null | undefined,
+  rightInset: number | undefined,
+  floating = axis?.float ?? false,
+): boolean {
+  return axis?.side !== "left" && axis?.labelRightMargin != null &&
+    !floating && rightInset == null;
 }
 
 export interface ChartLayoutResult {
@@ -166,6 +182,21 @@ export function resolveChartLayout(
       rightPad,
       minPaddingRightForYAxisWithPulse(dotEffectOutset, labelW),
     );
+  }
+
+  // An edge-anchored column needs one label width and one radial clearance,
+  // unlike centered labels whose gutter reserves radial space on both sides.
+  if (config.yAxis && config.labelRightMargin != null && !config.yAxisFloat &&
+    config.insetsOverride?.right == null) {
+    const labelW = config.yAxisLabelWidth ??
+      ((measuredYAxisLabelWidth ?? 49) + (config.font?.getSize() ?? 12) / 2);
+    const dotR = config.dotRadius ?? config.multiSeriesDotRadius ?? 0;
+    const radialClearance = Math.max(dotR, dotEffectOutset) + 6;
+    const clearance = config.multiSeriesValueLabel
+      ? Math.max(radialClearance, dotR + 8 + (config.multiSeriesMaxLabelWidth ?? 0) + 8)
+      : radialClearance;
+    const axisPad = Math.ceil(config.labelRightMargin + labelW + clearance);
+    rightPad = badgeUsesRightGutter ? Math.max(rightPad, axisPad) : axisPad;
   }
 
   // ── Left inset ───────────────────────────────────────────────────────────

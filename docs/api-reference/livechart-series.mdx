@@ -30,10 +30,17 @@ paints the palette background inside the canvas. See
 `yAxis={{ side: "left" }}` also places multi-series Y-axis labels in the gutter
 reserved by `insets.left`; right-side series value labels remain unchanged.
 
-Automatic right-gutter sizing samples the largest finite absolute series value,
+Centered right-gutter sizing samples the largest finite absolute series value,
 skipping zero and invalid placeholders. It re-measures after the first real value
 and subsequent factor-of-ten moves. `insets.right` overrides automatic sizing;
 see [Axes & grid](/guides/axes-and-grid).
+
+With `yAxis.labelRightMargin`, automatic padding instead measures the actual
+tick column on the UI thread, reserving its width, edge margin, the largest
+dot/pulse/glow outset and six points of clearance. React layout updates only
+when width changes. Inline labels and axis badges may need extra space;
+`insets.right` remains authoritative.
+
 
 ## Presentation clock
 

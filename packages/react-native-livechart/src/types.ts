@@ -853,7 +853,9 @@ export interface YAxisConfig {
    * Place price labels in a shared left-aligned column whose right edge sits
    * this many pixels from the canvas edge. When omitted, labels keep the
    * default centered-gutter placement. To line the live badge's value up with
-   * the column, set {@link BadgeConfig.textAlign} to `"yAxisColumn"`.
+   * the column, set {@link BadgeConfig.textAlign} to `"yAxisColumn"`. Automatic
+   * gutters use actual tick widths, this margin, dot-effect outset and 6px
+   * clearance. Explicit right insets and badge reservations retain priority.
    */
   labelRightMargin?: number;
   /**
