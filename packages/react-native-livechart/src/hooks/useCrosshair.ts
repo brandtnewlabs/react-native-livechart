@@ -156,7 +156,7 @@ function resolveCrosshairSettings(
  */
 export function useCrosshair(
   engine: SingleEngineState,
-  padding: ChartPadding,
+  paddingInput: ChartPadding,
   _palette: LiveChartPalette,
   formatValue: (v: number) => string,
   formatTime: (t: number) => string,
@@ -217,6 +217,13 @@ export function useCrosshair(
   onScrubCandleChange?: (candle: CandlePoint | null) => void,
   markerOptions?: ScrubMarkerOptions,
 ): CrosshairState {
+  // Config objects may be recreated without changing the plot geometry. Keep
+  // worklet closures and gestures stable until an actual inset changes.
+  const { top, right, bottom, left } = paddingInput;
+  const padding = useMemo(
+    () => ({ top, right, bottom, left }),
+    [top, right, bottom, left],
+  );
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
   // Tracks whether the active scrub phase actually began, so a tap that never

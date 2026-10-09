@@ -188,6 +188,8 @@ dispatch uses the latest committed props. Pass a new `referenceLines` array when
 levels change; keep arrays and custom renderers stable when their contents have
 not changed to avoid repeating reference-tag probes. Changes to gesture
 recognition settings or chart layout still update the affected configuration.
+Recreating a config object with the same numeric plot insets does not rebuild
+the scrub gesture.
 
 Dragging coexists with [scrubbing](/guides/scrubbing): a press that lands within reach of a
 draggable line grabs the line and any drag moves it (in any direction), while a press anywhere else
