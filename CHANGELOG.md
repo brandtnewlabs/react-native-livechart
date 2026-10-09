@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   re-render.
   ([#402](https://github.com/brandtnewlabs/react-native-livechart/issues/402))
 
+### Fixed
+
+- Reserve the time-axis strip for `LiveChartSeries` axis dragging so a stationary
+  scrub hold cannot steal the scroll gesture. Plot scrubbing keeps its bounds.
+  ([#398](https://github.com/brandtnewlabs/react-native-livechart/issues/398))
+
 ## [4.27.0] — 2026-10-09
 
 ### Added
