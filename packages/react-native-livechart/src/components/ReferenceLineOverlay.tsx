@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   DashPathEffect,
   Group,
@@ -17,6 +18,9 @@ import {
   useReferenceLine,
   type ReferenceLineLayout,
 } from "../hooks/useReferenceLine";
+import { referenceBadgeFont } from "../hooks/referenceBadgeFont";
+import type { AxisBadgeConfig } from "../math/axisBadgeLayout";
+import { ReferenceValueBadge } from "./ReferenceValueBadge";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
 import {
   referenceLineForm,
@@ -56,6 +60,7 @@ type ReferenceLineOverlayProps = {
    * When no badge font knob is set, the resolved `font` is used as-is.
    */
   fontProp?: FontConfig;
+  valueAxis?: AxisBadgeConfig;
   /**
    * Render only the badge + label (`true`) or only the lines / bands (`false`,
    * default). The caller draws the base pass behind the chart content and the
@@ -184,6 +189,7 @@ function ReferenceLineStaticOverlay({
   yAxisEntries,
   labelRightMargin,
   gridEndGap,
+  valueAxis,
 }: ReferenceLineOverlayProps) {
   const {
     form,
@@ -214,6 +220,8 @@ function ReferenceLineStaticOverlay({
   );
   const badgeFont = badgeHasFontOverride ? badgeFontOverride : font;
 
+  const valueStyle = typeof line.valueBadge === "object" ? line.valueBadge : undefined;
+  const valueFont = useMemo(() => referenceBadgeFont(font, fontProp, valueStyle), [font, fontProp, valueStyle]);
   const layout = useReferenceLine(
     engine,
     padding,
@@ -226,7 +234,12 @@ function ReferenceLineStaticOverlay({
     labelRightMargin,
     gridEndGap,
     font,
+    valueFont,
+    valueAxis,
   );
+  const valueHidden = useDerivedValue(() => suppressTag ||
+    (suppressTagWhenOffAxis && layout.get().offAxis) ||
+    (groupHidden?.get()[index] ?? false));
 
   if (!badgeLayer) {
     return (
@@ -246,26 +259,29 @@ function ReferenceLineStaticOverlay({
   }
 
   return (
-    <ReferenceLineBadgePass
-      layout={layout}
-      color={color}
-      strokeWidth={strokeWidth}
-      intervals={intervals}
-      badgeFont={badgeFont}
-      badgePosition={badge?.position}
-      labelColor={labelColor}
-      badgeBackground={badgeBackground}
-      badgeBorderColor={badgeBorderColor}
-      badgeBorderWidth={badgeBorderWidth}
-      badgeRadius={badgeRadius}
-      badgeOffsetX={badgeOffsetX}
-      badgeOffsetY={badgeOffsetY}
-      suppressTag={suppressTag}
-      suppressTagWhenOffAxis={suppressTagWhenOffAxis}
-      customTagWidths={customTagWidths}
-      groupHidden={groupHidden}
-      index={index}
-    />
+    <>
+      <ReferenceLineBadgePass
+        layout={layout}
+        color={color}
+        strokeWidth={strokeWidth}
+        intervals={intervals}
+        badgeFont={badgeFont}
+        badgePosition={badge?.position}
+        labelColor={labelColor}
+        badgeBackground={badgeBackground}
+        badgeBorderColor={badgeBorderColor}
+        badgeBorderWidth={badgeBorderWidth}
+        badgeRadius={badgeRadius}
+        badgeOffsetX={badgeOffsetX}
+        badgeOffsetY={badgeOffsetY}
+        suppressTag={suppressTag}
+        suppressTagWhenOffAxis={suppressTagWhenOffAxis}
+        customTagWidths={customTagWidths}
+        groupHidden={groupHidden}
+        index={index}
+      />
+      {line.valueBadge && <ReferenceValueBadge layout={layout} line={line} font={valueFont} palette={palette} hidden={valueHidden} />}
+    </>
   );
 }
 
@@ -431,9 +447,12 @@ function ReferenceLineBadgePass({
   const connPath = useDerivedValue(() => {
     const b = connBuilder.value;
     const l = layout.get();
-    if (l.visible && l.badge && l.connStart >= 0) {
+    if (l.visible && (l.badge || l.valueBadge) && l.connStart >= 0) {
       let start = l.connStart;
       let end = l.connEnd;
+      if ((suppressTag || (suppressTagWhenOffAxis && l.offAxis)) && l.valueBadge) {
+        end = l.x2;
+      }
       const customTagActive =
         suppressTag || (suppressTagWhenOffAxis && l.offAxis);
       const customWidth = customTagActive
@@ -484,7 +503,7 @@ function ReferenceLineBadgePass({
   const connectorOpacity = useDerivedValue(() => {
     const l = layout.get();
     const grouped = groupHidden ? groupHidden.get()[index] === true : false;
-    return !grouped && l.visible && l.badge && l.connStart >= 0 ? 1 : 0;
+    return !grouped && l.visible && (l.badge || l.valueBadge) && l.connStart >= 0 ? 1 : 0;
   });
   const labelOpacity = useDerivedValue(() => {
     const l = layout.get();

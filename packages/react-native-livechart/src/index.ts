@@ -104,6 +104,7 @@ export type {
   RangeAnimationConfig,
   ReferenceLine,
   ReferenceLineBadgeConfig,
+  ReferenceLineValueBadgeConfig,
   ReferenceLineGroupingConfig,
   ReferenceLineRenderProps,
   ReturnToLiveConfig,

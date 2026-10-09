@@ -21,7 +21,7 @@ import type { FontConfig } from "../types";
 const systemFontCache = new Map<string, SkFont>();
 let systemFontMgr: SkFontMgr | null = null;
 
-function matchSystemFont(
+export function matchSystemFont(
   fontFamily: string,
   fontSize: number,
   fontWeight: NonNullable<FontConfig["fontWeight"]>,

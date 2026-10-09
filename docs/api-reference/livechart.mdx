@@ -274,6 +274,11 @@ provided; everything else has a default.
   can be `draggable` (drag to set a price, with `snap` / `bounds` and `onChange` /
   `onCommit` / `onDragIn` / `onDragOut` callbacks). See
   [Reference lines](/guides/reference-lines-and-bands).
+  Form-A lines also support `valueBadge: true` for a separate price pill inside
+  the right plot edge, or `{ position: "axis" }` for the price column. Both pills
+  follow dragging on the UI thread and collapse together when grouped. See
+  [Separate price pills](/guides/reference-lines-and-bands#separate-price-pills-valuebadge).
+
 </ParamField>
 
 <ParamField body="renderReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">

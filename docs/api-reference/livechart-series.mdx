@@ -82,6 +82,12 @@ see [Axes & grid](/guides/axes-and-grid).
 
 ## Reference-line tags
 
+Horizontal `referenceLines` support `valueBadge: true` or
+`valueBadge: { position: "axis" }` for a second, formatted-price pill. The same
+[style and placement rules](/guides/reference-lines-and-bands#separate-price-pills-valuebadge)
+apply; this does not add single-series dragging, grouping, or press callbacks to
+`LiveChartSeries`.
+
 <ParamField body="renderReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
   Replace a Form-A reference line's built-in Skia badge or gutter label with any
   React Native element. Return `null` or `undefined` for per-line fallback to the

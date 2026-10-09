@@ -21,6 +21,7 @@ import {
   pillTextLeftX,
   type ChartPadding,
 } from "../draw/line";
+import { axisBadgeBounds } from "../math/axisBadgeLayout";
 import { hexToRgb, lerpColor } from "../math/color";
 import { lerp } from "../math/lerp";
 import type {
@@ -138,8 +139,9 @@ export function useBadge(
       // floating over the full-width plot (no reserved gutter). Its pill bg keeps
       // the live value readable over the candles.
       const pillW = 2 * badgeMetrics.padX + textW;
-      const bodyRight = w - badgeMetrics.marginEdge;
-      const bodyLeft = bodyRight - pillW;
+      const { left: bodyLeft, right: bodyRight } = axisBadgeBounds(
+        w, padding.right, textW, font.getSize(), { float: true, metrics: badgeMetrics },
+      );
       textX = (bodyLeft + bodyRight - textW) / 2;
       b.addRRect({
         rect: { x: bodyLeft, y: badgeY, width: pillW, height: pillH },
@@ -162,8 +164,9 @@ export function useBadge(
     } else {
       // Right-gutter badge (default): asymmetric layout with optional tail.
       const tl = badgeTailAndCap(font.getSize(), showTail, badgeMetrics);
-      const bodyLeft = w - padding.right + badgeMetrics.dotGap + tl;
-      const bodyRight = w - badgeMetrics.marginEdge;
+      const { left: bodyLeft, right: bodyRight } = axisBadgeBounds(
+        w, padding.right, textW, font.getSize(), { showTail, metrics: badgeMetrics },
+      );
       const pillW = bodyRight - bodyLeft;
       // Text centered in pill body — same formula used by YAxisOverlay.
       textX = pillTextLeftX(

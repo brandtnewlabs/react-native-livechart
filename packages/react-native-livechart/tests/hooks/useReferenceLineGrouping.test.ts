@@ -125,3 +125,14 @@ describe("useReferenceLineGrouping", () => {
     expect(result.current.groupHidden.get().some(Boolean)).toBe(false);
   });
 });
+
+  it("counts each two-pill row once, including value-only off-axis pills", async () => {
+    const { result } = await setup([
+      { value: 200, badge: true, valueBadge: true },
+      { value: 300, valueBadge: { position: "axis" } },
+      { value: 400 },
+    ]);
+    expect(result.current.refGroupResult.get()).toEqual({
+      hidden: [true, true, false], groups: [{ cy: 12, count: 2 }],
+    });
+  });

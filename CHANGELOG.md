@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `ReferenceLine.valueBadge` and exported `ReferenceLineValueBadgeConfig`: a
+  separate UI-thread price pill for horizontal reference lines, positioned in
+  the plot or aligned with the right price column. Name/value pills share drag
+  values, connector geometry, off-axis pinning, custom-renderer replacement,
+  and grouping. The Working orders demo includes placement and axis controls.
+  ([#375](https://github.com/brandtnewlabs/react-native-livechart/issues/375))
+
 - Opt-in `scrub.markers` on `LiveChart` and `LiveChartSeries`, with exported
   `ScrubMarkerConfig`: return timestamp-matched markers and their `data` through
   `onScrub`, plus a UI-thread `markers` shared value in `LiveChart.renderTooltip`.

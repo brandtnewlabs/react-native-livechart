@@ -80,9 +80,12 @@ function PlainTag({ ctx }: { ctx: ReferenceLineRenderProps }) {
 }
 
 export default function WorkingOrdersScreen() {
-  const [custom, setCustom] = useState(true);
+  const [custom, setCustom] = useState(false);
+  const [priceTag, setPriceTag] = useState<"off" | "right" | "axis">("axis");
+  const [floatAxis, setFloatAxis] = useState(false);
+  const [liveBadge, setLiveBadge] = useState(true);
   const [grouping, setGrouping] = useState(false);
-  const [tagOnly, setTagOnly] = useState(true);
+  const [tagOnly, setTagOnly] = useState(false);
   const [timeScroll, setTimeScroll] = useState(false);
   const [candlestick, setCandlestick] = useState(false);
   const [pausedAt, setPausedAt] = useState<number | undefined>();
@@ -147,6 +150,7 @@ export default function WorkingOrdersScreen() {
     onDragOut: (v: number) => log(`◀ ${side} hit bound @ ${v.toFixed(2)}`),
   });
 
+  const valueBadge = priceTag === "off" ? false : { position: priceTag };
   const referenceLines: ReferenceLine[] = [
     {
       id: "buy-order",
@@ -158,6 +162,7 @@ export default function WorkingOrdersScreen() {
       snap: 0.05,
       bounds: [START * 0.9, START], // drag to either end → onDragOut / onDragIn
       badge: { position: "left" },
+      valueBadge,
       grabRange: tagOnly
         ? [0, CHART_INSETS.left + TAG_INSET + buyTagWidth + GRAB_SLOP]
         : undefined,
@@ -172,7 +177,8 @@ export default function WorkingOrdersScreen() {
       excludeFromRange: offAxisOrders,
       snap: 0.05,
       bounds: [START, START * 1.1],
-      badge: { position: "right" },
+      badge: { position: custom || priceTag === "off" ? "right" : "left" },
+      valueBadge,
       grabRange: tagOnly
         ? [
             Math.max(
@@ -206,6 +212,7 @@ export default function WorkingOrdersScreen() {
       label: "alert",
       color: "#a855f7",
       badge: true,
+      valueBadge,
       excludeFromRange: alertPosition !== "visible",
     })),
     ...(plainAlert ? [{
@@ -234,7 +241,7 @@ export default function WorkingOrdersScreen() {
     <DemoScreen
       title="Working orders"
       docs="guides/reference-lines-and-bands"
-      description="Drag the BUY / SELL tags to set a price. In Tag only mode, the rest of each line stays free for scrubbing or time scrolling. Keep dragging after leaving a tag to check ownership."
+      description="Drag either BUY / SELL pill to set a price. The separate price pill updates on the UI thread. In Tag only mode, the rest of each line stays free for scrubbing or time scrolling. Keep dragging after leaving a tag to check ownership."
       chart={
         <View
           style={styles.chart}
@@ -255,7 +262,10 @@ export default function WorkingOrdersScreen() {
             // Keep the same live edge when toggling gestures or chart mode
             // while the feed is paused, rather than advancing past its data.
             nowOverride={pausedAt}
-            insets={CHART_INSETS}
+            insets={floatAxis ? { left: CHART_INSETS.left } : CHART_INSETS}
+            yAxis={{ float: floatAxis }}
+            badge={liveBadge}
+            onReferenceLinePress={(line) => log(`Tapped ${line.label}`)}
             accentColor={ACCENT}
             theme={APP_THEME}
             referenceLines={referenceLines}
@@ -272,7 +282,7 @@ export default function WorkingOrdersScreen() {
                     },
                     format: (n) => {
                       "worklet";
-                      return `${n} alerts`;
+                      return `${n} levels`;
                     },
                   }
                 : false
@@ -287,6 +297,9 @@ export default function WorkingOrdersScreen() {
         </View>
       }
     >
+      <PricePillControls priceTag={priceTag} floatAxis={floatAxis} liveBadge={liveBadge}
+        onPriceTag={(next) => { setPriceTag(next); setCustom(false); setTagOnly(false); }}
+        onFloatAxis={setFloatAxis} onLiveBadge={setLiveBadge} />
       <ControlRow label="Grab orders">
         <Chip
           label="Tag only"
@@ -299,9 +312,7 @@ export default function WorkingOrdersScreen() {
         <Chip label="Whole line" active={!tagOnly} onPress={() => setTagOnly(false)} />
       </ControlRow>
       <Text style={styles.hint}>
-        {timeScroll
-          ? "Swipe horizontally through an order line, away from its tag, to browse history. Turn Time scroll off to test scrubbing."
-          : "Scrub across an order line away from its tag. The order price should stay unchanged. Turn Time scroll on to test panning."}
+        {grabHint(tagOnly, timeScroll)}
       </Text>
       <ControlRow label="Chart">
         <ToggleChip label="Time scroll" value={timeScroll} onChange={setTimeScroll} />
@@ -337,7 +348,7 @@ export default function WorkingOrdersScreen() {
           }}
         />
         <ToggleChip
-          label="Group alerts"
+          label="Group levels"
           value={grouping}
           onChange={setGrouping}
         />
@@ -355,14 +366,40 @@ export default function WorkingOrdersScreen() {
       />
       {alertPosition !== "visible" ? (
         <Text style={styles.hint}>
-          With Group alerts on, the three pinned badges collapse into one count.
-          Plain alert has no off-chart badge, so the count should stay at 3.
+          Group levels collapses both pills into one count. Nearby orders can
+          join the group. A plain off-chart alert adds no visible tag to count.
         </Text>
       ) : null}
 
       <OrderFeedback buy={buy} sell={sell} live={live} events={events} />
     </DemoScreen>
   );
+}
+
+function grabHint(tagOnly: boolean, timeScroll: boolean) {
+  if (!tagOnly) return "Drag either order pill or its connector. Switch to Tag only for the custom handle example.";
+  return timeScroll
+    ? "Swipe horizontally through an order line, away from its tag, to browse history. Turn Time scroll off to test scrubbing."
+    : "Scrub across an order line away from its tag. The order price should stay unchanged. Turn Time scroll on to test panning.";
+}
+
+function PricePillControls({ priceTag, floatAxis, liveBadge, onPriceTag, onFloatAxis, onLiveBadge }: {
+  priceTag: "off" | "right" | "axis"; floatAxis: boolean; liveBadge: boolean;
+  onPriceTag: (value: "off" | "right" | "axis") => void;
+  onFloatAxis: (value: boolean) => void; onLiveBadge: (value: boolean) => void;
+}) {
+  return <>
+      <ChipRow<"off" | "right" | "axis">
+        label="Price pill"
+        options={[{ label: "Off", value: "off" }, { label: "In plot", value: "right" }, { label: "On axis", value: "axis" }]}
+        value={priceTag}
+        onChange={onPriceTag}
+      />
+      <ControlRow label="Price axis">
+        <ToggleChip label="Floating axis" value={floatAxis} onChange={onFloatAxis} />
+        <ToggleChip label="Live badge" value={liveBadge} onChange={onLiveBadge} />
+      </ControlRow>
+  </>;
 }
 
 function OrderFeedback({ buy, sell, live, events }: {

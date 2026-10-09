@@ -545,7 +545,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     lineWidthOverride: lineProp?.width,
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
-    badge: false,
+    badge: allRefLines.some(line => typeof line.valueBadge === "object" && line.valueBadge.position === "axis"),
     badgeMetrics: metricsCfg.badge,
     xAxis: xAxisCfg !== null,
     font: skiaFont,
@@ -842,6 +842,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     // theme / layout / fonts
     palette,
     skiaFont,
+    fontProp,
     seriesLabelInset,
     strokeWidth,
     effectivePadding,
@@ -1013,6 +1014,8 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
             engine={engine}
             padding={effectivePadding}
             line={rl}
+            valueAxis={{ metrics: model.metricsCfg.badge, fontSize: skiaFont.getSize() }}
+            fontProp={model.fontProp}
             palette={palette}
             formatValue={formatValue}
             font={skiaFont}
@@ -1201,6 +1204,8 @@ function SeriesRefBadgeLayer({ model }: { model: LiveChartSeriesModel }) {
           engine={engine}
           padding={effectivePadding}
           line={rl}
+          valueAxis={{ metrics: model.metricsCfg.badge, fontSize: skiaFont.getSize() }}
+          fontProp={model.fontProp}
           palette={palette}
           formatValue={formatValue}
           font={skiaFont}
