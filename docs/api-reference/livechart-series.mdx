@@ -31,6 +31,18 @@ skipping zero and invalid placeholders. It re-measures after the first real valu
 and subsequent factor-of-ten moves. `insets.right` overrides automatic sizing;
 see [Axes & grid](/guides/axes-and-grid).
 
+## Presentation clock
+
+<ParamField body="presentationTime" type="SharedValue<number | undefined>">
+  UI-thread presentation head in Unix seconds. The engine reads it every frame;
+  `undefined` falls back to `nowOverride` or wall time. Scrub time limits use the
+  same clock. Lines, live dots, value lines and inline labels project at
+  `min(viewportEnd, head)`, keeping `windowBuffer` free of future price samples.
+  Paths and range fitting exclude samples after an explicit head. Updating the
+  SharedValue does not require a React render. See
+  [Replay clock](/guides/multi-series#replay-clock).
+</ParamField>
+
 ## Series opacity
 
 <ParamField body="seriesOpacity" type="SharedValue<number>" default="1">

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `LiveChartSeries.presentationTime` accepts a UI-thread SharedValue clock with
+  `nowOverride`/wall-time fallback, shared by the engine and scrub limit. Paths,
+  live dots and attached value overlays stop at the presented head, leaving
+  breathing room free of future samples.
+  ([#394](https://github.com/brandtnewlabs/react-native-livechart/issues/394))
+
 ## [4.27.0] — 2026-10-09
 
 ### Added

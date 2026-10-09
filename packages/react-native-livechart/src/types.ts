@@ -3029,6 +3029,14 @@ export interface LiveChartProps extends LiveChartCoreProps {
 
 /** Props for the multi-series `LiveChartSeries` component. */
 export interface LiveChartSeriesProps extends LiveChartCoreProps {
+  /**
+   * UI-thread presentation clock in Unix seconds. Each frame reads this head;
+   * undefined falls back to nowOverride or wall time. Paths/dots end at the
+   * earlier of the viewport edge and head, leaving windowBuffer empty. Samples
+   * after this head are excluded from paths and range fitting. Scrub time limits
+   * use the same clock without requiring React renders.
+   */
+  presentationTime?: SharedValue<number | undefined>;
   /** Array of series definitions. Must be a SharedValue for UI-thread reads. */
   series: SharedValue<SeriesConfig[]>;
   /**

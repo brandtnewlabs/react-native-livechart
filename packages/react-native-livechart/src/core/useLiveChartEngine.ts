@@ -227,6 +227,8 @@ export interface MultiEngineState
   series: SharedValue<SeriesConfig[]>;
   displaySeriesValues: SharedValue<number[]>;
   seriesOpacities: SharedValue<number[]>;
+  /** Presented tip time, clamped to the viewport edge; absent uses timestamp. */
+  tipTime?: SharedValue<number>;
 }
 
 export type EngineState = SingleEngineState | MultiEngineState;

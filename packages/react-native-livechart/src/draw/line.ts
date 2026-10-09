@@ -237,10 +237,24 @@ export function seriesPlotClip(
   };
 }
 
+/** Project a presented head, clamped to the viewport edge, into the plot. */
+export function lineTipX(
+  viewportEnd: number,
+  windowSecs: number,
+  tipTime: number,
+  canvasWidth: number,
+  padding: ChartPadding,
+): number {
+  "worklet";
+  const chartW = canvasWidth - padding.left - padding.right;
+  if (windowSecs <= 0 || chartW <= 0) return -100;
+  return padding.left + ((Math.min(viewportEnd, tipTime) - (viewportEnd - windowSecs)) / windowSecs) * chartW;
+}
+
 /**
  * Build screen-space points as a flat number array [x0, y0, x1, y1, ...].
  * Includes one point before the window for smooth left-edge entry,
- * and appends a live tip at (now, displayValue).
+ * and appends a live tip at (min(now, tipTime), displayValue).
  *
  * Flat layout avoids ~150 tuple object allocations per frame.
  *
@@ -263,6 +277,8 @@ export function buildLinePoints(
   padding: ChartPadding,
   out?: number[],
   omitTipBeyondData = false,
+  /** Optional presentation head; viewport end still determines the projection. */
+  tipTime = now,
 ): number[] {
   "worklet";
   const pts: number[] = out ?? [];
@@ -275,6 +291,8 @@ export function buildLinePoints(
     return pts;
 
   const winStart = now - windowSecs;
+  const head = Math.min(now, tipTime);
+  if (head < winStart || windowSecs <= 0) return pts;
 
   // Binary search for first point >= winStart
   let lo = 0;
@@ -291,10 +309,11 @@ export function buildLinePoints(
   let ehi = data.length;
   while (elo < ehi) {
     const emid = (elo + ehi) >> 1;
-    if (data[emid].time <= now) elo = emid + 1;
+    if (data[emid].time <= head) elo = emid + 1;
     else ehi = emid;
   }
   const endIdx = elo;
+  if (endIdx <= startIdx) return pts;
 
   const xScale = chartW / windowSecs;
   const yScale = chartH / valRange;
@@ -372,14 +391,14 @@ export function buildLinePoints(
   if (
     omitTipBeyondData &&
     endIdx === data.length &&
-    data[endIdx - 1].time < now
+    data[endIdx - 1].time < head
   ) {
     return pts;
   }
 
   // Live tip at current time with smoothed value
   pts.push(
-    padding.left + chartW,
+    lineTipX(now, windowSecs, head, canvasWidth, padding),
     padding.top + ((displayMax - displayValue) / valRange) * chartH,
   );
 

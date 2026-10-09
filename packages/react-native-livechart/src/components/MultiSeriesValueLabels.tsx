@@ -5,7 +5,7 @@ import {
 } from "@shopify/react-native-skia";
 import { useDerivedValue } from "react-native-reanimated";
 
-import type { ChartPadding } from "../draw/line";
+import { lineTipX, type ChartPadding } from "../draw/line";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
 
 const LABEL_GAP = 8;
@@ -28,7 +28,7 @@ function SeriesValueLabelAtIndex({
   const labelX = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
     if (w === 0) return -200;
-    return w - padding.right + dotRadius + LABEL_GAP;
+    return lineTipX(engine.timestamp.get(), engine.displayWindow.get(), engine.tipTime?.get() ?? engine.timestamp.get(), w, padding) + dotRadius + LABEL_GAP;
   });
 
   const labelY = useDerivedValue(() => {
@@ -61,6 +61,8 @@ function SeriesValueLabelAtIndex({
     const s = engine.series.value;
     const op = engine.seriesOpacities.value;
     if (index >= s.length || index >= op.length) return 0;
+    const head = engine.tipTime?.get() ?? engine.timestamp.get();
+    if (s[index].data.length === 0 || s[index].data[0].time > head || head < engine.timestamp.get() - engine.displayWindow.get()) return 0;
     return op[index] ?? 0;
   });
 

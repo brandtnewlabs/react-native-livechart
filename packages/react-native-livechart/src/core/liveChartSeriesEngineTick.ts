@@ -8,6 +8,8 @@ export interface MultiEngineTickMutable {
   displayMax: number;
   displayWindow: number;
   timestamp: number;
+  /** Clock before breathing-room buffer. */
+  currentTime?: number;
   /**
    * The right-edge time the engine would use if following live (`now (+ buffer)`).
    * Equals {@link timestamp} while following; keeps advancing while `timestamp`
@@ -55,6 +57,8 @@ export interface MultiEngineTickInput {
   nowSeconds?: number;
   /** Override the engine's "now" (unix seconds). */
   nowOverride?: number;
+  /** UI-thread presentation head, with precedence over nowOverride/wall time. */
+  presentationTime?: number;
   /** Right-edge buffer as a fraction of the time window. */
   windowBuffer?: number;
   paused?: boolean;
@@ -110,7 +114,8 @@ export function tickLiveChartSeriesEngineFrame(
   input: MultiEngineTickInput,
 ): void {
   "worklet";
-  const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
+  const baseNow = input.presentationTime ?? input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
+  state.currentTime = baseNow;
   const liveEdge = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
   state.liveEdge = liveEdge;
   const viewEnd = input.viewEnd;
@@ -239,7 +244,8 @@ export function tickLiveChartSeriesEngineFrame(
       // already track the edge value, so they stay in-range). Following live,
       // keep the tail inclusive — feed timestamps can run slightly ahead of
       // the local clock and must not flicker out of the range.
-      if (scrolledBack && points[j].time > state.timestamp) break;
+      if ((scrolledBack && points[j].time > state.timestamp) ||
+        (input.presentationTime != null && points[j].time > baseNow)) break;
       const v = points[j].value;
       /* istanbul ignore next -- trivial min/max */
       if (v < tMin) tMin = v;

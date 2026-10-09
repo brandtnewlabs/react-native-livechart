@@ -41,6 +41,34 @@ points. Normal live appends with `series.modify(...)` remain supported. Use
 `snapKey` when the replacement should settle immediately instead of easing with
 the configured `smoothing`.
 
+## Replay clock
+
+Drive reconstruction or replay with a SharedValue rather than updating a
+numeric `nowOverride` prop every frame:
+
+```tsx
+const presentationTime = useSharedValue<number | undefined>(1050);
+
+<LiveChartSeries
+  series={series}
+  presentationTime={presentationTime}
+  timeWindow={100}
+  windowBuffer={0.1}
+/>;
+
+// Can run on the UI thread; no React render needed.
+presentationTime.set(1070);
+// Restore nowOverride / wall time.
+presentationTime.set(undefined);
+```
+
+Supply each series' current presented `value` alongside the clock. A head of
+1050 produces viewport edge 1060. On a 320-point plot, the line and live dot end
+at x=288, leaving 32 points of breathing room. Advancing the head to 1070 moves
+the edge to 1080. Paths and range fitting ignore samples after an explicit head,
+and scrubbing uses the same time limit. A historical viewport ends at its own
+edge when that is earlier than the head.
+
 ## Series options
 
 Each `SeriesConfig` supports:

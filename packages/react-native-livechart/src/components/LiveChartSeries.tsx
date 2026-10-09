@@ -209,6 +209,7 @@ function resolveLiveChartSeriesInputs({
   yRangeScale,
   windowBuffer = 0,
   nowOverride,
+  presentationTime,
   accessibilityLabel,
   accessibilityRole = "image",
   emptyText = "No data",
@@ -332,6 +333,7 @@ function resolveLiveChartSeriesInputs({
     yRangeScale,
     windowBuffer,
     nowOverride,
+    presentationTime,
     accessibilityLabel,
     accessibilityRole,
     emptyText,
@@ -455,6 +457,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     yRangeScale,
     windowBuffer,
     nowOverride,
+    presentationTime,
     accessibilityLabel,
     accessibilityRole,
     emptyText,
@@ -613,6 +616,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     yRangeScale: effectiveYRangeScale,
     windowBuffer,
     nowOverride,
+    presentationTime,
   });
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const linePaths = useMultiSeriesLinePaths(
@@ -684,7 +688,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   // must clamp against the real "now" anchor so its live bucket never ends in
   // that future buffer.
   const tooltipMaxTime = useDerivedValue(
-    () => engine.liveEdge.get() - windowBuffer * timeWindow,
+    () => engine.currentTime.get(),
   );
 
   const crosshair = useCrosshairSeries(
