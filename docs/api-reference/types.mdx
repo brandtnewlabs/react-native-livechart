@@ -80,12 +80,17 @@ interface SeriesConfig {
 }
 ```
 
-Both chart components also accept this shared plotted-data opacity control:
+Both chart components accept these shared opacity and range controls:
 
 ```ts
 interface LiveChartCoreProps {
   // UI-thread value from 0 (hidden) to 1 (fully visible); default 1.
   seriesOpacity?: SharedValue<number>;
+  // Minimum auto-fitted span in data units; positive and finite, omitted by default.
+  minRange?: number;
+  nonNegative?: boolean;
+  maxValue?: number;
+  yRangeScale?: SharedValue<number>;
 }
 ```
 
@@ -95,6 +100,11 @@ While it is below `1`, live dots and pulse rings fade completely out so a dimmed
 stroke cannot show through them; they return once the multiplier reaches `1`.
 See [Line & area](/guides/line-and-area#dimming-replacement-data) or
 [Multi-series](/guides/multi-series#dimming-replacement-data).
+
+`minRange` widens a narrower bounded fit, shifting off zero or the ceiling.
+Hard bounds win if the floor cannot fit; invalid or overflowing floors are
+ignored. Manual `yRangeScale` applies afterward and can zoom below the floor.
+See [Minimum Y range](/guides/minimum-range) for the interactive comparison.
 
 The experimental frame-loop controls are available on `LiveChart`:
 

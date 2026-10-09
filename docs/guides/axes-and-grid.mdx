@@ -100,6 +100,24 @@ If applying it would overflow or underflow the current live range, interval sele
 back to source units. Fixed-count mode ignores it because `{ count }` tracks the exact visible range
 instead of choosing nice intervals.
 
+## Minimum Y range
+
+On a short window the data can move less than one display step, so every grid label formats to the
+same text. Pass `minRange` (in data units) to keep the fitted span at least that tall; flatter data
+widens around its midpoint instead of zooming in:
+
+```tsx
+<LiveChart data={data} value={value} minRange={priceIncrement * 4} />
+```
+
+Data that already spans more than `minRange` fits as before. On a `nonNegative` chart or under
+`maxValue`, the span slides off the bound instead of shrinking, including when a bound clips
+the ordinary fit's margin. If both hard bounds leave less room than the requested floor,
+the available span wins. Use positive finite values; invalid or overflowing floors are ignored.
+Manual [`yRangeScale`](/guides/y-range-scale) zoom still applies on top and can go below the floor.
+`LiveChartSeries` accepts it too. The [Minimum Y range demo](/guides/minimum-range) compares
+rounded labels, both engines, bounds, static re-settling, and manual zoom.
+
 ## Right-anchored price label column
 
 Set `labelRightMargin` to place every Y-axis label at the same left X in a column whose right edge

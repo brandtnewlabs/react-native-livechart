@@ -615,6 +615,16 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   Hard upper bound for the Y-axis range.
 </ParamField>
 
+<ParamField body="minRange" type="number">
+  Minimum auto-fitted Y span in data units, giving near-flat data room for
+  distinct formatted labels. `nonNegative` and `maxValue` shift the span;
+  when both leave less room than the floor, the hard bounds win. Positive
+  finite values only; invalid or overflowing floors are ignored. Manual
+  `yRangeScale` applies afterward and may go below the floor. Normal range
+  easing applies, and static charts re-settle on changes. Shared with
+  `LiveChartSeries`. See [Minimum Y range](/guides/minimum-range).
+</ParamField>
+
 <ParamField body="yRangeScale" type="SharedValue<number>" default="1">
   Manual Y-range multiplier around the fitted midpoint (`1` = auto-fit). Drive
   it from a gesture (e.g. dragging the price axis) to stretch or compress the
@@ -624,7 +634,8 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   Series drawing is clipped vertically to the price plot, above the automatically
   reserved candle-volume band, so values outside the visible range cannot cover
   the time labels. An explicit bottom inset keeps its existing layout override.
-  Read on the UI thread each frame. Shared with `LiveChartSeries`.
+  Read on the UI thread each frame. Static single-series charts re-settle when
+  this SharedValue changes without replacing data. Shared with `LiveChartSeries`.
   **@experimental.** See
   [Manual Y-range scaling](/guides/y-range-scale).
 </ParamField>

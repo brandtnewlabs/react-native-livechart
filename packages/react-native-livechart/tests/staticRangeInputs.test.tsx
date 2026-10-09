@@ -94,6 +94,9 @@ function shared<T>(value: T) {
 
 type Bounds = {
   maxValue?: number;
+  minRange?: number;
+  nonNegative?: boolean;
+  yRangeScale?: SharedValue<number>;
   referenceValue?: number;
   referenceValues?: number[];
   nowOverride?: number;
@@ -160,6 +163,42 @@ it("settles when a ceiling arrives after replacement data, in both directions", 
   expect(view.settle()).toBe(true);
   expect(view.result.current.displayMax.value).toBe(60);
   expect(view.settle()).toBe(false);
+});
+
+it("settles when minRange changes without replacing data", async () => {
+  const view = await setup({});
+  view.settle();
+  expect(view.result.current.displayMax.value).toBeLessThan(100);
+  await view.rerender({ minRange: 1000 });
+  expect(view.settle()).toBe(true);
+  expect(view.result.current.displayMin.value).toBe(0);
+  expect(view.result.current.displayMax.value).toBeCloseTo(1000);
+});
+
+it("re-settles the floored fit when manual zoom changes without a React render", async () => {
+  const scale = shared(1);
+  const view = await setup({ minRange: 1000, yRangeScale: scale });
+  view.settle();
+  expect(view.result.current.displayMax.value).toBe(1000);
+  scale.value = 0.5;
+  expect(view.settle()).toBe(true);
+  expect(view.result.current.displayMin.value).toBeCloseTo(250);
+  expect(view.result.current.displayMax.value).toBeCloseTo(750);
+  scale.value = 1;
+  expect(view.settle()).toBe(true);
+  expect(view.result.current.displayMin.value).toBe(0);
+  expect(view.result.current.displayMax.value).toBe(1000);
+  expect(view.settle()).toBe(false);
+});
+
+it("re-settles the floored fit when the zero bound changes without replacing data", async () => {
+  const view = await setup({ minRange: 1000, nonNegative: false });
+  view.settle();
+  expect(view.result.current.displayMin.value).toBeCloseTo(-480);
+  await view.rerender({ minRange: 1000, nonNegative: true });
+  expect(view.settle()).toBe(true);
+  expect(view.result.current.displayMin.value).toBe(0);
+  expect(view.result.current.displayMax.value).toBe(1000);
 });
 
 it("settles scalar reference changes without replacing data", async () => {

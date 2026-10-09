@@ -1523,3 +1523,131 @@ describe("tickLiveChartEngineFrame — snap (one-shot settle)", () => {
     });
   });
 });
+
+describe("tickLiveChartEngineFrame — minRange", () => {
+  const rangeInput = (over: Record<string, unknown> = {}) => ({
+    dt: 16.67,
+    canvasWidth: 200,
+    canvasHeight: 100,
+    timeWindow: 30,
+    smoothing: 0.3,
+    exaggerate: false,
+    referenceValue: undefined,
+    snap: true,
+    targetValue: 87000.3,
+    points: [
+      { time: 990, value: 87000 },
+      { time: 995, value: 87000.2 },
+    ],
+    nowSeconds: 1000,
+    ...over,
+  });
+
+  it("widens a near-flat fit to the floor, centred on the data", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, rangeInput({ minRange: 4 }));
+    expect(s.displayMax - s.displayMin).toBeCloseTo(4);
+    expect((s.displayMin + s.displayMax) / 2).toBeCloseTo(87000.15);
+  });
+
+  it("leaves a fit already wider than the floor untouched", () => {
+    const auto = baseState();
+    tickLiveChartEngineFrame(auto, rangeInput());
+    const floored = baseState();
+    tickLiveChartEngineFrame(floored, rangeInput({ minRange: 0.1 }));
+    expect(floored.displayMin).toBe(auto.displayMin);
+    expect(floored.displayMax).toBe(auto.displayMax);
+  });
+
+  it.each([0, -4, NaN, Infinity])("ignores a minRange of %p", (minRange) => {
+    const auto = baseState();
+    tickLiveChartEngineFrame(auto, rangeInput());
+    const floored = baseState();
+    tickLiveChartEngineFrame(floored, rangeInput({ minRange }));
+    expect(floored.displayMin).toBe(auto.displayMin);
+    expect(floored.displayMax).toBe(auto.displayMax);
+  });
+
+  it("slides the span up off the zero floor on nonNegative charts", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(
+      s,
+      rangeInput({
+        minRange: 10,
+        nonNegative: true,
+        targetValue: 1,
+        points: [{ time: 990, value: 1 }],
+      }),
+    );
+    expect(s.displayMin).toBe(0);
+    expect(s.displayMax).toBeCloseTo(10);
+  });
+
+  it("slides the span down under maxValue", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(
+      s,
+      rangeInput({
+        minRange: 0.5,
+        maxValue: 1,
+        targetValue: 0.99,
+        points: [{ time: 990, value: 1 }],
+      }),
+    );
+    expect(s.displayMax).toBe(1);
+    expect(s.displayMin).toBeCloseTo(0.5);
+  });
+
+  it.each([
+    { value: 0, nonNegative: true, maxValue: undefined, min: 0, max: 0.3 },
+    { value: 1, nonNegative: false, maxValue: 1, min: 0.7, max: 1 },
+  ])("keeps the floor when a bound clips an otherwise wider fit: %p", (bounds) => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, rangeInput({
+      minRange: 0.3,
+      targetValue: bounds.value,
+      points: [{ time: 990, value: bounds.value }],
+      nonNegative: bounds.nonNegative,
+      maxValue: bounds.maxValue,
+    }));
+    expect(s.displayMin).toBeCloseTo(bounds.min);
+    expect(s.displayMax).toBeCloseTo(bounds.max);
+  });
+
+  it("lets hard bounds win over an impossible floor, then applies manual zoom", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, rangeInput({
+      minRange: 2, nonNegative: true, maxValue: 1, yRangeScale: 0.5,
+      targetValue: 0.5, points: [{ time: 990, value: 0.5 }],
+    }));
+    expect(s.displayMin).toBeCloseTo(0.25);
+    expect(s.displayMax).toBeCloseTo(0.75);
+  });
+
+  it("keeps a finite midpoint for large finite prices", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, rangeInput({
+      minRange: 4e307, targetValue: 1e308,
+      points: [{ time: 990, value: 9e307 }],
+    }));
+    expect(Number.isFinite(s.displayMin)).toBe(true);
+    expect(Number.isFinite(s.displayMax)).toBe(true);
+    expect((s.displayMax - s.displayMin) / 4e307).toBeCloseTo(1);
+  });
+
+  it("ignores a finite floor whose widened bounds would overflow", () => {
+    const props = { targetValue: 1e308, points: [{ time: 990, value: 9e307 }] };
+    const auto = baseState();
+    const floored = baseState();
+    tickLiveChartEngineFrame(auto, rangeInput(props));
+    tickLiveChartEngineFrame(floored, rangeInput({ ...props, minRange: Number.MAX_VALUE }));
+    expect(floored.displayMin).toBe(auto.displayMin);
+    expect(floored.displayMax).toBe(auto.displayMax);
+  });
+
+  it("lets yRangeScale zoom in past the floor", () => {
+    const s = baseState();
+    tickLiveChartEngineFrame(s, rangeInput({ minRange: 4, yRangeScale: 0.5 }));
+    expect(s.displayMax - s.displayMin).toBeCloseTo(2);
+  });
+});

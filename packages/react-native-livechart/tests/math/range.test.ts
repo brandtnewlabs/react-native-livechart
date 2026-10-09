@@ -136,4 +136,52 @@ describe("computeRange", () => {
     const r = computeRange([{ time: 0, value: 10 }], 10, undefined, false, false, 1000);
     expect(r.max).toBeLessThan(1000);
   });
+
+  it("widens a near-flat range to minRange around the data", () => {
+    const r = computeRange([{ time: 0, value: 100 }], 100.2, undefined, false, false, undefined, 4);
+    expect(r.max - r.min).toBeCloseTo(4);
+    expect((r.min + r.max) / 2).toBeCloseTo(100.1);
+  });
+
+  it("ignores minRange when the range is already wider or it is not finite", () => {
+    const auto = computeRange([{ time: 0, value: 0 }], 100, undefined, false);
+    expect(computeRange([{ time: 0, value: 0 }], 100, undefined, false, false, undefined, 50)).toEqual(auto);
+    expect(computeRange([{ time: 0, value: 0 }], 100, undefined, false, false, undefined, Infinity)).toEqual(auto);
+  });
+
+  it.each([
+    { value: 0, nonNegative: true, maxValue: undefined, min: 0, max: 0.3 },
+    { value: 1, nonNegative: false, maxValue: 1, min: 0.7, max: 1 },
+  ])("keeps the floor when a bound clips an otherwise wider fit: %p", (bounds) => {
+    const r = computeRange([{ time: 0, value: bounds.value }], bounds.value,
+      undefined, false, bounds.nonNegative, bounds.maxValue, 0.3);
+    expect(r.min).toBeCloseTo(bounds.min);
+    expect(r.max).toBeCloseTo(bounds.max);
+  });
+
+  it("lets hard bounds win over an impossible floor", () => {
+    expect(computeRange([{ time: 0, value: 0.5 }], 0.5,
+      undefined, false, true, 1, 2)).toEqual({ min: 0, max: 1 });
+  });
+
+  it("keeps a finite midpoint for large finite prices", () => {
+    const r = computeRange([{ time: 0, value: 9e307 }], 1e308,
+      undefined, false, false, undefined, 4e307);
+    expect(Number.isFinite(r.min)).toBe(true);
+    expect(Number.isFinite(r.max)).toBe(true);
+    expect((r.max - r.min) / 4e307).toBeCloseTo(1);
+  });
+
+  it("ignores a finite floor whose widened bounds would overflow", () => {
+    const points = [{ time: 0, value: 9e307 }];
+    expect(computeRange(points, 1e308, undefined, false, false, undefined, Number.MAX_VALUE))
+      .toEqual(computeRange(points, 1e308));
+  });
+
+  it("slides a minRange span off the zero floor and under maxValue", () => {
+    expect(computeRange([{ time: 0, value: 1 }], 1, undefined, false, true, undefined, 10)).toEqual({ min: 0, max: 10 });
+    const r = computeRange([{ time: 0, value: 1 }], 1, undefined, false, false, 1, 0.5);
+    expect(r.max).toBe(1);
+    expect(r.min).toBeCloseTo(0.5);
+  });
 });

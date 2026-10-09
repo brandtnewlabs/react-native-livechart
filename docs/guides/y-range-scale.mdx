@@ -14,6 +14,10 @@ description: "Drive TradingView-style price-axis scaling from your own gesture."
 `yRangeScale` to multiply that fitted range around its midpoint: `1` keeps auto-fit, values above
 `1` show more vertical range, and values between `0` and `1` zoom in.
 
+Static single-series charts also re-settle when the multiplier changes without
+replacing their data. [`minRange`](/guides/minimum-range) controls the fitted
+floor first; this manual multiplier applies afterward and can zoom below it.
+
 <Note>
   **Live example:**
   [`app/demo/y-range-scale.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/y-range-scale.tsx)

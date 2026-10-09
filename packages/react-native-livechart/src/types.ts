@@ -2428,12 +2428,24 @@ export interface LiveChartCoreProps {
    */
   maxValue?: number;
   /**
+   * Smallest auto-fitted Y span, in data units. A narrower bounded fit widens
+   * around its midpoint, giving near-flat data room for distinct grid labels
+   * (e.g. pass a few multiples of the display precision). `nonNegative` and
+   * `maxValue` shift the span; if both leave less room than the floor, the hard
+   * bounds win. Manual `yRangeScale` zoom applies afterward and may go below
+   * the floor. Usual range easing applies; static charts re-settle on changes.
+   * Positive finite values only; invalid or overflowing floors are ignored.
+   * Omit for no floor.
+   */
+  minRange?: number;
+  /**
    * Live manual Y-range multiplier around the fitted midpoint (`1` = auto-fit).
    * Drive it from a gesture (e.g. dragging the price axis) to stretch or
    * compress the price scale TradingView-style; the auto-fit keeps tracking
    * the visible window underneath. Values must be positive and finite; invalid
    * values fall back to `1`. Read on the UI thread each frame. Supported by
-   * both `LiveChart` and `LiveChartSeries`. Default `1`.
+   * both `LiveChart` and `LiveChartSeries`. Static single-series charts also
+   * re-settle when this SharedValue changes, without replacing data. Default `1`.
    * Series drawing is clipped vertically to the price plot; candle volume bars
    * remain outside that clip. Automatic volume-band reservation respects an
    * explicit bottom inset.

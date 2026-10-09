@@ -1,0 +1,64 @@
+---
+title: Minimum Y range
+icon: "arrows-up-down"
+description: "Keep rounded prices distinct without over-expanding an already wide range."
+---
+
+<Note>
+  **Live example:**
+  [`app/demo/minimum-range.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/minimum-range.tsx)
+  in the example app under **Styling & theming → Minimum Y range**.
+</Note>
+
+<Frame caption="Rounded prices, minimum spans, hard bounds, and static manual zoom">
+  <video autoPlay loop muted playsInline controls poster="/media/minimum-range.jpg" src="/media/minimum-range.mp4" />
+</Frame>
+
+`minRange` sets a minimum auto-fitted Y span in **data units**, shared by
+`LiveChart` and `LiveChartSeries`. For a market moving just $0.30, whole-dollar
+labels can all round to the same price. A floor of four display steps gives
+those labels room:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  minRange={priceIncrement * 4}
+  formatValue={formatPrice}
+/>
+```
+
+The normal data fit and its margin run first. If the visible span after bounds
+would be smaller than `minRange`, the fit widens around its midpoint, then
+shifts off `nonNegative`'s zero floor or `maxValue`'s ceiling. A fit that is
+already wide enough stays unchanged. Omit the prop for the existing auto-fit.
+
+Use a positive, finite number. Zero, negative, and non-finite values are ignored;
+a requested floor that would overflow the numeric bounds is ignored too. When
+both hard bounds leave less room than the floor, the available span wins. For
+example, `nonNegative maxValue={1} minRange={4}` fits within `0…1`.
+
+Manual [`yRangeScale`](/guides/y-range-scale) applies **after** the fitted floor:
+`minRange={4}` at `0.5×` gives a two-unit span. The floor controls auto-fit and
+does not restrict deliberate manual zooming. Ordinary range easing still
+applies; a static single-series chart re-settles when the floor changes.
+Changing its manual zoom or zero-bound flag also re-settles without replacing data.
+
+In the demo:
+
+- Compare **Auto-fit** and **4 units** on **Near-flat** data. The line is the
+  same; the whole-dollar labels stop repeating. The **Y span** readout reports
+  the real bounds from the chart's UI-thread scale.
+- Choose **Wide**: a four-unit floor leaves the wider data fit unchanged.
+- Choose **Zero** or **Ceiling**, then **0.3 units**: the span remains `0.300`,
+  even though the ordinary fit's margin crosses the hard bound.
+- Choose **Both**, then **4 units**: the hard `0…1` domain wins.
+- Switch between **Line**, **Candles**, and **Series** to compare both engines.
+- In **Options**, enable **Static chart** for line/candle mode. Change the
+  minimum in **Compare** to verify re-settling without replacing data. Also
+  compare **Zoom 0.5×**, **1×**, and **2×**.
+
+The history and clock are fixed for repeatable comparisons. Choose the floor
+for your data precision; it does not change tick formatting or enforce a
+specific number of grid labels. See [Axes & grid](/guides/axes-and-grid) for
+tick spacing and formatting.

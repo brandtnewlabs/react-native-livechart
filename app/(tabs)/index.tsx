@@ -189,6 +189,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "Hide X/Y, minGap, insets; LiveChart vs LiveChartSeries.",
       },
       {
+        href: "/demo/minimum-range" as Href,
+        title: "Minimum Y range",
+        blurb: "Keep rounded prices distinct on near-flat data; compare minimum spans, bounds, and chart types.",
+      },
+      {
         href: "/demo/extrema-labels",
         title: "Extrema labels",
         blurb: 'topLabel / bottomLabel at the actual high / low point (position="extrema").',

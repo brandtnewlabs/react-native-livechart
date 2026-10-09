@@ -88,6 +88,8 @@ export interface EngineTickInput {
   nonNegative?: boolean;
   /** Hard cap for the computed upper bound. */
   maxValue?: number;
+  /** Smallest fitted span, in data units; widened around the data. */
+  minRange?: number;
   /** Positive, finite Y-range multiplier around the fitted midpoint (1 = auto-fit). */
   yRangeScale?: number;
   targetValue: number;
@@ -448,6 +450,41 @@ export function tickLiveChartEngineFrame(
       const margin = rawRange * marginFactor;
       tMin -= margin;
       tMax += margin;
+    }
+
+    const floorRange = input.minRange;
+    // Compare the bounded fit: a clamp can shrink an otherwise wider range.
+    // Slide a widened fit off either bound; both hard bounds win if the floor
+    // cannot fit between them. Resolve this before the optional manual zoom.
+    if (floorRange !== undefined && floorRange > 0 && Number.isFinite(floorRange)) {
+      const boundedMin = input.nonNegative && tMin < 0 ? 0 : tMin;
+      const boundedMax =
+        input.maxValue !== undefined && tMax > input.maxValue ? input.maxValue : tMax;
+      if (floorRange > boundedMax - boundedMin) {
+        // Halve before adding so large finite prices cannot overflow the midpoint.
+        const mid = tMin / 2 + tMax / 2;
+        let nextMin = mid - floorRange / 2;
+        let nextMax = mid + floorRange / 2;
+        if (input.nonNegative && nextMin < 0) {
+          nextMax -= nextMin;
+          nextMin = 0;
+        }
+        if (input.maxValue !== undefined && nextMax > input.maxValue) {
+          nextMin -= nextMax - input.maxValue;
+          nextMax = input.maxValue;
+        }
+        if (input.nonNegative && nextMin < 0) nextMin = 0;
+        // Ignore a floor that would overflow or round the bounds onto each other.
+        if (
+          Number.isFinite(nextMin) &&
+          Number.isFinite(nextMax) &&
+          nextMin < nextMax &&
+          Number.isFinite(nextMax - nextMin)
+        ) {
+          tMin = nextMin;
+          tMax = nextMax;
+        }
+      }
     }
 
     // Treat malformed gesture output as auto-fit. A zero/negative multiplier

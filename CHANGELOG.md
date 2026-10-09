@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `minRange` on `LiveChart` and `LiveChartSeries`: the smallest Y span the
+  auto-fit shows, in data units. Near-flat data widens to it around its
+  midpoint instead of zooming in until every grid label reads the same, e.g.
+  `minRange={priceIncrement * 4}`. On a `nonNegative` chart or under
+  `maxValue` the span slides off the bound rather than shrinking, even when the
+  ordinary fit's margin is clipped. If both hard bounds leave less room than
+  the floor, they win; manual zoom applies afterward. Invalid or overflowing
+  floors are ignored. Omitted, the fit is unchanged.
+- A Minimum Y range demo and matching guide with rounded-label comparisons,
+  zero/ceiling bounds, line/candle/series modes, static updates, manual zoom,
+  and a simulator walkthrough.
 - `onScrubCandleChange` on `LiveChart` (candle mode): called when the scrub
   crosshair enters or revisits a candle, with an OHLC snapshot on the JS thread.
   Sends `null` when the scrub ends, enters a gap, or leaves candle mode.
@@ -42,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Static single-series charts now re-settle when `yRangeScale` or `nonNegative`
+  changes without replacing data, so a manual zoom also updates a floored fit.
 - The right gutter for y-axis labels and the value badge now re-measures once
   the first real value arrives, instead of staying sized for a `0` placeholder
   and clipping labels like `$87,000`. `LiveChart` and `LiveChartSeries` skip

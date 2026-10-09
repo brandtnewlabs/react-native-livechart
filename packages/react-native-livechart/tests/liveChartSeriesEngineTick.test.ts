@@ -1072,4 +1072,113 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       });
     });
   });
+
+  describe("minRange", () => {
+    const flatSeries = (value: number) => [
+      {
+        id: "a",
+        data: [
+          { time: 980, value },
+          { time: 1000, value },
+        ],
+        value,
+        color: "#00f",
+      },
+    ];
+    const rangeInput = (
+      over: Partial<Parameters<typeof tickLiveChartSeriesEngineFrame>[1]> = {},
+    ) => ({
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 30,
+      smoothing: 0.3,
+      exaggerate: false,
+      referenceValue: undefined,
+      snap: true,
+      series: flatSeries(50),
+      nowSeconds: 1000,
+      ...over,
+    });
+
+    it("widens a flat shared fit to the floor, centred on the data", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, rangeInput({ minRange: 4 }));
+      expect(s.displayMin).toBeCloseTo(48);
+      expect(s.displayMax).toBeCloseTo(52);
+    });
+
+    it.each([0.1, Infinity])("leaves the fit alone for a minRange of %p", (minRange) => {
+      const auto = baseMulti();
+      tickLiveChartSeriesEngineFrame(auto, rangeInput());
+      const floored = baseMulti();
+      tickLiveChartSeriesEngineFrame(floored, rangeInput({ minRange }));
+      expect(floored.displayMin).toBe(auto.displayMin);
+      expect(floored.displayMax).toBe(auto.displayMax);
+    });
+
+    it.each([
+      { value: 0, nonNegative: true, maxValue: undefined, min: 0, max: 0.3 },
+      { value: 1, nonNegative: false, maxValue: 1, min: 0.7, max: 1 },
+    ])("keeps the floor when a bound clips an otherwise wider fit: %p", (bounds) => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, rangeInput({
+        minRange: 0.3, series: flatSeries(bounds.value),
+        nonNegative: bounds.nonNegative, maxValue: bounds.maxValue,
+      }));
+      expect(s.displayMin).toBeCloseTo(bounds.min);
+      expect(s.displayMax).toBeCloseTo(bounds.max);
+    });
+
+    it("lets hard bounds win over an impossible floor, then applies manual zoom", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, rangeInput({
+        minRange: 2, nonNegative: true, maxValue: 1, yRangeScale: 0.5,
+        series: flatSeries(0.5),
+      }));
+      expect(s.displayMin).toBeCloseTo(0.25);
+      expect(s.displayMax).toBeCloseTo(0.75);
+    });
+
+    it("keeps a finite midpoint for large finite prices", () => {
+      const s = baseMulti();
+      tickLiveChartSeriesEngineFrame(s, rangeInput({
+        minRange: 4e307,
+        series: [{ id: "a", color: "#00f", value: 1e308,
+          data: [{ time: 990, value: 9e307 }, { time: 1000, value: 1e308 }] }],
+      }));
+      expect(Number.isFinite(s.displayMin)).toBe(true);
+      expect(Number.isFinite(s.displayMax)).toBe(true);
+      expect((s.displayMax - s.displayMin) / 4e307).toBeCloseTo(1);
+    });
+
+    it("ignores a finite floor whose widened bounds would overflow", () => {
+      const series = [{ id: "a", color: "#00f", value: 1e308,
+        data: [{ time: 990, value: 9e307 }, { time: 1000, value: 1e308 }] }];
+      const auto = baseMulti();
+      const floored = baseMulti();
+      tickLiveChartSeriesEngineFrame(auto, rangeInput({ series }));
+      tickLiveChartSeriesEngineFrame(floored, rangeInput({ series, minRange: Number.MAX_VALUE }));
+      expect(floored.displayMin).toBe(auto.displayMin);
+      expect(floored.displayMax).toBe(auto.displayMax);
+    });
+
+    it("slides the span off the zero floor and under maxValue", () => {
+      const low = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        low,
+        rangeInput({ minRange: 10, nonNegative: true, series: flatSeries(1) }),
+      );
+      expect(low.displayMin).toBe(0);
+      expect(low.displayMax).toBeCloseTo(10);
+
+      const high = baseMulti();
+      tickLiveChartSeriesEngineFrame(
+        high,
+        rangeInput({ minRange: 10, nonNegative: true, maxValue: 100, series: flatSeries(99) }),
+      );
+      expect(high.displayMax).toBe(100);
+      expect(high.displayMin).toBeCloseTo(90);
+    });
+  });
 });

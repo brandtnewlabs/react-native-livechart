@@ -77,6 +77,7 @@ export interface EngineConfig {
   thresholdRangeExtendToNow?: boolean;
   nonNegative?: boolean;
   maxValue?: number;
+  minRange?: number;
   /** Positive, finite live Y-range multiplier (1 = auto-fit); read each frame. */
   yRangeScale?: SharedValue<number>;
   nowOverride?: number;
@@ -257,6 +258,7 @@ export interface EngineFrameRefs {
   thresholdRangeExtendToNow?: SharedValue<boolean>;
   nonNegativeSV?: SharedValue<boolean>;
   maxValueSV?: SharedValue<number | undefined>;
+  minRangeSV?: SharedValue<number | undefined>;
   yRangeScaleSV?: SharedValue<number>;
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
@@ -402,6 +404,7 @@ export function applyLiveChartEngineFrame(
   input.thresholdRangeExtendToNow = sv.thresholdRangeExtendToNow?.value ?? true;
   input.nonNegative = sv.nonNegativeSV?.value ?? false;
   input.maxValue = sv.maxValueSV?.value;
+  input.minRange = sv.minRangeSV?.value;
   input.yRangeScale = sv.yRangeScaleSV?.value ?? 1;
   input.nowOverride = sv.nowOverrideSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
@@ -473,6 +476,7 @@ export function useLiveChartEngine(
     thresholdRangeExtendToStart: configuredThresholdRangeExtendToStart,
     nonNegative,
     maxValue,
+    minRange,
     yRangeScale,
     nowOverride,
     windowBuffer,
@@ -553,6 +557,7 @@ export function useLiveChartEngine(
   );
   const nonNegativeSV = useDerivedValue(() => nonNegative ?? false);
   const maxValueSV = useDerivedValue(() => maxValue);
+  const minRangeSV = useDerivedValue(() => minRange);
   const nowOverrideSV = useDerivedValue(() => nowOverride);
   const windowBufferSV = useDerivedValue(() => windowBuffer ?? 0);
   const pausedSV = useDerivedValue(() => paused ?? false);
@@ -670,6 +675,7 @@ export function useLiveChartEngine(
       thresholdRangeExtendToNow,
       nonNegativeSV,
       maxValueSV,
+      minRangeSV,
       yRangeScaleSV: yRangeScale,
       nowOverrideSV,
       windowBufferSV,
@@ -720,6 +726,7 @@ export function useLiveChartEngine(
       liveCandle,
       liveEdge,
       maxValueSV,
+      minRangeSV,
       modeSV,
       nonNegativeSV,
       nowOverrideSV,
@@ -791,14 +798,14 @@ export function useLiveChartEngine(
       canvasHeight.get(), timeWindow.get(), smoothing.get(), rangeAnimationSV.get(), adaptiveSpeedBoostSV.get(),
       exaggerateSV.get(), referenceValue.get(), referenceValues.get(), thresholdRangePoints.get(),
       thresholdRangeExtendToStart.get(), thresholdRangeExtendToNow.get(), nonNegativeSV.get(),
-      maxValueSV.get(), yRangeScale?.get(), nowOverrideSV.get(), windowBufferSV.get(), pausedSV.get(),
+      maxValueSV.get(), minRangeSV.get(), yRangeScale?.get(), nowOverrideSV.get(), windowBufferSV.get(), pausedSV.get(),
       viewEnd.get(), viewWindow.get(), allowFutureViewEndSV.get(), returnT.get(), returnFrom.get(),
       snapSV.get(), modeSV.get(), candleGapsSV.get(), candleGapBridgeNoTradesSV.get(),
       candleGapBridgeUnavailableSV.get(), candleGapBridgeUnknownSV.get(), isFrameLoopActive?.get(),
       keepAwake?.get(), wakeSignal?.get()];
   }, [pointHistory, candleHistory, data, value, candles, liveCandle, canvasWidth, canvasHeight, timeWindow, smoothing, rangeAnimationSV,
     adaptiveSpeedBoostSV, exaggerateSV, referenceValue, referenceValues, thresholdRangePoints,
-    thresholdRangeExtendToStart, thresholdRangeExtendToNow, nonNegativeSV, maxValueSV, yRangeScale,
+    thresholdRangeExtendToStart, thresholdRangeExtendToNow, nonNegativeSV, maxValueSV, minRangeSV, yRangeScale,
     nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, allowFutureViewEndSV, returnT,
     returnFrom, snapSV, modeSV, candleGapsSV, candleGapBridgeNoTradesSV, candleGapBridgeUnavailableSV,
     candleGapBridgeUnknownSV, isFrameLoopActive, keepAwake, wakeSignal]);
@@ -878,6 +885,9 @@ export function useLiveChartEngine(
           // those bounds change too, rather than retaining the previous scale
           // until another data/layout update (static charts have no frame loop).
           maxValueSV.get(),
+          minRangeSV.get(),
+          nonNegativeSV.get(),
+          yRangeScale?.get(),
           referenceValue.get(),
           ...(referenceValues.get() ?? []),
         ].join(","),
