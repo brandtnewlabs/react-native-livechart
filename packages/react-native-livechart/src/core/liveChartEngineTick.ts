@@ -150,6 +150,8 @@ export interface EngineTickInput {
    * overrides its width. `displayWindow` eases toward this when set.
    */
   viewWindow?: number | null;
+  /** Ease a non-null viewWindow override. False adopts a leader's drawn width exactly. Default true. */
+  viewWindowSmoothing?: boolean;
   /** Chart mode — `"candle"` uses OHLC bars for Y range instead of line points. */
   mode?: "line" | "candle";
   /** Committed OHLC bars (sorted by time). Used when mode is `"candle"`. */
@@ -312,7 +314,8 @@ export function tickLiveChartEngineFrame(
 
   // Pinch-zoom: ease toward the zoom override when set, else the configured
   // window. Mirrors the viewEnd freeze above (width vs. right edge).
-  state.displayWindow = snap
+  state.displayWindow = snap ||
+    (input.viewWindow != null && input.viewWindowSmoothing === false)
     ? targetWindow
     : lerpAndSettle(
         state.displayWindow,

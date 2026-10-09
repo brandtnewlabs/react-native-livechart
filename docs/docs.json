@@ -61,6 +61,7 @@
               "guides/scroll-interaction",
               "guides/order-ticket",
               "guides/time-scroll",
+              "guides/synced-charts",
               "guides/y-range-scale",
               "guides/axis-auto-hide"
             ]

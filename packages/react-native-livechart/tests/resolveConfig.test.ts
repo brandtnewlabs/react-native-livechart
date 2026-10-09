@@ -30,6 +30,7 @@ import {
   resolveTradeStream,
   resolveValueLine,
   resolveVolume,
+  resolveViewport,
   resolveXAxis,
   resolveXAxisGridStyle,
   resolveYAxis,
@@ -46,6 +47,35 @@ import {
   RETURN_TO_LIVE_MS,
 } from "../src/constants";
 import { leftEdgeFadeColorsFromBgRgb } from "../src/theme";
+import type { SharedValue } from "react-native-reanimated";
+
+describe("resolveViewport", () => {
+  it("uses private state for omitted or explicitly disabled viewports", () => {
+    expect(resolveViewport(undefined)).toBeNull();
+    expect(resolveViewport(false)).toBeNull();
+  });
+
+  it("defaults behavior without reading, cloning, or mutating the shared values", () => {
+    const end = {
+      get value(): number | null { throw new Error("render-time read"); },
+    } as SharedValue<number | null>;
+    const window = {
+      get value(): number | null { throw new Error("render-time read"); },
+    } as SharedValue<number | null>;
+    const config = { end, window };
+    const resolved = resolveViewport(config);
+    expect(resolved?.end).toBe(end);
+    expect(resolved?.window).toBe(window);
+    expect(resolved?.windowSmoothing).toBe(true);
+    expect(config).not.toHaveProperty("windowSmoothing");
+  });
+
+  it.each([true, false])("honors an explicit windowSmoothing=%s", (windowSmoothing) => {
+    const end = { value: null } as SharedValue<number | null>;
+    const window = { value: null } as SharedValue<number | null>;
+    expect(resolveViewport({ end, window, windowSmoothing })?.windowSmoothing).toBe(windowSmoothing);
+  });
+});
 
 // ─── resolveValueLine ─────────────────────────────────────────────────────────
 

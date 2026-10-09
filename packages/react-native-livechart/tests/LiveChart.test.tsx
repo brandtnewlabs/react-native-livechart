@@ -176,6 +176,35 @@ async function layoutFirst(screen: Awaited<ReturnType<typeof render>>) {
 }
 
 describe("LiveChart", () => {
+  it("resolves an explicitly disabled viewport to private engine state", async () => {
+    const spy = jest.spyOn(engineHooks, "useLiveChartEngine");
+    await render(<Harness viewport={false} />);
+    const config = spy.mock.calls.at(-1)![0];
+    const engine = spy.mock.results.at(-1)!.value;
+    expect(config.viewport).toBeNull();
+    expect(engine.viewEnd.get()).toBeNull();
+    expect(engine.viewWindow.get()).toBeNull();
+    spy.mockRestore();
+  });
+
+  it("passes a supplied viewport to the engine without replacing its shared values", async () => {
+    const spy = jest.spyOn(engineHooks, "useLiveChartEngine");
+    function ViewportHarness() {
+      const end = useSharedValue<number | null>(1700000010);
+      const window = useSharedValue<number | null>(20);
+      return <Harness viewport={{ end, window, windowSmoothing: false }} timeScroll={false} />;
+    }
+    await render(<ViewportHarness />);
+    const config = spy.mock.calls.at(-1)![0];
+    const engine = spy.mock.results.at(-1)!.value;
+    expect(config.viewport?.windowSmoothing).toBe(false);
+    expect(engine.viewEnd).toBe(config.viewport?.end);
+    expect(engine.viewWindow).toBe(config.viewport?.window);
+    expect(engine.viewEnd.get()).toBe(1700000010);
+    expect(engine.viewWindow.get()).toBe(20);
+    spy.mockRestore();
+  });
+
   it("exposes an imperative pinch-zoom reset", async () => {
     const ref = React.createRef<LiveChartHandle>();
     function RefHarness() {

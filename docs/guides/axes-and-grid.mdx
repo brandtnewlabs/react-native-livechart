@@ -68,8 +68,9 @@ horizontal grid, and fade in and out with their labels at the plot edges.
 only the fields it sets; the rest still come from `gridStyle`. The lines follow
 the label spacing (`xAxis.minGap`), run down through a candle chart's volume
 band to the axis line, and hide with the axis (`xAxis={false}`) and under
-`axisAutoHide`. They are off by default, on both `LiveChart` and
-`LiveChartSeries`.
+`LiveChart`'s `axisAutoHide`. They are off by default, on both `LiveChart` and
+`LiveChartSeries`. Strokes are clipped to the plot width, so a fading tick cannot
+draw a grid line into the reserved Y-axis gutters.
 
 ## Left-side Y-axis labels
 

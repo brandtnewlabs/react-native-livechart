@@ -9,6 +9,7 @@ import type {
   CandleGapKind,
   CandleGapLabelStyle,
   CandleGapsConfig,
+  ChartViewportControl,
   DegenOptions,
   FontConfig,
   FontWeight,
@@ -42,6 +43,7 @@ import type {
   TradeEvent,
   TransitionConfig,
   ValueLineConfig,
+  ViewportConfig,
   VolumeConfig,
   XAxisConfig,
   YAxisConfig,
@@ -728,6 +730,31 @@ export function resolveCandleGaps(
       unavailable: resolveStyle("unavailable"),
       unknown: resolveStyle("unknown"),
     },
+  };
+}
+
+export interface ResolvedViewportConfig extends ChartViewportControl {
+  /** Fully resolved render-time option; shared values are kept by reference. */
+  windowSmoothing: boolean;
+}
+
+const VIEWPORT_DEFAULTS: Pick<ResolvedViewportConfig, "windowSmoothing"> = {
+  windowSmoothing: true,
+};
+
+/**
+ * Resolves the external viewport prop at render time: false/omitted → private
+ * state; an object → required shared values plus defaulted behavior options.
+ * Never reads or clones the shared values; they remain UI-thread inputs.
+ */
+export function resolveViewport(
+  prop: false | ViewportConfig | undefined,
+): ResolvedViewportConfig | null {
+  if (prop === undefined || prop === false) return null;
+  return {
+    end: prop.end,
+    window: prop.window,
+    windowSmoothing: prop.windowSmoothing ?? VIEWPORT_DEFAULTS.windowSmoothing,
   };
 }
 

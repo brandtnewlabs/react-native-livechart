@@ -127,22 +127,35 @@ export function XAxisGridLines({
   volumeBandHeight?: number;
 }) {
   const segmentBuilder = usePathBuilder();
+  // Capturing the whole engine subscribes this immutable segment to its live
+  // clock/range too. Only layout changes should allocate a new segment path.
+  const { canvasWidth, canvasHeight } = engine;
+  const { left, right, top, bottom } = padding;
 
   // One vertical segment, from the plot top down to the axis line, shared by
   // the whole pool: each line only translates it to its tick.
   const segment = useDerivedValue(() => {
     "worklet";
     const b = segmentBuilder.value;
-    b.moveTo(0, padding.top);
+    b.moveTo(0, top);
     b.lineTo(
       0,
-      engine.canvasHeight.get() - padding.bottom + volumeBandHeight,
+      canvasHeight.get() - bottom + volumeBandHeight,
     );
     return b.detach();
   });
 
+  // Fading ticks can remain just outside the plot. Keep their strokes out of
+  // the axis gutters while retaining the full candle volume-band height.
+  const clip = useDerivedValue(() => ({
+    x: left,
+    y: top,
+    width: Math.max(0, canvasWidth.get() - left - right),
+    height: Math.max(0, canvasHeight.get() - bottom + volumeBandHeight - top),
+  }));
+
   return (
-    <Group opacity={gridStyle.opacity}>
+    <Group opacity={gridStyle.opacity} clip={clip}>
       {Array.from({ length: MAX_X_LABELS }, (_, i) => (
         <XAxisGridLine
           key={i}

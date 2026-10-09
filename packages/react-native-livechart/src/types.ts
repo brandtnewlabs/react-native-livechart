@@ -434,7 +434,7 @@ export interface ChartSegment {
   labelPosition?: "left" | "right";
 }
 
-/** Per-instance grid-line styling for the horizontal value-axis grid. */
+/** Grid-line styling for the horizontal value axis and optional xAxis.gridLines. */
 export interface GridStyleConfig {
   /** Stroke color. Defaults to palette `gridLine`. */
   color?: string;
@@ -890,7 +890,8 @@ export interface XAxisConfig {
    * same layer as the horizontal grid. Each line sits under a time label and
    * fades with it. `true` = the {@link LiveChartCoreProps.gridStyle} look, or
    * pass a `GridStyleConfig` to override fields of it (omitted fields fall back
-   * to `gridStyle`). Default `false`.
+   * to `gridStyle`). Strokes stay inside the plot's horizontal bounds, including
+   * while a departing label fades into a gutter. Default `false`.
    */
   gridLines?: boolean | GridStyleConfig;
 }
@@ -2204,6 +2205,7 @@ export interface LiveChartHandle {
   /**
    * Reset built-in pinch/time-window zoom to the configured `timeWindow` and
    * clear the focal-point offset so the chart follows the live edge again.
+   * On LiveChart with viewport, clears the supplied end/window shared values.
    * Safe to call when already reset. A paused chart remains paused.
    *
    * ```tsx
@@ -2594,6 +2596,7 @@ export interface LiveChartCoreProps {
    * no longer passed — **glides** the window back to the live edge (a brief eased
    * animation, not an instant jump); it never stays frozen at the previous scroll
    * position. Tune or disable that glide with {@link returnToLive}.
+   * On LiveChart with viewport, disabling gestures preserves the supplied state.
    *
    * `true` uses the default drag-to-scroll gesture (`"holdToScrub"`); pass a
    * {@link TimeScrollConfig} to pick the activation (`"holdToScrub"` or
@@ -2677,8 +2680,42 @@ export interface LiveChartCoreProps {
   line?: LineConfig;
 }
 
+/**
+ * UI-thread scroll/zoom state adopted by a single-series {@link LiveChart}.
+ * The app owns leadership and timestamp mapping; gestures write these same values.
+ * @experimental
+ */
+export interface ChartViewportControl {
+  /** Right-edge unix timestamp in seconds; null follows this chart's live edge.
+   * Honors times past live. An end before the first retained point falls back to live. */
+  end: SharedValue<number | null>;
+  /** Positive, finite visible width in seconds; null uses the timeWindow prop. */
+  window: SharedValue<number | null>;
+}
+
+/** External viewport state and optional behavior settings for {@link LiveChart}.
+ * Pass an object to adopt its shared values; false/omitted uses private state.
+ * @experimental
+ */
+export interface ViewportConfig extends ChartViewportControl {
+  /** Ease non-null window overrides using the chart's smoothing. Default true.
+   * Set false on followers copying a leader's drawn width to avoid easing twice.
+   * Null windows still ease back to timeWindow; Y-range/value smoothing is unchanged. */
+  windowSmoothing?: boolean;
+}
+
 /** Props for the single-series `LiveChart` component. */
 export interface LiveChartProps extends LiveChartCoreProps {
+  /**
+   * Adopt external UI-thread scroll/zoom state. Pan and pinch write the supplied
+   * values; resetZoom() clears both. Non-null overrides survive timeWindow changes
+   * and timeScroll being disabled. External writes work without enabling gestures
+   * and wake autoSleep charts. Single-series line/candle only.
+   * Pass a ViewportConfig object to enable; false/omitted uses private state.
+   * Both shared values are required, so this prop has no true shorthand.
+   * @experimental
+   */
+  viewport?: false | ViewportConfig;
   /** Area gradient fill under the line. `true` = defaults, or pass `GradientConfig`. Default `true`. */
   gradient?: boolean | GradientConfig;
   /**

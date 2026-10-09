@@ -1374,7 +1374,10 @@ describe("XAxisGridLines", () => {
     opacity: 0.5,
   };
 
-  function Fixture({ style = gridStyle }: { style?: typeof gridStyle }) {
+  function Fixture({ style = gridStyle, padding = DEFAULT_PADDING }: {
+    style?: typeof gridStyle;
+    padding?: typeof DEFAULT_PADDING;
+  }) {
     const entries = useSharedValue([
       { x: 50, label: "12:00", alpha: 1 },
       { x: 120, label: "12:01", alpha: 0.4 },
@@ -1383,7 +1386,7 @@ describe("XAxisGridLines", () => {
       <XAxisGridLines
         entries={entries}
         engine={engine()}
-        padding={DEFAULT_PADDING}
+        padding={padding}
         palette={palette}
         gridStyle={style}
         volumeBandHeight={20}
@@ -1415,6 +1418,29 @@ describe("XAxisGridLines", () => {
     expect(lines.map((v) => v.props.opacity.value)).toEqual([
       1, 0.4, 0, 0, 0, 0, 0, 0, 0, 0,
     ]);
+  });
+
+  it("clips fading strokes to the plot width without cutting off the volume band", async () => {
+    const padding = { left: 64, right: 90, top: 8, bottom: 30 };
+    const screen = await render(<Fixture padding={padding} />);
+    const clip = getAllByHostType(screen, View).find(
+      (view) => view.props.clip != null,
+    )?.props.clip;
+    expect(clip.value).toEqual({ x: 64, y: 8, width: 246, height: 282 });
+    // The tick at x=50 is still fading, but its stroke is outside this clip.
+    const lines = getAllByHostType(screen, View).filter(
+      (view) => view.props.transform != null,
+    );
+    expect(lines[0].props.transform.value[0].translateX).toBe(50);
+    expect(lines[0].props.opacity.value).toBe(1);
+  });
+
+  it("keeps the clip valid while layout is smaller than its insets", async () => {
+    const screen = await render(<Fixture padding={{ left: 64, right: 400, top: 8, bottom: 400 }} />);
+    const clip = getAllByHostType(screen, View).find(
+      (view) => view.props.clip != null,
+    )?.props.clip;
+    expect(clip.value).toEqual({ x: 64, y: 8, width: 0, height: 0 });
   });
 
   it("strokes with the grid style, falling back to the palette color", async () => {

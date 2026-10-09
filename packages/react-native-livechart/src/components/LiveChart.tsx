@@ -68,6 +68,7 @@ import {
   resolveTradeStream,
   resolveValueLine,
   resolveVolume,
+  resolveViewport,
   resolveZoom,
   resolveXAxis,
   resolveXAxisGridStyle,
@@ -546,6 +547,7 @@ function resolveLiveChartPresentationConfig({
   refGroupBadge,
   pulseCfg,
   timeScroll,
+  viewport,
   isStatic,
   returnToLive,
   zoom,
@@ -561,6 +563,7 @@ function resolveLiveChartPresentationConfig({
   refGroupBadge: ReturnType<typeof resolveReferenceGroupBadge>;
   pulseCfg: ReturnType<typeof resolvePulse>;
   timeScroll: LiveChartProps["timeScroll"];
+  viewport: LiveChartProps["viewport"];
   isStatic: boolean;
   returnToLive: LiveChartProps["returnToLive"];
   zoom: LiveChartProps["zoom"];
@@ -621,6 +624,7 @@ function resolveLiveChartPresentationConfig({
         }
       : null,
     timeScrollEnabled,
+    viewportCfg: resolveViewport(viewport),
     returnToLiveMs: resolveReturnToLiveMs(returnToLive),
     timeScrollOverscroll: timeScrollEnabled ? resolveOverscroll(timeScroll) : 0,
     timeScrollFling: resolveFling(timeScroll),
@@ -1431,6 +1435,7 @@ function useLiveChartController({
   windowBuffer = 0,
   nowOverride,
   timeScroll = false,
+  viewport,
   returnToLive,
   zoom = false,
   accessibilityLabel,
@@ -1605,6 +1610,7 @@ function useLiveChartController({
     refGroupBadgeFontConfig,
     pulseConfig,
     timeScrollEnabled,
+    viewportCfg,
     returnToLiveMs,
     timeScrollOverscroll,
     timeScrollFling,
@@ -1622,6 +1628,7 @@ function useLiveChartController({
     refGroupBadge,
     pulseCfg,
     timeScroll,
+    viewport,
     isStatic,
     returnToLive,
     zoom,
@@ -1735,6 +1742,7 @@ function useLiveChartController({
     wakeSignal: idleWakeSignal,
     snapKey,
     scrollEnabled: timeScrollEnabled,
+    viewport: viewportCfg,
     allowFutureViewEnd: timeScrollOverscroll > 0,
     returnToLiveMs,
     smoothing,
@@ -2065,6 +2073,7 @@ function useLiveChartController({
     padding: effectivePadding,
     minTime: scrollMinTime,
     enabled: timeScrollEnabled,
+    clampOnOverscrollChange: viewportCfg === null,
     mode: scrollGestureMode,
     overscroll: timeScrollOverscroll,
     fling: timeScrollFling,

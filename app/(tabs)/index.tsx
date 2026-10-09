@@ -108,6 +108,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "timeScroll: one-finger drag to pan back through candle history; release at the live edge to resume.",
       },
       {
+        href: "/demo/synced-charts" as Href,
+        title: "Synced charts",
+        blurb: "One instrument on two candle timeframes: shared viewports, leader handoff, and automatic sleep.",
+      },
+      {
         href: "/demo/y-range-scale" as Href,
         title: "Y-range scale",
         blurb: "yRangeScale: drag the price gutter to stretch or compress the fitted Y-axis range.",
