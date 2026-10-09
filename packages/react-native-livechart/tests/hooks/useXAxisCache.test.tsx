@@ -8,25 +8,29 @@ import { withSharedValueAccessors } from "../support/sharedValueMock";
 type LabelCache = Record<number, { alpha: number; text: string }>;
 
 // Jest runs a derived value once, so hand the test the axis mapper to run as
-// often as a display link would, and count writes to the hook's one shared
-// value: its label cache.
+// often as a display link would, and count writes to its label cache.
 const mockCache = { value: {} as LabelCache, writes: 0 };
 jest.mock("react-native-reanimated", () => {
   const React = jest.requireActual("react") as typeof import("react");
   const actual = jest.requireActual("react-native-reanimated");
   return {
     ...actual,
-    useSharedValue: (initial: LabelCache) => {
+    useSharedValue: (initial: LabelCache | number) => {
       const ref = React.useRef<unknown>(null);
       if (ref.current === null) {
-        mockCache.value = initial;
-        ref.current = {
-          get: () => mockCache.value,
-          set: (next: LabelCache) => {
-            mockCache.writes++;
-            mockCache.value = next;
-          },
-        };
+        if (typeof initial === "number") {
+          let value = initial;
+          ref.current = { get: () => value, set: (next: number) => { value = next; } };
+        } else {
+          mockCache.value = initial;
+          ref.current = {
+            get: () => mockCache.value,
+            set: (next: LabelCache) => {
+              mockCache.writes++;
+              mockCache.value = next;
+            },
+          };
+        }
       }
       return ref.current;
     },
@@ -70,6 +74,34 @@ beforeEach(() => {
 });
 
 describe("useXAxis label cache", () => {
+  it("replaces the tick set in one mapper run when minGap changes with a frozen engine", async () => {
+    const engine = makeEngine(120);
+    const formatTime = () => "·";
+    const { result, rerender } = await renderHook(
+      ({ gap }: { gap: number }) => useXAxis(engine, DEFAULT_PADDING, formatTime, font, gap),
+      { initialProps: { gap: 30 } },
+    );
+    for (let frame = 0; frame < 80; frame++) result.current.xAxisEntries.get();
+    const dense = result.current.xAxisEntries.get();
+    expect(dense.length).toBeGreaterThan(2);
+
+    // A paused engine provides no more frames: the new mapper runs only once.
+    await rerender({ gap: 120 });
+    const wide = result.current.xAxisEntries.get();
+    expect(wide.length).toBeGreaterThan(1);
+    expect(wide.length).toBeLessThan(dense.length);
+    for (let i = 1; i < wide.length; i++) {
+      expect(wide[i].x - wide[i - 1].x).toBeGreaterThanOrEqual(120);
+    }
+
+    // Newly added labels also reach their final alpha without another frame.
+    await rerender({ gap: 30 });
+    expect(result.current.xAxisEntries.get()).toEqual(dense);
+    const settledWrites = mockCache.writes;
+    for (let frame = 0; frame < 50; frame++) result.current.xAxisEntries.get();
+    expect(mockCache.writes).toBe(settledWrites);
+  });
+
   // The target key set spans one interval past each edge, so its outermost keys
   // sit outside the plot at alpha 0. They used to be deleted and re-created on
   // alternate runs, so every run rewrote the cache the mapper reads, and an idle
