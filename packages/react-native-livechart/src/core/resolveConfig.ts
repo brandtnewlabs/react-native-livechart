@@ -47,6 +47,7 @@ import type {
   VolumeConfig,
   XAxisConfig,
   YAxisConfig,
+  YAxisScaleGestureConfig,
   ZoomConfig,
 } from "../types";
 import type { ComponentType, ReactElement } from "react";
@@ -97,7 +98,10 @@ export interface ResolvedBadgeConfig {
   followViewEdge: boolean;
 }
 
+export type ResolvedYAxisScaleGestureConfig = Required<YAxisScaleGestureConfig>;
+
 export interface ResolvedYAxisConfig {
+  scaleGesture: ResolvedYAxisScaleGestureConfig | null;
   side: "left" | "right";
   minGap: number;
   /** Multiplier used to choose and align representable dynamic nice intervals. */
@@ -539,7 +543,7 @@ export function resolveBadge(
   return resolveToggle(prop, BADGE_DEFAULTS, false);
 }
 
-const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
+const Y_AXIS_DEFAULTS: Omit<ResolvedYAxisConfig, "scaleGesture"> = {
   side: "right",
   minGap: 36,
   intervalScale: 1,
@@ -548,6 +552,23 @@ const Y_AXIS_DEFAULTS: ResolvedYAxisConfig = {
   gridEndGap: undefined,
   float: false,
 };
+
+/** Normalize the opt-in axis gesture; bounds only constrain gesture writes. */
+export function resolveYAxisScaleGesture(
+  prop: boolean | YAxisScaleGestureConfig | undefined,
+): ResolvedYAxisScaleGestureConfig | null {
+  if (!prop) return null;
+  const config = prop === true ? {} : prop;
+  const positive = (value: number | undefined, fallback: number) =>
+    value !== undefined && Number.isFinite(value) && value > 0 ? value : fallback;
+  const minScale = positive(config.minScale, 0.25);
+  return {
+    minScale,
+    maxScale: Math.max(minScale, positive(config.maxScale, 10)),
+    dragDistance: positive(config.dragDistance, 160),
+    doubleTapReset: config.doubleTapReset ?? true,
+  };
+}
 
 /**
  * Resolves `yAxis` prop to a fully-typed config or null (disabled).
@@ -562,6 +583,9 @@ export function resolveYAxis(
   if (resolved === null) return null;
   return {
     ...resolved,
+    scaleGesture: resolveYAxisScaleGesture(
+      typeof prop === "object" ? prop.scaleGesture : undefined,
+    ),
     count: Math.max(0, Math.floor(resolved.count)),
     intervalScale:
       Number.isFinite(resolved.intervalScale) && resolved.intervalScale > 0

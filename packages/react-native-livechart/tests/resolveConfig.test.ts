@@ -338,6 +338,7 @@ describe("resolveYAxis", () => {
   it("returns defaults for true", () => {
     expect(resolveYAxis(true)).toEqual({
       side: "right",
+      scaleGesture: null,
       minGap: 36,
       intervalScale: 1,
       count: 0,
@@ -350,6 +351,7 @@ describe("resolveYAxis", () => {
   it("merges partial config with defaults", () => {
     expect(resolveYAxis({ minGap: 48 })).toEqual({
       side: "right",
+      scaleGesture: null,
       minGap: 48,
       intervalScale: 1,
       count: 0,
@@ -362,6 +364,7 @@ describe("resolveYAxis", () => {
   it("carries through the float flag", () => {
     expect(resolveYAxis({ float: true })).toEqual({
       side: "right",
+      scaleGesture: null,
       minGap: 36,
       intervalScale: 1,
       count: 0,
@@ -374,6 +377,7 @@ describe("resolveYAxis", () => {
   it("carries through a fixed count", () => {
     expect(resolveYAxis({ count: 5 })).toEqual({
       side: "right",
+      scaleGesture: null,
       minGap: 36,
       intervalScale: 1,
       count: 5,
@@ -386,6 +390,7 @@ describe("resolveYAxis", () => {
   it("carries through right-anchored label spacing", () => {
     expect(resolveYAxis({ labelRightMargin: 8, gridEndGap: 6 })).toEqual({
       side: "right",
+      scaleGesture: null,
       minGap: 36,
       intervalScale: 1,
       count: 0,

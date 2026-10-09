@@ -59,7 +59,17 @@ see [Axes & grid](/guides/axes-and-grid).
   for a hold/release example without a return timer.
 </ParamField>
 
+<ParamField body="yAxis" type="boolean | YAxisConfig" default="true">
+  Inherits the value-axis configuration. Opt into vertical axis dragging with
+  `{ scaleGesture: true }` or customize it with `YAxisScaleGestureConfig`.
+  Touches use the actual left/right gutter and right-anchored price column;
+  the optional `yRangeScale` is shared by all visible series. See
+  [Y-range scaling](/guides/y-range-scale).
+</ParamField>
+
 <ParamField body="yRangeScale" type="SharedValue<number>" default="1">
+  `yAxis.scaleGesture` writes this SharedValue, or uses an internal multiplier
+  when omitted. Disabling the gesture preserves the current multiplier.
   Multiplies the shared fitted Y-range around its midpoint. Drive it from a
   price-gutter gesture to stretch or compress every visible series together;
   hidden series remain excluded from the underlying fit. Values must be positive

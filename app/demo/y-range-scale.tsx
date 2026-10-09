@@ -1,9 +1,5 @@
 import { useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
-import {
-  Gesture,
-  GestureDetector,
-} from "react-native-gesture-handler";
 import Animated, {
   cancelAnimation,
   useAnimatedProps,
@@ -30,21 +26,22 @@ const MODE_OPTIONS: { value: Mode; label: string }[] = [
 
 const ZERO_FLOOR_OPTIONS = [
   { value: false, label: "Off" },
-  { value: true, label: "On (0)" },
+  { value: true, label: "On" },
 ];
 
-const SCALE_MIN = 0.25;
-const SCALE_MAX = 10;
-const SCALE_DRAG_DISTANCE = 160;
 const RESET_DURATION_MS = 240;
 
 export default function YRangeScaleScreen() {
   const [mode, setMode] = useState<Mode>("line");
   const [nonNegative, setNonNegative] = useState(false);
   const yRangeScale = useSharedValue(1);
-  const dragStartScale = useSharedValue(1);
-  const dragStartY = useSharedValue(0);
-  const dragActive = useSharedValue(false);
+  const [axis, setAxis] = useState<"right" | "left" | "float">("right");
+  const [controlled, setControlled] = useState(true);
+  const [scaleGesture, setScaleGesture] = useState(true);
+  const [largeFont, setLargeFont] = useState(false);
+  const [scroll, setScroll] = useState<"off" | "axisDrag" | "holdToScrub">(
+    "axisDrag",
+  );
   const { data, value, candles, liveCandle, series } = useSimulatedChartData({
     multiSeries: true,
     candleAggregation: true,
@@ -60,61 +57,6 @@ export default function YRangeScaleScreen() {
     yRangeScale.set(withTiming(scale, { duration: RESET_DURATION_MS }));
   };
 
-  // Manual activation keeps the narrow gutter deterministic even though the
-  // LiveChart below owns its own gesture graph. A stationary touch fails this
-  // recognizer so the double-tap reset can still win the race.
-  const axisPan = Gesture.Manual()
-    .onTouchesDown((event, manager) => {
-      "worklet";
-      const touch = event.allTouches[0];
-      if (event.numberOfTouches !== 1 || !touch) {
-        manager.fail();
-        return;
-      }
-      cancelAnimation(yRangeScale);
-      dragStartScale.set(yRangeScale.get());
-      dragStartY.set(touch.y);
-      dragActive.set(false);
-      manager.begin();
-    })
-    .onTouchesMove((event, manager) => {
-      "worklet";
-      const touch = event.allTouches[0];
-      if (!touch) return;
-      const translationY = touch.y - dragStartY.get();
-      if (!dragActive.get()) {
-        if (Math.abs(translationY) <= 1) return;
-        dragActive.set(true);
-        manager.activate();
-      }
-      const requested =
-        dragStartScale.get() * Math.exp(translationY / SCALE_DRAG_DISTANCE);
-      yRangeScale.set(Math.max(SCALE_MIN, Math.min(SCALE_MAX, requested)));
-    })
-    .onTouchesUp((_event, manager) => {
-      "worklet";
-      if (dragActive.get()) manager.end();
-      else manager.fail();
-    })
-    .onTouchesCancelled((_event, manager) => {
-      "worklet";
-      manager.fail();
-    });
-
-  const axisDoubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .maxDistance(16)
-    .onEnd((_event, success) => {
-      "worklet";
-      if (success) {
-        cancelAnimation(yRangeScale);
-        yRangeScale.set(withTiming(1, { duration: RESET_DURATION_MS }));
-      }
-    });
-
-  // Movement activates the pan; a stationary two-tap sequence activates reset.
-  // Race prevents the losing recognizer from holding the winning one open.
-  const axisGesture = Gesture.Race(axisPan, axisDoubleTap);
   const isCandle = mode === "candle";
   const isSeries = mode === "series";
   const scaleReadoutProps = useAnimatedProps(() => {
@@ -122,57 +64,45 @@ export default function YRangeScaleScreen() {
     return { text, defaultValue: text };
   });
 
+  const chartProps = {
+    style: styles.chart,
+    accentColor: ACCENT,
+    theme: APP_THEME,
+    timeWindow: 60,
+    yAxis: {
+      side: axis === "left" ? ("left" as const) : ("right" as const),
+      float: axis === "float",
+      scaleGesture,
+    },
+    insets: axis === "left" ? { left: 80 } : undefined,
+    font: { fontSize: largeFont ? 18 : 11 },
+    yRangeScale: controlled ? yRangeScale : undefined,
+    nonNegative,
+    timeScroll: scroll === "off" ? (false as const) : { gesture: scroll },
+    zoom: true,
+  };
+
   return (
     <DemoScreen
       title="Y-range scale"
       docs="guides/y-range-scale"
-      description="Drag the right price-axis gutter vertically to stretch or compress the fitted Y-range for line, candle, and multi-series charts. With the zero floor on, zooming out stops at 0 instead of pinning values to the bottom. Double-tap the gutter to reset."
+      description="Drag the price axis down to fit more range, up to zoom in. Double-tap it to reset. Scrub the plot, drag the time axis to scroll, or pinch to zoom time."
       chart={
         <View style={styles.chart}>
-          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-            {isSeries ? (
-              <LiveChartSeries
-                style={styles.chart}
-                series={series}
-                accentColor={ACCENT}
-                theme={APP_THEME}
-                timeWindow={60}
-                yAxis
-                yRangeScale={yRangeScale}
-                nonNegative={nonNegative}
-                scrub={false}
-                legend={false}
-              />
-            ) : (
-              <LiveChart
-                style={styles.chart}
-                data={data}
-                value={value}
-                mode={mode}
-                candles={isCandle ? candles : undefined}
-                liveCandle={isCandle ? liveCandle : undefined}
-                candleWidth={3}
-                accentColor={ACCENT}
-                theme={APP_THEME}
-                timeWindow={60}
-                yAxis
-                yRangeScale={yRangeScale}
-                nonNegative={nonNegative}
-                scrub={false}
-              />
-            )}
-          </View>
-          <GestureDetector gesture={axisGesture}>
-            <Animated.View
-              accessible
-              collapsable={false}
-              accessibilityRole="adjustable"
-              accessibilityLabel="Price scale: drag vertically, double tap to reset"
-              style={styles.axisGestureTarget}
-            >
-              <Text style={styles.axisHint}>↕</Text>
-            </Animated.View>
-          </GestureDetector>
+          {isSeries ? (
+            <LiveChartSeries {...chartProps} series={series} legend={false} />
+          ) : (
+            <LiveChart
+              {...chartProps}
+              data={data}
+              value={value}
+              mode={mode}
+              candles={isCandle ? candles : undefined}
+              liveCandle={isCandle ? liveCandle : undefined}
+              candleWidth={3}
+              volume={isCandle}
+            />
+          )}
         </View>
       }
     >
@@ -188,6 +118,70 @@ export default function YRangeScaleScreen() {
         value={nonNegative}
         onChange={setNonNegative}
       />
+      <ChipRow
+        label="Price axis"
+        options={[
+          { value: "right" as const, label: "Right" },
+          { value: "left" as const, label: "Left" },
+          { value: "float" as const, label: "Floating" },
+        ]}
+        value={axis}
+        onChange={setAxis}
+      />
+      <ChipRow
+        label="Time scroll"
+        options={[
+          { value: "axisDrag" as const, label: "Time axis" },
+          { value: "holdToScrub" as const, label: "Drag plot" },
+          { value: "off" as const, label: "Off" },
+        ]}
+        value={scroll}
+        onChange={setScroll}
+      />
+      <ChipRow
+        label="Axis scaling gesture"
+        options={ZERO_FLOOR_OPTIONS}
+        value={scaleGesture}
+        onChange={setScaleGesture}
+      />
+      <ChipRow
+        label="Large axis font"
+        options={ZERO_FLOOR_OPTIONS}
+        value={largeFont}
+        onChange={setLargeFont}
+      />
+      <ChipRow
+        label="Multiplier ownership"
+        options={[
+          { value: true, label: "SharedValue" },
+          { value: false, label: "Internal" },
+        ]}
+        value={controlled}
+        onChange={setControlled}
+      />
+      {controlled ? (
+        <ScaleControls
+          animateToScale={animateToScale}
+          scaleReadoutProps={scaleReadoutProps}
+        />
+      ) : (
+        <Text style={styles.hint}>
+          The chart owns its scale. Double-tap the axis to return to auto-fit.
+        </Text>
+      )}
+    </DemoScreen>
+  );
+}
+
+function ScaleControls({
+  animateToScale,
+  scaleReadoutProps,
+}: {
+  animateToScale: (value: number) => void;
+  scaleReadoutProps: Partial<{ text: string; defaultValue: string }>;
+}) {
+  return (
+    <>
       <ControlRow label="Current multiplier">
         <AnimatedTextInput
           editable={false}
@@ -199,11 +193,15 @@ export default function YRangeScaleScreen() {
       </ControlRow>
       <ControlRow label="Scale presets">
         <Chip label="0.5×" active={false} onPress={() => animateToScale(0.5)} />
-        <Chip label="Auto 1×" active={false} onPress={() => animateToScale(1)} />
+        <Chip
+          label="Auto 1×"
+          active={false}
+          onPress={() => animateToScale(1)}
+        />
         <Chip label="2×" active={false} onPress={() => animateToScale(2)} />
         <Chip label="8×" active={false} onPress={() => animateToScale(8)} />
       </ControlRow>
-    </DemoScreen>
+    </>
   );
 }
 
@@ -211,20 +209,7 @@ const styles = StyleSheet.create({
   chart: {
     flex: 1,
   },
-  axisGestureTarget: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 24,
-    width: 72,
-    alignItems: "flex-end",
-    justifyContent: "center",
-    paddingRight: 3,
-  },
-  axisHint: {
-    color: colors.textFaint,
-    fontSize: 12,
-  },
+  hint: { color: colors.textFaint },
   scaleReadout: {
     color: colors.text,
     fontSize: 18,

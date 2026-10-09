@@ -5,7 +5,7 @@
  * @see https://github.com/benjitaylor/liveline
  */
 import { Canvas, Group, Rect, type SkFont } from "@shopify/react-native-skia";
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -82,6 +82,10 @@ import {
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useXAxis } from "../hooks/useXAxis";
 import { useYAxis } from "../hooks/useYAxis";
+import {
+  useYAxisScaleGesture,
+  useYAxisScaleValue,
+} from "../hooks/useYAxisScaleGesture";
 import {
   formatTime as defaultFormatTime,
   formatValue as defaultFormatValue,
@@ -589,6 +593,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     morphT: reveal.morphT,
   });
 
+  const effectiveYRangeScale = useYAxisScaleValue(yRangeScale);
   const engine = useLiveChartSeriesEngine({
     series: effectiveSeries,
     timeWindow,
@@ -605,7 +610,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     nonNegative,
     maxValue,
     minRange,
-    yRangeScale,
+    yRangeScale: effectiveYRangeScale,
     windowBuffer,
     nowOverride,
   });
@@ -712,7 +717,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
 
   // `projected` is used internally by the hit-test gesture; the overlay
   // self-projects, so we only need the gesture here.
-  const { tapGesture: markerTapGesture } = useMarkers(
+  const { tapGesture: markerTapGesture, hitTest: markerHitTest } = useMarkers(
     engine,
     effectivePadding,
     markersSV,
@@ -779,7 +784,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     onReachStart,
   });
 
-  const rootGesture = composeSeriesRootGesture(
+  const plotGesture = composeSeriesRootGesture(
     crosshair.gesture,
     markerTapGesture,
     panScrollGesture,
@@ -789,6 +794,22 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     zoomEnabled,
     scrollGestureMode,
   );
+
+  const clearCrosshair = useCallback(() => {
+    "worklet";
+    crosshairScrubActive.set(false);
+  }, [crosshairScrubActive]);
+  const rootGesture = useYAxisScaleGesture({
+    engine,
+    padding: effectivePadding,
+    axis: yAxisCfg,
+    entries: yAxisEntries,
+    font: skiaFont,
+    scale: effectiveYRangeScale,
+    gesture: plotGesture,
+    deferHit: markerHitTest,
+    onStart: clearCrosshair,
+  });
 
   const backgroundColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;
 
