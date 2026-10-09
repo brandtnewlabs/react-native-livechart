@@ -334,6 +334,20 @@ interface ScrubActionPoint {
 }
 ```
 
+`LiveChart` exposes these JS-thread callbacks:
+
+```ts
+interface LiveChartProps {
+  onScrub?: (point: ScrubPoint | null) => void;
+  // OHLC snapshot on candle entry/re-entry; null on exit, gap, or leaving candle mode.
+  onScrubCandleChange?: (candle: CandlePoint | null) => void;
+}
+```
+
+The per-candle callback does not stream updates within the same candle. For
+continuously updated OHLC, use `onScrub` or the UI-thread `renderTooltip` values.
+See [Candle feedback](/guides/candle-feedback) for the interactive comparison.
+
 ## Config objects
 
 These are the option shapes accepted by the matching props.

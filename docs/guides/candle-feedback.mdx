@@ -1,0 +1,70 @@
+---
+title: Candle feedback
+icon: "hand-pointer"
+description: "Per-candle scrub callbacks, entry snapshots, and haptic feedback."
+---
+
+<Note>
+  **Live example:**
+  [`app/demo/candle-feedback.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/candle-feedback.tsx)
+  in the example app under **Interaction → Candle feedback**.
+</Note>
+
+<Frame caption="Candle entries, gap exits, a stationary forming-candle hold, and idle callbacks">
+  <video autoPlay loop muted playsInline controls poster="/media/candle-feedback.jpg" src="/media/candle-feedback.mp4" />
+</Frame>
+
+Use `onScrubCandleChange` for feedback that should happen on candle entry rather
+than every live update. It runs on the **JS thread**, so it can update React
+state or call a haptics API directly. The callback receives an OHLC snapshot at
+entry; updates inside that bucket do not fire it again. Revisiting the candle
+after another candle or a gap fires a new entry event.
+
+```tsx
+import * as Haptics from "expo-haptics";
+import { useState } from "react";
+import { LiveChart, type CandlePoint } from "react-native-livechart";
+
+const [selected, setSelected] = useState<CandlePoint | null>(null);
+
+<LiveChart
+  data={data}
+  value={value}
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  candleWidth={30}
+  scrub={{ snapToCandles: true }}
+  onScrubCandleChange={(candle) => {
+    setSelected(candle);
+    if (candle) void Haptics.selectionAsync();
+  }}
+/>
+```
+
+The callback sends `null` when a selection ends, moves into a gap, or leaves
+candle mode. After that, line mode stays quiet. Omitting the callback disables
+its JS notifications. `snapToCandles` is optional; the callback is keyed by the
+selected candle's bucket time in both snapped and continuous scrubbing.
+
+The demo includes a two-bucket gap and a forming candle updated on the UI
+thread. Its fixed clock keeps the same buckets under a stationary pointer,
+making the callback counts repeatable:
+
+- Drag across candles: **Candle entries** increases at each new bucket.
+- Move into the shaded gap: **Exits / gaps** increases once with `null`.
+- Revisit a candle: a fresh entry appears in the event log.
+- Drag from **Drag** to **Hold**, then keep your finger on the forming candle:
+  **Forming candle updates** keeps increasing, while the entry count stays
+  fixed within that bucket.
+- Enable **Compare onScrub**: the optional per-frame callback counter grows
+  while the forming candle changes. It is off by default so the normal example
+  only sends candle entry and exit notifications to JS.
+
+**Options** also exposes line/candle mode, snapping, the gap, pausing the feed,
+haptics, and callback omission. Haptics cannot be felt in an iOS simulator;
+review their entry timing using the counter and log.
+
+For continuously updated OHLC, read `ctx.candle` in
+[`renderTooltip`](/guides/scrubbing#custom-tooltip-rendertooltip) on the UI thread,
+or use `onScrub`. The per-candle callback is for selection changes and snapshots.

@@ -396,6 +396,37 @@ thread**, so you can call React `setState` directly:
 />
 ```
 
+### Per-candle callback (`onScrubCandleChange`)
+
+During live updates `onScrub` can fire every frame, even with the finger held still. In candle mode,
+`onScrubCandleChange` fires only when the crosshair moves onto a different candle, and with `null`
+when the scrub ends or leaves the candles, so it suits a haptic tick per candle (pair it with
+`scrub={{ snapToCandles: true }}`):
+
+```tsx
+import * as Haptics from "expo-haptics";
+
+<LiveChart
+  data={data}
+  value={value}
+  mode="candle"
+  candles={candles}
+  liveCandle={liveCandle}
+  candleWidth={60}
+  scrub={{ snapToCandles: true }}
+  onScrubCandleChange={(candle) => {
+    if (candle) Haptics.selectionAsync();
+  }}
+/>;
+```
+
+This callback runs on the **JS thread** and gives the OHLC snapshot at entry,
+including when revisiting a candle. It does not stream changes within that
+bucket. It sends `null` on scrub end, entering a gap, or leaving candle mode.
+For a ticking tooltip, keep using `renderTooltip`'s UI-thread candle value.
+The [Candle feedback demo](/guides/candle-feedback) shows entry/exit counts,
+gaps, revisits, and the optional per-frame callback comparison.
+
 ## Gesture lifecycle (`onGestureStart` / `onGestureEnd`)
 
 `onGestureStart` and `onGestureEnd` fire once at the edges of a scrub — on both `LiveChart` and

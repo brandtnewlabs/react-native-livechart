@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `onScrubCandleChange` on `LiveChart` (candle mode): called when the scrub
+  crosshair enters or revisits a candle, with an OHLC snapshot on the JS thread.
+  Sends `null` when the scrub ends, enters a gap, or leaves candle mode.
+  Unlike `onScrub`, which fires every frame on a live chart, it fires once per
+  candle, e.g. for a haptic tick per candle.
+- A discoverable Candle feedback demo with entry/exit counts, a gap, a ticking
+  forming candle, haptics, and an optional per-frame callback comparison, with a
+  matching guide and simulator recording.
 - A discoverable Badge alignment demo with centered/column comparison,
   repeatable `$99.95` / `$100.00` transitions, and controls for axis layouts,
   gutter width, badge font, tail, and offset, with a matching guide and recording.

@@ -2806,6 +2806,14 @@ export interface LiveChartProps extends LiveChartCoreProps {
   /** Called when the user scrubs the crosshair. `null` when scrub ends. */
   onScrub?: (point: ScrubPoint | null) => void;
   /**
+   * Called on the JS thread when the crosshair enters a different candle,
+   * with a snapshot of its OHLC at entry. Re-entering a candle fires again;
+   * ticks within the same candle do not. Called with `null` when the scrub
+   * ends, enters a gap, or leaves candle mode. Idle in line mode. Unlike
+   * {@link onScrub}, it does not stream per-frame candle updates.
+   */
+  onScrubCandleChange?: (candle: CandlePoint | null) => void;
+  /**
    * Scrub-action ("order ticket") mode: tap to drop a locked crosshair, drag to
    * fine-tune a **price level**, then press the right-gutter action badge to fire
    * {@link onScrubAction}. `true` = defaults, `false`/omitted = off, or pass

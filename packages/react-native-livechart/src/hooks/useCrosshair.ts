@@ -208,6 +208,8 @@ export function useCrosshair(
    * Default `false`.
    */
   snapToCandles = false,
+  /** Candle mode: fires once per candle the crosshair enters, `null` on exit. */
+  onScrubCandleChange?: (candle: CandlePoint | null) => void,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -556,6 +558,12 @@ export function useCrosshair(
     onScrub?.({ time, value, x, y, candle, gap });
   }
 
+  function handleScrubCandleChange(candleJson: string | null) {
+    onScrubCandleChange?.(
+      candleJson ? (JSON.parse(candleJson) as CandlePoint) : null,
+    );
+  }
+
   /* istanbul ignore next */
   function handleScrubEnd() {
     onScrub?.(null);
@@ -623,6 +631,29 @@ export function useCrosshair(
         string | null,
       ];
       scheduleOnRN(handleScrub, row[2], row[3], row[0], row[1], row[4], row[5]);
+    },
+  );
+
+  const hasOnScrubCandleChange = onScrubCandleChange != null;
+
+  // Keyed on the candle's bucket time rather than the candle itself, so the
+  // forming candle's ticks don't re-fire it: one bridge crossing per candle.
+  useAnimatedReaction(
+    () => {
+      "worklet";
+      if (!hasOnScrubCandleChange || !isCandleMode || !scrubActive.get()) {
+        return null;
+      }
+      return scrubCandle.get()?.time ?? null;
+    },
+    (curr, prev) => {
+      "worklet";
+      if (!hasOnScrubCandleChange || curr === prev) return;
+      const candle = curr === null ? null : scrubCandle.get();
+      scheduleOnRN(
+        handleScrubCandleChange,
+        candle ? JSON.stringify(candle) : null,
+      );
     },
   );
 

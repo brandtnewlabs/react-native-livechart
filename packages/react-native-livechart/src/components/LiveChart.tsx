@@ -1470,6 +1470,7 @@ function useLiveChartController({
 
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
+  onScrubCandleChange,
   onScrubAction,
   onReferenceLinePress,
   onGestureStart,
@@ -2025,6 +2026,7 @@ function useLiveChartController({
     scrollActive,
     crosshairSettings.clampToPlot,
     crosshairSettings.snapToCandles,
+    onScrubCandleChange,
   );
 
   // Capture only the shared value in the worklets below. Referencing
