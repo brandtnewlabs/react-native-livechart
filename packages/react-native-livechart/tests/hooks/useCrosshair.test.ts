@@ -1258,6 +1258,28 @@ describe("useCrosshair (hook)", () => {
 });
 
 describe("memoized crosshair callbacks", () => {
+  it("ignores native scrub events while the price axis owns the touch", async () => {
+    const blocked = withSharedValueAccessors({ value: { value: true } }).value as unknown as SharedValue<boolean>;
+    const { result } = await renderHook(() => useCrosshair(
+      makeEngine(), padding, palette, formatValue, formatTime, font, true,
+      undefined, undefined, 0, undefined, undefined, undefined, undefined,
+      undefined, undefined, "side", true, true, 8, 0, undefined, false, false,
+      undefined, undefined, blocked,
+    ));
+    const handlers = getGestureConfig(result.current.gesture);
+    const start = handlers.onStart[0] as (event: { x: number; y: number }) => void;
+    const update = handlers.onUpdate[0] as (event: { x: number; y: number }) => void;
+    start({ x: 100, y: 80 });
+    expect(result.current.scrubActive.get()).toBe(false);
+    blocked.set(false);
+    start({ x: 100, y: 80 });
+    expect(result.current.scrubActive.get()).toBe(true);
+    const x = result.current.scrubX.get();
+    blocked.set(true);
+    update({ x: 140, y: 80 });
+    expect(result.current.scrubX.get()).toBe(x);
+  });
+
   it("uses current lifecycle callbacks without replacing the pan", async () => {
     const engine = makeEngine();
     const oldStart = jest.fn();

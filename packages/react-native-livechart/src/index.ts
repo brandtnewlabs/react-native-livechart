@@ -135,5 +135,6 @@ export type {
   VolumeConfig,
   XAxisConfig,
   YAxisConfig,
+  YAxisScaleGestureConfig,
   ZoomConfig,
 } from "./types";

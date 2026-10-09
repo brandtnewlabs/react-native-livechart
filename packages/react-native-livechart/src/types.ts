@@ -786,8 +786,28 @@ export interface VolumeConfig {
   opacity?: number;
 }
 
+/** Built-in vertical drag on the price axis. Bounds affect gesture writes only. */
+export interface YAxisScaleGestureConfig {
+  /** Smallest multiplier. Positive and finite. Default `0.25`. */
+  minScale?: number;
+  /** Largest multiplier. Positive and finite, raised to minScale if lower. Default `10`. */
+  maxScale?: number;
+  /** Vertical points per exponential step (e×). Positive and finite. Default `160`. */
+  dragDistance?: number;
+  /** Double-tap the axis to animate to `1` (clamped to the bounds). Default `true`. */
+  doubleTapReset?: boolean;
+}
+
 /** Y-axis grid configuration. */
 export interface YAxisConfig {
+  /**
+   * Opt into vertical price-axis dragging: down widens the range, up zooms in.
+   * Uses the rendered axis gutter/label column on either side. Interactive
+   * markers and reference badges retain priority. Plot gestures are unchanged.
+   * Writes `yRangeScale` when supplied, otherwise an internal multiplier.
+   * `true` uses defaults; an object customizes bounds/reset. Default `false`.
+   */
+  scaleGesture?: boolean | YAxisScaleGestureConfig;
   /** Price-label side. For left placement, reserve the label gutter with insets.left.
    * Right-side float/labelRightMargin options do not affect left labels. Default "right". */
   side?: "left" | "right";
@@ -2497,7 +2517,7 @@ export interface LiveChartCoreProps {
   minRange?: number;
   /**
    * Live manual Y-range multiplier around the fitted midpoint (`1` = auto-fit).
-   * Drive it from a gesture (e.g. dragging the price axis) to stretch or
+   * Enable `yAxis.scaleGesture` or drive it from your own gesture to stretch or
    * compress the price scale TradingView-style; the auto-fit keeps tracking
    * the visible window underneath. Values must be positive and finite; invalid
    * values fall back to `1`. Read on the UI thread each frame. Supported by
@@ -2505,7 +2525,8 @@ export interface LiveChartCoreProps {
    * re-settle when this SharedValue changes, without replacing data. Default `1`.
    * Series drawing is clipped vertically to the price plot; candle volume bars
    * remain outside that clip. Automatic volume-band reservation respects an
-   * explicit bottom inset.
+   * explicit bottom inset. The built-in axis gesture uses an internal multiplier
+   * when this prop is omitted.
    *
    * @experimental
    */

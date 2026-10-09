@@ -138,6 +138,10 @@ import { useTradeStream } from "../hooks/useTradeStream";
 import { useXAxis } from "../hooks/useXAxis";
 import { useYAxis } from "../hooks/useYAxis";
 import {
+  useYAxisScaleGesture,
+  useYAxisScaleValue,
+} from "../hooks/useYAxisScaleGesture";
+import {
   formatTime as defaultFormatTime,
   formatValue as defaultFormatValue,
 } from "../lib/format";
@@ -1014,11 +1018,13 @@ function useAxisAutoHide({
   config,
   scrollActive,
   scrubActive,
+  scaleActive,
   engine,
 }: {
   config: LiveChartProps["axisAutoHide"];
   scrollActive: SharedValue<boolean>;
   scrubActive: SharedValue<boolean>;
+  scaleActive: SharedValue<boolean>;
   engine: ReturnType<typeof useLiveChartEngine>;
 }) {
   const resolved = config === true ? {} : config === false ? null : config;
@@ -1042,7 +1048,7 @@ function useAxisAutoHide({
   }, [enabled, idleOpacity, opacity]);
   useAnimatedReaction(
     () => ({
-      gesture: scrollActive.value || scrubActive.value,
+      gesture: scrollActive.value || scrubActive.value || scaleActive.value,
       viewEnd: engine.viewEnd.value,
       viewWindow: engine.viewWindow.value,
     }),
@@ -1805,6 +1811,7 @@ function useLiveChartController({
     continuousEffects || loadingActive || !hasData.get() || reveal.morphT.get() < 1,
   );
   const idleWakeSignal = useDerivedValue<unknown>(() => [theme, accentColor, paletteOverride, metrics, reveal.morphT.get()]);
+  const effectiveYRangeScale = useYAxisScaleValue(yRangeScale);
   const engine = useLiveChartEngine({
     ...engineModeInputs,
     value,
@@ -1830,7 +1837,7 @@ function useLiveChartController({
     nonNegative,
     maxValue,
     minRange,
-    yRangeScale,
+    yRangeScale: effectiveYRangeScale,
     windowBuffer,
     nowOverride,
     mode,
@@ -2100,6 +2107,7 @@ function useLiveChartController({
   // long-press guard) makes "the scroll already won" a hard fact; `scrubActive`
   // (written by the crosshair, read by the scroll pan) is the mirror image.
   const scrollActive = useSharedValue(false);
+  const axisScaleActive = useSharedValue(false);
 
   const crosshairSettings = resolveCrosshairControllerSettings({
     scrubCfg,
@@ -2143,6 +2151,7 @@ function useLiveChartController({
     crosshairSettings.snapToCandles,
     onScrubCandleChange,
     resolveScrubMarkerOptions(scrubCfg, markersSV),
+    axisScaleActive,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -2204,6 +2213,7 @@ function useLiveChartController({
 
   const axisAutoHideOpacity = useAxisAutoHide({
     config: axisAutoHide,
+    scaleActive: axisScaleActive,
     scrollActive,
     scrubActive: crosshairScrubActive,
     engine,
@@ -2316,6 +2326,10 @@ function useLiveChartController({
   });
 
   return {
+    effectiveYRangeScale,
+    axisScaleActive,
+    deferAxisScaleHit: deferTapHit,
+    clearCrosshair,
     // passthrough props the render needs
     style,
     canvasMode,
@@ -4201,8 +4215,22 @@ function ChartView({
     accessibilityRole,
   } = model;
 
+  const gesture = useYAxisScaleGesture({
+    engine: model.engine,
+    padding: model.effectivePadding,
+    axis: model.yAxisCfg,
+    floating: model.yAxisFloat,
+    entries: yAxisEntries,
+    font: model.skiaFont,
+    scale: model.effectiveYRangeScale,
+    active: model.axisScaleActive,
+    deferHit: model.deferAxisScaleHit,
+    onStart: model.clearCrosshair,
+    gesture: rootGesture,
+  });
+
   return (
-    <GestureDetector gesture={rootGesture}>
+    <GestureDetector gesture={gesture}>
       <View
         style={[{ flex: 1, backgroundColor }, style]}
         onLayout={onLayout}

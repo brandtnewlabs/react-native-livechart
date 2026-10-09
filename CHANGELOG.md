@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Opt-in `yAxis.scaleGesture` for line, candle, and multi-series charts, with
+  exported `YAxisScaleGestureConfig`: drag the actual price gutter down to
+  widen the range or up to zoom in, and double-tap to reset. Supports bounded
+  scaling, configurable sensitivity, and either a supplied `yRangeScale` or
+  internal state. Uses live layout/label measurements and leaves interactive
+  overlays and plot gestures intact. The Y-range scale demo now uses it.
+  ([#376](https://github.com/brandtnewlabs/react-native-livechart/issues/376))
+
 - `ReferenceLine.valueBadge` and exported `ReferenceLineValueBadgeConfig`: a
   separate UI-thread price pill for horizontal reference lines, positioned in
   the plot or aligned with the right price column. Name/value pills share drag

@@ -1,13 +1,12 @@
 ---
-title: Manual Y-range scaling
+title: Y-range scaling
 icon: "arrows-up-down"
-description: "Drive TradingView-style price-axis scaling from your own gesture."
+description: "Drag the built-in price axis or drive its range with a SharedValue."
 ---
 
 <Warning>
   **Experimental.** `yRangeScale` is available on `LiveChart` (line and candle modes) and
-  `LiveChartSeries`. The library owns the scale math, while your app owns the gesture and reset
-  behavior.
+  `LiveChartSeries`. Opt into the built-in gesture with `yAxis={{ scaleGesture: true }}`.
 </Warning>
 
 `LiveChart` normally fits its Y-axis to the visible data. Pass a `SharedValue<number>` through
@@ -30,39 +29,70 @@ floor first; this manual multiplier applies afterward and can zoom below it.
   <video autoPlay loop muted playsInline controls poster="/media/y-range-scale.jpg" src="/media/y-range-scale.mp4" />
 </Frame>
 
+## Built-in price-axis gesture
+
 ```tsx
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import {
-  cancelAnimation,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
-
-const yRangeScale = useSharedValue(1);
-const startScale = useSharedValue(1);
-
-const priceScalePan = Gesture.Pan()
-  .onStart(() => {
-    cancelAnimation(yRangeScale);
-    startScale.set(yRangeScale.get());
-  })
-  .onUpdate((event) => {
-    const next = startScale.get() * Math.exp(event.translationY / 160);
-    yRangeScale.set(Math.max(0.25, Math.min(4, next)));
-  });
-
-const reset = () => {
-  yRangeScale.set(withTiming(1, { duration: 240 }));
-};
-
-<LiveChart data={data} value={value} yRangeScale={yRangeScale} />;
-
-// The same SharedValue scales every visible series around their shared fit.
-<LiveChartSeries series={series} yRangeScale={yRangeScale} />;
+// No app-owned state or touch overlay needed.
+<LiveChart data={data} value={value} yAxis={{ scaleGesture: true }} />;
+<LiveChartSeries series={series} yAxis={{ scaleGesture: true }} />;
 ```
 
-Mount `priceScalePan` on your own axis-gutter view with `GestureDetector`. Keeping that gesture
-outside the chart lets you choose its hit area and compose it with the rest of your screen.
+Drag the price axis **down** to show more range, or **up** to zoom in. Double-tap
+it to animate back to auto-fit. The target follows the actual gutter, font,
+canvas size, left-side inset, and right-anchored label column. On single-series
+floating axes it follows the measured label column. Touches below the price
+plot, including candle volume and time labels, are excluded.
+
+Axis touches take priority over scrubbing, time scrolling, pinch zoom, and a
+parent's scrolling. Start those gestures in the plot or time axis as usual.
+Interactive markers and reference-line badges retain their tap/drag priority.
+A scale drag remains owned by the axis even if the finger moves into the plot.
+Two-finger gestures should start in the plot.
+
+```tsx
+import { useSharedValue, withTiming } from "react-native-reanimated";
+import type { YAxisScaleGestureConfig } from "react-native-livechart";
+
+const scale = useSharedValue(1);
+const scaleGesture: YAxisScaleGestureConfig = {
+  minScale: 0.25,
+  maxScale: 10,
+  dragDistance: 160,
+  doubleTapReset: true,
+};
+
+<LiveChart
+  data={data}
+  value={value}
+  yRangeScale={scale}
+  yAxis={{ scaleGesture }}
+/>;
+
+// Programmatic controls and the built-in gesture write the same SharedValue.
+const reset = () => scale.set(withTiming(1, { duration: 240 }));
+```
+
+These are the default options. The multiplier changes exponentially by
+`startScale * exp(translationY / dragDistance)`; a larger `dragDistance` makes
+scaling less sensitive. All three numeric options must be positive and finite;
+invalid values use their defaults, and a `maxScale` below `minScale` is raised to
+`minScale`. Double-tap animates over 240 ms to `1`, clamped to these bounds.
+Bounds apply to gesture writes, not programmatic writes to `yRangeScale`.
+
+When `yRangeScale` is omitted, each mounted chart keeps its own multiplier,
+initially `1`. Disabling `scaleGesture` or hiding the axis stops gesture handling
+without resetting that multiplier. Use double-tap reset, a supplied SharedValue,
+or remount the chart to reset it. Left-side axes still require the caller to
+reserve label space with `insets.left`. `float` keeps its existing single-series
+behavior; it does not add floating-axis rendering to `LiveChartSeries`.
+
+## Custom controls
+
+`yRangeScale` still works independently of the axis gesture. Leave
+`scaleGesture` off to drive the multiplier from buttons, sliders, or your own
+`GestureDetector`. If a custom control needs chart geometry, use the existing
+[`renderOverlay` bridge](/guides/overlay-bridge); the built-in gesture does not
+require an overlay or a mirrored plot rectangle.
 
 ## Behavior
 

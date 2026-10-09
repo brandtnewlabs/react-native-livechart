@@ -1301,9 +1301,10 @@ describe("LiveChart", () => {
   });
 
   it("reuses gestures when reference levels and inline JS callbacks change", async () => {
-    const constructors = ["Pan", "Tap", "Pinch", "Exclusive", "Simultaneous", "Race"] as const;
+    const constructors = ["Pan", "Tap", "Pinch", "Exclusive", "Simultaneous", "Race", "Manual"] as const;
     const spies = constructors.map((name) => jest.spyOn(Gesture, name));
     const props = {
+      yAxis: { scaleGesture: true },
       timeScroll: true,
       zoom: true,
       scrubAction: true,

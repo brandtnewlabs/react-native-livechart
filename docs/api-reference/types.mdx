@@ -582,7 +582,16 @@ interface SelectionDotConfig {
   component?: ComponentType<SelectionDotProps>; // custom Skia dot; ignores size/color/ring
 }
 interface GridStyleConfig { color?: string; strokeWidth?: number; intervals?: number[]; opacity?: number }
+interface YAxisScaleGestureConfig {
+  minScale?: number; // positive finite; default 0.25
+  maxScale?: number; // positive finite, at least minScale; default 10
+  dragDistance?: number; // points per exponential step; default 160
+  doubleTapReset?: boolean; // animate to clamped 1 over 240ms; default true
+}
 interface YAxisConfig {
+  // Built-in vertical price-axis drag; writes yRangeScale or internal state.
+  // Down zooms out, up zooms in. Default false. See the Y-range scaling guide.
+  scaleGesture?: boolean | YAxisScaleGestureConfig;
   // Label side; reserve left label width with insets.left. Default "right".
   side?: "left" | "right";
   minGap?: number; // min px gap between grid lines; default 36

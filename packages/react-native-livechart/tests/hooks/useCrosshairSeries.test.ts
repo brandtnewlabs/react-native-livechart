@@ -1,6 +1,7 @@
 import { type SkFont } from "@shopify/react-native-skia";
 import { renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
+import type { SharedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../../src/constants";
 import type { MultiEngineState } from "../../src/core/useLiveChartEngine";
 import { resolveScrub } from "../../src/core/resolveConfig";
@@ -17,6 +18,24 @@ import {
 } from "../../src/hooks/crosshairSeries";
 import { useCrosshairSeries } from "../../src/hooks/useCrosshairSeries";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
+
+// Drive native gesture callbacks without freezing their state during serialization.
+jest.mock("react-native-reanimated", () => {
+  const React = jest.requireActual<typeof import("react")>("react");
+  return {
+    ...jest.requireActual("react-native-reanimated"),
+    useSharedValue: <T,>(initial: T) => React.useRef({
+      value: initial,
+      get() { return this.value; },
+      set(next: T) { this.value = next; },
+    }).current,
+    useDerivedValue: <T,>(derive: () => T) => ({
+      get value() { return derive(); },
+      get() { return derive(); },
+    }),
+    useAnimatedReaction: jest.fn(),
+  };
+});
 
 jest.mock("react-native-gesture-handler", () => {
   let lastPanCalls: Record<string, unknown[]>;
@@ -475,6 +494,26 @@ describe("interpolateSeriesAtTime", () => {
 });
 
 describe("useCrosshairSeries (hook)", () => {
+  it("ignores native scrub events while the price axis owns the touch", async () => {
+    const blocked = withSharedValueAccessors({ value: { value: true } }).value as unknown as SharedValue<boolean>;
+    const { result } = await renderHook(() => useCrosshairSeries(
+      makeEngine(), padding, true, undefined, 0, undefined, undefined,
+      undefined, undefined, false, undefined, blocked,
+    ));
+    const handlers = getGestureConfig(result.current.gesture);
+    const start = handlers.onStart[0] as (event: { x: number }) => void;
+    const update = handlers.onUpdate[0] as (event: { x: number }) => void;
+    start({ x: 100 });
+    expect(result.current.scrubActive.get()).toBe(false);
+    blocked.set(false);
+    start({ x: 100 });
+    expect(result.current.scrubActive.get()).toBe(true);
+    const x = result.current.scrubX.get();
+    blocked.set(true);
+    update({ x: 140 });
+    expect(result.current.scrubX.get()).toBe(x);
+  });
+
   it("initialises with inactive state", async () => {
     const engine = makeEngine({
       series: {

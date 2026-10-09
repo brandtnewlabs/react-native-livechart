@@ -496,6 +496,10 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 <ParamField body="yAxis" type="boolean | YAxisConfig" default="true">
   The right gutter re-measures after the first finite, nonzero live value and
   subsequent factor-of-ten moves; `insets.right` overrides automatic sizing.
+  Opt into vertical price-axis dragging with `{ scaleGesture: true }`, or pass
+  `YAxisScaleGestureConfig` for bounds, sensitivity, and double-tap reset. It
+  writes `yRangeScale` when supplied, otherwise an internal multiplier. Off by
+  default; see [Y-range scaling](/guides/y-range-scale).
   Value-axis grid + labels. Set `{ side: "left" }` and reserve label space with
   `insets.left` for left-side labels; the default side is `"right"`. Pass `{ count }` for a fixed number of evenly-spaced
   prices instead of the dynamic nice-interval grid. Pass `{ intervalScale }`
@@ -510,7 +514,7 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 
 <ParamField body="axisAutoHide" type="boolean | AxisAutoHideConfig" default="false">
   Fade the X and Y axes (grid, ticks, and labels) out while the chart is idle,
-  then show them for scrubbing, panning, fling momentum, and pinch zoom. `true`
+  then show them for scrubbing, panning, fling momentum, price-axis scaling, and pinch zoom. `true`
   uses the default timing; pass
   [`AxisAutoHideConfig`](/api-reference/types#config-objects) to set the fade
   durations, idle opacity, and idle delay. **Experimental; `LiveChart` only.**
@@ -666,6 +670,9 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 </ParamField>
 
 <ParamField body="yRangeScale" type="SharedValue<number>" default="1">
+  The built-in `yAxis.scaleGesture` writes this SharedValue when supplied; omit
+  it to let that gesture use chart-owned state. Disabling the gesture preserves
+  the current multiplier.
   Manual Y-range multiplier around the fitted midpoint (`1` = auto-fit). Drive
   it from a gesture (e.g. dragging the price axis) to stretch or compress the
   price scale TradingView-style; the auto-fit keeps tracking the visible window
