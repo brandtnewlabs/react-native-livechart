@@ -2400,6 +2400,21 @@ export interface RangeAnimationConfig {
   contractionSmoothing?: number;
 }
 
+/** Y-range easing and optional presentation transform for {@link LiveChartSeries}. */
+export interface SeriesRangeAnimationConfig extends RangeAnimationConfig {
+  /**
+   * UI-thread worklet applied after normal fitting/easing. Receives untransformed
+   * display bounds and the visible Unix-second interval; may read SharedValues.
+   * Returned finite, increasing bounds affect presentation only and never feed
+   * back into fitting. Invalid results are ignored. Removing it restores the
+   * untransformed range. Hard bounds are applied to the fit before this transform.
+   */
+  transform?: (range: { min: number; max: number; from: number; to: number }) => {
+    min: number;
+    max: number;
+  };
+}
+
 /** Props shared between `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartCoreProps {
   /** Color scheme. Default `"dark"`. */
@@ -3029,6 +3044,11 @@ export interface LiveChartProps extends LiveChartCoreProps {
 
 /** Props for the multi-series `LiveChartSeries` component. */
 export interface LiveChartSeriesProps extends LiveChartCoreProps {
+  /**
+   * Shared-range easing plus an optional reversible UI-thread presentation
+   * transform. See {@link SeriesRangeAnimationConfig}; recorded values remain unchanged.
+   */
+  rangeAnimation?: SeriesRangeAnimationConfig;
   /** Array of series definitions. Must be a SharedValue for UI-thread reads. */
   series: SharedValue<SeriesConfig[]>;
   /**

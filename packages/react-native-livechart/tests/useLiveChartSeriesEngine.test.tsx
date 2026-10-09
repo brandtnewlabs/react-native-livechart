@@ -9,6 +9,31 @@ import {
 } from "../src/core/useLiveChartSeriesEngine";
 
 describe("applyLiveChartSeriesEngineFrame", () => {
+  it("keeps fitted bounds separate across actual frames, with or without scratch reuse", () => {
+    const sv = {
+      series: { value: [{ id: "a", value: 40, data: [{ time: 1000, value: 20 }, { time: 1030, value: 40 }] }] },
+      displaySeriesValues: { value: [] as number[] }, seriesOpacities: { value: [] as number[] },
+      displayMin: { value: 0 }, displayMax: { value: 100 },
+      fittedMinSV: { value: undefined as number | undefined }, fittedMaxSV: { value: undefined as number | undefined },
+      displayWindow: { value: 30 }, timestamp: { value: 1030 },
+      canvasWidth: { value: 320 }, canvasHeight: { value: 200 }, timeWindow: { value: 30 }, smoothing: { value: 1 },
+      exaggerateSV: { value: false }, referenceValue: { value: undefined }, nowOverrideSV: { value: 1030 }, pausedSV: { value: false },
+      rangeAnimationSV: { value: { transform: ({ min, max }: { min: number; max: number }) => ({ min: min - 10, max: max + 10 }) } as import("../src/types").SeriesRangeAnimationConfig | undefined },
+      extremaMinValue: { value: NaN }, extremaMaxValue: { value: NaN }, extremaMinTime: { value: NaN }, extremaMaxTime: { value: NaN },
+    };
+    const scratch = makeMultiSeriesEngineScratch();
+    for (let i = 0; i < 20; i++) {
+      applyLiveChartSeriesEngineFrame({ timeSincePreviousFrame: 16.67 }, sv as unknown as MultiEngineFrameRefs, i % 2 ? scratch : undefined);
+      expect(sv.displayMin.value).toBeCloseTo(7.6);
+      expect(sv.displayMax.value).toBeCloseTo(52.4);
+      expect(sv.fittedMinSV.value).toBeCloseTo(17.6);
+      expect(sv.fittedMaxSV.value).toBeCloseTo(42.4);
+    }
+    sv.rangeAnimationSV.value = undefined;
+    applyLiveChartSeriesEngineFrame({ timeSincePreviousFrame: 16.67 }, sv as unknown as MultiEngineFrameRefs);
+    expect(sv.displayMin.value).toBeCloseTo(17.6);
+    expect(sv.displayMax.value).toBeCloseTo(42.4);
+  });
   it("runs multi tick and writes shared values", () => {
     const sv = {
       series: {

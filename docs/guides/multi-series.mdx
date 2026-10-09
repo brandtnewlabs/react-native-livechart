@@ -41,6 +41,35 @@ points. Normal live appends with `series.modify(...)` remain supported. Use
 `snapKey` when the replacement should settle immediately instead of easing with
 the configured `smoothing`.
 
+## Transforming the presentation range
+
+For an overlay that needs temporary breathing room, transform the fitted range
+using a UI-thread reveal value instead of changing recorded prices:
+
+```tsx
+const reveal = useSharedValue(0);
+
+<LiveChartSeries
+  series={series}
+  rangeAnimation={{
+    animateExpansion: true,
+    transform: ({ min, max }) => {
+      "worklet";
+      const extra = 10 * reveal.get();
+      return { min: min - extra, max: max + extra };
+    },
+  }}
+/>
+```
+
+Animate `reveal` from 0 to 1 with Reanimated when the overlay appears, then back
+to 0 on release. The callback runs after normal fitting/easing and can also read
+`from` and `to`, the visible Unix-second interval. Its output never feeds back
+into fitting: bounds 17.6–42.4 become 7.6–52.4 at full reveal on every frame.
+Releasing or removing the callback restores the original fit. Invalid ranges
+are ignored. Recorded prices and scrub values stay unchanged; hard bounds apply
+to the underlying fit before the presentation transform.
+
 ## Series options
 
 Each `SeriesConfig` supports:

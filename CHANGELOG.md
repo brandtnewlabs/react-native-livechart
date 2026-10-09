@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `LiveChartSeries.rangeAnimation.transform` and exported
+  `SeriesRangeAnimationConfig` apply reversible worklet presentation bounds after
+  fitting/easing. SharedValue-driven overlays can expand and release the range
+  without changing recorded prices or feeding expansion back into later fits.
+  Invalid returned ranges are ignored.
+  ([#395](https://github.com/brandtnewlabs/react-native-livechart/issues/395))
+
 ## [4.27.0] — 2026-10-09
 
 ### Added
