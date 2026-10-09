@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `xAxis.minGap` now sets the minimum spacing between time labels on
+  `LiveChart` and `LiveChartSeries`. It was resolved but never applied, so the
+  labels always kept the default 60 px spacing. Changing the gap also replaces
+  the label set immediately on paused or parked charts, so old labels cannot
+  remain at the previous spacing while their fade waits for engine frames.
 - Static single-series charts now re-settle when `nowOverride` changes, and a
   chart that becomes `static` in the same render as new data (e.g. a recycled
   list cell) lands fully on the new window instead of stopping part way or

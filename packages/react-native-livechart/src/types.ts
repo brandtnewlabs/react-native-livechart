@@ -869,7 +869,7 @@ export interface AxisLabelConfig {
 
 /** X-axis (time) configuration. */
 export interface XAxisConfig {
-  /** Minimum pixel gap between time labels. Default `60`. */
+  /** Minimum pixel gap between time labels. Changes apply immediately, even while paused. Default `60`. */
   minGap?: number;
 }
 

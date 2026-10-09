@@ -569,7 +569,10 @@ interface YAxisConfig {
   // Pairs with `timeScroll` (see the Time-scroll guide). Default false. @experimental
   float?: boolean;
 }
-interface XAxisConfig { minGap?: number } // default 60
+interface XAxisConfig {
+  // Minimum pixel gap between time labels. Updates immediately, even while paused.
+  minGap?: number; // default 60
+}
 // Fades both axes while LiveChart is idle. @experimental
 interface AxisAutoHideConfig {
   fadeInMs?: number;    // interaction-start fade duration; default 60
