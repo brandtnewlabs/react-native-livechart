@@ -211,7 +211,7 @@ export function tickLiveChartSeriesEngineFrame(
     const pts = series[i].data;
     const latest = pts[pts.length - 1];
     const targetIsRecorded = !scrolledBack && latest != null &&
-      latest.time <= state.timestamp && latest.value === target;
+      latest.time <= Math.min(state.timestamp, baseNow) && latest.value === target;
     state.displayValues[i] = snap || targetIsRecorded
       ? target
       : lerp(cur, target, adaptiveSpeed, input.dt);

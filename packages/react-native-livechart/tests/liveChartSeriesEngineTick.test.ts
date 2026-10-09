@@ -79,6 +79,19 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     } else expect(s.displayValues[0]).toBeCloseTo(53.3692740209399);
   });
 
+  it("keeps smoothing a future recorded target that falls inside the breathing-room buffer", () => {
+    const s = baseMulti();
+    s.displayValues = [50]; s.opacities = [1];
+    tickLiveChartSeriesEngineFrame(s, {
+      dt: 16, canvasWidth: 320, canvasHeight: 200, timeWindow: 60,
+      smoothing: 0.05, exaggerate: false, referenceValue: undefined,
+      nowOverride: 3760, windowBuffer: 0.1,
+      series: [{ id: "a", value: 75, data: [{ time: 3700, value: 20 }, { time: 3761, value: 75 }] }],
+    });
+    expect(s.timestamp).toBe(3766);
+    expect(s.displayValues[0]).toBeCloseTo(53.3692740209399);
+  });
+
   it("includes referenceValues array, clamps with nonNegative + maxValue", () => {
     const s = baseMulti();
     tickLiveChartSeriesEngineFrame(s, {

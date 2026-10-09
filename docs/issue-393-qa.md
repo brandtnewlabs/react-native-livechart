@@ -19,7 +19,12 @@ The video shows recording 75, resetting to 50, then presenting an unrecorded 75.
 The recorded endpoint stays aligned; the unrecorded endpoint eases. JSON traces
 and the temporary fixture are retained in `~/Downloads/livechart-seven-issues/`.
 
-`npm run verify` passed: 145 suites, 2,093 tests, 5 skipped. Tests also check a
+`npm run verify` passed: 145 suites, 2,094 tests, 5 skipped. Tests also check a
 future recorded point, historical framing, and the consumer's exact unrecorded
 53.3692740209399 regression with the default adaptive boost. React Doctor 100/100.
 No profiling was needed for the constant-time recorded-point check.
+
+A follow-up regression verifies that a future recorded sample inside windowBuffer
+retains normal smoothing; recorded-target detection clamps to the actual clock.
+On the physical phone, time 3761 / target 75 inside a 0.1 buffer at head 3760
+produced first values 51.2478 → 52.4334 → 53.5598, rather than snapping to 75.
