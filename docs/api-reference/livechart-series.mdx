@@ -31,6 +31,19 @@ skipping zero and invalid placeholders. It re-measures after the first real valu
 and subsequent factor-of-ten moves. `insets.right` overrides automatic sizing;
 see [Axes & grid](/guides/axes-and-grid).
 
+## Growing history window
+
+<ParamField body="historyStartTime" type="number">
+  Authoritative history start in Unix seconds. While following without a zoom
+  override, `window = (now - historyStartTime) / (1 - windowBuffer)` keeps this
+  timestamp at the left edge as time advances. Use `0 <= windowBuffer < 1`.
+  Pan freezes the edge and unzoomed width; pinch overrides remain active.
+  `ref.current?.resetZoom()` restores the growing live window. Default zoom-out
+  bounds include this full span, even when the retained first sample starts later.
+  Non-finite or future starts fall back to `timeWindow`. See
+  [All history](/guides/multi-series#all-history).
+</ParamField>
+
 ## Series opacity
 
 <ParamField body="seriesOpacity" type="SharedValue<number>" default="1">
@@ -240,7 +253,7 @@ default off.
 </ParamField>
 
 Attach a `ref` typed as [`LiveChartHandle`](/api-reference/types#imperative-handle) and call
-`ref.current?.resetZoom()` to return the shared window to `timeWindow` and the live edge. This is
+`ref.current?.resetZoom()` to return the shared window to `timeWindow` (or the growing `historyStartTime` span) and the live edge. This is
 the same imperative reset exposed by `LiveChart`. See
 [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button).
 

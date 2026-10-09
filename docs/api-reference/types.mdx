@@ -673,7 +673,7 @@ interface LoadingConfig {
 // Pinch-to-zoom the visible time window (two-finger, focal-anchored). @experimental
 interface ZoomConfig {
   minTimeWindow?: number; // tightest window in seconds (max zoom-in); default timeWindow / 8
-  maxTimeWindow?: number; // widest window in seconds (max zoom-out); default the full data span
+  maxTimeWindow?: number; // explicit widest window; default full data/anchored history span, at least timeWindow
 }
 // App-owned UI-thread viewport. LiveChart only (line/candle). @experimental
 interface ChartViewportControl {
@@ -1024,3 +1024,13 @@ type LiveChartMetricsOverride = {
   emptyState?: Partial<EmptyStateMetrics>;
 };
 ```
+
+## LiveChartSeries history start
+
+`LiveChartSeriesProps.historyStartTime?: number` is an authoritative Unix-second
+start for a growing live window. With no pan/zoom override, the displayed width
+is `(now - historyStartTime) / (1 - windowBuffer)`. Buffer must be in `[0, 1)`;
+invalid/future starts use `timeWindow`. `resetZoom()` resumes the growing view.
+Default pinch maximum includes this full span, independent of retained sample
+timestamps. Explicit zoom bounds take precedence, including maxima smaller than
+`timeWindow`. See [All history](/guides/multi-series#all-history).

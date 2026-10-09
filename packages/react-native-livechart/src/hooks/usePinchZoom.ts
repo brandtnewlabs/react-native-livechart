@@ -60,6 +60,8 @@ export interface UsePinchZoomOptions {
   minTime: SharedValue<number>;
   /** The configured `timeWindow` prop (seconds) — the anchor for the zoom bounds. */
   timeWindow: number;
+  /** Current unzoomed history span, including breathing room; independent of retained samples. */
+  fullHistoryWindow?: SharedValue<number | null>;
   /** Master switch. When false the gesture is disabled. */
   enabled: boolean;
   /** Tightest window (max zoom-in), seconds. Default `timeWindow / 8`. */
@@ -91,8 +93,9 @@ export function clampWindow(
 
 /**
  * Resolve the zoom bounds for a gesture. `maxWin` defaults to the data span but
- * never goes below the configured window (so you can always zoom back out to the
- * starting view); `minWin` defaults to an 8× zoom-in of the configured window.
+ * includes the configured window and authoritative full-history span (so you can
+ * restore the starting view). Explicit maxima take precedence; `minWin` defaults
+ * to an 8× zoom-in of the configured window.
  * Guards against an inverted range (min ≤ max).
  */
 export function zoomWindowBounds(
@@ -100,9 +103,10 @@ export function zoomWindowBounds(
   span: number,
   minCfg: number | undefined,
   maxCfg: number | undefined,
+  fullHistoryWindow?: number | null,
 ): [number, number] {
   "worklet";
-  const maxWin = Math.max(maxCfg ?? span, configWindow);
+  const maxWin = maxCfg ?? Math.max(span, configWindow, fullHistoryWindow ?? 0);
   let minWin = minCfg ?? configWindow / 8;
   if (minWin > maxWin) minWin = maxWin;
   return [minWin, maxWin];
@@ -158,6 +162,7 @@ export function usePinchZoom({
   padding,
   minTime,
   timeWindow,
+  fullHistoryWindow,
   enabled,
   minTimeWindow,
   maxTimeWindow,
@@ -184,7 +189,7 @@ export function usePinchZoom({
         cancelAnimation(viewEnd);
         cancelAnimation(viewWindow);
         const edge = liveEdge.get();
-        startWindow.set(viewWindow.get() ?? timeWindow);
+        startWindow.set(displayWindow.get());
         startViewEnd.set(viewEnd.get() ?? edge);
         onZoomStart?.();
       };
@@ -210,6 +215,7 @@ export function usePinchZoom({
           span,
           minTimeWindow,
           maxTimeWindow,
+          fullHistoryWindow?.get(),
         );
         // Pinch out (scale > 1) ⇒ narrower window ⇒ zoom in.
         const newWin = clampWindow(sWin / e.scale, minWin, maxWin);
@@ -245,6 +251,7 @@ export function usePinchZoom({
     canvasWidth,
     displayWindow,
     enabled,
+    fullHistoryWindow,
     liveEdge,
     maxTimeWindow,
     minTime,

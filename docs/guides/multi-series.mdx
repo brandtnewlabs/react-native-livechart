@@ -41,6 +41,31 @@ points. Normal live appends with `series.modify(...)` remain supported. Use
 `snapKey` when the replacement should settle immediately instead of easing with
 the configured `smoothing`.
 
+## All history
+
+Set the authoritative start once to keep the complete history in a growing live
+window without updating the `timeWindow` prop on every frame:
+
+```tsx
+<LiveChartSeries
+  series={series}
+  historyStartTime={1000}
+  timeWindow={2760}
+  windowBuffer={0.04}
+  timeScroll
+  zoom
+/>
+```
+
+At current time 3760, the visible window is 2875 seconds and its edge is 3875,
+so the left edge remains 1000. The growing span includes breathing room; use a
+buffer from 0 up to (but excluding) 1. `timeWindow` remains the fallback and the
+anchor for the default minimum zoom window. Pinch starts from the actual
+painted window. Default maximum zoom includes the full anchored span even when
+retained samples begin later; explicit `zoom.minTimeWindow`/`maxTimeWindow` take
+precedence. Pan and pinch can park a narrower or historical view; call
+`ref.current?.resetZoom()` to restore the growing live view.
+
 ## Series options
 
 Each `SeriesConfig` supports:
