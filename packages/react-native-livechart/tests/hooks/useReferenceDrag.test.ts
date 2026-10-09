@@ -26,7 +26,11 @@ jest.mock("react-native-reanimated", () => {
       get() { return this.value; },
       set(next: T) { this.value = next; },
     }).current,
-    useDerivedValue: (updater: () => unknown) => ({ get: updater }),
+    useDerivedValue: (updater: () => unknown) => {
+      const latest = React.useRef(updater);
+      latest.current = updater;
+      return React.useMemo(() => ({ get: () => latest.current() }), []);
+    },
     useAnimatedReaction: jest.fn(),
   };
 });
@@ -478,8 +482,7 @@ describe("useReferenceDrag", () => {
     // Drive the identity reaction as Reanimated does after the new lines arrive;
     // no gesture update is needed to release the old index.
     const [prepare, react] = jest.mocked(useAnimatedReaction).mock.calls
-      .filter(([, , deps]) => deps?.length === 1 && deps[0] === replacement)
-      .at(-1)!;
+      .at(-2)!;
     const invalid = prepare();
     expect(invalid).toBe(true);
     react(invalid, false);
@@ -561,11 +564,10 @@ describe("useReferenceDrag", () => {
       { value: 50, draggable: true, onDragOut: () => {} },
     ];
     const t = await setupDrag(lines);
-    // The onDragIn / onDragOut reaction, found by its dependency on these lines.
+    // The final reaction watches onDragIn / onDragOut.
     const [prepare] = jest
       .mocked(useAnimatedReaction)
-      .mock.calls.filter(([, , deps]) => deps?.[0] === lines)
-      .at(-1)!;
+      .mock.calls.at(-1)!;
     t.dragTo(TOP); // the finger sets 100, the range's top
     t.setRange(0, 90); // the range shrinks under the still finger
     expect(prepare()).toEqual([false]); // drawn at the top edge: not out
@@ -631,6 +633,29 @@ describe("useReferenceDrag", () => {
     expect(yOf(t.drawn()[0], state.displayMin, state.displayMax)).toBeCloseTo(
       TOP,
     );
+  });
+
+  it("retains the recognizer through controlled updates and dispatches current callbacks", async () => {
+    const oldChange = jest.fn();
+    const newChange = jest.fn();
+    const newCommit = jest.fn();
+    const t = await setupDrag([{ id: "order", value: 50, draggable: true, onChange: oldChange }]);
+    const original = t.handlers();
+    t.dragTo(yOf(55));
+    await flushCallbacks();
+    expect(oldChange).toHaveBeenLastCalledWith(55);
+
+    await t.rerender({ lines: [{
+      id: "order", value: 55, draggable: true, snap: 10,
+      onChange: newChange, onCommit: newCommit,
+    }] });
+    expect(t.handlers()).toBe(original);
+    original.onUpdate({ y: yOf(74) });
+    original.onFinalize();
+    await flushCallbacks();
+    expect(newChange).toHaveBeenLastCalledWith(70);
+    expect(newCommit).toHaveBeenLastCalledWith(70);
+    expect(oldChange).toHaveBeenCalledTimes(1);
   });
 
   it("is inert for a static chart (enabled = false)", async () => {

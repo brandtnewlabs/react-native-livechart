@@ -1257,6 +1257,38 @@ describe("useCrosshair (hook)", () => {
   });
 });
 
+describe("memoized crosshair callbacks", () => {
+  it("uses current lifecycle callbacks without replacing the pan", async () => {
+    const engine = makeEngine();
+    const oldStart = jest.fn();
+    const oldEnd = jest.fn();
+    const newStart = jest.fn();
+    const newEnd = jest.fn();
+    const onScrub = jest.fn();
+    const { result, rerender } = await renderHook(
+      ({ start, end }: { start: () => void; end: () => void }) => useCrosshair(
+        engine, padding, palette, formatValue, formatTime, font, true,
+        onScrub, undefined, 0, start, end,
+      ),
+      { initialProps: { start: oldStart, end: oldEnd } },
+    );
+    const gesture = result.current.gesture;
+    const handlers = getGestureConfig(gesture);
+    await rerender({ start: newStart, end: newEnd });
+    expect(result.current.gesture).toBe(gesture);
+    await act(async () => {
+      (handlers.onStart[0] as (event: { x: number; y: number }) => void)({ x: 100, y: 80 });
+      (handlers.onFinalize[0] as () => void)();
+      await Promise.resolve();
+    });
+    expect(newStart).toHaveBeenCalledTimes(1);
+    expect(newEnd).toHaveBeenCalledTimes(1);
+    expect(oldStart).not.toHaveBeenCalled();
+    expect(oldEnd).not.toHaveBeenCalled();
+    expect(onScrub).toHaveBeenLastCalledWith(null);
+  });
+});
+
 describe("useCrosshair marker callback payload", () => {
   async function setup(enabled = true) {
     jest.mocked(useAnimatedReaction).mockClear();
