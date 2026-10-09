@@ -218,6 +218,8 @@ default off.
 </ParamField>
 
 <ParamField body="timeScroll" type="boolean | TimeScrollConfig" default="false">
+  With `gesture: "axisDrag"`, the bottom time-axis strip is reserved for scrolling
+  and excluded from scrub recognition, including stationary holds.
   Pan back through history (same as `LiveChart`). Drag (or fling) to scroll; the
   chart stops auto-following until you return to the live edge. Setting it back to
   `false` while scrolled back glides the window back to the live edge (eased, not

@@ -9,10 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `ReferenceLine.bounds` also accepts a `SharedValue<[number, number]>`, for a
+  drag limit that follows a live value (e.g. a stop that can't cross the
+  current price). The drag clamp and `onDragIn` / `onDragOut` read it on the UI
+  thread, so moving the bound no longer needs a new `referenceLines` array or a
+  re-render.
+  ([#402](https://github.com/brandtnewlabs/react-native-livechart/issues/402))
+
 - Y-axis ticks pass an optional source-unit `tickStep` to `formatValue`, allowing
   compact formatters to keep nearby labels distinct. One-argument formatters and
   badge/tooltip formatting keep their existing behavior.
   ([#397](https://github.com/brandtnewlabs/react-native-livechart/issues/397))
+
+### Fixed
+
+- Reserve the time-axis strip for `LiveChartSeries` axis dragging so a stationary
+  scrub hold cannot steal the scroll gesture. Plot scrubbing keeps its bounds.
+  ([#398](https://github.com/brandtnewlabs/react-native-livechart/issues/398))
+
+- Multi-series live tips use the authoritative value immediately when it is
+  already recorded at the displayed time, keeping dots aligned with history.
+  Unrecorded live updates and historical viewport edges retain smoothing.
+  ([#393](https://github.com/brandtnewlabs/react-native-livechart/issues/393))
 
 ## [4.27.0] — 2026-10-09
 

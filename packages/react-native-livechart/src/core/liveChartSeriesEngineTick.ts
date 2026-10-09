@@ -205,7 +205,14 @@ export function tickLiveChartSeriesEngineFrame(
       (1 - gapRatio) *
         (input.adaptiveSpeedBoost ??
           MOTION_METRICS_DEFAULTS.adaptiveSpeedBoost);
-    state.displayValues[i] = snap
+    // History already owns the authoritative target at this timestamp. Easing
+    // it again would put the synthetic tip/dot behind the newest recorded point.
+    // Unrecorded prices and historical viewport edges retain normal smoothing.
+    const pts = series[i].data;
+    const latest = pts[pts.length - 1];
+    const targetIsRecorded = !scrolledBack && latest != null &&
+      latest.time <= Math.min(state.timestamp, baseNow) && latest.value === target;
+    state.displayValues[i] = snap || targetIsRecorded
       ? target
       : lerp(cur, target, adaptiveSpeed, input.dt);
 

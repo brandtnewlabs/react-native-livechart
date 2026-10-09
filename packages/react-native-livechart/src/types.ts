@@ -228,8 +228,13 @@ export interface ReferenceLine {
    * can't be dragged past either end. Omit for unbounded (clamped only to the
    * visible range). Reaching a bound fires {@link onDragOut}. Applies only while
    * {@link draggable}.
+   *
+   * Pass a `SharedValue<[number, number]>` for a bound that follows a live value
+   * (e.g. a stop that can't cross the current price): the clamp and
+   * {@link onDragIn} / {@link onDragOut} read it on the UI thread, so moving it
+   * doesn't need a new `referenceLines` array or a re-render.
    */
-  bounds?: [number, number];
+  bounds?: [number, number] | SharedValue<[number, number]>;
   /**
    * Fired on the JS thread *while* dragging, each time the finger moves the line
    * to a new (snapped, clamped) value. De-duplicated to value changes — not every
