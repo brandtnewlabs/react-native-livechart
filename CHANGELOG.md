@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   re-render.
   ([#402](https://github.com/brandtnewlabs/react-native-livechart/issues/402))
 
+- Y-axis ticks pass an optional source-unit `tickStep` to `formatValue`, allowing
+  compact formatters to keep nearby labels distinct. One-argument formatters and
+  badge/tooltip formatting keep their existing behavior.
+  ([#397](https://github.com/brandtnewlabs/react-native-livechart/issues/397))
+
 ### Fixed
 
 - Reserve the time-axis strip for `LiveChartSeries` axis dragging so a stationary
