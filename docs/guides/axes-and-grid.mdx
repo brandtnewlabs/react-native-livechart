@@ -29,6 +29,19 @@ description: "Tune the grid lines, hide or space the axes, float edge labels, an
 Pass `yAxis={false}` or `xAxis={false}` to hide an axis. `gridStyle.intervals` of `[]` renders
 solid grid lines.
 
+`xAxis.minGap` sets the minimum pixel spacing between time labels (default `60`).
+Changing it updates the label set immediately on both chart components, including
+paused charts and views parked by scrolling or zooming. Labels can be spaced
+farther apart when their text would otherwise overlap.
+
+The right gutter is measured with your `formatValue` and font once a finite,
+nonzero live value arrives. A `0` loading placeholder does not lock it to a short
+label. It measures again after the value moves by a factor of ten in either
+direction from the last sample, keeping ordinary ticks and small changes around
+a power of ten from moving the plot's edge. `LiveChartSeries` samples the largest
+finite absolute value across its series, including negative values alongside
+zero placeholders. An explicit `insets.right` overrides automatic measurement.
+
 ## Left-side Y-axis labels
 
 Both `LiveChart` and `LiveChartSeries` accept `yAxis.side`; it defaults to `"right"`.
@@ -97,6 +110,11 @@ and that column:
 <LiveChart
   data={data}
   value={value}
+  formatValue={(value) => {
+    "worklet";
+    return `$${value.toFixed(2)}`;
+  }}
+  font={{ fontSize: 11 }}
   yAxis={{ labelRightMargin: 8, gridEndGap: 6 }}
 />
 ```
@@ -108,7 +126,52 @@ default edge margin.
 Plain horizontal `referenceLines` stop at the same X as the grid, keeping the gap consistent.
 `fullWidth` reference lines and value/time bands keep their existing extents.
 
+### Badge value in the column
+
+By default the live badge centers its value in the pill. To line it up with the label column, set
+`badge={{ textAlign: "yAxisColumn" }}`: the value starts at the labels' left X, and a value wider
+than every axis label ends at the column's right edge. Two trade-offs make this opt-in:
+
+- The pill keeps its shape and the value stays within its `padX` padding (a value that doesn't fit
+  there is centered), so the room on each side comes from the right inset and the badge metrics.
+  The automatic right inset reserves room for one more digit, which ends up left of the value. For
+  even padding, size `insets.right` for your widest price and set `metrics.badge` so
+  `marginEdge + padX` equals `labelRightMargin`.
+- The value moves sideways whenever the column's width changes: a wider label entering or leaving
+  the axis (`99.95` → `100.00`), or digits of different widths in a proportional font.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  formatValue={(value) => {
+    "worklet";
+    return `$${value.toFixed(2)}`;
+  }}
+  font={{ fontSize: 11 }}
+  yAxis={{ labelRightMargin: 8, gridEndGap: 6 }}
+  badge={{ textAlign: "yAxisColumn" }}
+  metrics={{ badge: { marginEdge: 4, padX: 4 } }}
+  insets={{
+    right: 84, // fits "$100.00" with this 11 px font and these badge metrics
+  }}
+/>
+```
+
+It applies to the default right-gutter badge with the column on the right. With
+`yAxis.side: "left"`, while the axis floats (`yAxis.float`; with `timeScroll`, only while scrolled
+back), and with `badge={{ position: "left" }}`, the value stays centered. `badge.offsetX` moves the
+value with the pill. To place a pill relative to the column yourself, turn the badge off and anchor
+your own pill to the column in `renderOverlay`, as the
+[Phantom showcase](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/phantom-up-down.tsx)
+does for its target pill.
+
+For an interactive comparison of centered and column-aligned values, including
+the transition across $100 and padding/font fallbacks, open the
+[Badge alignment demo](/guides/badge-alignment).
+
 ## Axis edge labels
+
 
 `topLabel` and `bottomLabel` float a value at the top / bottom edge of the plot — the
 Robinhood-style high/low readout. Pass `true` for the batteries-included label: the chart shows

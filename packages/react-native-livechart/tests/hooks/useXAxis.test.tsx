@@ -112,6 +112,30 @@ describe("useXAxis", () => {
     expect(Array.isArray(result.current.xAxisEntries.value)).toBe(true);
   });
 
+  // 376px plot over 120s ≈ 3.13px/s. The nice 15s interval (47px) is doubled
+  // until it clears `minGap`: 30 keeps 15s, the default 60 widens to 30s (94px)
+  // and 120 widens to 60s (188px).
+  it("spaces labels at least minGap apart", async () => {
+    const spacing = async (minGap?: number) => {
+      const { result } = await renderHook(() =>
+        useXAxis(
+          makeEngine(400, 200, 120),
+          DEFAULT_PADDING,
+          () => "·",
+          font,
+          minGap,
+        ),
+      );
+      const xs = result.current.xAxisEntries.value.map((e) => e.x);
+      expect(xs.length).toBeGreaterThan(1);
+      return Math.round(xs[1] - xs[0]);
+    };
+
+    expect(await spacing(30)).toBe(47);
+    expect(await spacing()).toBe(94);
+    expect(await spacing(120)).toBe(188);
+  });
+
   it("drops labels when they leave the target window", async () => {
     const eng = makeEngine(400, 200, 30);
     const { result, rerender } = await renderHook(() =>

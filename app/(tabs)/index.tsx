@@ -93,6 +93,11 @@ const SECTIONS: DemoSection[] = [
         blurb: "Brokerage-style: OHLC header above the chart, time pinned to the top edge, crosshair kept.",
       },
       {
+        href: "/demo/candle-feedback" as Href,
+        title: "Candle feedback",
+        blurb: "Per-candle callbacks and haptics: counts, gaps, revisits, and a ticking forming candle.",
+      },
+      {
         href: "/demo/order-ticket",
         title: "Order ticket",
         blurb: "scrubAction: tap to drop a price, drag to adjust, press + to place a limit order.",
@@ -172,6 +177,11 @@ const SECTIONS: DemoSection[] = [
         href: "/demo/badge-styling",
         title: "Badge styling",
         blurb: "BadgeConfig shape knobs: radius, background, border, text color, font, offset.",
+      },
+      {
+        href: "/demo/badge-alignment" as Href,
+        title: "Badge alignment",
+        blurb: "Compare centered vs. Y-axis column prices, including the transition across $100.",
       },
       {
         href: "/demo/axes-and-grid",

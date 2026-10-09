@@ -1269,7 +1269,10 @@ describe("useCrosshair onScrubCandleChange", () => {
     onScrubCandleChange?: (candle: unknown) => void,
   ) {
     jest.mocked(useAnimatedReaction).mockClear();
-    const { result } = await renderHook(() =>
+    const { result, rerender } = await renderHook((props: {
+      mode: "line" | "candle";
+      onScrubCandleChange?: (candle: unknown) => void;
+    }) =>
       useCrosshair(
         makeEngine(),
         padding,
@@ -1279,7 +1282,7 @@ describe("useCrosshair onScrubCandleChange", () => {
         font,
         true,
         undefined,
-        { mode },
+        { mode: props.mode },
         0,
         undefined,
         undefined,
@@ -1295,13 +1298,14 @@ describe("useCrosshair onScrubCandleChange", () => {
         undefined,
         false,
         false,
-        onScrubCandleChange,
+        props.onScrubCandleChange,
       ),
+      { initialProps: { mode, onScrubCandleChange } },
     );
-    const calls = jest.mocked(useAnimatedReaction).mock.calls;
-    const [prepare, react] = calls[calls.length - 1];
     let prev: unknown = null;
     const step = async () => {
+      const calls = jest.mocked(useAnimatedReaction).mock.calls;
+      const [prepare, react] = calls[calls.length - 1];
       const curr = prepare();
       await act(async () => {
         react(curr, prev);
@@ -1309,7 +1313,7 @@ describe("useCrosshair onScrubCandleChange", () => {
       prev = curr;
       return curr;
     };
-    return { crosshair: result.current, step };
+    return { crosshair: result.current, step, rerender };
   }
 
   it("fires once per candle entered and with null when the scrub ends", async () => {
@@ -1349,6 +1353,55 @@ describe("useCrosshair onScrubCandleChange", () => {
     crosshair.scrubCandle!.set(first);
     expect(await step()).toBeNull();
     expect(onScrubCandleChange ?? jest.fn()).not.toHaveBeenCalled();
+  });
+
+  it("clears the selected candle once when switching to line mode mid-scrub", async () => {
+    const callback = jest.fn();
+    const { crosshair, step, rerender } = await setup("candle", callback);
+    crosshair.scrubActive.set(true);
+    crosshair.scrubCandle!.set(first);
+    await step();
+
+    await rerender({ mode: "line", onScrubCandleChange: callback });
+    await step();
+    await step();
+    expect(callback.mock.calls).toEqual([[first], [null]]);
+
+    await rerender({ mode: "candle", onScrubCandleChange: callback });
+    await step();
+    expect(callback.mock.calls).toEqual([[first], [null], [first]]);
+  });
+
+  it("clears once in a gap and fires again when revisiting the same candle", async () => {
+    const callback = jest.fn();
+    const { crosshair, step } = await setup("candle", callback);
+    crosshair.scrubActive.set(true);
+    crosshair.scrubCandle!.set(first);
+    await step();
+    crosshair.scrubCandle!.set(null);
+    await step();
+    await step();
+    crosshair.scrubCandle!.set(first);
+    await step();
+    crosshair.scrubActive.set(false);
+    await step();
+    expect(callback.mock.calls).toEqual([[first], [null], [first], [null]]);
+  });
+
+  it("does not repeat the selected candle when the callback changes", async () => {
+    const original = jest.fn();
+    const replacement = jest.fn();
+    const { crosshair, step, rerender } = await setup("candle", original);
+    crosshair.scrubActive.set(true);
+    crosshair.scrubCandle!.set(first);
+    await step();
+    await rerender({ mode: "candle", onScrubCandleChange: replacement });
+    await step();
+    expect(original).toHaveBeenCalledTimes(1);
+    expect(replacement).not.toHaveBeenCalled();
+    crosshair.scrubCandle!.set(second);
+    await step();
+    expect(replacement).toHaveBeenCalledWith(second);
   });
 });
 

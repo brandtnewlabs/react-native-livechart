@@ -77,6 +77,8 @@ export interface ReferenceLine {
   /**
    * Stable identifier for this line. Supply a unique value when `referenceLines`
    * may be reordered so the chart preserves the line's rendered identity.
+   * If this line is removed or moves to another index during a drag, that touch
+   * is cancelled without committing, even if the line later returns.
    */
   id?: string;
   /** Form A — the Y-axis value where the horizontal line is drawn. */
@@ -205,7 +207,10 @@ export interface ReferenceLine {
   grabRange?: [number, number];
   /**
    * Snap the dragged value to this increment (e.g. `0.01` for cents, `0.5` for a
-   * tick size) so drops land on round levels. Omit for free dragging. Applies only
+   * tick size) so drops land on round levels. At the plot's edge the line is drawn
+   * and dropped on the nearest increment inside the visible range; dragged past
+   * the edge, the value the finger sets (and {@link onChange} reports) rounds
+   * outward, so the range can widen to it. Omit for free dragging. Applies only
    * while {@link draggable}.
    */
   snap?: number;
@@ -217,15 +222,18 @@ export interface ReferenceLine {
    */
   bounds?: [number, number];
   /**
-   * Fired on the JS thread *while* dragging, each time the (snapped, clamped)
-   * value changes. De-duplicated to value changes — not every frame. Form-A
-   * draggable only.
+   * Fired on the JS thread *while* dragging, each time the finger moves the line
+   * to a new (snapped, clamped) value. De-duplicated to value changes — not every
+   * frame. When the range moves under a still finger the line follows it without
+   * firing this; on release it fires once more if the line ended elsewhere, with
+   * the value {@link onCommit} gets (its first call, if the finger never changed
+   * the value). Form-A draggable only.
    */
   onChange?: (value: number) => void;
   /**
    * Fired once on the JS thread when the drag ends (finger up), with the final
-   * (snapped, clamped) value. Pair with a controlled `value` to persist the move.
-   * Form-A draggable only.
+   * (snapped, clamped) value — the one under the finger. Pair with a controlled
+   * `value` to persist the move. Form-A draggable only.
    */
   onCommit?: (value: number) => void;
   /**
@@ -712,6 +720,19 @@ export interface BadgeConfig extends BadgeStyleConfig {
   /** Which side of the chart the badge appears on. Default `"right"`. */
   position?: "right" | "left";
   /**
+   * Where the value sits in the right-gutter pill. `"center"` centers it in the
+   * pill body. `"yAxisColumn"` lines it up with a right-anchored Y-axis label
+   * column ({@link YAxisConfig.labelRightMargin}): it starts at the labels'
+   * shared left X, and a value wider than every axis label ends at the
+   * column's right edge. The pill keeps its shape and the value stays within
+   * its `padX` padding (a value that doesn't fit there is centered), so the
+   * room on each side follows the right inset and `metrics.badge`. The value
+   * moves sideways when the column's width changes (a wider label entering or
+   * leaving the axis). Centered without that column on the right side, while
+   * the axis floats, and for a `"left"` badge. Default `"center"`.
+   */
+  textAlign?: "center" | "yAxisColumn";
+  /**
    * When the chart is scrolled back (see `timeScroll`), move the live-price
    * indicators — the badge, the value line, and the live dot — to the price at
    * the visible window's right edge instead of the live price, so they track the
@@ -778,7 +799,8 @@ export interface YAxisConfig {
   /**
    * Place price labels in a shared left-aligned column whose right edge sits
    * this many pixels from the canvas edge. When omitted, labels keep the
-   * default centered-gutter placement.
+   * default centered-gutter placement. To line the live badge's value up with
+   * the column, set {@link BadgeConfig.textAlign} to `"yAxisColumn"`.
    */
   labelRightMargin?: number;
   /**
@@ -861,7 +883,7 @@ export interface AxisLabelConfig {
 
 /** X-axis (time) configuration. */
 export interface XAxisConfig {
-  /** Minimum pixel gap between time labels. Default `60`. */
+  /** Minimum pixel gap between time labels. Changes apply immediately, even while paused. Default `60`. */
   minGap?: number;
 }
 
@@ -2412,6 +2434,9 @@ export interface LiveChartCoreProps {
    * the visible window underneath. Values must be positive and finite; invalid
    * values fall back to `1`. Read on the UI thread each frame. Supported by
    * both `LiveChart` and `LiveChartSeries`. Default `1`.
+   * Series drawing is clipped vertically to the price plot; candle volume bars
+   * remain outside that clip. Automatic volume-band reservation respects an
+   * explicit bottom inset.
    *
    * @experimental
    */
@@ -2734,7 +2759,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
    *  but `scrub` / `scrubAction` stay available — they're on-demand touch gestures with
    *  no per-frame cost, so a still chart is still scrubbable. May be toggled at runtime:
    *  switching back to live restarts the suspended loops and catches up. Frame the data
-   *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). */
+   *  with `timeWindow` + `nowOverride` (see the historical-data-fill pattern). Data,
+   *  layout, `timeWindow`, and `nowOverride` changes re-settle without restarting the
+   *  loop. Entering static mode lands on the new window even when data and framing
+   *  change in the same render (for example, a recycled list cell). */
   static?: boolean;
   /**
    * Runtime gate for continuous frame work. Set this SharedValue to `false`
@@ -2778,9 +2806,11 @@ export interface LiveChartProps extends LiveChartCoreProps {
   /** Called when the user scrubs the crosshair. `null` when scrub ends. */
   onScrub?: (point: ScrubPoint | null) => void;
   /**
-   * Candle mode: called when the crosshair moves onto a different candle, and
-   * with `null` when the scrub ends or leaves the candles. Unlike
-   * {@link onScrub}, it fires once per candle rather than every frame.
+   * Called on the JS thread when the crosshair enters a different candle,
+   * with a snapshot of its OHLC at entry. Re-entering a candle fires again;
+   * ticks within the same candle do not. Called with `null` when the scrub
+   * ends, enters a gap, or leaves candle mode. Idle in line mode. Unlike
+   * {@link onScrub}, it does not stream per-frame candle updates.
    */
   onScrubCandleChange?: (candle: CandlePoint | null) => void;
   /**

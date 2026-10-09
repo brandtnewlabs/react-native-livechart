@@ -114,6 +114,10 @@ export interface CrosshairChartOpts {
   bridgeUnknown?: boolean;
 }
 
+/** Stable empty gap list so the crosshair worklets that capture it aren't
+ *  re-registered on every render when the chart has no gaps. */
+const EMPTY_GAPS: CandleGap[] = [];
+
 function resolveCrosshairSettings(
   chartOpts: CrosshairChartOpts | undefined,
   scrubAction: ResolvedScrubActionConfig | null | undefined,
@@ -135,7 +139,7 @@ function resolveCrosshairSettings(
     candlesSV: chartOpts?.candles,
     liveCandleSV: chartOpts?.liveCandle,
     candleWidthSecs: chartOpts?.candleWidthSecs ?? 60,
-    chartGaps: chartOpts?.gaps ?? [],
+    chartGaps: chartOpts?.gaps ?? EMPTY_GAPS,
     bridgeNoTrades: chartOpts?.bridgeNoTrades ?? false,
     bridgeUnavailable: chartOpts?.bridgeUnavailable ?? false,
     bridgeUnknown: chartOpts?.bridgeUnknown ?? false,
@@ -630,14 +634,16 @@ export function useCrosshair(
     },
   );
 
-  const hasOnScrubCandleChange = onScrubCandleChange != null && isCandleMode;
+  const hasOnScrubCandleChange = onScrubCandleChange != null;
 
   // Keyed on the candle's bucket time rather than the candle itself, so the
   // forming candle's ticks don't re-fire it: one bridge crossing per candle.
   useAnimatedReaction(
     () => {
       "worklet";
-      if (!hasOnScrubCandleChange || !scrubActive.get()) return null;
+      if (!hasOnScrubCandleChange || !isCandleMode || !scrubActive.get()) {
+        return null;
+      }
       return scrubCandle.get()?.time ?? null;
     },
     (curr, prev) => {

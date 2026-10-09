@@ -67,10 +67,12 @@ export function useXAxis(
   padding: ChartPadding,
   formatTime: (t: number) => string,
   font: SkFont,
+  minGap = 60,
 ) {
   const labelAlphas = useSharedValue<
     Record<number, { alpha: number; text: string }>
   >({});
+  const lastMinGap = useSharedValue(minGap);
 
   // A tick's key encodes its time, so its label is formatted once (below) and
   // never re-formatted per frame — an allocation optimization. That assumes
@@ -105,13 +107,18 @@ export function useXAxis(
     /* istanbul ignore next -- defensive; Reanimated test mock rarely executes this guard with non-zero w/h */
     if (chartW <= 0) return [] as XAxisEntry[];
 
+    // Config changes must settle in this run: a paused or parked engine may
+    // publish no more frames to finish fading the previous tick set.
+    const gapChanged = !Object.is(lastMinGap.get(), minGap);
+    if (gapChanged) lastMinGap.set(minGap);
+
     const fadeZone = 50;
 
     // Pick interval from the *target* window duration so the cadence is stable
     // and independent of the window we're animating from.
     const targetPxPerSec = chartW / targetWindow;
     let interval = niceTimeInterval(targetWindow);
-    while (interval * targetPxPerSec < 60 && interval < targetWindow) {
+    while (interval * targetPxPerSec < minGap && interval < targetWindow) {
       interval *= 2;
     }
 
@@ -169,7 +176,9 @@ export function useXAxis(
 
       const isTarget = xAxisKeyIsTarget(key, targetKeys);
       const target = isTarget ? edgeAlpha : 0;
-      let next = lerp(label.alpha, target, FADE, MS_PER_FRAME_60FPS);
+      let next = gapChanged
+        ? target
+        : lerp(label.alpha, target, FADE, MS_PER_FRAME_60FPS);
       if (Math.abs(next - target) < 0.02) next = target;
 
       // Only a key that left the target set is deleted once it has faded out. A

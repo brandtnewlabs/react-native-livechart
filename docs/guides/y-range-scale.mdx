@@ -65,6 +65,11 @@ outside the chart lets you choose its hit area and compose it with the rest of y
 - The multiplier is applied after the normal margin and minimum-range fit, so auto-fit continues
   tracking the visible data while scaled.
 - On `LiveChartSeries`, the multiplier applies to the shared range after hidden series are excluded.
+- Series strokes, area fills, candles, and gap bridges are clipped to the price plot's
+  top and bottom, so zoomed-in data cannot cover the time-axis labels. Candle volume
+  bars keep their automatically reserved band below the price plot; an explicit
+  bottom inset keeps its existing layout override. Live dots, pulses, badges, and
+  other overlays retain their own placement.
 - While the SharedValue changes, the displayed range tracks it without frame-lag. Once it stops,
   ordinary range changes use `smoothing` or the optional `rangeAnimation` overrides.
 - Reset with an animation such as `withTiming(1)` for the same smooth result whether the current
