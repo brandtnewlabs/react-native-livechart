@@ -1,3 +1,5 @@
+import type { SharedValue } from "react-native-reanimated";
+
 import {
   classifyReferenceEdge,
   collectReferenceValues,
@@ -312,6 +314,18 @@ describe("referenceLineReactKeys", () => {
       },
     ]);
     expect(after).toEqual(before);
+  });
+
+  it("keys a SharedValue field without reading it", () => {
+    const bounds = {
+      _isReanimatedSharedValue: true,
+      get value(): never {
+        throw new Error("read during render");
+      },
+    } as unknown as SharedValue<[number, number]>;
+    expect(
+      referenceLineReactKeys([{ value: 10, label: "Stop", bounds }]),
+    ).toEqual(['{bounds:shared,label:"Stop",value:10}:0']);
   });
 });
 

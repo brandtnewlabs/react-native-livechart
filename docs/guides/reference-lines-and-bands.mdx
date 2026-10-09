@@ -252,6 +252,35 @@ draggable line grabs the line and any drag moves it (in any direction), while a 
 scrubs as usual. So you can keep `scrub` enabled alongside draggable orders — only the thin grab
 band around each draggable line is reserved for the drag.
 
+### Bounds that follow a live value
+
+A take profit or stop loss usually can't be dragged past the current price. Passing that as a
+plain `[min, max]` means a new `referenceLines` array, and a chart re-render, every time the price
+moves. Pass a `SharedValue<[number, number]>` instead and update it on the UI thread: the drag clamp
+and `onDragIn` / `onDragOut` read it there, and the lines array stays the same.
+
+```tsx
+const tick = 0.5;
+const takeProfitBounds = useDerivedValue<[number, number]>(() => [
+  price.get() + tick,
+  Infinity,
+]);
+
+referenceLines={[
+  {
+    id: "takeProfit",
+    value: takeProfit,
+    draggable: true,
+    snap: tick,
+    bounds: takeProfitBounds,     // follows `price` without a re-render
+    onCommit: setTakeProfit,
+  },
+]}
+```
+
+A bound that moves under a resting finger re-clamps the line where it is drawn, and `onCommit`
+gets the clamped value.
+
 ### Grab only at the handle (`grabRange`)
 
 That grab band runs the whole width of the line. On a chart that also pans (`timeScroll`), or one

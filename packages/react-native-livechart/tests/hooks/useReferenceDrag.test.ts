@@ -1,5 +1,9 @@
 import { renderHook } from "@testing-library/react-native";
-import { useAnimatedReaction, useSharedValue } from "react-native-reanimated";
+import {
+  useAnimatedReaction,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
 
 import {
   tickLiveChartEngineFrame,
@@ -142,6 +146,18 @@ async function setupDrag(initial: ReferenceLine[]) {
       handlers().onUpdate({ y });
     },
   };
+}
+
+/** A `bounds` SharedValue double that `isSharedValue` recognizes. */
+function sharedBounds(initial: [number, number]) {
+  let current = initial;
+  return {
+    get: () => current,
+    set: (next: [number, number]) => {
+      current = next;
+    },
+    _isReanimatedSharedValue: true,
+  } as unknown as SharedValue<[number, number]>;
 }
 
 /** Lets `scheduleOnRN` callbacks (queued as microtasks in Jest) run. */
@@ -328,6 +344,23 @@ describe("useReferenceDrag", () => {
     expect(t.drawn()[0]).toBe(100);
     t.setRange(0, 180); // 108 → 110 → clamped to 105
     expect(t.drawn()[0]).toBe(105);
+  });
+
+  it("clamps to a SharedValue bound and follows it as it moves", async () => {
+    const onCommit = jest.fn();
+    const bounds = sharedBounds([0, 80]);
+    const t = await setupDrag([
+      { value: 50, draggable: true, bounds, onCommit },
+    ]);
+    t.dragTo(yOf(90));
+    expect(t.values()[0]).toBe(80);
+    expect(t.drawn()[0]).toBe(80);
+    // The bound moves under the still finger, with the same `lines`.
+    bounds.set([0, 70]);
+    expect(t.drawn()[0]).toBe(70);
+    t.handlers().onFinalize();
+    await flushCallbacks();
+    expect(onCommit).toHaveBeenCalledWith(70);
   });
 
   it("draws a snapped line on the plot at its edge", async () => {
@@ -573,6 +606,19 @@ describe("useReferenceDrag", () => {
     expect(prepare()).toEqual([false]); // drawn at the top edge: not out
     expect(t.values()[0]).toBe(100);
     expect(t.drawn()[0]).toBe(90);
+  });
+
+  it("checks onDragIn / onDragOut against a SharedValue bound as it moves", async () => {
+    const bounds = sharedBounds([0, 80]);
+    await setupDrag([
+      { value: 50, draggable: true, bounds, onDragOut: () => {} },
+    ]);
+    const [prepare] = jest
+      .mocked(useAnimatedReaction)
+      .mock.calls.at(-1)!;
+    expect(prepare()).toEqual([false]);
+    bounds.set([0, 50]); // the bound reaches the line
+    expect(prepare()).toEqual([true]);
   });
 
   it("settles the range under a still finger when onChange drives the line's value", async () => {
