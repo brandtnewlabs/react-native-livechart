@@ -2,6 +2,7 @@ import { stackedTagAt, type ReferenceTagStack } from "../math/referenceTagStack"
 import { useCallback, useMemo } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
+  isSharedValue,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
@@ -40,7 +41,8 @@ const EMPTY: never[] = [];
 
 /**
  * The value a drag at canvas `y` gives `line` against the current range: the
- * price at that Y, snapped to `line.snap` and clamped to `line.bounds`. Null
+ * price at that Y, snapped to `line.snap` and clamped to `bounds` (the line's
+ * `bounds`, read from its SharedValue when it has one). Null
  * before the canvas is laid out. `atFinger`: the value the finger sets (what the
  * range fits and `onChange` reports) — the nearest increment, rounded outward
  * once the finger is past the plot's edge so even a coarse `snap` can widen the
@@ -49,6 +51,7 @@ const EMPTY: never[] = [];
  */
 function dragValueAtY(
   line: ReferenceLine,
+  bounds: [number, number] | undefined,
   y: number,
   displayMin: number,
   displayMax: number,
@@ -74,7 +77,7 @@ function dragValueAtY(
         y < padTop ? 1 : y > canvasHeight - padBottom ? -1 : 0,
       )
     : snapPriceWithin(raw, line.snap, displayMin, displayMax);
-  return clampToBounds(snapped, line.bounds);
+  return clampToBounds(snapped, bounds);
 }
 
 /**
@@ -177,6 +180,17 @@ export function useReferenceDrag(
     return ranges;
   });
 
+  // Per-line drag bounds (`ReferenceLine.bounds`), index-aligned with `lines`.
+  // The worklet captures the bounds themselves rather than `linesSV`, so a
+  // SharedValue bound is one of its inputs: moving it re-clamps the drag and
+  // re-checks onDragIn / onDragOut on the UI thread, without a render.
+  const boundsInputs = useMemo(() => lines.map((l) => l.bounds), [lines]);
+  const bounds = useDerivedValue(() => {
+    const out: ([number, number] | undefined)[] = [];
+    for (const b of boundsInputs) out.push(isSharedValue<[number, number]>(b) ? b.get() : b);
+    return out;
+  });
+
   const dragIndex = useSharedValue(-1);
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
@@ -205,6 +219,7 @@ export function useReferenceDrag(
     if (l === undefined || l.id !== grabbedId.get()) return values;
     const v = dragValueAtY(
       l,
+      bounds.get()[i],
       lastY.get(),
       displayMin.get(),
       displayMax.get(),
@@ -309,7 +324,7 @@ export function useReferenceDrag(
           continue;
         }
         const v = drawnValues.get()[i] ?? l.value;
-        out.push(referenceValueOut(v, dMin, dMax, l.bounds));
+        out.push(referenceValueOut(v, dMin, dMax, bounds.get()[i]));
       }
       return out;
     },
@@ -412,6 +427,7 @@ export function useReferenceDrag(
       }
       const v = dragValueAtY(
         l,
+        bounds.get()[i],
         e.y - pointerOffsetY.get(),
         displayMin.get(),
         displayMax.get(),
@@ -442,6 +458,7 @@ export function useReferenceDrag(
           const v =
             dragValueAtY(
               l,
+              bounds.get()[i],
               lastY.get(),
               displayMin.get(),
               displayMax.get(),
@@ -511,6 +528,7 @@ export function useReferenceDrag(
   }, [
     activated,
     anyDraggable,
+    bounds,
     canvasHeight,
     clearDrag,
     displayMax,
