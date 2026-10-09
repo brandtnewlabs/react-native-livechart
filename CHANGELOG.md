@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `xAxis.gridLines` on `LiveChart` and `LiveChartSeries`: vertical grid lines at
+  the time labels, drawn behind the series in the horizontal grid's layer and
+  fading with their labels at the plot edges. `true` uses the `gridStyle` look;
+  a `GridStyleConfig` overrides only the fields it sets. They run through a
+  candle chart's volume band to the axis line, stay within the plot width, and
+  follow `LiveChart`'s `axisAutoHide`. Off by
+  default. The Axes & grid demo has a toggle for them.
 - Experimental `LiveChart.viewport` (`false | ViewportConfig`) and exported
   `ChartViewportControl` / `ViewportConfig`: adopt
   app-owned shared values for scroll/zoom, with gestures writing the same pair.

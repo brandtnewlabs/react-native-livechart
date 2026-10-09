@@ -529,6 +529,35 @@ describe("LiveChartSeries", () => {
 describe("LiveChartSeries series plot clip", () => {
   afterEach(() => jest.restoreAllMocks());
 
+  it("draws vertical grid lines at the time ticks only when opted in", async () => {
+    const initial: SeriesConfig[] = [
+      {
+        id: "a",
+        label: "A",
+        data: [{ time: 1_700_000_000, value: 10 }],
+        value: 10,
+        color: "#3b82f6",
+      },
+    ];
+    function H({ gridLines }: { gridLines?: boolean }) {
+      const series = useSharedValue<SeriesConfig[]>(initial);
+      return (
+        <LiveChartSeries
+          series={series}
+          gridStyle={{ color: "#fedcba" }}
+          xAxis={{ gridLines }}
+        />
+      );
+    }
+    const gridColored = (screen: Awaited<ReturnType<typeof render>>) =>
+      getAllByHostType(screen, View).filter(
+        (v) => v.props.color === "#fedcba",
+      );
+
+    expect(gridColored(await render(<H />))).toHaveLength(1);
+    expect(gridColored(await render(<H gridLines />))).toHaveLength(11);
+  });
+
   it("clips the series strokes to the plot's vertical extent", async () => {
     const useActualEngine = seriesEngineHooks.useLiveChartSeriesEngine;
     // Derived values freeze at mount under the Jest stub, so seed the canvas

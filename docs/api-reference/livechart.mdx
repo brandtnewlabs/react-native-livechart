@@ -470,6 +470,11 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 <ParamField body="xAxis" type="boolean | XAxisConfig" default="true">
   Time-axis labels. Pass `{ minGap }` to set their minimum pixel spacing
   (default `60`). Changing the gap updates the labels immediately, even while paused.
+  Pass `{ gridLines: true }` for vertical grid lines at the labels, drawn behind
+  the series in the `gridStyle` look, or a `GridStyleConfig` to restyle them
+  (omitted fields fall back to `gridStyle`). Strokes stay within the plot width,
+  including while a departing time label fades into a gutter. See
+  [Vertical grid lines](/guides/axes-and-grid#vertical-grid-lines).
 </ParamField>
 
 <ParamField body="yAxis" type="boolean | YAxisConfig" default="true">

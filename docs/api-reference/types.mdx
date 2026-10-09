@@ -601,6 +601,11 @@ interface YAxisConfig {
 interface XAxisConfig {
   // Minimum pixel gap between time labels. Updates immediately, even while paused.
   minGap?: number; // default 60
+  // Vertical grid lines at the time labels, behind the series, each fading with
+  // its label. true = the gridStyle look; a GridStyleConfig overrides only the
+  // fields it sets (the rest fall back to gridStyle). Default false.
+  // Strokes stay within the plot width while departing labels fade into gutters.
+  gridLines?: boolean | GridStyleConfig;
 }
 // Fades both axes while LiveChart is idle. @experimental
 interface AxisAutoHideConfig {

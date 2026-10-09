@@ -6,6 +6,7 @@ import {
   type AxisLabelConfig,
   type ChartInsets,
   type GridStyleConfig,
+  type XAxisConfig,
   type YAxisConfig,
 } from "react-native-livechart";
 
@@ -98,6 +99,21 @@ function resolveYAxis(
   return Object.keys(config).length > 0 ? config : true;
 }
 
+function resolveXAxis(
+  visible: boolean,
+  gap: GapPreset,
+  verticalGrid: boolean,
+): XAxisConfig | boolean {
+  if (!visible) return false;
+
+  const config: XAxisConfig = {};
+  if (gap === "wide") config.minGap = 100;
+  // `gridLines: true` draws a vertical line under each time label, styled like
+  // the horizontal grid (`gridStyle`), behind the series.
+  if (verticalGrid) config.gridLines = true;
+  return Object.keys(config).length > 0 ? config : true;
+}
+
 function axisLabel(
   custom: boolean,
   enabled: boolean,
@@ -121,7 +137,7 @@ type AxesChartProps = {
   value: ReturnType<typeof useSimulatedChartData>["value"];
   series: ReturnType<typeof useSimulatedChartData>["series"];
   yAxis: YAxisConfig | boolean;
-  xAxis: boolean | { minGap: number };
+  xAxis: XAxisConfig | boolean;
   gridStyle: GridStyleConfig | undefined;
   leftEdgeFade: { width: number } | undefined;
   insets: ChartInsets | undefined;
@@ -172,6 +188,7 @@ export default function AxesGridScreen() {
   const [customLabel, setCustomLabel] = useState(false);
   const [flushBottom, setFlushBottom] = useState(false);
   const [gridLine, setGridLine] = useState<GridLineStyle>("default");
+  const [verticalGrid, setVerticalGrid] = useState(false);
   const [edgeFade, setEdgeFade] = useState(false);
   const [yAxisColumn, setYAxisColumn] = useState<YAxisColumnPreset>("wide");
 
@@ -187,12 +204,11 @@ export default function AxesGridScreen() {
     yAxisColumn,
     yAxisSide,
   );
-  const xAxis =
-    vis === "noX" || vis === "none"
-      ? false
-      : gap === "wide"
-        ? { minGap: 100 }
-        : true;
+  const xAxis = resolveXAxis(
+    vis !== "noX" && vis !== "none",
+    gap,
+    verticalGrid,
+  );
 
   // An explicit inset overrides the auto-padding — including the live-dot pulse's
   // reserved room — so the plot fills to the edge (the pulse ring may clip there).
@@ -223,7 +239,7 @@ export default function AxesGridScreen() {
     <DemoScreen
       title="Axes & grid"
       docs="guides/axes-and-grid"
-      description="Hide Y, X, or both; move Y labels left or right; tune axis minGap and fixed price count; and compare explicit insets. Toggle single vs multi chart, plus built-in or custom high/low edge labels."
+      description="Hide Y, X, or both; move Y labels left or right; tune axis minGap and fixed price count; add vertical grid lines at the time labels; and compare explicit insets. Toggle single vs multi chart, plus built-in or custom high/low edge labels."
       chart={
         <AxesChart
           which={which}
@@ -282,6 +298,13 @@ export default function AxesGridScreen() {
         value={gridLine}
         onChange={setGridLine}
       />
+      <ControlRow label="Vertical grid (xAxis.gridLines)">
+        <ToggleChip
+          label="At time labels"
+          value={verticalGrid}
+          onChange={setVerticalGrid}
+        />
+      </ControlRow>
       <ControlRow label="Left edge fade">
         {/* `leftEdgeFade={{ width }}` softens the left edge so the line blends
             into the gutter. Off here = the chart's built-in default fade. */}

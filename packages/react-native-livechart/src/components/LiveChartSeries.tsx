@@ -47,6 +47,7 @@ import {
   resolveSelectionDot,
   resolveTransitions,
   resolveXAxis,
+  resolveXAxisGridStyle,
   resolveYAxis,
   resolveZoom,
 } from "../core/resolveConfig";
@@ -124,7 +125,7 @@ import { MultiSeriesValueLines } from "./MultiSeriesValueLines";
 import { PerSeriesTooltipOverlay } from "./PerSeriesTooltipOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
 import { SeriesToggleChips } from "./SeriesToggleChips";
-import { XAxisOverlay } from "./XAxisOverlay";
+import { XAxisGridLines, XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
 
 /**
@@ -271,6 +272,10 @@ function resolveLiveChartSeriesInputs({
       : (scrubCfg?.panGestureDelay ?? 0);
   const selectionDotCfg = resolveSelectionDot(selectionDot ?? false);
   const gridStyleCfg = resolveGridStyle(gridStyle);
+  const xGridStyleCfg = resolveXAxisGridStyle(
+    xAxisCfg?.gridLines ?? null,
+    gridStyleCfg,
+  );
   const dotCfg = resolveMultiSeriesDot(dotProp);
   const dotOuterRadius = Math.max(
     dotCfg.radius + (dotCfg.ring?.width ?? 0),
@@ -344,6 +349,7 @@ function resolveLiveChartSeriesInputs({
     scrubHoldMs,
     selectionDotCfg,
     gridStyleCfg,
+    xGridStyleCfg,
     dotCfg,
     dotOuterRadius,
     legendCfg,
@@ -466,6 +472,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     scrubHoldMs,
     selectionDotCfg,
     gridStyleCfg,
+    xGridStyleCfg,
     dotCfg,
     dotOuterRadius,
     legendCfg,
@@ -818,6 +825,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     scrubCfg,
     seriesTooltipCfg,
     gridStyleCfg,
+    xGridStyleCfg,
     dotCfg,
     dotOuterRadius,
     legendCfg,
@@ -948,6 +956,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     lineStyles,
     xAxisCfg,
     xAxisEntries,
+    xGridStyleCfg,
     degenCfg,
     degenPack,
     degenPackRevision,
@@ -980,6 +989,18 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         model={model}
         variant={yAxisCfg?.side === "left" ? "grid" : "all"}
       />
+
+      {/* Vertical grid at the time ticks (`xAxis.gridLines`), behind the
+          series like the horizontal grid. */}
+      {xAxisCfg && xGridStyleCfg && (
+        <XAxisGridLines
+          entries={xAxisEntries}
+          engine={engine}
+          padding={effectivePadding}
+          palette={palette}
+          gridStyle={xGridStyleCfg}
+        />
+      )}
 
       {/* Fade group lets `scrub.hideOverlaysOnScrub` ease the lines out. Explicit
           ids keep each reference line mounted when the caller reorders it. */}

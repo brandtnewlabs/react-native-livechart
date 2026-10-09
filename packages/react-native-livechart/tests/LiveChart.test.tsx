@@ -848,6 +848,67 @@ describe("LiveChart", () => {
     await render(<Harness xAxis={false} />);
   });
 
+  describe("xAxis.gridLines", () => {
+    const withColor = (
+      screen: Awaited<ReturnType<typeof render>>,
+      color: string,
+    ) => {
+      const views = getAllByHostType(screen, View);
+      return views
+        .map((view, index) => ({ view, index }))
+        .filter(({ view }) => view.props.color === color);
+    };
+
+    it("is off by default", async () => {
+      const screen = await render(<Harness gridStyle={{ color: "#fedcba" }} />);
+      // Only the horizontal grid takes the gridStyle color.
+      expect(withColor(screen, "#fedcba")).toHaveLength(1);
+    });
+
+    it("draws the vertical lines behind the series line", async () => {
+      const screen = await render(
+        <Harness xAxis={{ gridLines: { color: "#abcdef" } }} />,
+      );
+      const lines = withColor(screen, "#abcdef");
+      expect(lines).toHaveLength(10);
+      const views = getAllByHostType(screen, View);
+      const seriesLine = views.findIndex(
+        (view) => view.props.strokeJoin === "round",
+      );
+      expect(seriesLine).toBeGreaterThan(-1);
+      expect(lines[lines.length - 1].index).toBeLessThan(seriesLine);
+    });
+
+    it("takes the gridStyle look for gridLines: true", async () => {
+      const screen = await render(
+        <CandleHarness
+          volume
+          gridStyle={{ color: "#fedcba" }}
+          xAxis={{ gridLines: true }}
+        />,
+      );
+      expect(withColor(screen, "#fedcba")).toHaveLength(11);
+    });
+
+    it("draws without a y axis, under the degen shake", async () => {
+      const screen = await render(
+        <Harness
+          yAxis={false}
+          degen
+          xAxis={{ gridLines: { color: "#abcdef" } }}
+        />,
+      );
+      expect(withColor(screen, "#abcdef")).toHaveLength(10);
+    });
+
+    it("draws nothing when the x axis itself is off", async () => {
+      const screen = await render(
+        <Harness xAxis={false} gridStyle={{ color: "#fedcba" }} />,
+      );
+      expect(withColor(screen, "#fedcba")).toHaveLength(1);
+    });
+  });
+
   it("accepts visual config on referenceLines", async () => {
     await render(
       <Harness

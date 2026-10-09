@@ -192,6 +192,8 @@ export interface ResolvedAxisLabelConfig {
 
 export interface ResolvedXAxisConfig {
   minGap: number;
+  /** Vertical grid-line overrides over `gridStyle`; null → no vertical grid. */
+  gridLines: GridStyleConfig | null;
 }
 
 export interface ResolvedScrubConfig {
@@ -934,7 +936,11 @@ export function resolveAxisLabel(
 
 const X_AXIS_DEFAULTS: ResolvedXAxisConfig = {
   minGap: 60,
+  gridLines: null,
 };
+
+/** `gridLines: true` overrides nothing, so the lines take the `gridStyle` look. */
+const NO_GRID_STYLE_OVERRIDES: GridStyleConfig = {};
 
 /**
  * Resolves `xAxis` prop to a fully-typed config or null (disabled).
@@ -943,7 +949,33 @@ const X_AXIS_DEFAULTS: ResolvedXAxisConfig = {
 export function resolveXAxis(
   prop: boolean | XAxisConfig | undefined,
 ): ResolvedXAxisConfig | null {
-  return resolveToggle(prop, X_AXIS_DEFAULTS, true);
+  if (prop === false) return null;
+  if (prop == null || prop === true) return X_AXIS_DEFAULTS;
+  const { gridLines } = prop;
+  return {
+    minGap: prop.minGap ?? X_AXIS_DEFAULTS.minGap,
+    gridLines:
+      gridLines === true ? NO_GRID_STYLE_OVERRIDES : gridLines || null,
+  };
+}
+
+/**
+ * Resolves the vertical grid's style: `xAxis.gridLines` fields over the
+ * resolved `gridStyle`. Returns `base` itself when nothing is overridden, and
+ * null when the vertical grid is off.
+ */
+export function resolveXAxisGridStyle(
+  gridLines: GridStyleConfig | null,
+  base: ResolvedGridStyleConfig,
+): ResolvedGridStyleConfig | null {
+  if (!gridLines) return null;
+  if (gridLines === NO_GRID_STYLE_OVERRIDES) return base;
+  return {
+    color: gridLines.color ?? base.color,
+    strokeWidth: gridLines.strokeWidth ?? base.strokeWidth,
+    intervals: gridLines.intervals ?? base.intervals,
+    opacity: gridLines.opacity ?? base.opacity,
+  };
 }
 
 const SCRUB_DEFAULTS: ResolvedScrubConfig = {

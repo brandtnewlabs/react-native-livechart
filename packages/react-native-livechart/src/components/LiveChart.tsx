@@ -71,6 +71,7 @@ import {
   resolveViewport,
   resolveZoom,
   resolveXAxis,
+  resolveXAxisGridStyle,
   resolveYAxis,
 } from "../core/resolveConfig";
 import type {
@@ -204,7 +205,7 @@ import { SegmentDividerOverlay } from "./SegmentDividerOverlay";
 import { SegmentLineGradient } from "./SegmentLineGradient";
 import { TradeStreamOverlay } from "./TradeStreamOverlay";
 import { ValueLineOverlay } from "./ValueLineOverlay";
-import { XAxisOverlay } from "./XAxisOverlay";
+import { XAxisGridLines, XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
 
 /** Stable empty number array so the live-reference-values worklet stays
@@ -326,11 +327,13 @@ function resolveLiveChartFeatureConfig({
   const thresholdSeriesSV = thresholdCfg?.series ?? null;
   const dotCfg = resolveDot(dot);
   const volumeCfg = isCandle ? resolveVolume(volume) : null;
+  const xAxisCfg = resolveXAxis(xAxis);
+  const gridStyleCfg = resolveGridStyle(gridStyle);
 
   return {
     isCandle,
     yAxisCfg: resolveYAxis(yAxis),
-    xAxisCfg: resolveXAxis(xAxis),
+    xAxisCfg,
     topLabelCfg: resolveAxisLabel(topLabel),
     bottomLabelCfg: resolveAxisLabel(bottomLabel),
     badgeCfg,
@@ -358,7 +361,11 @@ function resolveLiveChartFeatureConfig({
         ? dotGlowRadialOutset(dotCfg.glow.radius, dotCfg.glow.blur)
         : 0,
     ),
-    gridStyleCfg: resolveGridStyle(gridStyle),
+    gridStyleCfg,
+    xGridStyleCfg: resolveXAxisGridStyle(
+      xAxisCfg?.gridLines ?? null,
+      gridStyleCfg,
+    ),
     degenCfg: isStatic ? null : resolveDegen(degen),
     tradeStreamResolved: resolveTradeStream(tradeStream),
     metricsCfg: resolveMetrics(metrics),
@@ -1521,6 +1528,7 @@ function useLiveChartController({
     selectionDotCfg,
     dotOuterRadius,
     gridStyleCfg,
+    xGridStyleCfg,
     degenCfg,
     tradeStreamResolved,
     metricsCfg,
@@ -2226,6 +2234,7 @@ function useLiveChartController({
     dotTracksParked,
     dotOuterRadius,
     gridStyleCfg,
+    xGridStyleCfg,
     degenCfg,
     tradeStreamResolved,
     tradeStream,
@@ -2339,15 +2348,18 @@ function useLiveChartController({
 type LiveChartModel = ReturnType<typeof useLiveChartController>;
 
 type YAxisEntries = ReturnType<typeof useYAxis>["yAxisEntries"];
+type XAxisEntries = ReturnType<typeof useXAxis>["xAxisEntries"];
 type DegenState = ReturnType<typeof useDegen>;
 
 /** Owns the particle/shake state only while the degen effect is enabled. */
 function ChartWithDegen({
   model,
   yAxisEntries,
+  xAxisEntries,
 }: {
   model: LiveChartModel;
   yAxisEntries: YAxisEntries | null;
+  xAxisEntries: XAxisEntries | null;
 }) {
   const {
     engine,
@@ -2367,7 +2379,61 @@ function ChartWithDegen({
     onDegenShake,
     isFrameLoopActive,
   );
-  return <ChartView model={model} yAxisEntries={yAxisEntries} degen={state} />;
+  return (
+    <ChartView
+      model={model}
+      yAxisEntries={yAxisEntries}
+      xAxisEntries={xAxisEntries}
+      degen={state}
+    />
+  );
+}
+
+/**
+ * Owns the X-axis worklet, like {@link ChartWithYAxis} for the Y axis: mounted
+ * only while the axis is enabled, and its entries are passed through props so
+ * the vertical grid (behind the series) and the labels (above it) read the
+ * same mapper.
+ */
+function ChartWithXAxis({ model }: { model: LiveChartModel }) {
+  const { engine, effectivePadding, formatTime, skiaFont, xAxisCfg } = model;
+  const { xAxisEntries } = useXAxis(
+    engine,
+    effectivePadding,
+    formatTime,
+    skiaFont,
+    xAxisCfg?.minGap,
+  );
+  return <ChartWithYAxisOrDegen model={model} xAxisEntries={xAxisEntries} />;
+}
+
+function ChartWithYAxisOrDegen({
+  model,
+  xAxisEntries,
+}: {
+  model: LiveChartModel;
+  xAxisEntries: XAxisEntries | null;
+}) {
+  if (model.yAxisCfg) {
+    return <ChartWithYAxis model={model} xAxisEntries={xAxisEntries} />;
+  }
+  if (model.degenCfg) {
+    return (
+      <ChartWithDegen
+        model={model}
+        yAxisEntries={null}
+        xAxisEntries={xAxisEntries}
+      />
+    );
+  }
+  return (
+    <ChartView
+      model={model}
+      yAxisEntries={null}
+      xAxisEntries={xAxisEntries}
+      degen={null}
+    />
+  );
 }
 
 /**
@@ -2376,7 +2442,13 @@ function ChartWithDegen({
  * The entries are passed through ordinary props so both paint-order positions
  * receive the same mapper across the React Native → Skia renderer boundary.
  */
-function ChartWithYAxis({ model }: { model: LiveChartModel }) {
+function ChartWithYAxis({
+  model,
+  xAxisEntries,
+}: {
+  model: LiveChartModel;
+  xAxisEntries: XAxisEntries | null;
+}) {
   const {
     engine,
     effectivePadding,
@@ -2396,9 +2468,22 @@ function ChartWithYAxis({ model }: { model: LiveChartModel }) {
     yAxisCfg?.intervalScale ?? 1,
   );
   if (model.degenCfg) {
-    return <ChartWithDegen model={model} yAxisEntries={yAxisEntries} />;
+    return (
+      <ChartWithDegen
+        model={model}
+        yAxisEntries={yAxisEntries}
+        xAxisEntries={xAxisEntries}
+      />
+    );
   }
-  return <ChartView model={model} yAxisEntries={yAxisEntries} degen={null} />;
+  return (
+    <ChartView
+      model={model}
+      yAxisEntries={yAxisEntries}
+      xAxisEntries={xAxisEntries}
+      degen={null}
+    />
+  );
 }
 
 function ChartYAxisLayer({
@@ -2459,29 +2544,21 @@ function ChartYAxisLayer({
   );
 }
 
-/** Owns the X-axis worklet and only mounts when `xAxis` is enabled. */
-function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
-  const {
-    engine,
-    effectivePadding,
-    formatTime,
-    skiaFont,
-    palette,
-    volumeBandHeight,
-    xAxisCfg,
-  } = model;
-  const { xAxisEntries } = useXAxis(
-    engine,
-    effectivePadding,
-    formatTime,
-    skiaFont,
-    xAxisCfg?.minGap,
-  );
+/** The X-axis line, ticks, and labels, drawn above the series. */
+function ChartXAxisLayer({
+  model,
+  entries,
+}: {
+  model: LiveChartModel;
+  entries: XAxisEntries;
+}) {
+  const { engine, effectivePadding, skiaFont, palette, volumeBandHeight } =
+    model;
   return (
     // Axis auto-hide fade (1 when the feature is off).
     <Group opacity={model.axisAutoHideOpacity}>
       <XAxisOverlay
-        entries={xAxisEntries}
+        entries={entries}
         engine={engine}
         padding={effectivePadding}
         palette={palette}
@@ -2493,22 +2570,30 @@ function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
 }
 
 /**
- * Background fills drawn BENEATH the left-edge fade: the y-axis grid, the area
- * gradient, and the threshold profit/loss band. Split out from `ChartStack` so
- * the fade's `dstOut` only softens the fills — the line and everything above it
- * (drawn in `ChartStack`, after the fade) stay crisp at the left edge.
+ * Background fills drawn BENEATH the left-edge fade: the grid (both
+ * directions), the area gradient, and the threshold profit/loss band. Split out
+ * from `ChartStack` so the fade's `dstOut` only softens the fills — the line
+ * and everything above it (drawn in `ChartStack`, after the fade) stay crisp at
+ * the left edge.
  */
 function ChartFillLayer({
   model,
   yAxisEntries,
+  xAxisEntries,
   degen,
 }: {
   model: LiveChartModel;
   yAxisEntries: YAxisEntries | null;
+  xAxisEntries: XAxisEntries | null;
   degen: DegenState | null;
 }) {
   const {
     yAxisCfg,
+    xGridStyleCfg,
+    engine,
+    palette,
+    volumeBandHeight,
+    axisAutoHideOpacity,
     yAxisFloat,
     reveal,
     effectivePadding,
@@ -2541,6 +2626,21 @@ function ChartFillLayer({
           entries={yAxisEntries!}
         />
       )}
+
+      {/* Vertical grid at the time ticks (`xAxis.gridLines`). It fades with
+          the X axis under `axisAutoHide`; its labels draw in ChartStack. */}
+      {xGridStyleCfg && xAxisEntries ? (
+        <Group opacity={axisAutoHideOpacity}>
+          <XAxisGridLines
+            entries={xAxisEntries}
+            engine={engine}
+            padding={effectivePadding}
+            palette={palette}
+            gridStyle={xGridStyleCfg}
+            volumeBandHeight={volumeBandHeight}
+          />
+        </Group>
+      ) : null}
 
       <Group opacity={seriesOpacity} clip={seriesClip}>
         {/* Dot-lattice area fill (the under-line `fillPath` painted with a dot
@@ -2991,9 +3091,11 @@ function ChartLineStrokeShader({ model }: { model: LiveChartModel }) {
 function ChartMainPlotLayer({
   model,
   yAxisEntries,
+  xAxisEntries,
 }: {
   model: LiveChartModel;
   yAxisEntries: YAxisEntries | null;
+  xAxisEntries: XAxisEntries | null;
 }) {
   const {
     engine,
@@ -3006,7 +3108,6 @@ function ChartMainPlotLayer({
     strokeWidth,
     lineProp,
     isCandle,
-    xAxisCfg,
     yAxisCfg,
     yAxisFloat,
     seriesClip,
@@ -3039,7 +3140,9 @@ function ChartMainPlotLayer({
           entries={yAxisEntries!}
         />
       ) : null}
-      {xAxisCfg ? <ChartXAxisLayer model={model} /> : null}
+      {xAxisEntries ? (
+        <ChartXAxisLayer model={model} entries={xAxisEntries} />
+      ) : null}
     </>
   );
 }
@@ -3051,10 +3154,12 @@ function ChartMainPlotLayer({
 function ChartStack({
   model,
   yAxisEntries,
+  xAxisEntries,
   degen,
 }: {
   model: LiveChartModel;
   yAxisEntries: YAxisEntries | null;
+  xAxisEntries: XAxisEntries | null;
   degen: DegenState | null;
 }) {
   const {
@@ -3190,7 +3295,11 @@ function ChartStack({
         />
       )}
 
-      <ChartMainPlotLayer model={model} yAxisEntries={yAxisEntries} />
+      <ChartMainPlotLayer
+        model={model}
+        yAxisEntries={yAxisEntries}
+        xAxisEntries={xAxisEntries}
+      />
 
       {/* Live dot — the badge is drawn later (after the scrub layer) so the
           scrub dim never clips the live-price badge's left edge. Hidden while
@@ -3778,10 +3887,12 @@ function ChartCustomConsumerOverlay({ model }: { model: LiveChartModel }) {
 function ChartCanvas({
   model,
   yAxisEntries,
+  xAxisEntries,
   degen,
 }: {
   model: LiveChartModel;
   yAxisEntries: YAxisEntries | null;
+  xAxisEntries: XAxisEntries | null;
   degen: DegenState | null;
 }) {
   const {
@@ -3812,7 +3923,12 @@ function ChartCanvas({
           color={backgroundColor}
         />
       ) : null}
-      <ChartFillLayer model={model} yAxisEntries={yAxisEntries} degen={degen} />
+      <ChartFillLayer
+        model={model}
+        yAxisEntries={yAxisEntries}
+        xAxisEntries={xAxisEntries}
+        degen={degen}
+      />
       {leftEdgeFadeCfg ? (
         <LeftEdgeFade
           paddingLeft={effectivePadding.left}
@@ -3825,7 +3941,12 @@ function ChartCanvas({
           }
         />
       ) : null}
-      <ChartStack model={model} yAxisEntries={yAxisEntries} degen={degen} />
+      <ChartStack
+        model={model}
+        yAxisEntries={yAxisEntries}
+        xAxisEntries={xAxisEntries}
+        degen={degen}
+      />
       {topConnector || bottomConnector ? (
         <ExtremaConnectorOverlay
           engine={engine}
@@ -3945,10 +4066,12 @@ function ChartNativeOverlays({ model }: { model: LiveChartModel }) {
 function ChartView({
   model,
   yAxisEntries,
+  xAxisEntries,
   degen,
 }: {
   model: LiveChartModel;
   yAxisEntries: YAxisEntries | null;
+  xAxisEntries: XAxisEntries | null;
   degen: DegenState | null;
 }) {
   const {
@@ -3969,7 +4092,12 @@ function ChartView({
         accessibilityLabel={accessibilityLabel}
         accessibilityRole={accessibilityRole}
       >
-        <ChartCanvas model={model} yAxisEntries={yAxisEntries} degen={degen} />
+        <ChartCanvas
+          model={model}
+          yAxisEntries={yAxisEntries}
+          xAxisEntries={xAxisEntries}
+          degen={degen}
+        />
         <ChartNativeOverlays model={model} />
       </View>
     </GestureDetector>
@@ -3989,12 +4117,9 @@ export const LiveChart = memo(
       }),
       [viewEnd, viewWindow],
     );
-    if (model.yAxisCfg) {
-      return <ChartWithYAxis model={model} />;
+    if (model.xAxisCfg) {
+      return <ChartWithXAxis model={model} />;
     }
-    if (model.degenCfg) {
-      return <ChartWithDegen model={model} yAxisEntries={null} />;
-    }
-    return <ChartView model={model} yAxisEntries={null} degen={null} />;
+    return <ChartWithYAxisOrDegen model={model} xAxisEntries={null} />;
   }),
 );
