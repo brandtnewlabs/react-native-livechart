@@ -3034,7 +3034,9 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
    * undefined falls back to nowOverride or wall time. Paths/dots end at the
    * earlier of the viewport edge and head, leaving windowBuffer empty. Samples
    * after this head are excluded from paths and range fitting. Scrub time limits
-   * use the same clock without requiring React renders.
+   * and values use the same cutoff, including callback payloads and tooltip
+   * interpolation. Degen bursts originate at the presented dot. No React
+   * render is required for clock updates.
    */
   presentationTime?: SharedValue<number | undefined>;
   /** Array of series definitions. Must be a SharedValue for UI-thread reads. */

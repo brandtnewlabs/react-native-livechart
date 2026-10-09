@@ -38,6 +38,9 @@ see [Axes & grid](/guides/axes-and-grid).
   `undefined` falls back to `nowOverride` or wall time. Scrub time limits use the
   same clock. Lines, live dots, value lines and inline labels project at
   `min(viewportEnd, head)`, keeping `windowBuffer` free of future price samples.
+  Parked viewports retain the presented value when their edge passes the head.
+  Scrub callbacks, selection dots and tooltip interpolation exclude future samples;
+  momentum bursts originate at the projected dot and hide when it is offscreen.
   Paths and range fitting exclude samples after an explicit head. Updating the
   SharedValue does not require a React render. See
   [Replay clock](/guides/multi-series#replay-clock).

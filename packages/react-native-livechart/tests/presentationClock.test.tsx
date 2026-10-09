@@ -73,6 +73,20 @@ it("advances engine, path builder and scrub clock from a SharedValue without a R
   const builder = (Skia.PathBuilder.Make as jest.Mock).mock.results.slice(-MAX_MULTI_SERIES)[0].value;
   expect(builder.lineTo.mock.calls.at(-1)[0]).toBe(288);
   expect(builder.lineTo.mock.calls.every(([x]: [number]) => x <= 288)).toBe(true);
+  for (const edge of [1055, 1060, 1070, 1100]) {
+    engine.viewEnd.set(edge);
+    mockFrame({ timeSincePreviousFrame: 16.67 });
+    paths.get();
+    expect(engine.displaySeriesValues.get()[0]).toBe(30);
+    expect(engine.displayMin.get()).toBeCloseTo(18.8);
+    expect(engine.displayMax.get()).toBeCloseTo(31.2);
+    expect(engine.extremaMaxValue.get()).toBe(30);
+    expect(builder.lineTo.mock.calls.at(-1)[0]).toBeCloseTo(lineTipX(edge, 100, 1050, 320, padding));
+  }
+  engine.viewEnd.set(1040);
+  mockFrame({ timeSincePreviousFrame: 16.67 });
+  expect(engine.displaySeriesValues.get()[0]).toBe(20);
+  engine.viewEnd.set(null);
   head.set(1070); series.set([{ ...series.get()[0], value: 40 }]);
   mockFrame({ timeSincePreviousFrame: 16.67 }); paths.get();
   expect(engine.timestamp.get()).toBe(1080);

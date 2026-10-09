@@ -67,7 +67,11 @@ Supply each series' current presented `value` alongside the clock. A head of
 at x=288, leaving 32 points of breathing room. Advancing the head to 1070 moves
 the edge to 1080. Paths and range fitting ignore samples after an explicit head,
 and scrubbing uses the same time limit. A historical viewport ends at its own
-edge when that is earlier than the head.
+edge when that is earlier than the head. Panning into or past the buffer keeps
+the presented value and range. Scrub callbacks and tooltip values interpolate
+only through presented history and the current tip, with the selection dot
+clamped to that head. Degen bursts use the same dot position and ignore queued
+future momentum; an offscreen tip cannot spawn a burst.
 
 ## Series options
 
