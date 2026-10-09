@@ -216,6 +216,8 @@ export function useCrosshair(
   /** Candle mode: fires once per candle the crosshair enters, `null` on exit. */
   onScrubCandleChange?: (candle: CandlePoint | null) => void,
   markerOptions?: ScrubMarkerOptions,
+  /** Price-axis ownership also guards against stale native long-press events. */
+  axisScaleActive?: SharedValue<boolean>,
 ): CrosshairState {
   // Config objects may be recreated without changing the plot geometry. Keep
   // worklet closures and gestures stable until an actual inset changes.
@@ -793,6 +795,7 @@ export function useCrosshair(
       .onStart(
         /* istanbul ignore next */ (e) => {
           "worklet";
+          if (axisScaleActive?.get()) return;
           if (
             !shouldStartDelayedPan(
               longPressMs,
@@ -857,6 +860,7 @@ export function useCrosshair(
       .onUpdate(
         /* istanbul ignore next */ (e) => {
           "worklet";
+          if (axisScaleActive?.get()) return;
           if (!enabled) return;
           if (hasScrubAction && lockActive.get()) {
             lockX.set(
@@ -1018,6 +1022,7 @@ export function useCrosshair(
     return { gesture, tapGesture };
   }, [
     actionBadge,
+    axisScaleActive,
     candleWidthSecs,
     candlesSV,
     canvasHeightSV,

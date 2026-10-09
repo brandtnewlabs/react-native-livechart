@@ -679,6 +679,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   // long-press guard) makes "the scroll already won" a hard fact; `scrubActive`
   // (written by the crosshair, read by the scroll pan) is the mirror image.
   const scrollActive = useSharedValue(false);
+  const axisScaleActive = useSharedValue(false);
   // `liveEdge` includes the optional right breathing-room buffer. The time pill
   // must clamp against the real "now" anchor so its live bucket never ends in
   // that future buffer.
@@ -707,6 +708,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
       : undefined,
     scrubCfg?.clampToPlot ?? false,
     resolveScrubMarkerOptions(scrubCfg, markersSV),
+    axisScaleActive,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -809,6 +811,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     gesture: plotGesture,
     deferHit: markerHitTest,
     onStart: clearCrosshair,
+    active: axisScaleActive,
   });
 
   const backgroundColor = `rgb(${palette.bgRgb[0]}, ${palette.bgRgb[1]}, ${palette.bgRgb[2]})`;

@@ -2107,6 +2107,7 @@ function useLiveChartController({
   // long-press guard) makes "the scroll already won" a hard fact; `scrubActive`
   // (written by the crosshair, read by the scroll pan) is the mirror image.
   const scrollActive = useSharedValue(false);
+  const axisScaleActive = useSharedValue(false);
 
   const crosshairSettings = resolveCrosshairControllerSettings({
     scrubCfg,
@@ -2150,6 +2151,7 @@ function useLiveChartController({
     crosshairSettings.snapToCandles,
     onScrubCandleChange,
     resolveScrubMarkerOptions(scrubCfg, markersSV),
+    axisScaleActive,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -2209,7 +2211,6 @@ function useLiveChartController({
     onZoomStart: clearCrosshair,
   });
 
-  const axisScaleActive = useSharedValue(false);
   const axisAutoHideOpacity = useAxisAutoHide({
     config: axisAutoHide,
     scaleActive: axisScaleActive,

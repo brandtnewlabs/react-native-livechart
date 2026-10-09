@@ -75,6 +75,8 @@ export function useCrosshairSeries(
    */
   clampToPlot = false,
   markerOptions?: ScrubMarkerOptions,
+  /** Price-axis ownership also guards against stale native long-press events. */
+  axisScaleActive?: SharedValue<boolean>,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -300,6 +302,7 @@ export function useCrosshairSeries(
     .onStart(
       /* istanbul ignore next */ (e) => {
         "worklet";
+        if (axisScaleActive?.get()) return;
         if (
           !shouldStartDelayedPan(
             panGestureDelay,
@@ -327,6 +330,7 @@ export function useCrosshairSeries(
     .onUpdate(
       /* istanbul ignore next */ (e) => {
         "worklet";
+        if (axisScaleActive?.get()) return;
         if (!enabled) return;
         updatePlainScrub(
           e.x,

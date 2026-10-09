@@ -160,8 +160,13 @@ export function useYAxisScaleGesture({
         // recognition, so it cannot reliably claim a gutter touch on down.
         // Claim before a parent ScrollView or chart scrub can activate.
         // Exclusive below gives this pair priority over the entire plot graph.
+        // Native touch moves can arrive before the ACTIVE/onStart event. Seed
+        // the drag here so the first move cannot reuse a previous drag's scale.
+        cancelAnimation(scale);
+        startScale.set(scale.get());
         startY.set(touch.y);
         armed.set(true);
+        active?.set(true);
         manager.begin();
         manager.activate();
       })
@@ -169,8 +174,6 @@ export function useYAxisScaleGesture({
         "worklet";
         wake?.();
         active?.set(true);
-        cancelAnimation(scale);
-        startScale.set(scale.get());
         onStart?.();
       })
       .onTouchesMove((event) => {
@@ -189,10 +192,14 @@ export function useYAxisScaleGesture({
       })
       .onTouchesUp((_event, manager) => {
         "worklet";
-        if (armed.get()) manager.end();
+        if (armed.get()) {
+          armed.set(false);
+          manager.end();
+        }
       })
       .onTouchesCancelled((_event, manager) => {
         "worklet";
+        armed.set(false);
         manager.fail();
       })
       .onFinalize(() => {

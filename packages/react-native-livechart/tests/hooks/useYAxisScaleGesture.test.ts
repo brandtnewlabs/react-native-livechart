@@ -274,6 +274,33 @@ const down = (x: number, y = 100, numberOfTouches = 1) => ({
 });
 
 describe("axis gesture ownership", () => {
+  it("seeds each drag before native moves that precede the ACTIVE event", async () => {
+    const { pan, scale } = await setup();
+    const h = pan.handlers as unknown as Handlers;
+    const state = { ...manager(), end: jest.fn() };
+    h.onTouchesDown(down(370), state);
+    h.onTouchesMove(down(370, 180));
+    expect(scale.get()).toBeCloseTo(2 * Math.exp(0.5));
+    h.onStart();
+    h.onTouchesMove(down(370, 260));
+    expect(scale.get()).toBeCloseTo(2 * Math.E);
+    h.onTouchesUp({}, state);
+    h.onTouchesMove(down(370, 300));
+    expect(scale.get()).toBeCloseTo(2 * Math.E);
+    h.onFinalize();
+
+    // A reset or external control between drags must become the new baseline.
+    scale.set(1);
+    h.onTouchesDown(down(370), state);
+    h.onTouchesMove(down(370, 180));
+    h.onStart();
+    h.onTouchesMove(down(370, 260));
+    expect(scale.get()).toBeCloseTo(Math.E);
+    h.onTouchesCancelled({}, state);
+    h.onTouchesMove(down(370, 300));
+    expect(scale.get()).toBeCloseTo(Math.E);
+  });
+
   it("uses explicit native activation and releases every terminal touch", async () => {
     const manual = jest.spyOn(Gesture, "Manual");
     const { pan, scale } = await setup();
