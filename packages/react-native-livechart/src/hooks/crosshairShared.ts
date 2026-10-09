@@ -306,6 +306,60 @@ export function snapPrice(price: number, increment?: number): number {
   return Math.round(price / increment) * increment;
 }
 
+/** What `Math.round(price / increment) * increment` can be off by at this price
+ *  in double precision. */
+function roundingNoise(increment: number, price: number): number {
+  "worklet";
+  return Math.max(increment * 1e-9, Math.abs(price) * 4 * Number.EPSILON);
+}
+
+/**
+ * {@link snapPrice} for a price inside `[min, max]` that should stay there: when
+ * rounding alone would leave the range, it rounds one `increment` inward instead
+ * (if that is still inside). A drag held at the plot's edge maps to exactly
+ * `max` / `min`, which plain rounding pushes just off the plot half the time.
+ */
+export function snapPriceWithin(
+  price: number,
+  increment: number | undefined,
+  min: number,
+  max: number,
+): number {
+  "worklet";
+  const snapped = snapPrice(price, increment);
+  if (!increment || increment <= 0) return snapped;
+  // Past an edge by float noise alone (90.05 rounds to 90.05000000000001): the
+  // edge is that grid value, and it stays on the plot.
+  if (snapped > max) {
+    if (snapped - max <= roundingNoise(increment, max)) return max;
+    if (snapped - increment >= min) return snapped - increment;
+  } else if (snapped < min) {
+    if (min - snapped <= roundingNoise(increment, min)) return min;
+    if (snapped + increment <= max) return snapped + increment;
+  }
+  return snapped;
+}
+
+/**
+ * {@link snapPrice} that rounds away from the range instead of to the nearest
+ * increment: up for `side` `1`, down for `-1`, nearest for `0`. A drag past the
+ * plot's edge asks for a price beyond it, and a coarse `snap` rounded back
+ * inside would leave the range nothing to widen to.
+ */
+export function snapPriceOutward(
+  price: number,
+  increment: number | undefined,
+  side: -1 | 0 | 1,
+): number {
+  "worklet";
+  const snapped = snapPrice(price, increment);
+  if (!increment || increment <= 0 || side === 0) return snapped;
+  const noise = roundingNoise(increment, price);
+  if (side > 0 && price - snapped > noise) return snapped + increment;
+  if (side < 0 && snapped - price > noise) return snapped - increment;
+  return snapped;
+}
+
 /**
  * Maps a scrub X position to a window timestamp.
  * Returns -1 when inactive or when the canvas is not yet laid out.

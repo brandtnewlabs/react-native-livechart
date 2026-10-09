@@ -89,6 +89,7 @@ import {
 import {
   dotGlowRadialOutset,
   pulseRadialOutset,
+  seriesPlotClip,
   type ChartPadding,
 } from "../draw/line";
 import {
@@ -1745,6 +1746,26 @@ function useLiveChartController({
   // ── Per-frame derived values ───────────────────────────────────────────
   const { layoutWidth, layoutHeight, onLayout } = useCanvasLayout(engine);
 
+  // Draggable reference lines: a per-line vertical pan that grabs a line near its
+  // value and drags it along the Y-axis (with snap / bounds / callbacks). Built
+  // unconditionally for stable hook order (and before `useCrosshair` so the scrub
+  // can defer to a line under the finger); the gesture self-disables when no line
+  // opts in, and it's only composed into the root when `refDragEnabled`. Its
+  // `drawnValues` (the dragged line kept under the finger) is what the lines'
+  // grouping, press hit-test and overlays read; the range fit reads `dragValues`.
+  const {
+    gesture: refDragGesture,
+    hitTest: refDragHitTest,
+    drawnValues: drawnRefValues,
+  } = useReferenceDrag(
+    engine,
+    effectivePadding,
+    allRefLines,
+    dragValues,
+    dragActive,
+    !isStatic,
+  );
+
   const { refGroupResult, groupHidden } = useReferenceLineGrouping({
     radius: refGroupingRadius,
     engine,
@@ -1752,7 +1773,7 @@ function useLiveChartController({
     lines: allRefLines,
     custom: refLineCustom,
     offAxisCustom: refLineOffAxisCustom,
-    dragValues,
+    dragValues: drawnRefValues,
   });
 
   // Threshold split geometry. Two forms, picked at render by `Array.isArray` (no
@@ -1814,6 +1835,15 @@ function useLiveChartController({
     thresholdFillSamples,
     lineProp?.simplify,
     lineGapsCfg?.gaps,
+  );
+  // `effectivePadding.bottom` includes the volume band, so this stops at the
+  // price plot's bottom edge.
+  const seriesClip = useDerivedValue(() =>
+    seriesPlotClip(
+      effectivePadding,
+      engine.canvasWidth.get(),
+      engine.canvasHeight.get(),
+    ),
   );
 
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config
@@ -1912,22 +1942,8 @@ function useLiveChartController({
       !isStatic && refPressActive,
       markerHitRadius,
       onReferenceLinePress,
-      dragValues,
+      drawnRefValues,
     );
-
-  // Draggable reference lines: a per-line vertical pan that grabs a line near its
-  // value and drags it along the Y-axis (with snap / bounds / callbacks). Built
-  // unconditionally for stable hook order (and before `useCrosshair` so the scrub
-  // can defer to a line under the finger); the gesture self-disables when no line
-  // opts in, and it's only composed into the root when `refDragEnabled`.
-  const { gesture: refDragGesture, hitTest: refDragHitTest } = useReferenceDrag(
-    engine,
-    effectivePadding,
-    allRefLines,
-    dragValues,
-    dragActive,
-    !isStatic,
-  );
 
   // Combined "defer" hit-test: the scrub-action place-tap and the live scrub both
   // yield to a marker, a pressable badge, or a draggable line under the finger — so
@@ -2185,7 +2201,7 @@ function useLiveChartController({
     refLineCustom,
     refLineOffAxisCustom,
     refLineCustomTagWidths,
-    dragValues,
+    dragValues: drawnRefValues,
     dragActive,
     renderReferenceLine,
     renderOffAxisReferenceLine,
@@ -2247,6 +2263,7 @@ function useLiveChartController({
     linePath,
     fillPath,
     thresholdFillPath,
+    seriesClip,
     lineIsLinear,
     volumeCfg,
     candleGapsCfg,
@@ -2416,12 +2433,14 @@ function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
     skiaFont,
     palette,
     volumeBandHeight,
+    xAxisCfg,
   } = model;
   const { xAxisEntries } = useXAxis(
     engine,
     effectivePadding,
     formatTime,
     skiaFont,
+    xAxisCfg?.minGap,
   );
   return (
     // Axis auto-hide fade (1 when the feature is off).
@@ -2473,6 +2492,7 @@ function ChartFillLayer({
     thresholdSeriesHasPoints,
     thresholdFillUniforms,
     seriesOpacity,
+    seriesClip,
   } = model;
   return (
     <Group transform={degen?.shakeTransform}>
@@ -2487,7 +2507,7 @@ function ChartFillLayer({
         />
       )}
 
-      <Group opacity={seriesOpacity}>
+      <Group opacity={seriesOpacity} clip={seriesClip}>
         {/* Dot-lattice area fill (the under-line `fillPath` painted with a dot
             shader). Drawn before the gradient so a gradient (if also enabled)
             composites on top. */}
@@ -2715,6 +2735,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     candleGapsCfg,
     scrubCfg,
     crosshair,
+    seriesClip,
   } = model;
   const paths = useCandlePaths(
     engine,
@@ -2825,7 +2846,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
 
   return (
     <Group opacity={seriesOpacity}>
-      <Group opacity={candleGroupOpacity}>
+      <Group opacity={candleGroupOpacity} clip={seriesClip}>
         {candleGapsCfg && (
           <ChartCandleGapLayer
             model={model}
@@ -2953,11 +2974,12 @@ function ChartMainPlotLayer({
     xAxisCfg,
     yAxisCfg,
     yAxisFloat,
+    seriesClip,
   } = model;
 
   return (
     <>
-      <Group opacity={seriesOpacity}>
+      <Group opacity={seriesOpacity} clip={seriesClip}>
         <Group opacity={lineGroupOpacity}>
           <Path
             path={linePath}

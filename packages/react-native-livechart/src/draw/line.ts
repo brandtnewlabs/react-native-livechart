@@ -216,6 +216,26 @@ export function resolvePadding(
 }
 
 /**
+ * Clip rect for the series layers (line, fill, candles, gap bridges): the plot's
+ * vertical extent, so a zoomed-in `yRangeScale` can't draw over the time axis.
+ * Horizontally it reaches a canvas width past each edge so the left-edge entry
+ * and the degen shake stay unclipped.
+ */
+export function seriesPlotClip(
+  padding: ChartPadding,
+  canvasWidth: number,
+  canvasHeight: number,
+): { x: number; y: number; width: number; height: number } {
+  "worklet";
+  return {
+    x: -canvasWidth,
+    y: padding.top,
+    width: canvasWidth * 3,
+    height: Math.max(0, canvasHeight - padding.top - padding.bottom),
+  };
+}
+
+/**
  * Build screen-space points as a flat number array [x0, y0, x1, y1, ...].
  * Includes one point before the window for smooth left-edge entry,
  * and appends a live tip at (now, displayValue).

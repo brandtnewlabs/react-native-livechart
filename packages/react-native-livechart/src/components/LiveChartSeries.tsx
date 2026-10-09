@@ -51,7 +51,11 @@ import {
   resolveZoom,
 } from "../core/resolveConfig";
 import { useLiveChartSeriesEngine } from "../core/useLiveChartSeriesEngine";
-import { dotGlowRadialOutset, pulseRadialOutset } from "../draw/line";
+import {
+  dotGlowRadialOutset,
+  pulseRadialOutset,
+  seriesPlotClip,
+} from "../draw/line";
 import {
   resolveChartLayout,
   shouldResampleLayoutValue,
@@ -141,15 +145,18 @@ function seriesConfigSig(s: SharedValue<SeriesConfig[]>) {
   return out;
 }
 
-/** Largest live series value — the sample the right gutter is measured from. */
+/** Largest finite magnitude — zeros and invalid placeholders cannot mask it. */
 function seriesLayoutValue(s: SharedValue<SeriesConfig[]>) {
   "worklet";
   const arr = s.value;
-  let max = -Infinity;
+  let sample = 0;
   for (let i = 0; i < arr.length; i++) {
-    if (arr[i].value > max) max = arr[i].value;
+    const value = arr[i].value;
+    if (Number.isFinite(value) && Math.abs(value) > Math.abs(sample)) {
+      sample = value;
+    }
   }
-  return max;
+  return sample;
 }
 
 function useSeriesLayoutValueSample(series: SharedValue<SeriesConfig[]>) {
@@ -597,6 +604,13 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     activeSeriesCount,
     lineProp?.simplify,
   );
+  const seriesClip = useDerivedValue(() =>
+    seriesPlotClip(
+      effectivePadding,
+      engine.canvasWidth.get(),
+      engine.canvasHeight.get(),
+    ),
+  );
 
   // Read the `series` prop from closure, not a SharedValue passed through
   // `scheduleOnRN`: the handle serialized across the worklet→JS boundary keeps
@@ -638,6 +652,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     effectivePadding,
     formatTime,
     skiaFont,
+    xAxisCfg?.minGap,
   );
 
   // Cross-gesture arbitration for the one-finger touch. `Gesture.Race` below is
@@ -831,6 +846,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     layoutHeight,
     onLayout,
     linePaths,
+    seriesClip,
     activeSeriesCount,
     lineColors,
     lineStyles,
@@ -951,6 +967,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     canvasMode,
     activeSeriesCount,
     refLineKeys,
+    seriesClip,
   } = model;
 
   return (
@@ -992,7 +1009,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
           </Group>
         )}
 
-        <Group opacity={reveal.lineOpacity}>
+        <Group opacity={reveal.lineOpacity} clip={seriesClip}>
           {Array.from({ length: activeSeriesCount }, (_, i) => (
             <MultiSeriesStroke
               key={i}

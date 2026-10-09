@@ -89,6 +89,29 @@ describe("LiveChart layout value sample", () => {
 });
 
 describe("LiveChartSeries layout value sample", () => {
+  it.each([
+    { values: [0, -87_000], expected: -87_000 },
+    { values: [5, -87_000], expected: -87_000 },
+    { values: [Infinity, 87_000], expected: 87_000 },
+    { values: [NaN, 0, -87_000], expected: -87_000 },
+  ])(
+    "sizes the gutter for finite values in $values",
+    async ({ values, expected }) => {
+      let series: SharedValue<SeriesConfig[]> | undefined;
+      function H() {
+        series = useSharedValue<SeriesConfig[]>(
+          values.map((value, i) => ({ id: String(i), data: [], value })),
+        );
+        return <LiveChartSeries series={series} yAxis formatValue={formatValue} />;
+      }
+      await render(<H />);
+      const reaction = sampleReaction(series);
+      const current = reaction.prepare();
+      await tick(reaction, current as number);
+      expect(lastMeasuredValue()).toBe(expected);
+    },
+  );
+
   it("re-measures the gutter once the series values leave 0", async () => {
     let series: SharedValue<SeriesConfig[]> | undefined;
     function H() {
