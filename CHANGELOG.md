@@ -7,7 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ReferenceLine.bounds` also accepts a `SharedValue<[number, number]>`, for a
+  drag limit that follows a live value (e.g. a stop that can't cross the
+  current price). The drag clamp and `onDragIn` / `onDragOut` read it on the UI
+  thread, so moving the bound no longer needs a new `referenceLines` array or a
+  re-render.
+  ([#402](https://github.com/brandtnewlabs/react-native-livechart/issues/402))
+
+- Y-axis ticks pass an optional source-unit `tickStep` to `formatValue`, allowing
+  compact formatters to keep nearby labels distinct. One-argument formatters and
+  badge/tooltip formatting keep their existing behavior.
+  ([#397](https://github.com/brandtnewlabs/react-native-livechart/issues/397))
+
+- `LiveChartSeries.rangeAnimation.transform` and exported
+  `SeriesRangeAnimationConfig` apply reversible worklet presentation bounds after
+  fitting/easing. SharedValue-driven overlays can expand and release the range
+  without changing recorded prices or feeding expansion back into later fits.
+  Invalid returned ranges are ignored.
+  ([#395](https://github.com/brandtnewlabs/react-native-livechart/issues/395))
+
+- `LiveChartSeries.historyStartTime` keeps an authoritative history start at the
+  left edge as the live viewport grows, including breathing room. Pan/zoom
+  overrides remain usable and resetting zoom restores following.
+
+- `LiveChartSeries.presentationTime` accepts a UI-thread SharedValue clock with
+  `nowOverride`/wall-time fallback, shared by the engine and scrub limit. Paths,
+  live dots and attached value overlays stop at the presented head, leaving
+  breathing room free of future samples. Parked viewports, scrub callbacks and
+  tooltip interpolation honor the head; degen bursts originate at the presented
+  dot and ignore future samples or offscreen tips.
+  ([#394](https://github.com/brandtnewlabs/react-native-livechart/issues/394))
+
 ### Fixed
+
+- Reserve the time-axis strip for `LiveChartSeries` axis dragging so a stationary
+  scrub hold cannot steal the scroll gesture. Plot scrubbing keeps its bounds.
+  ([#398](https://github.com/brandtnewlabs/react-native-livechart/issues/398))
+
+- Multi-series live tips use the authoritative value immediately when it is
+  already recorded at the displayed time, keeping dots aligned with history.
+  Unrecorded live updates and historical viewport edges retain smoothing.
+  ([#393](https://github.com/brandtnewlabs/react-native-livechart/issues/393))
+
+- Pinch zoom snapshots the displayed window and can restore an anchored full
+  history even with late-starting retained samples. Explicit zoom bounds take
+  precedence; series scrub time limits use the actual clock before buffer.
+  ([#392](https://github.com/brandtnewlabs/react-native-livechart/issues/392))
 
 - Both charts forward `yAxis.labelRightMargin` into layout and size its gutter
   from the actual painted tick column plus edge margin and dot-effect clearance.

@@ -10,7 +10,7 @@ import { runOnJS } from "react-native-worklets";
 import { DEGEN_STRIDE } from "../constants";
 import type { ResolvedDegenConfig } from "../core/resolveConfig";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
-import type { ChartPadding } from "../draw/line";
+import { lineTipX, type ChartPadding } from "../draw/line";
 import { computeShake, spawnBurst, tickParticles } from "../math/degenTick";
 import { detectMomentum } from "../math/momentum";
 import type { DegenShakePayload } from "../types";
@@ -164,19 +164,24 @@ export function useMultiSeriesDegen(
 
       const cw = engine.canvasWidth.get();
       const ch = engine.canvasHeight.get();
-      const canSpawn = cw >= 1 && ch >= 1;
+      const end = engine.timestamp.get();
+      const window = engine.displayWindow.get();
+      const head = engine.tipTime?.get() ?? end;
+      const ox = lineTipX(end, window, head, cw, padding);
+      const canSpawn = cw >= 1 && ch >= 1 && window > 0 &&
+        ox >= padding.left && ox <= cw - padding.right;
       const dMin = engine.displayMin.get();
       const dMax = engine.displayMax.get();
       const valRange = dMax - dMin;
       const chartH = ch - padding.top - padding.bottom;
-      const ox = cw - padding.right;
       const allowDown = downSV.get() > 0.5;
 
       // Each visible series fires a burst off its own dot on a fresh swing.
       let firedDir = 0; // 0 none, 1 up, 2 down
       for (let i = 0; i < n; i++) {
-        const visible = (ops[i] ?? 0) >= 0.5;
-        const m = visible ? detectMomentum(s[i].data) : "flat";
+        const visible = (ops[i] ?? 0) >= 0.5 &&
+          s[i].data.length > 0 && s[i].data[0].time <= head;
+        const m = visible ? detectMomentum(s[i].data, 20, 0.12, head) : "flat";
         const code = m === "up" ? 1 : m === "down" ? 2 : 0;
         const prev = moms[i];
         moms[i] = code;

@@ -1,7 +1,7 @@
 import { type SkFont } from "@shopify/react-native-skia";
 import { renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
-import type { SharedValue } from "react-native-reanimated";
+import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../../src/constants";
 import type { MultiEngineState } from "../../src/core/useLiveChartEngine";
 import { resolveScrub } from "../../src/core/resolveConfig";
@@ -376,6 +376,13 @@ describe("computePerSeriesTooltipLayout", () => {
 });
 
 describe("per-series tooltip helpers", () => {
+  it("can resolve a second tooltip after the first config is frozen by a worklet", () => {
+    const first = Object.freeze(tooltipConfig());
+    const second = tooltipConfig();
+    expect(second).toEqual(first);
+    expect(second).not.toBe(first);
+  });
+
   it("infers the latest positive bucket interval from visible series", () => {
     expect(
       estimateSeriesBucketSeconds([
@@ -494,6 +501,47 @@ describe("interpolateSeriesAtTime", () => {
 });
 
 describe("useCrosshairSeries (hook)", () => {
+  it.each([false, true])("clamps scrub state, dots and callbacks to the presented head (tooltip=%s)", async (showTooltip) => {
+    const plot = { top: 0, left: 0, bottom: 0, right: 0 };
+    const engine = makeEngine({
+      canvasWidth: { value: 320 }, canvasHeight: { value: 200 },
+      timestamp: { value: 1060 }, displayWindow: { value: 100 },
+      tipTime: { value: 1050 }, displayMin: { value: 20 }, displayMax: { value: 40 },
+      displaySeriesValues: { value: [30] },
+      series: { value: [{ id: "a", value: 30, data: [
+        { time: 1000, value: 20 }, { time: 1050, value: 30 }, { time: 1060, value: 9999 },
+      ] }] },
+    });
+    const onScrub = jest.fn();
+    const { result } = await renderHook(() => useCrosshairSeries(
+      engine, plot, true, onScrub, 0, undefined, undefined, undefined,
+      showTooltip ? { config: tooltipConfig(), formatValue, formatTime, font, colors: ["blue"], maxTime: engine.tipTime! } : undefined,
+    ));
+    const handlers = getGestureConfig(result.current.gesture);
+    (handlers.onStart[0] as (e: { x: number }) => void)({ x: 320 });
+    expect(result.current.scrubX.get()).toBe(288);
+    expect(result.current.scrubTime.get()).toBe(1050);
+    expect(result.current.scrubValue.get()).toBe(30);
+    expect(result.current.scrubDotY.get()).toBe(100);
+    const [prepare, react] = (useAnimatedReaction as jest.Mock).mock.calls.at(-1);
+    react(prepare(), null);
+    expect(onScrub).toHaveBeenLastCalledWith(expect.objectContaining({ time: 1050, x: 288, value: 30, seriesValues: [{ id: "a", value: 30 }] }));
+    if (showTooltip) expect(result.current.tooltipLayout.get().perSeries?.pills[0].value).toBe("30.00");
+    // Between the final presented sample and the synthetic tip, interpolate
+    // toward the displayed endpoint, never toward the queued 9999 sample.
+    engine.tipTime!.set(1055);
+    engine.displaySeriesValues.set([35]);
+    (handlers.onUpdate[0] as (e: { x: number }) => void)({ x: 297.6 });
+    expect(result.current.scrubTime.get()).toBeCloseTo(1053);
+    expect(result.current.scrubValue.get()).toBeCloseTo(33);
+    react(prepare(), null);
+    expect(onScrub.mock.calls.at(-1)[0].value).toBeCloseTo(33);
+    if (showTooltip) expect(result.current.tooltipLayout.get().perSeries?.pills[0].value).toBe("33.00");
+    engine.series.set([{ id: "a", value: 9999, data: [{ time: 1060, value: 9999 }] }]);
+    expect(result.current.scrubValue.get()).toBeNull();
+    expect(prepare()).toBe("__pending__");
+  });
+
   it("ignores native scrub events while the price axis owns the touch", async () => {
     const blocked = withSharedValueAccessors({ value: { value: true } }).value as unknown as SharedValue<boolean>;
     const { result } = await renderHook(() => useCrosshairSeries(
@@ -668,6 +716,22 @@ describe("useCrosshairSeries (hook)", () => {
       left: -padding.left,
       right: -padding.right,
     });
+  });
+
+  it.each([false, true])("reserves the axis strip with plot clamping %s", async (clamp) => {
+    await renderHook(() => useCrosshairSeries(
+      makeEngine(), padding, true, undefined, 350, undefined, undefined,
+      undefined, undefined, clamp, undefined, undefined, 48,
+    ));
+    expect(getLastPanCalls().hitSlop?.[0]).toEqual({
+      ...(clamp ? { left: -padding.left, right: -padding.right } : {}),
+      bottom: -48,
+    });
+  });
+
+  it("keeps unrestricted recognition when no axis strip is reserved", async () => {
+    await renderHook(() => useCrosshairSeries(makeEngine(), padding, true));
+    expect(getLastPanCalls().hitSlop).toBeUndefined();
   });
 
   it("only configures a long-press modifier for a positive delay", async () => {

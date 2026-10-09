@@ -80,6 +80,8 @@ export function useMultiSeriesLinePaths(
         engine.canvasHeight.get(),
         padding,
         pool.ptsBuf,
+        false,
+        engine.tipTime?.get(),
       );
       const seriesTolerance = s[i].simplify ?? simplifyTolerance;
       const pts =

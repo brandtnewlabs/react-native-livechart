@@ -33,6 +33,11 @@ Update the series the same way you feed a single chart — append points in plac
 `series.modify(...)` (mutating each entry's `data` array and `value`), or replace the whole array
 with `series.set(...)`. Avoid `series.value = ...`.
 
+When the newest recorded point already equals the live `value` and is at or
+before the displayed time, the following tip and dot use that value immediately.
+This keeps them aligned with authoritative history. An unrecorded live value
+still uses `smoothing`; scrolling back retains the historical edge behavior.
+
 For a dataset or unit change (for example Price → Market Cap), replace each
 series' history array and live value together. Replacement entries reach drawing
 on the next measured engine frame, alongside that frame's Y range and tips.
@@ -40,6 +45,94 @@ History arrays remain shared, so this does not isolate in-place edits to existin
 points. Normal live appends with `series.modify(...)` remain supported. Use
 `snapKey` when the replacement should settle immediately instead of easing with
 the configured `smoothing`.
+
+## Replay clock
+
+Drive reconstruction or replay with a SharedValue rather than updating a
+numeric `nowOverride` prop every frame:
+
+```tsx
+const presentationTime = useSharedValue<number | undefined>(1050);
+
+<LiveChartSeries
+  series={series}
+  presentationTime={presentationTime}
+  timeWindow={100}
+  windowBuffer={0.1}
+/>;
+
+// Can run on the UI thread; no React render needed.
+presentationTime.set(1070);
+// Restore nowOverride / wall time.
+presentationTime.set(undefined);
+```
+
+Supply each series' current presented `value` alongside the clock. A head of
+1050 produces viewport edge 1060. On a 320-point plot, the line and live dot end
+at x=288, leaving 32 points of breathing room. Advancing the head to 1070 moves
+the edge to 1080. Paths and range fitting ignore samples after an explicit head,
+and scrubbing uses the same time limit. A historical viewport ends at its own
+edge when that is earlier than the head. Panning into or past the buffer keeps
+the presented value and range. Scrub callbacks and tooltip values interpolate
+only through presented history and the current tip, with the selection dot
+clamped to that head. Degen bursts use the same dot position and ignore queued
+future momentum; an offscreen tip cannot spawn a burst.
+
+
+## All history
+
+Set the authoritative start once to keep the complete history in a growing live
+window without updating the `timeWindow` prop on every frame:
+
+```tsx
+<LiveChartSeries
+  series={series}
+  historyStartTime={1000}
+  timeWindow={2760}
+  windowBuffer={0.04}
+  timeScroll
+  zoom
+/>
+```
+
+At current time 3760, the visible window is 2875 seconds and its edge is 3875,
+so the left edge remains 1000. The growing span includes breathing room; use a
+buffer from 0 up to (but excluding) 1. `timeWindow` remains the fallback and the
+anchor for the default minimum zoom window. Pinch starts from the actual
+painted window. Default maximum zoom includes the full anchored span even when
+retained samples begin later; explicit `zoom.minTimeWindow`/`maxTimeWindow` take
+precedence. Pan and pinch can park a narrower or historical view; call
+`ref.current?.resetZoom()` to restore the growing live view.
+
+
+## Transforming the presentation range
+
+For an overlay that needs temporary breathing room, transform the fitted range
+using a UI-thread reveal value instead of changing recorded prices:
+
+```tsx
+const reveal = useSharedValue(0);
+
+<LiveChartSeries
+  series={series}
+  rangeAnimation={{
+    animateExpansion: true,
+    transform: ({ min, max }) => {
+      "worklet";
+      const extra = 10 * reveal.get();
+      return { min: min - extra, max: max + extra };
+    },
+  }}
+/>
+```
+
+Animate `reveal` from 0 to 1 with Reanimated when the overlay appears, then back
+to 0 on release. The callback runs after normal fitting/easing and can also read
+`from` and `to`, the visible Unix-second interval. Its output never feeds back
+into fitting: bounds 17.6–42.4 become 7.6–52.4 at full reveal on every frame.
+Releasing or removing the callback restores the original fit. Invalid ranges
+are ignored. Recorded prices and scrub values stay unchanged; hard bounds apply
+to the underlying fit before the presentation transform.
 
 ## Series options
 

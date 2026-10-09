@@ -750,8 +750,10 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 
 ## Text & accessibility
 
-<ParamField body="formatValue" type="(v: number) => string">
-  Formatter for value labels (axes, badge, tooltips).
+<ParamField body="formatValue" type="(v: number, tickStep?: number) => string">
+  Worklet formatter for value labels. Y-axis ticks pass their interval in source
+  units as `tickStep`, including fixed-count ticks. Badges, tooltips and layout
+  samples omit it. Existing one-argument formatters remain valid.
 </ParamField>
 
 <ParamField body="formatTime" type="(t: number) => string">

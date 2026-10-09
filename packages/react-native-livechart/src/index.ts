@@ -102,6 +102,7 @@ export type {
   PerSeriesTooltipConfig,
   PulseConfig,
   RangeAnimationConfig,
+  SeriesRangeAnimationConfig,
   ReferenceLine,
   ReferenceLineBadgeConfig,
   ReferenceLineValueBadgeConfig,

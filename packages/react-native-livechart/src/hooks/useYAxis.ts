@@ -15,7 +15,7 @@ import type { GridMetrics } from "../types";
 export function useYAxis(
   engine: ChartEngineLayout,
   padding: ChartPadding,
-  formatValue: (v: number) => string,
+  formatValue: (v: number, tickStep?: number) => string,
   font: SkFont,
   minGap = 36,
   gridMetrics: GridMetrics = GRID_METRICS_DEFAULTS,

@@ -73,7 +73,7 @@ import { useLoadingLook } from "../hooks/useLoadingLook";
 import { useMarkers } from "../hooks/useMarkers";
 import { useMultiSeriesDegen } from "../hooks/useMultiSeriesDegen";
 import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
-import { usePanScroll } from "../hooks/usePanScroll";
+import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { resetPinchZoom, usePinchZoom } from "../hooks/usePinchZoom";
 import { useMultiSeriesReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import {
@@ -211,6 +211,8 @@ function resolveLiveChartSeriesInputs({
   yRangeScale,
   windowBuffer = 0,
   nowOverride,
+  presentationTime,
+  historyStartTime,
   accessibilityLabel,
   accessibilityRole = "image",
   emptyText = "No data",
@@ -334,6 +336,8 @@ function resolveLiveChartSeriesInputs({
     yRangeScale,
     windowBuffer,
     nowOverride,
+    presentationTime,
+    historyStartTime,
     accessibilityLabel,
     accessibilityRole,
     emptyText,
@@ -457,6 +461,8 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     yRangeScale,
     windowBuffer,
     nowOverride,
+    presentationTime,
+    historyStartTime,
     accessibilityLabel,
     accessibilityRole,
     emptyText,
@@ -620,6 +626,8 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     yRangeScale: effectiveYRangeScale,
     windowBuffer,
     nowOverride,
+    presentationTime,
+    historyStartTime,
   });
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const linePaths = useMultiSeriesLinePaths(
@@ -689,11 +697,9 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   // (written by the crosshair, read by the scroll pan) is the mirror image.
   const scrollActive = useSharedValue(false);
   const axisScaleActive = useSharedValue(false);
-  // `liveEdge` includes the optional right breathing-room buffer. The time pill
-  // must clamp against the real "now" anchor so its live bucket never ends in
-  // that future buffer.
+  // The tooltip shares the crosshair/path cutoff, including historical edges.
   const tooltipMaxTime = useDerivedValue(
-    () => engine.liveEdge.get() - windowBuffer * timeWindow,
+    () => engine.tipTime?.get() ?? engine.currentTime.get(),
   );
 
   const crosshair = useCrosshairSeries(
@@ -718,6 +724,9 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     scrubCfg?.clampToPlot ?? false,
     resolveScrubMarkerOptions(scrubCfg, markersSV),
     axisScaleActive,
+    timeScrollEnabled && scrollGestureMode === "axisDrag"
+      ? Math.max(effectivePadding.bottom, AXIS_GRAB_MIN_PX)
+      : 0,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -747,7 +756,8 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   // scrollable history) so panning is a no-op.
   const scrollMinTime = useDerivedValue(() => {
     const s = engine.series.get();
-    let min = Infinity;
+    let min = historyStartTime != null && Number.isFinite(historyStartTime)
+      ? historyStartTime : Infinity;
     for (let i = 0; i < s.length; i++) {
       const d = s[i].data;
       if (d.length > 0 && d[0].time < min) min = d[0].time;
@@ -778,6 +788,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     padding: effectivePadding,
     minTime: scrollMinTime,
     timeWindow,
+    fullHistoryWindow: engine.fullHistoryWindow,
     enabled: zoomEnabled,
     minTimeWindow: zoomCfg?.minTimeWindow,
     maxTimeWindow: zoomCfg?.maxTimeWindow,

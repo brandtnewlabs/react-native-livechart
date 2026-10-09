@@ -249,7 +249,8 @@ interface ReferenceLine {
   grabRange?: [number, number];    // canvas x px where a press may grab it; default anywhere
   snap?: number;                   // tick increment; draw/drop inside the visible edges when a tick fits;
                                    // round the finger's value outward past the plot to widen the range
-  bounds?: [number, number];       // hard-clamp the draggable value
+  bounds?: [number, number] | SharedValue<[number, number]>; // hard-clamp the draggable value;
+                                   // a SharedValue follows a live bound on the UI thread
   onChange?: (value: number) => void;  // as the finger moves it (de-duped); + once on release if the line ended elsewhere
   onCommit?: (value: number) => void;  // on release — pair with a controlled `value`
   onDragIn?: (value: number) => void;  // value entered the visible range / bounds
@@ -592,6 +593,9 @@ interface YAxisScaleGestureConfig {
   doubleTapReset?: boolean; // animate to clamped 1 over 240ms; default true
 }
 interface YAxisConfig {
+  // Chart formatValue(value, tickStep?) receives this grid's source-unit step.
+  // Fixed count supplies the evenly spaced step; dynamic ticks supply the fine
+  // interval. Badges/tooltips/layout samples omit it; one-arg formatters work.
   // Built-in vertical price-axis drag; writes yRangeScale or internal state.
   // Down zooms out, up zooms in. Default false. See the Y-range scaling guide.
   scaleGesture?: boolean | YAxisScaleGestureConfig;
@@ -673,7 +677,7 @@ interface LoadingConfig {
 // Pinch-to-zoom the visible time window (two-finger, focal-anchored). @experimental
 interface ZoomConfig {
   minTimeWindow?: number; // tightest window in seconds (max zoom-in); default timeWindow / 8
-  maxTimeWindow?: number; // widest window in seconds (max zoom-out); default the full data span
+  maxTimeWindow?: number; // explicit widest window; default full data/anchored history span, at least timeWindow
 }
 // App-owned UI-thread viewport. LiveChart only (line/candle). @experimental
 interface ChartViewportControl {
@@ -776,6 +780,26 @@ animated expansion speed so the bounds cannot cross.
 `smoothing: 1`, explicit snaps, static mode, and active manual Y-scale dragging take precedence.
 Axis-label fades remain under `metrics.grid`. See
 [Y-range animation](/guides/y-range-scale#animating-automatic-range-changes).
+
+## SeriesRangeAnimationConfig
+
+Exported `LiveChartSeries` config extending `RangeAnimationConfig` with a
+reversible UI-thread range transform:
+
+```ts
+interface SeriesRangeAnimationConfig extends RangeAnimationConfig {
+  transform?: (range: {
+    min: number; max: number; // untransformed fitted/eased bounds
+    from: number; to: number; // visible Unix-second interval
+  }) => { min: number; max: number };
+}
+```
+
+The worklet may read SharedValues. Its output changes presentation after normal
+fit/easing; it never changes recorded values or feeds the next fit. Removing it
+restores the untransformed range. Non-finite, equal or inverted bounds are ignored.
+Configured hard bounds apply to the underlying fit before transforming. Existing
+expansion/contraction speeds, snaps and manual scaling apply to that fit.
 
 ## Imperative handle
 
@@ -1033,3 +1057,24 @@ margin, the largest dot/pulse/glow outset and six points of clearance. Initial
 samples add half a font-size of headroom until ticks exist. Width changes alone
 trigger React layout updates. Explicit right insets and badge requirements
 retain priority; centered, left and floating layout behavior is unchanged.
+
+
+## LiveChartSeries presentation clock
+
+`LiveChartSeriesProps.presentationTime?: SharedValue<number | undefined>` drives
+current time on the UI thread. Defined Unix seconds take precedence over
+`nowOverride`/wall time; `undefined` restores that fallback. Paths and range fits
+exclude future samples while a head is supplied; tips and dots stop at the
+presentation head or viewport edge, whichever is earlier. The scrub time limit
+uses the same clock. See [Replay clock](/guides/multi-series#replay-clock).
+
+
+## LiveChartSeries history start
+
+`LiveChartSeriesProps.historyStartTime?: number` is an authoritative Unix-second
+start for a growing live window. With no pan/zoom override, the displayed width
+is `(now - historyStartTime) / (1 - windowBuffer)`. Buffer must be in `[0, 1)`;
+invalid/future starts use `timeWindow`. `resetZoom()` resumes the growing view.
+Default pinch maximum includes this full span, independent of retained sample
+timestamps. Explicit zoom bounds take precedence, including maxima smaller than
+`timeWindow`. See [All history](/guides/multi-series#all-history).

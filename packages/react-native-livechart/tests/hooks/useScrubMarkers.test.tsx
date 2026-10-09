@@ -135,7 +135,7 @@ describe("multi-series scrub marker payload", () => {
     const engine = {
       timestamp: shared(200), displayWindow: shared(100),
       canvasWidth: shared(220), canvasHeight: shared(200),
-      displayMin: shared(0), displayMax: shared(30), series,
+      displayMin: shared(0), displayMax: shared(30), displaySeriesValues: shared([20]), series,
     } as unknown as MultiEngineState;
     const markers = shared<Marker[]>([{ id: "trade", time: 150, kind: "trade", data: { quantity: 2 } }]);
     const onScrub = jest.fn();
@@ -153,8 +153,8 @@ describe("multi-series scrub marker payload", () => {
         previous[index] = input;
       }
     };
-    result.current.scrubX.set(110);
-    result.current.scrubActive.set(true);
+    const start = result.current.gesture.handlers.onStart as (event: { x: number }) => void;
+    start({ x: 110 });
     step();
     if (enabled) expect(onScrub.mock.calls[0][0].markers).toEqual(markers.get());
     else expect(onScrub.mock.calls[0][0]).not.toHaveProperty("markers");

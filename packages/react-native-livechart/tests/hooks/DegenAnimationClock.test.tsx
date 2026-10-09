@@ -64,6 +64,7 @@ it.each(["single", "multi"] as const)("keeps %s-series particles and shake movin
       ...layout,
       displayMin: shared(0),
       displayMax: shared(100),
+      displayWindow: shared(100),
       displaySeriesValues: shared([50]),
       seriesOpacities: shared([1]),
       series: shared([{

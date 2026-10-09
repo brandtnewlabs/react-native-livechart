@@ -27,6 +27,12 @@ const mockFont = (charWidth = 7): SkFont =>
 const fmt = (v: number) => v.toFixed(2);
 
 describe("resolveChartLayout", () => {
+  it("omits tick steps for formatter layout samples", () => {
+    const format = jest.fn((value: number, step?: number) => `${value}:${step}`);
+    resolveChartLayout({ palette, yAxis: true, badge: false,
+      font: mockFont(), formatValue: format, currentValue: 100 });
+    expect(format.mock.calls).toEqual([[100], [10], [1], [1000]]);
+  });
   // ─── strokeWidth ─────────────────────────────────────────────────
 
   it("uses palette lineWidth when no override", () => {
