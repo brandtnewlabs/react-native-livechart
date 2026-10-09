@@ -1257,6 +1257,7 @@ function useLiveChartLayoutResources({
   badgeCfg,
   metricsCfg,
   badgeUsesRightGutter,
+  referenceAxisBadge,
   xAxisCfg,
   formatValue,
   pulseConfig,
@@ -1278,6 +1279,7 @@ function useLiveChartLayoutResources({
   badgeCfg: ReturnType<typeof resolveBadge>;
   metricsCfg: ReturnType<typeof resolveMetrics>;
   badgeUsesRightGutter: boolean;
+  referenceAxisBadge: boolean;
   xAxisCfg: ReturnType<typeof resolveXAxis>;
   formatValue: (value: number) => string;
   pulseConfig: { maxRadius: number; strokeWidth: number } | null;
@@ -1318,9 +1320,9 @@ function useLiveChartLayoutResources({
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
     yAxisFloat: effectiveYAxisFloat,
-    badge: badgeCfg !== null,
+    badge: badgeCfg !== null || referenceAxisBadge,
     badgeMetrics: metricsCfg.badge,
-    badgeUsesRightGutter,
+    badgeUsesRightGutter: badgeUsesRightGutter || referenceAxisBadge,
     badgeShowTail: badgeCfg?.tail ?? true,
     xAxis: xAxisCfg !== null,
     font: skiaFont,
@@ -1332,6 +1334,7 @@ function useLiveChartLayoutResources({
   }), [
     badgeCfg,
     badgeUsesRightGutter,
+    referenceAxisBadge,
     dotCfg.glow,
     effectiveYAxisFloat,
     formatValue,
@@ -1723,12 +1726,22 @@ function useLiveChartController({
     badgeCfg,
     metricsCfg,
     badgeUsesRightGutter,
+    referenceAxisBadge: allRefLines.some(line => typeof line.valueBadge === "object" && line.valueBadge.position === "axis"),
     xAxisCfg,
     formatValue,
     pulseConfig,
     dotCfg,
     volumeBandHeight,
   });
+
+  const referenceValueAxis = useMemo(() => ({
+    float: effectiveYAxisFloat,
+    showTail: badgeCfg?.tail ?? true,
+    fontSize: badgeFont.getSize(),
+    metrics: metricsCfg.badge,
+    offsetX: badgeCfg?.offsetX ?? 0,
+    alignTextWithYAxis: badgeCfg?.textAlign === "yAxisColumn" && yAxisCfg?.side !== "left",
+  }), [effectiveYAxisFloat, badgeCfg?.tail, badgeCfg?.offsetX, badgeCfg?.textAlign, badgeFont, metricsCfg.badge, yAxisCfg?.side]);
 
   // ── Reveal state ────────────────────────────────────────────
   // ≥1 line point or ≥1 committed candle; morphT=1 only when !loading && hasData.
@@ -2063,6 +2076,11 @@ function useLiveChartController({
       markerHitRadius,
       onReferenceLinePress,
       drawnRefValues,
+      referenceValueAxis,
+      fontProp,
+      groupHidden,
+      refLineCustom,
+      refLineOffAxisCustom,
     );
 
   // Combined "defer" hit-test: the scrub-action place-tap and the live scrub both
@@ -2317,6 +2335,7 @@ function useLiveChartController({
     // configs
     yAxisCfg,
     yAxisFloat: effectiveYAxisFloat,
+    referenceValueAxis,
     xAxisCfg,
     badgeCfg,
     scrubCfg,
@@ -3361,6 +3380,7 @@ function ChartStack({
             engine={engine}
             padding={effectivePadding}
             line={rl}
+            valueAxis={model.referenceValueAxis}
             palette={palette}
             formatValue={formatValue}
             font={skiaFont}
@@ -3826,6 +3846,7 @@ function ChartRefBadgeLayer({
           engine={engine}
           padding={effectivePadding}
           line={rl}
+          valueAxis={model.referenceValueAxis}
           palette={palette}
           formatValue={formatValue}
           font={skiaFont}

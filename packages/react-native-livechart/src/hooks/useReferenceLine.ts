@@ -3,10 +3,7 @@ import { useRef } from "react";
 
 import type { SkFont } from "@shopify/react-native-skia";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
-import {
-  rightAnchoredYAxisColumnLayout,
-  type YAxisEntry,
-} from "../draw/grid";
+import { rightAnchoredYAxisColumnLayout, type YAxisEntry } from "../draw/grid";
 import type { ChartPadding } from "../draw/line";
 import {
   measureFontTextWidth,
@@ -17,10 +14,12 @@ import {
   referenceLineForm,
   resolveReferenceBadge,
 } from "../math/referenceLines";
+import { axisBadgeBounds, type AxisBadgeConfig } from "../math/axisBadgeLayout";
 import type { ReferenceLine } from "../types";
 
 /** Screen-space geometry for one reference line / band, recomputed each frame. */
 export interface ReferenceLineLayout {
+  valueBadge: ValueBadgeLayout | null;
   visible: boolean;
   /** Line y, or band top-edge y. */
   y: number;
@@ -66,7 +65,15 @@ export interface ReferenceLineLayout {
   connEnd: number;
 }
 
+export interface ValueBadgeLayout extends ReferenceBadgeRect {
+  text: string;
+  textX: number;
+  textY: number;
+  chevronCx: number;
+}
+
 const INVISIBLE: ReferenceLineLayout = {
+  valueBadge: null,
   visible: false,
   y: -1,
   yBottom: -1,
@@ -134,9 +141,7 @@ function badgeGeometry(
   // price-pill centering in computeActionBadgeLayout.
   const iconBounds = icon ? font.measureText(icon) : null;
   const iconW = iconBounds ? iconBounds.width : 0;
-  const textW = text
-    ? measureFontTextWidth(font, text, textWidthCache)
-    : 0;
+  const textW = text ? measureFontTextWidth(font, text, textWidthCache) : 0;
 
   let contentW = 0;
   let count = 0;
@@ -224,67 +229,6 @@ export interface ReferenceBadgeRect {
 }
 
 /**
- * Screen-space pill rect for a Form-A reference line's **badge**, or `null` when
- * the line has no pressable badge (no `badge`/`offAxisBadge`, not a value line, a
- * legacy off-axis badge while in range, or the canvas isn't laid out / range is
- * degenerate). Shares `badgeGeometry` + the edge classification with
- * {@link useReferenceLine}, so the hit-target tracks the rendered pill exactly.
- * Pure worklet — used by {@link useReferenceLinePress} for tap hit-testing.
- */
-export function computeReferenceBadgeRect(
-  line: ReferenceLine,
-  canvasWidth: number,
-  canvasHeight: number,
-  padding: ChartPadding,
-  dMin: number,
-  dMax: number,
-  font: SkFont,
-  formatValue: (value: number) => string,
-  /** Live value override (e.g. a dragged value), defaulting to `line.value`. */
-  valueOverride?: number,
-): ReferenceBadgeRect | null {
-  "worklet";
-  const badge = resolveReferenceBadge(line);
-  if (!badge) return null;
-  if (referenceLineForm(line) !== "line" || line.value === undefined) return null;
-  if (canvasWidth === 0 || canvasHeight === 0) return null;
-
-  const chartTop = padding.top;
-  const chartBottom = canvasHeight - padding.bottom;
-  const chartH = chartBottom - chartTop;
-  const valRange = dMax - dMin;
-  if (chartH <= 0 || valRange <= 0) return null;
-
-  const x1 = padding.left;
-  const x2 = canvasWidth - padding.right;
-  const v = valueOverride ?? line.value;
-  const edge = classifyReferenceEdge(v, dMin, dMax);
-
-  let y: number;
-  let hasChevron: boolean;
-  if (edge !== "in") {
-    // Off-screen: pinned to the nearest edge with a chevron.
-    hasChevron = true;
-    y =
-      edge === "above"
-        ? chartTop + OFF_AXIS_EDGE_INSET
-        : chartBottom - OFF_AXIS_EDGE_INSET;
-  } else {
-    // In range: a legacy off-axis-only badge shows no pill here → not pressable.
-    if (!badge.inRange) return null;
-    hasChevron = false;
-    y = chartTop + ((dMax - v) / valRange) * chartH;
-  }
-
-  const text = referenceBadgeText(line, badge, v, formatValue, edge !== "in");
-  const g = badgeGeometry(badge.position, badge.icon, text, hasChevron, x1, x2, font);
-  const fm = font.getMetrics();
-  const pillH = fm.descent - fm.ascent + BADGE_PILL_PAD_Y * 2;
-  // The pill is vertically centered on the line's y (see ReferenceLineOverlay).
-  return { x: g.pillX, y: y - pillH / 2, w: g.pillW, h: pillH };
-}
-
-/**
  * Derives screen-space layout for a single reference line or band. Supports all
  * three scalar/band `ReferenceLine` forms (horizontal line, horizontal value
  * band, vertical time band) plus the pill badge for a Form-A value (in-range tag
@@ -313,158 +257,184 @@ export function useReferenceLine(
   gridEndGap = 0,
   /** Font used by the Y-axis labels; badge font overrides must not move the line. */
   yAxisFont: SkFont = font,
+  valueFont: SkFont = font,
+  valueAxis?: AxisBadgeConfig,
 ): SharedValue<ReferenceLineLayout> {
-  const form = line ? referenceLineForm(line) : "none";
-  // Badge presentation depends only on the (stable) line props — resolve once.
-  const badge = line ? resolveReferenceBadge(line) : null;
   const textWidthCacheRef = useRef<TextWidthCache>({});
+  const valueWidthCacheRef = useRef<TextWidthCache>({});
+  const timeBand = line != null && referenceLineForm(line) === "time-band";
+  return useDerivedValue(() =>
+    computeReferenceLineLayout(
+      engine.canvasWidth.value,
+      engine.canvasHeight.value,
+      padding,
+      line,
+      formatValue,
+      font,
+      engine.displayMin.value,
+      engine.displayMax.value,
+      timeBand ? engine.timestamp.value : 0,
+      timeBand ? engine.displayWindow.value : 1,
+      dragValues?.value[index],
+      yAxisEntries?.value,
+      labelRightMargin,
+      gridEndGap,
+      yAxisFont,
+      valueFont,
+      valueAxis,
+      textWidthCacheRef.current,
+      valueWidthCacheRef.current,
+    ),
+  );
+}
 
-  return useDerivedValue<ReferenceLineLayout>(() => {
-    if (!line || form === "none") return INVISIBLE;
+function computeBaseReferenceLineLayout(
+  w: number,
+  h: number,
+  padding: ChartPadding,
+  line: ReferenceLine | undefined,
+  formatValue: (v: number) => string,
+  font: SkFont,
+  dMin: number,
+  dMax: number,
+  now: number,
+  win: number,
+  valueOverride?: number,
+  yAxisEntries?: YAxisEntry[],
+  labelRightMargin?: number,
+  gridEndGap = 0,
+  yAxisFont: SkFont = font,
+  textWidthCache?: TextWidthCache,
+): ReferenceLineLayout {
+  "worklet";
+  const form = line ? referenceLineForm(line) : "none";
+  const badge = line ? resolveReferenceBadge(line) : null;
+  if (!line || form === "none") return INVISIBLE;
 
-    const w = engine.canvasWidth.value;
-    const h = engine.canvasHeight.value;
-    if (w === 0 || h === 0) return INVISIBLE;
+  if (w === 0 || h === 0) return INVISIBLE;
 
-    const chartTop = padding.top;
-    const chartBottom = h - padding.bottom;
-    const chartH = chartBottom - chartTop;
-    const x1 = padding.left;
-    const x2 = w - padding.right;
-    // Full-width lines/bands run edge-to-edge through the gutters (0..canvas);
-    // the badge/label anchor (x1/x2) stays at the plot edges either way.
-    const fullWidth = line.fullWidth ?? false;
-    const lineX1 = fullWidth ? 0 : x1;
-    const yAxisColumn =
-      form === "line" &&
-      !fullWidth &&
-      yAxisEntries !== undefined &&
-      labelRightMargin !== undefined
-        ? rightAnchoredYAxisColumnLayout(
-            w,
-            yAxisEntries.value,
-            yAxisFont,
-            labelRightMargin,
-            gridEndGap,
-          )
-        : null;
-    const lineX2 = fullWidth ? w : (yAxisColumn?.gridEndX ?? x2);
+  const chartTop = padding.top;
+  const chartBottom = h - padding.bottom;
+  const chartH = chartBottom - chartTop;
+  const x1 = padding.left;
+  const x2 = w - padding.right;
+  // Full-width lines/bands run edge-to-edge through the gutters (0..canvas);
+  // the badge/label anchor (x1/x2) stays at the plot edges either way.
+  const fullWidth = line.fullWidth ?? false;
+  const lineX1 = fullWidth ? 0 : x1;
+  const yAxisColumn =
+    form === "line" &&
+    !fullWidth &&
+    yAxisEntries !== undefined &&
+    labelRightMargin !== undefined
+      ? rightAnchoredYAxisColumnLayout(
+          w,
+          yAxisEntries,
+          yAxisFont,
+          labelRightMargin,
+          gridEndGap,
+        )
+      : null;
+  const lineX2 = fullWidth ? w : (yAxisColumn?.gridEndX ?? x2);
 
-    const fm = font.getMetrics();
-    const baselineOffset = (fm.ascent + fm.descent) / 2;
+  const fm = font.getMetrics();
+  const baselineOffset = (fm.ascent + fm.descent) / 2;
 
-    // ── Form D — vertical time band (independent of the value range) ─────────
-    if (form === "time-band") {
-      if (line.from === undefined || line.to === undefined) return INVISIBLE;
-      const now = engine.timestamp.value;
-      const win = engine.displayWindow.value;
-      const winStart = now - win;
-      const chartW = x2 - x1;
-      if (win <= 0 || chartW <= 0) return INVISIBLE;
+  // ── Form D — vertical time band (independent of the value range) ─────────
+  if (form === "time-band") {
+    if (line.from === undefined || line.to === undefined) return INVISIBLE;
+    const winStart = now - win;
+    const chartW = x2 - x1;
+    if (win <= 0 || chartW <= 0) return INVISIBLE;
 
-      let bx1 = x1 + ((line.from - winStart) / win) * chartW;
-      let bx2 = x1 + ((line.to - winStart) / win) * chartW;
-      if (bx2 < bx1) {
-        const t = bx1;
-        bx1 = bx2;
-        bx2 = t;
-      }
-      if (bx2 < x1 || bx1 > x2) return INVISIBLE;
-      if (bx1 < x1) bx1 = x1;
-      if (bx2 > x2) bx2 = x2;
-
-      const label = line.label ?? "";
-      const labelX =
-        line.labelPosition === "right"
-          ? bx2 - 4 - measureFontTextWidth(font, label)
-          : bx1 + 4;
-      return {
-        ...INVISIBLE,
-        visible: true,
-        y: chartTop,
-        yBottom: chartBottom,
-        x1: bx1,
-        x2: bx2,
-        // Time band is vertical and time-bounded — full-width does not apply.
-        lineX1: bx1,
-        lineX2: bx2,
-        label,
-        labelX,
-        labelY: chartTop - fm.ascent + 2,
-      };
+    let bx1 = x1 + ((line.from - winStart) / win) * chartW;
+    let bx2 = x1 + ((line.to - winStart) / win) * chartW;
+    if (bx2 < bx1) {
+      const t = bx1;
+      bx1 = bx2;
+      bx2 = t;
     }
+    if (bx2 < x1 || bx1 > x2) return INVISIBLE;
+    if (bx1 < x1) bx1 = x1;
+    if (bx2 > x2) bx2 = x2;
 
-    // Forms A / B project values onto y, so they need a non-degenerate range.
-    const dMin = engine.displayMin.value;
-    const dMax = engine.displayMax.value;
-    const valRange = dMax - dMin;
-    if (valRange <= 0) return INVISIBLE;
-    const toY = (v: number) => chartTop + ((dMax - v) / valRange) * chartH;
+    const label = line.label ?? "";
+    const labelX =
+      line.labelPosition === "right"
+        ? bx2 - 4 - measureFontTextWidth(font, label)
+        : bx1 + 4;
+    return {
+      ...INVISIBLE,
+      visible: true,
+      y: chartTop,
+      yBottom: chartBottom,
+      x1: bx1,
+      x2: bx2,
+      // Time band is vertical and time-bounded — full-width does not apply.
+      lineX1: bx1,
+      lineX2: bx2,
+      label,
+      labelX,
+      labelY: chartTop - fm.ascent + 2,
+    };
+  }
 
-    // ── Form C — horizontal value band ───────────────────────────────────────
-    if (form === "value-band") {
-      if (line.valueFrom === undefined || line.valueTo === undefined) {
-        return INVISIBLE;
-      }
-      let yTop = toY(line.valueTo);
-      let yBot = toY(line.valueFrom);
-      if (yBot < yTop) {
-        const t = yTop;
-        yTop = yBot;
-        yBot = t;
-      }
-      if (yBot < chartTop || yTop > chartBottom) return INVISIBLE;
-      if (yTop < chartTop) yTop = chartTop;
-      if (yBot > chartBottom) yBot = chartBottom;
+  // Forms A / B project values onto y, so they need a non-degenerate range.
+  const valRange = dMax - dMin;
+  if (valRange <= 0) return INVISIBLE;
+  const toY = (v: number) => chartTop + ((dMax - v) / valRange) * chartH;
 
-      const label = line.label ?? "";
-      const labelX =
-        line.labelPosition === "right"
-          ? x2 - 4 - measureFontTextWidth(font, label)
-          : x1 + 4;
-      return {
-        ...INVISIBLE,
-        visible: true,
-        y: yTop,
-        yBottom: yBot,
-        x1,
-        x2,
-        lineX1,
-        lineX2,
-        label,
-        labelX,
-        labelY: yTop - fm.ascent + 2,
-      };
+  // ── Form C — horizontal value band ───────────────────────────────────────
+  if (form === "value-band") {
+    if (line.valueFrom === undefined || line.valueTo === undefined) {
+      return INVISIBLE;
     }
+    let yTop = toY(line.valueTo);
+    let yBot = toY(line.valueFrom);
+    if (yBot < yTop) {
+      const t = yTop;
+      yTop = yBot;
+      yBot = t;
+    }
+    if (yBot < chartTop || yTop > chartBottom) return INVISIBLE;
+    if (yTop < chartTop) yTop = chartTop;
+    if (yBot > chartBottom) yBot = chartBottom;
 
-    // ── Form A — horizontal line (with optional pill badge) ──────────────────
-    if (line.value === undefined) return INVISIBLE;
-    // Effective value: a live drag override (if present) else the static prop.
-    const v =
-      dragValues && dragValues.value[index] != null
-        ? dragValues.value[index]
-        : line.value;
-    const edge = classifyReferenceEdge(v, dMin, dMax);
+    const label = line.label ?? "";
+    const labelX =
+      line.labelPosition === "right"
+        ? x2 - 4 - measureFontTextWidth(font, label)
+        : x1 + 4;
+    return {
+      ...INVISIBLE,
+      visible: true,
+      y: yTop,
+      yBottom: yBot,
+      x1,
+      x2,
+      lineX1,
+      lineX2,
+      label,
+      labelX,
+      labelY: yTop - fm.ascent + 2,
+    };
+  }
 
-    // Off-screen: pin the badge to the nearest edge with a chevron (when a badge
-    // is configured); otherwise cull the off-screen line (legacy behavior).
-    if (edge !== "in") {
-      if (!badge) return INVISIBLE;
-      const above = edge === "above";
-      const clampedY = above
-        ? chartTop + OFF_AXIS_EDGE_INSET
-        : chartBottom - OFF_AXIS_EDGE_INSET;
-      const text = referenceBadgeText(line, badge, v, formatValue, true);
-      const g = badgeGeometry(
-        badge.position,
-        badge.icon,
-        text,
-        true,
-        x1,
-        x2,
-        font,
-        textWidthCacheRef.current,
-      );
+  // ── Form A — horizontal line (with optional pill badge) ──────────────────
+  if (line.value === undefined || chartH <= 0) return INVISIBLE;
+  // Effective value: a live drag override (if present) else the static prop.
+  const v = valueOverride ?? line.value;
+  const edge = classifyReferenceEdge(v, dMin, dMax);
+
+  // Off-screen: pin the badge to the nearest edge with a chevron (when a badge
+  // is configured); otherwise cull the off-screen line (legacy behavior).
+  if (edge !== "in") {
+    if (!badge && !line.valueBadge) return INVISIBLE;
+    const above = edge === "above";
+    const clampedY = above
+      ? chartTop + OFF_AXIS_EDGE_INSET
+      : chartBottom - OFF_AXIS_EDGE_INSET;
+    if (!badge)
       return {
         ...INVISIBLE,
         visible: true,
@@ -472,72 +442,58 @@ export function useReferenceLine(
         yBottom: clampedY,
         x1,
         x2,
-        label: text,
-        labelX: g.textX,
-        labelY: clampedY - baselineOffset,
         offAxis: true,
         chevronUp: above,
-        badge: true,
-        pillX: g.pillX,
-        pillW: g.pillW,
-        iconX: g.iconX,
-        icon: badge.icon,
-        chevronCx: g.chevronCx,
-        connStart: g.connStart,
-        connEnd: g.connEnd,
       };
-    }
+    const text = referenceBadgeText(line, badge, v, formatValue, true);
+    const g = badgeGeometry(
+      badge.position,
+      badge.icon,
+      text,
+      true,
+      x1,
+      x2,
+      font,
+      textWidthCache,
+    );
+    return {
+      ...INVISIBLE,
+      visible: true,
+      y: clampedY,
+      yBottom: clampedY,
+      x1,
+      x2,
+      label: text,
+      labelX: g.textX,
+      labelY: clampedY - baselineOffset,
+      offAxis: true,
+      chevronUp: above,
+      badge: true,
+      pillX: g.pillX,
+      pillW: g.pillW,
+      iconX: g.iconX,
+      icon: badge.icon,
+      chevronCx: g.chevronCx,
+      connStart: g.connStart,
+      connEnd: g.connEnd,
+    };
+  }
 
-    const y = toY(v);
+  const y = toY(v);
 
-    // In-range pill badge (the `badge` config, not the legacy off-axis-only flag).
-    if (badge && badge.inRange) {
-      const text = referenceBadgeText(line, badge, v, formatValue, false);
-      const g = badgeGeometry(
-        badge.position,
-        badge.icon,
-        text,
-        false,
-        x1,
-        x2,
-        font,
-        textWidthCacheRef.current,
-      );
-      return {
-        ...INVISIBLE,
-        visible: true,
-        y,
-        yBottom: y,
-        x1,
-        x2,
-        lineX1,
-        lineX2,
-        // Full-width: the edge-to-edge line replaces the dashed connector.
-        drawLine: fullWidth,
-        label: text,
-        labelX: g.textX,
-        labelY: y - baselineOffset,
-        badge: true,
-        pillX: g.pillX,
-        pillW: g.pillW,
-        iconX: g.iconX,
-        icon: badge.icon,
-        connStart: fullWidth ? -1 : g.connStart,
-        connEnd: fullWidth ? -1 : g.connEnd,
-      };
-    }
-
-    // Plain gutter label (no badge, or a legacy off-axis badge that's in range).
-    let label = line.label ?? formatValue(v);
-    if (line.showValue && line.label) label = `${line.label} ${formatValue(v)}`;
-
-    const pos = line.labelPosition ?? "right";
-    let labelX: number;
-    if (pos === "left") labelX = x1 + 4;
-    else if (pos === "center")
-      labelX = (x1 + x2) / 2 - measureFontTextWidth(font, label) / 2;
-    else labelX = x2 + 4; // "right" — legacy gutter position
-
+  // In-range pill badge (the `badge` config, not the legacy off-axis-only flag).
+  if (badge && badge.inRange) {
+    const text = referenceBadgeText(line, badge, v, formatValue, false);
+    const g = badgeGeometry(
+      badge.position,
+      badge.icon,
+      text,
+      false,
+      x1,
+      x2,
+      font,
+      textWidthCache,
+    );
     return {
       ...INVISIBLE,
       visible: true,
@@ -547,10 +503,230 @@ export function useReferenceLine(
       x2,
       lineX1,
       lineX2,
-      drawLine: true,
-      label,
-      labelX,
+      // Full-width: the edge-to-edge line replaces the dashed connector.
+      drawLine: fullWidth,
+      label: text,
+      labelX: g.textX,
       labelY: y - baselineOffset,
+      badge: true,
+      pillX: g.pillX,
+      pillW: g.pillW,
+      iconX: g.iconX,
+      icon: badge.icon,
+      connStart: fullWidth ? -1 : g.connStart,
+      connEnd: fullWidth ? -1 : g.connEnd,
     };
-  });
+  }
+
+  // Plain gutter label (no badge, or a legacy off-axis badge that's in range).
+  let label = line.label ?? (line.valueBadge ? "" : formatValue(v));
+  if (line.showValue && line.label) label = `${line.label} ${formatValue(v)}`;
+
+  const pos = line.labelPosition ?? (line.valueBadge ? "left" : "right");
+  let labelX: number;
+  if (pos === "left") labelX = x1 + 4;
+  else if (pos === "center")
+    labelX = (x1 + x2) / 2 - measureFontTextWidth(font, label) / 2;
+  else labelX = x2 + 4; // "right" — legacy gutter position
+
+  return {
+    ...INVISIBLE,
+    visible: true,
+    y,
+    yBottom: y,
+    x1,
+    x2,
+    lineX1,
+    lineX2,
+    drawLine: true,
+    label,
+    labelX,
+    labelY: y - baselineOffset,
+  };
+}
+
+/** Pure worklet shared by the drawing and tap-target calculations. */
+export function computeReferenceLineLayout(
+  w: number,
+  h: number,
+  padding: ChartPadding,
+  line: ReferenceLine | undefined,
+  formatValue: (v: number) => string,
+  font: SkFont,
+  dMin: number,
+  dMax: number,
+  now: number,
+  win: number,
+  valueOverride?: number,
+  yAxisEntries?: YAxisEntry[],
+  labelRightMargin?: number,
+  gridEndGap = 0,
+  yAxisFont: SkFont = font,
+  valueFont: SkFont = font,
+  valueAxis?: AxisBadgeConfig,
+  textWidthCache?: TextWidthCache,
+  valueWidthCache?: TextWidthCache,
+): ReferenceLineLayout {
+  "worklet";
+  const base = computeBaseReferenceLineLayout(
+    w,
+    h,
+    padding,
+    line,
+    formatValue,
+    font,
+    dMin,
+    dMax,
+    now,
+    win,
+    valueOverride,
+    yAxisEntries,
+    labelRightMargin,
+    gridEndGap,
+    yAxisFont,
+    textWidthCache,
+  );
+  if (!line?.valueBadge || referenceLineForm(line) !== "line" || !base.visible)
+    return base;
+  const cfg = typeof line.valueBadge === "object" ? line.valueBadge : {};
+  const text = formatValue(valueOverride ?? line.value!);
+  const textW = measureFontTextWidth(valueFont, text, valueWidthCache);
+  const fm = valueFont.getMetrics();
+  const height = fm.descent - fm.ascent + BADGE_PILL_PAD_Y * 2;
+  const chevronW = base.offAxis && !base.badge ? BADGE_CHEV_W + BADGE_GAP : 0;
+  const contentW = textW + chevronW;
+  const bounds =
+    cfg.position === "axis"
+      ? axisBadgeBounds(
+          w,
+          padding.right,
+          contentW,
+          valueFont.getSize(),
+          valueAxis,
+        )
+      : {
+          left: base.x2 - BADGE_EDGE_INSET - contentW - BADGE_PAD_X * 2,
+          right: base.x2 - BADGE_EDGE_INSET,
+        };
+  // An explicitly undersized inset must not produce an inverted pill.
+  const pillW = Math.max(0, bounds.right - bounds.left);
+  const x = bounds.left + (cfg.offsetX ?? 0);
+  const y = base.y + (cfg.offsetY ?? 0);
+  let textX = x + (pillW - contentW) / 2 + chevronW;
+  // Match live-badge text alignment when its column mode is enabled.
+  if (
+    cfg.position === "axis" &&
+    valueAxis?.alignTextWithYAxis &&
+    !valueAxis.float &&
+    labelRightMargin !== undefined &&
+    yAxisEntries
+  ) {
+    const column = rightAnchoredYAxisColumnLayout(
+      w,
+      yAxisEntries,
+      yAxisFont,
+      labelRightMargin,
+    );
+    const pad = valueAxis?.metrics?.padX ?? BADGE_PAD_X;
+    const maxX = x + pillW - pad - textW;
+    if (x + pad + chevronW <= maxX) {
+      textX = Math.min(
+        Math.max(
+          Math.min(column.labelX, w - labelRightMargin - textW),
+          x + pad + chevronW,
+        ),
+        maxX,
+      );
+    }
+  }
+  const result = {
+    ...base,
+    drawLine: Boolean(line.fullWidth && !base.offAxis),
+    valueBadge: {
+      x,
+      y: y - height / 2,
+      w: pillW,
+      h: height,
+      text,
+      textX,
+      textY: y - (fm.ascent + fm.descent) / 2,
+      chevronCx: chevronW ? x + BADGE_PAD_X + BADGE_CHEV_W / 2 : -1,
+    },
+  };
+  const badge = resolveReferenceBadge(line);
+  const offsetX = badge?.offsetX ?? 0;
+  // Right/center name pills keep their requested anchor until they would overlap
+  // the value pill; then make room immediately to its left.
+  if (base.badge) {
+    const shift = Math.min(0, x - 8 - (base.pillX + base.pillW + offsetX));
+    result.pillX += shift;
+    result.labelX += shift;
+    if (result.iconX >= 0) result.iconX += shift;
+    if (result.chevronCx >= 0) result.chevronCx += shift;
+  }
+  // The name badge's transform is applied by the existing connector group.
+  result.connStart = base.badge
+    ? result.pillX + result.pillW + 4
+    : base.label
+      ? base.labelX + measureFontTextWidth(font, base.label, textWidthCache) + 4 - offsetX
+      : base.x1 - offsetX;
+  result.connEnd = x - 4 - offsetX;
+  if (line.fullWidth && !base.offAxis) result.connStart = -1;
+  if (result.connEnd <= result.connStart) result.connStart = -1;
+  return result;
+}
+
+export function referenceBadgeRect(
+  layout: ReferenceLineLayout,
+  font: SkFont,
+  line: ReferenceLine,
+): ReferenceBadgeRect | null {
+  "worklet";
+  if (!layout.visible || !layout.badge) return null;
+  const fm = font.getMetrics();
+  const h = fm.descent - fm.ascent + BADGE_PILL_PAD_Y * 2;
+  const badge = resolveReferenceBadge(line);
+  return {
+    x: layout.pillX + (badge?.offsetX ?? 0),
+    y: layout.y - h / 2 + (badge?.offsetY ?? 0),
+    w: layout.pillW,
+    h,
+  };
+}
+
+/**
+ * Screen-space pill rect for a Form-A reference line's **badge**, or `null` when
+ * the line has no pressable badge (no `badge`/`offAxisBadge`, not a value line, a
+ * legacy off-axis badge while in range, or the canvas isn't laid out / range is
+ * degenerate). Shares `badgeGeometry` + the edge classification with
+ * {@link useReferenceLine}, so the hit-target tracks the rendered pill exactly.
+ * Pure worklet — used by {@link useReferenceLinePress} for tap hit-testing.
+ */
+export function computeReferenceBadgeRect(
+  line: ReferenceLine,
+  canvasWidth: number,
+  canvasHeight: number,
+  padding: ChartPadding,
+  dMin: number,
+  dMax: number,
+  font: SkFont,
+  formatValue: (value: number) => string,
+  /** Live value override (e.g. a dragged value), defaulting to `line.value`. */
+  valueOverride?: number,
+): ReferenceBadgeRect | null {
+  "worklet";
+  const layout = computeReferenceLineLayout(
+    canvasWidth,
+    canvasHeight,
+    padding,
+    line,
+    formatValue,
+    font,
+    dMin,
+    dMax,
+    0,
+    1,
+    valueOverride,
+  );
+  return referenceBadgeRect(layout, font, line);
 }

@@ -139,6 +139,62 @@ referenceLines={[
 It supersedes the legacy `offAxisBadge` (still supported), which only appears once the value is
 off-screen and takes no icon.
 
+## Separate price pills (`valueBadge`)
+
+Use a left name badge and a separate price pill for take-profit, stop-loss, and
+working-order rows. Both belong to **one** reference line; its price text and
+position follow the same UI-thread drag value, without synchronizing two lines
+through `onChange`.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  referenceLines={[{
+    id: "take-profit",
+    value: 87000,
+    label: "Take profit",
+    badge: { position: "left" },
+    valueBadge: { position: "axis" },
+    draggable: true,
+    snap: 0.5,
+    onCommit: saveTakeProfit,
+  }]}
+/>
+```
+
+- `valueBadge: true` puts the price pill **inside the plot's right edge**.
+  `{ position: "axis" }` uses the right price column, aligned with the live badge's
+  body. A floating axis right-aligns it at the canvas edge. It still works when
+  the live badge is hidden or positioned left; automatic layout reserves a gutter
+  for axis pills. Explicit `insets.right` continues to take precedence.
+- The text always uses the chart's `formatValue`. Style it with
+  `ReferenceLineValueBadgeConfig`, which extends `BadgeStyleConfig`: background,
+  border, radius, text color, font, and offsets. It uses the chart font unless
+  overridden; it does not inherit the name badge's overrides.
+- The connector runs between the pills. Right/center name badges move left only
+  when necessary to make room for the price pill. `fullWidth: true` keeps the
+  existing edge-to-edge stroke instead of a connector. Existing `showValue`
+  behavior is unchanged, including when both pills are enabled.
+- A price pill also works without `badge`. It replaces the implicit plain price
+  label; an explicit `label` remains and defaults to the left side.
+- Both pills pin together when the value is off-screen, with a directional
+  chevron on the name pill (or the price pill when there is no name badge).
+  Grouping counts each reference line once and hides both pills when collapsed;
+  the count handle does not show an aggregate price.
+- In `LiveChart`, either pill can be tapped with `onReferenceLinePress` or used
+  to begin a drag. An explicit `grabRange` still restricts where dragging starts.
+  `renderReferenceLine` replaces both built-in pills; `renderOffAxisReferenceLine`
+  replaces both only when off-screen. Custom tags retain their grouping exclusion.
+
+This option applies only to horizontal value lines (Form A). `LiveChartSeries`
+can display the pills too, with its existing reference-line interaction limits.
+
+Try **Working orders** in the example app: switch **Price pill** between **Off**,
+**In plot**, and **On axis**, drag either order pill, toggle **Floating axis** or
+**Live badge**, and move grouped levels above/below the chart. **Custom tags**
+still demonstrates replacing the complete built-in tag.
+
 ## Draggable lines (`draggable`)
 
 Make a Form-A line draggable along the Y-axis — grab it near its value and drag to set a new price
@@ -355,7 +411,7 @@ the count reflects only collapsed built-in tags. The count pill takes the same s
 for the count label.
 
 Badged lines far above the visible range group at the top edge, just as lines below it group
-at the bottom. Off-axis lines without `badge` or `offAxisBadge` are hidden, so they do not
+at the bottom. Off-axis lines without `badge`, `valueBadge`, or `offAxisBadge` are hidden, so they do not
 increase a visible group's count.
 
 In **Working orders**, select **Orders above** or **Orders below** to put the draggable orders

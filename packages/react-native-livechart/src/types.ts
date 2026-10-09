@@ -168,6 +168,15 @@ export interface ReferenceLine {
    */
   badge?: boolean | ReferenceLineBadgeConfig;
   /**
+   * A separate Form-A price pill displaying `formatValue(value)` on the UI
+   * thread, including during a drag. `true` pins it inside the plot's right
+   * edge; `{ position: "axis" }` aligns it with the right price gutter (or the
+   * floating axis). Works without a name badge. Both tags pin off-screen and
+   * collapse together when grouped. Custom tag renderers replace both pills.
+   * Has no effect on series or bands. Default `false`.
+   */
+  valueBadge?: boolean | ReferenceLineValueBadgeConfig;
+  /**
    * Legacy: when a Form-A `value` falls outside the visible plot, render a pinned
    * edge badge with a directional chevron instead of culling the off-screen line.
    * Prefer {@link badge} (which also shows the tag in-range and supports an icon).
@@ -311,6 +320,15 @@ export interface ReferenceLineBadgeConfig extends BadgeStyleConfig {
    * Default `true`. Set `false` for an **icon-only** badge.
    */
   text?: boolean;
+}
+
+/** Separate price pill for a horizontal reference line. Style defaults match
+ * the reference badge; the font falls back to the chart font. */
+export interface ReferenceLineValueBadgeConfig extends BadgeStyleConfig {
+  /** `"right"`: inside the plot; `"axis"`: right price column, even when the live
+   * badge is hidden or placed left. A floating axis uses the canvas right edge.
+   * Default `"right"`. Placement is independent of the name badge. */
+  position?: "right" | "axis";
 }
 
 /**

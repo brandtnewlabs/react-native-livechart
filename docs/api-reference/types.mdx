@@ -237,6 +237,7 @@ interface ReferenceLine {
   // Pill badge for a Form-A line (working orders, alerts, targets) — pinned to an
   // edge with a dashed connector; auto-pins with a chevron when off-screen:
   badge?: boolean | ReferenceLineBadgeConfig;
+  valueBadge?: boolean | ReferenceLineValueBadgeConfig; // separate formatted price; default false
   badgeBackground?: string;  // fallback for badge.background; default theme tooltipBg
   badgeBorderColor?: string; // fallback for badge.borderColor; default the line color
   badgeRadius?: number;      // fallback for badge.radius; default 5
@@ -272,6 +273,12 @@ interface ReferenceLineBadgeConfig {
   offsetY?: number;            // nudge the whole badge from its anchor; default 0
 }
 
+// Shared background/border/radius/textColor/font*/offset* knobs; defaults match
+// reference-line badges. Independent of the name badge's styling.
+interface ReferenceLineValueBadgeConfig extends BadgeStyleConfig {
+  position?: "right" | "axis"; // inside plot (default) or right price column
+}
+
 interface ReferenceLineRenderProps {
   line: ReferenceLine;            // the line being rendered
   index: number;                  // its index in `referenceLines`
@@ -283,7 +290,7 @@ interface ReferenceLineRenderProps {
   dragging: SharedValue<boolean>; // whether this line is currently being dragged
 }
 
-// `renderReferenceLine` replaces a tag in every state. `renderOffAxisReferenceLine`
+// `renderReferenceLine` replaces both built-in pills in every state. `renderOffAxisReferenceLine`
 // keeps the built-in in-range tag and shows the custom element only for edge !== "in".
 
 interface ReferenceLineGroupingConfig {

@@ -1314,7 +1314,7 @@ describe("LiveChart", () => {
       onReferenceLinePress: jest.fn(),
     };
     const screen = await render(<Harness {...props} referenceLines={[
-      { id: "level", value: 50, draggable: true, onChange: jest.fn() },
+      { id: "level", value: 50, draggable: true, badge: true, valueBadge: { position: "axis" }, onChange: jest.fn() },
     ]} timeScroll={{ gesture: "holdToScrub", fling: false }} scrub={{ markers: true }} />);
     const counts = spies.map((spy) => spy.mock.calls.length);
     expect(counts.every((count) => count > 0)).toBe(true);
@@ -1322,7 +1322,7 @@ describe("LiveChart", () => {
     for (let value = 51; value <= 55; value++) {
       await screen.rerender(<Harness {...props}
         timeScroll={{ gesture: "holdToScrub", fling: false }} scrub={{ markers: true }}
-        referenceLines={[{ id: "level", value, draggable: true, onChange: jest.fn() }]}
+        referenceLines={[{ id: "level", value, draggable: true, badge: true, valueBadge: { position: "axis" }, onChange: jest.fn() }]}
         onScrub={jest.fn()} onGestureStart={jest.fn()} onGestureEnd={jest.fn()}
         onMarkerPress={jest.fn()} onReferenceLinePress={jest.fn()}
       />);
@@ -1332,7 +1332,7 @@ describe("LiveChart", () => {
     // Numeric inset changes must invalidate the cached geometry.
     await screen.rerender(<Harness {...props} insets={{ left: 40 }}
       timeScroll={{ gesture: "holdToScrub", fling: false }} scrub={{ markers: true }}
-      referenceLines={[{ id: "level", value: 55, draggable: true, onChange: jest.fn() }]}
+      referenceLines={[{ id: "level", value: 55, draggable: true, badge: true, valueBadge: { position: "axis" }, onChange: jest.fn() }]}
     />);
     expect(spies[0].mock.calls.length).toBeGreaterThan(counts[0]);
     const afterInsetChange = spies[0].mock.calls.length;
@@ -1341,7 +1341,7 @@ describe("LiveChart", () => {
     await screen.rerender(<Harness {...props} insets={{ left: 40 }}
       timeScroll={{ gesture: "holdToScrub", fling: false }}
       scrub={{ markers: true, panGestureDelay: 250 }}
-      referenceLines={[{ id: "level", value: 55, draggable: true, onChange: jest.fn() }]}
+      referenceLines={[{ id: "level", value: 55, draggable: true, badge: true, valueBadge: { position: "axis" }, onChange: jest.fn() }]}
     />);
     expect(spies[0].mock.calls.length).toBeGreaterThan(afterInsetChange);
     for (const spy of spies) spy.mockRestore();

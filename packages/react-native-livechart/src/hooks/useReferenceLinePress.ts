@@ -6,10 +6,14 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
-import type { ReferenceLine } from "../types";
+import type { AxisBadgeConfig } from "../math/axisBadgeLayout";
+import { referenceBadgeFont } from "./referenceBadgeFont";
+import { resolveReferenceBadge } from "../math/referenceLines";
+import type { FontConfig, ReferenceLine } from "../types";
 import { pointInRect } from "./crosshairShared";
 import {
-  computeReferenceBadgeRect,
+  computeReferenceLineLayout,
+  referenceBadgeRect,
   type ReferenceBadgeRect,
 } from "./useReferenceLine";
 
@@ -39,44 +43,78 @@ export function useReferenceLinePress(
   /** Per-line live value overrides (dragged values) so a draggable line's hit-rect
    *  tracks the drag, index-aligned with `lines`. */
   dragValues?: SharedValue<number[]>,
+  valueAxis?: AxisBadgeConfig,
+  fontProp?: FontConfig,
+  groupHidden?: SharedValue<boolean[]>,
+  custom?: boolean[],
+  offAxisCustom?: boolean[],
 ): {
   tapGesture: ReturnType<typeof Gesture.Tap>;
   hitTest: (x: number, y: number) => boolean;
 } {
-  // Per-frame badge hit-rects, index-aligned with `lines` (null = no pressable
-  // badge / off-screen / not laid out). Recomputed on the UI thread.
-  /* istanbul ignore next -- worklet runs on the UI thread, not in Jest */
-  const rects = useDerivedValue<(ReferenceBadgeRect | null)[]>(() => {
-    if (!active || lines.length === 0) return [];
-    const w = engine.canvasWidth.value;
-    const h = engine.canvasHeight.value;
-    const dMin = engine.displayMin.value;
-    const dMax = engine.displayMax.value;
-    const out: (ReferenceBadgeRect | null)[] = [];
-    const dv = dragValues?.value;
-    for (let i = 0; i < lines.length; i++) {
-      out.push(
-        computeReferenceBadgeRect(
-          lines[i],
-          w,
-          h,
-          padding,
-          dMin,
-          dMax,
+  const fonts = useMemo(
+    () =>
+      lines.map((line) => ({
+        name: referenceBadgeFont(
           font,
-          formatValue,
-          dv ? dv[i] : undefined,
+          fontProp,
+          resolveReferenceBadge(line) ?? undefined,
         ),
+        value: referenceBadgeFont(
+          font,
+          fontProp,
+          typeof line.valueBadge === "object" ? line.valueBadge : undefined,
+        ),
+      })),
+    [lines, font, fontProp],
+  );
+  /* istanbul ignore next -- worklet runs on the UI thread, not in Jest */
+  const rects = useDerivedValue<(ReferenceBadgeRect | null)[][]>(() => {
+    if (!active || lines.length === 0) return [];
+    const out: (ReferenceBadgeRect | null)[][] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (custom?.[i] || groupHidden?.get()[i]) {
+        out.push([]);
+        continue;
+      }
+      const layout = computeReferenceLineLayout(
+        engine.canvasWidth.get(),
+        engine.canvasHeight.get(),
+        padding,
+        lines[i],
+        formatValue,
+        fonts[i].name,
+        engine.displayMin.get(),
+        engine.displayMax.get(),
+        0,
+        1,
+        dragValues?.get()[i],
+        undefined,
+        undefined,
+        0,
+        font,
+        fonts[i].value,
+        valueAxis,
       );
+      if (offAxisCustom?.[i] && layout.offAxis) {
+        out.push([]);
+        continue;
+      }
+      out.push([
+        referenceBadgeRect(layout, fonts[i].name, lines[i]),
+        layout.valueBadge,
+      ]);
     }
     return out;
   });
 
-  const emitPress = useLatestCallback((index: number, id: string | undefined) => {
-    const line = lines[index];
-    // A queued tap must not target a replacement at the same array index.
-    if (line && line.id === id) onPress?.(line, index);
-  });
+  const emitPress = useLatestCallback(
+    (index: number, id: string | undefined) => {
+      const line = lines[index];
+      // A queued tap must not target a replacement at the same array index.
+      if (line && line.id === id) onPress?.(line, index);
+    },
+  );
   const lineIds = useDerivedValue(() => {
     const ids: (string | undefined)[] = [];
     for (const line of lines) ids.push(line.id);
@@ -90,8 +128,9 @@ export function useReferenceLinePress(
       "worklet";
       const rs = rects.get();
       for (let i = rs.length - 1; i >= 0; i--) {
-        const r = rs[i];
-        if (r && pointInRect(x, y, r, hitSlop)) return i;
+        for (const r of rs[i]) {
+          if (r && pointInRect(x, y, r, hitSlop)) return i;
+        }
       }
       return -1;
     };
@@ -113,11 +152,5 @@ export function useReferenceLinePress(
       });
 
     return { tapGesture, hitTest };
-  }, [
-    active,
-    emitPress,
-    hitSlop,
-    lineIds,
-    rects,
-  ]);
+  }, [active, emitPress, hitSlop, lineIds, rects]);
 }

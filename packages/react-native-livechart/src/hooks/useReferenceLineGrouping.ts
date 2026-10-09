@@ -28,7 +28,7 @@ export function useReferenceLineGrouping({
   offAxisCustom: boolean[];
   dragValues: SharedValue<number[]>;
 }) {
-  const hasOffAxisBadge = lines.map((line) => Boolean(line.badge || line.offAxisBadge));
+  const hasOffAxisBadge = lines.map((line) => Boolean(line.badge || line.offAxisBadge || line.valueBadge));
   const result = useDerivedValue<ReferenceGrouping>(() => {
     if (radius == null) return EMPTY_GROUPING;
     const canvasHeight = engine.canvasHeight.get();
