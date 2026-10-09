@@ -720,6 +720,19 @@ export interface BadgeConfig extends BadgeStyleConfig {
   /** Which side of the chart the badge appears on. Default `"right"`. */
   position?: "right" | "left";
   /**
+   * Where the value sits in the right-gutter pill. `"center"` centers it in the
+   * pill body. `"yAxisColumn"` lines it up with a right-anchored Y-axis label
+   * column ({@link YAxisConfig.labelRightMargin}): it starts at the labels'
+   * shared left X, and a value wider than every axis label ends at the
+   * column's right edge. The pill keeps its shape and the value stays within
+   * its `padX` padding (a value that doesn't fit there is centered), so the
+   * room on each side follows the right inset and `metrics.badge`. The value
+   * moves sideways when the column's width changes (a wider label entering or
+   * leaving the axis). Centered without that column on the right side, while
+   * the axis floats, and for a `"left"` badge. Default `"center"`.
+   */
+  textAlign?: "center" | "yAxisColumn";
+  /**
    * When the chart is scrolled back (see `timeScroll`), move the live-price
    * indicators — the badge, the value line, and the live dot — to the price at
    * the visible window's right edge instead of the live price, so they track the
@@ -786,7 +799,8 @@ export interface YAxisConfig {
   /**
    * Place price labels in a shared left-aligned column whose right edge sits
    * this many pixels from the canvas edge. When omitted, labels keep the
-   * default centered-gutter placement.
+   * default centered-gutter placement. To line the live badge's value up with
+   * the column, set {@link BadgeConfig.textAlign} to `"yAxisColumn"`.
    */
   labelRightMargin?: number;
   /**

@@ -76,6 +76,8 @@ export interface ResolvedBadgeConfig {
   variant: BadgeVariant;
   tail: boolean;
   position: "right" | "left";
+  /** "yAxisColumn" → value in the right-anchored Y-axis label column. */
+  textAlign: "center" | "yAxisColumn";
   background: string | undefined;
   /** undefined → capsule (pillHeight / 2) at render time */
   radius: number | undefined;
@@ -508,6 +510,7 @@ const BADGE_DEFAULTS: ResolvedBadgeConfig = {
   variant: "default",
   tail: true,
   position: "right",
+  textAlign: "center",
   background: undefined,
   radius: undefined,
   borderColor: undefined,

@@ -1,0 +1,57 @@
+---
+title: Badge alignment
+icon: "tag"
+description: "Align the live price with the Y-axis label column and compare the centered fallback."
+---
+
+<Note>
+  **Live example:**
+  [`app/demo/badge-alignment.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/badge-alignment.tsx)
+  in the example app under **Styling & theming → Badge alignment**.
+</Note>
+
+<Frame caption="Centered and column-aligned prices, digit-width transitions, and layout fallbacks">
+  <video autoPlay loop muted playsInline controls poster="/media/badge-alignment.jpg" src="/media/badge-alignment.mp4" />
+</Frame>
+
+The demo compares the default centered badge with `textAlign: "yAxisColumn"`.
+Choose **$99.95**, **$100.00**, or **Repeat transition** to inspect the column as
+its widest label gains or loses a digit. The time window is fixed so the same
+prices and controls give a repeatable comparison.
+
+```tsx
+function formatPrice(value: number) {
+  "worklet";
+  return `$${value.toFixed(2)}`;
+}
+
+<LiveChart
+  data={data}
+  value={value}
+  formatValue={formatPrice}
+  font={{ fontSize: 11 }}
+  yAxis={{ count: 4, labelRightMargin: 8, gridEndGap: 6 }}
+  badge={{ textAlign: "yAxisColumn" }}
+  metrics={{ badge: { marginEdge: 4, padX: 4 } }}
+  insets={{ right: 84 }}
+/>
+```
+
+The value starts at the labels' shared left edge; a value wider than the column
+ends at its right edge. The pill keeps its shape. Padding can limit the
+alignment, and a value that cannot fit with padding stays centered. The right
+inset above fits this demo's 11 px font and prices near $100; size it for your
+own widest price.
+
+Try **Roomy** to make the difference between centering and column alignment more
+visible. In **Layout checks**, **Tight** demonstrates the padding limit while
+keeping the whole value readable. Gutter presets grow with **Larger font**;
+the wider badge value ends at the column's right edge, while the axis column
+is still measured with the chart font. **Floating**,
+**Left**, **Default** (no column), and **Left of dot** keep the centered behavior.
+**Tail** changes the available pill width, and **Offset −12** moves the whole
+badge, including its value.
+
+For the complete positioning rules, see
+[Axes & grid → Badge value in the column](/guides/axes-and-grid#badge-value-in-the-column)
+and [`BadgeConfig`](/api-reference/types#badgeconfig).

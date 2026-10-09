@@ -19,8 +19,8 @@ export interface RightAnchoredYAxisColumnLayout {
 
 /**
  * Measure the widest Y-axis label and anchor the shared left-aligned column to
- * a fixed canvas-edge margin. Shared by the axis and reference-line worklets so
- * their right edges cannot drift apart.
+ * a fixed canvas-edge margin. Shared by the axis, reference-line and live-badge
+ * worklets so their edges cannot drift apart.
  */
 export function rightAnchoredYAxisColumnLayout(
   canvasWidth: number,

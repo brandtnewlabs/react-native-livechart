@@ -450,6 +450,10 @@ interface BadgeConfig {
                          //   at the gutter edge (no tail space reserved); default true
   background?: string;
   position?: "right" | "left";
+  // Value in the right-gutter pill: centered, or lined up with a right-anchored
+  // Y-axis label column (yAxis.labelRightMargin) — kept within the pill's padX,
+  // moves with the column's width. Default "center".
+  textAlign?: "center" | "yAxisColumn";
   // Shape / style — all Skia-native, drawn in the batched canvas pass (no perf cost):
   radius?: number;          // corner radius (px); default capsule (pillHeight/2), clamped to that max
   borderColor?: string;     // pill border color; default none
@@ -560,6 +564,7 @@ interface YAxisConfig {
   count?: number;
   // Place labels in a shared left-aligned column whose right edge sits this
   // many px from the canvas edge. Omit for the centered-gutter placement.
+  // Line the live badge's value up with it via badge.textAlign "yAxisColumn".
   labelRightMargin?: number;
   // Gap between the shared label column and each grid/plain-reference-line end.
   // Only applies with labelRightMargin. Default 0.

@@ -111,8 +111,9 @@ provided; everything else has a default.
   shape it — `radius` (escape the capsule), `borderColor` / `borderWidth`,
   `textColor`, per-badge `fontSize` / `fontFamily` / `fontWeight`, and
   `offsetX` / `offsetY`. All are Skia-native and drawn in the batched canvas
-  pass, so there's no per-frame view cost. See [Theming → Customizing the
-  badge](/guides/badge-styling).
+  pass, so there's no per-frame view cost. `textAlign: "yAxisColumn"` lines the
+  value up with a right-anchored Y-axis label column. See [Theming → Customizing
+  the badge](/guides/badge-styling).
 </ParamField>
 
 <ParamField body="pulse" type="boolean | PulseConfig" default="true">
@@ -454,7 +455,9 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   units without changing plotted values. Scales that would make the current
   display range overflow or underflow fall back to source-unit intervals. Use
   `{ labelRightMargin, gridEndGap }` for a fixed right-anchored label column and
-  deterministic gap between labels and grid/plain reference lines.
+  deterministic gap between labels and grid/plain reference lines; the
+  right-gutter live badge can line its value up with that column
+  (`badge={{ textAlign: "yAxisColumn" }}`).
 </ParamField>
 
 <ParamField body="axisAutoHide" type="boolean | AxisAutoHideConfig" default="false">
