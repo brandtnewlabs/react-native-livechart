@@ -70,6 +70,23 @@ export interface ChartLayoutResult {
   padding: ChartPadding;
 }
 
+/**
+ * Whether a live value should replace `sampled` (`0` = nothing sampled yet) as
+ * the `currentValue` the right gutter is measured from. Skips `0` and
+ * non-finite placeholders, then waits for a full order-of-magnitude move: the
+ * measured samples already span `v / 100` to `v * 10`, and ticks near a power
+ * of ten don't re-measure back and forth.
+ */
+export function shouldResampleLayoutValue(
+  next: number,
+  sampled: number,
+): boolean {
+  "worklet";
+  if (next === 0 || !Number.isFinite(next)) return false;
+  if (sampled === 0) return true;
+  return Math.abs(Math.log10(Math.abs(next / sampled))) >= 1;
+}
+
 /** Right inset (px) for a floating y-axis — just keeps the plot off the edge. */
 const FLOAT_AXIS_RIGHT_INSET = 6;
 
