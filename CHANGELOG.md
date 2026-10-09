@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Multi-series live tips use the authoritative value immediately when it is
+  already recorded at the displayed time, keeping dots aligned with history.
+  Unrecorded live updates and historical viewport edges retain smoothing.
+  ([#393](https://github.com/brandtnewlabs/react-native-livechart/issues/393))
+
 ## [4.27.0] — 2026-10-09
 
 ### Added
