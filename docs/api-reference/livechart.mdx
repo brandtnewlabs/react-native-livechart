@@ -111,8 +111,9 @@ provided; everything else has a default.
   shape it — `radius` (escape the capsule), `borderColor` / `borderWidth`,
   `textColor`, per-badge `fontSize` / `fontFamily` / `fontWeight`, and
   `offsetX` / `offsetY`. All are Skia-native and drawn in the batched canvas
-  pass, so there's no per-frame view cost. See [Theming → Customizing the
-  badge](/guides/badge-styling).
+  pass, so there's no per-frame view cost. `textAlign: "yAxisColumn"` lines the
+  value up with a right-anchored Y-axis label column. See [Theming → Customizing
+  the badge](/guides/badge-styling).
 </ParamField>
 
 <ParamField body="pulse" type="boolean | PulseConfig" default="true">
@@ -355,6 +356,14 @@ provided; everything else has a default.
   Fires while scrubbing; `null` when it ends.
 </ParamField>
 
+<ParamField body="onScrubCandleChange" type="(candle: CandlePoint | null) => void">
+  Fires on the JS thread with an OHLC snapshot when the crosshair enters a
+  different candle, including revisits. Updates within the same candle do not
+  fire it. Sends `null` on scrub end, entering a gap, or leaving candle mode;
+  otherwise idle in line mode. See
+  [Scrubbing](/guides/scrubbing#per-candle-callback-onscrubcandlechange).
+</ParamField>
+
 <ParamField body="scrubAction" type="boolean | ScrubActionConfig" default="false">
   **Order-ticket** mode: tap to drop a locked crosshair, drag to fine-tune a
   **price level**, then press the right-gutter action badge to fire `onScrubAction`.
@@ -440,10 +449,13 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 ## Axes, grid & range
 
 <ParamField body="xAxis" type="boolean | XAxisConfig" default="true">
-  Time-axis labels.
+  Time-axis labels. Pass `{ minGap }` to set their minimum pixel spacing
+  (default `60`). Changing the gap updates the labels immediately, even while paused.
 </ParamField>
 
 <ParamField body="yAxis" type="boolean | YAxisConfig" default="true">
+  The right gutter re-measures after the first finite, nonzero live value and
+  subsequent factor-of-ten moves; `insets.right` overrides automatic sizing.
   Value-axis grid + labels. Set `{ side: "left" }` and reserve label space with
   `insets.left` for left-side labels; the default side is `"right"`. Pass `{ count }` for a fixed number of evenly-spaced
   prices instead of the dynamic nice-interval grid. Pass `{ intervalScale }`
@@ -451,7 +463,9 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   units without changing plotted values. Scales that would make the current
   display range overflow or underflow fall back to source-unit intervals. Use
   `{ labelRightMargin, gridEndGap }` for a fixed right-anchored label column and
-  deterministic gap between labels and grid/plain reference lines.
+  deterministic gap between labels and grid/plain reference lines; the
+  right-gutter live badge can line its value up with that column
+  (`badge={{ textAlign: "yAxisColumn" }}`).
 </ParamField>
 
 <ParamField body="axisAutoHide" type="boolean | AxisAutoHideConfig" default="false">
@@ -521,6 +535,10 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   it at runtime; switching back to live restarts the suspended loops and catches
   up. Frame the data edge-to-edge with `timeWindow` + `nowOverride`. See the
   [Sparklines guide](/guides/sparklines).
+
+  Data, layout, `timeWindow`, and `nowOverride` changes re-settle without restarting
+  the loop. Entering static mode lands on the new window even when data and
+  framing change in the same render, as in a recycled list cell.
 </ParamField>
 
 <ParamField body="autoSleep" type="boolean" default="false">
@@ -598,11 +616,13 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 </ParamField>
 
 <ParamField body="minRange" type="number">
-  Smallest Y span the auto-fit shows, in data units. Near-flat data widens to
-  this span around its midpoint, so grid labels stay distinct. `nonNegative`
-  and `maxValue` shift the span rather than shrink it; `yRangeScale` applies on
-  top. Shared with `LiveChartSeries`. See
-  [Axes & grid](/guides/axes-and-grid#minimum-y-range).
+  Minimum auto-fitted Y span in data units, giving near-flat data room for
+  distinct formatted labels. `nonNegative` and `maxValue` shift the span;
+  when both leave less room than the floor, the hard bounds win. Positive
+  finite values only; invalid or overflowing floors are ignored. Manual
+  `yRangeScale` applies afterward and may go below the floor. Normal range
+  easing applies, and static charts re-settle on changes. Shared with
+  `LiveChartSeries`. See [Minimum Y range](/guides/minimum-range).
 </ParamField>
 
 <ParamField body="yRangeScale" type="SharedValue<number>" default="1">
@@ -611,7 +631,11 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   price scale TradingView-style; the auto-fit keeps tracking the visible window
   underneath. Values must be positive and finite; invalid values safely fall
   back to `1`. On a `nonNegative` chart, zoom-out stops at the zero floor.
-  Read on the UI thread each frame. Shared with `LiveChartSeries`.
+  Series drawing is clipped vertically to the price plot, above the automatically
+  reserved candle-volume band, so values outside the visible range cannot cover
+  the time labels. An explicit bottom inset keeps its existing layout override.
+  Read on the UI thread each frame. Static single-series charts re-settle when
+  this SharedValue changes without replacing data. Shared with `LiveChartSeries`.
   **@experimental.** See
   [Manual Y-range scaling](/guides/y-range-scale).
 </ParamField>

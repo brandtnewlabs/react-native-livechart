@@ -80,12 +80,17 @@ interface SeriesConfig {
 }
 ```
 
-Both chart components also accept this shared plotted-data opacity control:
+Both chart components accept these shared opacity and range controls:
 
 ```ts
 interface LiveChartCoreProps {
   // UI-thread value from 0 (hidden) to 1 (fully visible); default 1.
   seriesOpacity?: SharedValue<number>;
+  // Minimum auto-fitted span in data units; positive and finite, omitted by default.
+  minRange?: number;
+  nonNegative?: boolean;
+  maxValue?: number;
+  yRangeScale?: SharedValue<number>;
 }
 ```
 
@@ -95,6 +100,11 @@ While it is below `1`, live dots and pulse rings fade completely out so a dimmed
 stroke cannot show through them; they return once the multiplier reaches `1`.
 See [Line & area](/guides/line-and-area#dimming-replacement-data) or
 [Multi-series](/guides/multi-series#dimming-replacement-data).
+
+`minRange` widens a narrower bounded fit, shifting off zero or the ceiling.
+Hard bounds win if the floor cannot fit; invalid or overflowing floors are
+ignored. Manual `yRangeScale` applies afterward and can zoom below the floor.
+See [Minimum Y range](/guides/minimum-range) for the interactive comparison.
 
 The experimental frame-loop controls are available on `LiveChart`:
 
@@ -197,6 +207,7 @@ interface TradeEvent {
 
 interface ReferenceLine {
   id?: string;                   // stable identity; supply when lines may reorder
+                                  // removal/reindexing cancels the current drag; no commit
   // Form A — horizontal line:
   value?: number;
   // Form B — time-varying line (sorted unix-second points):
@@ -235,9 +246,10 @@ interface ReferenceLine {
   // Draggable (Form A only) — grab the line and drag it along the Y-axis:
   draggable?: boolean;             // default false
   grabRange?: [number, number];    // canvas x px where a press may grab it; default anywhere
-  snap?: number;                   // round the dragged value to this increment
+  snap?: number;                   // tick increment; draw/drop inside the visible edges when a tick fits;
+                                   // round the finger's value outward past the plot to widen the range
   bounds?: [number, number];       // hard-clamp the draggable value
-  onChange?: (value: number) => void;  // during drag (de-duped to value changes)
+  onChange?: (value: number) => void;  // as the finger moves it (de-duped); + once on release if the line ended elsewhere
   onCommit?: (value: number) => void;  // on release — pair with a controlled `value`
   onDragIn?: (value: number) => void;  // value entered the visible range / bounds
   onDragOut?: (value: number) => void; // value left the visible range / hit a bound
@@ -332,6 +344,20 @@ interface ScrubActionPoint {
 }
 ```
 
+`LiveChart` exposes these JS-thread callbacks:
+
+```ts
+interface LiveChartProps {
+  onScrub?: (point: ScrubPoint | null) => void;
+  // OHLC snapshot on candle entry/re-entry; null on exit, gap, or leaving candle mode.
+  onScrubCandleChange?: (candle: CandlePoint | null) => void;
+}
+```
+
+The per-candle callback does not stream updates within the same candle. For
+continuously updated OHLC, use `onScrub` or the UI-thread `renderTooltip` values.
+See [Candle feedback](/guides/candle-feedback) for the interactive comparison.
+
 ## Config objects
 
 These are the option shapes accepted by the matching props.
@@ -417,12 +443,14 @@ interface ThresholdConfig {
   series?: SharedValue<LiveChartPoint[]>;
   aboveColor?: string;        // stroke at/above value; default palette up-green
   belowColor?: string;        // stroke below value;    default palette down-red
-  fill?: boolean | { opacity?: number }; // line↔threshold P/L band; default off, opacity 0.16
+  fill?: boolean | ThresholdFillConfig; // line↔threshold P/L band; default off
   includeInRange?: boolean;   // fold the threshold into the Y-range fit (like reference lines); default false
   extendToStart?: boolean;    // series: extend first value flat to the window start; default true
   extendToNow?: boolean;      // series: extend flat past the last point to "now"; default true
   line?: boolean | ThresholdLineConfig; // marker line at value; default off
 }
+// Object form of `fill`: band opacity (0..1) on the above/below colors; default 0.16.
+interface ThresholdFillConfig { opacity?: number }
 interface ThresholdLineConfig {
   label?: string;                    // label text, e.g. "Break-even"
   labelPosition?: "left" | "right";  // "left" = inside plot (clear of y-axis); default "left"
@@ -446,6 +474,10 @@ interface BadgeConfig {
                          //   at the gutter edge (no tail space reserved); default true
   background?: string;
   position?: "right" | "left";
+  // Value in the right-gutter pill: centered, or lined up with a right-anchored
+  // Y-axis label column (yAxis.labelRightMargin) — kept within the pill's padX,
+  // moves with the column's width. Default "center".
+  textAlign?: "center" | "yAxisColumn";
   // Shape / style — all Skia-native, drawn in the batched canvas pass (no perf cost):
   radius?: number;          // corner radius (px); default capsule (pillHeight/2), clamped to that max
   borderColor?: string;     // pill border color; default none
@@ -556,6 +588,7 @@ interface YAxisConfig {
   count?: number;
   // Place labels in a shared left-aligned column whose right edge sits this
   // many px from the canvas edge. Omit for the centered-gutter placement.
+  // Line the live badge's value up with it via badge.textAlign "yAxisColumn".
   labelRightMargin?: number;
   // Gap between the shared label column and each grid/plain-reference-line end.
   // Only applies with labelRightMargin. Default 0.
@@ -565,7 +598,10 @@ interface YAxisConfig {
   // Pairs with `timeScroll` (see the Time-scroll guide). Default false. @experimental
   float?: boolean;
 }
-interface XAxisConfig { minGap?: number } // default 60
+interface XAxisConfig {
+  // Minimum pixel gap between time labels. Updates immediately, even while paused.
+  minGap?: number; // default 60
+}
 // Fades both axes while LiveChart is idle. @experimental
 interface AxisAutoHideConfig {
   fadeInMs?: number;    // interaction-start fade duration; default 60

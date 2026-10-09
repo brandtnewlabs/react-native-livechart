@@ -300,24 +300,38 @@ export function tickLiveChartSeriesEngineFrame(
       tMax += margin;
     }
 
-    // Widen a fit narrower than the consumer's floor around its midpoint, then
-    // slide it off the zero floor / ceiling so the clamps below can't shrink it.
     const floorRange = input.minRange;
-    if (
-      floorRange !== undefined &&
-      floorRange > tMax - tMin &&
-      Number.isFinite(floorRange)
-    ) {
-      const mid = (tMin + tMax) / 2;
-      tMin = mid - floorRange / 2;
-      tMax = mid + floorRange / 2;
-      if (input.nonNegative && tMin < 0) {
-        tMax -= tMin;
-        tMin = 0;
-      }
-      if (input.maxValue !== undefined && tMax > input.maxValue) {
-        tMin -= tMax - input.maxValue;
-        tMax = input.maxValue;
+    // Compare the bounded fit: a clamp can shrink an otherwise wider range.
+    // Slide a widened fit off either bound; both hard bounds win if the floor
+    // cannot fit between them. Resolve this before the optional manual zoom.
+    if (floorRange !== undefined && floorRange > 0 && Number.isFinite(floorRange)) {
+      const boundedMin = input.nonNegative && tMin < 0 ? 0 : tMin;
+      const boundedMax =
+        input.maxValue !== undefined && tMax > input.maxValue ? input.maxValue : tMax;
+      if (floorRange > boundedMax - boundedMin) {
+        // Halve before adding so large finite prices cannot overflow the midpoint.
+        const mid = tMin / 2 + tMax / 2;
+        let nextMin = mid - floorRange / 2;
+        let nextMax = mid + floorRange / 2;
+        if (input.nonNegative && nextMin < 0) {
+          nextMax -= nextMin;
+          nextMin = 0;
+        }
+        if (input.maxValue !== undefined && nextMax > input.maxValue) {
+          nextMin -= nextMax - input.maxValue;
+          nextMax = input.maxValue;
+        }
+        if (input.nonNegative && nextMin < 0) nextMin = 0;
+        // Ignore a floor that would overflow or round the bounds onto each other.
+        if (
+          Number.isFinite(nextMin) &&
+          Number.isFinite(nextMax) &&
+          nextMin < nextMax &&
+          Number.isFinite(nextMax - nextMin)
+        ) {
+          tMin = nextMin;
+          tMax = nextMax;
+        }
       }
     }
 

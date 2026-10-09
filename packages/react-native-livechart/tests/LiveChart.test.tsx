@@ -1,13 +1,17 @@
+import { matchFont } from "@shopify/react-native-skia";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import React from "react";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
+import type { TestInstance } from "test-renderer";
 import { LiveChart } from "../src/components/LiveChart";
 import { getAllByHostType } from "./rntl14";
+import * as customReferenceLines from "../src/components/CustomReferenceLineOverlay";
 import * as engineHooks from "../src/core/useLiveChartEngine";
 import * as badgeHooks from "../src/hooks/useBadge";
 import * as candlePathHooks from "../src/hooks/useCandlePaths";
+import * as chartPathHooks from "../src/hooks/useChartPaths";
 import * as chartOverlayHooks from "../src/hooks/useChartOverlayContext";
 import * as degenHooks from "../src/hooks/useDegen";
 import * as tradeStreamHooks from "../src/hooks/useTradeStream";
@@ -657,6 +661,108 @@ describe("LiveChart", () => {
     );
   });
 
+  it.each<[string, Partial<LiveChartProps>]>([
+    [
+      "for textAlign yAxisColumn",
+      { badge: { textAlign: "yAxisColumn" }, yAxis: { labelRightMargin: 8 } },
+    ],
+    // Explicit `undefined`s resolve to the defaults the axis and badge draw with.
+    [
+      "when side and position are left undefined",
+      {
+        badge: { textAlign: "yAxisColumn", position: undefined },
+        yAxis: { side: undefined, labelRightMargin: 8 },
+      },
+    ],
+  ])("hands the badge the Y-axis label column %s", async (_, props) => {
+    const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
+    const yAxisSpy = jest.spyOn(yAxisHooks, "useYAxis");
+    await render(<Harness {...props} />);
+
+    const [entries, labelRightMargin, yAxisFont] = badgeSpy.mock.calls
+      .at(-1)!
+      .slice(17);
+    // The badge reads the same entries and font the axis labels are laid out with.
+    expect(entries).toBeDefined();
+    expect(entries).toBe(yAxisSpy.mock.results.at(-1)!.value.yAxisEntries);
+    expect(yAxisFont).toBe(yAxisSpy.mock.calls.at(-1)![3]);
+    expect(labelRightMargin).toBe(8);
+    jest.restoreAllMocks();
+  });
+
+  it("measures the badge's label column with the axis font, not a badge font", async () => {
+    const mockedMatchFont = jest.mocked(matchFont);
+    const axisFont = mockedMatchFont();
+    mockedMatchFont.mockImplementation(
+      (descriptor) =>
+        (descriptor?.fontSize === 17
+          ? { ...axisFont, getSize: () => 17 }
+          : axisFont) as ReturnType<typeof matchFont>,
+    );
+    try {
+      const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
+      const yAxisSpy = jest.spyOn(yAxisHooks, "useYAxis");
+      await render(
+        <Harness
+          badge={{ textAlign: "yAxisColumn", fontSize: 17 }}
+          yAxis={{ labelRightMargin: 8 }}
+        />,
+      );
+
+      const args = badgeSpy.mock.calls.at(-1)!;
+      const badgeFont = args[4];
+      const yAxisFont = args[19];
+      expect(badgeFont.getSize()).toBe(17);
+      expect(yAxisFont).not.toBe(badgeFont);
+      expect(yAxisFont).toBe(yAxisSpy.mock.calls.at(-1)![3]);
+    } finally {
+      jest.restoreAllMocks();
+      mockedMatchFont.mockImplementation(() => axisFont);
+    }
+  });
+
+  it.each<[string, Partial<LiveChartProps>]>([
+    ["by default", { yAxis: { labelRightMargin: 8 } }],
+    [
+      "with textAlign center",
+      { badge: { textAlign: "center" }, yAxis: { labelRightMargin: 8 } },
+    ],
+    ["without labelRightMargin", { badge: { textAlign: "yAxisColumn" } }],
+    [
+      "for left-side labels",
+      {
+        badge: { textAlign: "yAxisColumn" },
+        yAxis: { side: "left", labelRightMargin: 8 },
+      },
+    ],
+    [
+      "for a left-position badge",
+      {
+        badge: { textAlign: "yAxisColumn", position: "left" },
+        yAxis: { labelRightMargin: 8 },
+      },
+    ],
+    [
+      "while the axis floats",
+      {
+        badge: { textAlign: "yAxisColumn" },
+        yAxis: { labelRightMargin: 8, float: true },
+      },
+    ],
+    ["without a Y-axis", { badge: { textAlign: "yAxisColumn" }, yAxis: false }],
+  ])("hands the badge no label column %s", async (_, props) => {
+    const badgeSpy = jest.spyOn(badgeHooks, "useBadge");
+    await render(<Harness {...props} />);
+
+    const [entries, labelRightMargin, yAxisFont] = badgeSpy.mock.calls
+      .at(-1)!
+      .slice(17);
+    expect(entries).toBeUndefined();
+    expect(labelRightMargin).toBeUndefined();
+    expect(yAxisFont).toBeUndefined();
+    jest.restoreAllMocks();
+  });
+
   it("accepts left-position badge", async () => {
     await render(<Harness badge={{ position: "left" }} yAxis={false} />);
   });
@@ -1086,6 +1192,68 @@ describe("LiveChart", () => {
     ).toBe(false);
   });
 
+  it("skips re-rendering when the parent re-renders with unchanged props", async () => {
+    const spy = jest.spyOn(engineHooks, "useLiveChartEngine");
+    const referenceLines = [{ value: 50, label: "Entry" }];
+    const screen = await render(<Harness referenceLines={referenceLines} />);
+    const calls = spy.mock.calls.length;
+    expect(calls).toBeGreaterThan(0);
+
+    await screen.rerender(<Harness referenceLines={referenceLines} />);
+    expect(spy).toHaveBeenCalledTimes(calls);
+
+    await screen.rerender(
+      <Harness referenceLines={[{ value: 51, label: "Entry" }]} />,
+    );
+    expect(spy.mock.calls.length).toBeGreaterThan(calls);
+    spy.mockRestore();
+  });
+
+  it("re-probes custom reference-line renderers only when their inputs change", async () => {
+    const flagsSpy = jest.spyOn(
+      customReferenceLines,
+      "customReferenceLineFlags",
+    );
+    const referenceLines = [{ value: 50, label: "Entry" }];
+    const lineGaps = [
+      { from: 1699999940, to: 1699999970, kind: "unavailable" as const },
+    ];
+    const renderReferenceLine = () => <View />;
+    const renderOffAxisReferenceLine = () => <View />;
+    const props = {
+      referenceLines,
+      lineGaps,
+      renderReferenceLine,
+      renderOffAxisReferenceLine,
+    };
+    const screen = await render(<Harness {...props} timeWindow={30} />);
+    const probes = flagsSpy.mock.calls.length;
+    expect(probes).toBe(2);
+
+    await screen.rerender(<Harness {...props} timeWindow={60} />);
+    expect(flagsSpy).toHaveBeenCalledTimes(probes);
+
+    await screen.rerender(
+      <Harness {...props} timeWindow={60} referenceLines={[...referenceLines]} />,
+    );
+    expect(flagsSpy).toHaveBeenCalledTimes(probes + 2);
+
+    await screen.rerender(
+      <Harness {...props} timeWindow={60} lineGaps={[...lineGaps]} />,
+    );
+    expect(flagsSpy).toHaveBeenCalledTimes(probes + 4);
+
+    await screen.rerender(
+      <Harness
+        {...props}
+        timeWindow={60}
+        renderOffAxisReferenceLine={() => null}
+      />,
+    );
+    expect(flagsSpy).toHaveBeenCalledTimes(probes + 6);
+    flagsSpy.mockRestore();
+  });
+
   it("renders candle mode with scrub enabled", async () => {
     await render(<CandleHarness scrub />);
   });
@@ -1363,4 +1531,81 @@ it("passes original data sources through the reveal bridge for range revisions",
   expect(config.candlesChangeSource).not.toBe(config.candles);
   expect(config.candlesChangeSource!.get()).toHaveLength(2);
   spy.mockRestore();
+});
+
+describe("series plot clip", () => {
+  const useActualEngine = engineHooks.useLiveChartEngine;
+
+  // Derived values freeze at mount under the Jest stub, so seed the canvas
+  // size the clip reads before the first render.
+  function sizeCanvas(width: number, height: number) {
+    return jest
+      .spyOn(engineHooks, "useLiveChartEngine")
+      .mockImplementation((config) => {
+        const engine = useActualEngine(config);
+        engine.canvasWidth.value = width;
+        engine.canvasHeight.value = height;
+        return engine;
+      });
+  }
+
+  function pathView(screen: Awaited<ReturnType<typeof render>>, path: unknown) {
+    const view = getAllByHostType(screen, View).find(
+      (v) => v.props.path === path,
+    );
+    expect(view).toBeDefined();
+    return view!;
+  }
+
+  function clipAbove(node: TestInstance) {
+    for (let n = node.parent; n; n = n.parent) {
+      if (n.props.clip) return n.props.clip as SharedValue<unknown>;
+    }
+    return undefined;
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it("clips the line and fill to the plot's vertical extent", async () => {
+    sizeCanvas(400, 300);
+    const pathsSpy = jest.spyOn(chartPathHooks, "useChartPaths");
+    const screen = await render(
+      <Harness insets={{ top: 10, bottom: 30 }} yAxis={false} />,
+    );
+    const { linePath, fillPath } = pathsSpy.mock.results.at(-1)!.value;
+
+    const lineClip = clipAbove(pathView(screen, linePath));
+    const fillClip = clipAbove(pathView(screen, fillPath));
+    expect(lineClip).toBe(fillClip);
+    expect(lineClip!.value).toEqual({
+      x: -400,
+      y: 10,
+      width: 1200,
+      height: 260,
+    });
+  });
+
+  it("stops the candle clip at the price plot, above the volume band", async () => {
+    sizeCanvas(400, 300);
+    const pathsSpy = jest.spyOn(candlePathHooks, "useCandlePaths");
+    const screen = await render(
+      <VolumeCandleHarness
+        insets={{ top: 10 }}
+        volume={{ maxHeight: 40 }}
+        yAxis={false}
+      />,
+    );
+    const paths = pathsSpy.mock.results.at(-1)!.value;
+
+    const candleClip = clipAbove(pathView(screen, paths.upBodiesPath));
+    expect(candleClip!.value).toEqual({
+      x: -400,
+      y: 10,
+      width: 1200,
+      // Default x-axis gutter (28) plus the 40px volume band.
+      height: 300 - 10 - 28 - 40,
+    });
+    expect(clipAbove(pathView(screen, paths.downWicksPath))).toBe(candleClip);
+    expect(clipAbove(pathView(screen, paths.upBarsPath))).toBeUndefined();
+  });
 });

@@ -57,6 +57,7 @@
             "group": "Interaction",
             "pages": [
               "guides/scrubbing",
+              "guides/candle-feedback",
               "guides/scroll-interaction",
               "guides/order-ticket",
               "guides/time-scroll",
@@ -85,7 +86,9 @@
             "pages": [
               "guides/theming",
               "guides/badge-styling",
+              "guides/badge-alignment",
               "guides/axes-and-grid",
+              "guides/minimum-range",
               "guides/extrema-labels",
               "guides/android-surface-rendering"
             ]

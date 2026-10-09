@@ -15,6 +15,7 @@ import {
   type TextWidthCache,
 } from "../lib/measureFontTextWidth";
 import type { ChartEngineWithLiveValue } from "../core/useLiveChartEngine";
+import { rightAnchoredYAxisColumnLayout, type YAxisEntry } from "../draw/grid";
 import {
   badgeTailAndCap,
   pillTextLeftX,
@@ -64,6 +65,20 @@ export function useBadge(
   radius?: number,
   /** Label text color override; falls back to the variant/theme rule. */
   textColorOverride?: string,
+  /**
+   * Y-axis label entries. With {@link labelRightMargin}, the right-gutter
+   * badge's value lines up with the Y-axis's right-anchored label column
+   * instead of centering in the pill body (`BadgeConfig.textAlign`).
+   */
+  yAxisEntries?: SharedValue<YAxisEntry[]>,
+  /**
+   * Matches {@link YAxisConfig.labelRightMargin}. Pass it (and the entries)
+   * only when `textAlign` is `"yAxisColumn"` and the labels use the
+   * right-anchored column, so other charts get no extra mapper input.
+   */
+  labelRightMargin?: number,
+  /** Font the Y-axis labels are measured with; a badge font override must not move the column. */
+  yAxisFont: SkFont = font,
 ) {
   const colorR = useSharedValue(0);
   const colorG = useSharedValue(0);
@@ -150,7 +165,7 @@ export function useBadge(
       const bodyLeft = w - padding.right + badgeMetrics.dotGap + tl;
       const bodyRight = w - badgeMetrics.marginEdge;
       const pillW = bodyRight - bodyLeft;
-      // Text centered in pill body — same formula used by GridOverlay.
+      // Text centered in pill body — same formula used by YAxisOverlay.
       textX = pillTextLeftX(
         w,
         padding.right,
@@ -158,6 +173,27 @@ export function useBadge(
         textW,
         badgeMetrics,
       );
+      // textAlign "yAxisColumn": the range the value may take inside the
+      // pill's horizontal padding. When it doesn't fit there, it stays centered.
+      const minTextX = bodyLeft + badgeMetrics.padX;
+      const maxTextX = bodyRight - badgeMetrics.padX - textW;
+      if (
+        yAxisEntries !== undefined &&
+        labelRightMargin !== undefined &&
+        minTextX <= maxTextX
+      ) {
+        // Start at the labels' shared left X; a value wider than every label
+        // ends at the column's right edge instead. Kept inside the padding, so
+        // the alignment gives way where the two disagree.
+        const { labelX } = rightAnchoredYAxisColumnLayout(
+          w,
+          yAxisEntries.get(),
+          yAxisFont,
+          labelRightMargin,
+        );
+        const columnX = Math.min(labelX, w - labelRightMargin - textW);
+        textX = Math.min(Math.max(columnX, minTextX), maxTextX);
+      }
 
       if (showTail) {
         const badgeX = w - padding.right + badgeMetrics.dotGap;

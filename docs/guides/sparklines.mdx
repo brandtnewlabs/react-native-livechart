@@ -74,6 +74,11 @@ span you want to show and `nowOverride` to your dataset's last timestamp (unix s
 window ends right at the latest point. This is the same approach as the
 [historical data fill](/guides/historical-data) pattern.
 
+Updating `timeWindow` or `nowOverride` re-frames the existing static chart without
+remounting it or enabling the continuous loop. When a recycled cell replaces its
+data and framing while entering static mode, it settles on the new window even
+if it was previously live with smoothed tracking.
+
 ## Scrubbing a static chart
 
 `static` turns off the continuous render loop, not interaction — so a still sparkline is still

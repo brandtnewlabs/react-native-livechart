@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  memo,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -89,9 +90,13 @@ import {
 import {
   dotGlowRadialOutset,
   pulseRadialOutset,
+  seriesPlotClip,
   type ChartPadding,
 } from "../draw/line";
-import { resolveChartLayout } from "../hooks/resolveChartLayout";
+import {
+  resolveChartLayout,
+  shouldResampleLayoutValue,
+} from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
 import { useCandleGapPaths } from "../hooks/useCandleGapPaths";
 import { useCandlePaths, useCandleWidthLerp } from "../hooks/useCandlePaths";
@@ -275,8 +280,7 @@ function resolveLiveChartFeatureConfig({
   scrub,
   scrubAction,
   volume,
-  candleGaps,
-  lineGaps,
+  chartGapsCfg,
   gradient,
   areaDots,
   threshold,
@@ -300,8 +304,6 @@ function resolveLiveChartFeatureConfig({
   | "scrub"
   | "scrubAction"
   | "volume"
-  | "candleGaps"
-  | "lineGaps"
   | "gradient"
   | "areaDots"
   | "threshold"
@@ -313,10 +315,12 @@ function resolveLiveChartFeatureConfig({
   | "degen"
   | "tradeStream"
   | "metrics"
-> & { isStatic: boolean }) {
+> & {
+  isStatic: boolean;
+  chartGapsCfg: ResolvedCandleGapsConfig | null;
+}) {
   const isCandle = mode === "candle";
   const badgeCfg = resolveBadge(badge);
-  const chartGapsCfg = resolveCandleGaps(isCandle ? candleGaps : lineGaps);
   const thresholdCfg = isCandle ? null : resolveThreshold(threshold);
   const thresholdSeriesSV = thresholdCfg?.series ?? null;
   const dotCfg = resolveDot(dot);
@@ -332,7 +336,6 @@ function resolveLiveChartFeatureConfig({
     scrubCfg: resolveScrub(scrub),
     scrubActionCfg: resolveScrubAction(scrubAction),
     volumeCfg,
-    chartGapsCfg,
     candleGapsCfg: isCandle ? chartGapsCfg : null,
     lineGapsCfg: isCandle ? null : chartGapsCfg,
     volumeBandHeight: volumeCfg?.maxHeight ?? 0,
@@ -361,22 +364,16 @@ function resolveLiveChartFeatureConfig({
   };
 }
 
-function resolveLiveChartReferenceConfig({
+function resolveLiveChartReferenceLines({
   chartGapsCfg,
   referenceLines,
   renderReferenceLine,
   renderOffAxisReferenceLine,
-  thresholdCfg,
-  referenceLineGrouping,
-  badgeCfg,
 }: {
   chartGapsCfg: ReturnType<typeof resolveCandleGaps>;
   referenceLines: LiveChartProps["referenceLines"];
   renderReferenceLine: LiveChartProps["renderReferenceLine"];
   renderOffAxisReferenceLine: LiveChartProps["renderOffAxisReferenceLine"];
-  thresholdCfg: ReturnType<typeof resolveThreshold>;
-  referenceLineGrouping: LiveChartProps["referenceLineGrouping"];
-  badgeCfg: ReturnType<typeof resolveBadge>;
 }) {
   const chartGapBands: ReferenceLine[] =
     chartGapsCfg?.gaps.flatMap((gap) => {
@@ -429,6 +426,26 @@ function resolveLiveChartReferenceConfig({
       draggableRefIdx.push(index);
     }
   }
+
+  return {
+    allRefLines,
+    refValues: collectReferenceValues(allRefLines),
+    refLineCustom,
+    refLineOffAxisCustom,
+    refLineKeys: referenceLineReactKeys(allRefLines),
+    draggableRefIdx,
+  };
+}
+
+function resolveLiveChartReferenceConfig({
+  thresholdCfg,
+  referenceLineGrouping,
+  badgeCfg,
+}: {
+  thresholdCfg: ReturnType<typeof resolveThreshold>;
+  referenceLineGrouping: LiveChartProps["referenceLineGrouping"];
+  badgeCfg: ReturnType<typeof resolveBadge>;
+}) {
   const thresholdInRange = thresholdCfg?.includeInRange === true;
   const thresholdRangeValueSV =
     thresholdInRange &&
@@ -442,13 +459,6 @@ function resolveLiveChartReferenceConfig({
       : undefined;
 
   return {
-    chartGapBands,
-    allRefLines,
-    refValues: collectReferenceValues(allRefLines),
-    refLineCustom,
-    refLineOffAxisCustom,
-    refLineKeys: referenceLineReactKeys(allRefLines),
-    draggableRefIdx,
     thresholdInRange,
     thresholdRangeValueSV,
     refGroupingCfg,
@@ -1283,7 +1293,7 @@ function useLiveChartLayoutResources({
   const refGroupBadgeFont = refGroupBadgeHasFont
     ? refGroupBadgeFontOverride
     : skiaFont;
-  const valueLayoutSample = useInitialSharedValueSample(value);
+  const valueLayoutSample = useLayoutValueSample(value);
   const [scrolledBack, setScrolledBack] = useState(false);
   const effectiveYAxisFloat =
     yAxisFloat && (!timeScrollEnabled || scrolledBack);
@@ -1316,17 +1326,17 @@ function useLiveChartLayoutResources({
   };
 }
 
-function useInitialSharedValueSample(value: SharedValue<number>) {
+function useLayoutValueSample(value: SharedValue<number>) {
   const [sample, setSample] = useState<number | undefined>(undefined);
-  const captured = useSharedValue(false);
+  const sampled = useSharedValue(0);
   useAnimatedReaction(
-    () => (captured.get() ? null : value.get()),
+    () => value.get(),
     (current) => {
-      if (current === null) return;
-      captured.set(true);
+      if (!shouldResampleLayoutValue(current, sampled.get())) return;
+      sampled.set(current);
       scheduleOnRN(setSample, current);
     },
-    [captured, value],
+    [sampled, value],
   );
   return sample;
 }
@@ -1461,6 +1471,7 @@ function useLiveChartController({
 
   // ── Callbacks ───────────────────────────────────────────────────────────
   onScrub,
+  onScrubCandleChange,
   onScrubAction,
   onReferenceLinePress,
   onGestureStart,
@@ -1476,6 +1487,10 @@ function useLiveChartController({
   // Stand-in threshold value so `useThreshold` can be called unconditionally
   // (hooks can't be); the geometry is ignored when no threshold is configured.
   const emptyThresholdValue = useSharedValue(0);
+  // Memoized on the gaps prop so the gap bands, the reference lines built from
+  // them and the crosshair's gap list keep their identity across re-renders.
+  const gapsProp = mode === "candle" ? candleGaps : lineGaps;
+  const chartGapsCfg = useMemo(() => resolveCandleGaps(gapsProp), [gapsProp]);
   const {
     isCandle,
     yAxisCfg,
@@ -1486,7 +1501,6 @@ function useLiveChartController({
     scrubCfg,
     scrubActionCfg,
     volumeCfg,
-    chartGapsCfg,
     candleGapsCfg,
     lineGapsCfg,
     volumeBandHeight,
@@ -1515,8 +1529,7 @@ function useLiveChartController({
     scrub,
     scrubAction,
     volume,
-    candleGaps,
-    lineGaps,
+    chartGapsCfg,
     gradient,
     areaDots,
     threshold,
@@ -1531,14 +1544,32 @@ function useLiveChartController({
     metrics,
   });
 
+  // Probing the custom renderers calls them once per line, so only re-resolve
+  // when the lines or renderers change, not on every parent render.
   const {
-    chartGapBands,
     allRefLines,
     refValues,
     refLineCustom,
     refLineOffAxisCustom,
     refLineKeys,
     draggableRefIdx,
+  } = useMemo(
+    () =>
+      resolveLiveChartReferenceLines({
+        chartGapsCfg,
+        referenceLines,
+        renderReferenceLine,
+        renderOffAxisReferenceLine,
+      }),
+    [
+      chartGapsCfg,
+      referenceLines,
+      renderReferenceLine,
+      renderOffAxisReferenceLine,
+    ],
+  );
+
+  const {
     thresholdInRange,
     thresholdRangeValueSV,
     refGroupingCfg,
@@ -1547,10 +1578,6 @@ function useLiveChartController({
     refGroupFormat,
     badgeUsesRightGutter,
   } = resolveLiveChartReferenceConfig({
-    chartGapsCfg,
-    referenceLines,
-    renderReferenceLine,
-    renderOffAxisReferenceLine,
     thresholdCfg,
     referenceLineGrouping,
     badgeCfg,
@@ -1744,6 +1771,26 @@ function useLiveChartController({
   // ── Per-frame derived values ───────────────────────────────────────────
   const { layoutWidth, layoutHeight, onLayout } = useCanvasLayout(engine);
 
+  // Draggable reference lines: a per-line vertical pan that grabs a line near its
+  // value and drags it along the Y-axis (with snap / bounds / callbacks). Built
+  // unconditionally for stable hook order (and before `useCrosshair` so the scrub
+  // can defer to a line under the finger); the gesture self-disables when no line
+  // opts in, and it's only composed into the root when `refDragEnabled`. Its
+  // `drawnValues` (the dragged line kept under the finger) is what the lines'
+  // grouping, press hit-test and overlays read; the range fit reads `dragValues`.
+  const {
+    gesture: refDragGesture,
+    hitTest: refDragHitTest,
+    drawnValues: drawnRefValues,
+  } = useReferenceDrag(
+    engine,
+    effectivePadding,
+    allRefLines,
+    dragValues,
+    dragActive,
+    !isStatic,
+  );
+
   const { refGroupResult, groupHidden } = useReferenceLineGrouping({
     radius: refGroupingRadius,
     engine,
@@ -1751,7 +1798,7 @@ function useLiveChartController({
     lines: allRefLines,
     custom: refLineCustom,
     offAxisCustom: refLineOffAxisCustom,
-    dragValues,
+    dragValues: drawnRefValues,
   });
 
   // Threshold split geometry. Two forms, picked at render by `Array.isArray` (no
@@ -1813,6 +1860,15 @@ function useLiveChartController({
     thresholdFillSamples,
     lineProp?.simplify,
     lineGapsCfg?.gaps,
+  );
+  // `effectivePadding.bottom` includes the volume band, so this stops at the
+  // price plot's bottom edge.
+  const seriesClip = useDerivedValue(() =>
+    seriesPlotClip(
+      effectivePadding,
+      engine.canvasWidth.get(),
+      engine.canvasHeight.get(),
+    ),
   );
 
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config
@@ -1911,22 +1967,8 @@ function useLiveChartController({
       !isStatic && refPressActive,
       markerHitRadius,
       onReferenceLinePress,
-      dragValues,
+      drawnRefValues,
     );
-
-  // Draggable reference lines: a per-line vertical pan that grabs a line near its
-  // value and drags it along the Y-axis (with snap / bounds / callbacks). Built
-  // unconditionally for stable hook order (and before `useCrosshair` so the scrub
-  // can defer to a line under the finger); the gesture self-disables when no line
-  // opts in, and it's only composed into the root when `refDragEnabled`.
-  const { gesture: refDragGesture, hitTest: refDragHitTest } = useReferenceDrag(
-    engine,
-    effectivePadding,
-    allRefLines,
-    dragValues,
-    dragActive,
-    !isStatic,
-  );
 
   // Combined "defer" hit-test: the scrub-action place-tap and the live scrub both
   // yield to a marker, a pressable badge, or a draggable line under the finger — so
@@ -1986,6 +2028,7 @@ function useLiveChartController({
     scrollActive,
     crosshairSettings.clampToPlot,
     crosshairSettings.snapToCandles,
+    onScrubCandleChange,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -2184,7 +2227,7 @@ function useLiveChartController({
     refLineCustom,
     refLineOffAxisCustom,
     refLineCustomTagWidths,
-    dragValues,
+    dragValues: drawnRefValues,
     dragActive,
     renderReferenceLine,
     renderOffAxisReferenceLine,
@@ -2246,6 +2289,7 @@ function useLiveChartController({
     linePath,
     fillPath,
     thresholdFillPath,
+    seriesClip,
     lineIsLinear,
     volumeCfg,
     candleGapsCfg,
@@ -2415,12 +2459,14 @@ function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
     skiaFont,
     palette,
     volumeBandHeight,
+    xAxisCfg,
   } = model;
   const { xAxisEntries } = useXAxis(
     engine,
     effectivePadding,
     formatTime,
     skiaFont,
+    xAxisCfg?.minGap,
   );
   return (
     // Axis auto-hide fade (1 when the feature is off).
@@ -2472,6 +2518,7 @@ function ChartFillLayer({
     thresholdSeriesHasPoints,
     thresholdFillUniforms,
     seriesOpacity,
+    seriesClip,
   } = model;
   return (
     <Group transform={degen?.shakeTransform}>
@@ -2486,7 +2533,7 @@ function ChartFillLayer({
         />
       )}
 
-      <Group opacity={seriesOpacity}>
+      <Group opacity={seriesOpacity} clip={seriesClip}>
         {/* Dot-lattice area fill (the under-line `fillPath` painted with a dot
             shader). Drawn before the gradient so a gradient (if also enabled)
             composites on top. */}
@@ -2714,6 +2761,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     candleGapsCfg,
     scrubCfg,
     crosshair,
+    seriesClip,
   } = model;
   const paths = useCandlePaths(
     engine,
@@ -2824,7 +2872,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
 
   return (
     <Group opacity={seriesOpacity}>
-      <Group opacity={candleGroupOpacity}>
+      <Group opacity={candleGroupOpacity} clip={seriesClip}>
         {candleGapsCfg && (
           <ChartCandleGapLayer
             model={model}
@@ -2952,11 +3000,12 @@ function ChartMainPlotLayer({
     xAxisCfg,
     yAxisCfg,
     yAxisFloat,
+    seriesClip,
   } = model;
 
   return (
     <>
-      <Group opacity={seriesOpacity}>
+      <Group opacity={seriesOpacity} clip={seriesClip}>
         <Group opacity={lineGroupOpacity}>
           <Path
             path={linePath}
@@ -3444,9 +3493,11 @@ function ChartValueOverlay({
 function ChartBadgeLayer({
   model,
   degen,
+  yAxisEntries,
 }: {
   model: LiveChartModel;
   degen: DegenState | null;
+  yAxisEntries: YAxisEntries | null;
 }) {
   const {
     badgeFont,
@@ -3458,8 +3509,27 @@ function ChartBadgeLayer({
     metricsCfg,
     yAxisFloat,
     liveBadgeOpacity,
+    skiaFont,
+    yAxisCfg,
+    badgeUsesRightGutter,
   } = model;
   const badgeCfg = model.badgeCfg!;
+  // textAlign "yAxisColumn": hand the right-gutter badge the label column only
+  // while YAxisOverlay draws one (right side + labelRightMargin, axis not
+  // floating), so other charts' badges get no extra mapper input.
+  const labelColumn =
+    badgeCfg.textAlign === "yAxisColumn" &&
+    badgeUsesRightGutter &&
+    !yAxisFloat &&
+    yAxisEntries &&
+    yAxisCfg?.side !== "left" &&
+    yAxisCfg?.labelRightMargin !== undefined
+      ? {
+          entries: yAxisEntries,
+          labelRightMargin: yAxisCfg.labelRightMargin,
+          font: skiaFont,
+        }
+      : null;
   const badgeData = useBadge(
     engine,
     effectivePadding,
@@ -3478,6 +3548,9 @@ function ChartBadgeLayer({
     badgeCfg.followViewEdge,
     badgeCfg.radius,
     badgeCfg.textColor,
+    labelColumn?.entries,
+    labelColumn?.labelRightMargin,
+    labelColumn?.font,
   );
   return (
     <Group transform={degen?.shakeTransform}>
@@ -3768,7 +3841,13 @@ function ChartCanvas({
         <ChartTradeStreamLayer model={model} degen={degen} />
       ) : null}
       <ChartScrubLayer model={model} degen={degen} />
-      {model.badgeCfg ? <ChartBadgeLayer model={model} degen={degen} /> : null}
+      {model.badgeCfg ? (
+        <ChartBadgeLayer
+          model={model}
+          degen={degen}
+          yAxisEntries={yAxisEntries}
+        />
+      ) : null}
       <ChartScrubActionLayer model={model} />
     </Canvas>
   );
@@ -3888,8 +3967,10 @@ function ChartView({
   );
 }
 
-export const LiveChart = forwardRef<LiveChartHandle, LiveChartProps>(
-  function LiveChart(props, ref) {
+// Memoized so a parent render with unchanged props skips the controller; the
+// chart's live data flows through SharedValues, not props.
+export const LiveChart = memo(
+  forwardRef<LiveChartHandle, LiveChartProps>(function LiveChart(props, ref) {
     const model = useLiveChartController(props);
     const { viewEnd, viewWindow } = model.engine;
     useImperativeHandle(
@@ -3906,5 +3987,5 @@ export const LiveChart = forwardRef<LiveChartHandle, LiveChartProps>(
       return <ChartWithDegen model={model} yAxisEntries={null} />;
     }
     return <ChartView model={model} yAxisEntries={null} degen={null} />;
-  },
+  }),
 );

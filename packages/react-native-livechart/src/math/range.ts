@@ -48,22 +48,37 @@ export function computeRange(
     targetMax += margin;
   }
 
-  // `minRange` floor: widen around the midpoint, sliding off the 0 / maxValue bounds.
-  if (
-    floorRange !== undefined &&
-    floorRange > targetMax - targetMin &&
-    Number.isFinite(floorRange)
-  ) {
-    const mid = (targetMin + targetMax) / 2;
-    targetMin = mid - floorRange / 2;
-    targetMax = mid + floorRange / 2;
-    if (nonNegative && targetMin < 0) {
-      targetMax -= targetMin;
-      targetMin = 0;
-    }
-    if (maxValue !== undefined && targetMax > maxValue) {
-      targetMin -= targetMax - maxValue;
-      targetMax = maxValue;
+  // Compare the bounded fit: a clamp can shrink an otherwise wider range.
+  // Slide a widened fit off either bound; both hard bounds win if the floor
+  // cannot fit between them. Mirrors the fitted range used by both engines.
+  if (floorRange !== undefined && floorRange > 0 && Number.isFinite(floorRange)) {
+    const boundedMin = nonNegative && targetMin < 0 ? 0 : targetMin;
+    const boundedMax =
+      maxValue !== undefined && targetMax > maxValue ? maxValue : targetMax;
+    if (floorRange > boundedMax - boundedMin) {
+      // Halve before adding so large finite prices cannot overflow the midpoint.
+      const mid = targetMin / 2 + targetMax / 2;
+      let nextMin = mid - floorRange / 2;
+      let nextMax = mid + floorRange / 2;
+      if (nonNegative && nextMin < 0) {
+        nextMax -= nextMin;
+        nextMin = 0;
+      }
+      if (maxValue !== undefined && nextMax > maxValue) {
+        nextMin -= nextMax - maxValue;
+        nextMax = maxValue;
+      }
+      if (nonNegative && nextMin < 0) nextMin = 0;
+      // Ignore a floor that would overflow or round the bounds onto each other.
+      if (
+        Number.isFinite(nextMin) &&
+        Number.isFinite(nextMax) &&
+        nextMin < nextMax &&
+        Number.isFinite(nextMax - nextMin)
+      ) {
+        targetMin = nextMin;
+        targetMax = nextMax;
+      }
     }
   }
 

@@ -876,11 +876,18 @@ export function useLiveChartEngine(
           canvasWidth.get(),
           canvasHeight.get(),
           timeWindow.get(),
+          // `nowOverride` sets the right edge and `smoothing` changes when
+          // `static` flips. Reading them here makes them inputs of this mapper,
+          // so a same-render prop change can't settle on their previous values.
+          nowOverrideSV.get(),
+          smoothing.get(),
           // Range props can arrive after the data shared value. Re-settle when
           // those bounds change too, rather than retaining the previous scale
           // until another data/layout update (static charts have no frame loop).
           maxValueSV.get(),
           minRangeSV.get(),
+          nonNegativeSV.get(),
+          yRangeScale?.get(),
           referenceValue.get(),
           ...(referenceValues.get() ?? []),
         ].join(","),
