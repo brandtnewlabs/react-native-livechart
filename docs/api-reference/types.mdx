@@ -781,6 +781,26 @@ animated expansion speed so the bounds cannot cross.
 Axis-label fades remain under `metrics.grid`. See
 [Y-range animation](/guides/y-range-scale#animating-automatic-range-changes).
 
+## SeriesRangeAnimationConfig
+
+Exported `LiveChartSeries` config extending `RangeAnimationConfig` with a
+reversible UI-thread range transform:
+
+```ts
+interface SeriesRangeAnimationConfig extends RangeAnimationConfig {
+  transform?: (range: {
+    min: number; max: number; // untransformed fitted/eased bounds
+    from: number; to: number; // visible Unix-second interval
+  }) => { min: number; max: number };
+}
+```
+
+The worklet may read SharedValues. Its output changes presentation after normal
+fit/easing; it never changes recorded values or feeds the next fit. Removing it
+restores the untransformed range. Non-finite, equal or inverted bounds are ignored.
+Configured hard bounds apply to the underlying fit before transforming. Existing
+expansion/contraction speeds, snaps and manual scaling apply to that fit.
+
 ## Imperative handle
 
 `LiveChart` and `LiveChartSeries` accept a ref with the same exported handle:

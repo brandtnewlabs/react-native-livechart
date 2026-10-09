@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   badge/tooltip formatting keep their existing behavior.
   ([#397](https://github.com/brandtnewlabs/react-native-livechart/issues/397))
 
+- `LiveChartSeries.rangeAnimation.transform` and exported
+  `SeriesRangeAnimationConfig` apply reversible worklet presentation bounds after
+  fitting/easing. SharedValue-driven overlays can expand and release the range
+  without changing recorded prices or feeding expansion back into later fits.
+  Invalid returned ranges are ignored.
+  ([#395](https://github.com/brandtnewlabs/react-native-livechart/issues/395))
+
 ### Fixed
 
 - Reserve the time-axis strip for `LiveChartSeries` axis dragging so a stationary
