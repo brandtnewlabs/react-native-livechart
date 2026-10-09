@@ -19,6 +19,7 @@ import {
   type ReferenceLineLayout,
 } from "../hooks/useReferenceLine";
 import { referenceBadgeFont } from "../hooks/referenceBadgeFont";
+import type { ReferenceTagStack } from "../math/referenceTagStack";
 import type { AxisBadgeConfig } from "../math/axisBadgeLayout";
 import { ReferenceValueBadge } from "./ReferenceValueBadge";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
@@ -92,6 +93,7 @@ type ReferenceLineOverlayProps = {
    * stroke still draws).
    */
   groupHidden?: SharedValue<boolean[]>;
+  tagStack?: SharedValue<ReferenceTagStack>;
   /** Per-line live value overrides (dragged values), index-aligned with `referenceLines`. */
   dragValues?: SharedValue<number[]>;
   /** This line's index into {@link dragValues}. */
@@ -184,6 +186,7 @@ function ReferenceLineStaticOverlay({
   suppressTagWhenOffAxis = false,
   customTagWidths,
   groupHidden,
+  tagStack,
   dragValues,
   index = 0,
   yAxisEntries,
@@ -278,9 +281,10 @@ function ReferenceLineStaticOverlay({
         suppressTagWhenOffAxis={suppressTagWhenOffAxis}
         customTagWidths={customTagWidths}
         groupHidden={groupHidden}
+        tagStack={tagStack}
         index={index}
       />
-      {line.valueBadge && <ReferenceValueBadge layout={layout} line={line} font={valueFont} palette={palette} hidden={valueHidden} />}
+      {line.valueBadge && <ReferenceValueBadge layout={layout} line={line} font={valueFont} palette={palette} hidden={valueHidden} tagStack={tagStack} index={index} />}
     </>
   );
 }
@@ -417,6 +421,7 @@ function ReferenceLineBadgePass({
   suppressTagWhenOffAxis,
   customTagWidths,
   groupHidden,
+  tagStack,
   index,
 }: {
   layout: SharedValue<ReferenceLineLayout>;
@@ -436,6 +441,7 @@ function ReferenceLineBadgePass({
   suppressTagWhenOffAxis: boolean;
   customTagWidths?: SharedValue<number[]>;
   groupHidden?: SharedValue<boolean[]>;
+  tagStack?: SharedValue<ReferenceTagStack>;
   index: number;
 }) {
   const connBuilder = usePathBuilder();
@@ -444,6 +450,10 @@ function ReferenceLineBadgePass({
     badgeOffsetX !== 0 || badgeOffsetY !== 0
       ? [{ translateX: badgeOffsetX }, { translateY: badgeOffsetY }]
       : undefined;
+  const tagTransform = useDerivedValue(() => [
+    { translateX: badgeOffsetX },
+    { translateY: badgeOffsetY + (tagStack?.get().offsets[index] ?? 0) },
+  ]);
   const connPath = useDerivedValue(() => {
     const b = connBuilder.value;
     const l = layout.get();
@@ -468,8 +478,15 @@ function ReferenceLineBadgePass({
         }
       }
       if (end > start) {
-        b.moveTo(start, l.y);
-        b.lineTo(end, l.y);
+        const nameOffset = tagStack?.get().offsets[index] ?? 0;
+        const valueOffset = tagStack?.get().valueOffsets[index] ?? 0;
+        const leftOffset = badgePosition === "left" ? nameOffset : 0;
+        const rightOffset = l.valueBadge && !customTagActive ? valueOffset : badgePosition === "right" ? nameOffset : 0;
+        const elbow = Math.min(8, (end - start) / 3);
+        b.moveTo(start, l.y + leftOffset);
+        if (leftOffset !== 0) b.lineTo(start + elbow, l.y);
+        if (rightOffset !== 0) b.lineTo(end - elbow, l.y);
+        b.lineTo(end, l.y + rightOffset);
       }
     }
     return b.detach();
@@ -548,7 +565,7 @@ function ReferenceLineBadgePass({
           <DashPathEffect intervals={intervals} />
         </Path>
       </Group>
-      <Group opacity={badgeOpacity} transform={badgeTransform}>
+      <Group opacity={badgeOpacity} transform={tagStack ? tagTransform : badgeTransform}>
         <RoundedRect
           x={pillX}
           y={pillY}
@@ -585,7 +602,7 @@ function ReferenceLineBadgePass({
           />
         </Group>
       </Group>
-      <Group opacity={labelOpacity} transform={badgeTransform}>
+      <Group opacity={labelOpacity} transform={tagStack ? tagTransform : badgeTransform}>
         <SkiaText
           x={labelX}
           y={labelY}

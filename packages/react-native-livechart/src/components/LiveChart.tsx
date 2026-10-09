@@ -150,6 +150,8 @@ import {
   candleGapBucketStartAtTime,
   candleGapDefaultLabel,
 } from "../math/candleGaps";
+import { useReferenceTagStack, type CustomTagSizes } from "../hooks/useReferenceTagStack";
+import { EMPTY_TAG_STACK, type ReferenceTagStack, type TagRect } from "../math/referenceTagStack";
 import { useReferenceLineGrouping } from "../hooks/useReferenceLineGrouping";
 import {
   collectReferenceValues,
@@ -476,7 +478,11 @@ function resolveLiveChartReferenceConfig({
     thresholdInRange,
     thresholdRangeValueSV,
     refGroupingCfg,
-    refGroupingRadius: referenceLineGrouping
+    refStackEnabled: !!referenceLineGrouping && refGroupingCfg?.mode === "stack",
+    refStackAvoidValueBadge: refGroupingCfg?.avoidValueBadge !== false,
+    refStackRadius: refGroupingCfg?.radius ?? 18,
+    refStackReserveBadge: refGroupingCfg?.avoidValueBadge !== false && badgeCfg !== null,
+    refGroupingRadius: referenceLineGrouping && refGroupingCfg?.mode !== "stack"
       ? (refGroupingCfg?.radius ?? 18)
       : null,
     refGroupBadge: resolveReferenceGroupBadge(refGroupingCfg?.badge),
@@ -490,6 +496,8 @@ function useLiveReferenceState(
   allRefLines: ReferenceLine[],
   draggableRefIdx: number[],
   thresholdRangeValueSV: SharedValue<number> | null,
+  stackEnabled: boolean,
+  reserveBadge: boolean,
 ) {
   const dragValues = useSharedValue<number[]>([]);
   const dragActive = useSharedValue<boolean[]>([]);
@@ -520,6 +528,23 @@ function useLiveReferenceState(
   }, [dragActive, dragValues, propValues]);
 
   const refLineCustomTagWidths = useSharedValue<number[]>([]);
+  const refTagSizes = useSharedValue<CustomTagSizes>({});
+  const refTagStack = useSharedValue<ReferenceTagStack>(EMPTY_TAG_STACK);
+  const refLiveBadgeRect = useSharedValue<TagRect | null>(null);
+  useEffect(() => {
+    const keys = new Set(referenceLineReactKeys(allRefLines));
+    scheduleOnUI(() => {
+      "worklet";
+      const sizes = refTagSizes.get();
+      const next: CustomTagSizes = {};
+      let removed = false;
+      for (const key of Object.keys(sizes)) {
+        if (keys.has(key)) next[key] = sizes[key];
+        else removed = true;
+      }
+      if (removed) refTagSizes.set(next);
+    });
+  }, [allRefLines, refTagSizes]);
   const liveRefValues = useDerivedValue<number[]>(() => {
     if (draggableRefIdx.length === 0 && thresholdRangeValueSV === null) {
       return EMPTY_NUMS;
@@ -539,7 +564,12 @@ function useLiveReferenceState(
     return output;
   });
 
-  return { dragValues, dragActive, refLineCustomTagWidths, liveRefValues };
+  return {
+    dragValues, dragActive, refLineCustomTagWidths, liveRefValues,
+    refTagSizes, refTagStack, refLiveBadgeRect,
+    activeTagStack: stackEnabled ? refTagStack : undefined,
+    stackObstacle: reserveBadge ? refLiveBadgeRect : null,
+  };
 }
 
 function resolveLiveChartPresentationConfig({
@@ -1638,6 +1668,10 @@ function useLiveChartController({
     thresholdInRange,
     thresholdRangeValueSV,
     refGroupingCfg,
+    refStackEnabled,
+    refStackAvoidValueBadge,
+    refStackRadius,
+    refStackReserveBadge,
     refGroupingRadius,
     refGroupBadge,
     refGroupFormat,
@@ -1652,8 +1686,8 @@ function useLiveChartController({
     thresholdCfg,
   ]);
 
-  const { dragValues, dragActive, refLineCustomTagWidths, liveRefValues } =
-    useLiveReferenceState(allRefLines, draggableRefIdx, thresholdRangeValueSV);
+  const { dragValues, dragActive, refLineCustomTagWidths, liveRefValues, refTagSizes, refTagStack, refLiveBadgeRect, activeTagStack, stackObstacle } =
+    useLiveReferenceState(allRefLines, draggableRefIdx, thresholdRangeValueSV, refStackEnabled, refStackReserveBadge);
 
   const {
     palette,
@@ -1888,6 +1922,7 @@ function useLiveChartController({
     dragValues,
     dragActive,
     !isStatic,
+    activeTagStack,
   );
 
   const { refGroupResult, groupHidden } = useReferenceLineGrouping({
@@ -2088,6 +2123,7 @@ function useLiveChartController({
       groupHidden,
       refLineCustom,
       refLineOffAxisCustom,
+      activeTagStack,
     );
 
   // Combined "defer" hit-test: the scrub-action place-tap and the live scrub both
@@ -2316,6 +2352,15 @@ function useLiveChartController({
     viewEnd: engine.viewEnd,
     fadeOverlaysOnScrub,
   });
+  useReferenceTagStack({
+    enabled: refStackEnabled, radius: refStackRadius,
+    engine, padding: effectivePadding, lines: allRefLines, keys: refLineKeys,
+    custom: refLineCustom, offAxisCustom: refLineOffAxisCustom,
+    customSizes: refTagSizes, font: skiaFont, fontProp, formatValue,
+    dragValues: drawnRefValues, valueAxis: referenceValueAxis,
+    obstacle: stackObstacle,
+    output: refTagStack,
+  });
   const modelDefaults = resolveLiveChartModelDefaults({
     isCandle,
     candleWidth,
@@ -2379,6 +2424,7 @@ function useLiveChartController({
     renderReferenceLine,
     renderOffAxisReferenceLine,
     refGroupingActive: refGroupingRadius != null,
+    refStackEnabled, refStackAvoidValueBadge, refTagSizes, refTagStack, refLiveBadgeRect,
     refGroupResult,
     groupHidden,
     refGroupBadge,
@@ -3800,6 +3846,14 @@ function ChartBadgeLayer({
     labelColumn?.labelRightMargin,
     labelColumn?.font,
   );
+  const { refStackEnabled, refStackAvoidValueBadge, refLiveBadgeRect } = model;
+  useAnimatedReaction(() => {
+    if (!refStackEnabled || !refStackAvoidValueBadge || liveBadgeOpacity.get() <= 0) return null;
+    const rect = badgeData.get().path.getBounds();
+    return { x: rect.x + (badgeCfg.offsetX ?? 0), y: rect.y + (badgeCfg.offsetY ?? 0), w: rect.width, h: rect.height };
+  }, (next, prev) => {
+    if (next?.x !== prev?.x || next?.y !== prev?.y || next?.w !== prev?.w || next?.h !== prev?.h) refLiveBadgeRect.set(next);
+  });
   return (
     <Group transform={degen?.shakeTransform}>
       <Group opacity={liveBadgeOpacity}>
@@ -3871,6 +3925,7 @@ function ChartRefBadgeLayer({
           suppressTag={refLineCustom[i]}
           suppressTagWhenOffAxis={refLineOffAxisCustom[i]}
           customTagWidths={refLineCustomTagWidths}
+          tagStack={model.refStackEnabled ? model.refTagStack : undefined}
           groupHidden={refGroupingActive ? groupHidden : undefined}
           yAxisEntries={yAxisEntries}
           labelRightMargin={yAxisCfg?.labelRightMargin}
@@ -3988,6 +4043,8 @@ function ChartCustomAnnotations({ model }: { model: LiveChartModel }) {
           dragValues={dragValues}
           dragActive={dragActive}
           tagWidths={refLineCustomTagWidths}
+          tagSizes={model.refStackEnabled ? model.refTagSizes : undefined}
+          tagStack={model.refStackEnabled ? model.refTagStack : undefined}
         />
       )}
       {renderOffAxisReferenceLine && allRefLines.length > 0 && (
@@ -4001,6 +4058,8 @@ function ChartCustomAnnotations({ model }: { model: LiveChartModel }) {
           dragValues={dragValues}
           dragActive={dragActive}
           tagWidths={refLineCustomTagWidths}
+          tagSizes={model.refStackEnabled ? model.refTagSizes : undefined}
+          tagStack={model.refStackEnabled ? model.refTagStack : undefined}
           offAxisOnly
         />
       )}

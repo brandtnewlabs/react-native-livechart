@@ -355,6 +355,11 @@ export interface ReferenceLineRenderProps {
   valueStr: SharedValue<string>;
   /** Canvas Y pixel of the line, recomputed each frame (`-1` when not laid out). */
   y: SharedValue<number>;
+  /** Extra vertical displacement from reference-tag stacking, in canvas pixels.
+   * The chart applies it to the custom element automatically; `y` keeps its
+   * original projection. Use this to draw a connector, not a second transform.
+   * Zero when stacking is off (including LiveChartSeries). */
+  tagOffsetY: SharedValue<number>;
   /** Whether the value currently sits within the visible plot range. */
   inRange: SharedValue<boolean>;
   /**
@@ -368,18 +373,23 @@ export interface ReferenceLineRenderProps {
 }
 
 /**
- * Grouping behavior for reference lines (single-series). When enabled, Form-A
- * lines whose handles fall within {@link ReferenceLineGroupingConfig.radius} px of
- * each other collapse into a single count handle, so a cluster of nearby orders /
- * alerts reads as one tag instead of an unreadable pile. Pass `true` for defaults
- * or an object to tune the proximity radius. Badged off-axis lines group at either
- * plot edge; off-axis lines with no badge are hidden and do not count. Custom tags
- * are excluded.
+ * Tag collision behavior for single-series reference lines. `true` uses collapse
+ * mode, replacing nearby built-in tags with a count pill. Stack mode keeps each
+ * built-in or measured custom tag, separating overlapping horizontal columns
+ * while price strokes stay at their values. Hidden off-axis lines do not count.
  */
 export interface ReferenceLineGroupingConfig {
+  /** `"collapse"` merges nearby tags into a count (default). `"stack"` keeps
+   * each price line and separates overlapping tags by their measured bounds.
+   * Custom tags participate in stack mode; separate horizontal columns pack
+   * independently. Single-series only. */
+  mode?: "collapse" | "stack";
+  /** Stack mode: keep tags clear of the visible live value badge. Default `true`.
+   * Best effort when there is insufficient plot height; ignored in collapse mode. */
+  avoidValueBadge?: boolean;
   /**
-   * Collapse lines whose value-Y positions are within this many px of each other.
-   * Default `18`.
+   * Collapse mode: proximity radius. Stack mode: minimum center-to-center gap;
+   * measured tag heights plus 2 px take precedence. Default `18`.
    */
   radius?: number;
   /**
@@ -2994,14 +3004,12 @@ export interface LiveChartProps extends LiveChartCoreProps {
     ctx: ReferenceLineRenderProps,
   ) => ReactElement | null | undefined;
   /**
-   * Collapse Form-A reference lines whose handles sit near the same value into a
-   * single count handle (e.g. a stack of working orders at adjacent prices reads
-   * as one "×3" tag). `true` = defaults, `false`/omitted = off, or pass a
-   * {@link ReferenceLineGroupingConfig} to tune the proximity radius. Lines a
-   * {@link LiveChartProps.renderReferenceLine} or
-   * {@link LiveChartProps.renderOffAxisReferenceLine} owns are excluded (their
-   * custom tag draws itself), so the count reflects only collapsed built-in tags.
-   * Single-series only. Default off.
+   * Resolve nearby Form-A tags. `true` uses the existing count-pill collapse;
+   * `{ mode: "stack" }` separates built-in and custom tags without moving their
+   * price lines. Stacking respects measured tag sizes, separate horizontal
+   * columns, and the visible live value badge (opt out with `avoidValueBadge`).
+   * Count-pill styling/format apply only to collapse mode. Single-series only.
+   * Default off. See {@link ReferenceLineGroupingConfig}.
    */
   referenceLineGrouping?: boolean | ReferenceLineGroupingConfig;
   /**

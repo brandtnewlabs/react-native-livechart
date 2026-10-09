@@ -12,6 +12,11 @@ import { DEFAULT_PADDING } from "../../src/draw/line";
 import type { ReferenceLine } from "../../src/types";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
+jest.mock("react-native-worklets", () => ({
+  ...jest.requireActual("react-native-worklets"),
+  scheduleOnUI: (fn: (...args: unknown[]) => void, ...args: unknown[]) => fn(...args),
+}));
+
 function engine(
   partial: Partial<{ canvasHeight: number; displayMin: number; displayMax: number }> = {},
 ): ChartEngineLayout {
@@ -234,4 +239,24 @@ describe("CustomReferenceLineOverlay", () => {
     );
     expect(getByText("above:false")).toBeTruthy();
   });
+});
+
+it("keeps all sibling measurements for stacking", async () => {
+  let sizes: SharedValue<import("../../src/hooks/useReferenceTagStack").CustomTagSizes>;
+  function Measured({ enabled }: { enabled: boolean }) {
+    sizes = useSharedValue<import("../../src/hooks/useReferenceTagStack").CustomTagSizes>({});
+    return <CustomReferenceLineOverlay
+      lines={[{ id: "a", value: 50 }, { id: "b", value: 50 }]}
+      custom={[true, true]} engine={engine()} padding={DEFAULT_PADDING} formatValue={fmt}
+      tagSizes={enabled ? sizes : undefined}
+      renderReferenceLine={({ index, tagOffsetY }) => <View testID={`measured-${index}`} accessibilityLabel={String(tagOffsetY.get())} />}
+    />;
+  }
+  const { getByTestId } = await render(<Measured enabled />);
+  for (const index of [0, 1]) {
+    await fireEvent(getByTestId(`measured-${index}`).parent!, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 60 + index, height: 20 + index } },
+    });
+  }
+  expect(sizes!.get()).toEqual({ "a:0": { width: 60, height: 20 }, "b:0": { width: 61, height: 21 } });
 });

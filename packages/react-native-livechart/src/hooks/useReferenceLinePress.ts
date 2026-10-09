@@ -1,3 +1,4 @@
+import type { ReferenceTagStack } from "../math/referenceTagStack";
 import { useMemo } from "react";
 import type { SkFont } from "@shopify/react-native-skia";
 import { Gesture } from "react-native-gesture-handler";
@@ -48,6 +49,7 @@ export function useReferenceLinePress(
   groupHidden?: SharedValue<boolean[]>,
   custom?: boolean[],
   offAxisCustom?: boolean[],
+  tagStack?: SharedValue<ReferenceTagStack>,
 ): {
   tapGesture: ReturnType<typeof Gesture.Tap>;
   hitTest: (x: number, y: number) => boolean;
@@ -71,6 +73,16 @@ export function useReferenceLinePress(
   /* istanbul ignore next -- worklet runs on the UI thread, not in Jest */
   const rects = useDerivedValue<(ReferenceBadgeRect | null)[][]>(() => {
     if (!active || lines.length === 0) return [];
+    if (tagStack) {
+      const out: ReferenceBadgeRect[][] = [];
+      for (let i = 0; i < lines.length; i++) out.push([]);
+      for (const tag of tagStack.get().tags) {
+        if (lines[tag.index] && lines[tag.index].id === tag.lineId && tag.kind !== "custom" && (tag.kind === "value" || resolveReferenceBadge(lines[tag.index]))) {
+          out[tag.index]?.push(tag);
+        }
+      }
+      return out;
+    }
     const out: (ReferenceBadgeRect | null)[][] = [];
     for (let i = 0; i < lines.length; i++) {
       if (custom?.[i] || groupHidden?.get()[i]) {
@@ -127,6 +139,12 @@ export function useReferenceLinePress(
     const indexAt = (x: number, y: number): number => {
       "worklet";
       const rs = rects.get();
+      // Exact pill hits win over neighboring expanded touch targets.
+      if (tagStack) {
+        for (let i = rs.length - 1; i >= 0; i--) {
+          for (const r of rs[i]) if (r && pointInRect(x, y, r, 0)) return i;
+        }
+      }
       for (let i = rs.length - 1; i >= 0; i--) {
         for (const r of rs[i]) {
           if (r && pointInRect(x, y, r, hitSlop)) return i;
@@ -152,5 +170,5 @@ export function useReferenceLinePress(
       });
 
     return { tapGesture, hitTest };
-  }, [active, emitPress, hitSlop, lineIds, rects]);
+  }, [active, emitPress, hitSlop, lineIds, rects, tagStack]);
 }

@@ -93,3 +93,35 @@ it("does not leave invisible tap targets after grouping or custom replacement", 
   await rerender({ custom: false, offAxis: true });
   expect(result.current.hitTest(370, 142)).toBe(true);
 });
+
+it("prioritizes exact stacked pills over a neighbor's hit slop and removes old targets", async () => {
+  const lines = [line, { ...line, id: "second" }];
+  const onPress = jest.fn();
+  const stack = withSharedValueAccessors({ stack: { value: {
+    offsets: [60, 82], valueOffsets: [], tags: [
+      { index: 0, lineId: "order", key: "order", kind: "name", x: 12, y: 202, w: 60, h: 20, lineY: 142, offsetY: 60 },
+      { index: 1, lineId: "second", key: "second", kind: "name", x: 12, y: 224, w: 60, h: 20, lineY: 142, offsetY: 82 },
+    ],
+  } } }).stack as unknown as SharedValue<import("../../src/math/referenceTagStack").ReferenceTagStack>;
+  const { result } = await renderHook(() => useReferenceLinePress(
+    engine, padding, lines, font, fmt, true, 14, onPress,
+    undefined, undefined, undefined, undefined, undefined, undefined, stack,
+  ));
+  expect(result.current.hitTest(20, 142)).toBe(false);
+  expect(result.current.hitTest(20, 215)).toBe(true);
+  const handlers = result.current.tapGesture.handlers as unknown as { onEnd: (e: { x: number; y: number }, success: boolean) => void };
+  handlers.onEnd({ x: 20, y: 215 }, true);
+  await Promise.resolve();
+  expect(onPress).toHaveBeenCalledWith(lines[0], 0);
+});
+
+it("ignores stale stack rectangles while lines are removed or replaced", async () => {
+  const stack = withSharedValueAccessors({ stack: { value: {
+    offsets: [], valueOffsets: [], tags: [{ index: 0, lineId: "replaced", key: "replaced", kind: "name", x: 10, y: 100, w: 60, h: 20, lineY: 110, offsetY: 0 }, { index: 2, key: "removed", kind: "name", x: 10, y: 100, w: 60, h: 20, lineY: 110, offsetY: 0 }],
+  } } }).stack as unknown as SharedValue<import("../../src/math/referenceTagStack").ReferenceTagStack>;
+  const { result } = await renderHook(() => useReferenceLinePress(
+    engine, padding, [line], font, fmt, true, 14, undefined,
+    undefined, undefined, undefined, undefined, undefined, undefined, stack,
+  ));
+  expect(result.current.hitTest(20, 110)).toBe(false);
+});

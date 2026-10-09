@@ -84,7 +84,9 @@ export default function WorkingOrdersScreen() {
   const [priceTag, setPriceTag] = useState<"off" | "right" | "axis">("axis");
   const [floatAxis, setFloatAxis] = useState(false);
   const [liveBadge, setLiveBadge] = useState(true);
-  const [grouping, setGrouping] = useState(false);
+  const [grouping, setGrouping] = useState<"off" | "collapse" | "stack">("off");
+  const [avoidValueBadge, setAvoidValueBadge] = useState(true);
+  const [dense, setDense] = useState(false);
   const [tagOnly, setTagOnly] = useState(false);
   const [timeScroll, setTimeScroll] = useState(false);
   const [candlestick, setCandlestick] = useState(false);
@@ -206,15 +208,7 @@ export default function WorkingOrdersScreen() {
     // Badge-less line: plain gutter label when custom is off, PlainTag when on.
     { value: START * 1.04, label: "Stop", color: "#94a3b8" },
     // Off-axis alerts are excluded from the fit so their tags pin to an edge.
-    ...ALERT_LEVELS[alertPosition].map((level, index) => ({
-      id: `alert-${index}`,
-      value: START * level,
-      label: "alert",
-      color: "#a855f7",
-      badge: true,
-      valueBadge,
-      excludeFromRange: alertPosition !== "visible",
-    })),
+    ...alertLines(alertPosition, dense, valueBadge),
     ...(plainAlert ? [{
       id: "plain-alert",
       value: START * ALERT_LEVELS[alertPosition][0],
@@ -270,8 +264,10 @@ export default function WorkingOrdersScreen() {
             theme={APP_THEME}
             referenceLines={referenceLines}
             referenceLineGrouping={
-              grouping
+              grouping !== "off"
                 ? {
+                    mode: grouping,
+                    avoidValueBadge,
                     radius: 26,
                     // Count pill takes the same style/shape config as a line badge.
                     badge: {
@@ -347,13 +343,40 @@ export default function WorkingOrdersScreen() {
             if (!enabled) setTagOnly(false);
           }}
         />
-        <ToggleChip
-          label="Group levels"
-          value={grouping}
-          onChange={setGrouping}
-        />
+        <ToggleChip label="Dense alerts" value={dense} onChange={setDense} />
         <ToggleChip label="Plain alert" value={plainAlert} onChange={setPlainAlert} />
       </ControlRow>
+      <ReferenceStackControls grouping={grouping} setGrouping={setGrouping} avoidValueBadge={avoidValueBadge} setAvoidValueBadge={setAvoidValueBadge} alertPosition={alertPosition} setAlertPosition={setAlertPosition} />
+
+      <OrderFeedback buy={buy} sell={sell} live={live} events={events} />
+    </DemoScreen>
+  );
+}
+
+function alertLines(position: AlertPosition, dense: boolean, valueBadge: ReferenceLine["valueBadge"]): ReferenceLine[] {
+  return ALERT_LEVELS[position].map((level, index) => ({
+    id: `alert-${index}`, value: dense ? START + index * 0.1 : START * level,
+    label: `Alert ${index + 1}`, color: "#a855f7",
+    badge: { position: index === 1 ? "right" : "left", fontSize: index === 2 ? 16 : 11 },
+    valueBadge, excludeFromRange: position !== "visible",
+  }));
+}
+
+function ReferenceStackControls({ grouping, setGrouping, avoidValueBadge, setAvoidValueBadge, alertPosition, setAlertPosition }: {
+  grouping: "off" | "collapse" | "stack"; setGrouping: (mode: "off" | "collapse" | "stack") => void;
+  avoidValueBadge: boolean; setAvoidValueBadge: (value: boolean) => void;
+  alertPosition: AlertPosition; setAlertPosition: (value: AlertPosition) => void;
+}) {
+  return <>
+      <ChipRow<"off" | "collapse" | "stack">
+        label="Nearby tags"
+        options={[{ label: "Overlap", value: "off" }, { label: "Collapse", value: "collapse" }, { label: "Stack", value: "stack" }]}
+        value={grouping}
+        onChange={setGrouping}
+      />
+      {grouping === "stack" && <ControlRow label="Stacking">
+        <ToggleChip label="Avoid live badge" value={avoidValueBadge} onChange={setAvoidValueBadge} />
+      </ControlRow>}
       <ChipRow<AlertPosition>
         label="Alert position"
         options={[
@@ -366,14 +389,13 @@ export default function WorkingOrdersScreen() {
       />
       {alertPosition !== "visible" ? (
         <Text style={styles.hint}>
-          Group levels collapses both pills into one count. Nearby orders can
-          join the group. A plain off-chart alert adds no visible tag to count.
+          Collapse merges nearby levels into a count. Stack keeps each tag visible
+          and separates the left, right and axis columns. Dense alerts puts levels
+          near the live price; custom tags participate in stacking too.
         </Text>
       ) : null}
 
-      <OrderFeedback buy={buy} sell={sell} live={live} events={events} />
-    </DemoScreen>
-  );
+  </>;
 }
 
 function grabHint(tagOnly: boolean, timeScroll: boolean) {

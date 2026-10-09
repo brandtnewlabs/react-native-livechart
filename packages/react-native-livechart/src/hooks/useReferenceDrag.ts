@@ -1,3 +1,4 @@
+import { stackedTagAt, type ReferenceTagStack } from "../math/referenceTagStack";
 import { useCallback, useMemo } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
@@ -114,6 +115,7 @@ export function useReferenceDrag(
   dragValues: SharedValue<number[]>,
   dragActive: SharedValue<boolean[]>,
   enabled: boolean,
+  tagStack?: SharedValue<ReferenceTagStack>,
 ): {
   gesture: ReturnType<typeof Gesture.Pan>;
   /** True when a touch at (x,y) would grab a draggable line — lets the scrub
@@ -178,6 +180,7 @@ export function useReferenceDrag(
   const dragIndex = useSharedValue(-1);
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
+  const pointerOffsetY = useSharedValue(0);
   const activated = useSharedValue(false);
   const lastChange = useSharedValue(0);
   // The finger's latest Y during a drag, and the grabbed line's `id`: lines are
@@ -324,6 +327,12 @@ export function useReferenceDrag(
   );
 
   const { gesture, hitTest } = useMemo(() => {
+    const canDragTag = (index: number, x: number) => {
+      "worklet";
+      if (!linesSV.get()[index]?.draggable) return false;
+      const range = grabRanges.get()[index];
+      return !range || (x >= range[0] && x <= range[1]);
+    };
     // ── Gesture callbacks (UI-thread worklets — excluded from Jest coverage) ──────
     /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
     const onTouchesDown = (
@@ -333,7 +342,8 @@ export function useReferenceDrag(
       "worklet";
       const t = e.changedTouches[0];
       if (!t) return;
-      const i = nearestDraggableIndex(handleYs.get(), t.y, GRAB_SLOP, {
+      const tag = stackedTagAt(tagStack?.get().tags ?? [], t.x, t.y);
+      const i = tag ? (linesSV.get()[tag.index]?.id === tag.lineId && canDragTag(tag.index, t.x) ? tag.index : -1) : nearestDraggableIndex(handleYs.get(), t.y, GRAB_SLOP, {
         x: t.x,
         ranges: grabRanges.get(),
       });
@@ -342,6 +352,7 @@ export function useReferenceDrag(
         manager.fail();
         return;
       }
+      pointerOffsetY.set(tag ? t.y - tag.lineY : 0);
       dragIndex.set(i);
       grabbedId.set(l.id);
       startX.set(t.x);
@@ -379,7 +390,7 @@ export function useReferenceDrag(
         clearDrag();
         return;
       }
-      lastY.set(e.y);
+      lastY.set(e.y - pointerOffsetY.get());
       activated.set(true);
       const arr = dragActive.get().slice();
       arr[i] = true;
@@ -393,7 +404,7 @@ export function useReferenceDrag(
       const i = dragIndex.get();
       // Not after an `onStart` that let go (the line gone or replaced by then).
       if (i < 0 || !activated.get()) return;
-      lastY.set(e.y);
+      lastY.set(e.y - pointerOffsetY.get());
       const l = linesSV.get()[i];
       if (l === undefined || l.id !== grabbedId.get()) {
         clearDrag();
@@ -401,7 +412,7 @@ export function useReferenceDrag(
       }
       const v = dragValueAtY(
         l,
-        e.y,
+        e.y - pointerOffsetY.get(),
         displayMin.get(),
         displayMax.get(),
         canvasHeight.get(),
@@ -471,6 +482,9 @@ export function useReferenceDrag(
     const hitTest = (x: number, y: number): boolean => {
       "worklet";
       if (!anyDraggable) return false;
+      if (dragIndex.get() >= 0) return true;
+      const tag = stackedTagAt(tagStack?.get().tags ?? [], x, y);
+      if (tag) return linesSV.get()[tag.index]?.id === tag.lineId && canDragTag(tag.index, x);
       return referenceDragOwnsTouch(
         dragIndex.get(),
         handleYs.get(),
@@ -516,6 +530,8 @@ export function useReferenceDrag(
     padding.top,
     startX,
     startY,
+    pointerOffsetY,
+    tagStack,
   ]);
 
   return { gesture, hitTest, drawnValues };
