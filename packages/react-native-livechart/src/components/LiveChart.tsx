@@ -98,6 +98,7 @@ import {
 } from "../draw/line";
 import {
   resolveChartLayout,
+  shouldMeasureYAxisLabels,
   shouldResampleLayoutValue,
 } from "../hooks/resolveChartLayout";
 import { useBadge } from "../hooks/useBadge";
@@ -1354,7 +1355,7 @@ function useLiveChartLayoutResources({
   const [yAxisLabelWidth, setYAxisLabelWidth] = useState<number | undefined>();
   const effectiveYAxisFloat =
     yAxisFloat && (!timeScrollEnabled || scrolledBack);
-  const measureYAxisLabels = yAxisCfg?.side !== "left" && yAxisCfg?.labelRightMargin != null && !effectiveYAxisFloat && insets?.right == null;
+  const measureYAxisLabels = shouldMeasureYAxisLabels(yAxisCfg, insets?.right, effectiveYAxisFloat);
   const layout = useMemo(() => resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,

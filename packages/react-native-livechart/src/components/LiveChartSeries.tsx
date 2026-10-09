@@ -59,6 +59,7 @@ import {
 } from "../draw/line";
 import {
   resolveChartLayout,
+  shouldMeasureYAxisLabels,
   shouldResampleLayoutValue,
 } from "../hooks/resolveChartLayout";
 import { useCanvasLayout } from "../hooks/useCanvasLayout";
@@ -546,7 +547,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   );
 
   const [yAxisLabelWidth, setYAxisLabelWidth] = useState<number | undefined>();
-  const measureYAxisLabels = yAxisCfg?.side !== "left" && yAxisCfg?.labelRightMargin != null && !yAxisCfg?.float && insets?.right == null;
+  const measureYAxisLabels = shouldMeasureYAxisLabels(yAxisCfg, insets?.right);
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,

@@ -10,7 +10,7 @@ import {
   resolvePadding,
   type ChartPadding,
 } from "../draw/line";
-import type { BadgeMetrics, ChartInsets, LiveChartPalette } from "../types";
+import type { BadgeMetrics, ChartInsets, LiveChartPalette, YAxisConfig } from "../types";
 
 export interface ChartLayoutConfig {
   palette: LiveChartPalette;
@@ -69,6 +69,16 @@ export interface ChartLayoutConfig {
   multiSeriesValueLabel?: boolean;
   /** Measured width of the widest series label (e.g. "Maybe"). Used when `multiSeriesValueLabel` is true. */
   multiSeriesMaxLabelWidth?: number;
+}
+
+/** Only auto-size a gutter for a non-floating, right-anchored tick column. */
+export function shouldMeasureYAxisLabels(
+  axis: Pick<YAxisConfig, "side" | "labelRightMargin" | "float"> | null | undefined,
+  rightInset: number | undefined,
+  floating = axis?.float ?? false,
+): boolean {
+  return axis?.side !== "left" && axis?.labelRightMargin != null &&
+    !floating && rightInset == null;
 }
 
 export interface ChartLayoutResult {
