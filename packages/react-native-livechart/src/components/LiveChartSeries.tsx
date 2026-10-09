@@ -622,6 +622,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     effectivePadding,
     formatTime,
     skiaFont,
+    xAxisCfg?.minGap,
   );
 
   // Cross-gesture arbitration for the one-finger touch. `Gesture.Race` below is

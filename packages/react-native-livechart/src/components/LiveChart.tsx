@@ -1743,6 +1743,26 @@ function useLiveChartController({
   // ── Per-frame derived values ───────────────────────────────────────────
   const { layoutWidth, layoutHeight, onLayout } = useCanvasLayout(engine);
 
+  // Draggable reference lines: a per-line vertical pan that grabs a line near its
+  // value and drags it along the Y-axis (with snap / bounds / callbacks). Built
+  // unconditionally for stable hook order (and before `useCrosshair` so the scrub
+  // can defer to a line under the finger); the gesture self-disables when no line
+  // opts in, and it's only composed into the root when `refDragEnabled`. Its
+  // `drawnValues` (the dragged line kept under the finger) is what the lines'
+  // grouping, press hit-test and overlays read; the range fit reads `dragValues`.
+  const {
+    gesture: refDragGesture,
+    hitTest: refDragHitTest,
+    drawnValues: drawnRefValues,
+  } = useReferenceDrag(
+    engine,
+    effectivePadding,
+    allRefLines,
+    dragValues,
+    dragActive,
+    !isStatic,
+  );
+
   const { refGroupResult, groupHidden } = useReferenceLineGrouping({
     radius: refGroupingRadius,
     engine,
@@ -1750,7 +1770,7 @@ function useLiveChartController({
     lines: allRefLines,
     custom: refLineCustom,
     offAxisCustom: refLineOffAxisCustom,
-    dragValues,
+    dragValues: drawnRefValues,
   });
 
   // Threshold split geometry. Two forms, picked at render by `Array.isArray` (no
@@ -1919,22 +1939,8 @@ function useLiveChartController({
       !isStatic && refPressActive,
       markerHitRadius,
       onReferenceLinePress,
-      dragValues,
+      drawnRefValues,
     );
-
-  // Draggable reference lines: a per-line vertical pan that grabs a line near its
-  // value and drags it along the Y-axis (with snap / bounds / callbacks). Built
-  // unconditionally for stable hook order (and before `useCrosshair` so the scrub
-  // can defer to a line under the finger); the gesture self-disables when no line
-  // opts in, and it's only composed into the root when `refDragEnabled`.
-  const { gesture: refDragGesture, hitTest: refDragHitTest } = useReferenceDrag(
-    engine,
-    effectivePadding,
-    allRefLines,
-    dragValues,
-    dragActive,
-    !isStatic,
-  );
 
   // Combined "defer" hit-test: the scrub-action place-tap and the live scrub both
   // yield to a marker, a pressable badge, or a draggable line under the finger — so
@@ -2192,7 +2198,7 @@ function useLiveChartController({
     refLineCustom,
     refLineOffAxisCustom,
     refLineCustomTagWidths,
-    dragValues,
+    dragValues: drawnRefValues,
     dragActive,
     renderReferenceLine,
     renderOffAxisReferenceLine,
@@ -2424,12 +2430,14 @@ function ChartXAxisLayer({ model }: { model: LiveChartModel }) {
     skiaFont,
     palette,
     volumeBandHeight,
+    xAxisCfg,
   } = model;
   const { xAxisEntries } = useXAxis(
     engine,
     effectivePadding,
     formatTime,
     skiaFont,
+    xAxisCfg?.minGap,
   );
   return (
     // Axis auto-hide fade (1 when the feature is off).
