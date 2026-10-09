@@ -209,6 +209,7 @@ function resolveLiveChartSeriesInputs({
   yRangeScale,
   windowBuffer = 0,
   nowOverride,
+  historyStartTime,
   accessibilityLabel,
   accessibilityRole = "image",
   emptyText = "No data",
@@ -332,6 +333,7 @@ function resolveLiveChartSeriesInputs({
     yRangeScale,
     windowBuffer,
     nowOverride,
+    historyStartTime,
     accessibilityLabel,
     accessibilityRole,
     emptyText,
@@ -455,6 +457,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     yRangeScale,
     windowBuffer,
     nowOverride,
+    historyStartTime,
     accessibilityLabel,
     accessibilityRole,
     emptyText,
@@ -613,6 +616,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     yRangeScale: effectiveYRangeScale,
     windowBuffer,
     nowOverride,
+    historyStartTime,
   });
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const linePaths = useMultiSeriesLinePaths(
@@ -684,7 +688,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   // must clamp against the real "now" anchor so its live bucket never ends in
   // that future buffer.
   const tooltipMaxTime = useDerivedValue(
-    () => engine.liveEdge.get() - windowBuffer * timeWindow,
+    () => engine.currentTime.get(),
   );
 
   const crosshair = useCrosshairSeries(
@@ -741,7 +745,8 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   // scrollable history) so panning is a no-op.
   const scrollMinTime = useDerivedValue(() => {
     const s = engine.series.get();
-    let min = Infinity;
+    let min = historyStartTime != null && Number.isFinite(historyStartTime)
+      ? historyStartTime : Infinity;
     for (let i = 0; i < s.length; i++) {
       const d = s[i].data;
       if (d.length > 0 && d[0].time < min) min = d[0].time;
@@ -772,6 +777,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     padding: effectivePadding,
     minTime: scrollMinTime,
     timeWindow,
+    fullHistoryWindow: engine.fullHistoryWindow,
     enabled: zoomEnabled,
     minTimeWindow: zoomCfg?.minTimeWindow,
     maxTimeWindow: zoomCfg?.maxTimeWindow,

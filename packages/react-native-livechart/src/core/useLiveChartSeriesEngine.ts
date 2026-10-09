@@ -21,6 +21,7 @@ import type { ChartEngineScroll, MultiEngineState } from "./useLiveChartEngine";
 export interface MultiSeriesEngineConfig {
   series: SharedValue<SeriesConfig[]>;
   timeWindow: number;
+  historyStartTime?: number;
   smoothing: number;
   rangeAnimation?: SeriesRangeAnimationConfig;
   /** Extra catch-up speed added to `smoothing` when a series tip lags. */
@@ -91,6 +92,9 @@ export interface MultiEngineFrameRefs {
   minRangeSV?: SharedValue<number | undefined>;
   yRangeScaleSV?: SharedValue<number>;
   nowOverrideSV?: SharedValue<number | undefined>;
+  historyStartTimeSV?: SharedValue<number | undefined>;
+  currentTimeSV?: SharedValue<number>;
+  fullHistoryWindowSV?: SharedValue<number | null>;
   windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
   /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
@@ -259,6 +263,7 @@ export function applyLiveChartSeriesEngineFrame(
   input.minRange = sv.minRangeSV?.value;
   input.yRangeScale = sv.yRangeScaleSV?.value ?? 1;
   input.nowOverride = sv.nowOverrideSV?.value;
+  input.historyStartTime = sv.historyStartTimeSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
   input.series = seriesSnap;
   input.nowSeconds = Date.now() / 1000;
@@ -277,6 +282,8 @@ export function applyLiveChartSeriesEngineFrame(
   sv.displayWindow.value = state.displayWindow;
   sv.timestamp.value = state.timestamp;
   if (sv.liveEdgeSV) sv.liveEdgeSV.value = state.liveEdge;
+  if (sv.currentTimeSV) sv.currentTimeSV.value = state.currentTime!;
+  if (sv.fullHistoryWindowSV) sv.fullHistoryWindowSV.value = state.fullHistoryWindow ?? null;
   sv.displaySeriesValues.value = state.displayValues;
   sv.seriesOpacities.value = state.opacities;
   sv.extremaMinValue.value = state.extremaMinValue;
@@ -308,11 +315,17 @@ export function applyLiveChartSeriesEngineFrame(
  */
 export function useLiveChartSeriesEngine(
   config: MultiSeriesEngineConfig,
-): MultiEngineState & ChartEngineScroll {
+): MultiEngineState & ChartEngineScroll & {
+  currentTime: SharedValue<number>;
+  fullHistoryWindow: SharedValue<number | null>;
+} {
   // Pinch-zoom window-width override (null = follow the configured window).
   // Declared first so `timeWindow` folds it in — see useLiveChartEngine.
   const viewWindow = useSharedValue<number | null>(null);
-  const timeWindow = useDerivedValue(() => viewWindow.value ?? config.timeWindow);
+  const fullHistoryWindow = useSharedValue<number | null>(null);
+  const timeWindow = useDerivedValue(() => viewWindow.value ?? fullHistoryWindow.value ?? config.timeWindow);
+  const configuredTimeWindow = useDerivedValue(() => config.timeWindow);
+  const historyStartTimeSV = useDerivedValue(() => config.historyStartTime);
   const smoothing = useDerivedValue(() => config.smoothing);
   const rangeAnimationSV = useDerivedValue(() => config.rangeAnimation);
   const adaptiveSpeedBoostSV = useDerivedValue(() => config.adaptiveSpeedBoost);
@@ -347,6 +360,7 @@ export function useLiveChartSeriesEngine(
   // Seed once; overwritten by the frame callback on the first tick.
   const [initialTimestamp] = useState(() => Date.now() / 1000);
   const timestamp = useSharedValue(initialTimestamp);
+  const currentTime = useSharedValue(initialTimestamp);
 
   // Pan-scroll state (see useLiveChartEngine). Defaults to following live.
   const viewEnd = useSharedValue<number | null>(null);
@@ -405,7 +419,10 @@ export function useLiveChartSeriesEngine(
     timestamp,
     canvasWidth,
     canvasHeight,
-    timeWindow,
+    timeWindow: configuredTimeWindow,
+    historyStartTimeSV,
+    currentTimeSV: currentTime,
+    fullHistoryWindowSV: fullHistoryWindow,
     smoothing,
     rangeAnimationSV,
     adaptiveSpeedBoostSV,
@@ -484,6 +501,8 @@ export function useLiveChartSeriesEngine(
     viewEnd,
     viewWindow,
     liveEdge,
+    currentTime,
+    fullHistoryWindow,
     series: renderedSeries,
     displaySeriesValues,
     seriesOpacities,

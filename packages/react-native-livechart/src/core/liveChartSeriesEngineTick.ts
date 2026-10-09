@@ -6,6 +6,10 @@ import type { SeriesRangeAnimationConfig, SeriesConfig } from "../types";
 export interface MultiEngineTickMutable {
   displayMin: number;
   displayMax: number;
+  /** Current clock before breathing-room buffer. */
+  currentTime?: number;
+  /** Unzoomed authoritative-history span, including buffer. */
+  fullHistoryWindow?: number | null;
   /** Untransformed eased bounds, kept separate from presentation output. */
   fittedMin?: number;
   fittedMax?: number;
@@ -38,6 +42,8 @@ export interface MultiEngineTickInput {
   canvasWidth: number;
   canvasHeight: number;
   timeWindow: number;
+  /** Authoritative Unix-second start for an expanding live history. */
+  historyStartTime?: number;
   smoothing: number;
   rangeAnimation?: SeriesRangeAnimationConfig;
   exaggerate: boolean;
@@ -114,7 +120,14 @@ export function tickLiveChartSeriesEngineFrame(
 ): void {
   "worklet";
   const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
-  const liveEdge = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
+  const buffer = input.windowBuffer ?? 0;
+  const start = input.historyStartTime;
+  const fullWindow = start != null && Number.isFinite(start) && start < baseNow &&
+    buffer >= 0 && buffer < 1 ? (baseNow - start) / (1 - buffer) : null;
+  state.currentTime = baseNow;
+  state.fullHistoryWindow = fullWindow;
+  const liveWindow = input.viewWindow ?? fullWindow ?? input.timeWindow;
+  const liveEdge = baseNow + buffer * liveWindow;
   state.liveEdge = liveEdge;
   const viewEnd = input.viewEnd;
   // Earliest first-point time across visible series — the floor a frozen edge
@@ -126,6 +139,7 @@ export function tickLiveChartSeriesEngineFrame(
     const d = input.series[i].data;
     if (d.length > 0 && d[0].time < firstDataTime) firstDataTime = d[0].time;
   }
+  if (fullWindow != null) firstDataTime = Math.min(firstDataTime, start!);
   if (firstDataTime === Infinity) firstDataTime = -Infinity;
   // Freeze the right edge while the gesture has parked `viewEnd` behind the live
   // edge AND that edge still sits within the data; a stranded edge falls through
@@ -178,8 +192,13 @@ export function tickLiveChartSeriesEngineFrame(
 
   // Pinch-zoom: ease toward the zoom override when set, else the configured
   // window (mirrors the single-series tick).
-  const targetWindow = input.viewWindow ?? input.timeWindow;
-  state.displayWindow = snap
+  const anchoredFollowing = fullWindow != null && input.viewWindow == null &&
+    !scrolledBack && !input.paused && (input.returnT == null || input.returnT >= 1);
+  // Park the unzoomed width with a frozen edge. Resuming live restores the exact
+  // anchored span; easing a growing target would continuously lose the start.
+  const targetWindow = input.viewWindow ??
+    (fullWindow != null && (scrolledBack || input.paused) ? state.displayWindow : liveWindow);
+  state.displayWindow = snap || anchoredFollowing
     ? targetWindow
     : lerp(state.displayWindow, targetWindow, speed, input.dt);
 

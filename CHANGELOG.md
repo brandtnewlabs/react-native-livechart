@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Invalid returned ranges are ignored.
   ([#395](https://github.com/brandtnewlabs/react-native-livechart/issues/395))
 
+- `LiveChartSeries.historyStartTime` keeps an authoritative history start at the
+  left edge as the live viewport grows, including breathing room. Pan/zoom
+  overrides remain usable and resetting zoom restores following.
+
 ### Fixed
 
 - Reserve the time-axis strip for `LiveChartSeries` axis dragging so a stationary
@@ -38,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   already recorded at the displayed time, keeping dots aligned with history.
   Unrecorded live updates and historical viewport edges retain smoothing.
   ([#393](https://github.com/brandtnewlabs/react-native-livechart/issues/393))
+
+- Pinch zoom snapshots the displayed window and can restore an anchored full
+  history even with late-starting retained samples. Explicit zoom bounds take
+  precedence; series scrub time limits use the actual clock before buffer.
+  ([#392](https://github.com/brandtnewlabs/react-native-livechart/issues/392))
 
 ## [4.27.0] — 2026-10-09
 

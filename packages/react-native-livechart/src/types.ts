@@ -2277,7 +2277,9 @@ export interface ZoomConfig {
   minTimeWindow?: number;
   /**
    * Widest visible window in seconds (max zoom-out). Defaults to the full data
-   * span (you can zoom out to all retained history), never below `timeWindow`.
+   * span (you can zoom out to all retained history), never below `timeWindow`
+   * unless explicitly set. LiveChartSeries also includes
+   * its anchored full-history span when historyStartTime is supplied.
    */
   maxTimeWindow?: number;
 }
@@ -2285,7 +2287,8 @@ export interface ZoomConfig {
 /** Imperative methods exposed by `LiveChart` and `LiveChartSeries`. */
 export interface LiveChartHandle {
   /**
-   * Reset built-in pinch/time-window zoom to the configured `timeWindow` and
+   * Reset built-in pinch/time-window zoom to the configured `timeWindow`
+   * (or LiveChartSeries historyStartTime span) and
    * clear the focal-point offset so the chart follows the live edge again.
    * On LiveChart with viewport, clears the supplied end/window shared values.
    * Safe to call when already reset. A paused chart remains paused.
@@ -3053,6 +3056,13 @@ export interface LiveChartProps extends LiveChartCoreProps {
 
 /** Props for the multi-series `LiveChartSeries` component. */
 export interface LiveChartSeriesProps extends LiveChartCoreProps {
+  /**
+   * Authoritative history start (Unix seconds). While following without a zoom
+   * override, grows the window to keep this time at the left edge, including
+   * `windowBuffer` (must be < 1). Pan/zoom overrides remain usable; resetZoom()
+   * restores following. A non-finite or future start falls back to timeWindow.
+   */
+  historyStartTime?: number;
   /**
    * Shared-range easing plus an optional reversible UI-thread presentation
    * transform. See {@link SeriesRangeAnimationConfig}; recorded values remain unchanged.
