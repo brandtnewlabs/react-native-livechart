@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `referenceLineGrouping.mode: "stack"` keeps individual reference tags readable
+  using measured bounds and independent horizontal columns. Supports name/value
+  pills, custom tags, off-axis pins, and moved press/drag targets without changing
+  price strokes. Stack mode avoids the visible live value badge by default via
+  `avoidValueBadge`; custom renderers receive `tagOffsetY`. Existing collapse
+  behavior remains the default. The Working orders demo compares all three modes.
+  ([#377](https://github.com/brandtnewlabs/react-native-livechart/issues/377))
+
 - Opt-in `yAxis.scaleGesture` for line, candle, and multi-series charts, with
   exported `YAxisScaleGestureConfig`: drag the actual price gutter down to
   widen the range or up to zoom in, and double-tap to reset. Supports bounded

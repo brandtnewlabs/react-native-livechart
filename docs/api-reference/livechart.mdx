@@ -308,7 +308,13 @@ provided; everything else has a default.
   handle — a stack of working orders at adjacent prices reads as one tag. Pass an
   object to tune the proximity `radius` (px). Single-series only.
   Badged lines above or below the visible range group at the nearest plot edge.
-  Off-axis lines with no badge are hidden and do not count; custom tags are excluded.
+  Off-axis lines with no badge are hidden and do not count; custom tags are excluded
+  from collapse. Use `{ mode: "stack" }` to keep each tag, including measured custom
+  tags, and separate overlapping columns without moving price strokes. Stacking
+  avoids the visible live badge by default (`avoidValueBadge: false` opts out).
+  `radius` is then a minimum center gap, with measured heights plus 2 px taking
+  precedence. Count-pill `badge` and `format` apply only to collapse.
+  See [stacking tags](/guides/reference-lines-and-bands#stacking-tags).
 </ParamField>
 
 <ParamField body="segments" type="ChartSegment[]">

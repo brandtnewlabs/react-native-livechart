@@ -285,6 +285,7 @@ interface ReferenceLineRenderProps {
   value: SharedValue<number>;     // live Y-axis value (tracks dragging)
   valueStr: SharedValue<string>;  // value formatted with the chart's formatValue
   y: SharedValue<number>;         // canvas Y px of the line (-1 when not laid out)
+  tagOffsetY: SharedValue<number>; // stacking displacement; wrapper applies it automatically
   inRange: SharedValue<boolean>;  // whether the value is within the visible range
   edge: SharedValue<"above" | "in" | "below">; // for a directional off-axis chevron
   dragging: SharedValue<boolean>; // whether this line is currently being dragged
@@ -295,8 +296,10 @@ interface ReferenceLineRenderProps {
 
 interface ReferenceLineGroupingConfig {
   // Off-axis badge / offAxisBadge tags group at either plot edge. Hidden plain
-  // off-axis lines and custom-rendered tags do not count toward a group.
-  radius?: number;             // collapse lines whose value-Y are within this many px; default 18
+  // off-axis lines do not count. Custom tags are excluded from collapse only.
+  mode?: "collapse" | "stack"; // default "collapse"; stack includes measured custom tags
+  avoidValueBadge?: boolean;   // stack only: avoid the visible live badge; default true
+  radius?: number;             // collapse proximity or minimum stacked center gap; default 18
   badge?: ReferenceLineBadgeConfig;   // count-pill styling (same style/shape config as a
                                       //   per-line badge: position, icon, colors, radius,
                                       //   border, textColor, font, offset)

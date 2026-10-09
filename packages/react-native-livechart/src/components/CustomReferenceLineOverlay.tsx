@@ -1,3 +1,5 @@
+import { scheduleOnUI } from "react-native-worklets";
+import { useEffect } from "react";
 import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -6,6 +8,8 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 
+import type { CustomTagSizes } from "../hooks/useReferenceTagStack";
+import type { ReferenceTagStack } from "../math/referenceTagStack";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";
 import { computeScrubDotY } from "../hooks/crosshairShared";
@@ -16,6 +20,27 @@ import {
   resolveReferenceBadge,
 } from "../math/referenceLines";
 import type { ReferenceLine, ReferenceLineRenderProps } from "../types";
+
+/** Merge on the UI thread: multiple native onLayout events can arrive before
+ * JS observes an earlier SharedValue write. Keep every sibling's measurement. */
+export function publishCustomTagSize(
+  sizes: SharedValue<CustomTagSizes> | undefined,
+  widths: SharedValue<number[]> | undefined,
+  key: string, index: number, width: number, height: number,
+) {
+  "worklet";
+  if (sizes) {
+    const previous = sizes.get();
+    if (previous[key]?.width !== width || previous[key]?.height !== height) {
+      sizes.set({ ...previous, [key]: { width, height } });
+    }
+  }
+  if (widths && widths.get()[index] !== width) {
+    const next = widths.get().slice();
+    next[index] = width;
+    widths.set(next);
+  }
+}
 
 /** Horizontal anchor for the floated tag, mirroring the built-in badge/label. */
 type HAnchor = "left" | "center" | "right";
@@ -67,6 +92,7 @@ export function customReferenceLineFlags(
         value: stub(line.value ?? 0),
         valueStr: stub(""),
         y: stub(-1),
+        tagOffsetY: stub(0),
         inRange: stub(!offAxisOnly),
         edge: stub<"above" | "in" | "below">(
           offAxisOnly ? "above" : "in",
@@ -96,6 +122,9 @@ function CustomReferenceLineView({
   dragValues,
   dragActive,
   tagWidths,
+  tagSizes,
+  tagStack,
+  measurementKey,
   offAxisOnly,
 }: {
   line: ReferenceLine;
@@ -112,7 +141,10 @@ function CustomReferenceLineView({
   dragActive?: SharedValue<boolean[]>;
   /** Measured custom-tag widths, index-aligned for the Skia connector. */
   tagWidths?: SharedValue<number[]>;
+  tagSizes?: SharedValue<CustomTagSizes>;
+  tagStack?: SharedValue<ReferenceTagStack>;
   /** Show this custom tag only while its line is pinned above or below the plot. */
+  measurementKey: string;
   offAxisOnly: boolean;
 }) {
   const staticValue = line.value ?? 0;
@@ -158,18 +190,20 @@ function CustomReferenceLineView({
 
   // Measured element size, so the transform can center / pin it.
   const size = useSharedValue({ width: 0, height: 0 });
+  useEffect(() => {
+    if (!tagSizes) return;
+    const measured = size.get();
+    if (measured.width > 0 && measured.height > 0) {
+      scheduleOnUI(publishCustomTagSize, tagSizes, tagWidths, measurementKey, index, measured.width, measured.height);
+    }
+  }, [index, measurementKey, size, tagSizes, tagWidths]);
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     size.set({ width, height });
-    if (tagWidths) {
-      const previous = tagWidths.get();
-      if (previous[index] === width) return;
-      const widths = previous.slice();
-      widths[index] = width;
-      tagWidths.set(widths);
-    }
+    scheduleOnUI(publishCustomTagSize, tagSizes, tagWidths, measurementKey, index, width, height);
   };
 
+  const tagOffsetY = useDerivedValue(() => tagStack?.get().offsets[index] ?? 0);
   const anchor = resolveAnchor(line);
   const animatedStyle = useAnimatedStyle(() => {
     const yy = y.get();
@@ -184,7 +218,7 @@ function CustomReferenceLineView({
     else tx = x1 + ANCHOR_INSET;
     return {
       opacity: visible ? 1 : 0,
-      transform: [{ translateX: tx }, { translateY: yy - s.height / 2 }],
+      transform: [{ translateX: tx }, { translateY: yy + tagOffsetY.get() - s.height / 2 }],
     };
   });
 
@@ -194,6 +228,7 @@ function CustomReferenceLineView({
     value,
     valueStr,
     y,
+    tagOffsetY,
     inRange,
     edge,
     dragging,
@@ -229,6 +264,8 @@ export function CustomReferenceLineOverlay({
   dragValues,
   dragActive,
   tagWidths,
+  tagSizes,
+  tagStack,
   offAxisOnly = false,
 }: {
   lines: ReferenceLine[];
@@ -250,6 +287,8 @@ export function CustomReferenceLineOverlay({
   dragActive?: SharedValue<boolean[]>;
   /** Measured custom-tag widths, index-aligned for the Skia connector. */
   tagWidths?: SharedValue<number[]>;
+  tagSizes?: SharedValue<CustomTagSizes>;
+  tagStack?: SharedValue<ReferenceTagStack>;
   /** Keep the built-in in-range tag and show this RN tag only off-axis. */
   offAxisOnly?: boolean;
 }) {
@@ -269,6 +308,9 @@ export function CustomReferenceLineOverlay({
         dragValues={dragValues}
         dragActive={dragActive}
         tagWidths={tagWidths}
+        tagSizes={tagSizes}
+        tagStack={tagStack}
+        measurementKey={lineKeys[i]}
         offAxisOnly={offAxisOnly}
       />,
     );

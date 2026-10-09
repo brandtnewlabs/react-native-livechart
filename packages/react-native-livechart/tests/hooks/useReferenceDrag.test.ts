@@ -663,3 +663,49 @@ describe("useReferenceDrag", () => {
     expect(result.current).toBeTruthy();
   });
 });
+
+describe("stacked tag dragging", () => {
+  it("selects the displaced tag over another price line and compensates the initial offset", async () => {
+    const commit = jest.fn();
+    const { result } = await renderHook(() => {
+      const lines: ReferenceLine[] = [{ id: "a", value: 50, draggable: true, onCommit: commit }, { id: "b", value: 25, draggable: true }];
+      const values = useSharedValue([50, 25]);
+      const active = useSharedValue([false, false]);
+      const stack = useSharedValue<import("../../src/math/referenceTagStack").ReferenceTagStack>({
+        offsets: [60], valueOffsets: [],
+        tags: [{ index: 0, lineId: "a", key: "a", kind: "custom", x: 10, y: yOf(50) + 50, w: 80, h: 20, lineY: yOf(50), offsetY: 60 }],
+      });
+      return { ...useReferenceDrag(engine(), DEFAULT_PADDING, lines, values, active, true, stack), active };
+    });
+    const handlers = result.current.gesture.handlers as unknown as DragHandlers;
+    const at = yOf(50) + 60;
+    expect(result.current.hitTest(40, at)).toBe(true);
+    handlers.onTouchesDown({ changedTouches: [{ x: 40, y: at }] }, { fail: jest.fn() });
+    handlers.onStart({ y: at });
+    expect(result.current.drawnValues.get()[0]).toBeCloseTo(50);
+    handlers.onUpdate({ y: at + 20 });
+    const expected = computeValueAtY(yOf(50) + 20, 0, 100, 300, TOP, DEFAULT_PADDING.bottom);
+    expect(result.current.drawnValues.get()[0]).toBeCloseTo(expected!);
+    expect(result.current.drawnValues.get()[1]).toBe(25);
+    handlers.onFinalize();
+    await flushCallbacks();
+    expect(commit).toHaveBeenCalledWith(expect.closeTo(expected!));
+  });
+
+  it("does not drag an underlying line through a non-draggable stacked tag", async () => {
+    const { result } = await renderHook(() => {
+      const lines: ReferenceLine[] = [{ value: 50, draggable: true }, { value: 90, badge: true }];
+      const values = useSharedValue([50, 90]);
+      const active = useSharedValue([false, false]);
+      const stack = useSharedValue<import("../../src/math/referenceTagStack").ReferenceTagStack>({
+        offsets: [], valueOffsets: [], tags: [{ index: 1, key: "alert", kind: "name", x: 10, y: yOf(50) - 10, w: 80, h: 20, lineY: yOf(90), offsetY: 100 }],
+      });
+      return useReferenceDrag(engine(), DEFAULT_PADDING, lines, values, active, true, stack);
+    });
+    expect(result.current.hitTest(40, yOf(50))).toBe(false);
+    const fail = jest.fn();
+    (result.current.gesture.handlers as unknown as DragHandlers).onTouchesDown({ changedTouches: [{ x: 40, y: yOf(50) }] }, { fail });
+    expect(fail).toHaveBeenCalled();
+    expect(result.current.hitTest(200, yOf(50))).toBe(true);
+  });
+});

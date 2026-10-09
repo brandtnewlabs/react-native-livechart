@@ -108,6 +108,8 @@ apply; this does not add single-series dragging, grouping, or press callbacks to
   [Reference lines and bands](/guides/reference-lines-and-bands#custom-tags-renderreferenceline).
 </ParamField>
 
+`ctx.tagOffsetY` is always zero on `LiveChartSeries`; reference-tag grouping and stacking are single-series features.
+
 <ParamField body="renderOffAxisReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
   Replace only an off-axis Form-A tag. The standard Skia tag or gutter label stays
   in range, while the custom React Native view takes over when the line is pinned

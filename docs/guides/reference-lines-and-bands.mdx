@@ -414,12 +414,47 @@ Badged lines far above the visible range group at the top edge, just as lines be
 at the bottom. Off-axis lines without `badge`, `valueBadge`, or `offAxisBadge` are hidden, so they do not
 increase a visible group's count.
 
-In **Working orders**, select **Orders above** or **Orders below** to put the draggable orders
-outside the chart without expanding its range. Pull either pinned tag back into the plot and
-release to commit; **Reset orders** restores the starting prices. Under **Alert position**,
-choose **Above chart** or **Below chart**, then toggle **Group alerts** to compare the overlapping
-badges with a single **3 alerts** pill. Enable **Plain alert**: it has no off-chart badge, so the
-count remains 3. These checks also work with **Candles** on.
+### Stacking tags
+
+Keep every order or alert readable with the opt-in stack mode:
+
+```tsx
+referenceLineGrouping={{ mode: "stack", radius: 18, avoidValueBadge: true }}
+```
+
+Stacking moves tags vertically on the UI thread while the price strokes remain at
+their real values. Name and value pills are measured separately; horizontally
+separate columns (left, right, and price axis) pack independently. Different font
+sizes, badge offsets, plain in-range labels, and measured custom React Native
+tags all participate. Off-axis handles stay within the plot. `radius` is the
+minimum center-to-center spacing; measured heights plus a 2 px gap take precedence.
+Count-pill `badge` and `format` settings apply only to `mode: "collapse"`.
+
+The visible live value badge reserves its actual drawn rectangle, including its
+position and offsets. Set `avoidValueBadge: false` to disable this reservation.
+A hidden or disabled badge reserves no space. If the plot cannot fit every tag,
+spacing and badge avoidance are best effort; all tags remain present and their
+price values stay unchanged. Increase the chart height or use collapse for very
+dense sets. Tags taller than the plot may extend beyond it.
+
+Press and drag targets follow the moved tags. Starting a drag compensates for
+the tag's initial displacement so the price does not jump to the tag's new Y.
+`grabRange`, snapping, bounds, and drag callbacks still apply. A custom tag's
+own `Pressable` continues handling its taps.
+
+Custom renderers receive `ctx.tagOffsetY`, a `SharedValue<number>` for the extra
+vertical displacement. The chart wrapper already applies this offset: **do not
+apply it again**. `ctx.y` keeps the original projected/pinned line position; a
+custom connector can use `ctx.y + ctx.tagOffsetY`. The offset is zero when stacking
+is disabled and on `LiveChartSeries`, which does not expose grouping.
+
+In **Working orders**, compare **Overlap**, **Collapse**, and **Stack** under
+**Nearby tags**. Enable **Dense alerts** for closely spaced prices and varied
+font sizes, **Custom tags** for draggable native views, and **Avoid live badge**
+to compare live-price clearance. **Above chart** / **Below chart** exercise edge
+pinning when Dense alerts is off. **Plain alert** stays hidden off-axis without
+adding a phantom tag. Repeat with **Candles**, **Floating axis**, and **Price pill**
+placement controls.
 
 <Note>
   Need an overlay the built-in lines and badges can't express — your own draggable order book or
