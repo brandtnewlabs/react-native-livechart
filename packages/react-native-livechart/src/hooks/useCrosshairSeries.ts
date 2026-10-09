@@ -10,7 +10,7 @@ import {
 import { scheduleOnRN } from "react-native-worklets";
 import type { ResolvedPerSeriesTooltipConfig } from "../core/resolveConfig";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
-import { type ChartPadding } from "../draw/line";
+import { lineTipX, type ChartPadding } from "../draw/line";
 import type { ScrubPointMulti } from "../types";
 import {
   computePerSeriesTooltipLayout,
@@ -80,8 +80,17 @@ export function useCrosshairSeries(
   /** Bottom strip reserved for the time-axis drag gesture, in layout points. */
   scrubBottomExclude = 0,
 ): CrosshairState {
-  const scrubX = useSharedValue(-1);
+  const pointerX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
+  const scrubX = useDerivedValue(() => {
+    const x = pointerX.get();
+    const head = engine.tipTime?.get();
+    if (x < 0 || head === undefined) return x;
+    const end = engine.timestamp.get();
+    const window = engine.displayWindow.get();
+    if (head < end - window) return -1;
+    return Math.min(x, lineTipX(end, window, head, engine.canvasWidth.get(), padding));
+  });
   // Tracks whether the active scrub phase actually began, so a tap that never
   // activates doesn't emit a spurious onGestureEnd.
   const gestureStarted = useSharedValue(false);
@@ -102,22 +111,26 @@ export function useCrosshairSeries(
   const noScrollActive = useSharedValue(false);
   const scrollActiveSV = scrollActive ?? noScrollActive;
 
-  const scrubTime = useDerivedValue(() =>
-    computeScrubTime(
+  const scrubTime = useDerivedValue(() => {
+    const head = engine.tipTime?.get();
+    if (head !== undefined && head < engine.timestamp.get() - engine.displayWindow.get()) return -1;
+    return Math.min(head ?? Infinity, computeScrubTime(
       scrubActive.get(),
       scrubX.get(),
       padding,
       engine.canvasWidth.get(),
       engine.timestamp.get(),
       engine.displayWindow.get(),
-    ),
-  );
+    ));
+  });
 
   const scrubValue = useDerivedValue(() =>
     deriveScrubValueSeries(
       scrubActive.get(),
       scrubTime.get(),
       engine.series.get(),
+      engine.tipTime?.get(),
+      engine.displaySeriesValues.get(),
     ),
   );
 
@@ -192,7 +205,10 @@ export function useCrosshairSeries(
       const x = scrubX.get();
       const chartW = engine.canvasWidth.get() - padding.left - padding.right;
       if (chartW <= 0) return "__pending__";
-      const r = interpolateSeriesAtTime(engine.series.get(), time);
+      if (time < 0) return "__pending__";
+      const r = interpolateSeriesAtTime(
+        engine.series.get(), time, engine.tipTime?.get(), engine.displaySeriesValues.get(),
+      );
       if (r.primary === null) return "__pending__";
       const dotY = computeScrubDotY(
         r.primary,
@@ -322,7 +338,7 @@ export function useCrosshairSeries(
           padding,
           engine.canvasWidth.get(),
           clampToPlot,
-          scrubX,
+          pointerX,
           scrubActive,
           gestureStarted,
         );
@@ -339,7 +355,7 @@ export function useCrosshairSeries(
           padding,
           engine.canvasWidth.get(),
           clampToPlot,
-          scrubX,
+          pointerX,
           scrubActive,
         );
       },

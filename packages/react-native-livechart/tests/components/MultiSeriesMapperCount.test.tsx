@@ -30,7 +30,7 @@ const font = {
 } as never;
 
 function shared<T>(value: T) {
-  return withSharedValueAccessors({ value }) as never;
+  return withSharedValueAccessors({ shared: { value } }).shared as never;
 }
 
 function makeEngine(seriesCount: number): MultiEngineState {

@@ -1049,6 +1049,16 @@ type LiveChartMetricsOverride = {
 };
 ```
 
+## LiveChartSeries presentation clock
+
+`LiveChartSeriesProps.presentationTime?: SharedValue<number | undefined>` drives
+current time on the UI thread. Defined Unix seconds take precedence over
+`nowOverride`/wall time; `undefined` restores that fallback. Paths and range fits
+exclude future samples while a head is supplied; tips and dots stop at the
+presentation head or viewport edge, whichever is earlier. The scrub time limit
+uses the same clock. See [Replay clock](/guides/multi-series#replay-clock).
+
+
 ## LiveChartSeries history start
 
 `LiveChartSeriesProps.historyStartTime?: number` is an authoritative Unix-second

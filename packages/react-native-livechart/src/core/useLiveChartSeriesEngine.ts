@@ -35,6 +35,7 @@ export interface MultiSeriesEngineConfig {
   /** Positive, finite live Y-range multiplier (1 = auto-fit); read each frame. */
   yRangeScale?: SharedValue<number>;
   nowOverride?: number;
+  presentationTime?: SharedValue<number | undefined>;
   windowBuffer?: number;
   paused?: boolean;
   /**
@@ -92,6 +93,7 @@ export interface MultiEngineFrameRefs {
   minRangeSV?: SharedValue<number | undefined>;
   yRangeScaleSV?: SharedValue<number>;
   nowOverrideSV?: SharedValue<number | undefined>;
+  presentationTimeSV?: SharedValue<number | undefined>;
   historyStartTimeSV?: SharedValue<number | undefined>;
   currentTimeSV?: SharedValue<number>;
   fullHistoryWindowSV?: SharedValue<number | null>;
@@ -263,6 +265,7 @@ export function applyLiveChartSeriesEngineFrame(
   input.minRange = sv.minRangeSV?.value;
   input.yRangeScale = sv.yRangeScaleSV?.value ?? 1;
   input.nowOverride = sv.nowOverrideSV?.value;
+  input.presentationTime = sv.presentationTimeSV?.value;
   input.historyStartTime = sv.historyStartTimeSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
   input.series = seriesSnap;
@@ -361,6 +364,7 @@ export function useLiveChartSeriesEngine(
   const [initialTimestamp] = useState(() => Date.now() / 1000);
   const timestamp = useSharedValue(initialTimestamp);
   const currentTime = useSharedValue(initialTimestamp);
+  const tipTime = useDerivedValue(() => Math.min(timestamp.value, currentTime.value));
 
   // Pan-scroll state (see useLiveChartEngine). Defaults to following live.
   const viewEnd = useSharedValue<number | null>(null);
@@ -421,7 +425,6 @@ export function useLiveChartSeriesEngine(
     canvasHeight,
     timeWindow: configuredTimeWindow,
     historyStartTimeSV,
-    currentTimeSV: currentTime,
     fullHistoryWindowSV: fullHistoryWindow,
     smoothing,
     rangeAnimationSV,
@@ -434,6 +437,8 @@ export function useLiveChartSeriesEngine(
     minRangeSV,
     yRangeScaleSV: config.yRangeScale,
     nowOverrideSV,
+    presentationTimeSV: config.presentationTime,
+    currentTimeSV: currentTime,
     windowBufferSV,
     pausedSV,
     viewEndSV: viewEnd,
@@ -502,6 +507,7 @@ export function useLiveChartSeriesEngine(
     viewWindow,
     liveEdge,
     currentTime,
+    tipTime,
     fullHistoryWindow,
     series: renderedSeries,
     displaySeriesValues,

@@ -1069,12 +1069,15 @@ function resolvePerSeriesTooltip(
   if (dash !== undefined) {
     resolved.guideDashPattern = dash === true ? [3, 3] : dash || undefined;
   }
-  resolved.maxLabelChars = Math.max(1, Math.floor(resolved.maxLabelChars));
-  resolved.bucketSeconds =
-    resolved.bucketSeconds !== undefined && resolved.bucketSeconds > 0
+  // Boolean defaults may already be serialized/frozen by an earlier chart's
+  // worklet. Normalize a fresh object rather than mutating that shared config.
+  return {
+    ...resolved,
+    maxLabelChars: Math.max(1, Math.floor(resolved.maxLabelChars)),
+    bucketSeconds: resolved.bucketSeconds !== undefined && resolved.bucketSeconds > 0
       ? resolved.bucketSeconds
-      : undefined;
-  return resolved;
+      : undefined,
+  };
 }
 
 /**

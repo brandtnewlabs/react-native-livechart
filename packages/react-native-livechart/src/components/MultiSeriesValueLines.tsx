@@ -1,7 +1,7 @@
 import { DashPathEffect, Group, Path } from "@shopify/react-native-skia";
 
 import { useDerivedValue } from "react-native-reanimated";
-import type { ChartPadding } from "../draw/line";
+import { lineTipX, type ChartPadding } from "../draw/line";
 import type { ResolvedValueLineConfig } from "../core/resolveConfig";
 import type { MultiEngineState } from "../core/useLiveChartEngine";
 import { usePathBuilder } from "../hooks/usePathBuilder";
@@ -39,7 +39,7 @@ function SeriesValueLineAtIndex({
 
       if (y >= 0) {
         b.moveTo(padding.left, y);
-        b.lineTo(engine.canvasWidth.get() - padding.right, y);
+        b.lineTo(lineTipX(engine.timestamp.get(), engine.displayWindow.get(), engine.tipTime?.get() ?? engine.timestamp.get(), engine.canvasWidth.get(), padding), y);
       }
     }
     return b.detach();
@@ -49,6 +49,8 @@ function SeriesValueLineAtIndex({
     const s = engine.series.get();
     const op = engine.seriesOpacities.get();
     if (index >= s.length || index >= op.length) return 0;
+    const head = engine.tipTime?.get() ?? engine.timestamp.get();
+    if (s[index].data.length === 0 || s[index].data[0].time > head || head < engine.timestamp.get() - engine.displayWindow.get()) return 0;
     return (op[index] ?? 0) * 0.4;
   });
 

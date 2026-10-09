@@ -3057,6 +3057,16 @@ export interface LiveChartProps extends LiveChartCoreProps {
 /** Props for the multi-series `LiveChartSeries` component. */
 export interface LiveChartSeriesProps extends LiveChartCoreProps {
   /**
+   * UI-thread presentation clock in Unix seconds. Each frame reads this head;
+   * undefined falls back to nowOverride or wall time. Paths/dots end at the
+   * earlier of the viewport edge and head, leaving windowBuffer empty. Samples
+   * after this head are excluded from paths and range fitting. Scrub time limits
+   * and values use the same cutoff, including callback payloads and tooltip
+   * interpolation. Degen bursts originate at the presented dot. No React
+   * render is required for clock updates.
+   */
+  presentationTime?: SharedValue<number | undefined>;
+  /**
    * Authoritative history start (Unix seconds). While following without a zoom
    * override, grows the window to keep this time at the left edge, including
    * `windowBuffer` (must be < 1). Pan/zoom overrides remain usable; resetZoom()

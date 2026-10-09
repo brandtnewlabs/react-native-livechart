@@ -209,6 +209,7 @@ function resolveLiveChartSeriesInputs({
   yRangeScale,
   windowBuffer = 0,
   nowOverride,
+  presentationTime,
   historyStartTime,
   accessibilityLabel,
   accessibilityRole = "image",
@@ -333,6 +334,7 @@ function resolveLiveChartSeriesInputs({
     yRangeScale,
     windowBuffer,
     nowOverride,
+    presentationTime,
     historyStartTime,
     accessibilityLabel,
     accessibilityRole,
@@ -457,6 +459,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     yRangeScale,
     windowBuffer,
     nowOverride,
+    presentationTime,
     historyStartTime,
     accessibilityLabel,
     accessibilityRole,
@@ -616,6 +619,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     yRangeScale: effectiveYRangeScale,
     windowBuffer,
     nowOverride,
+    presentationTime,
     historyStartTime,
   });
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
@@ -684,11 +688,9 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   // (written by the crosshair, read by the scroll pan) is the mirror image.
   const scrollActive = useSharedValue(false);
   const axisScaleActive = useSharedValue(false);
-  // `liveEdge` includes the optional right breathing-room buffer. The time pill
-  // must clamp against the real "now" anchor so its live bucket never ends in
-  // that future buffer.
+  // The tooltip shares the crosshair/path cutoff, including historical edges.
   const tooltipMaxTime = useDerivedValue(
-    () => engine.currentTime.get(),
+    () => engine.tipTime?.get() ?? engine.currentTime.get(),
   );
 
   const crosshair = useCrosshairSeries(

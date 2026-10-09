@@ -64,6 +64,8 @@ export interface MultiEngineTickInput {
   nowSeconds?: number;
   /** Override the engine's "now" (unix seconds). */
   nowOverride?: number;
+  /** UI-thread presentation head, with precedence over nowOverride/wall time. */
+  presentationTime?: number;
   /** Right-edge buffer as a fraction of the time window. */
   windowBuffer?: number;
   paused?: boolean;
@@ -119,7 +121,7 @@ export function tickLiveChartSeriesEngineFrame(
   input: MultiEngineTickInput,
 ): void {
   "worklet";
-  const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
+  const baseNow = input.presentationTime ?? input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
   const buffer = input.windowBuffer ?? 0;
   const start = input.historyStartTime;
   const fullWindow = start != null && Number.isFinite(start) && start < baseNow &&
@@ -205,15 +207,13 @@ export function tickLiveChartSeriesEngineFrame(
   const winStart = state.timestamp - state.displayWindow;
   const range = state.displayMax - state.displayMin;
 
-  // Scrolled back in time (pan/zoom): the per-series tips/dots sit at the
-  // window's right edge, so they must track each series' value AT that edge
-  // (`timestamp`), not the live value — otherwise the dot floats at the current
-  // price while the line ends in the past. Mirrors single-series `edgeValue`.
-  // Reuses the gated `scrolledBack` computed above.
+  // Historical edges use recorded values. An edge parked in or beyond the
+  // future buffer still ends at the presentation head, using its presented
+  // value; samples after that head must never enter the tip or fitted range.
 
   for (let i = 0; i < n; i++) {
     let target = series[i].value;
-    if (scrolledBack) {
+    if (scrolledBack && state.timestamp < baseNow) {
       const pts = series[i].data;
       let elo = 0;
       let ehi = pts.length;
@@ -273,7 +273,8 @@ export function tickLiveChartSeriesEngineFrame(
       // already track the edge value, so they stay in-range). Following live,
       // keep the tail inclusive — feed timestamps can run slightly ahead of
       // the local clock and must not flicker out of the range.
-      if (scrolledBack && points[j].time > state.timestamp) break;
+      if ((scrolledBack && points[j].time > state.timestamp) ||
+        (input.presentationTime != null && points[j].time > baseNow)) break;
       const v = points[j].value;
       /* istanbul ignore next -- trivial min/max */
       if (v < tMin) tMin = v;

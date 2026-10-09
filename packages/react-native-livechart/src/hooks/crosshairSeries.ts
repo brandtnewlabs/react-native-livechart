@@ -15,21 +15,51 @@ const TOOLTIP_SIDE_GAP = 8;
 const TOOLTIP_STACK_GAP = 4;
 const TOOLTIP_TOP_GAP = 4;
 
-function valueAtTime(series: SeriesConfig, time: number): number | null {
+function valueAtTime(
+  series: SeriesConfig,
+  time: number,
+  maxTime?: number,
+  tipValue?: number,
+): number | null {
   "worklet";
-  return interpolateAtTime(series.data, time);
+  if (maxTime === undefined) return interpolateAtTime(series.data, time);
+  const points = series.data;
+  if (points.length === 0 || points[0].time > maxTime) return null;
+  const target = Math.min(time, maxTime);
+  if (target >= maxTime && tipValue !== undefined) return tipValue;
+  if (target <= points[0].time) return points[0].value;
+  let lo = 0;
+  let hi = points.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (points[mid].time <= target) lo = mid + 1;
+    else hi = mid;
+  }
+  const before = points[lo - 1];
+  const next = points[lo];
+  // Interpolate only through presented history and the synthetic endpoint,
+  // matching the line builder rather than blending toward a buffered sample.
+  const endTime = next && next.time <= maxTime ? next.time : maxTime;
+  const endValue = next && next.time <= maxTime
+    ? next.value
+    : (tipValue ?? before.value);
+  if (endTime <= before.time) return before.value;
+  return before.value + (endValue - before.value) *
+    ((target - before.time) / (endTime - before.time));
 }
 
 export function interpolateSeriesAtTime(
   series: SeriesConfig[],
   time: number,
+  maxTime?: number,
+  displaySeriesValues?: number[],
 ): { primary: number | null; seriesValues: ScrubSeriesValue[] } {
   "worklet";
   const seriesValues: ScrubSeriesValue[] = [];
   let primary: number | null = null;
   for (let i = 0; i < series.length; i++) {
     if (series[i].visible === false) continue;
-    const v = valueAtTime(series[i], time);
+    const v = valueAtTime(series[i], time, maxTime, displaySeriesValues?.[i]);
     if (v === null) continue;
     seriesValues.push({
       id: series[i].id,
@@ -127,7 +157,7 @@ export function computePerSeriesTooltipLayout(
     if (item.visible === false || item.data.length === 0) continue;
     const value = pinned
       ? (displaySeriesValues[i] ?? item.value)
-      : valueAtTime(item, activeTime);
+      : valueAtTime(item, activeTime, maxTime, displaySeriesValues[i]);
     if (value === null || !Number.isFinite(value)) continue;
 
     const label = truncateSeriesTooltipLabel(
@@ -300,8 +330,10 @@ export function deriveScrubValueSeries(
   scrubActive: boolean,
   scrubTime: number,
   series: SeriesConfig[],
+  maxTime?: number,
+  displaySeriesValues?: number[],
 ): number | null {
   "worklet";
   if (!scrubActive || scrubTime < 0) return null;
-  return interpolateSeriesAtTime(series, scrubTime).primary;
+  return interpolateSeriesAtTime(series, scrubTime, maxTime, displaySeriesValues).primary;
 }

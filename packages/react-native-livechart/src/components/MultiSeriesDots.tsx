@@ -1,7 +1,7 @@
 import { BlurMask, Circle, Group } from "@shopify/react-native-skia";
 
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import type { ChartPadding } from "../draw/line";
+import { lineTipX, type ChartPadding } from "../draw/line";
 import type {
   ResolvedDotGlowConfig,
   ResolvedDotRingConfig,
@@ -42,7 +42,7 @@ function SeriesDotAtIndex({
   const dotX = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
     if (w === 0) return -100;
-    return w - padding.right;
+    return lineTipX(engine.timestamp.get(), engine.displayWindow.get(), engine.tipTime?.get() ?? engine.timestamp.get(), w, padding);
   });
 
   const dotY = useDerivedValue(() => {
@@ -64,6 +64,8 @@ function SeriesDotAtIndex({
     const s = engine.series.value;
     const op = engine.seriesOpacities.value;
     if (index >= s.length || index >= op.length) return 0;
+    const head = engine.tipTime?.get() ?? engine.timestamp.get();
+    if (s[index].data.length === 0 || s[index].data[0].time > head || head < engine.timestamp.get() - engine.displayWindow.get()) return 0;
     return op[index] ?? 0;
   });
 
