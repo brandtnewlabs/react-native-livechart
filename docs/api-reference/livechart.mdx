@@ -405,6 +405,7 @@ provided; everything else has a default.
   while scrolled back (hidden by default — they mark the off-screen live price), or
   set `overscroll` to drag past the data bounds into blank space
   (TradingView-style; default `0` — hard stops).
+  With `viewport`, disabling this gesture preserves the supplied position.
   **@experimental.** See [Time-scroll](/guides/time-scroll).
 </ParamField>
 
@@ -413,6 +414,7 @@ provided; everything else has a default.
   scrolled back. `true` (default) eases onto live over `450` ms; `false` snaps
   instantly; `{ duration }` sets a custom glide length (ms). Kept separate from
   `timeScroll` so it survives `timeScroll={false}` (the toggle that triggers it).
+  Does not clear or animate an app-owned `viewport` when gestures are disabled.
   **@experimental.** See
   [Time-scroll → Turning it back off](/guides/time-scroll#turning-it-back-off).
 </ParamField>
@@ -424,6 +426,23 @@ provided; everything else has a default.
   sensible default bounds; pass a [`ZoomConfig`](/api-reference/types#config-objects)
   to set `minTimeWindow` / `maxTimeWindow`. **@experimental.** See
   [Time-scroll](/guides/time-scroll#pinch-to-zoom-zoom).
+</ParamField>
+
+<ParamField body="viewport" type="false | ViewportConfig" default="false">
+  Pass a [`ViewportConfig`](/api-reference/types#config-objects) object to enable
+  external control; `false`/omitted keeps private gesture state. Both shared values
+  are required, so there is no `true` shorthand.
+  Adopt external shared values for the right edge (`end`, unix seconds) and width
+  (`window`, seconds). Null means follow this chart's live edge / `timeWindow`.
+  Pan and pinch write the same pair; `resetZoom()` clears both. Non-null values
+  survive `timeWindow` changes, disabled `timeScroll`, and overscroll-setting changes.
+  An external end may exceed this chart's live edge; an end before its first retained
+  point falls back to live without clearing the value. Writes work with gestures
+  disabled and wake `autoSleep` charts.
+  `windowSmoothing: false` adopts a non-null width immediately, useful for followers
+  copying an already-drawn width. Default `true`; null still eases back to `timeWindow`.
+  Single-series line/candle only. **@experimental.** See
+  [Synced charts](/guides/synced-charts).
 </ParamField>
 
 ### Resetting pinch zoom

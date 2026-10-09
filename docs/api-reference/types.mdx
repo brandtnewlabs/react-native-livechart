@@ -649,6 +649,20 @@ interface ZoomConfig {
   minTimeWindow?: number; // tightest window in seconds (max zoom-in); default timeWindow / 8
   maxTimeWindow?: number; // widest window in seconds (max zoom-out); default the full data span
 }
+// App-owned UI-thread viewport. LiveChart only (line/candle). @experimental
+interface ChartViewportControl {
+  end: SharedValue<number | null>;    // right-edge unix seconds; null = follow live
+  window: SharedValue<number | null>; // positive, finite width in seconds; null = timeWindow
+}
+// The viewport prop accepts false | ViewportConfig; false/omitted uses private state.
+// Both shared values are required, so there is no true shorthand.
+interface ViewportConfig extends ChartViewportControl {
+  windowSmoothing?: boolean;          // default true; false copies non-null widths immediately
+}
+// Gestures write this pair; resetZoom() nulls both. Non-null values survive
+// timeWindow/timeScroll/overscroll-setting changes. Future end values are honored;
+// an end before the first retained point falls back to live without clearing it.
+// windowSmoothing affects only non-null widths, not Y-range/value or reset easing.
 // Visible window reported by onVisibleRangeChange (unix seconds). @experimental
 interface VisibleRange {
   startSec: number;   // left-edge time of the visible window
@@ -751,6 +765,9 @@ interface LiveChartHandle {
 
 Use `useRef<LiveChartHandle>(null)` and pass the ref to either chart. A paused chart remains paused.
 See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button).
+
+On `LiveChart` with `viewport`, `resetZoom()` clears the supplied `end` and `window`
+shared values. In a sync group, reset the leader and mirror its drawn return.
 
 ## AxisLabelConfig
 

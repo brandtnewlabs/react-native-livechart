@@ -57,6 +57,10 @@ survives `timeScroll={false}`):
 `{ duration }` sets a custom length in milliseconds. It only governs this programmatic return —
 flinging back to the live edge with the pan gesture keeps its own inertia.
 
+With an external [`viewport`](/guides/synced-charts), disabling `timeScroll` only
+disables the gesture; it preserves the supplied scroll position. Clear `viewport.end`
+or reset the leader to return to live.
+
 ## Gestures
 
 `timeScroll: true` uses the default **drag-to-scroll** gesture. Pass a `TimeScrollConfig` to pick the
@@ -170,6 +174,23 @@ uses the chart's normal `smoothing` as it settles back to `timeWindow`.
 
 The example app's **Time scroll** screen includes a **Reset zoom** button and a live visible-window
 readout so the behavior can be exercised directly.
+
+## Synced charts
+
+`LiveChart` can adopt a pair of shared values through the experimental `viewport`
+prop (`false | ViewportConfig`). Pass an object to enable external control, or
+`false`/omit it to keep private gesture state. The same values receive its pan/pinch
+gestures and drive its visible range
+when your app writes them. Use separate pairs for each pane, choose one leader,
+and copy the leader's drawn `renderOverlay` scale (`now`, `window`) to its followers
+with `useAnimatedReaction`. Set `windowSmoothing: false` on followers to avoid
+easing that drawn width again.
+
+With `viewport`, non-null overrides survive `timeWindow` changes and switching
+`timeScroll` off. Call `resetZoom()` or clear the pair to return to the defaults.
+Your app owns leadership and any mapping between clocks or gap-free index time.
+See [Synced charts](/guides/synced-charts) for the complete pattern and the
+two-timeframe demo. `LiveChartSeries` does not yet support `viewport`.
 
 ## Paging callbacks (`onVisibleRangeChange`, `onReachStart`)
 

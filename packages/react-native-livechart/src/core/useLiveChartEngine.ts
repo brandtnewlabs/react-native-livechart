@@ -39,8 +39,11 @@ import {
 } from "./historyRangeCache";
 
 import { useHistoryRevision } from "./useHistoryRevision";
+import type { ResolvedViewportConfig } from "./resolveConfig";
 
 export interface EngineConfig {
+  /** External scroll/zoom values adopted in place of private gesture state. */
+  viewport?: ResolvedViewportConfig | null;
   /** Original inputs before a reveal/stash bridge that may suppress same-array notifications. */
   dataChangeSource?: SharedValue<LiveChartPoint[]>;
   candlesChangeSource?: SharedValue<CandlePoint[]>;
@@ -273,6 +276,8 @@ export interface EngineFrameRefs {
   returnFromSV?: SharedValue<number>;
   /** Pinch-zoom window-width override (null = follow timeWindow). Optional for callers/tests. */
   viewWindowSV?: SharedValue<number | null>;
+  /** Whether a non-null window override eases (false copies a drawn width exactly). */
+  viewWindowSmoothingSV?: SharedValue<boolean>;
   /** Receives the computed live edge each frame. Optional for callers/tests. */
   liveEdgeSV?: SharedValue<number>;
   /** Receives the smoothed right-edge value each frame. Optional for callers/tests. */
@@ -420,6 +425,7 @@ export function applyLiveChartEngineFrame(
   input.returnT = sv.returnTSV?.value;
   input.returnFrom = sv.returnFromSV?.value;
   input.viewWindow = sv.viewWindowSV?.value;
+  input.viewWindowSmoothing = sv.viewWindowSmoothingSV?.value ?? true;
   input.mode = sv.modeSV.value;
   input.candles = candleHistory?.data ?? sv.candles?.value;
   input.historyRevision =
@@ -460,6 +466,7 @@ export function useLiveChartEngine(
   config: EngineConfig,
 ): SingleEngineState & ChartEngineScroll & ChartEngineEdge & { wake: () => void } {
   const {
+    viewport,
     data,
     dataChangeSource = data,
     value,
@@ -503,14 +510,20 @@ export function useLiveChartEngine(
   // Pinch-zoom window-width override (null = follow the configured window).
   // Declared first so `timeWindow` below can fold it in. Defaults to null so
   // charts without `zoom` behave exactly as before.
-  const viewWindow = useSharedValue<number | null>(null);
+  const internalViewWindow = useSharedValue<number | null>(null);
+  const viewWindow = viewport?.window ?? internalViewWindow;
+  const hasViewport = viewport != null;
+  const windowSmoothing = viewport?.windowSmoothing ?? true;
+  const viewWindowSmoothingSV = useDerivedValue(() => windowSmoothing);
   // A change to the `timeWindow` prop (a range / timeframe selector) is an explicit
   // request to set the window, so it clears any active pinch-zoom override —
   // otherwise the override below (`viewWindow ?? config.timeWindow`) would shadow
   // the new prop forever, and prop-driven window changes would silently no-op.
+  // An app-owned viewport keeps its override until the app/handle clears it.
   useEffect(() => {
+    if (hasViewport) return;
     viewWindow.set(null);
-  }, [configuredTimeWindow, viewWindow]);
+  }, [configuredTimeWindow, viewWindow, hasViewport]);
 
   // Low-frequency config → UI thread via useDerivedValue. `timeWindow` is the
   // *effective* target window: the zoom override when set, else the prop. Both
@@ -565,9 +578,9 @@ export function useLiveChartEngine(
   // (the tick no longer reads it — clearing `viewEnd` is what makes it follow).
   // Defaults to enabled so a caller that omits it behaves as before.
   const scrollEnabledSV = useDerivedValue(() => scrollEnabled ?? true);
-  // Honor a viewEnd parked past the live edge (timeScroll.overscroll).
+  // External viewports can follow a pane whose forming bar ends past our live edge.
   const allowFutureViewEndSV = useDerivedValue(
-    () => allowFutureViewEnd ?? false,
+    () => hasViewport || (allowFutureViewEnd ?? false),
   );
   // Return-to-live glide duration (ms); 0 = instant snap. Read by the reaction.
   const returnToLiveMsSV = useDerivedValue(
@@ -600,7 +613,8 @@ export function useLiveChartEngine(
   // edge at that absolute time. `liveEdge` mirrors the would-be-live timestamp
   // each frame so the gesture can clamp / detect catch-up. Both default to
   // "following" so charts without `timeScroll` behave exactly as before.
-  const viewEnd = useSharedValue<number | null>(null);
+  const internalViewEnd = useSharedValue<number | null>(null);
+  const viewEnd = viewport?.end ?? internalViewEnd;
   const liveEdge = useSharedValue(initialTimestamp);
   const edgeValue = useSharedValue(0);
   // "Return to live" glide (see #164). When time-scroll is disabled while scrolled
@@ -685,6 +699,7 @@ export function useLiveChartEngine(
       returnTSV: returnT,
       returnFromSV: returnFrom,
       viewWindowSV: viewWindow,
+      viewWindowSmoothingSV,
       liveEdgeSV: liveEdge,
       edgeValueSV: edgeValue,
       snapSV,
@@ -746,6 +761,7 @@ export function useLiveChartEngine(
       value,
       viewEnd,
       viewWindow,
+      viewWindowSmoothingSV,
       windowBufferSV,
       yRangeScale,
     ],
@@ -799,14 +815,14 @@ export function useLiveChartEngine(
       exaggerateSV.get(), referenceValue.get(), referenceValues.get(), thresholdRangePoints.get(),
       thresholdRangeExtendToStart.get(), thresholdRangeExtendToNow.get(), nonNegativeSV.get(),
       maxValueSV.get(), minRangeSV.get(), yRangeScale?.get(), nowOverrideSV.get(), windowBufferSV.get(), pausedSV.get(),
-      viewEnd.get(), viewWindow.get(), allowFutureViewEndSV.get(), returnT.get(), returnFrom.get(),
+      viewEnd.get(), viewWindow.get(), viewWindowSmoothingSV.get(), allowFutureViewEndSV.get(), returnT.get(), returnFrom.get(),
       snapSV.get(), modeSV.get(), candleGapsSV.get(), candleGapBridgeNoTradesSV.get(),
       candleGapBridgeUnavailableSV.get(), candleGapBridgeUnknownSV.get(), isFrameLoopActive?.get(),
       keepAwake?.get(), wakeSignal?.get()];
   }, [pointHistory, candleHistory, data, value, candles, liveCandle, canvasWidth, canvasHeight, timeWindow, smoothing, rangeAnimationSV,
     adaptiveSpeedBoostSV, exaggerateSV, referenceValue, referenceValues, thresholdRangePoints,
     thresholdRangeExtendToStart, thresholdRangeExtendToNow, nonNegativeSV, maxValueSV, minRangeSV, yRangeScale,
-    nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, allowFutureViewEndSV, returnT,
+    nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, viewWindowSmoothingSV, allowFutureViewEndSV, returnT,
     returnFrom, snapSV, modeSV, candleGapsSV, candleGapBridgeNoTradesSV, candleGapBridgeUnavailableSV,
     candleGapBridgeUnknownSV, isFrameLoopActive, keepAwake, wakeSignal]);
 
@@ -842,6 +858,7 @@ export function useLiveChartEngine(
     () => scrollEnabledSV.value,
     /* istanbul ignore next -- Reanimated reaction driven by a prop→derived change; not exercised under the SharedValue mock (see the viewWindow-reset test note), verified in-app */
     (enabled, prev) => {
+      if (hasViewport) return;
       if (prev === true && !enabled && viewEnd.value != null) {
         const ms = returnToLiveMsSV.value;
         if (ms > 0) {
@@ -876,6 +893,8 @@ export function useLiveChartEngine(
           canvasWidth.get(),
           canvasHeight.get(),
           timeWindow.get(),
+          viewEnd.get(),
+          viewWindowSmoothingSV.get(),
           // `nowOverride` sets the right edge and `smoothing` changes when
           // `static` flips. Reading them here makes them inputs of this mapper,
           // so a same-render prop change can't settle on their previous values.

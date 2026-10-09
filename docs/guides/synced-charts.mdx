@@ -1,0 +1,192 @@
+---
+title: Synced charts
+icon: "link"
+description: "Share the visible time range across single-series charts on the UI thread."
+---
+
+<Warning>
+  **Experimental.** `viewport` supports single-series `LiveChart` in line and
+  candle modes. Its API may change. `LiveChartSeries` does not yet support it.
+</Warning>
+
+Give each pane its own `ViewportConfig`: two Reanimated shared values that
+the engine adopts as its scroll/zoom state. Updating them moves the chart on the
+UI thread, and the chart's pan/pinch gestures write those same values.
+
+`ViewportConfig` extends `ChartViewportControl` (the shared-value pair) with optional
+behavior settings. Like the other chart features, pass an object to configure it
+or `viewport={false}` to disable external control; omitted also uses private state.
+There is no `true` shorthand because the two shared values are required. Configuration
+preserves those shared values by reference; their contents stay on the UI thread.
+
+| Field             | Meaning                                                                      |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `end`             | Right-edge timestamp in unix seconds; `null` follows this chart's live edge. |
+| `window`          | Positive, finite visible width in seconds; `null` uses `timeWindow`.         |
+| `windowSmoothing` | Default `true`. Set `false` to adopt non-null widths immediately.            |
+
+A non-null end can be at or beyond the pane's own live edge, which lets charts with
+different forming-candle boundaries share a view. The retained-history guard still
+applies: an end before the first point/bar falls back to live without clearing the
+shared value. Keep overlapping history in all panes.
+
+## Copy the leader's drawn range
+
+The app decides which pane leads. Keep **separate pairs** for leader and followers
+to avoid multiple charts writing the same state. Read the leader's drawn range
+through `renderOverlay`, then copy it with `useAnimatedReaction`. This includes
+its window easing and avoids a React render per frame. Disable gestures on a
+follower while it is being driven.
+
+```tsx
+import { useMemo } from "react";
+import { View } from "react-native";
+import {
+  LiveChart,
+  type ChartOverlayContext,
+  type ChartViewportControl,
+  type LiveChartPoint,
+  type ViewportConfig,
+} from "react-native-livechart";
+import {
+  cancelAnimation,
+  useAnimatedReaction,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
+
+function Mirror({
+  ctx,
+  follower,
+}: {
+  ctx: ChartOverlayContext;
+  follower: ChartViewportControl;
+}) {
+  const { scale } = ctx;
+  const { end, window } = follower;
+  useAnimatedReaction(
+    () => scale.get(),
+    (drawn) => {
+      if (drawn.plot.width <= 0) return;
+      cancelAnimation(end);
+      cancelAnimation(window);
+      end.set(drawn.now);
+      window.set(drawn.window);
+    },
+  );
+  return null;
+}
+
+function SyncedCharts({
+  data,
+  value,
+  otherData,
+  otherValue,
+}: {
+  data: SharedValue<LiveChartPoint[]>;
+  value: SharedValue<number>;
+  otherData: SharedValue<LiveChartPoint[]>;
+  otherValue: SharedValue<number>;
+}) {
+  const leaderEnd = useSharedValue<number | null>(null);
+  const leaderWindow = useSharedValue<number | null>(null);
+  const followerEnd = useSharedValue<number | null>(null);
+  const followerWindow = useSharedValue<number | null>(null);
+  const leader = useMemo<ViewportConfig>(
+    () => ({ end: leaderEnd, window: leaderWindow }),
+    [leaderEnd, leaderWindow],
+  );
+  const follower = useMemo<ViewportConfig>(
+    () => ({
+      end: followerEnd,
+      window: followerWindow,
+      windowSmoothing: false,
+    }),
+    [followerEnd, followerWindow],
+  );
+
+  return (
+    <>
+      <View style={{ height: 200 }}>
+        <LiveChart
+          data={data}
+          value={value}
+          timeWindow={3600}
+          viewport={leader}
+          timeScroll
+          zoom
+          renderOverlay={(ctx) => <Mirror ctx={ctx} follower={follower} />}
+        />
+      </View>
+      <View style={{ height: 200 }}>
+        <LiveChart
+          data={otherData}
+          value={otherValue}
+          timeWindow={3600}
+          viewport={follower}
+          timeScroll={false}
+          zoom={false}
+        />
+      </View>
+    </>
+  );
+}
+```
+
+Set `windowSmoothing: false` on a follower copying `scale.window`: that width is
+already drawn, so easing it again would make the follower trail a pinch or range
+change. The leader keeps normal smoothing. This flag affects only non-null window
+overrides; value/Y-range smoothing and the return to `timeWindow` after clearing
+the width keep their normal behavior. Separate engines may still publish on
+adjacent frames; this API does not promise an atomic render across canvases.
+
+For handoff, stop the old pane's in-flight gesture/fling, switch the app's leader
+selector, and reverse the copy direction. The new leader's adopted pair already
+contains the prior view. Never leave both mirror directions active at once.
+
+## Defaults, reset, and sleep
+
+Changing `timeWindow`, disabling `timeScroll`, or changing overscroll settings does
+not clear a supplied viewport. A non-null width overrides the new base window.
+An external end remains honored when scroll gestures are disabled. Gesture bounds
+still apply when the user actively pans or pinches that chart.
+
+`ref.current?.resetZoom()` nulls the supplied pair. The chart then returns to its
+configured width and live edge (a paused chart remains paused). In a sync group,
+reset the **leader** and let the mirror carry its drawn return into the followers.
+Clearing only a follower will be overwritten by its next leader update.
+
+`autoSleep` observes both supplied shared values, so a settled follower wakes when
+the leader moves. For idle testing, turn pulse off and freeze the data feed/clock;
+live scrolling or changing feeds can keep an engine awake.
+
+## Clock mapping belongs to the app
+
+All times and widths use the chart's time coordinate system. Panes using unix
+seconds can copy directly. If your app compresses session gaps into index time,
+map the visible edges into the follower's coordinate system before writing its
+pair. The library does not infer market sessions or match bars between panes.
+If the mapping is nonlinear, convert both left and right edges and subtract to
+get the follower's width.
+
+## Try the demo
+
+The example app's **Synced charts** screen uses one simulated instrument for 1m
+and 15m candles. Choose either leader, pan or pinch, switch leaders, and reset both.
+Turn off **Immediate follower width** to compare the extra easing. Freeze the feed
+and clock, wait for zero engine ticks, then move the leader to wake both panes.
+Changing the base window while zoomed demonstrates that the adopted width persists.
+
+Source: [`app/demo/synced-charts.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/synced-charts.tsx).
+
+<Frame caption="Switch leaders, pinch, change the base window, reset, then freeze the feed">
+  <video
+    autoPlay
+    loop
+    muted
+    playsInline
+    controls
+    poster="/media/synced-charts.png"
+    src="/media/synced-charts.mp4"
+  />
+</Frame>

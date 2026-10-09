@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Experimental `LiveChart.viewport` (`false | ViewportConfig`) and exported
+  `ChartViewportControl` / `ViewportConfig`: adopt
+  app-owned shared values for scroll/zoom, with gestures writing the same pair.
+  External overrides survive base-window and gesture-setting changes, honor
+  future right edges, and wake `autoSleep`. Followers can set
+  `windowSmoothing: false` to copy the leader's drawn width without easing twice.
+  Omitted/false uses private state; behavior defaults resolve at render time in
+  the shared config resolver, preserving the supplied shared values by reference.
+- A Synced charts demo and guide: one instrument in 1m/15m candle panes,
+  leader selection, reset, base-window changes, and idle engine counters.
 - `minRange` on `LiveChart` and `LiveChartSeries`: the smallest Y span the
   auto-fit shows, in data units. Near-flat data widens to it around its
   midpoint instead of zooming in until every grid label reads the same, e.g.
