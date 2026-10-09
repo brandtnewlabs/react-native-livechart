@@ -153,7 +153,7 @@ interface Marker {
   pill?: boolean;      // draw the icon in a filled circular badge
   size?: number;       // default 16
   side?: "above" | "below" | "center"; // sit off the anchor (default "center")
-  data?: unknown;      // surfaced on onMarkerPress
+  data?: unknown;      // surfaced on onMarkerPress and opt-in scrub matches
 }
 
 // Fires on tap (there is no hover on touch); `null` on a miss.
@@ -318,6 +318,7 @@ interface ChartSegment {
 
 ```ts
 interface ScrubPointCore {
+  markers?: Marker[]; // present with scrub.markers; [] when no matches
   time: number;
   value: number;
   x: number; // canvas X
@@ -500,6 +501,7 @@ interface ValueLineConfig { strokeWidth?: number; intervals?: [number, number]; 
 // Shared styling for a straight line (the connector, valueLine, …). Omit `intervals` for solid.
 interface LineStyleConfig { color?: string; strokeWidth?: number; intervals?: [number, number] }
 interface ScrubConfig {
+  markers?: boolean | ScrubMarkerConfig; // opt-in timestamp matching; default false
   tooltip?: boolean; // existing master tooltip switch; false also suppresses seriesTooltip
   // LiveChartSeries only: opt-in Morfi-style time + per-series value pills.
   // false/omitted preserves the existing guide-only default.
@@ -805,6 +807,26 @@ interface SelectionDotProps {
 }
 ```
 
+## ScrubMarkerConfig
+
+`scrub.markers` is available on `LiveChart` and `LiveChartSeries`. `true` uses
+the default tolerance; an object configures it:
+
+```ts
+interface ScrubMarkerConfig {
+  radius?: number; // line mode: horizontal canvas px on each side; default 16
+}
+```
+
+Negative radii clamp to `0`; omitted or non-finite radii use `16`. In line mode,
+timestamps must be within the drawn time window and the tolerance around the
+crosshair. Candle mode ignores the radius and selects the hovered bucket's
+`[candle.time, candle.time + candleWidth)` interval. No candle or a declared gap
+selects none. Matches retain input order and `data`, regardless of glyph Y,
+`side`, stacking, collapsed groups, or `maxVisible`. Matching uses all supplied
+markers, including markers associated with a hidden series; filter the input if
+those trades should be excluded. No matching work runs while scrubbing is inactive.
+
 ## TooltipRenderProps
 
 Context passed to a custom `renderTooltip` — the fully custom scrub tooltip. The element you
@@ -816,6 +838,7 @@ re-render while scrubbing. See [Custom tooltip](/guides/scrubbing#custom-tooltip
 
 ```ts
 interface TooltipRenderProps {
+  markers: SharedValue<Marker[]>;    // scrub.markers matches; [] when disabled/inactive/no match
   value: SharedValue<number | null>; // value under the crosshair (candle mode: the close)
   time: SharedValue<number>;         // window time (unix seconds) under the crosshair
   valueStr: SharedValue<string>;     // value formatted with the chart's formatValue

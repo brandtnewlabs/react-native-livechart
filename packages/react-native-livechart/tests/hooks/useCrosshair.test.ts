@@ -5,6 +5,8 @@ import { useAnimatedReaction } from "react-native-reanimated";
 import { interpolateAtTime } from "../../src/math/interpolate";
 import { resolveTheme } from "../../src/theme";
 import type { SingleEngineState } from "../../src/core/useLiveChartEngine";
+import type { Marker } from "../../src/types";
+import type { SharedValue } from "react-native-reanimated";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 import { resolveScrubAction } from "../../src/core/resolveConfig";
 import {
@@ -1252,6 +1254,72 @@ describe("useCrosshair (hook)", () => {
 
     expect(getLastPanCalls().hitSlop?.[0]).toEqual({ bottom: -24 });
     expect(getLastTapCalls().hitSlop?.[0]).toEqual({ bottom: -24 });
+  });
+});
+
+describe("useCrosshair marker callback payload", () => {
+  async function setup(enabled = true) {
+    jest.mocked(useAnimatedReaction).mockClear();
+    const onScrub = jest.fn();
+    const markers = withSharedValueAccessors({ markers: { value: [] } }).markers as unknown as SharedValue<Marker[]>;
+    const { result } = await renderHook(() => useCrosshair(
+      makeEngine(), padding, palette, formatValue, formatTime, font, true,
+      onScrub, undefined, 0, undefined, undefined, undefined, undefined,
+      undefined, undefined, "side", true, true, 8, 0, undefined, false, false,
+      undefined, enabled ? { markers, radius: 16 } : undefined,
+    ));
+    const crosshair = result.current;
+    crosshair.scrubActive.set(true);
+    crosshair.scrubTime.set(1_700_000_015);
+    crosshair.scrubValue.set(50);
+    crosshair.scrubX.set(160);
+    const calls = jest.mocked(useAnimatedReaction).mock.calls;
+    const [prepare, react] = calls[calls.length - 2];
+    let previous: unknown = null;
+    const step = async () => {
+      const current = prepare();
+      await act(async () => { react(current, previous); });
+      previous = current;
+    };
+    return { crosshair, onScrub, step };
+  }
+
+  it("reuses marker details between point updates and refreshes them without finger movement", async () => {
+    const { crosshair, onScrub, step } = await setup();
+    const matches: Marker[] = [{ id: "trade", time: 1_700_000_015, kind: "trade", data: { quantity: 2 } }];
+    crosshair.scrubMarkers.set(matches);
+    await step();
+    expect(onScrub).toHaveBeenLastCalledWith(expect.objectContaining({ markers: matches }));
+    const firstMarkers = onScrub.mock.calls[0][0].markers;
+    crosshair.scrubX.set(161);
+    await step();
+    expect(onScrub.mock.calls[1][0].markers).toBe(firstMarkers);
+    await step();
+    expect(onScrub).toHaveBeenCalledTimes(2);
+    crosshair.scrubMarkers.set([{ ...matches[0], data: { quantity: 3 } }]);
+    await step();
+    expect(onScrub.mock.calls[2][0].markers[0].data).toEqual({ quantity: 3 });
+    crosshair.scrubMarkers.set([]);
+    await step();
+    expect(onScrub).toHaveBeenLastCalledWith(expect.objectContaining({ markers: [] }));
+  });
+
+  it("omits the marker property when matching is disabled", async () => {
+    const { onScrub, step } = await setup(false);
+    await step();
+    expect(onScrub.mock.calls[0][0]).not.toHaveProperty("markers");
+  });
+
+  it("clears a trade readout once when entering an unpriced gap", async () => {
+    const { crosshair, onScrub, step } = await setup();
+    await step();
+    crosshair.scrubValue.set(null);
+    await step();
+    await step();
+    expect(onScrub.mock.calls.map(([point]) => point === null)).toEqual([false, true]);
+    crosshair.scrubValue.set(50);
+    await step();
+    expect(onScrub.mock.calls[2][0].markers).toEqual([]);
   });
 });
 

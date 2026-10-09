@@ -66,6 +66,7 @@ import { useChartReveal } from "../hooks/useChartReveal";
 import { useChartOverlayContext } from "../hooks/useChartOverlayContext";
 import { useChartSkiaFont } from "../hooks/useChartSkiaFont";
 import { useCrosshairSeries } from "../hooks/useCrosshairSeries";
+import { resolveScrubMarkerOptions } from "../hooks/useScrubMarkers";
 import { useCrosshairVisibleOpacity } from "../hooks/useCrosshairVisibleOpacity";
 import { useLoadingLook } from "../hooks/useLoadingLook";
 import { useMarkers } from "../hooks/useMarkers";
@@ -700,6 +701,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
         }
       : undefined,
     scrubCfg?.clampToPlot ?? false,
+    resolveScrubMarkerOptions(scrubCfg, markersSV),
   );
 
   // Capture only the shared value in the worklets below. Referencing

@@ -997,8 +997,26 @@ export interface PerSeriesTooltipConfig {
   intersectionDotSize?: number;
 }
 
+/** Timestamp matching for marker details while scrubbing. */
+export interface ScrubMarkerConfig {
+  /**
+   * Horizontal distance in canvas px on either side of the crosshair in line
+   * mode. Default `16`; negative values clamp to `0`. Candle mode instead
+   * selects the hovered bucket's [time, time + candleWidth) interval.
+   */
+  radius?: number;
+}
+
 /** Crosshair scrub configuration. */
 export interface ScrubConfig {
+  /**
+   * Include matching markers in `onScrub` and `LiveChart.renderTooltip`.
+   * `true` uses a 16 px horizontal tolerance in line mode; an object tunes it.
+   * Candle mode returns all markers in the hovered candle's time bucket.
+   * Matches preserve input order and include stacked/collapsed members,
+   * independent of glyph Y/offsets. Gaps select none. Default `false`.
+   */
+  markers?: boolean | ScrubMarkerConfig;
   /** Show the value/time tooltip pill while scrubbing. Default `true`. */
   tooltip?: boolean;
   /**
@@ -1256,6 +1274,12 @@ export interface SelectionDotProps {
  * for the value/date to update on the UI thread too.
  */
 export interface TooltipRenderProps {
+  /**
+   * Markers matched by `scrub.markers`, including their `data`. Empty when
+   * disabled, inactive, in a gap, or without a match. Updated on the UI thread;
+   * bind in an animated component rather than reading during React render.
+   */
+  markers: SharedValue<Marker[]>;
   /**
    * Value under the crosshair; `null` when none. In line mode this is the
    * interpolated value at the scrub time; in candle mode it's the scrubbed
@@ -1539,7 +1563,7 @@ export interface Marker {
    * when `markerCluster: "stacked"` — e.g. buys `"below"`, sells `"above"`.
    */
   side?: MarkerSide;
-  /** Pass-through payload surfaced on `onMarkerPress`. */
+  /** Pass-through payload surfaced on `onMarkerPress` and opt-in scrub matches. */
   data?: unknown;
 }
 
@@ -1872,6 +1896,11 @@ export interface ScrubSeriesValue {
 
 /** Base fields shared by single and multi-series scrub callback payloads. */
 export interface ScrubPointCore {
+  /**
+   * Matching markers (including `data`) when `scrub.markers` is enabled; `[]`
+   * when none match. Omitted when disabled. See {@link ScrubConfig.markers}.
+   */
+  markers?: Marker[];
   /** Unix timestamp in seconds at the scrub position. */
   time: number;
   /** Interpolated value at the scrub position. */
@@ -2860,7 +2889,11 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * Single-series only.
    */
   renderOverlay?: (ctx: ChartOverlayContext) => ReactElement | null | undefined;
-  /** Called when the user scrubs the crosshair. `null` when scrub ends. */
+  /**
+   * JS-thread callback while scrubbing; `null` when scrub ends. With
+   * `scrub.markers` enabled, includes matching markers and also sends `null`
+   * when a valid point becomes unavailable (for example an unpriced gap).
+   */
   onScrub?: (point: ScrubPoint | null) => void;
   /**
    * Called on the JS thread when the crosshair enters a different candle,
@@ -3004,6 +3037,8 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
   /**
    * Worklet callback fired on the UI thread each frame while scrubbing.
    * `null` when scrub ends. Update shared values directly — no bridge overhead.
+   * With `scrub.markers` enabled, includes matching markers and also sends
+   * `null` when a previously valid point becomes unavailable.
    *
    * ```ts
    * const scrubData = useSharedValue<ScrubPointMulti | null>(null);

@@ -110,6 +110,7 @@ export type {
   ScrubActionConfig,
   ScrubActionPoint,
   ScrubConfig,
+  ScrubMarkerConfig,
   ScrubPoint,
   ScrubPointCore,
   ScrubPointMulti,

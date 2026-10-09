@@ -152,6 +152,8 @@ default off.
 ## Scrub
 
 <ParamField body="scrub" type="boolean | ScrubConfig" default="true">
+  `markers: true` (or `{ radius: 24 }`) adds timestamp-matched markers to
+  `onScrub`. Off by default; see [Marker inspection](/guides/markers-and-trades#inspecting-markers-while-scrubbing).
   Crosshair scrubbing on drag. **As of v2 this defaults to `true`** (it previously
   defaulted to `false`); pass `scrub={false}` to disable. The existing default is
   a guide/dim layer. Omitting `seriesTooltip` (or setting it to `false`) preserves
@@ -177,7 +179,10 @@ default off.
 
 <ParamField body="onScrub" type="(point: ScrubPointMulti | null) => void">
   **Worklet** callback fired on the UI thread each frame while scrubbing; `null` when it ends.
-  Includes a per-series value array. See [Scrubbing](/guides/scrubbing).
+  Includes a per-series value array. With `scrub.markers` enabled it also
+  includes `point.markers` (all matches, including their `data`, or `[]`). The
+  field is omitted when disabled. See [Scrubbing](/guides/scrubbing).
+  With marker matching enabled, a valid point becoming unavailable sends `null`.
 </ParamField>
 
 <ParamField body="onGestureStart" type="() => void">

@@ -37,6 +37,7 @@ import {
   resetDelayedPanGuard,
   shouldStartDelayedPan,
 } from "./delayedPanGuard";
+import { useScrubMarkers, type ScrubMarkerOptions } from "./useScrubMarkers";
 
 /**
  * LiveChartSeries crosshair + scrub. The optional per-series tooltip is
@@ -73,6 +74,7 @@ export function useCrosshairSeries(
    * drags to those bounds. Default `false`.
    */
   clampToPlot = false,
+  markerOptions?: ScrubMarkerOptions,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -169,6 +171,10 @@ export function useCrosshairSeries(
     onGestureEnd?.();
   }
 
+  const scrubMarkers = useScrubMarkers(
+    markerOptions, scrubActive, scrubTime, engine.timestamp, engine.displayWindow,
+    engine.canvasWidth, padding.left + padding.right,
+  );
   const hasOnScrub = onScrub != null;
   const hasOnGestureStart = onGestureStart != null;
   const hasOnGestureEnd = onGestureEnd != null;
@@ -192,26 +198,33 @@ export function useCrosshairSeries(
         padding.top,
         padding.bottom,
       );
-      return JSON.stringify({
-        time,
-        x,
-        y: dotY,
-        primary: r.primary,
-        series: r.seriesValues,
-      });
+      return {
+        point: JSON.stringify({
+          time,
+          x,
+          y: dotY,
+          primary: r.primary,
+          series: r.seriesValues,
+        }),
+        markers: markerOptions ? scrubMarkers.get() : undefined,
+      };
     },
     (curr, prev) => {
       "worklet";
       if (!hasOnScrub) return;
       if (curr === "__inactive__") {
-        onScrub!(null);
+        if (curr !== prev) onScrub!(null);
         return;
       }
       if (curr === "__idle__" || curr === "__pending__") {
+        if (markerOptions && curr === "__pending__" && prev && typeof prev === "object") {
+          onScrub!(null);
+        }
         return;
       }
-      if (curr === prev) return;
-      const p = JSON.parse(curr) as {
+      const previous = typeof prev === "object" ? prev : null;
+      if (curr.point === previous?.point && curr.markers === previous?.markers) return;
+      const p = JSON.parse(curr.point) as {
         time: number;
         x: number;
         y: number;
@@ -224,6 +237,7 @@ export function useCrosshairSeries(
         x: p.x,
         y: p.y,
         seriesValues: p.series,
+        ...(markerOptions ? { markers: curr.markers } : {}),
       });
     },
   );
@@ -354,6 +368,7 @@ export function useCrosshairSeries(
   if (scrubHitSlop) gesture = gesture.hitSlop(scrubHitSlop);
 
   return {
+    scrubMarkers,
     scrubX,
     scrubActive,
     scrubTime,

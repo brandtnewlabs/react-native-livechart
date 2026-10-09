@@ -1,4 +1,5 @@
 import { type SkFont } from "@shopify/react-native-skia";
+import { useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
@@ -22,6 +23,7 @@ import type {
   CandleGap,
   CandlePoint,
   LiveChartPalette,
+  Marker,
   ScrubActionPoint,
   ScrubPoint,
 } from "../types";
@@ -57,6 +59,7 @@ import {
   resetDelayedPanGuard,
   shouldStartDelayedPan,
 } from "./delayedPanGuard";
+import { useScrubMarkers, type ScrubMarkerOptions } from "./useScrubMarkers";
 
 const ACTION_HIT_SLOP = 6;
 const RETICLE_HIT = 14;
@@ -210,6 +213,7 @@ export function useCrosshair(
   snapToCandles = false,
   /** Candle mode: fires once per candle the crosshair enters, `null` on exit. */
   onScrubCandleChange?: (candle: CandlePoint | null) => void,
+  markerOptions?: ScrubMarkerOptions,
 ): CrosshairState {
   const scrubX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
@@ -426,6 +430,15 @@ export function useCrosshair(
     },
   );
 
+  const scrubMarkers = useScrubMarkers(
+    markerOptions, scrubActive, scrubTime, engine.timestamp, engine.displayWindow,
+    engine.canvasWidth, padding.left + padding.right,
+    isCandleMode, scrubCandle, candleWidthSecs, scrubGap,
+  );
+  // Cache marker details on JS so ordinary scrub frames only bridge the scalar
+  // point. A new selection / marker input carries a fresh payload once.
+  const jsScrubMarkers = useRef<Marker[]>([]);
+
   // ── Scrub-action lock derivations ──────────────────────────────────────────
   const lockPrice = useSharedValue<number | null>(null);
   const lockY = useSharedValue(-1);
@@ -548,6 +561,7 @@ export function useCrosshair(
     value: number,
     candleJson: string | null,
     gapJson: string | null,
+    markerUpdate: Marker[] | undefined,
   ) {
     const candle: CandlePoint | undefined = candleJson
       ? (JSON.parse(candleJson) as CandlePoint)
@@ -555,7 +569,11 @@ export function useCrosshair(
     const gap: CandleGap | undefined = gapJson
       ? (JSON.parse(gapJson) as CandleGap)
       : undefined;
-    onScrub?.({ time, value, x, y, candle, gap });
+    if (markerUpdate !== undefined) jsScrubMarkers.current = markerUpdate;
+    onScrub?.({
+      time, value, x, y, candle, gap,
+      ...(markerOptions ? { markers: jsScrubMarkers.current } : {}),
+    });
   }
 
   function handleScrubCandleChange(candleJson: string | null) {
@@ -609,20 +627,26 @@ export function useCrosshair(
       }
       const gap = scrubGap.get();
       const gapJson = gap ? JSON.stringify(gap) : null;
-      return JSON.stringify([time, val, x, dotY, candleJson, gapJson]);
+      return {
+        point: JSON.stringify([time, val, x, dotY, candleJson, gapJson]),
+        markers: markerOptions ? scrubMarkers.get() : undefined,
+      };
     },
     (curr, prev) => {
       "worklet";
       if (!hasOnScrub) return;
-      if (
-        curr === "__idle__" ||
-        curr === "__inactive__" ||
-        curr === "__pending__"
-      ) {
+      if (typeof curr === "string") {
+        // No ScrubPoint can represent an unpriced gap. Clear opt-in trade
+        // readouts once when leaving a valid point rather than leave stale data.
+        if (markerOptions && curr === "__pending__" && prev && typeof prev === "object") {
+          scheduleOnRN(handleScrubEnd);
+        }
         return;
       }
-      if (curr === prev) return;
-      const row = JSON.parse(curr) as [
+      const previous = typeof prev === "object" ? prev : null;
+      const markersChanged = curr.markers !== previous?.markers;
+      if (curr.point === previous?.point && !markersChanged) return;
+      const row = JSON.parse(curr.point) as [
         number,
         number,
         number,
@@ -630,7 +654,8 @@ export function useCrosshair(
         string | null,
         string | null,
       ];
-      scheduleOnRN(handleScrub, row[2], row[3], row[0], row[1], row[4], row[5]);
+      scheduleOnRN(handleScrub, row[2], row[3], row[0], row[1], row[4], row[5],
+        markersChanged ? curr.markers : undefined);
     },
   );
 
@@ -974,6 +999,7 @@ export function useCrosshair(
   if (tapGesture && tapHitSlop) tapGesture = tapGesture.hitSlop(tapHitSlop);
 
   return {
+    scrubMarkers,
     scrubX,
     scrubActive,
     scrubTime,

@@ -744,6 +744,7 @@ describe("resolveAxisLabel", () => {
 
 describe("resolveScrub", () => {
   const DEFAULTS = {
+    markers: null,
     tooltip: true,
     seriesTooltip: null,
     dimTarget: "future",
@@ -781,6 +782,17 @@ describe("resolveScrub", () => {
 
   it("returns defaults for true", () => {
     expect(resolveScrub(true)).toEqual(DEFAULTS);
+  });
+
+  it("opts into marker matching and normalizes the line tolerance", () => {
+    expect(resolveScrub({ markers: false })?.markers).toBeNull();
+    expect(resolveScrub({ markers: undefined })?.markers).toBeNull();
+    for (const markers of [true, {}, { radius: undefined }, { radius: NaN }, { radius: Infinity }]) {
+      expect(resolveScrub({ markers })?.markers).toEqual({ radius: 16 });
+    }
+    expect(resolveScrub({ markers: { radius: 24 } })?.markers).toEqual({ radius: 24 });
+    expect(resolveScrub({ markers: { radius: -5 } })?.markers).toEqual({ radius: 0 });
+    expect(resolveScrub({ markers: { radius: 0 } })?.markers).toEqual({ radius: 0 });
   });
 
   it("merges partial config with defaults", () => {
