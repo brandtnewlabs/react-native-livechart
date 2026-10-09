@@ -16,6 +16,7 @@ import {
   resolveAutoLeft,
   resolveAutoRight,
   resolvePadding,
+  seriesPlotClip,
 } from "../../src/draw/line";
 import { BADGE_METRICS_DEFAULTS } from "../../src/constants";
 import {
@@ -176,6 +177,23 @@ describe("resolvePadding", () => {
   it("widens left padding when badgeOnLeft is true", () => {
     const r = resolvePadding(undefined, false, false, true);
     expect(r.left).toBe(resolveAutoLeft(true));
+  });
+});
+
+describe("seriesPlotClip", () => {
+  const padding = { top: 10, right: 40, bottom: 30, left: 5 };
+
+  it("spans the plot vertically and past the canvas horizontally", () => {
+    expect(seriesPlotClip(padding, 400, 300)).toEqual({
+      x: -400,
+      y: 10,
+      width: 1200,
+      height: 260,
+    });
+  });
+
+  it("collapses to zero height when the padding exceeds the canvas", () => {
+    expect(seriesPlotClip(padding, 400, 20).height).toBe(0);
   });
 });
 

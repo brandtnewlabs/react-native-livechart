@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- With `yRangeScale` below `1`, the line, area fill, candles and gap bridges
+  are now clipped to the plot's vertical extent instead of drawing past its top
+  and bottom and over the time axis. In candle mode the clip stops at the price
+  plot, above the volume band. Applies to `LiveChart` and `LiveChartSeries`.
 - `xAxis.minGap` now sets the minimum spacing between time labels on
   `LiveChart` and `LiveChartSeries`. It was resolved but never applied, so the
   labels always kept the default 60 px spacing. Changing the gap also replaces

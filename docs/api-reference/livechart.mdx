@@ -608,6 +608,9 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
   price scale TradingView-style; the auto-fit keeps tracking the visible window
   underneath. Values must be positive and finite; invalid values safely fall
   back to `1`. On a `nonNegative` chart, zoom-out stops at the zero floor.
+  Series drawing is clipped vertically to the price plot, above the automatically
+  reserved candle-volume band, so values outside the visible range cannot cover
+  the time labels. An explicit bottom inset keeps its existing layout override.
   Read on the UI thread each frame. Shared with `LiveChartSeries`.
   **@experimental.** See
   [Manual Y-range scaling](/guides/y-range-scale).

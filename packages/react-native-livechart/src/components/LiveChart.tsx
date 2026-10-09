@@ -89,6 +89,7 @@ import {
 import {
   dotGlowRadialOutset,
   pulseRadialOutset,
+  seriesPlotClip,
   type ChartPadding,
 } from "../draw/line";
 import { resolveChartLayout } from "../hooks/resolveChartLayout";
@@ -1832,6 +1833,15 @@ function useLiveChartController({
     lineProp?.simplify,
     lineGapsCfg?.gaps,
   );
+  // `effectivePadding.bottom` includes the volume band, so this stops at the
+  // price plot's bottom edge.
+  const seriesClip = useDerivedValue(() =>
+    seriesPlotClip(
+      effectivePadding,
+      engine.canvasWidth.get(),
+      engine.canvasHeight.get(),
+    ),
+  );
 
   // Area-dots fill shader color as a vec4 (channels 0..1), with the config
   // `opacity` folded into the alpha. Defaults to a faint tint of the line/accent
@@ -2250,6 +2260,7 @@ function useLiveChartController({
     linePath,
     fillPath,
     thresholdFillPath,
+    seriesClip,
     lineIsLinear,
     volumeCfg,
     candleGapsCfg,
@@ -2478,6 +2489,7 @@ function ChartFillLayer({
     thresholdSeriesHasPoints,
     thresholdFillUniforms,
     seriesOpacity,
+    seriesClip,
   } = model;
   return (
     <Group transform={degen?.shakeTransform}>
@@ -2492,7 +2504,7 @@ function ChartFillLayer({
         />
       )}
 
-      <Group opacity={seriesOpacity}>
+      <Group opacity={seriesOpacity} clip={seriesClip}>
         {/* Dot-lattice area fill (the under-line `fillPath` painted with a dot
             shader). Drawn before the gradient so a gradient (if also enabled)
             composites on top. */}
@@ -2720,6 +2732,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
     candleGapsCfg,
     scrubCfg,
     crosshair,
+    seriesClip,
   } = model;
   const paths = useCandlePaths(
     engine,
@@ -2830,7 +2843,7 @@ function ChartCandleLayer({ model }: { model: LiveChartModel }) {
 
   return (
     <Group opacity={seriesOpacity}>
-      <Group opacity={candleGroupOpacity}>
+      <Group opacity={candleGroupOpacity} clip={seriesClip}>
         {candleGapsCfg && (
           <ChartCandleGapLayer
             model={model}
@@ -2958,11 +2971,12 @@ function ChartMainPlotLayer({
     xAxisCfg,
     yAxisCfg,
     yAxisFloat,
+    seriesClip,
   } = model;
 
   return (
     <>
-      <Group opacity={seriesOpacity}>
+      <Group opacity={seriesOpacity} clip={seriesClip}>
         <Group opacity={lineGroupOpacity}>
           <Path
             path={linePath}

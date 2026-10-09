@@ -2420,6 +2420,9 @@ export interface LiveChartCoreProps {
    * the visible window underneath. Values must be positive and finite; invalid
    * values fall back to `1`. Read on the UI thread each frame. Supported by
    * both `LiveChart` and `LiveChartSeries`. Default `1`.
+   * Series drawing is clipped vertically to the price plot; candle volume bars
+   * remain outside that clip. Automatic volume-band reservation respects an
+   * explicit bottom inset.
    *
    * @experimental
    */

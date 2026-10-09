@@ -60,7 +60,8 @@ reserved by `insets.left`; right-side series value labels remain unchanged.
   hidden series remain excluded from the underlying fit. Values must be positive
   and finite, and invalid values safely behave as `1`. With the inherited
   `nonNegative` prop, zoom-out stops at the zero floor. Read on the UI thread
-  each frame. **@experimental.** See
+  each frame. Series strokes are clipped vertically to the price plot while dots
+  and value labels retain their own placement. **@experimental.** See
   [Manual Y-range scaling](/guides/y-range-scale).
 </ParamField>
 
