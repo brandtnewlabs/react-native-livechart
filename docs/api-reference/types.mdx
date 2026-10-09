@@ -1024,3 +1024,12 @@ type LiveChartMetricsOverride = {
   emptyState?: Partial<EmptyStateMetrics>;
 };
 ```
+
+## Right-anchored axis layout
+
+`YAxisConfig.labelRightMargin` also selects automatic gutter sizing from the
+actual painted tick column in both charts. Padding includes column width, edge
+margin, the largest dot/pulse/glow outset and six points of clearance. Initial
+samples add half a font-size of headroom until ticks exist. Width changes alone
+trigger React layout updates. Explicit right insets and badge requirements
+retain priority; centered, left and floating layout behavior is unchanged.

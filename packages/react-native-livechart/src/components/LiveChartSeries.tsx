@@ -81,6 +81,7 @@ import {
 } from "../hooks/useSeriesIndicatorOpacity";
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useXAxis } from "../hooks/useXAxis";
+import { useYAxisLabelWidth } from "../hooks/useYAxisLabelWidth";
 import { useYAxis } from "../hooks/useYAxis";
 import {
   useYAxisScaleGesture,
@@ -544,11 +545,16 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     skiaFont,
   );
 
+  const [yAxisLabelWidth, setYAxisLabelWidth] = useState<number | undefined>();
+  const measureYAxisLabels = yAxisCfg?.side !== "left" && yAxisCfg?.labelRightMargin != null && !yAxisCfg?.float && insets?.right == null;
   const { strokeWidth, padding: effectivePadding } = resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
+    labelRightMargin: measureYAxisLabels ? yAxisCfg?.labelRightMargin : undefined,
+    yAxisLabelWidth,
+    dotRadius: dotOuterRadius,
     badge: allRefLines.some(line => typeof line.valueBadge === "object" && line.valueBadge.position === "axis"),
     badgeMetrics: metricsCfg.badge,
     xAxis: xAxisCfg !== null,
@@ -663,6 +669,8 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     yAxisCfg?.count ?? 0,
     yAxisCfg?.intervalScale ?? 1,
   );
+
+  useYAxisLabelWidth(yAxisEntries, skiaFont, measureYAxisLabels, setYAxisLabelWidth);
 
   const { xAxisEntries } = useXAxis(
     engine,

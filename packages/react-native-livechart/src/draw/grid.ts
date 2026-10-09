@@ -17,6 +17,16 @@ export interface RightAnchoredYAxisColumnLayout {
   gridEndX: number;
 }
 
+/** Width used by the painted right-anchored column, including fading entries. */
+export function widestYAxisLabelWidth(entries: readonly YAxisEntry[], font: SkFont): number {
+  "worklet";
+  let width = 0;
+  for (let i = 0; i < entries.length; i++) {
+    width = Math.max(width, measureFontTextWidth(font, entries[i].label));
+  }
+  return width;
+}
+
 /**
  * Measure the widest Y-axis label and anchor the shared left-aligned column to
  * a fixed canvas-edge margin. Shared by the axis, reference-line and live-badge
@@ -30,13 +40,7 @@ export function rightAnchoredYAxisColumnLayout(
   gridEndGap = 0,
 ): RightAnchoredYAxisColumnLayout {
   "worklet";
-  let maxTextW = 0;
-  for (let i = 0; i < entries.length; i++) {
-    maxTextW = Math.max(
-      maxTextW,
-      measureFontTextWidth(font, entries[i].label),
-    );
-  }
+  const maxTextW = widestYAxisLabelWidth(entries, font);
   const labelX = canvasWidth - labelRightMargin - maxTextW;
   return { labelX, gridEndX: labelX - gridEndGap };
 }

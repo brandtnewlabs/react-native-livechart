@@ -528,3 +528,37 @@ describe("shouldResampleLayoutValue", () => {
     expect(shouldResampleLayoutValue(-870_000, 87_000)).toBe(true);
   });
 });
+
+// Issue #396: edge-anchored columns reserve one tick width and one dot outset.
+describe("right-anchored axis geometry", () => {
+  const font = mockFont(6.6);
+  const base = { palette, yAxis: true, badge: false, font, formatValue: () => "€9.99K", currentValue: 9990, labelRightMargin: 8, pulse: { maxRadius: 21, strokeWidth: 1.5 }, dotRadius: 6 };
+  it.each([320, 393, 768])("clears actual Market Cap and Price ticks at canvas width %s", width => {
+    for (const label of ["€11K", "€0.1234"]) {
+      const labelW = label.length * 6.6;
+      const padding = resolveChartLayout({ ...base, yAxisLabelWidth: labelW }).padding;
+      const columnX = width - 8 - labelW;
+      const dotX = width - padding.right;
+      expect(columnX - dotX).toBeGreaterThanOrEqual(28);
+      expect(columnX - dotX).toBeLessThan(29);
+      expect(padding.right).toBe(Math.ceil(8 + labelW + 22 + 6));
+    }
+  });
+  it("uses sample precision headroom until ticks exist", () => {
+    const initial = resolveChartLayout(base).padding.right;
+    const actual = resolveChartLayout({ ...base, yAxisLabelWidth: 26.4 }).padding.right;
+    expect(initial).toBeGreaterThan(actual);
+    expect(initial).toBe(Math.ceil(8 + 6 * 6.6 + 6 + 22 + 6));
+  });
+  it("honors explicit right insets and badge reservations", () => {
+    expect(resolveChartLayout({ ...base, yAxisLabelWidth: 26.4, insetsOverride: { right: 100 } }).padding.right).toBe(100);
+    const badge = resolveChartLayout({ ...base, badge: true }).padding.right;
+    expect(resolveChartLayout({ ...base, badge: true, yAxisLabelWidth: 26.4 }).padding.right).toBe(badge);
+  });
+  it("includes the largest glow/dot footprint and leaves centered/float layouts intact", () => {
+    const glowing = resolveChartLayout({ ...base, yAxisLabelWidth: 26.4, dotGlow: { radius: 7, blur: 12 } }).padding.right;
+    expect(glowing).toBe(Math.ceil(8 + 26.4 + 31 + 6));
+    expect(resolveChartLayout({ ...base, labelRightMargin: undefined, yAxisLabelWidth: 26.4 }).padding.right).toBe(minPaddingRightForYAxisWithPulse(22, 6 * 6.6));
+    expect(resolveChartLayout({ ...base, yAxisFloat: true, yAxisLabelWidth: 26.4 }).padding.right).toBe(6);
+  });
+});

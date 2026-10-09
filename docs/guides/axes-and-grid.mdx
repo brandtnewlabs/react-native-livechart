@@ -167,6 +167,14 @@ and that column:
 />
 ```
 
+For a right-anchored column, both chart components measure the actual tick
+strings on the UI thread. Automatic right padding reserves that width plus the
+canvas-edge margin, the largest dot/pulse/glow radius, and six points of
+clearance. An initial formatted sample adds half a font-size of precision
+headroom until ticks exist. Layout updates on the React thread only when the
+measured width changes. Badge and inline series-label requirements can reserve
+additional space; explicit `insets.right` takes precedence.
+
 Without `labelRightMargin`, labels keep their default centered-gutter placement and `gridEndGap`
 has no effect. When combined with `yAxis.float`, `labelRightMargin` overrides the floating axis's
 default edge margin.

@@ -136,6 +136,7 @@ import {
 } from "../hooks/useThreshold";
 import { useTradeStream } from "../hooks/useTradeStream";
 import { useXAxis } from "../hooks/useXAxis";
+import { useYAxisLabelWidth } from "../hooks/useYAxisLabelWidth";
 import { useYAxis } from "../hooks/useYAxis";
 import {
   useYAxisScaleGesture,
@@ -1298,6 +1299,7 @@ function useLiveChartLayoutResources({
   formatValue,
   pulseConfig,
   dotCfg,
+  dotOuterRadius,
   volumeBandHeight,
 }: {
   value: LiveChartProps["value"];
@@ -1320,6 +1322,7 @@ function useLiveChartLayoutResources({
   formatValue: (value: number) => string;
   pulseConfig: { maxRadius: number; strokeWidth: number } | null;
   dotCfg: ReturnType<typeof resolveDot>;
+  dotOuterRadius: number;
   volumeBandHeight: number;
 }) {
   const skiaFont = useChartSkiaFont(
@@ -1348,14 +1351,19 @@ function useLiveChartLayoutResources({
     : skiaFont;
   const valueLayoutSample = useLayoutValueSample(value);
   const [scrolledBack, setScrolledBack] = useState(false);
+  const [yAxisLabelWidth, setYAxisLabelWidth] = useState<number | undefined>();
   const effectiveYAxisFloat =
     yAxisFloat && (!timeScrollEnabled || scrolledBack);
+  const measureYAxisLabels = yAxisCfg?.side !== "left" && yAxisCfg?.labelRightMargin != null && !effectiveYAxisFloat && insets?.right == null;
   const layout = useMemo(() => resolveChartLayout({
     palette,
     lineWidthOverride: lineProp?.width,
     insetsOverride: insets,
     yAxis: yAxisCfg !== null,
     yAxisFloat: effectiveYAxisFloat,
+    labelRightMargin: measureYAxisLabels ? yAxisCfg?.labelRightMargin : undefined,
+    yAxisLabelWidth,
+    dotRadius: dotOuterRadius,
     badge: badgeCfg !== null || referenceAxisBadge,
     badgeMetrics: metricsCfg.badge,
     badgeUsesRightGutter: badgeUsesRightGutter || referenceAxisBadge,
@@ -1372,6 +1380,9 @@ function useLiveChartLayoutResources({
     badgeUsesRightGutter,
     referenceAxisBadge,
     dotCfg.glow,
+    dotOuterRadius,
+    measureYAxisLabels,
+    yAxisLabelWidth,
     effectiveYAxisFloat,
     formatValue,
     insets,
@@ -1392,6 +1403,8 @@ function useLiveChartLayoutResources({
     refGroupBadgeFont,
     effectiveYAxisFloat,
     setScrolledBack,
+    setYAxisLabelWidth,
+    measureYAxisLabels,
     ...layout,
   };
 }
@@ -1748,6 +1761,8 @@ function useLiveChartController({
     refGroupBadgeFont,
     effectiveYAxisFloat,
     setScrolledBack,
+    setYAxisLabelWidth,
+    measureYAxisLabels,
     strokeWidth,
     padding: effectivePadding,
   } = useLiveChartLayoutResources({
@@ -1771,6 +1786,7 @@ function useLiveChartController({
     formatValue,
     pulseConfig,
     dotCfg,
+    dotOuterRadius,
     volumeBandHeight,
   });
 
@@ -2394,6 +2410,8 @@ function useLiveChartController({
     // configs
     yAxisCfg,
     yAxisFloat: effectiveYAxisFloat,
+    setYAxisLabelWidth,
+    measureYAxisLabels,
     referenceValueAxis,
     xAxisCfg,
     badgeCfg,
@@ -2642,6 +2660,7 @@ function ChartWithYAxis({
     yAxisCfg?.count ?? 0,
     yAxisCfg?.intervalScale ?? 1,
   );
+  useYAxisLabelWidth(yAxisEntries, skiaFont, model.measureYAxisLabels, model.setYAxisLabelWidth);
   if (model.degenCfg) {
     return (
       <ChartWithDegen

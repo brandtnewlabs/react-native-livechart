@@ -500,8 +500,11 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 </ParamField>
 
 <ParamField body="yAxis" type="boolean | YAxisConfig" default="true">
-  The right gutter re-measures after the first finite, nonzero live value and
-  subsequent factor-of-ten moves; `insets.right` overrides automatic sizing.
+  The centered right gutter re-measures after the first finite, nonzero live
+  value and subsequent factor-of-ten moves. With `labelRightMargin`, it uses
+  actual painted tick widths plus the edge margin, dot-effect outset and six
+  points of clearance; React layout updates only when width changes. Badge
+  reservations still apply. `insets.right` overrides automatic sizing.
   Opt into vertical price-axis dragging with `{ scaleGesture: true }`, or pass
   `YAxisScaleGestureConfig` for bounds, sensitivity, and double-tap reset. It
   writes `yRangeScale` when supplied, otherwise an internal multiplier. Off by

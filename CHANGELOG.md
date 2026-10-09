@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Both charts forward `yAxis.labelRightMargin` into layout and size its gutter
+  from the actual painted tick column plus edge margin and dot-effect clearance.
+  Width changes alone update React layout, reducing oversized centered-label
+  reservations while retaining explicit inset and badge priority.
+  ([#396](https://github.com/brandtnewlabs/react-native-livechart/issues/396))
+
 ## [4.27.0] — 2026-10-09
 
 ### Added
