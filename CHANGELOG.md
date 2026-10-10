@@ -33,6 +33,10 @@ Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made
 
 ### Fixed
 
+- Example app: enable outward Y-range easing in Multi-series so revealing a
+  series or extending the range animates instead of jumping. Add an
+  "Animate expansion" control beside Responsiveness and start with its Smooth
+  preset to spread large range changes across more visible steps.
 - Example app: give Kraken's header matching left/right widths so the centered
   title no longer overlaps the Back button's Android touch area.
 

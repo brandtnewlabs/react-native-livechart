@@ -18,10 +18,18 @@ No retained-memory leak was demonstrated. The upstream optimization investigatio
 in [Skia PR #4193](https://github.com/wcandillon/react-native-skia/pull/4193) is
 separate from this migration and is not a release prerequisite.
 
-[issue-409-qa.md](issue-409-qa.md) preserves the measurement history. Its final
-45-route sweeps and 23 renderer checks per phone used the experimental patch;
-they are not fresh verification of the current unmodified-renderer build.
-Already installed phone binaries retain that patch until rebuilt.
+[issue-409-qa.md](issue-409-qa.md) preserves the measurement history. Both phones
+have now been rebuilt and installed with unmodified Skia: **45/45 route checks**
+and **23/23 rendered-pixel checks** passed per phone, with every route screenshot
+visually reviewed. The user-reported Multi-series Y-range jump was corrected
+by enabling the demo's existing outward-easing option. The correction is also
+installed on both phones; a paused-feed Seeker recording verifies the transition.
+The demo now starts with Smooth responsiveness after a same-feed comparison.
+Temporary Seeker probes found zero repeated React renders in the measured chart
+tree during live idle and eight visibility toggles; probe edits were removed.
+Three exploratory Seeker line captures measured 104.6–105.9 presentations/s on
+its 120Hz display, with p99 around 16.7ms. There is no old-renderer pacing control
+yet; these observations do not establish a migration regression.
 
 ## Package
 
@@ -39,7 +47,7 @@ Already installed phone binaries retain that patch until rebuilt.
 
 The replacement candidate is
 `.agent-device/skia409/release-prep/react-native-livechart-5.0.0-rc.0.tgz`.
-It is 474,907 bytes with 456 files and zero patches; all 302 source/declaration
+It is 474,916 bytes with 456 files and zero patches; all 302 source/declaration
 files were audited for old renderer imports.
 The prior patched tarball is historical evidence under
 `.agent-device/skia409/patch-removal/previous-patched-candidate.tgz`.
@@ -57,8 +65,9 @@ Patch-removal checks passed and are recorded under `.agent-device/skia409/patch-
 `npm run verify` (148 suites / 2,139 tests, five skipped), a replacement pack
 audited for zero patches/old imports, normal lifecycle-enabled consumer install
 (without installing peers in that isolated install check), and a fresh packed
-iOS Hermes Bundle Mode export. Instruments and device sessions
-remain closed; no new physical QA is claimed by these package checks.
+iOS Hermes Bundle Mode export. Those package checks are separate from the new
+physical QA above. After the demo correction, `npm run verify` passed again
+(148 suites / 2,139 tests, five skipped); React Doctor is 98/100, no diagnostics.
 
 To rebuild the local candidate:
 
@@ -70,11 +79,9 @@ npm run verify:bundle-mode-consumer
 
 ## Exact next tasks
 
-1. **Rebuild unmodified 3.3.0 on iPhone von Lennart and Solana Seeker.** Repeat
-   the 45-route sweep and 23 renderer checks on each, including fonts, pinch,
-   historical pan, candle feedback, multi-series visibility, opaque/transparent
-   canvases, format/resize, snapshots and background return. Confirm no missing
-   rendering, navigation failures, fatal logs or recording rejections.
+1. **Functional recheck: completed.** Both unmodified phone builds passed the
+   45-route sweep and 23 renderer checks. See the QA report for the focused
+   interactions, Multi-series correction and measurement limits.
 2. **Measure three named workloads against old Skia 2.6.4:** default
    `/demo/line-and-area`; `/demo/candlestick` at `15m · 1m` with volume and five
    historical pan pairs; `/demo/multi-series` with three series, 20s scrub and

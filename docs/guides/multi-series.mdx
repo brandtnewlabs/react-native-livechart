@@ -38,6 +38,13 @@ before the displayed time, the following tip and dot use that value immediately.
 This keeps them aligned with authoritative history. An unrecorded live value
 still uses `smoothing`; scrolling back retains the historical edge behavior.
 
+Y-range contraction uses `smoothing` by default; outward bounds snap unless you
+pass `rangeAnimation={{ animateExpansion: true }}`. Enable it to ease the chart
+into a wider range when a series is revealed or a new extreme arrives. The
+Multi-series demo enables this option initially and exposes **Animate expansion**
+beside **Responsiveness** to compare the two behaviors. It starts with the
+**Smooth** preset (`smoothing={0.03}`); Default and Snappy remain available.
+
 For a dataset or unit change (for example Price → Market Cap), replace each
 series' history array and live value together. Replacement entries reach drawing
 on the next measured engine frame, alongside that frame's Y range and tips.

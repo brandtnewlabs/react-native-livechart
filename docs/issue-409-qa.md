@@ -18,8 +18,131 @@ The working-tree candidate is now prepared as unpublished **LiveChart 5.0.0-rc.0
 see [release preparation](skia-3-release-preparation.md) for the verified local
 tarball. On 2026-10-10 the experimental patch was removed from the example,
 installed native sources and package at the user's request. Physical QA below
-is historical: its final sweeps used the patch. Fresh unmodified-renderer device
-verification is pending; see the exact next tasks at the end of this report.
+is historical: its final sweeps used the patch. Fresh unmodified-renderer route
+and renderer verification is now complete on both phones, as recorded below.
+The subsequent Multi-series demo correction was rebuilt and installed on both.
+See the exact next tasks at the end of this report.
+
+## Fresh unmodified Seeker verification — 2026-10-10
+
+Built a new arm64-v8a, locally signed Release APK with an embedded Hermes bundle
+and unmodified Skia 3.3.0. All eight native files match the recorded published
+source hashes; native build logs confirm recompilation. The installed APK's
+SHA-256 matches the new build (`14362ceaadcf0f6b6c1407e788fe3ccb836c7ed14fc75e7603e0b14c0bda2536`).
+No emulator was used. Dawn selected Vulkan on Seeker's Mali-G615 MC2.
+
+The fresh app passed **45/45 route and return-to-root checks**; all screenshots
+were visually reviewed. The separate renderer route passed **23/23 checks**,
+requiring actual text/circle and imperative-glyph pixels, including standard/high
+format changes, resize, snapshot creation, older-recording replay and background
+return. Focused opaque/transparent, dark-theme and loading/recovery checks
+rendered correctly with the RN sibling overlay visible. Pinch enlarged candles
+and narrowed the visible time window; one-finger historical pan shifted the data.
+A candle-feedback drag produced **nine candle entries and two exits/gaps**.
+Both bundled JetBrains Mono and Google Sans Code rendered chart text.
+The captured app-PID log contained no observed fatal error, device loss,
+recording rejection or validation failure. Repeated Mali format-probe warnings
+remain in the log and are not counted as fatal renderer failures.
+
+### Exploratory Android presentation cadence
+
+SurfaceFlinger returned nonzero, advancing presentation timestamps for the
+app's main window, which contains the default transparent Skia TextureView.
+The second latency column is the actual presentation timestamp, per the
+[AOSP FrameTracker implementation](https://android.googlesource.com/platform/frameworks/native/+/master/services/surfaceflinger/FrameTracker.cpp).
+The reported display period was 8,333,333 ns, approximately **120 Hz**.
+
+Three successive default Line & area windows used the existing warm process
+after the route sweep. Each waited an additional 20s, then requested 30s of
+capture; observed spans were 30.05–30.07s. Polling every 0.5s retained raw ring
+contents, deduplicated actual timestamps, excluded zero/pending fences and
+verified overlap between every adjacent poll. All three had continuous coverage.
+No screenshot, screen recording or gesture ran during the measured windows.
+
+| Run | Presentations | Mean cadence | p95 / p99 interval | Worst | Intervals >12.5ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 3,184 | 105.90 Hz | 16.63 / 16.70ms | 24.98ms | 426 / 3,183 |
+| 2 | 3,153 | 104.89 Hz | 16.63 / 16.72ms | 25.01ms | 447 / 3,152 |
+| 3 | 3,147 | 104.62 Hz | 16.64 / 16.70ms | 25.02ms | 457 / 3,146 |
+
+These are app-window presentation intervals, not isolated GPU draw time or
+engine FPS. The app did not deliver a new window buffer on every 120 Hz refresh
+in these captures. There is no old-Skia or seeded-input control, and these are
+warm sequential captures rather than the planned cold-start paired experiment.
+They establish a working measurement method and current observations; they do
+not establish a migration regression or complete the renderer comparison.
+
+Commands, new APK and hashes, all route/renderer screenshots, focused checks,
+app logs, raw latency polls and timestamp samples are retained under
+`.agent-device/skia409/unpatched-android-20261010/`. The new iPhone build and
+its resolved XCTest authorization blocker are recorded under
+`.agent-device/skia409/unpatched-ios-20261010/`.
+
+### iPhone and Multi-series follow-up
+
+After the user authorized XCTest on the phone, the fresh unmodified Release
+build passed **45/45 route/return checks** and **23/23 rendered-pixel checks**.
+All 45 screenshots were visually reviewed. The renderer checks include font
+glyphs, format/resize, snapshots, replay of an older recording and background
+return. These checks ran before the following demo-only change; renderer code
+and native sources were unchanged by it.
+On the later build, bundled JetBrains Mono/Google Sans Code and historical pan
+were checked again; a candle-feedback drag produced nine entries and two
+exits/gaps. Physical iOS pinch synthesis is unsupported by the device
+tool; the user's earlier manual pinch confirmation remains the iPhone evidence.
+The fresh iPhone sweep has screenshot/snapshot coverage, without a continuous
+native console capture for its entire duration.
+Opaque/dark and loading-to-live recovery also rendered on iPhone with its RN
+sibling overlay visible.
+
+During focused Android QA the user reported that Multi-series paths jumped to
+new Y-axis positions. A screen recording reproduced the jump when revealing
+a series: the demo omitted `rangeAnimation.animateExpansion`, so outward
+bounds snapped under the existing documented library default. The demo now
+enables this option initially and exposes **Animate expansion** beside
+**Responsiveness**. Library defaults and recorded prices are unchanged.
+
+A new Release APK was installed on Seeker; its hash matches the build
+(`29d767b251d4bd7d0049fa5a1a42c4224ed590e0faa97f7ad2cf8ace75cd8f94`),
+and `librnskia.so` is identical to the full-sweep build. With the same paused
+feed, toggling Yes/No on and off verified both range expansion and contraction.
+At one fixed horizontal position, the orange curve moved about 55 pixels in
+one sampled step with expansion disabled; enabled, it moved through multiple
+intermediate positions over roughly 0.3s. These 30fps screen-recording samples
+verify visible easing, not frame pacing. Videos, frames and pixel trajectories
+are retained alongside the Android QA evidence. The corrected demo also builds
+and renders on iPhone, where hiding/showing Yes was checked.
+
+The user subsequently reported choppy easing. Temporary render counters in a
+local Seeker Release build measured **zero React re-renders** in MultiSeriesScreen,
+SeriesReadout, LiveChartSeries, SeriesChartStack, YAxisOverlay, MultiSeriesStroke,
+MultiSeriesDots and CustomTargetTag during 15.048s live idle, eight visibility
+toggles over 21.964s and another 15.050s idle. Initial mount/layout renders were
+excluded. The legend was not instrumented; it updates its own React snapshot
+on a visibility tap. This does not establish every possible control's behavior,
+but the measured animation did not repeatedly render the chart tree. All probe
+edits were restored byte-for-byte, and the probe build was removed from Seeker.
+
+A separate 30s app-window capture in the instrumented Multi-series app, after
+the toggles, had continuous coverage: **109.45 presentations/s**, p95/p99
+16.63/16.66ms, worst 24.94ms and 324/3,291 intervals over 12.5ms on the 120Hz
+display. It includes post-toggle idle; it is not an isolated transition capture,
+GPU profile, old-renderer comparison or proof of perfect pacing.
+
+Then, with probes removed, compared the existing Default (0.12) and Smooth
+(0.03) presets using the **same paused history**. Revealing No moved the orange
+curve at a fixed horizontal position. At 60fps sampling, the largest step fell
+from **12.85px to 4.85px**, and its 10–90% transition widened from approximately
+**0.23s to 0.90s**. The demo now starts with Smooth, retaining both faster presets.
+This makes the easing gentler; it is not a claim that changing smoothing improves
+render throughput. The recordings, sampled trajectories, render log, phase
+boundaries and raw SurfaceFlinger timestamps are retained under the Android
+evidence folder.
+
+Typecheck/lint and **148 suites / 2,139 tests** (five skipped) pass after the
+change. One run during the native build hit a five-second LiveChart test
+timeout; the complete rerun after the build passed. React Doctor remains
+**98/100**, with no diagnostics.
 
 The working-tree candidate replaces the Shopify renderer with
 `react-native-skia@3.3.0`, the latest published 3.3.x at verification time. This
@@ -692,7 +815,9 @@ route snapshots and recordings provide the foreground observations.
    transparent canvases, format/resize, snapshots and background return. Pass:
    every route returns to the root, text/paths render, interactions respond,
    and native logs contain no fatal errors, device loss or recording rejections.
-   Last-installed binaries still contain the historical patch until rebuilt.
+   Completed on 2026-10-10: both rebuilt phone apps passed all 45 route checks
+   and 23 renderer checks. The focused Seeker checks and subsequent Multi-series
+   demo correction are recorded at the start of this report.
 2. **Compare old 2.6.4 against unmodified 3.3.0 for these three exact workloads.**
    First add a QA-only seeded `random01` feed and a repeatable gesture script for
    these routes; their normal simulated feed is not deterministic. Keep React
@@ -713,8 +838,10 @@ route snapshots and recordings provide the foreground observations.
    iPhone, use Metal System Trace app-surface presentation intervals as above.
    On Seeker, first identify the chart's layer with `dumpsys SurfaceFlinger
    --list`, then validate nonzero, advancing per-layer presentation timestamps
-   from `--latency <layer>` before collecting samples. Poll once per second,
-   deduplicate timestamps and retain gaps. If layer timestamps are unavailable,
+   from `--latency <layer>` before collecting samples. For the default transparent
+   chart, the validated layer is its containing app window. Poll every 0.5s to
+   overlap the 127-row ring at 120Hz; deduplicate timestamps and retain gaps.
+   If layer timestamps are unavailable,
    report Android pacing as blocked by measurement coverage, with the captured
    output; do not substitute RN/engine FPS. Android 16's
    [SurfaceFlinger implementation](https://android.googlesource.com/platform/frameworks/native/+/refs/heads/android16-release/services/surfaceflinger/SurfaceFlinger.cpp)

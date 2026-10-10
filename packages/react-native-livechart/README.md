@@ -70,8 +70,8 @@ LiveChart 5.0.0-rc.0 targets `react-native-skia@^3.3.0`, React 19+, and React
 Native 0.78+. Graphite requires iOS 15.1+ and Android API 26+ with Vulkan, and a
 native build rather than Expo Go. Physical iPhone and Android/Vulkan QA is
 documented, including a historical patch experiment. That patch has been removed;
-a fresh unmodified-renderer device check is pending. Maintained Skia v2 support
-is not declared. See the [installation and migration guide](https://react-native-livechart.brandtnewlabs.com/installation)
+fresh unmodified-renderer route and recorder checks passed on both phones.
+Maintained Skia v2 support is not declared. See the [installation and migration guide](https://react-native-livechart.brandtnewlabs.com/installation)
 and [issue #409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
 
 ### React Native architecture
