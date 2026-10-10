@@ -1,4 +1,4 @@
-import { Skia } from "@shopify/react-native-skia";
+import { Skia } from "react-native-skia";
 import { useMemo } from "react";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 

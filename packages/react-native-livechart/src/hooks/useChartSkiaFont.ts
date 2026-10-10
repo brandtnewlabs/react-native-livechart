@@ -4,7 +4,7 @@ import {
   useFont,
   type SkFont,
   type SkFontMgr,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { useMemo } from "react";
 
 import { resolveFontConfig } from "../core/resolveConfig";

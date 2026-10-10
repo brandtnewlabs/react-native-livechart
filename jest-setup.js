@@ -82,7 +82,7 @@ globalThis.__customSerializationRegistry.push({
   unpack: () => ({}),
 });
 
-jest.mock("@shopify/react-native-skia", () => {
+jest.mock("react-native-skia", () => {
   const React = require("react");
   const { View } = require("react-native");
 

@@ -1,4 +1,4 @@
-import { Path, Shader, Skia, type SkPath } from "@shopify/react-native-skia";
+import { Path, Shader, Skia, type SkPath } from "react-native-skia";
 import type { SharedValue } from "react-native-reanimated";
 
 /**

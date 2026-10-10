@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0-rc.0] — Unpublished candidate
+
+Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made.
+
+### Breaking
+
+- Replace the `@shopify/react-native-skia` peer with `react-native-skia@^3.3.0`.
+  Apps must migrate their renderer imports and font/image types, install one
+  native Skia package, and rebuild. React 19+ and React Native 0.78+ are now
+  required. Maintained Skia v2 support is not declared in this candidate.
+
+### Changed
+
+- Migrate all runtime, example, mock, and declaration imports to
+  `react-native-skia` 3.3 (Graphite).
+  Existing published LiveChart 4.x releases keep the Shopify peer.
+  Native iOS and Android/Vulkan verification is tracked in
+  [#409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
+- Add an explicit `publish:lib:next` command and a prepublish check that rejects
+  prerelease publication to `latest`. Stable `latest` remains 4.x.
+
+### Added
+
+- Include the tested, optional `patches/react-native-skia+3.3.0.patch` in the
+  package with explicit consumer instructions. The canonical example patch is
+  copied during `prepack`; installing LiveChart does not patch native peers.
+
+### Fixed
+
+- Example app: give Kraken's header matching left/right widths so the centered
+  title no longer overlaps the Back button's Android touch area.
+- Example app: apply a local `react-native-skia@3.3.0` native patch that preserves
+  the glyph atlas across ordered declarative frames, restarting streams on
+  target changes or failures and keeping consumed frames out of retries, while
+  retaining imperative recording replay. Consumers must explicitly opt into the
+  included patch; the fix is submitted upstream in
+  [React Native Skia #4193](https://github.com/wcandillon/react-native-skia/pull/4193)
+  and still requires upstream review, merge and release to become available
+  without that manual workaround.
+
 ## [4.28.0] — 2026-10-09
 
 ### Added

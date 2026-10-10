@@ -1,5 +1,5 @@
 import { buildLineFillPaths } from "../draw/lineFillPaths";
-import { Skia, type SkPath } from "@shopify/react-native-skia";
+import { Skia, type SkPath } from "react-native-skia";
 import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type {

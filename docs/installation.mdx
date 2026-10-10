@@ -6,6 +6,12 @@ description: "Install react-native-livechart and configure its peer dependencies
 
 ## Install
 
+<Note>
+  LiveChart 5.0.0-rc.0 is prepared locally for `react-native-skia` 3.3+. Published
+  LiveChart 4.x still requires `@shopify/react-native-skia`. Use the matching
+  LiveChart release when upgrading; changing only the app's renderer is insufficient.
+</Note>
+
 ```bash
 npm install react-native-livechart
 ```
@@ -19,15 +25,81 @@ Expo SDK.
 | ------------------------------ | ----------------------------------- |
 | `react`                        | UI                                  |
 | `react-native`                 | Host                                |
-| `@shopify/react-native-skia`   | Canvas rendering                    |
+| `react-native-skia`             | Canvas rendering                    |
 | `react-native-reanimated`      | Shared values, animations, worklets |
 | `react-native-worklets`        | Required by Reanimated 4+           |
 | `react-native-gesture-handler` | Pan / scrub gestures                |
 
-Follow the install docs for [Skia](https://shopify.github.io/react-native-skia/docs/getting-started/installation),
+Follow the install docs for [Skia](https://wcandillon.github.io/react-native-skia/docs/getting-started/installation),
 [Reanimated](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started),
 and [Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler/docs/fundamentals/installation)
 for your toolchain.
+
+## LiveChart 5 release candidate
+
+The unpublished **5.0.0-rc.0** package targets `react-native-skia` **^3.3.0**, React **19+**, and
+React Native **0.78+**. The example pins Skia **3.3.0**. Maintained Skia 2.15.1
+support is pending verification and is not included in the candidate peer range.
+
+Remove `@shopify/react-native-skia`, install `react-native-skia@3.3.0`, and rename
+your Skia imports, including custom chart children and font/image types. Never
+install both names together: they contain the same native module. Reinstall pods
+and rebuild the native app after changing the renderer.
+
+Graphite requires iOS **15.1+** and Android **API 26+ with Vulkan**. The example's
+iOS deployment target is 16.4; `expo-build-properties` sets Android's minimum SDK
+to 26. Use a native development or Release build; Expo Go
+does not contain the v3 native runtime. Review the upstream
+[migration guide](https://wcandillon.github.io/react-native-skia/docs/getting-started/migration/)
+for toolchain configuration. Physical iPhone and Solana Seeker Android/Vulkan QA
+passed, including the full 45-route app sweep on each device. Maintained-v2
+support is not declared. Detailed results and remaining stable-release checks
+are tracked in [issue #409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
+
+### Test the unpublished candidate
+
+From this repository, create a local package with `npm run pack:lib`. Install
+the resulting tarball into your app, alongside the renderer:
+
+```bash
+npm uninstall @shopify/react-native-skia
+npm install /path/to/react-native-livechart-5.0.0-rc.0.tgz react-native-skia@3.3.0
+```
+
+The published `latest` remains LiveChart 4.x. When prerelease publication is
+explicitly requested, `npm run publish:lib:next` selects the `next` dist-tag.
+A prepublish check rejects prerelease publication to `latest`; npm's workspace
+publish command can otherwise ignore `publishConfig.tag`.
+
+### Optional Skia 3.3.0 native patch
+
+Skia 3.3.0 has glyph-atlas allocation/free churn under animated text rendering.
+No retained-memory leak was demonstrated. The corrected native patch is
+submitted in [Skia PR #4193](https://github.com/wcandillon/react-native-skia/pull/4193)
+and included at `node_modules/react-native-livechart/patches/react-native-skia+3.3.0.patch`.
+It is optional and is not applied by installing LiveChart. The final device QA
+and the allocation correction measurements used this exact patch.
+
+To use that tested native configuration, pin Skia to exactly 3.3.0:
+
+```bash
+npm install --save-exact react-native-skia@3.3.0
+npm install --save-dev patch-package
+mkdir -p patches
+cp node_modules/react-native-livechart/patches/react-native-skia+3.3.0.patch patches/
+npx patch-package --error-on-fail
+```
+
+Add `patch-package --error-on-fail` to the app's `postinstall` script, retaining
+any existing commands. Ensure `patch-package` is available where native builds
+run, reinstall pods as appropriate, and rebuild the app. Reassess or remove this
+version-specific patch when upgrading Skia. Upstream review, CI, merge and release
+are still pending; this candidate does not claim that the npm Skia release already
+contains the correction or that frame pacing improved.
+
+The removed Canvas props (`debug`, `colorSpace`, `androidWarmup`) and removed
+`NativeSkiaViewProps` type are not used or exported by LiveChart. The existing
+`canvasMode` API continues to map to Skia's `opaque` Canvas prop.
 
 ## Babel
 
@@ -145,7 +217,7 @@ export default function App() {
 
 react-native-livechart targets **iOS and Android** via React Native (bare workflow or Expo).
 
-**React Native Web is not supported.** The chart relies on `@shopify/react-native-skia` and
+**React Native Web is not supported.** The chart relies on `react-native-skia` and
 Reanimated worklets running on the native UI thread; the same code path doesn't run under
 `react-native-web`. If you ship to web, render a different chart (or a static fallback) when
 `Platform.OS === "web"`.

@@ -4,7 +4,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { Canvas, Group, Rect, type SkFont } from "@shopify/react-native-skia";
+import { Canvas, Group, Rect, type SkFont } from "react-native-skia";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";

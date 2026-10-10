@@ -1,4 +1,4 @@
-import { matchFont } from "@shopify/react-native-skia";
+import { matchFont } from "react-native-skia";
 import { renderHook } from "@testing-library/react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { cancelAnimation, type SharedValue } from "react-native-reanimated";

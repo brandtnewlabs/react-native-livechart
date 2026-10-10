@@ -1,4 +1,4 @@
-import { Skia, type SkPath } from "@shopify/react-native-skia";
+import { Skia, type SkPath } from "react-native-skia";
 import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { MAX_MULTI_SERIES } from "../constants";

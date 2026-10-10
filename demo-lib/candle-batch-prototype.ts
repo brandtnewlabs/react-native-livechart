@@ -1,4 +1,4 @@
-import type { Skia } from "@shopify/react-native-skia";
+import type { Skia } from "react-native-skia";
 import { CANDLE_METRICS_DEFAULTS } from "../packages/react-native-livechart/src/constants";
 import type {
   CandleMetrics,
