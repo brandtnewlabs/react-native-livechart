@@ -11,12 +11,15 @@ files tested here; upstream originals and submitted changes were verified agains
 the pre-patch and compiled-source SHA-256 manifests. The PR is open and mergeable.
 GitHub CI reports `action_required` with no jobs started, awaiting upstream
 maintainer workflow approval. Upstream review, CI, merge and a renderer release
-remain outstanding; consumers still need the local patch until then.
+remain outstanding. This is a separate upstream optimization investigation;
+the allocation evidence does not establish a regression from Skia 2.6.4.
 
 The working-tree candidate is now prepared as unpublished **LiveChart 5.0.0-rc.0**;
 see [release preparation](skia-3-release-preparation.md) for the verified local
-tarball and optional consumer patch. Physical QA below preceded the metadata bump;
-the eight native patch sources are unchanged.
+tarball. On 2026-10-10 the experimental patch was removed from the example,
+installed native sources and package at the user's request. Physical QA below
+is historical: its final sweeps used the patch. Fresh unmodified-renderer device
+verification is pending; see the exact next tasks at the end of this report.
 
 The working-tree candidate replaces the Shopify renderer with
 `react-native-skia@3.3.0`, the latest published 3.3.x at verification time. This
@@ -36,9 +39,10 @@ cycles, eight labels-on/off allocation captures, and the same 45-route sweep
 on the physical Seeker. Text-only reproduction isolated freed glyph-atlas
 allocation churn. A subsequent local native patch eliminates that bucket's churn
 in two fresh corrected-patch captures. Both final phone builds passed all 45
-routes, and the Kraken header correction passes center taps on both. The renderer patch is applied to the example
-app through `patch-package`; the published peer does not contain it. Broader
-interaction/renderer comparisons and upstream integration remain open.
+routes, and the Kraken header correction passes center taps on both. Those final
+builds used the experimental renderer patch, now removed. It is not included
+in the candidate or applied by the example's postinstall. The old-version
+allocation behavior has not been measured with the same text-isolation workload.
 
 ## Environment and checks
 
@@ -340,9 +344,9 @@ were retried from the same completed traces; only complete, parsed XML with
 full process sample coverage was used. No screen recording or screen automation
 ran concurrently with the measured windows.
 
-## Measured corrections after allocation isolation
+## Historical patch experiment after allocation isolation
 
-`patches/react-native-skia+3.3.0.patch` corrects the example app's native recorder
+The now-removed `patches/react-native-skia+3.3.0.patch` changed the example app's native recorder
 configuration. Skia's default unordered recorder invalidates its atlases at each
 `snap()`. Declarative frames now enable `fRequireOrderedRecordings` so their atlas
 survives between frames. Imperative `SkiaGraphiteView` recordings keep the
@@ -404,12 +408,13 @@ also passed all 23 checks per phone.
 The eight original installed C++ files were restored and
 `npx patch-package --error-on-fail` successfully reapplied the final patch.
 All eight resulting SHA-256 hashes match the native build sources; existing
-Metro patches were preserved. The root postinstall already applies these
-patches. **The library tarball does not patch its consumer's Skia peer.**
-The unpublished 5.0.0-rc.0 tarball now includes this exact patch and explicit
-consumer opt-in instructions. Fresh-consumer application was verified against
-all eight compiled-source hashes. Upstream integration is still needed to remove
-the manual workaround.
+Metro patches were preserved. At the time, the root postinstall applied the
+experimental Skia patch and the candidate included a consumer opt-in copy.
+Fresh-consumer application was verified against all eight compiled-source
+hashes. Both copies and the packaging hooks have since been removed, and all
+eight installed native files restored to the published 3.3.0 hashes. The prior
+patch and tarball are retained with the ignored local evidence. The current
+candidate ships no Skia patch and does not require the upstream optimization.
 
 Kraken's title previously extended left over its Back button via a negative
 margin. Its header now reserves a left slot matching the three right-side icons
@@ -672,23 +677,67 @@ validated before using the results. Raw traces/XML, all failed exports, exact
 commands, hashes and summaries are retained in `glyph-fix/safe-pacing/`,
 `control-pacing/`, `repeat-pacing-retry/` and `pacing-comparison.json`.
 
-## Remaining release checks
+## Concrete next tasks after patch removal
 
 Startup console output showed existing background-mode warnings, but no Skia
 initialization error. That console stream ended during an intentional cold
 relaunch and is not a continuous log of the entire screen sweep. The sweep's
 route snapshots and recordings provide the foreground observations.
 
-The 20-cycle cleanup comparison, labels-on/off isolation and physical
-Android/Vulkan QA are complete. The isolated glyph-atlas allocation churn is
-corrected in the local example app by the native patch above; upstream integration
-is submitted in [PR #4193](https://github.com/wcandillon/react-native-skia/pull/4193)
-and still needs upstream CI, review, merge and release for consumers. Kraken's Android Back hit area is corrected and
-verified. Before release, broaden
-frame-pacing checks to candle/multi-series interactions and Android, compare
-renderers, repeat CPU/memory comparisons on broader devices, and repeat the
-compatibility checks with maintained `react-native-skia@2.15.1` if claiming dual
-support. The candidate peer range remains `^3.3.0`; dual-v2/v3
-support is not declared. Physical QA used the previous 4.28.0 library metadata;
-the package is now prepared locally as 5.0.0-rc.0 with the same optional native
-patch included for consumer opt-in. No release has been published.
+1. **Rebuild unmodified 3.3.0 and repeat the functional checks on the two phones.**
+   Use iPhone von Lennart and the Solana Seeker, locally signed, unpublished
+   builds with embedded Hermes bundles. Repeat the existing 45-route sweep and
+   23 renderer checks on each phone. Explicitly exercise pinch, historical pan,
+   candle scrub callbacks, multi-series visibility, bundled fonts, opaque and
+   transparent canvases, format/resize, snapshots and background return. Pass:
+   every route returns to the root, text/paths render, interactions respond,
+   and native logs contain no fatal errors, device loss or recording rejections.
+   Last-installed binaries still contain the historical patch until rebuilt.
+2. **Compare old 2.6.4 against unmodified 3.3.0 for these three exact workloads.**
+   First add a QA-only seeded `random01` feed and a repeatable gesture script for
+   these routes; their normal simulated feed is not deterministic. Keep React
+   Native, Hermes, Worklets mode, chart code, data seed, dimensions,
+   device refresh rate and gesture sequence fixed. Switch renderer dependencies
+   and import names sequentially in the existing checkout, preserving and
+   restoring its files; never install both renderer packages together.
+
+   | Route | Configuration and 30-second measured action |
+   | --- | --- |
+   | `/demo/line-and-area` | Default line/area, axes, badge and pulse; normal 5 updates/s feed; leave live for 30s |
+   | `/demo/candlestick` | `15m · 1m`, volume on, normal 2 updates/s feed; five identical left/right historical pan pairs, one pair every 6s |
+   | `/demo/multi-series` | All three series visible, default 30s window; scrub left/right for 20s, toggle Yes off at 20s and on at 25s |
+
+   Cold-launch, wait 20s, then measure 30s. Do three captures per renderer,
+   workload and phone: **36 captures total**. Use paired build rounds in the
+   order old→new, new→old, old→new; let each phone cool between rounds. On the
+   iPhone, use Metal System Trace app-surface presentation intervals as above.
+   On Seeker, first identify the chart's layer with `dumpsys SurfaceFlinger
+   --list`, then validate nonzero, advancing per-layer presentation timestamps
+   from `--latency <layer>` before collecting samples. Poll once per second,
+   deduplicate timestamps and retain gaps. If layer timestamps are unavailable,
+   report Android pacing as blocked by measurement coverage, with the captured
+   output; do not substitute RN/engine FPS. Android 16's
+   [SurfaceFlinger implementation](https://android.googlesource.com/platform/frameworks/native/+/refs/heads/android16-release/services/surfaceflinger/SurfaceFlinger.cpp)
+   exposes those commands. [Perfetto's FrameTimeline documentation](https://perfetto.dev/docs/data-sources/frametimeline)
+   excludes SurfaceView coverage, so a root-window FrameTimeline score alone
+   is insufficient for the opaque chart.
+
+   Deliver one table with each run's mean presentation cadence, p95/p99 interval,
+   worst interval and fraction over 1.5 display periods, plus raw samples and
+   validated device/layer attribution. Predeclare the triage rule: investigate
+   if new Skia loses more than 5% of mean cadence or adds at least one display
+   period to p99 in at least two of three paired runs. This is the comparison's
+   investigation threshold, not a claim of a universal performance budget.
+3. **Publish the RC under `next` once requested.** The package is prepared as
+   5.0.0-rc.0, with only the `react-native-skia@^3.3.0` peer. Report actual
+   unpatched-device results and any reproducible regression before calling a
+   stable release ready. No release has been published.
+
+The old renderer may have similar allocation churn; that specific comparison
+has not been done. If pursuing the allocation question separately, repeat the
+existing fixed-inset chart and three-Text control with labels on/off on Skia
+2.6.4, two 30-second Allocations captures per scene/state after a 20-second
+warmup (eight captures), and compare freed-byte turnover and teardown memory
+against the saved 3.3.0 controls. It is not a release blocker on current evidence.
+Upstream PR #4193, additional GPUs, API 26/16 KiB runtime coverage and maintained
+v2 support are separate follow-ups, not unstated requirements for this RC.

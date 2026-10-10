@@ -1,83 +1,64 @@
 # LiveChart 5 release candidate for Skia 3.3
 
 Prepared locally on 2026-10-10 as **5.0.0-rc.0**. No npm publication, Git tag or
-GitHub release was created. The registry's stable `latest` remains **4.28.0**.
+GitHub release was created. At preparation time the registry's stable `latest`
+was **4.28.0**.
 
-The runtime migration and native investigation are documented in
-[issue-409-qa.md](issue-409-qa.md). This preparation changes package metadata,
-documentation and packaging checks; it does not add a new native renderer change
-or rerun device profiling after the metadata bump.
+## Current renderer configuration
+
+The candidate uses the published, **unmodified `react-native-skia@3.3.0`**.
+At the user's request, the experimental glyph-atlas patch was removed from the
+example, installed native sources and package. All eight installed C++ files
+were restored to their recorded original 3.3.0 SHA-256 hashes. The tarball ships
+no native patch, and there are no consumer patch/rebuild instructions.
+The existing Metro/Worklets patches remain in the example.
+
+The allocation measurements do not establish a regression from Skia 2.6.4.
+No retained-memory leak was demonstrated. The upstream optimization investigation
+in [Skia PR #4193](https://github.com/wcandillon/react-native-skia/pull/4193) is
+separate from this migration and is not a release prerequisite.
+
+[issue-409-qa.md](issue-409-qa.md) preserves the measurement history. Its final
+45-route sweeps and 23 renderer checks per phone used the experimental patch;
+they are not fresh verification of the current unmodified-renderer build.
+Already installed phone binaries retain that patch until rebuilt.
 
 ## Package
 
 - `react-native-skia@^3.3.0` stays a peer, with React 19+, React Native 0.78+,
   Reanimated 4+, Worklets 0.7+ and Gesture Handler 2+.
-- The example and consumer verification pin Skia **3.3.0**. Maintained Skia v2
-  support is not declared; it is not a prerequisite for a v3-only candidate.
-- Source and emitted declarations import the new renderer. The root example
+- The example pins Skia **3.3.0**. Maintained v2 support is not declared.
+- Source and emitted declarations use the new renderer. The root example
   remains private at version 1.0.0; the library is public at 5.0.0-rc.0.
 - `publish:lib:next` explicitly selects **`next`**. A prepublish check rejects
-  prerelease publication to `latest`, since a workspace publish rehearsal ignored
-  `publishConfig.tag`. Stable publication must intentionally select `latest` after
-  changing to a stable version.
-- `prepack` builds declarations, mirrors the root README, and copies the
-  canonical root `patches/react-native-skia+3.3.0.patch` into the package. The
-  generated copy is ignored by Git and included by npm's package allowlist.
+  prerelease publication to `latest`, since a workspace rehearsal ignored
+  `publishConfig.tag`.
+- `prepack` builds declarations and mirrors the root README. The package
+  allowlist is runtime source, declarations/maps, metadata, README and license.
+  The consumer check explicitly rejects any packaged `.patch` file.
 
-The local tarball is
-`.agent-device/skia409/release-prep/react-native-livechart-5.0.0-rc.0.tgz`
-(478,862 bytes, 457 files). It contains runtime source, declarations/maps,
-package metadata, README, license and the optional patch. No demo, test or
-profiling artifact ships in it.
+The replacement candidate is
+`.agent-device/skia409/release-prep/react-native-livechart-5.0.0-rc.0.tgz`.
+It is 474,907 bytes with 456 files and zero patches; all 302 source/declaration
+files were audited for old renderer imports.
+The prior patched tarball is historical evidence under
+`.agent-device/skia409/patch-removal/previous-patched-candidate.tgz`.
 
-## Consumer workaround
+## Verification and evidence
 
-Unpatched Skia 3.3.0's animated text rendering still has glyph-atlas
-allocation/free turnover. The included patch is the exact corrected native
-source tested on both phones; installing LiveChart does **not** apply it.
-The [installation guide](installation.mdx) and packaged README explain how to
-pin exactly 3.3.0, copy the patch into the app's `patches/` directory, apply it
-with `patch-package`, preserve it through `postinstall`, and rebuild the app.
+Before patch removal, typecheck/lint, 148 suites / 2,139 tests (five skipped),
+declaration build, packed-consumer type checks, normal installation and a valid
+peer tree passed. Packed iOS Hermes Bundle Mode export, npm 10/11 install dry-runs,
+React Doctor (98/100, no diagnostics) and the prerelease publication guards also
+passed. The prior patch application checks are historical, not current packaging
+requirements.
 
-[Upstream Skia PR #4193](https://github.com/wcandillon/react-native-skia/pull/4193)
-remains open. Upstream CI/review/merge/release is needed to remove the manual
-workaround. The candidate can be tested while that proceeds, using the explicit
-consumer patch. Neither a retained-memory leak nor a general frame-pacing
-improvement is claimed.
-
-## Verification
-
-All checks completed locally:
-
-- `npm run verify`: typecheck and lint passed; **148 suites, 2,139 tests passed**,
-  five skipped.
-- Workspace `npm pack` built declarations and produced the candidate tarball.
-  All **302 source/declaration files** were audited for old renderer imports;
-  the full 457-file allowlist was checked separately, including declaration maps.
-- A fresh consumer installed the tarball and exact native peers without
-  `--legacy-peer-deps`. Its complete npm dependency tree was valid and contained
-  no `@shopify/react-native-skia` package.
-- Consumer TypeScript checks passed for both chart component exports and
-  `DataSourceParam`, `SkFontMgr` and `SkImage` used in exported font/marker types.
-- Normal consumer installation with npm lifecycle scripts enabled passed; the
-  native peer remained unpatched until explicit opt-in.
-- Before explicit opt-in, all eight consumer Skia files matched the unpatched
-  3.3.0 sources. Applying the patch succeeded, and all eight then matched the
-  compiled/device-tested SHA-256 manifest.
-- `npm run verify:bundle-mode-consumer` passed: an iOS Hermes bundle was exported
-  from the packed library with Bundle Mode. The continuing CI check now audits
-  peer/version metadata, runtime/declaration imports and the patch's exact hash.
-- npm 10 and npm 11 lockfile/install dry-runs passed; the only lock entry changed during
-  release preparation was the library version. Existing migration lock changes
-  were preserved.
-- An untagged workspace publish dry-run was rejected by the new prerelease
-  check. `npm run publish:lib:next -- --dry-run` passed and selected `next`.
-  Both checks were rehearsals; nothing was uploaded to npm.
-
-Logs, the dependency tree, tarball contents, hashes and exact summaries are
-retained in `.agent-device/skia409/release-prep/`. The temporary consumer's
-`node_modules` is removed after verification. Instruments and device sessions
-remain closed.
+Patch-removal checks passed and are recorded under `.agent-device/skia409/patch-removal/`:
+`npm run verify` (148 suites / 2,139 tests, five skipped), a replacement pack
+audited for zero patches/old imports, normal lifecycle-enabled consumer install
+(without installing peers in that isolated install check), and a fresh packed
+iOS Hermes Bundle Mode export. Instruments and device sessions
+remain closed; no new physical QA is claimed by these package checks.
 
 To rebuild the local candidate:
 
@@ -87,22 +68,29 @@ npm run pack:lib
 npm run verify:bundle-mode-consumer
 ```
 
-## Next release steps
+## Exact next tasks
 
-The pre-commit review corrected the packed consumer fixture to use the public
-`time` field, removed an overstated changelog claim and an accidental pnpm
-setting, and restored existing Linux libc metadata for unchanged dependencies.
-`npm run verify` passed again; React Doctor remained at 98/100 with no diagnostics.
-The packed Bundle Mode check and npm 10/11 install dry-runs were also repeated.
-Unrelated working-tree files are excluded from this commit.
+1. **Rebuild unmodified 3.3.0 on iPhone von Lennart and Solana Seeker.** Repeat
+   the 45-route sweep and 23 renderer checks on each, including fonts, pinch,
+   historical pan, candle feedback, multi-series visibility, opaque/transparent
+   canvases, format/resize, snapshots and background return. Confirm no missing
+   rendering, navigation failures, fatal logs or recording rejections.
+2. **Measure three named workloads against old Skia 2.6.4:** default
+   `/demo/line-and-area`; `/demo/candlestick` at `15m · 1m` with volume and five
+   historical pan pairs; `/demo/multi-series` with three series, 20s scrub and
+   Yes off/on at 20s/25s. Cold-launch, warm up 20s, capture 30s; three runs per
+   renderer/workload/phone, **36 captures**. Pair old/new rounds, hold the feed,
+   harness and display rate fixed (prepare a QA-only seeded feed and repeatable
+   gestures first), and report mean cadence, p95/p99, worst
+   interval and the fraction over 1.5 display periods. Investigate a greater
+   than 5% cadence loss or at least one display-period p99 increase repeated in
+   two of three pairs. See the [full capture and acceptance procedure](issue-409-qa.md#concrete-next-tasks-after-patch-removal),
+   including validation of Android chart-layer timestamps before collecting.
+3. **Publish 5.0.0-rc.0 under `next` when requested.** Report actual unpatched
+   device results and any reproducible regression before a stable release.
 
-1. An explicitly authorized prerelease can be published under `next`, with the
-   version-specific optional native patch and documented validation limits.
-   Publication has not been requested.
-2. Before a stable release, complete balanced broader frame-pacing comparisons
-   (candle/multi-series interactions and Android) and the remaining device checks
-   in [issue-409-qa.md](issue-409-qa.md). Decide whether to require a fixed Skia
-   release or retain the explicit consumer workaround.
-
-Dual-v2/v3 support is a separate compatibility task. Existing LiveChart 4.x
-releases remain available to Shopify Skia consumers.
+An identical-workload old-version allocation comparison is a separate,
+nonblocking investigation: fixed-inset chart and three-Text control, labels
+on/off, two captures per scene/state, eight 30s captures after a 20s warmup.
+Additional GPUs, API 26/16 KiB runtime coverage, and dual-v2 support are follow-up
+coverage tasks. They are not unstated gates for this v3-only RC.

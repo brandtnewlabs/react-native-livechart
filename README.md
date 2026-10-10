@@ -68,36 +68,11 @@ Follow the Skia, Reanimated, and Gesture Handler install docs for your toolchain
 
 LiveChart 5.0.0-rc.0 targets `react-native-skia@^3.3.0`, React 19+, and React
 Native 0.78+. Graphite requires iOS 15.1+ and Android API 26+ with Vulkan, and a
-native build rather than Expo Go. Physical iPhone and Android/Vulkan QA passed;
-maintained Skia v2 support is not declared. See the [installation and migration guide](https://react-native-livechart.brandtnewlabs.com/installation)
+native build rather than Expo Go. Physical iPhone and Android/Vulkan QA is
+documented, including a historical patch experiment. That patch has been removed;
+a fresh unmodified-renderer device check is pending. Maintained Skia v2 support
+is not declared. See the [installation and migration guide](https://react-native-livechart.brandtnewlabs.com/installation)
 and [issue #409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
-
-### Skia 3.3.0 text allocation workaround
-
-Unpatched Skia 3.3.0 rebuilds glyph atlases during animated text rendering. Our
-physical-device investigation identified allocation/free turnover, with no
-retained-memory leak demonstrated. The tested native fix is submitted in
-[upstream PR #4193](https://github.com/wcandillon/react-native-skia/pull/4193),
-awaiting review and release. LiveChart includes an **optional** copy of that
-exact patch; installing LiveChart does not apply it automatically.
-
-For the same patched renderer configuration used in the final device QA, pin
-Skia to **exactly 3.3.0**, then run these commands in your app:
-
-```bash
-npm install --save-exact react-native-skia@3.3.0
-npm install --save-dev patch-package
-mkdir -p patches
-cp node_modules/react-native-livechart/patches/react-native-skia+3.3.0.patch patches/
-npx patch-package --error-on-fail
-```
-
-Add `patch-package --error-on-fail` to your app's `postinstall` script, preserving
-any existing commands. Reinstall pods as appropriate and rebuild the native app.
-Apply the patch in the environment that builds the native app; ensure
-`patch-package` is installed there. This patch is specific to 3.3.0 and must be
-removed or reassessed when upgrading Skia. Broader frame-pacing and device checks
-remain part of stable-release preparation.
 
 ### React Native architecture
 

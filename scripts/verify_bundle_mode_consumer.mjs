@@ -2,7 +2,6 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import {
   mkdirSync,
   mkdtempSync,
@@ -223,13 +222,10 @@ registerRootComponent(App);
       `packed renderer import was not migrated: ${file}`,
     );
   }
-  const patchName = "react-native-skia+3.3.0.patch";
-  const hash = (file) =>
-    createHash("sha256").update(readFileSync(file)).digest("hex");
-  assert.equal(
-    hash(path.join(installedRoot, "patches", patchName)),
-    hash(path.join(root, "patches", patchName)),
-    "consumer patch must match the canonical device-tested native patch",
+  assert.deepEqual(
+    findFiles(installedRoot, (name) => name.endsWith(".patch")),
+    [],
+    "the library must not ship native renderer patches",
   );
   assert.equal(
     installedManifest.exports["."]["react-native"],

@@ -21,7 +21,6 @@
   "files": [
     "dist",
     "src",
-    "patches",
     "LICENSE"
   ],
   "homepage": "https://react-native-livechart.brandtnewlabs.com",
@@ -60,7 +59,7 @@
   "scripts": {
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "build:types:watch": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
-    "prepack": "npm run build && node ./scripts/prepare-package.mjs",
+    "prepack": "npm run build && node -e \"require('fs').copyFileSync('../../README.md','README.md')\"",
     "prepublishOnly": "node ./scripts/check-publish-tag.mjs",
     "prepare": "node -e \"if (!require('fs').existsSync('dist/index.d.ts')) process.exit(1)\" || npm run build",
     "test": "npm --prefix ../.. run test:lib",

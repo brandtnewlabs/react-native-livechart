@@ -54,9 +54,6 @@ app-example
 # The package README is committed so monorepo metadata tools can discover it.
 # `prepack` refreshes the mirror from the repo-root README before publishing.
 
-# `prepack` also copies the canonical, tested root patch for consumer opt-in.
-/packages/react-native-livechart/patches/
-
 # Mintlify (local dev cache)
 .mint/
 .mintlify/

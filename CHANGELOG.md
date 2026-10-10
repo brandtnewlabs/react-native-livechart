@@ -27,25 +27,14 @@ Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made
   [#409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
 - Add an explicit `publish:lib:next` command and a prepublish check that rejects
   prerelease publication to `latest`. Stable `latest` remains 4.x.
-
-### Added
-
-- Include the tested, optional `patches/react-native-skia+3.3.0.patch` in the
-  package with explicit consumer instructions. The canonical example patch is
-  copied during `prepack`; installing LiveChart does not patch native peers.
+- Use the published, unmodified Skia 3.3.0 renderer. The experimental native
+  glyph-atlas patch was removed from the example and package before release;
+  the measurements do not establish an allocation regression from Skia 2.6.4.
 
 ### Fixed
 
 - Example app: give Kraken's header matching left/right widths so the centered
   title no longer overlaps the Back button's Android touch area.
-- Example app: apply a local `react-native-skia@3.3.0` native patch that preserves
-  the glyph atlas across ordered declarative frames, restarting streams on
-  target changes or failures and keeping consumed frames out of retries, while
-  retaining imperative recording replay. Consumers must explicitly opt into the
-  included patch; the fix is submitted upstream in
-  [React Native Skia #4193](https://github.com/wcandillon/react-native-skia/pull/4193)
-  and still requires upstream review, merge and release to become available
-  without that manual workaround.
 
 ## [4.28.0] — 2026-10-09
 

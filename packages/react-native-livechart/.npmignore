@@ -1,4 +1,4 @@
-# The `files` allowlist in package.json (dist, src, patches, LICENSE) is the source of
+# The `files` allowlist in package.json (dist, src, LICENSE) is the source of
 # truth for what ships. These globs only guard against co-located test files
 # accidentally landing under src/ — tests normally live in the sibling tests/ dir.
 **/*.test.ts
