@@ -58,6 +58,14 @@ points. Normal live appends with `series.modify(...)` remain supported. Use
 `snapKey` when the replacement should settle immediately instead of easing with
 the configured `smoothing`.
 
+## Initial rendering
+
+When history is already available, initialize `series` with that history before
+mounting the chart. This lets its lines, legend, and value-label layout initialize
+together. For asynchronous history, keep the loading state active until the feed
+is ready. Heavy controls or other surrounding UI can mount after the chart’s
+initial frame, as the Multi-series demo does.
+
 ## Replay clock
 
 Drive reconstruction or replay with a SharedValue rather than updating a

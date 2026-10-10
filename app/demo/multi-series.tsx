@@ -25,6 +25,7 @@ import { ACCENT, TIME_WINDOWS } from "../../demo-lib/shared";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 import { DemoScreen } from "../../demo-lib/DemoScreen";
+import { DeferredControls } from "../../demo-lib/DeferredControls";
 import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
@@ -64,6 +65,10 @@ function CustomTargetTag({ ctx }: { ctx: ReferenceLineRenderProps }) {
       </Text>
     </View>
   );
+}
+
+function renderCustomTarget(ctx: ReferenceLineRenderProps) {
+  return ctx.line.label === "QA custom" ? <CustomTargetTag ctx={ctx} /> : null;
 }
 
 const DATA_OPTIONS: { value: boolean; label: string }[] = [
@@ -490,14 +495,7 @@ export default function MultiSeriesScreen() {
                   ]
                 : undefined
             }
-            renderOffAxisReferenceLine={
-              showRef
-                ? (ctx) =>
-                    ctx.line.label === "QA custom" ? (
-                      <CustomTargetTag ctx={ctx} />
-                    ) : null
-                : undefined
-            }
+            renderOffAxisReferenceLine={showRef ? renderCustomTarget : undefined}
             yAxis={yOn}
             xAxis={xOn}
             timeScroll={panZoom}
@@ -540,10 +538,6 @@ export default function MultiSeriesScreen() {
                 ? undefined
                 : (id, visible) => {
                     seriesVisibilityRef.current[id] = visible;
-                    const cur = sim.series.get();
-                    sim.series.set(
-                      cur.map((s) => (s.id === id ? { ...s, visible } : s)),
-                    );
                   }
             }
             onScrub={(p) => {
@@ -565,85 +559,87 @@ export default function MultiSeriesScreen() {
         </>
       }
     >
-      <ChipRow
-        label="Data"
-        options={DATA_OPTIONS}
-        value={empty}
-        onChange={setEmpty}
-      />
+      <DeferredControls>
+        <ChipRow
+          label="Data"
+          options={DATA_OPTIONS}
+          value={empty}
+          onChange={setEmpty}
+        />
 
-      <DotLegendControls
-        dots={dots}
-        setDots={setDots}
-        ring={ring}
-        setRing={setRing}
-        pulse={pulse}
-        setPulse={setPulse}
-        valueLabels={valueLabels}
-        setValueLabels={setValueLabels}
-        valueLines={valueLines}
-        setValueLines={setValueLines}
-        dotRadius={dotRadius}
-        setDotRadius={setDotRadius}
-        legendVisible={legendVisible}
-        setLegendVisible={setLegendVisible}
-        legendCompact={legendCompact}
-        setLegendCompact={setLegendCompact}
-        legendPosition={legendPosition}
-        setLegendPosition={setLegendPosition}
-        styled={styled}
-        setStyled={setStyled}
-        legendStyled={legendStyled}
-        setLegendStyled={setLegendStyled}
-        curve={curve}
-        setCurve={setCurve}
-      />
+        <DotLegendControls
+          dots={dots}
+          setDots={setDots}
+          ring={ring}
+          setRing={setRing}
+          pulse={pulse}
+          setPulse={setPulse}
+          valueLabels={valueLabels}
+          setValueLabels={setValueLabels}
+          valueLines={valueLines}
+          setValueLines={setValueLines}
+          dotRadius={dotRadius}
+          setDotRadius={setDotRadius}
+          legendVisible={legendVisible}
+          setLegendVisible={setLegendVisible}
+          legendCompact={legendCompact}
+          setLegendCompact={setLegendCompact}
+          legendPosition={legendPosition}
+          setLegendPosition={setLegendPosition}
+          styled={styled}
+          setStyled={setStyled}
+          legendStyled={legendStyled}
+          setLegendStyled={setLegendStyled}
+          curve={curve}
+          setCurve={setCurve}
+        />
 
-      <ChartSettingsControls
-        windowSecs={windowSecs}
-        setWindowSecs={setWindowSecs}
-        smoothing={smoothing}
-        setSmoothing={setSmoothing}
-        animateExpansion={animateExpansion}
-        setAnimateExpansion={setAnimateExpansion}
-        scrubDim={scrubDim}
-        setScrubDim={setScrubDim}
-        seriesTooltip={seriesTooltip}
-        setSeriesTooltip={setSeriesTooltip}
-        tooltipAlwaysShow={tooltipAlwaysShow}
-        setTooltipAlwaysShow={setTooltipAlwaysShow}
-        styledTooltip={styledTooltip}
-        setStyledTooltip={setStyledTooltip}
-      />
+        <ChartSettingsControls
+          windowSecs={windowSecs}
+          setWindowSecs={setWindowSecs}
+          smoothing={smoothing}
+          setSmoothing={setSmoothing}
+          animateExpansion={animateExpansion}
+          setAnimateExpansion={setAnimateExpansion}
+          scrubDim={scrubDim}
+          setScrubDim={setScrubDim}
+          seriesTooltip={seriesTooltip}
+          setSeriesTooltip={setSeriesTooltip}
+          tooltipAlwaysShow={tooltipAlwaysShow}
+          setTooltipAlwaysShow={setTooltipAlwaysShow}
+          styledTooltip={styledTooltip}
+          setStyledTooltip={setStyledTooltip}
+        />
 
-      <PlaybackControls
-        paused={paused}
-        setPaused={setPaused}
-        exaggerate={exaggerate}
-        setExaggerate={setExaggerate}
-        degen={degen}
-        setDegen={setDegen}
-        loading={loading}
-        setLoading={setLoading}
-        showRef={showRef}
-        setShowRef={setShowRef}
-        panZoom={panZoom}
-        setPanZoom={setPanZoom}
-      />
-      <ChipRow
-        label="QA reference edge"
-        options={QA_REFERENCE_EDGE_OPTIONS}
-        value={qaReferenceValue}
-        onChange={setQaReferenceValue}
-      />
-      <ChipRow options={THEME_OPTIONS} value={theme} onChange={setTheme} />
+        <PlaybackControls
+          paused={paused}
+          setPaused={setPaused}
+          exaggerate={exaggerate}
+          setExaggerate={setExaggerate}
+          degen={degen}
+          setDegen={setDegen}
+          loading={loading}
+          setLoading={setLoading}
+          showRef={showRef}
+          setShowRef={setShowRef}
+          panZoom={panZoom}
+          setPanZoom={setPanZoom}
+        />
+        <ChipRow
+          label="QA reference edge"
+          options={QA_REFERENCE_EDGE_OPTIONS}
+          value={qaReferenceValue}
+          onChange={setQaReferenceValue}
+        />
+        <ChipRow options={THEME_OPTIONS} value={theme} onChange={setTheme} />
 
-      <ChipRow
-        label="Axes"
-        options={AXIS_OPTIONS}
-        value={axisVis}
-        onChange={setAxisVis}
-      />
+        <ChipRow
+          label="Axes"
+          options={AXIS_OPTIONS}
+          value={axisVis}
+          onChange={setAxisVis}
+        />
+      </DeferredControls>
     </DemoScreen>
   );
 }

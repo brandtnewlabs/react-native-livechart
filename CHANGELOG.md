@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+
+- Reduce `LiveChartSeries` mount work by sharing a compact presentation snapshot
+  across layout and legend, bootstrapping it before paint, and initializing the
+  particle runtime only while `degen` is enabled. The demo seeds its feed before
+  the first commit and defers its control panel. On Lennart’s iPhone 16, median
+  chart geometry readiness fell from 138.5 ms to 104 ms in Release builds;
+  this measures UI readiness, not compositor delivery or steady-state CPU.
+  See `docs/multi-series-mount-performance-iphone.md` for the comparison.
+
 ## [5.0.0-rc.0] — Unpublished candidate
 
 Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made.
