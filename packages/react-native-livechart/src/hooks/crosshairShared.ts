@@ -1,4 +1,4 @@
-import { type SkFont } from "@shopify/react-native-skia";
+import { type SkFont } from "react-native-skia";
 import { type Gesture } from "react-native-gesture-handler";
 import type { DerivedValue, SharedValue } from "react-native-reanimated";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";

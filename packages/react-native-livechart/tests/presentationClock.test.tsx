@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react-native";
-import { Skia } from "@shopify/react-native-skia";
+import { Skia } from "react-native-skia";
 import { useSharedValue } from "react-native-reanimated";
 import { useLiveChartSeriesEngine } from "../src/core/useLiveChartSeriesEngine";
 import { useMultiSeriesLinePaths } from "../src/hooks/useMultiSeriesLinePaths";

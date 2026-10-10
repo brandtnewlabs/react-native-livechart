@@ -1,4 +1,4 @@
-import { Circle, Group } from "@shopify/react-native-skia";
+import { Circle, Group } from "react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ResolvedSelectionDotConfig } from "../core/resolveConfig";
 

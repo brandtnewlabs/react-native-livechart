@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Canvas, Points, vec } from "@shopify/react-native-skia";
+import { Canvas, Points, vec } from "react-native-skia";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";

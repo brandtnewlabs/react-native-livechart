@@ -21,6 +21,7 @@
     "build:lib": "npm run build -w react-native-livechart",
     "build:lib:types:watch": "npm run build:types:watch -w react-native-livechart",
     "pack:lib": "npm pack -w react-native-livechart",
+    "publish:lib:next": "npm publish --workspace react-native-livechart --tag next",
     "verify:bundle-mode-consumer": "node scripts/verify_bundle_mode_consumer.mjs",
     "verify": "npm run typecheck && npm run lint && npm test",
     "verify:coverage": "npm run typecheck && npm run lint && npm run test:coverage",
@@ -34,10 +35,10 @@
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
     "@legendapp/list": "^3.0.4",
-    "@shopify/react-native-skia": "2.6.4",
     "@types/jest": "29.5.14",
     "expo": "^57.0.1",
     "expo-blur": "~57.0.0",
+    "expo-build-properties": "~57.0.22",
     "expo-constants": "~57.0.2",
     "expo-font": "~57.0.0",
     "expo-haptics": "~57.0.0",
@@ -59,6 +60,7 @@
     "react-native-reanimated": "4.5.0",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
+    "react-native-skia": "3.3.0",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.0"
   },
@@ -80,7 +82,7 @@
   "expo": {
     "install": {
       "exclude": [
-        "@shopify/react-native-skia"
+        "react-native-skia"
       ]
     }
   }

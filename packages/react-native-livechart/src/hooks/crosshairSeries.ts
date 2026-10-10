@@ -1,4 +1,4 @@
-import { type SkFont } from "@shopify/react-native-skia";
+import { type SkFont } from "react-native-skia";
 import { MAX_MULTI_SERIES } from "../constants";
 import type { ResolvedPerSeriesTooltipConfig } from "../core/resolveConfig";
 import { type ChartPadding } from "../draw/line";

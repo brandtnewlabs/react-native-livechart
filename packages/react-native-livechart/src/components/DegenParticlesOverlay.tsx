@@ -4,7 +4,7 @@ import {
   type SkColor,
   type SkRSXform,
   type SkRect,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import {

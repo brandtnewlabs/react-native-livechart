@@ -8,20 +8,26 @@ const mockReactions: {
   dependencies?: unknown[];
 }[] = [];
 // Jest has no native mapper scheduler, so record each reaction and drive the
-// layout-sample one by hand. Its `sampled` SharedValue write is a UI-thread
-// round-trip that doesn't land under Jest, so the order-of-magnitude gate is
-// covered by the `shouldResampleLayoutValue` tests instead.
+// layout-sample one by hand. Plain SharedValue doubles let the combined
+// multi-series bootstrap and its UI publication share the same test state.
 jest.mock("react-native-reanimated", () => {
   const actual = jest.requireActual("react-native-reanimated");
+  const React = jest.requireActual<typeof import("react")>("react");
   return {
     ...actual,
+    useSharedValue: <T,>(initial: T) => React.useRef({
+      value: initial,
+      get() { return this.value; },
+      set(next: T) { this.value = next; },
+      modify(fn: (value: T) => T) { this.value = fn(this.value); },
+    }).current,
     useAnimatedReaction: (
       prepare: () => unknown,
       react: (current: unknown, previous: unknown) => void,
       dependencies?: unknown[],
     ) => {
       mockReactions.push({ prepare, react, dependencies });
-      return actual.useAnimatedReaction(prepare, react, dependencies);
+      // UI reactions are driven explicitly; do not serialize/freeze the JS doubles.
     },
   };
 });
@@ -37,7 +43,8 @@ const formatValue = (v: number) => `$${v.toFixed(0)}`;
 // plugin appends closure hashes after them.
 function sampleReaction(source: unknown) {
   const reaction = mockReactions.findLast(
-    ({ dependencies }) => dependencies?.[1] === source,
+    ({ dependencies, prepare }) => dependencies?.[1] === source ||
+      (dependencies?.[0] === source && typeof prepare() === "object" && prepare() !== null && "signature" in (prepare() as object)),
   );
   if (!reaction) throw new Error("layout sample reaction not registered");
   return reaction;
@@ -45,7 +52,7 @@ function sampleReaction(source: unknown) {
 
 async function tick(
   reaction: ReturnType<typeof sampleReaction>,
-  current: number,
+  current: unknown,
 ) {
   await act(async () => {
     reaction.react(current, null);
@@ -107,7 +114,7 @@ describe("LiveChartSeries layout value sample", () => {
       await render(<H />);
       const reaction = sampleReaction(series);
       const current = reaction.prepare();
-      await tick(reaction, current as number);
+      await tick(reaction, current);
       expect(lastMeasuredValue()).toBe(expected);
     },
   );
@@ -125,12 +132,12 @@ describe("LiveChartSeries layout value sample", () => {
     }
     await render(<H />);
     const reaction = sampleReaction(series);
-    expect(reaction.prepare()).toBe(0);
+    expect(reaction.prepare()).toMatchObject({ value: 0 });
 
-    await tick(reaction, 0);
+    await tick(reaction, reaction.prepare());
     expect(lastMeasuredValue()).toBeUndefined();
 
-    await tick(reaction, 87_000);
+    await tick(reaction, { ...(reaction.prepare() as object), value: 87_000 });
     expect(lastMeasuredValue()).toBe(87_000);
   });
 });

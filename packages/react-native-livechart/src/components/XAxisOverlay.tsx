@@ -4,7 +4,7 @@ import {
   Path,
   type SkFont,
   type SkPath,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { X_AXIS_LABEL_OFFSET_Y } from "../constants";
 import type { ResolvedGridStyleConfig } from "../core/resolveConfig";

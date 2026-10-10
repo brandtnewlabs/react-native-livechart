@@ -1,8 +1,8 @@
 /**
  * React hook: synthetic `LiveChart` feeds (line, candles, optional trade tape, optional multi-series).
  *
- * Model — After mount or option change, a **seed** fills history; then a **single live clock** runs at
- * `tradesPerSecond` (mean). Each tick emits one fill whose **execution price** becomes the next
+ * Model — The initial **seed** fills history before the first commit; option/reset changes reseed.
+ * A **single live clock** then runs at `tradesPerSecond` (mean). Each tick emits one fill whose **execution price** becomes the next
  * `LiveChartPoint` (and OHLC buckets if enabled). Tape and chart stay in lockstep.
  *
  * Performance — The full point arrays live inside the `data`/`series` SharedValues (UI side). Each tick
@@ -18,7 +18,7 @@
  * delta; the candle path additionally keeps a JS-side `data` mirror because OHLC
  * re-aggregation needs the full tick array (single-series candle charts are memory-flat — one array).
  */
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type {
   CandlePoint,
   LiveChartPoint,
@@ -311,40 +311,51 @@ export function useSimulatedChartData(
     random01Ref.current = random01Opt ?? Math.random;
   });
 
+  const seedOptions = useMemo(() => ({
+    volatilityMode,
+    historyRange,
+    historySpanSeconds: historySpanSecondsOpt,
+    maxPoints,
+    startValue,
+    candleWidth,
+    multiSeries,
+    candleAggregation,
+    tradeStreamEnabled,
+    tradesPerSecond,
+    tokenSymbol,
+  }), [
+    volatilityMode, historyRange, historySpanSecondsOpt, maxPoints, startValue,
+    candleWidth, multiSeries, candleAggregation, tradeStreamEnabled,
+    tradesPerSecond, tokenSymbol,
+  ]);
+  const seedKey = JSON.stringify([seedOptions, resetNonce]);
+  const lastSeedKey = useRef(seedKey);
+  // Initialize the feed before descendants mount. Live history still grows
+  // only on the UI runtime; this seed is a fixed, bounded startup fixture.
+  const [seedAtMount] = useState(() => computeSeed({
+    ...seedOptions, rng: random01Opt ?? Math.random,
+  }));
   const buf = useRef<TickBuffers>({
-    lastMid: startValue,
-    seriesValues: [],
-    seriesIds: [],
-    candleData: [],
-    tradeStream: [],
+    lastMid: seedAtMount.lastMid,
+    seriesValues: seedAtMount.seriesValues,
+    seriesIds: seedAtMount.seriesIds,
+    candleData: seedAtMount.candleData,
+    tradeStream: seedAtMount.initialTrades,
   });
 
-  const data = useSharedValue<LiveChartPoint[]>([]);
-  const value = useSharedValue(startValue);
-  const tradeStream = useSharedValue<TradeEvent[]>([]);
-  const series = useSharedValue<SeriesConfig[]>([]);
-  const candles = useSharedValue<CandlePoint[]>([]);
-  const liveCandle = useSharedValue<CandlePoint | null>(null);
+  const data = useSharedValue<LiveChartPoint[]>(seedAtMount.history);
+  const value = useSharedValue(seedAtMount.lastMid);
+  const tradeStream = useSharedValue<TradeEvent[]>(seedAtMount.initialTrades);
+  const series = useSharedValue<SeriesConfig[]>(seedAtMount.initialSeries);
+  const candles = useSharedValue<CandlePoint[]>(seedAtMount.candles);
+  const liveCandle = useSharedValue<CandlePoint | null>(seedAtMount.liveCandle);
 
-  // Full reseed: history, optional tape bootstrap, multi-series baseline. The data
-  // is built by the pure `computeSeed` helper; this effect only syncs that result
-  // into the JS-side ref and the SharedValues (no prop-derived data is transformed
-  // inline here).
+  // Only option/reset changes reseed. The same key also prevents a duplicate seed
+  // when development Strict Mode replays effects or a memo is recomputed.
   useEffect(() => {
-    const seed = computeSeed({
-      volatilityMode,
-      historyRange,
-      historySpanSeconds: historySpanSecondsOpt,
-      maxPoints,
-      startValue,
-      candleWidth,
-      multiSeries,
-      candleAggregation,
-      tradeStreamEnabled,
-      tradesPerSecond,
-      tokenSymbol,
-      rng: random01Ref.current,
-    });
+    if (lastSeedKey.current === seedKey) return;
+    const seed = computeSeed({ ...seedOptions, rng: random01Ref.current });
+    lastSeedKey.current = seedKey;
 
     buf.current = {
       lastMid: seed.lastMid,
@@ -362,26 +373,7 @@ export function useSimulatedChartData(
     series.set(seed.initialSeries);
     candles.set(seed.candles);
     liveCandle.set(seed.liveCandle);
-  }, [
-    volatilityMode,
-    historyRange,
-    historySpanSecondsOpt,
-    maxPoints,
-    startValue,
-    candleWidth,
-    multiSeries,
-    candleAggregation,
-    tradeStreamEnabled,
-    tradesPerSecond,
-    tokenSymbol,
-    resetNonce,
-    data,
-    value,
-    tradeStream,
-    series,
-    candles,
-    liveCandle,
-  ]);
+  }, [seedOptions, seedKey, data, value, tradeStream, series, candles, liveCandle]);
 
   // Re-bucket OHLC when `candleWidth` / aggregation toggles without throwing away
   // tick history. Computed unconditionally (empty when aggregation is off) and

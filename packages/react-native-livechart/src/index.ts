@@ -4,6 +4,10 @@
  * @remarks Conceptually inspired by [liveline](https://github.com/benjitaylor/liveline)
  * (Benji Taylor) — live charts for React. This package is a separate React Native
  * implementation on Skia and Reanimated, not a fork of the web library.
+ *
+ * LiveChart 5 uses `react-native-skia` 3.3+. Fonts, images and custom canvas
+ * children must come from that same renderer package. LiveChart 4.x uses the
+ * separate `@shopify/react-native-skia` peer.
  */
 
 // ── Components ───────────────────────────────────────────────────────────────

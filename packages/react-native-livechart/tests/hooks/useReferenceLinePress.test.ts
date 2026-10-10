@@ -1,6 +1,6 @@
 import type { SharedValue } from "react-native-reanimated";
 import { renderHook } from "@testing-library/react-native";
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 import type { ChartEngineLayout } from "../../src/core/useLiveChartEngine";
 import { useReferenceLinePress } from "../../src/hooks/useReferenceLinePress";
 import type { ReferenceLine } from "../../src/types";

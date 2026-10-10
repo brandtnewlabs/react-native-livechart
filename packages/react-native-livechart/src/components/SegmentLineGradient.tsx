@@ -1,4 +1,4 @@
-import { LinearGradient, vec } from "@shopify/react-native-skia";
+import { LinearGradient, vec } from "react-native-skia";
 import type { SharedValue } from "react-native-reanimated";
 
 import type { ResolvedSegment } from "../core/resolveSegment";

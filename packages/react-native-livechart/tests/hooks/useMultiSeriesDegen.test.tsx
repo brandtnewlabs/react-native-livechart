@@ -98,6 +98,20 @@ describe("useMultiSeriesDegen", () => {
     expect(result.current.shakeTransform).toBeDefined();
   });
 
+  it.each([true, false])("writes and resets an externally owned shake transform (enabled=%s)", async enabled => {
+    const { result } = await renderHook(() => {
+      const engine = useMakeEngine();
+      const output = useSharedValue<[{ translateX: number }, { translateY: number }]>([
+        { translateX: 7 }, { translateY: 4 },
+      ]);
+      const effect = useMultiSeriesDegen(engine, DEFAULT_PADDING, resolveDegen(enabled), undefined, output);
+      return { output, effect };
+    });
+    expect(result.current.effect.shakeTransform).toBe(result.current.output);
+    mockDegenFrame({ timestamp: 1000 });
+    expect(result.current.output.get()).toEqual([{ translateX: 0 }, { translateY: 0 }]);
+  });
+
   it("returns a pack when cfg is null (disabled)", async () => {
     const { result } = await renderHook(() => {
       const engine = useMakeEngine();

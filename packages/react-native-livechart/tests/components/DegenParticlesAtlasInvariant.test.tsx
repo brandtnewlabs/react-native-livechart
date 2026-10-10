@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react-native';
-import type { SkColor, SkRect, SkRSXform } from '@shopify/react-native-skia';
+import type { SkColor, SkRect, SkRSXform } from 'react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
 
 interface AtlasArrays {
@@ -24,7 +24,7 @@ function advanceAtlas(): void {
   mockAdvanceAtlas();
 }
 
-jest.mock('@shopify/react-native-skia', () => ({
+jest.mock('react-native-skia', () => ({
   Atlas: (props: AtlasArrays): null => {
     jest.requireActual<typeof import('react')>('react').useEffect(() => {
       mockAtlasMounts += 1;

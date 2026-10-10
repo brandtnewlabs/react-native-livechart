@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/npm/l/react-native-livechart.svg)](https://github.com/brandtnewlabs/react-native-livechart/blob/main/LICENSE)
 [![Docs](https://img.shields.io/badge/docs-online-3323E6.svg)](https://react-native-livechart.brandtnewlabs.com)
 
-High-performance **live** line and candlestick charts for React Native, built on **[@shopify/react-native-skia](https://shopify.github.io/react-native-skia/)**, **[react-native-reanimated](https://docs.swmansion.com/react-native-reanimated/)**, and **[react-native-gesture-handler](https://docs.swmansion.com/react-native-gesture-handler/)**. Data and live values flow through Reanimated `SharedValue`s, so the UI thread animates without per-frame JS bridge traffic.
+High-performance **live** line and candlestick charts for React Native, built on **[react-native-skia](https://wcandillon.github.io/react-native-skia/)**, **[react-native-reanimated](https://docs.swmansion.com/react-native-reanimated/)**, and **[react-native-gesture-handler](https://docs.swmansion.com/react-native-gesture-handler/)**. Data and live values flow through Reanimated `SharedValue`s, so the UI thread animates without per-frame JS bridge traffic.
 
 📖 **[Documentation →](https://react-native-livechart.brandtnewlabs.com)**
 
@@ -43,6 +43,10 @@ See every feature in motion — line & area, candlestick, multi-series, scrubbin
 
 ## Install
 
+> This checkout prepares **LiveChart 5.0.0-rc.0** for `react-native-skia` 3.3+.
+> The candidate is unpublished. Published LiveChart 4.x still uses `@shopify/react-native-skia`.
+> Match your LiveChart release to the renderer; do not install both Skia names.
+
 ```bash
 npm install react-native-livechart
 ```
@@ -55,12 +59,20 @@ Install the library's **peer dependencies** in your app (versions should match y
 | ------------------------------ | ----------------------------------- |
 | `react`                        | UI                                  |
 | `react-native`                 | Host                                |
-| `@shopify/react-native-skia`   | Canvas rendering                    |
+| `react-native-skia`             | Canvas rendering                    |
 | `react-native-reanimated`      | Shared values, animations, worklets |
 | `react-native-worklets`        | Required by Reanimated 4+           |
 | `react-native-gesture-handler` | Pan / scrub gestures                |
 
 Follow the Skia, Reanimated, and Gesture Handler install docs for your toolchain (Babel plugin, `GestureHandlerRootView`, etc.).
+
+LiveChart 5.0.0-rc.0 targets `react-native-skia@^3.3.0`, React 19+, and React
+Native 0.78+. Graphite requires iOS 15.1+ and Android API 26+ with Vulkan, and a
+native build rather than Expo Go. Physical iPhone and Android/Vulkan QA is
+documented, including a historical patch experiment. That patch has been removed;
+fresh unmodified-renderer route and recorder checks passed on both phones.
+Maintained Skia v2 support is not declared. See the [installation and migration guide](https://react-native-livechart.brandtnewlabs.com/installation)
+and [issue #409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
 
 ### React Native architecture
 

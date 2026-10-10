@@ -4,8 +4,8 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { Canvas, Group, Rect, type SkFont } from "@shopify/react-native-skia";
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { Canvas, Group, Rect, type SkFont } from "react-native-skia";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -25,8 +25,6 @@ import {
 } from "../constants";
 import { hasMultiSeriesChartData } from "../core/chartDataPresence";
 import {
-  lineColorsSignatureFromArray,
-  lineStyleSignatureFromArray,
   resolveMultiSeriesLineColorsSnapshot,
   resolveMultiSeriesLineStylesSnapshot,
 } from "../core/multiSeriesLayout";
@@ -60,7 +58,6 @@ import {
 import {
   resolveChartLayout,
   shouldMeasureYAxisLabels,
-  shouldResampleLayoutValue,
 } from "../hooks/resolveChartLayout";
 import { useCanvasLayout } from "../hooks/useCanvasLayout";
 import { useChartReveal } from "../hooks/useChartReveal";
@@ -131,56 +128,10 @@ import { MultiSeriesValueLabels } from "./MultiSeriesValueLabels";
 import { MultiSeriesValueLines } from "./MultiSeriesValueLines";
 import { PerSeriesTooltipOverlay } from "./PerSeriesTooltipOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
-import { SeriesToggleChips } from "./SeriesToggleChips";
+import { SeriesToggleChipsView } from "./SeriesToggleChips";
+import { useSeriesPresentation } from "../hooks/useSeriesPresentation";
 import { XAxisGridLines, XAxisOverlay } from "./XAxisOverlay";
 import { YAxisOverlay } from "./YAxisOverlay";
-
-/**
- * Signature of the per-series *config* (colors, stroke styles, labels, count) —
- * everything the snapshot below feeds into layout and rendering. Excludes the
- * per-tick `data`, so the snapshot only refreshes on real config changes.
- */
-function seriesConfigSig(s: SharedValue<SeriesConfig[]>) {
-  "worklet";
-  const arr = s.value;
-  let out =
-    lineColorsSignatureFromArray(arr) +
-    "\x1d" +
-    lineStyleSignatureFromArray(arr);
-  for (let i = 0; i < arr.length; i++) {
-    out += "\x1d" + (arr[i].label ?? arr[i].id);
-  }
-  return out;
-}
-
-/** Largest finite magnitude — zeros and invalid placeholders cannot mask it. */
-function seriesLayoutValue(s: SharedValue<SeriesConfig[]>) {
-  "worklet";
-  const arr = s.value;
-  let sample = 0;
-  for (let i = 0; i < arr.length; i++) {
-    const value = arr[i].value;
-    if (Number.isFinite(value) && Math.abs(value) > Math.abs(sample)) {
-      sample = value;
-    }
-  }
-  return sample;
-}
-
-function useSeriesLayoutValueSample(series: SharedValue<SeriesConfig[]>) {
-  const [sample, setSample] = useState<number | undefined>(undefined);
-  const sampled = useSharedValue(0);
-  useAnimatedReaction(
-    () => seriesLayoutValue(series),
-    (current) => {
-      if (!shouldResampleLayoutValue(current, sampled.get())) return;
-      sampled.set(current);
-      scheduleOnRN(setSample, current);
-    },
-    [sampled, series],
-  );
-  return sample;
-}
 
 /**
  * Resolves props → configs → theme/layout → engine → per-frame derived values,
@@ -529,11 +480,8 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     palette.labelFontSize,
   );
 
-  // Snapshot of the series config (colors, styles, labels) for layout + line
-  // rendering. The animated reaction below emits the initial snapshot and every
-  // subsequent configuration change without reading the SharedValue in render.
-  const [seriesSnapshot, setSeriesSnapshot] = useState<SeriesConfig[]>([]);
-  const valueLayoutSample = useSeriesLayoutValueSample(series);
+  const { snapshot: seriesSnapshot, valueLayoutSample, refresh: refreshSeriesPresentation } =
+    useSeriesPresentation(series);
 
   // Mount per-series drawing worklets only for real series. The previous fixed
   // 12-slot render kept 144 derived-value mappers alive for the default stroke,
@@ -644,29 +592,11 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     ),
   );
 
-  // Read the `series` prop from closure, not a SharedValue passed through
-  // `scheduleOnRN`: the handle serialized across the worklet→JS boundary keeps
-  // the native `.value` accessor but loses the `.get()` method (`.get()` on it
-  // throws). Reading the prop directly is robust to either accessor.
-  const syncSnapshot = () => {
-    setSeriesSnapshot(series.get().slice());
-  };
-
-  useAnimatedReaction(
-    () => seriesConfigSig(series),
-    /* istanbul ignore next -- scheduleOnRN from UI-thread reaction */
-    (sig, prev) => {
-      if (sig !== prev) scheduleOnRN(syncSnapshot);
-    },
-    [series, syncSnapshot],
-  );
-
-  const {
-    pack: degenPack,
-    packRevision: degenPackRevision,
-    particleTimestamp: degenParticleTimestamp,
-    shakeTransform: degenShakeTransform,
-  } = useMultiSeriesDegen(engine, effectivePadding, degenCfg, onDegenShake);
+  // Keep one transform for the drawing stack; the optional particle runtime
+  // mounts with its layer instead of allocating 27 SharedValues while off.
+  const degenShakeTransform = useSharedValue<[{ translateX: number }, { translateY: number }]>([
+    { translateX: 0 }, { translateY: 0 },
+  ]);
 
   const { yAxisEntries } = useYAxis(
     engine,
@@ -876,6 +806,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     dotOuterRadius,
     legendCfg,
     degenCfg,
+    onDegenShake,
     metricsCfg,
     allRefLines,
     refLineKeys,
@@ -904,14 +835,13 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     effectiveSeries,
     layoutHeight,
     onLayout,
+    seriesSnapshot,
+    refreshSeriesPresentation,
     linePaths,
     seriesClip,
     activeSeriesCount,
     lineColors,
     lineStyles,
-    degenPack,
-    degenPackRevision,
-    degenParticleTimestamp,
     degenShakeTransform,
     yAxisEntries,
     xAxisEntries,
@@ -1005,9 +935,6 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     xAxisEntries,
     xGridStyleCfg,
     degenCfg,
-    degenPack,
-    degenPackRevision,
-    degenParticleTimestamp,
     markersActive,
     markersSV,
     markerClusterCfg,
@@ -1132,20 +1059,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
           dim — which now covers the dots + pulse rings — never clips them.
           They track each series' live value, not the scrub point. */}
 
-      {degenCfg && (
-        <Group opacity={reveal.dotOpacity}>
-          <DegenParticlesOverlay
-            pack={degenPack}
-            packRevision={degenPackRevision}
-            particleTimestamp={degenParticleTimestamp}
-            palette={palette}
-            particleSlotCount={degenCfg.particleSlotCount}
-            particleBurstDurationSec={degenCfg.particleBurstDurationSec}
-            particleOpacity={degenCfg.particleOpacity}
-            colors={degenCfg.colors ?? lineColors}
-          />
-        </Group>
-      )}
+      {degenCfg && <SeriesDegenLayer model={model} config={degenCfg} />}
 
       {markersActive && (
         <Group opacity={markerGroupOpacity}>
@@ -1180,6 +1094,32 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         waveAmplitude={loadingAmplitude}
         waveSpeed={loadingSpeed}
         opaqueCanvas={canvasMode === "opaque"}
+      />
+    </Group>
+  );
+}
+
+/** Allocate particle buffers, config SharedValues, and the frame loop only when enabled. */
+function SeriesDegenLayer({ model, config }: {
+  model: LiveChartSeriesModel;
+  config: NonNullable<LiveChartSeriesModel["degenCfg"]>;
+}) {
+  const { engine, effectivePadding, onDegenShake, degenShakeTransform, reveal, palette, lineColors } = model;
+  const effect = useMultiSeriesDegen(engine, effectivePadding, config, onDegenShake, degenShakeTransform);
+  useEffect(() => () => {
+    degenShakeTransform.set([{ translateX: 0 }, { translateY: 0 }]);
+  }, [degenShakeTransform]);
+  return (
+    <Group opacity={reveal.dotOpacity}>
+      <DegenParticlesOverlay
+        pack={effect.pack}
+        packRevision={effect.packRevision}
+        particleTimestamp={effect.particleTimestamp}
+        palette={palette}
+        particleSlotCount={config.particleSlotCount}
+        particleBurstDurationSec={config.particleBurstDurationSec}
+        particleOpacity={config.particleOpacity}
+        colors={config.colors ?? lineColors}
       />
     </Group>
   );
@@ -1331,10 +1271,12 @@ function SeriesLegend({
   model: LiveChartSeriesModel;
   position: "top" | "bottom";
 }) {
-  const { legendCfg, series, palette, onSeriesToggle } = model;
-  if (legendCfg.position !== position) return null;
+  const { legendCfg, series, palette, onSeriesToggle, seriesSnapshot, refreshSeriesPresentation } = model;
+  if (!legendCfg.visible || legendCfg.position !== position) return null;
   return (
-    <SeriesToggleChips
+    <SeriesToggleChipsView
+      snapshot={seriesSnapshot}
+      onSnapshotChange={refreshSeriesPresentation}
       series={series}
       legend={legendCfg}
       palette={palette}

@@ -9,7 +9,7 @@ import {
   type SkImage,
   type SkPaint,
   type SkRect,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import type {
   LiveChartPalette,
   Marker,

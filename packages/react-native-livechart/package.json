@@ -38,16 +38,17 @@
   "module": "./src/index.ts",
   "name": "react-native-livechart",
   "peerDependencies": {
-    "@shopify/react-native-skia": ">=2.6.0",
-    "react": ">=18.0.0",
-    "react-native": ">=0.76.0",
+    "react": ">=19.0.0",
+    "react-native": ">=0.78.0",
     "react-native-gesture-handler": ">=2.0.0",
     "react-native-reanimated": ">=4.0.0",
+    "react-native-skia": "^3.3.0",
     "react-native-worklets": ">=0.7.0"
   },
   "private": false,
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "next"
   },
   "react-native": "./src/index.ts",
   "repository": {
@@ -59,6 +60,7 @@
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "build:types:watch": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "prepack": "npm run build && node -e \"require('fs').copyFileSync('../../README.md','README.md')\"",
+    "prepublishOnly": "node ./scripts/check-publish-tag.mjs",
     "prepare": "node -e \"if (!require('fs').existsSync('dist/index.d.ts')) process.exit(1)\" || npm run build",
     "test": "npm --prefix ../.. run test:lib",
     "test:coverage": "npm --prefix ../.. run test:coverage -- packages/react-native-livechart",
@@ -67,5 +69,5 @@
   },
   "sideEffects": false,
   "types": "./dist/index.d.ts",
-  "version": "4.28.1"
+  "version": "5.0.0-rc.0"
 }

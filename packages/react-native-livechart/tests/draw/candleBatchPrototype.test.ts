@@ -1,4 +1,4 @@
-import type { Skia } from "@shopify/react-native-skia";
+import type { Skia } from "react-native-skia";
 import { CANDLE_METRICS_DEFAULTS } from "../../src/constants";
 import { buildCandleGeometry } from "../../src/draw/candle";
 import {

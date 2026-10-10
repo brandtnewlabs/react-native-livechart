@@ -52,6 +52,52 @@ describe("useSimulatedChartData", () => {
     jest.useRealTimers();
   });
 
+  it("has seeded series and history at the first layout commit, before passive effects", async () => {
+    const commits: { series: number; history: number; trades: number }[] = [];
+    function Probe() {
+      const sim = useSimulatedChartData({
+        multiSeries: true,
+        paused: true,
+        maxPoints: 30,
+        historyRange: "1m",
+        random01: () => 0.5,
+      });
+      React.useLayoutEffect(() => {
+        commits.push({
+          series: sim.series.get().length,
+          history: sim.data.get().length,
+          trades: sim.tradeStream.get().length,
+        });
+      }, [sim]);
+      return null;
+    }
+    await render(<Probe />);
+    expect(commits[0]).toEqual({ series: 3, history: 30, trades: 20 });
+  });
+
+  it("does not reseed on mount or a pause change, but reseeds for reset and seed options", async () => {
+    const rng = jest.fn(() => 0.5);
+    const { result, rerender } = await renderHook<ReturnType<typeof useSimulatedChartData>, { paused: boolean; resetNonce: number; maxPoints: number }>(
+      ({ paused, resetNonce, maxPoints }) => useSimulatedChartData({
+        paused, resetNonce, maxPoints,
+        multiSeries: false,
+        candleAggregation: false,
+        tradeStream: false,
+        historyRange: "1m",
+        random01: rng,
+      }),
+      { initialProps: { paused: true, resetNonce: 0, maxPoints: 30 } },
+    );
+    const seededCalls = rng.mock.calls.length;
+    expect(result.current.data.get()).toHaveLength(30);
+    await rerender({ paused: false, resetNonce: 0, maxPoints: 30 });
+    expect(rng).toHaveBeenCalledTimes(seededCalls);
+    await rerender({ paused: true, resetNonce: 1, maxPoints: 30 });
+    expect(rng.mock.calls.length).toBeGreaterThan(seededCalls);
+    await rerender({ paused: true, resetNonce: 1, maxPoints: 40 });
+    expect(result.current.data.get()).toHaveLength(40);
+  });
+
   it("advances data and trade stream together at steady TPS", async () => {
     let seed = 0.42;
     const rng = jest.fn(() => {

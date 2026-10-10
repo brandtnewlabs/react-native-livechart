@@ -43,6 +43,13 @@ With an explicit `presentationTime`, an already-recorded value at or before the
 head is presented immediately because that clock/value pair already defines the
 presentation.
 
+Y-range contraction uses `smoothing` by default; outward bounds snap unless you
+pass `rangeAnimation={{ animateExpansion: true }}`. Enable it to ease the chart
+into a wider range when a series is revealed or a new extreme arrives. The
+Multi-series demo enables this option initially and exposes **Animate expansion**
+beside **Responsiveness** to compare the two behaviors. It starts with the
+**Smooth** preset (`smoothing={0.03}`); Default and Snappy remain available.
+
 For a dataset or unit change (for example Price → Market Cap), replace each
 series' history array and live value together. Replacement entries reach drawing
 on the next measured engine frame, alongside that frame's Y range and tips.
@@ -50,6 +57,14 @@ History arrays remain shared, so this does not isolate in-place edits to existin
 points. Normal live appends with `series.modify(...)` remain supported. Use
 `snapKey` when the replacement should settle immediately instead of easing with
 the configured `smoothing`.
+
+## Initial rendering
+
+When history is already available, initialize `series` with that history before
+mounting the chart. This lets its lines, legend, and value-label layout initialize
+together. For asynchronous history, keep the loading state active until the feed
+is ready. Heavy controls or other surrounding UI can mount after the chart’s
+initial frame, as the Multi-series demo does.
 
 ## Replay clock
 

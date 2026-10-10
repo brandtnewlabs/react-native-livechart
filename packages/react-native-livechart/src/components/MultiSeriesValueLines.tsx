@@ -1,4 +1,4 @@
-import { DashPathEffect, Group, Path } from "@shopify/react-native-skia";
+import { DashPathEffect, Group, Path } from "react-native-skia";
 
 import { useDerivedValue } from "react-native-reanimated";
 import { lineTipX, type ChartPadding } from "../draw/line";

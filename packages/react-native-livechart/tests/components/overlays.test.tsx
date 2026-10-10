@@ -10,7 +10,7 @@ import { MultiSeriesTooltipStack } from "../../src/components/MultiSeriesTooltip
 import React from "react";
 import type { ReferenceLine, SelectionDotProps } from "../../src/types";
 import { ReferenceLineOverlay } from "../../src/components/ReferenceLineOverlay";
-import { Circle, Skia } from "@shopify/react-native-skia";
+import { Circle, Skia } from "react-native-skia";
 import type { TooltipLayout } from "../../src/hooks/crosshairShared";
 import { ValueLineOverlay } from "../../src/components/ValueLineOverlay";
 import {
