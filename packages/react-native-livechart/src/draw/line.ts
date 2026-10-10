@@ -279,6 +279,8 @@ export function buildLinePoints(
   omitTipBeyondData = false,
   /** Optional presentation head; viewport end still determines the projection. */
   tipTime = now,
+  /** Present only the newest recorded sample at the live tip's eased value. */
+  liveTailValue?: number,
 ): number[] {
   "worklet";
   const pts: number[] = out ?? [];
@@ -314,6 +316,9 @@ export function buildLinePoints(
   }
   const endIdx = elo;
   if (endIdx <= startIdx) return pts;
+  // The authoritative array is never mutated. Historical viewports/future
+  // samples keep their recorded geometry; only a following live tail is eased.
+  const tailIdx = liveTailValue != null && endIdx === data.length ? endIdx - 1 : -1;
 
   const xScale = chartW / windowSecs;
   const yScale = chartH / valRange;
@@ -330,7 +335,7 @@ export function buildLinePoints(
     for (let i = startIdx; i < endIdx; i++) {
       pts.push(
         padding.left + (data[i].time - winStart) * xScale,
-        padding.top + (displayMax - data[i].value) * yScale,
+        padding.top + (displayMax - (i === tailIdx ? liveTailValue! : data[i].value)) * yScale,
       );
     }
   } else {
@@ -352,12 +357,12 @@ export function buildLinePoints(
           const b = minIdx <= maxIdx ? maxIdx : minIdx;
           pts.push(
             padding.left + (data[a].time - winStart) * xScale,
-            padding.top + (displayMax - data[a].value) * yScale,
+            padding.top + (displayMax - (a === tailIdx ? liveTailValue! : data[a].value)) * yScale,
           );
           if (b !== a) {
             pts.push(
               padding.left + (data[b].time - winStart) * xScale,
-              padding.top + (displayMax - data[b].value) * yScale,
+              padding.top + (displayMax - (b === tailIdx ? liveTailValue! : data[b].value)) * yScale,
             );
           }
         }
@@ -365,8 +370,9 @@ export function buildLinePoints(
         minIdx = i;
         maxIdx = i;
       } else {
-        if (data[i].value < data[minIdx].value) minIdx = i;
-        if (data[i].value > data[maxIdx].value) maxIdx = i;
+        const value = i === tailIdx ? liveTailValue! : data[i].value;
+        if (value < (minIdx === tailIdx ? liveTailValue! : data[minIdx].value)) minIdx = i;
+        if (value > (maxIdx === tailIdx ? liveTailValue! : data[maxIdx].value)) maxIdx = i;
       }
     }
     // Flush the final column.
@@ -374,12 +380,12 @@ export function buildLinePoints(
     const b = minIdx <= maxIdx ? maxIdx : minIdx;
     pts.push(
       padding.left + (data[a].time - winStart) * xScale,
-      padding.top + (displayMax - data[a].value) * yScale,
+      padding.top + (displayMax - (a === tailIdx ? liveTailValue! : data[a].value)) * yScale,
     );
     if (b !== a) {
       pts.push(
         padding.left + (data[b].time - winStart) * xScale,
-        padding.top + (displayMax - data[b].value) * yScale,
+        padding.top + (displayMax - (b === tailIdx ? liveTailValue! : data[b].value)) * yScale,
       );
     }
   }
