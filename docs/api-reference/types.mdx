@@ -65,7 +65,10 @@ type ChartGap = CandleGap;
 interface SeriesConfig {
   id: string;
   data: LiveChartPoint[];
-  value: number;            // latest live value
+  value: number;            // latest live value; smoothing eases the live dot and
+                           // newest drawn sample together, even when recorded.
+                           // Source history stays unchanged. An explicit
+                           // presentationTime uses already-recorded values immediately.
   color?: string;
   label?: string;
   visible?: boolean;        // default true

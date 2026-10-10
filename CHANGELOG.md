@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.28.1] — 2026-10-10
+
+### Fixed
+
+- Restore smooth `LiveChartSeries` price updates after the 4.28.0 regression:
+  ordinary live updates now ease the dot and newest drawn sample together,
+  including feeds that append a matching recorded point. Source history stays
+  unchanged and the line no longer bends back from a snapped point to a lagging
+  dot. Explicit replay heads, static rendering, `smoothing={1}` and `snapKey`
+  retain their existing behavior.
+
 ## [4.28.0] — 2026-10-09
 
 ### Added
@@ -1723,6 +1734,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.28.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.1
 [4.28.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.0
 [4.27.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.27.0
 [4.26.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.26.0

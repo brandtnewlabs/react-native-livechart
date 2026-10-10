@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
 import type { SeriesConfig } from "../src/types";
+import { buildLinePoints } from "../src/draw/line";
 import {
   applyLiveChartSeriesEngineFrame,
   makeMultiSeriesEngineScratch,
@@ -9,6 +10,33 @@ import {
 } from "../src/core/useLiveChartSeriesEngine";
 
 describe("applyLiveChartSeriesEngineFrame", () => {
+  it("publishes an eased recorded price and matching live-tail presentation", () => {
+    const history = [{ time: 970, value: 20 }, { time: 1000, value: 75 }];
+    const sv = {
+      series: { value: [{ id: "a", value: 75, data: history }] },
+      renderedSeries: { value: [] as SeriesConfig[] },
+      displaySeriesValues: { value: [50] }, smoothRecordedTail: { value: false },
+      seriesOpacities: { value: [1] }, displayMin: { value: 0 }, displayMax: { value: 100 },
+      displayWindow: { value: 30 }, timestamp: { value: 1000 },
+      canvasWidth: { value: 320 }, canvasHeight: { value: 200 },
+      timeWindow: { value: 30 }, smoothing: { value: 0.05 },
+      exaggerateSV: { value: false }, referenceValue: { value: undefined },
+      nowOverrideSV: { value: 1000 }, pausedSV: { value: false },
+      extremaMinValue: { value: NaN }, extremaMaxValue: { value: NaN },
+      extremaMinTime: { value: NaN }, extremaMaxTime: { value: NaN },
+    };
+    applyLiveChartSeriesEngineFrame({ timeSincePreviousFrame: 16 }, sv as unknown as MultiEngineFrameRefs);
+    const display = sv.displaySeriesValues.value[0];
+    expect(display).toBeGreaterThan(50);
+    expect(display).toBeLessThan(75);
+    expect(sv.smoothRecordedTail.value).toBe(true);
+    const padding = { top: 12, bottom: 28, left: 12, right: 44 };
+    const pts = buildLinePoints(sv.renderedSeries.value[0].data, display, 1000, 30,
+      sv.displayMin.value, sv.displayMax.value, 320, 200, padding, undefined, false, 1000, display);
+    expect(pts[pts.length - 3]).toBeCloseTo(pts[pts.length - 1], 9);
+    expect(sv.renderedSeries.value[0].data).toBe(history);
+    expect(history[1].value).toBe(75);
+  });
   it("keeps fitted bounds separate across actual frames, with or without scratch reuse", () => {
     const sv = {
       series: { value: [{ id: "a", value: 40, data: [{ time: 1000, value: 20 }, { time: 1030, value: 40 }] }] },

@@ -69,9 +69,13 @@ export function useMultiSeriesLinePaths(
     const absoluteXOffset =
       windowSecs > 0 ? (now - windowSecs) * (chartWidth / windowSecs) : 0;
     for (let i = 0; i < count; i++) {
+      const displayValue = displays[i] ?? s[i].value;
+      const latest = s[i].data[s[i].data.length - 1];
+      const liveTailValue = engine.smoothRecordedTail?.get() && latest?.value === s[i].value
+        ? displayValue : undefined;
       const rawPts = buildLinePoints(
         s[i].data,
-        displays[i] ?? s[i].value,
+        displayValue,
         now,
         windowSecs,
         engine.displayMin.get(),
@@ -82,6 +86,7 @@ export function useMultiSeriesLinePaths(
         pool.ptsBuf,
         false,
         engine.tipTime?.get(),
+        liveTailValue,
       );
       const seriesTolerance = s[i].simplify ?? simplifyTolerance;
       const pts =

@@ -22,6 +22,8 @@ export interface MultiEngineTickMutable {
    */
   liveEdge: number;
   displayValues: number[];
+  /** Ease the newest recorded sample with its live tip, without editing history. */
+  smoothRecordedTail?: boolean;
   opacities: number[];
   /**
    * Value + time of the lowest / highest point across the visible series — the
@@ -153,6 +155,7 @@ export function tickLiveChartSeriesEngineFrame(
     viewEnd != null &&
     viewEnd >= firstDataTime &&
     (viewEnd < liveEdge || input.allowFutureViewEnd === true);
+  state.smoothRecordedTail = !scrolledBack && input.presentationTime == null;
   if (scrolledBack) {
     state.timestamp = viewEnd;
   } else if (!input.paused) {
@@ -232,14 +235,15 @@ export function tickLiveChartSeriesEngineFrame(
       (1 - gapRatio) *
         (input.adaptiveSpeedBoost ??
           MOTION_METRICS_DEFAULTS.adaptiveSpeedBoost);
-    // History already owns the authoritative target at this timestamp. Easing
-    // it again would put the synthetic tip/dot behind the newest recorded point.
-    // Unrecorded prices and historical viewport edges retain normal smoothing.
+    // An explicit replay head already presents its value; do not ease it twice.
+    // Ordinary live appends must still ease the price. The line builder presents
+    // the newest recorded sample at the same eased value so the line cannot
+    // bend back from an already-snapped sample to a lagging dot (#393).
     const pts = series[i].data;
     const latest = pts[pts.length - 1];
-    const targetIsRecorded = !scrolledBack && latest != null &&
+    const targetIsPresented = input.presentationTime != null && !scrolledBack && latest != null &&
       latest.time <= Math.min(state.timestamp, baseNow) && latest.value === target;
-    state.displayValues[i] = snap || targetIsRecorded
+    state.displayValues[i] = snap || targetIsPresented
       ? target
       : lerp(cur, target, adaptiveSpeed, input.dt);
 
