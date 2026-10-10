@@ -226,6 +226,8 @@ export interface MultiEngineState
   /** Entries captured by the last measured engine frame; history arrays remain shared. */
   series: SharedValue<SeriesConfig[]>;
   displaySeriesValues: SharedValue<number[]>;
+  /** Live-tail presentation only; source history and explicit replay stay exact. */
+  smoothRecordedTail?: SharedValue<boolean>;
   seriesOpacities: SharedValue<number[]>;
   /** Presented tip time, clamped to the viewport edge; absent uses timestamp. */
   tipTime?: SharedValue<number>;

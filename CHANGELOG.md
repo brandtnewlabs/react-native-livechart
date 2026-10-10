@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Ease `LiveChartSeries` live price updates even when the feed appends a matching
+  recorded point, preventing live dots from jumping vertically on each tick.
+  The newest drawn sample follows the same eased value so the line stays aligned
+  with its dot without rewriting source history. Explicit replay heads, static
+  rendering, `smoothing={1}` and `snapKey` retain immediate presentation.
+
 ## [5.0.0-rc.0] — Unpublished candidate
 
 Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made.

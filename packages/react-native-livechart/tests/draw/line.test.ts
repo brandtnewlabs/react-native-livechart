@@ -266,6 +266,30 @@ describe("buildLinePoints", () => {
     expect(out[2]).toBe(200 - pad.right);
   });
 
+  it("eases the newest recorded sample and dot together without a backwards tail", () => {
+    const data = [{ time: 80, value: 20 }, { time: 99, value: 75 }];
+    const out = buildLinePoints(data, 55, 100, 30, 0, 100, 200, 120, pad, undefined, false, 100, 55);
+    // Last recorded point and synthetic tip share the presented Y coordinate.
+    expect(out[out.length - 3]).toBe(out[out.length - 1]);
+    expect(out[1]).toBe(pad.top + (100 - 20) / 100 * (120 - pad.top - pad.bottom));
+    expect(data).toEqual([{ time: 80, value: 20 }, { time: 99, value: 75 }]);
+  });
+
+  it("does not ease a historical endpoint when newer samples are beyond the head", () => {
+    const data = [{ time: 80, value: 20 }, { time: 99, value: 75 }, { time: 101, value: 90 }];
+    const out = buildLinePoints(data, 55, 100, 30, 0, 100, 200, 120, pad, undefined, false, 100, 55);
+    expect(out[out.length - 3]).toBe(pad.top + 0.25 * (120 - pad.top - pad.bottom));
+  });
+
+  it("uses the presented tail value when decimating a dense final bucket", () => {
+    const data = Array.from({ length: 1000 }, (_, i) => ({ time: 70 + i * 0.029, value: 50 }));
+    data[999].value = 100;
+    const out = buildLinePoints(data, 55, 100, 30, 0, 100, 200, 120, pad, undefined, false, 100, 55);
+    const ys = out.filter((_, i) => i % 2 === 1);
+    expect(Math.min(...ys)).toBeCloseTo(pad.top + 0.45 * (120 - pad.top - pad.bottom));
+    expect(data[999].value).toBe(100);
+  });
+
   it("uses startIdx lo-1 when lo > 0", () => {
     const now = 1000;
     const data = [

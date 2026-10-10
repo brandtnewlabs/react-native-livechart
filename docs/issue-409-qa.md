@@ -23,6 +23,48 @@ and renderer verification is now complete on both phones, as recorded below.
 The subsequent Multi-series demo correction was rebuilt and installed on both.
 See the exact next tasks at the end of this report.
 
+## Live price-update jump corrected — 2026-10-10
+
+The user clarified the defect: horizontal scrolling is smooth, but the live dots
+jump vertically whenever a new price arrives. The earlier Y-range investigation
+and slower demo preset addressed different behavior and did not fix this defect.
+
+The cause is in `tickLiveChartSeriesEngineFrame`, before Skia draws anything:
+ordinary feeds append a point and set the matching series `value` together.
+The recorded-target branch bypassed `smoothing`, jumping the displayed value
+to its target in one frame. A regression reproduced 50 → 75 immediately before
+the fix; afterward the first 16ms tick presents an intermediate value and
+subsequent frames converge without editing source data.
+
+Ordinary live updates now ease the dot and newest drawn sample together. This
+avoids the backwards line tail that originally motivated #393, while retaining
+recorded history and scrub values. Explicit `presentationTime` heads keep their
+already-recorded values immediate; historical viewports, `snapKey`, static mode
+and `smoothing={1}` retain their existing behavior. The implementation uses the
+existing UI frame loop and pooled point buffers, with no new React state updates
+or per-frame history copies.
+
+The new uninstrumented Seeker Release APK is installed and its SHA-256 matches
+the build: `7a49a678d741e404de7c8b2050d9d8ecb4d25469be0c5ecca6dd4809f3b0a095`.
+Before/after normal live-feed recordings verify the reported behavior. At 60fps
+sampling, one pre-fix blue-dot event goes from y=707 to y=688 in one sample,
+then stays there. A post-fix event moves through y=567.5, 565, 561, 556.5, 555,
+553 and 551 before settling. These are different random price sequences at
+600px image width: they demonstrate eased motion, not a throughput comparison.
+Source videos, trajectories, build logs and the install manifest are retained
+as `live-dot-*` under `.agent-device/skia409/unpatched-android-20261010/`.
+Focused visibility toggles, historical pan, linear and styled paths also rendered
+correctly. A Default-responsiveness recording checks the faster preset too.
+The same library fix was rebuilt, installed and launched on Lennart's physical
+iPhone; this follow-up does not claim a second full iPhone route sweep.
+
+`npm run verify` passes: **148 suites / 2,144 tests**, five skipped.
+React Doctor remains **98/100**, no diagnostics. The rebuilt RC tarball has
+456 files, 302 source/declaration files, no patches and no old renderer imports.
+The earlier full route sweeps predate this engine change; this follow-up is a
+focused verification of the reported Multi-series defect, not another full sweep.
+No old/new renderer benchmark is needed to identify this explicit smoothing bypass.
+
 ## Fresh unmodified Seeker verification — 2026-10-10
 
 Built a new arm64-v8a, locally signed Release APK with an embedded Hermes bundle
@@ -95,8 +137,8 @@ native console capture for its entire duration.
 Opaque/dark and loading-to-live recovery also rendered on iPhone with its RN
 sibling overlay visible.
 
-During focused Android QA the user reported that Multi-series paths jumped to
-new Y-axis positions. A screen recording reproduced the jump when revealing
+The initial investigation treated the report as a Y-range change. A screen
+recording reproduced a separate jump when revealing
 a series: the demo omitted `rangeAnimation.animateExpansion`, so outward
 bounds snapped under the existing documented library default. The demo now
 enables this option initially and exposes **Animate expansion** beside

@@ -33,10 +33,15 @@ Update the series the same way you feed a single chart — append points in plac
 `series.modify(...)` (mutating each entry's `data` array and `value`), or replace the whole array
 with `series.set(...)`. Avoid `series.value = ...`.
 
-When the newest recorded point already equals the live `value` and is at or
-before the displayed time, the following tip and dot use that value immediately.
-This keeps them aligned with authoritative history. An unrecorded live value
-still uses `smoothing`; scrolling back retains the historical edge behavior.
+Ordinary live price updates use `smoothing`, including feeds that append a point
+and set `value` together. The dot and newest drawn sample ease to the new value
+together, so the line does not bend back from a snapped sample to a lagging dot.
+This affects presentation only: source history and recorded scrub values stay
+unchanged. Earlier samples retain their recorded geometry. `smoothing={1}` and
+`snapKey` remain immediate; scrolling back retains its historical edge behavior.
+With an explicit `presentationTime`, an already-recorded value at or before the
+head is presented immediately because that clock/value pair already defines the
+presentation.
 
 Y-range contraction uses `smoothing` by default; outward bounds snap unless you
 pass `rangeAnimation={{ animateExpansion: true }}`. Enable it to ease the chart

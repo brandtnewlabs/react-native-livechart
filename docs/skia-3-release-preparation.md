@@ -21,7 +21,7 @@ separate from this migration and is not a release prerequisite.
 [issue-409-qa.md](issue-409-qa.md) preserves the measurement history. Both phones
 have now been rebuilt and installed with unmodified Skia: **45/45 route checks**
 and **23/23 rendered-pixel checks** passed per phone, with every route screenshot
-visually reviewed. The user-reported Multi-series Y-range jump was corrected
+visually reviewed. A separate Multi-series Y-range jump was corrected
 by enabling the demo's existing outward-easing option. The correction is also
 installed on both phones; a paused-feed Seeker recording verifies the transition.
 The demo now starts with Smooth responsiveness after a same-feed comparison.
@@ -30,6 +30,16 @@ tree during live idle and eight visibility toggles; probe edits were removed.
 Three exploratory Seeker line captures measured 104.6–105.9 presentations/s on
 its 120Hz display, with p99 around 16.7ms. There is no old-renderer pacing control
 yet; these observations do not establish a migration regression.
+
+The user subsequently clarified the remaining defect: live dots jumped in Y
+when a price changed, while X scrolling stayed smooth. The engine's
+recorded-target branch bypassed smoothing. Live price changes now ease the dot
+and newest drawn sample together without rewriting history or adding React
+renders. A fresh Seeker Release build and before/after live-feed recordings
+verify this fix; earlier full sweeps predate the engine change. Explicit replay
+heads and explicit snaps remain immediate. See the QA report's
+[price-update follow-up](issue-409-qa.md#live-price-update-jump-corrected--2026-10-10).
+The new library fix is also rebuilt, installed and launched on Lennart's iPhone.
 
 ## Package
 
@@ -46,9 +56,10 @@ yet; these observations do not establish a migration regression.
   The consumer check explicitly rejects any packaged `.patch` file.
 
 The replacement candidate is
-`.agent-device/skia409/release-prep/react-native-livechart-5.0.0-rc.0.tgz`.
-It is 474,916 bytes with 456 files and zero patches; all 302 source/declaration
+`.agent-device/skia409/release-prep/live-dot-fix/react-native-livechart-5.0.0-rc.0.tgz`.
+It is 475,716 bytes with 456 files and zero patches; all 302 source/declaration
 files were audited for old renderer imports.
+SHA-256: `5adc54eb93c49cb4b33c001a6e9be48bac0635a5978a5815c2bf3d61d8f48ded`.
 The prior patched tarball is historical evidence under
 `.agent-device/skia409/patch-removal/previous-patched-candidate.tgz`.
 
@@ -68,6 +79,8 @@ audited for zero patches/old imports, normal lifecycle-enabled consumer install
 iOS Hermes Bundle Mode export. Those package checks are separate from the new
 physical QA above. After the demo correction, `npm run verify` passed again
 (148 suites / 2,139 tests, five skipped); React Doctor is 98/100, no diagnostics.
+After the live-price correction, `npm run verify` passes with 148 suites /
+2,144 tests, five skipped; React Doctor remains 98/100, no diagnostics.
 
 To rebuild the local candidate:
 
@@ -82,19 +95,25 @@ npm run verify:bundle-mode-consumer
 1. **Functional recheck: completed.** Both unmodified phone builds passed the
    45-route sweep and 23 renderer checks. See the QA report for the focused
    interactions, Multi-series correction and measurement limits.
-2. **Measure three named workloads against old Skia 2.6.4:** default
-   `/demo/line-and-area`; `/demo/candlestick` at `15m · 1m` with volume and five
-   historical pan pairs; `/demo/multi-series` with three series, 20s scrub and
-   Yes off/on at 20s/25s. Cold-launch, warm up 20s, capture 30s; three runs per
-   renderer/workload/phone, **36 captures**. Pair old/new rounds, hold the feed,
-   harness and display rate fixed (prepare a QA-only seeded feed and repeatable
-   gestures first), and report mean cadence, p95/p99, worst
-   interval and the fraction over 1.5 display periods. Investigate a greater
-   than 5% cadence loss or at least one display-period p99 increase repeated in
-   two of three pairs. See the [full capture and acceptance procedure](issue-409-qa.md#concrete-next-tasks-after-patch-removal),
-   including validation of Android chart-layer timestamps before collecting.
+2. **Live price-update jump: corrected and verified on Seeker.** The recorded
+   price now eases with its line tail. Repeating the full QA or a renderer matrix
+   is not required to diagnose this defect.
 3. **Publish 5.0.0-rc.0 under `next` when requested.** Report actual unpatched
    device results and any reproducible regression before a stable release.
+
+The wider renderer cadence comparison remains unperformed and separate from
+the live-price fix. If pursued, the concrete procedure is three named workloads
+against old Skia 2.6.4: default
+`/demo/line-and-area`; `/demo/candlestick` at `15m · 1m` with volume and five
+historical pan pairs; `/demo/multi-series` with three series, 20s scrub and
+Yes off/on at 20s/25s. Cold-launch, warm up 20s, capture 30s; three runs per
+renderer/workload/phone, **36 captures**. Pair old/new rounds, hold the feed,
+harness and display rate fixed (prepare a QA-only seeded feed and repeatable
+gestures first), and report mean cadence, p95/p99, worst
+interval and the fraction over 1.5 display periods. Investigate a greater
+than 5% cadence loss or at least one display-period p99 increase repeated in
+two of three pairs. See the [full capture and acceptance procedure](issue-409-qa.md#concrete-next-tasks-after-patch-removal),
+including validation of Android chart-layer timestamps before collecting.
 
 An identical-workload old-version allocation comparison is a separate,
 nonblocking investigation: fixed-inset chart and three-Text control, labels

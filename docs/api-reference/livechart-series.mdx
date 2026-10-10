@@ -23,6 +23,11 @@ The inherited `yAxis.intervalScale` chooses dynamic nice intervals in display un
 changing any series values. Pair it with a `formatValue` that applies the same multiplier. If the
 scaled live range cannot be represented, interval selection safely falls back to source units.
 
+Live price changes use `smoothing` even when the newest recorded point already
+equals `SeriesConfig.value`. The dot and newest drawn sample ease together;
+source history and recorded scrub values remain unchanged. Earlier samples keep
+their recorded geometry. `smoothing={1}` and `snapKey` still settle immediately.
+
 On Android, the shared experimental `canvasMode="opaque"` option selects an opaque SurfaceView and
 paints the palette background inside the canvas. See
 [Android surface rendering](/guides/android-surface-rendering) for constraints and profiling guidance.
@@ -52,7 +57,9 @@ when width changes. Inline labels and axis badges may need extra space;
   Parked viewports retain the presented value when their edge passes the head.
   Scrub callbacks, selection dots and tooltip interpolation exclude future samples;
   momentum bursts originate at the projected dot and hide when it is offscreen.
-  Paths and range fitting exclude samples after an explicit head. Updating the
+  An already-recorded value at or before this explicit head is presented immediately,
+  avoiding a second layer of live-feed tip easing. Paths and range fitting exclude
+  samples after an explicit head. Updating the
   SharedValue does not require a React render. See
   [Replay clock](/guides/multi-series#replay-clock).
 </ParamField>

@@ -71,6 +71,7 @@ export interface MultiEngineFrameRefs {
   /** Drawing input published with this frame's range/tips. Optional for standalone callers. */
   renderedSeries?: SharedValue<SeriesConfig[]>;
   displaySeriesValues: SharedValue<number[]>;
+  smoothRecordedTail?: SharedValue<boolean>;
   seriesOpacities: SharedValue<number[]>;
   displayMin: SharedValue<number>;
   displayMax: SharedValue<number>;
@@ -288,6 +289,7 @@ export function applyLiveChartSeriesEngineFrame(
   if (sv.currentTimeSV) sv.currentTimeSV.value = state.currentTime!;
   if (sv.fullHistoryWindowSV) sv.fullHistoryWindowSV.value = state.fullHistoryWindow ?? null;
   sv.displaySeriesValues.value = state.displayValues;
+  if (sv.smoothRecordedTail) sv.smoothRecordedTail.value = state.smoothRecordedTail ?? false;
   sv.seriesOpacities.value = state.opacities;
   sv.extremaMinValue.value = state.extremaMinValue;
   sv.extremaMaxValue.value = state.extremaMaxValue;
@@ -375,6 +377,7 @@ export function useLiveChartSeriesEngine(
   const returnFrom = useSharedValue(0);
 
   const displaySeriesValues = useSharedValue<number[]>([]);
+  const smoothRecordedTail = useSharedValue(false);
   const seriesOpacities = useSharedValue<number[]>([]);
   const renderedSeries = useSharedValue<SeriesConfig[]>([]);
 
@@ -414,6 +417,7 @@ export function useLiveChartSeriesEngine(
     series,
     renderedSeries,
     displaySeriesValues,
+    smoothRecordedTail,
     seriesOpacities,
     displayMin,
     displayMax,
@@ -511,6 +515,7 @@ export function useLiveChartSeriesEngine(
     fullHistoryWindow,
     series: renderedSeries,
     displaySeriesValues,
+    smoothRecordedTail,
     seriesOpacities,
     extremaMinValue,
     extremaMaxValue,

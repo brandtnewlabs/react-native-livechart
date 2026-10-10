@@ -1901,7 +1901,12 @@ export interface SeriesConfig {
   id: string;
   /** Array of data points for this series. */
   data: LiveChartPoint[];
-  /** Latest (live) value for smooth interpolation. */
+  /**
+   * Latest live value. Ordinary live updates ease the dot and newest line sample
+   * together with `smoothing`, even when this value is already in `data`.
+   * Source history stays unchanged; an explicit presentationTime uses an
+   * already-recorded presented value immediately.
+   */
   value: number;
   /** Line color. Defaults to the built-in series color palette. */
   color?: string;
@@ -3067,6 +3072,8 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
    * and values use the same cutoff, including callback payloads and tooltip
    * interpolation. Degen bursts originate at the presented dot. No React
    * render is required for clock updates.
+   * An already-recorded value at this explicit head is presented immediately,
+   * rather than receiving the ordinary live-feed tip easing a second time.
    */
   presentationTime?: SharedValue<number | undefined>;
   /**

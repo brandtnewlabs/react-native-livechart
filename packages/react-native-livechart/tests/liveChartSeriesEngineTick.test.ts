@@ -46,6 +46,32 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     expect(input.series[0].data.map(point => point.value)).toEqual([20, 40]);
   });
 
+  it("eases a recorded live price over multiple frames without rewriting history", () => {
+    const s = baseMulti();
+    s.displayValues = [50];
+    s.opacities = [1];
+    const series = [{ id: "a", value: 75, data: [{ time: 3700, value: 20 }, { time: 3760, value: 75 }] }];
+    const input = {
+      dt: 16, canvasWidth: 320, canvasHeight: 200, timeWindow: 60,
+      smoothing: 0.05, exaggerate: false, referenceValue: undefined,
+      nowOverride: 3760, series,
+    };
+    tickLiveChartSeriesEngineFrame(s, input);
+    expect(s.displayValues[0]).toBeGreaterThan(50);
+    expect(s.displayValues[0]).toBeLessThan(75);
+    let previous = s.displayValues[0];
+    for (let i = 0; i < 90; i++) {
+      tickLiveChartSeriesEngineFrame(s, input);
+      expect(s.displayValues[0]).toBeGreaterThanOrEqual(previous);
+      expect(s.displayValues[0]).toBeLessThanOrEqual(75);
+      previous = s.displayValues[0];
+    }
+    expect(s.displayValues[0]).toBeCloseTo(75, 3);
+    expect(series[0].data.map(point => point.value)).toEqual([20, 75]);
+    expect(series[0].value).toBe(75);
+    expect(s.smoothRecordedTail).toBe(true);
+  });
+
   it.each([
     { min: NaN, max: 100 }, { min: 0, max: Infinity },
     { min: 50, max: 20 }, { min: 20, max: 20 }, null,
@@ -126,14 +152,14 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     [50, 3760, undefined, null],
     [75, 3761, undefined, null],
     [75, 3760, 3750, null],
-  ])("only bypasses smoothing for an already recorded live target (%s at %s, edge %s)", (recorded, time, viewEnd, expected) => {
+  ])("only bypasses replay smoothing for an already recorded presented target (%s at %s, edge %s)", (recorded, time, viewEnd, expected) => {
     const s = baseMulti();
     s.displayValues = [50];
     s.opacities = [1];
     tickLiveChartSeriesEngineFrame(s, {
       dt: 16, canvasWidth: 320, canvasHeight: 200, timeWindow: 60,
       smoothing: 0.05, exaggerate: false, referenceValue: undefined,
-      nowOverride: 3760, viewEnd,
+      presentationTime: 3760, viewEnd,
       series: [{ id: "a", value: 75, data: [{ time: 3700, value: 20 }, { time, value: recorded }] }],
     });
     if (expected != null) expect(s.displayValues[0]).toBe(expected);
@@ -141,6 +167,7 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       expect(s.displayValues[0]).toBeLessThan(50);
       expect(s.timestamp).toBe(3750);
     } else expect(s.displayValues[0]).toBeCloseTo(53.3692740209399);
+    expect(s.smoothRecordedTail).toBe(false);
   });
 
   it("keeps smoothing a future recorded target that falls inside the breathing-room buffer", () => {
