@@ -34,8 +34,8 @@ The demo now starts with Smooth responsiveness after a same-feed comparison.
 Temporary Seeker probes found zero repeated React renders in the measured chart
 tree during live idle and eight visibility toggles; probe edits were removed.
 Three exploratory Seeker line captures measured 104.6–105.9 presentations/s on
-its 120Hz display, with p99 around 16.7ms. There is no old-renderer pacing control
-yet; these observations do not establish a migration regression.
+its 120Hz display, with p99 around 16.7ms. There is no old-renderer Seeker pacing
+control yet; these observations do not establish a migration regression.
 
 The user subsequently clarified the remaining defect: live dots jumped in Y
 when a price changed, while X scrolling stayed smooth. The engine's
@@ -116,9 +116,28 @@ npm run verify:bundle-mode-consumer
 3. **Publish 5.0.0-rc.0 under `next` when requested.** Report actual unpatched
    device results and any reproducible regression before a stable release.
 
-The wider renderer cadence comparison remains unperformed and separate from
-the live-price fix. If pursued, the concrete procedure is three named workloads
-against old Skia 2.6.4: default
+An identical-demo **iPhone Release comparison against published 4.28.1** is now
+complete: [performance report](performance-5-vs-4.28.1-iphone.md). Eighteen
+paired captures on Lennart's iPhone 16 measured 30.3–43.7% lower physical memory,
+24.3% lower line CPU and 15.3% lower candle CPU in the RC. Multi-series CPU was
+8.5% higher, repeating in all three pairs. Intermittent missing app labels in
+the native display data prevent a reliable delivered-FPS ranking. The report
+preserves every capture, the seeded feed, exact workloads and measurement limits.
+Four additional Time Profiler captures localize the CPU concern to scrubbing.
+An exploratory Pills-off control reverses the relative scrub difference; native
+shared-value update and text-input commit work are the current leads, with root
+cause still unconfirmed. See the [PR profiling follow-up](https://github.com/brandtnewlabs/react-native-livechart/pull/411#issuecomment-6100874357)
+and the report for the one-pair-per-setting limitation.
+Thirteen subsequent exploratory fix/control captures did not validate a CPU
+fix. Readout-off and callback-off controls remained inside the new baseline
+range; TextInput alone is not supported as the cause of the increase. All
+experimental app/library/native changes were reverted. The report retains the
+results and the one-capture-per-candidate limitation.
+
+The wider delivered-cadence comparison remains unresolved, and the Seeker
+old-renderer control remains unperformed. Both are separate from the live-price
+fix. If pursued, the concrete procedure is three named workloads against old
+Skia 2.6.4: default
 `/demo/line-and-area`; `/demo/candlestick` at `15m · 1m` with volume and five
 historical pan pairs; `/demo/multi-series` with three series, 20s scrub and
 Yes off/on at 20s/25s. Cold-launch, warm up 20s, capture 30s; three runs per
