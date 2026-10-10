@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Ease `LiveChartSeries` live price updates even when the feed appends a matching
-  recorded point, preventing live dots from jumping vertically on each tick.
-  The newest drawn sample follows the same eased value so the line stays aligned
-  with its dot without rewriting source history. Explicit replay heads, static
-  rendering, `smoothing={1}` and `snapKey` retain immediate presentation.
-
 ## [5.0.0-rc.0] — Unpublished candidate
 
 Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made.
@@ -47,6 +39,17 @@ Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made
   preset to spread large range changes across more visible steps.
 - Example app: give Kraken's header matching left/right widths so the centered
   title no longer overlaps the Back button's Android touch area.
+
+## [4.28.1] — 2026-10-10
+
+### Fixed
+
+- Restore smooth `LiveChartSeries` price updates after the 4.28.0 regression:
+  ordinary live updates now ease the dot and newest drawn sample together,
+  including feeds that append a matching recorded point. Source history stays
+  unchanged and the line no longer bends back from a snapped point to a lagging
+  dot. Explicit replay heads, static rendering, `smoothing={1}` and `snapKey`
+  retain their existing behavior.
 
 ## [4.28.0] — 2026-10-09
 
@@ -1764,6 +1767,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.28.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.1
 [4.28.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.0
 [4.27.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.27.0
 [4.26.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.26.0

@@ -51,9 +51,9 @@ iOS deployment target is 16.4; `expo-build-properties` sets Android's minimum SD
 to 26. Use a native development or Release build; Expo Go
 does not contain the v3 native runtime. Review the upstream
 [migration guide](https://wcandillon.github.io/react-native-skia/docs/getting-started/migration/)
-for toolchain configuration. Physical iPhone and Solana Seeker Android/Vulkan QA
-covered the full 45-route app sweep on each device. The final sweeps used an experimental native patch
-that has since been removed; a fresh unmodified-renderer check is the next task.
+for toolchain configuration. Fresh unmodified-renderer builds on the physical
+iPhone and Solana Seeker Android/Vulkan passed the full 45-route app sweep and
+23 renderer checks per device after the experimental native patch was removed.
 Maintained-v2 support is not declared. Detailed results and the exact follow-up
 tests are tracked in [issue #409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
 
@@ -67,7 +67,8 @@ npm uninstall @shopify/react-native-skia
 npm install /path/to/react-native-livechart-5.0.0-rc.0.tgz react-native-skia@3.3.0
 ```
 
-The published `latest` remains LiveChart 4.x. When prerelease publication is
+The published `latest` remains LiveChart 4.28.1. This candidate includes its
+live-price smoothing and line/dot alignment correction. When prerelease publication is
 explicitly requested, `npm run publish:lib:next` selects the `next` dist-tag.
 A prepublish check rejects prerelease publication to `latest`; npm's workspace
 publish command can otherwise ignore `publishConfig.tag`.

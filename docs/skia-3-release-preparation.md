@@ -4,6 +4,12 @@ Prepared locally on 2026-10-10 as **5.0.0-rc.0**. No npm publication, Git tag or
 GitHub release was created. At preparation time the registry's stable `latest`
 was **4.28.0**.
 
+The stable price-update correction has since been published as **4.28.1**
+([release](https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.1)).
+The v5 branch now includes that released main baseline, retains the identical
+smoothing/alignment correction, and keeps the complete 4.28.1 changelog entry.
+This candidate remains unpublished; npm `latest` is **4.28.1**.
+
 ## Current renderer configuration
 
 The candidate uses the published, **unmodified `react-native-skia@3.3.0`**.
@@ -40,6 +46,8 @@ verify this fix; earlier full sweeps predate the engine change. Explicit replay
 heads and explicit snaps remain immediate. See the QA report's
 [price-update follow-up](issue-409-qa.md#live-price-update-jump-corrected--2026-10-10).
 The new library fix is also rebuilt, installed and launched on Lennart's iPhone.
+The additional focused iPhone price-animation recording was skipped at the
+user's request on 2026-10-10; launch verification is not a motion recording.
 
 ## Package
 
@@ -82,6 +90,12 @@ physical QA above. After the demo correction, `npm run verify` passed again
 After the live-price correction, `npm run verify` passes with 148 suites /
 2,144 tests, five skipped; React Doctor remains 98/100, no diagnostics.
 
+After integrating released 4.28.1, npm 10 clean installation, `npm run verify`
+(148 suites / 2,144 tests, five existing skips) and the packed iOS Hermes
+Bundle Mode consumer export pass again. React Doctor remains 98/100 with no
+diagnostics. The integration changes release history and documentation only;
+the stable engine and line-point smoothing code is retained unchanged.
+
 To rebuild the local candidate:
 
 ```bash
@@ -97,7 +111,8 @@ npm run verify:bundle-mode-consumer
    interactions, Multi-series correction and measurement limits.
 2. **Live price-update jump: corrected and verified on Seeker.** The recorded
    price now eases with its line tail. Repeating the full QA or a renderer matrix
-   is not required to diagnose this defect.
+   is not required to diagnose this defect. The separate iPhone motion follow-up
+   is waived as above.
 3. **Publish 5.0.0-rc.0 under `next` when requested.** Report actual unpatched
    device results and any reproducible regression before a stable release.
 

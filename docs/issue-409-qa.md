@@ -23,6 +23,18 @@ and renderer verification is now complete on both phones, as recorded below.
 The subsequent Multi-series demo correction was rebuilt and installed on both.
 See the exact next tasks at the end of this report.
 
+### Stable backport and v5 integration — 2026-10-10
+
+The price-update correction described below was also published in stable
+[LiveChart 4.28.1](https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.1)
+through [PR #410](https://github.com/brandtnewlabs/react-native-livechart/pull/410).
+The v5 branch includes that main baseline and release history while retaining
+the same runtime correction with the Skia 3 import migration. Stable npm
+`latest` remains 4.28.1; v5 is unpublished. The user waived the additional focused
+iPhone price-animation recording; the recorded motion evidence for the final
+price fix remains the Seeker captures below. This integration adds no new
+device or profiling measurements.
+
 ## Live price-update jump corrected — 2026-10-10
 
 The user clarified the defect: horizontal scrolling is smooth, but the live dots
