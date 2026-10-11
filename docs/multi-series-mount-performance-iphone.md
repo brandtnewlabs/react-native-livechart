@@ -6,7 +6,76 @@ Reanimated 4.5.0, Worklets 0.10.0, and an optimized iOS Release build in legacy
 Worklets mode. This compares the mount optimization with branch commit
 `65a254d`; it is **not another 4.28.1 versus 5.0 CPU comparison**.
 
-## Result
+## Follow-up: initial Y-range fitting
+
+A second pass compares the previous mount commit `fd0d228` with the additional
+initial-fit changes, on the same phone and Release configuration. The default
+demo enables `rangeAnimation.animateExpansion` with `smoothing={0.03}`. Its
+initial Y-range was 0–1 even though the data is around 33–34: nonempty paths
+therefore preceded a fully framed chart by several seconds.
+
+| Fully framed geometry | Cold launches | Median | Mean | Range |
+| --- | ---: | ---: | ---: | ---: |
+| Previous mount commit | 9 | 3,369 ms | 3,367.4 ms | 3,354–3,383 ms |
+| Additional mount changes | 9 | 117 ms | 118.4 ms | 115–133 ms |
+
+The median fell **96.5%**, or 3,252 ms. This is a stricter measurement than the
+original nonempty-path metric: all three paths must be nonempty, the reveal
+complete, and the visible data extrema and series tips inside the displayed
+Y-range. It still measures UI geometry, **not compositor delivery or first
+visible pixels**. It excludes process startup, route loading, and parent feed
+preparation, starting at the first controller call. The first fit remains ready
+for later data when the chart initially has no visible history.
+
+The engine now fits its first measured, visible data immediately. Subsequent
+live updates, series toggles, replacements and resizes retain the configured
+smoothing. The compact presentation snapshot is available on the first React
+render, and fixed React props no longer allocate seventeen separate UI mutables
+and derived-value mappers. Dynamic UI inputs such as `presentationTime`, manual
+Y-scale and pan/zoom remain SharedValues.
+
+Native layout arrived at median **23 → 15 ms**. However, the original
+nonempty-path/full-reveal metric was **100 → 117 ms** in these repeat batches
+(means 106.3 → 118.4 ms). This pass does not establish faster first path
+construction; its substantial improvement is eliminating the initial range
+animation from a placeholder. Exploratory batches had overlapping geometry
+results (baseline median 125 ms; early metadata 118 ms; metadata plus fixed
+parameters 116 ms). Preparing an extra engine tick during layout, asynchronously
+or synchronously, did not establish a consistent gain and was reverted.
+
+The formal sequence was candidate six launches, baseline six, candidate three,
+baseline three, reinstalling saved signed Release apps. No counted run was
+discarded. Both use the same deterministic feed seed and temporary probe. The
+probe records UI readiness timestamps once per stage, then writes a small JSON
+file through `expo-file-system`; the host reads that file through CoreDevice.
+The iOS UI automation runner timed out during this pass, so no new screenshot or
+gesture checks are claimed. Native layout, live engine updates, and all three
+paths were confirmed by the probe. The ordinary Release app is restored after
+removing instrumentation and the deterministic feed.
+
+All fully framed baseline runs (ms):
+
+```text
+3375, 3364, 3369, 3354, 3370, 3369, 3383, 3356, 3367
+```
+
+All fully framed candidate runs (ms):
+
+```text
+133, 117, 117, 116, 115, 115, 119, 116, 118
+```
+
+Local evidence is under `.agent-device/multi-mount-round2-20261010/`: signed
+variants, source snapshots, bundle/binary SHA-256 manifest, launch and copy logs,
+raw stage measurements and `summary.json`. Regression tests fail against the
+previous implementation and pass with the fix. They cover first-render metadata,
+unmeasured and empty mounts, hidden-only feeds, zero-valued data, paused initial
+fitting, later easing and resize, prop updates, UI scale changes and scroll return.
+`npm run verify` passes: typecheck, lint, 151 suites and 2,159 tests, with five
+existing skips. Declaration build and a fresh packed-consumer iOS Hermes Bundle
+Mode export pass. React Doctor remains 98/100 with no diagnostics.
+
+## Earlier geometry-readiness comparison
 
 | Mount variant | Cold launches | Median | Mean | Range |
 | --- | ---: | ---: | ---: | ---: |
@@ -109,5 +178,5 @@ updates, layout resampling, stale publications, source changes, optional particl
 mounting without engine replacement, shared shake output, and deferred-control
 cleanup. Device checks cover the chart and the particle toggle.
 
-The previous steady-state Multi-series scrub CPU regression remains unresolved.
-These mount measurements do not establish a CPU fix or a delivered-FPS change.
+Steady-state Multi-series scrub CPU has not been remeasured after the mount
+changes. These measurements do not establish a CPU fix or a delivered-FPS change.

@@ -52,15 +52,26 @@ interface Presentation {
 
 /** Bootstrap before paint, then publish config/layout changes together. */
 export function useSeriesPresentation(series: SharedValue<SeriesConfig[]>) {
-  const [presentation, setPresentation] = useState<Presentation>({
-    epoch: 0, revision: 0, signature: "", series: [], sample: undefined,
-  });
   const currentSource = useRef<SharedValue<SeriesConfig[]> | null>(null);
   const epochCounter = useRef(0);
   const acceptedRevision = useRef(0);
   const activeEpoch = useSharedValue(0);
   const revision = useSharedValue(0);
   const published = useSharedValue({ signature: "", sample: 0 });
+  // Read only compact metadata during lazy state initialization. This worklet
+  // has no writes or subscriptions, so an abandoned render has no UI effects.
+  const [presentation, setPresentation] = useState<Presentation>(() => {
+    const readInitial = () => {
+      "worklet";
+      const arr = series.get();
+      const value = seriesPresentationValue(arr);
+      return {
+        epoch: 1, revision: 0, signature: seriesPresentationSignature(arr),
+        series: projectSeriesPresentation(arr), sample: value !== 0 ? value : undefined,
+      };
+    };
+    return Platform.OS === "web" ? readInitial() : executeOnUIRuntimeSync(readInitial)();
+  });
   const apply = useCallback((next: Presentation) => {
     if (currentSource.current !== series || next.epoch !== epochCounter.current ||
       next.revision <= acceptedRevision.current) return;

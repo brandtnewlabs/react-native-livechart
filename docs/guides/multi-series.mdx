@@ -62,7 +62,11 @@ the configured `smoothing`.
 
 When history is already available, initialize `series` with that history before
 mounting the chart. This lets its lines, legend, and value-label layout initialize
-together. For asynchronous history, keep the loading state active until the feed
+together. Its first measured, visible data fits the Y-range immediately, even
+with `animateExpansion: true`, so lines do not wait for a placeholder range to
+reach their prices. Later live updates, series toggles, and replacements retain
+the configured easing. Empty and hidden-only feeds wait for visible history
+before this initial fit. For asynchronous history, keep the loading state active until the feed
 is ready. Heavy controls or other surrounding UI can mount after the chart’s
 initial frame, as the Multi-series demo does.
 

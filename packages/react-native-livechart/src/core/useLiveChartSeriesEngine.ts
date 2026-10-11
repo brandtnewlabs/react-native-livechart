@@ -66,6 +66,9 @@ export interface MultiSeriesEngineConfig {
   snapKey?: string | number;
 }
 
+/** Constant React props copied with the frame worklet; no mapper/SharedValue is needed. */
+type FrameParameter<T> = Pick<SharedValue<T>, "value">;
+
 export interface MultiEngineFrameRefs {
   series: SharedValue<SeriesConfig[]>;
   /** Drawing input published with this frame's range/tips. Optional for standalone callers. */
@@ -82,28 +85,28 @@ export interface MultiEngineFrameRefs {
   timestamp: SharedValue<number>;
   canvasWidth: SharedValue<number>;
   canvasHeight: SharedValue<number>;
-  timeWindow: SharedValue<number>;
-  smoothing: SharedValue<number>;
-  rangeAnimationSV?: SharedValue<SeriesRangeAnimationConfig | undefined>;
-  adaptiveSpeedBoostSV?: SharedValue<number | undefined>;
-  exaggerateSV: SharedValue<boolean>;
-  referenceValue: SharedValue<number | undefined>;
-  referenceValues?: SharedValue<number[] | undefined>;
-  nonNegativeSV?: SharedValue<boolean>;
-  maxValueSV?: SharedValue<number | undefined>;
-  minRangeSV?: SharedValue<number | undefined>;
+  timeWindow: FrameParameter<number>;
+  smoothing: FrameParameter<number>;
+  rangeAnimationSV?: FrameParameter<SeriesRangeAnimationConfig | undefined>;
+  adaptiveSpeedBoostSV?: FrameParameter<number | undefined>;
+  exaggerateSV: FrameParameter<boolean>;
+  referenceValue: FrameParameter<number | undefined>;
+  referenceValues?: FrameParameter<number[] | undefined>;
+  nonNegativeSV?: FrameParameter<boolean>;
+  maxValueSV?: FrameParameter<number | undefined>;
+  minRangeSV?: FrameParameter<number | undefined>;
   yRangeScaleSV?: SharedValue<number>;
-  nowOverrideSV?: SharedValue<number | undefined>;
+  nowOverrideSV?: FrameParameter<number | undefined>;
   presentationTimeSV?: SharedValue<number | undefined>;
-  historyStartTimeSV?: SharedValue<number | undefined>;
+  historyStartTimeSV?: FrameParameter<number | undefined>;
   currentTimeSV?: SharedValue<number>;
   fullHistoryWindowSV?: SharedValue<number | null>;
-  windowBufferSV?: SharedValue<number>;
-  pausedSV: SharedValue<boolean>;
+  windowBufferSV?: FrameParameter<number>;
+  pausedSV: FrameParameter<boolean>;
   /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
   viewEndSV?: SharedValue<number | null>;
   /** Honor a `viewEnd` past the live edge (timeScroll.overscroll). Optional. */
-  allowFutureViewEndSV?: SharedValue<boolean>;
+  allowFutureViewEndSV?: FrameParameter<boolean>;
   /** "Return to live" glide progress (0→1); the right edge eases to live. Optional. */
   returnTSV?: SharedValue<number>;
   /** Frozen right-edge time the return glide starts from. Optional. */
@@ -118,6 +121,8 @@ export interface MultiEngineFrameRefs {
    * tick. Optional for callers/tests.
    */
   snapSV?: SharedValue<boolean>;
+  /** Wait for measured, visible data before fitting the initial range. */
+  initialFitPendingSV?: SharedValue<boolean>;
   extremaMinValue: SharedValue<number>;
   extremaMaxValue: SharedValue<number>;
   extremaMinTime: SharedValue<number>;
@@ -198,6 +203,16 @@ export function applyLiveChartSeriesEngineFrame(
   // and clear it below so only this frame snaps (live ticks stay smoothed).
   const snap = sv.snapSV?.value ?? false;
   const seriesSnap = sv.series.value;
+  let initialFit = false;
+  if (sv.initialFitPendingSV?.value && sv.canvasWidth.value > 0 && sv.canvasHeight.value > 0) {
+    for (let i = 0; i < seriesSnap.length; i++) {
+      const s = seriesSnap[i];
+      if (s.visible !== false && s.data.length > 0 && Number.isFinite(s.value)) {
+        initialFit = true;
+        break;
+      }
+    }
+  }
   const curDv = sv.displaySeriesValues.value;
   const curOp = sv.seriesOpacities.value;
   let displayValues: number[];
@@ -272,7 +287,7 @@ export function applyLiveChartSeriesEngineFrame(
   input.series = seriesSnap;
   input.nowSeconds = Date.now() / 1000;
   input.paused = sv.pausedSV.value;
-  input.snap = snap;
+  input.snap = snap || initialFit;
   input.viewEnd = sv.viewEndSV?.value;
   input.allowFutureViewEnd = sv.allowFutureViewEndSV?.value ?? false;
   input.returnT = sv.returnTSV?.value;
@@ -306,6 +321,7 @@ export function applyLiveChartSeriesEngineFrame(
     }
     sv.renderedSeries.value = rendered;
   }
+  if (initialFit && sv.initialFitPendingSV) sv.initialFitPendingSV.value = false;
   // Clear the one-shot snap so the next frame eases normally again — but only
   // once a real (measured) frame consumed it (the tick early-returns on a
   // zero-size canvas before applying the snap). See applyLiveChartEngineFrame.
@@ -329,31 +345,30 @@ export function useLiveChartSeriesEngine(
   const viewWindow = useSharedValue<number | null>(null);
   const fullHistoryWindow = useSharedValue<number | null>(null);
   const timeWindow = useDerivedValue(() => viewWindow.value ?? fullHistoryWindow.value ?? config.timeWindow);
-  const configuredTimeWindow = useDerivedValue(() => config.timeWindow);
-  const historyStartTimeSV = useDerivedValue(() => config.historyStartTime);
-  const smoothing = useDerivedValue(() => config.smoothing);
-  const rangeAnimationSV = useDerivedValue(() => config.rangeAnimation);
-  const adaptiveSpeedBoostSV = useDerivedValue(() => config.adaptiveSpeedBoost);
-  const exaggerateSV = useDerivedValue(() => config.exaggerate ?? false);
-  const referenceValue = useDerivedValue(() => config.referenceValue);
-  const referenceValues = useDerivedValue(() => config.referenceValues);
-  const nonNegativeSV = useDerivedValue(() => config.nonNegative ?? false);
-  const maxValueSV = useDerivedValue(() => config.maxValue);
-  const minRangeSV = useDerivedValue(() => config.minRange);
-  const nowOverrideSV = useDerivedValue(() => config.nowOverride);
-  const windowBufferSV = useDerivedValue(() => config.windowBuffer ?? 0);
-  const pausedSV = useDerivedValue(() => config.paused ?? false);
+  // These are React props, not UI-thread signals. The registered frame and
+  // return-to-live worklets capture a fresh snapshot when props change. Keeping
+  // them as plain values avoids one native mutable and mapper per parameter.
+  const configuredTimeWindow = { value: config.timeWindow };
+  const historyStartTimeSV = { value: config.historyStartTime };
+  const smoothing = { value: config.smoothing };
+  const rangeAnimationSV = { value: config.rangeAnimation };
+  const adaptiveSpeedBoostSV = { value: config.adaptiveSpeedBoost };
+  const exaggerateSV = { value: config.exaggerate ?? false };
+  const referenceValue = { value: config.referenceValue };
+  const referenceValues = { value: config.referenceValues };
+  const nonNegativeSV = { value: config.nonNegative ?? false };
+  const maxValueSV = { value: config.maxValue };
+  const minRangeSV = { value: config.minRange };
+  const nowOverrideSV = { value: config.nowOverride };
+  const windowBufferSV = { value: config.windowBuffer ?? 0 };
+  const pausedSV = { value: config.paused ?? false };
   // Whether time-scroll is active — drives the return-to-live reaction below.
   // Defaults to enabled (legacy behavior).
-  const scrollEnabledSV = useDerivedValue(() => config.scrollEnabled ?? true);
+  const scrollEnabledSV = { value: config.scrollEnabled ?? true };
   // Honor a viewEnd parked past the live edge (timeScroll.overscroll).
-  const allowFutureViewEndSV = useDerivedValue(
-    () => config.allowFutureViewEnd ?? false,
-  );
+  const allowFutureViewEndSV = { value: config.allowFutureViewEnd ?? false };
   // Return-to-live glide duration (ms); 0 = instant snap. Read by the reaction.
-  const returnToLiveMsSV = useDerivedValue(
-    () => config.returnToLiveMs ?? RETURN_TO_LIVE_MS,
-  );
+  const returnToLiveMsSV = { value: config.returnToLiveMs ?? RETURN_TO_LIVE_MS };
 
   const displayMin = useSharedValue(0);
   const displayMax = useSharedValue(1);
@@ -394,6 +409,9 @@ export function useLiveChartSeriesEngine(
   // One-shot "snap the framing" flag — flipped by the effect when `snapKey`
   // changes, consumed + cleared by the next frame (mirrors useLiveChartEngine).
   const snapSV = useSharedValue(false);
+  // A placeholder 0–1 range must not delay the first visible chart when
+  // expansion animation is enabled. Consume this only after data and size arrive.
+  const initialFitPendingSV = useSharedValue(true);
   const lastSnapKey = useRef(config.snapKey);
   // Layout effect so the snap flag lands before the commit paints — a passive
   // effect leaves one frame of new data in the old framing (mirrors useLiveChartEngine).
@@ -452,6 +470,7 @@ export function useLiveChartSeriesEngine(
     viewWindowSV: viewWindow,
     liveEdgeSV: liveEdge,
     snapSV,
+    initialFitPendingSV,
     extremaMinValue,
     extremaMaxValue,
     extremaMinTime,

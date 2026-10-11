@@ -2416,7 +2416,10 @@ export interface RangeAnimationConfig {
   contractionSmoothing?: number;
 }
 
-/** Y-range easing and optional presentation transform for {@link LiveChartSeries}. */
+/**
+ * Y-range easing and optional presentation transform for {@link LiveChartSeries}.
+ * The first measured, visible data fits immediately; easing applies afterward.
+ */
 export interface SeriesRangeAnimationConfig extends RangeAnimationConfig {
   /**
    * UI-thread worklet applied after normal fitting/easing. Receives untransformed

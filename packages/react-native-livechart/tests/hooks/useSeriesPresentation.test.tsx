@@ -66,6 +66,17 @@ it("bootstraps metadata and the largest finite layout sample before an asynchron
   expect(mockQueue).toHaveLength(0);
 });
 
+it("supplies presentation fields on the first render without a bootstrap rerender", async () => {
+  const series = feed();
+  const renders: number[] = [];
+  await renderHook(() => {
+    const presentation = useSeriesPresentation(series);
+    renders.push(presentation.snapshot.length);
+    return presentation;
+  });
+  expect(renders).toEqual([1]);
+});
+
 it("publishes configuration and layout together, while ignoring ordinary live ticks", async () => {
   const series = feed();
   const { result } = await renderHook(() => useSeriesPresentation(series));

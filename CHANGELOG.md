@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Performance
 
+- Fit the first measured, visible `LiveChartSeries` data immediately, including
+  with animated expansion or an initially empty feed. Subsequent updates keep
+  their configured easing. Initialize compact metadata on the first render and
+  avoid seventeen derived-value mappers for fixed engine props. On Lennart’s
+  iPhone 16, fully framed UI geometry fell from median 3,369 ms to 117 ms across
+  nine Release launches per variant. This adds a Y-range readiness condition to
+  the earlier mount metric; it does not measure first pixels or steady-state CPU.
+  See `docs/multi-series-mount-performance-iphone.md` for the comparison.
+
 - Reduce `LiveChartSeries` mount work by sharing a compact presentation snapshot
   across layout and legend, bootstrapping it before paint, and initializing the
   particle runtime only while `degen` is enabled. The demo seeds its feed before
