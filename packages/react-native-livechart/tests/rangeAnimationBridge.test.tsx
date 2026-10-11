@@ -75,14 +75,19 @@ describe.each(["single", "multi"] as const)("%s range config wiring", (kind) => 
     }, { initialProps: { referenceValues: [] } });
     result.current.engine.canvasWidth.set(375);
     result.current.engine.canvasHeight.set(280);
-    result.current.engine.displayMin.set(17.6);
-    result.current.engine.displayMax.set(42.4);
-    if ("displayValue" in result.current.engine) result.current.engine.displayValue.set(40);
+    if (kind === "single") {
+      result.current.engine.displayMin.set(17.6);
+      result.current.engine.displayMax.set(42.4);
+      result.current.engine.displayValue.set(40);
+    }
     // Both hooks are mounted to keep hook order stable; choose the matching callback.
     const run = () => {
       const calls = jest.mocked(useFrameCallback).mock.calls;
       calls[calls.length - (kind === "single" ? 2 : 1)][0]({ timestamp: 1000000, timeSinceFirstFrame: 0, timeSincePreviousFrame: 1000 / 60 });
     };
+    // Establish the initial data fit before testing later expansion/contraction.
+    if (kind === "multi") await act(run);
+    expect(result.current.engine.displayMax.get()).toBeCloseTo(42.4);
     await rerender({ referenceValues: [80], rangeAnimation: { animateExpansion: true, expansionSmoothing: 0.25 } });
     await act(run);
     expect(result.current.engine.displayMax.get()).toBeCloseTo(53.6);
