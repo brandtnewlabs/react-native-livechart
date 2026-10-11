@@ -93,7 +93,9 @@ when width changes. Inline labels and axis badges may need extra space;
 
 <ParamField body="rangeAnimation" type="SeriesRangeAnimationConfig">
   Ease the shared fitted Y-range independently of series-tip and time-window
-  smoothing. `animateExpansion: true` opts into outward easing;
+  smoothing. The first measured, visible data fits immediately, including when
+  it arrives after an empty mount. `animateExpansion: true` opts into outward easing
+  for subsequent updates;
   `expansionSmoothing` and `contractionSmoothing` override each direction's
   per-60fps-frame speed (0..1). Omitted speeds inherit `smoothing`. Omission of
   the config preserves instant expansion and eased contraction. `smoothing: 1`,

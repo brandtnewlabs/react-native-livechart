@@ -27,6 +27,8 @@ export function useMultiSeriesDegen(
   padding: ChartPadding,
   cfg: ResolvedDegenConfig | null,
   onShake?: (payload: DegenShakePayload) => void,
+  /** Optional stable transform owned by a chart whose particle layer mounts lazily. */
+  shakeOutput?: SharedValue<[{ translateX: number }, { translateY: number }]>,
 ): {
   pack: SharedValue<Float64Array<ArrayBuffer>>;
   packRevision: SharedValue<number>;
@@ -152,6 +154,7 @@ export function useMultiSeriesDegen(
         shakeStart.set(0);
         shakeX.set(0);
         shakeY.set(0);
+        shakeOutput?.set([{ translateX: 0 }, { translateY: 0 }]);
         return;
       }
 
@@ -240,6 +243,8 @@ export function useMultiSeriesDegen(
         shakeY.set(0);
       }
 
+      shakeOutput?.set([{ translateX: shakeX.get() }, { translateY: shakeY.get() }]);
+
       const activeCount = tickParticles(
         buf,
         slots,
@@ -257,13 +262,17 @@ export function useMultiSeriesDegen(
     },
   );
 
-  const shakeTransform = useDerivedValue(() => {
-    "worklet";
-    return [{ translateX: shakeX.get() }, { translateY: shakeY.get() }] as [
-      { translateX: number },
-      { translateY: number },
-    ];
-  });
+  const shakeTransform = useDerivedValue(
+    shakeOutput
+      ? () => {
+          "worklet";
+          return [{ translateX: 0 }, { translateY: 0 }] as [{ translateX: number }, { translateY: number }];
+        }
+      : () => {
+          "worklet";
+          return [{ translateX: shakeX.get() }, { translateY: shakeY.get() }] as [{ translateX: number }, { translateY: number }];
+        },
+  );
 
-  return { pack, packRevision, particleTimestamp, shakeTransform };
+  return { pack, packRevision, particleTimestamp, shakeTransform: shakeOutput ?? shakeTransform };
 }

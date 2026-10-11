@@ -50,6 +50,11 @@ global.__workletsModuleProxy = new Proxy(
   },
 );
 
+// There is no second runtime in Jest. Patch the implementation (the index
+// re-exports it through a getter) without shadowing individual tests' mocks.
+const workletThreads = require("react-native-worklets/lib/module/threads.native");
+workletThreads.executeOnUIRuntimeSync = (worklet) => (...args) => worklet(...args);
+
 const reanimated = require("react-native-reanimated");
 if (typeof reanimated.setUpTests === "function") {
   reanimated.setUpTests();

@@ -6,6 +6,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import { LiveChartSeries } from "../src/components/LiveChartSeries";
 import * as seriesEngineHooks from "../src/core/useLiveChartSeriesEngine";
+import * as degenHooks from "../src/hooks/useMultiSeriesDegen";
 import type {
   ChartOverlayContext,
   LiveChartHandle,
@@ -14,6 +15,32 @@ import type {
 import { getAllByHostType } from "./rntl14";
 
 describe("LiveChartSeries", () => {
+  it("mounts the particle runtime only while degen is enabled without remounting the chart engine", async () => {
+    const spy = jest.spyOn(degenHooks, "useMultiSeriesDegen");
+    const engines: SharedValue<number>[] = [];
+    const original = seriesEngineHooks.useLiveChartSeriesEngine;
+    const engineSpy = jest.spyOn(seriesEngineHooks, "useLiveChartSeriesEngine").mockImplementation(options => {
+      const engine = original(options);
+      engines.push(engine.canvasWidth);
+      return engine;
+    });
+    function H({ enabled }: { enabled: boolean }) {
+      const series = useSharedValue<SeriesConfig[]>([{ id: "a", value: 10, data: [{ time: 1, value: 10 }] }]);
+      return <LiveChartSeries series={series} degen={enabled} />;
+    }
+    const screen = await render(<H enabled={false} />);
+    expect(spy).not.toHaveBeenCalled();
+    await screen.rerender(<H enabled />);
+    expect(spy).toHaveBeenCalled();
+    spy.mockClear();
+    await screen.rerender(<H enabled={false} />);
+    expect(spy).not.toHaveBeenCalled();
+    expect(engines.every(width => width === engines[0])).toBe(true);
+    await screen.unmount();
+    spy.mockRestore();
+    engineSpy.mockRestore();
+  });
+
   it("exposes an imperative pinch-zoom reset", async () => {
     const ref = React.createRef<LiveChartHandle>();
     function H() {

@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
+import type { SharedValue } from "react-native-reanimated";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
 import type { ResolvedLegendConfig } from "../core/resolveConfig";
 import type { LiveChartPalette, SeriesConfig } from "../types";
-import { seriesMetaSig } from "./seriesMetaSig";
+import { useSeriesPresentation } from "../hooks/useSeriesPresentation";
 
 export interface SeriesToggleChipsProps {
   series: SharedValue<SeriesConfig[]>;
@@ -40,39 +38,18 @@ function legendColorDefaults(palette: LiveChartPalette | undefined) {
       };
 }
 
-/**
- * Mirrors `series` into React state when id/label/color/visibility changes (not on every data tick).
- */
-export function SeriesToggleChips({
-  series,
-  legend,
-  palette,
-  onSeriesToggle,
-}: SeriesToggleChipsProps) {
-  // Seed from the current series at mount; the reaction below keeps it in sync.
-  const [snapshot, setSnapshot] = useState<SeriesConfig[]>(() =>
-    series.get().slice(),
-  );
+/** Standalone wrapper; LiveChartSeries shares its controller snapshot instead. */
+export function SeriesToggleChips(props: SeriesToggleChipsProps) {
+  const { snapshot, refresh } = useSeriesPresentation(props.series);
+  return <SeriesToggleChipsView {...props} snapshot={snapshot} onSnapshotChange={refresh} />;
+}
 
-  // Read the `series` prop from closure rather than a SharedValue passed
-  // through `scheduleOnRN`: the handle serialized across the worklet→JS
-  // boundary exposes the native `.value` accessor but NOT the `.get()` method,
-  // so calling `.get()` on it throws ("sv.get is not a function").
-  const pullSnapshot = () => {
-    setSnapshot(series.get().slice());
-  };
-
-  useAnimatedReaction(
-    () => seriesMetaSig(series.get()),
-    /* istanbul ignore next -- Reanimated reaction; snapshot seeded at mount, pulled here on change */
-    (sig, prev) => {
-      if (sig !== prev) {
-        scheduleOnRN(pullSnapshot);
-      }
-    },
-    [series, pullSnapshot],
-  );
-
+export function SeriesToggleChipsView({
+  series, legend, palette, onSeriesToggle, snapshot, onSnapshotChange,
+}: SeriesToggleChipsProps & {
+  snapshot: SeriesConfig[];
+  onSnapshotChange: () => void;
+}) {
   if (!legend.visible) return null;
 
   const toggle = (id: string) => {
@@ -86,7 +63,7 @@ export function SeriesToggleChips({
       i === idx ? { ...s, visible: nextVisible } : s,
     );
     series.set(next);
-    setSnapshot(next);
+    onSnapshotChange();
     onSeriesToggle?.(id, nextVisible);
   };
 

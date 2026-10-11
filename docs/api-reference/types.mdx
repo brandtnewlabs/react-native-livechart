@@ -787,7 +787,8 @@ Axis-label fades remain under `metrics.grid`. See
 ## SeriesRangeAnimationConfig
 
 Exported `LiveChartSeries` config extending `RangeAnimationConfig` with a
-reversible UI-thread range transform:
+reversible UI-thread range transform. Its first measured, visible data fits
+immediately; direction-specific easing applies to subsequent updates:
 
 ```ts
 interface SeriesRangeAnimationConfig extends RangeAnimationConfig {

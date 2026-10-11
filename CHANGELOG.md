@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+
+- Backport the `LiveChartSeries` mount improvements to the 4.x renderer. Fit the
+  first measured, visible data immediately, including with animated expansion
+  or an initially empty feed; subsequent updates retain configured easing.
+  Initialize compact layout/legend metadata on the first render, avoid seventeen
+  derived-value mappers for fixed engine props, and mount particles only while
+  `degen` is enabled. The demo initializes its feed before the first commit and
+  defers its controls. No public props or exports are added.
+
 ## [4.28.1] — 2026-10-10
 
 ### Fixed
