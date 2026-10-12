@@ -983,6 +983,7 @@ describe("resolveLoading", () => {
     amplitude: 14,
     speed: 1,
     axisLabels: true,
+    freezeAfterMs: undefined,
   };
 
   it("returns null for undefined / false (not loading)", () => {
@@ -1015,6 +1016,25 @@ describe("resolveLoading", () => {
       ...DEFAULTS,
       axisLabels: false,
     });
+  });
+
+  it("carries freezeAfterMs, unset (no limit) by default", () => {
+    // A resolved key, even when unset: useLoadingLook compares the look key by key.
+    expect(resolveLoading(true)).toHaveProperty("freezeAfterMs", undefined);
+    expect(resolveLoading({ freezeAfterMs: 10_000 })).toEqual({
+      ...DEFAULTS,
+      freezeAfterMs: 10_000,
+    });
+  });
+
+  it("resolves a NaN or Infinity freezeAfterMs to no limit", () => {
+    for (const freezeAfterMs of [NaN, Infinity]) {
+      const resolved = resolveLoading({ freezeAfterMs, color: "#64748b" });
+      expect(resolved).toHaveProperty("freezeAfterMs", undefined);
+      expect(resolved).toEqual({ ...DEFAULTS, color: "#64748b" });
+    }
+    // 0 and below stay: they freeze from the start.
+    expect(resolveLoading({ freezeAfterMs: -1 })?.freezeAfterMs).toBe(-1);
   });
 });
 

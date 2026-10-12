@@ -2,6 +2,8 @@ import { useCallback, useEffect } from "react";
 import { useAnimatedReaction, useSharedValue } from "react-native-reanimated";
 import { scheduleOnUI } from "react-native-worklets";
 
+import { MAX_FRAME_DELTA_MS } from "../constants";
+
 /** Wait through several unchanged frames, rather than mistaking one quiet frame for rest. */
 export const IDLE_SETTLE_MS = 160;
 
@@ -10,7 +12,7 @@ function noReaction() { "worklet"; }
 
 export function nextQuietTime(previous: number, changed: boolean, dt: number): number {
   "worklet";
-  return changed ? 0 : previous + Math.min(Math.max(dt, 0), 34);
+  return changed ? 0 : previous + Math.min(Math.max(dt, 0), MAX_FRAME_DELTA_MS);
 }
 
 /**
@@ -41,7 +43,10 @@ export function useDemandFrameLoop(
       "worklet";
       if (!mounted.get() || generation.get() !== token) return;
       // Resuming never integrates the entire sleeping interval as a single frame.
-      const dt = previous === null ? 1000 / 60 : Math.min(timestamp - previous, 34);
+      const dt =
+        previous === null
+          ? 1000 / 60
+          : Math.min(timestamp - previous, MAX_FRAME_DELTA_MS);
       previous = timestamp;
       const quiet = nextQuietTime(quietTime.get(), tick(dt), dt);
       quietTime.set(quiet);

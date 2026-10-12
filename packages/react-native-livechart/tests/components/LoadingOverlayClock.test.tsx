@@ -19,23 +19,32 @@ import { squiggleClockSeconds } from "../../src/math/squiggly";
 import { resolveTheme } from "../../src/theme";
 import { withSharedValueAccessors } from "../support/sharedValueMock";
 
-// Record the phase each squiggle is built with; the math itself is the real module.
+// Record the phase each squiggle is built with, and each read of the clock (a
+// frame that advances the squiggle reads it); the math itself is the real module.
 jest.mock("../../src/math/squiggly", () => {
   const actual = jest.requireActual("../../src/math/squiggly");
   return {
     ...actual,
     buildSquigglyPts: jest.fn(actual.buildSquigglyPts),
     squigglifyPts: jest.fn(actual.squigglifyPts),
+    squiggleClockSeconds: jest.fn(actual.squiggleClockSeconds),
   };
 });
 const squiggly = jest.requireMock("../../src/math/squiggly") as {
   buildSquigglyPts: jest.Mock;
   squigglifyPts: jest.Mock;
+  squiggleClockSeconds: jest.Mock;
 };
 
 // Jest does not run Reanimated's UI scheduler: capture the squiggle clock's
-// reaction and frame callback, and run them explicitly.
-type MockFrameHandle = { isActive: boolean; setActive: jest.Mock<void, [boolean]> };
+// reactions and frame callback, and run them explicitly.
+type MockFrame = { timeSincePreviousFrame: number | null };
+type MockFrameHandle = {
+  isActive: boolean;
+  setActive: jest.Mock<void, [boolean]>;
+  /** The latest render's frame callback. */
+  callback: (frame: MockFrame) => void;
+};
 const mockFrameHandles: MockFrameHandle[] = [];
 jest.mock("react-native-reanimated", () => {
   const React = jest.requireActual("react") as typeof import("react");
@@ -43,18 +52,24 @@ jest.mock("react-native-reanimated", () => {
   return {
     ...actual,
     useAnimatedReaction: jest.fn(),
-    useFrameCallback: jest.fn((_callback: unknown, autostart = true) => {
-      const ref = React.useRef<MockFrameHandle | null>(null);
-      if (ref.current === null) {
-        const handle: MockFrameHandle = { isActive: autostart, setActive: jest.fn() };
-        handle.setActive.mockImplementation((active) => {
-          handle.isActive = active;
+    useFrameCallback: jest.fn(
+      (callback: MockFrameHandle["callback"], autostart = true) => {
+        const [handle] = React.useState(() => {
+          const created: MockFrameHandle = {
+            isActive: autostart,
+            setActive: jest.fn(),
+            callback,
+          };
+          created.setActive.mockImplementation((active) => {
+            created.isActive = active;
+          });
+          mockFrameHandles.push(created);
+          return created;
         });
-        ref.current = handle;
-        mockFrameHandles.push(handle);
-      }
-      return ref.current;
-    }),
+        handle.callback = callback;
+        return handle;
+      },
+    ),
   };
 });
 jest.mock("react-native-worklets", () => ({
@@ -100,7 +115,7 @@ function readOnly<T>(read: () => T): SharedValue<T> {
 }
 
 type Shell = {
-  state: { loading: boolean; morph: number };
+  state: { loading: boolean; empty: boolean; morph: number };
   morphT: SharedValue<number>;
   isLoading: SharedValue<boolean>;
   isEmpty: { value: boolean };
@@ -110,9 +125,12 @@ async function renderShell(
   shell: Shell,
   props: Partial<React.ComponentProps<typeof LoadingOverlay>> = {},
 ) {
-  await render(
+  const engine = loadingEngine();
+  const element = (
+    overrides: Partial<React.ComponentProps<typeof LoadingOverlay>>,
+  ) => (
     <LoadingOverlay
-      engine={loadingEngine()}
+      engine={engine}
       padding={DEFAULT_PADDING}
       palette={palette}
       font={font}
@@ -121,29 +139,55 @@ async function renderShell(
       isEmpty={shell.isEmpty}
       emptyText="No data"
       strokeWidth={2}
-      {...props}
-    />,
+      {...overrides}
+    />
   );
-  const calls = jest.mocked(useAnimatedReaction).mock.calls;
-  const [prepare, react] = calls[calls.length - 1];
-  let previous: unknown = null;
-  // One UI-thread pass of the reaction: its value, and the reaction when it changed.
+  const reactions = jest.mocked(useAnimatedReaction).mock.calls;
+  const before = reactions.length;
+  const screen = await render(element(props));
+  // The reactions one render registers, in hook (= mapper) order; the last is the
+  // ticking switch. Each keeps its previous value across re-renders, as
+  // Reanimated's do, and a re-render's calls replace the worklets.
+  const count = reactions.length - before;
+  const previous: unknown[] = Array.from({ length: count }, () => null);
+  // One UI-thread pass of the reactions: the ticking switch's value, and each
+  // reaction run when its value changed.
   const settle = () => {
-    const current = prepare();
-    if (current !== previous) react(current, previous);
-    previous = current;
+    let current: unknown;
+    reactions.slice(-count).forEach(([prepare, react], i) => {
+      current = prepare();
+      if (current !== previous[i]) react(current, previous[i]);
+      previous[i] = current;
+    });
     return current;
   };
-  return { handle: mockFrameHandles[mockFrameHandles.length - 1], settle };
+  const handle = mockFrameHandles[mockFrameHandles.length - 1];
+  // One frame of the squiggle's frame callback, which only runs while active;
+  // whether it advanced the squiggle (read the clock).
+  const frame = (timeSincePreviousFrame: number | null = 16) => {
+    if (!handle.isActive) return false;
+    squiggly.squiggleClockSeconds.mockClear();
+    handle.callback({ timeSincePreviousFrame });
+    return squiggly.squiggleClockSeconds.mock.calls.length > 0;
+  };
+  const rerender = (
+    overrides: Partial<React.ComponentProps<typeof LoadingOverlay>>,
+  ) => screen.rerender(element(overrides));
+  return { handle, settle, frame, rerender };
 }
 
 function loadingShell(): Shell {
-  const state = { loading: true, morph: 0 };
+  const state = { loading: true, empty: false, morph: 0 };
   return {
     state,
     morphT: readOnly(() => state.morph),
     isLoading: readOnly(() => state.loading),
-    isEmpty: { value: false },
+    // Non-configurable, so the worklets' dev freeze (which swaps a configurable
+    // property for a snapshot once a worklet captures it) keeps this getter live.
+    isEmpty: Object.defineProperty({} as { value: boolean }, "value", {
+      get: () => state.empty,
+      enumerable: true,
+    }),
   };
 }
 
@@ -229,5 +273,174 @@ describe("loading squiggle clock", () => {
       expect(settle()).toBe(false);
       expect(handle.setActive).not.toHaveBeenCalledWith(true);
     }
+  });
+});
+
+describe("loading squiggle freezeAfterMs", () => {
+  let now: jest.SpyInstance;
+  let warn: jest.SpyInstance;
+  beforeEach(() => {
+    mockFrameHandles.length = 0;
+    jest.mocked(useAnimatedReaction).mockClear();
+    now = jest.spyOn(Date, "now").mockReturnValue(WALL_CLOCK_MS);
+    // A frame writes the squiggle clock, which the squiggle's derived value has
+    // captured; under Jest the worklets' dev freeze warns on every such write.
+    // These tests read the clock calls, not the shared value: keep the log quiet.
+    const log = console.warn;
+    warn = jest.spyOn(console, "warn").mockImplementation((...args) => {
+      if (String(args[0]).includes("already passed to a worklet")) return;
+      log(...args);
+    });
+  });
+  afterEach(() => {
+    now.mockRestore();
+    warn.mockRestore();
+  });
+
+  /** Run frames of `ms` each while they advance the squiggle; how many did. */
+  function framesUntilFrozen(
+    frame: (ms?: number | null) => boolean,
+    ms = 16,
+    limit = 1_000,
+  ) {
+    let moved = 0;
+    while (moved < limit && frame(ms)) moved++;
+    return moved;
+  }
+
+  it("freezes the squiggle once the shell has animated for freezeAfterMs", async () => {
+    const { handle, settle, frame } = await renderShell(loadingShell(), {
+      waveFreezeAfterMs: 100,
+    });
+    expect(settle()).toBe(true);
+    expect(handle.isActive).toBe(true);
+
+    // 6 × 16 ms = 96 ms still animates; the 7th frame reaches 100 ms and freezes.
+    expect(framesUntilFrozen(frame)).toBe(6);
+    expect(settle()).toBe(false);
+    expect(handle.isActive).toBe(false);
+  });
+
+  it("animates for as long as the shell shows without it", async () => {
+    const { handle, settle, frame } = await renderShell(loadingShell());
+    expect(settle()).toBe(true);
+    // 34 s of the longest frames counted, far past the limits used here.
+    expect(framesUntilFrozen(frame, 34, 1_000)).toBe(1_000);
+    expect(settle()).toBe(true);
+    expect(handle.isActive).toBe(true);
+  });
+
+  it("counts a frame as at most 34 ms, so time in the background doesn't use it up", async () => {
+    const { settle, frame } = await renderShell(loadingShell(), {
+      waveFreezeAfterMs: 100,
+    });
+    settle();
+    expect(frame(60_000)).toBe(true); // back from a minute away: 34
+    expect(frame(null)).toBe(true); // a first frame, no delta: 16.67 → 50.67
+    expect(frame(34)).toBe(true); // 84.67
+    expect(frame(34)).toBe(false); // 118.67: frozen
+  });
+
+  it("doesn't count frames while the frame-loop gate is off", async () => {
+    const shell = loadingShell();
+    const gate = { on: true };
+    const { handle, settle, frame } = await renderShell(shell, {
+      waveFreezeAfterMs: 100,
+      isFrameLoopActive: readOnly(() => gate.on),
+    });
+    settle();
+    expect(framesUntilFrozen(frame, 16, 3)).toBe(3); // 48 ms
+
+    gate.on = false;
+    // Frames that still run before the switch reaches the callback are skipped.
+    for (let i = 0; i < 100; i++) expect(frame()).toBe(false);
+    expect(settle()).toBe(false);
+    expect(handle.isActive).toBe(false);
+
+    gate.on = true;
+    expect(settle()).toBe(true);
+    // 48 + 3 × 16 = 96 ms; the next frame reaches 100 ms.
+    expect(framesUntilFrozen(frame)).toBe(3);
+  });
+
+  it("starts over each time the shell appears, and never freezes the reveal", async () => {
+    const shell = loadingShell();
+    const { handle, settle, frame } = await renderShell(shell, {
+      waveFreezeAfterMs: 50,
+    });
+    settle();
+    expect(framesUntilFrozen(frame)).toBe(3); // 48 ms; the 4th frame freezes
+    expect(settle()).toBe(false);
+
+    // Data arrives: the reveal animates whatever the shell had used.
+    shell.state.loading = false;
+    shell.state.morph = 0.5;
+    expect(settle()).toBe(true);
+    expect(framesUntilFrozen(frame, 16, 100)).toBe(100);
+
+    // The data is cleared mid-reveal (the reveal snaps back): the whole budget again.
+    shell.state.loading = true;
+    shell.state.morph = 0;
+    expect(settle()).toBe(true);
+    expect(framesUntilFrozen(frame)).toBe(3);
+    expect(settle()).toBe(false);
+
+    // Data arrives and the reveal completes.
+    shell.state.loading = false;
+    shell.state.morph = 0.5;
+    expect(settle()).toBe(true);
+    shell.state.morph = 1;
+    expect(settle()).toBe(false);
+    expect(handle.isActive).toBe(false);
+
+    // Loading again over the live chart: the whole budget again.
+    shell.state.loading = true;
+    shell.state.morph = 0;
+    expect(settle()).toBe(true);
+    expect(framesUntilFrozen(frame)).toBe(3);
+    expect(settle()).toBe(false);
+  });
+
+  it("shares one budget between loading and the empty state that follows it", async () => {
+    const shell = loadingShell();
+    const { settle, frame } = await renderShell(shell, {
+      waveFreezeAfterMs: 50,
+    });
+    settle();
+    expect(framesUntilFrozen(frame, 16, 2)).toBe(2); // 32 ms loading
+
+    // The load ends with no data: the shell stays up, showing "No data".
+    shell.state.loading = false;
+    shell.state.empty = true;
+    expect(settle()).toBe(true);
+    expect(framesUntilFrozen(frame)).toBe(1); // 48 ms; the next frame freezes
+    expect(settle()).toBe(false);
+  });
+
+  it("freezes the squiggle from the start at 0 or less", async () => {
+    for (const waveFreezeAfterMs of [0, -1]) {
+      const { handle, settle } = await renderShell(loadingShell(), {
+        waveFreezeAfterMs,
+      });
+      expect(settle()).toBe(false);
+      expect(handle.setActive).not.toHaveBeenCalledWith(true);
+    }
+  });
+
+  it("applies a new limit at once, even to a squiggle already frozen", async () => {
+    const { settle, frame, rerender } = await renderShell(loadingShell(), {
+      waveFreezeAfterMs: 50,
+    });
+    settle();
+    expect(framesUntilFrozen(frame)).toBe(3); // frozen at 64 ms
+    expect(settle()).toBe(false);
+
+    await rerender({ waveFreezeAfterMs: 100 });
+    expect(settle()).toBe(true);
+    expect(framesUntilFrozen(frame)).toBe(2); // 96 ms; the next frame freezes at 112
+
+    await rerender({});
+    expect(settle()).toBe(true);
+    expect(framesUntilFrozen(frame, 16, 1_000)).toBe(1_000);
   });
 });

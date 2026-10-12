@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `LoadingConfig.freezeAfterMs` freezes the loading squiggle once it has
+  animated that long (ms) each time the loading or empty shell appears; its
+  frame callback stops until the shell next appears. Time is counted in frames
+  drawn (at most 34 ms each), so time in the background doesn't use it up; the
+  reveal morph always animates, and `0` or less freezes from the start. Omitted
+  by default: no limit, as before.
+
 ### Maintenance
 
 - Align the example app's native dependencies with Expo 57.0.27, deduplicate native

@@ -832,6 +832,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     loadingAmplitude: loadingLook?.amplitude,
     loadingSpeed: loadingLook?.speed,
     loadingAxisLabels: loadingLook?.axisLabels ?? true,
+    loadingFreezeAfterMs: loadingLook?.freezeAfterMs,
     effectiveSeries,
     layoutHeight,
     onLayout,
@@ -951,6 +952,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     loadingStrokeWidth,
     loadingAmplitude,
     loadingSpeed,
+    loadingFreezeAfterMs,
     canvasMode,
     activeSeriesCount,
     refLineKeys,
@@ -1093,6 +1095,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         lineStrokeWidth={loadingStrokeWidth}
         waveAmplitude={loadingAmplitude}
         waveSpeed={loadingSpeed}
+        waveFreezeAfterMs={loadingFreezeAfterMs}
         opaqueCanvas={canvasMode === "opaque"}
       />
     </Group>

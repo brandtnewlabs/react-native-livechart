@@ -1,3 +1,4 @@
+import { MAX_FRAME_DELTA_MS } from "../constants";
 import type { ChartPadding } from "../draw/line";
 
 /**
@@ -37,6 +38,32 @@ export function squigglyYAt(
 export function squiggleClockSeconds(): number {
   "worklet";
   return Date.now() / 1000;
+}
+
+/**
+ * The squiggle's animated time (ms) after one more frame, toward
+ * `LoadingConfig.freezeAfterMs`. A frame counts its delta clamped to
+ * 0–{@link MAX_FRAME_DELTA_MS}, so the first frame back from the background (or
+ * after a stall) counts as one frame, not as the time away.
+ */
+export function squiggleShownMsAfterFrame(
+  shownMs: number,
+  frameMs: number,
+): number {
+  "worklet";
+  return shownMs + Math.min(Math.max(frameMs, 0), MAX_FRAME_DELTA_MS);
+}
+
+/**
+ * Whether the squiggle has used up `freezeAfterMs` and is frozen. `undefined`
+ * never freezes; `0` or less freezes from the start.
+ */
+export function squiggleFrozen(
+  shownMs: number,
+  freezeAfterMs: number | undefined,
+): boolean {
+  "worklet";
+  return freezeAfterMs !== undefined && shownMs >= freezeAfterMs;
 }
 
 /**

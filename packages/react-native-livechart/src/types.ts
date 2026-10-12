@@ -2394,6 +2394,13 @@ export interface LoadingConfig {
    * squiggle with no placeholder ticks. Default `true`.
    */
   axisLabels?: boolean;
+  /**
+   * Freezes the squiggle once it has animated this long (ms) each time the
+   * loading or empty shell appears; it moves again when the shell next appears.
+   * Counted in frames drawn, so time in the background doesn't count. `0` or
+   * less freezes it from the start. Default `undefined`: no limit.
+   */
+  freezeAfterMs?: number;
 }
 
 /** Y-range easing shared by both charts, independent of value/window tracking. */
@@ -2487,7 +2494,8 @@ export interface LiveChartCoreProps {
    * `true` shows the shell with the defaults; pass a {@link LoadingConfig} to
    * restyle it — `color` / `strokeWidth` for the squiggle + skeleton, `amplitude`
    * / `speed` for the breathing wave, `axisLabels` to toggle the skeleton
-   * placeholders. `false` / omitted is "not loading". Toggle between the config
+   * placeholders, `freezeAfterMs` to freeze the wave after a while.
+   * `false` / omitted is "not loading". Toggle between the config
    * and `false` as data loads (e.g. `loading={isLoading && cfg}`). The loading→live
    * reveal duration is governed separately by {@link TransitionConfig.reveal} (the
    * `transitions` prop).

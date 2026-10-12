@@ -559,8 +559,10 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 <ParamField body="loading" type="boolean | LoadingConfig">
   Breathing-line loading shell until data is ready. `true` uses the defaults; pass
   a [`LoadingConfig`](/api-reference/types#loadingconfig) to restyle it (`color`,
-  `strokeWidth`, `amplitude`, `speed`, and `axisLabels` to toggle the skeleton
-  Y-axis placeholders). `false` / omitted is "not loading". Entering loading or
+  `strokeWidth`, `amplitude`, `speed`, `axisLabels` to toggle the skeleton
+  Y-axis placeholders, and `freezeAfterMs` to freeze the squiggle after a
+  while — see [States & formatting](/guides/states-and-formatting#freezing-the-wave)).
+  `false` / omitted is "not loading". Entering loading or
   empty snaps immediately; the loading→live grow-in duration is set via the
   `transitions` prop below — see
   [Transitions](/guides/transitions).

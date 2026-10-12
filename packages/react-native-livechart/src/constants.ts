@@ -10,6 +10,13 @@ import type {
 export const MS_PER_FRAME_60FPS = 16.67;
 
 /**
+ * Longest frame delta (ms) that time counted in frames takes from one frame —
+ * about two 60fps frames — so the first frame back from the background, or
+ * after a stall, counts as one frame rather than the time away.
+ */
+export const MAX_FRAME_DELTA_MS = 34;
+
+/**
  * Initial size of the Y-axis label pool. The pool grows when the dynamic
  * (nice-interval) grid produces more labels (a tall plot or a small `minGap`);
  * the fixed-`count` mode stays capped at this (see {@link YAxisConfig.count}).
