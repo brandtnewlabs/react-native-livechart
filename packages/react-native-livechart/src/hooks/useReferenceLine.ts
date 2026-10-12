@@ -613,7 +613,10 @@ export function computeReferenceLineLayout(
   const x = bounds.left + (cfg.offsetX ?? 0);
   const y = base.y + (cfg.offsetY ?? 0);
   let textX = x + (pillW - contentW) / 2 + chevronW;
-  // Match live-badge text alignment when its column mode is enabled.
+  // Match live-badge text alignment when its column mode is enabled. The
+  // price pill has no tail to give its left padding to, so it keeps both
+  // paddings and centers a value that doesn't fit them (a tight live badge
+  // aligns instead).
   if (
     cfg.position === "axis" &&
     valueAxis?.alignTextWithYAxis &&

@@ -16,6 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reveal morph always animates, and `0` or less freezes from the start. Omitted
   by default: no limit, as before.
 
+### Changed
+
+- `badge.textAlign: "yAxisColumn"` no longer centers the value in a tailed
+  right-gutter pill too narrow for both paddings. Next to the tail, whose
+  taper already keeps the value off the outline, the pill gives up the left
+  padding first, then the right one, so the value moves continuously as the
+  pill narrows. With room for its right padding it ends `padX` from the pill's
+  end (the column's right edge when `marginEdge + padX` equals
+  `labelRightMargin`); before, it was centered, half the missing padding to the
+  right (2 px with `padX: 4` and no left padding). Only a value wider than the
+  pill's body is still centered. Pills with room for both paddings and pills
+  without a tail are unchanged.
+
 ### Maintenance
 
 - Align the example app's native dependencies with Expo 57.0.28, deduplicate native
