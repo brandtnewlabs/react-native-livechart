@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Maintenance
+
+- Align the example app's native dependencies with Expo 57.0.27, deduplicate native
+  modules, and refresh the Metro Bundle Mode patches for 0.84.5. Pin the test
+  renderer to the version compatible with React 19.2, and check Expo dependency
+  versions, TypeScript, and lint in CI.
+
 ## [4.28.2] — 2026-10-11
 
 ### Performance
