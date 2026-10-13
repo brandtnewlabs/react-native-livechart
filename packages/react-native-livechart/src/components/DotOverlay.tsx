@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BlurMask, Circle, Group } from "@shopify/react-native-skia";
+import { BlurMask, Circle, Group } from "react-native-skia";
 import {
   useDerivedValue,
   useFrameCallback,

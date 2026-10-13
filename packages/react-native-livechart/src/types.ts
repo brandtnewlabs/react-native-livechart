@@ -6,7 +6,7 @@ import type {
   DataSourceParam,
   SkFontMgr,
   SkImage,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 
 /** A single data point on the chart timeline. */
 export interface LiveChartPoint {
@@ -1534,8 +1534,9 @@ export interface FontConfig {
    */
   typeface?: DataSourceParam;
   /**
-   * Custom Skia font manager from `useFonts` (e.g. bundled `.ttf` files registered under family
-   * names). Passed as the second argument to `matchFont`. When `null` or omitted, the system
+   * Custom Skia font manager from `react-native-skia`'s `useFonts` (e.g. bundled
+   * `.ttf` files registered under family names). Passed as the second argument
+   * to `matchFont`. When `null` or omitted, the system
    * font manager is used.
    */
   fontManager?: SkFontMgr | null;
@@ -1600,7 +1601,7 @@ export interface Marker {
    */
   icon?: string;
   /**
-   * Image icon drawn centered at the marker (e.g. from Skia `useImage`). Takes
+   * Image icon drawn centered at the marker (e.g. from `react-native-skia`'s `useImage`). Takes
    * precedence over `icon` and the built-in `kind` shape.
    */
   image?: SkImage;
@@ -1698,7 +1699,7 @@ export interface MarkerGroupBadge {
    * to the optional corner count on a custom group badge. Default `0`.
    */
   letterSpacing?: number;
-  /** Custom Skia image for the collapsed group (e.g. from `useImage`). Takes
+  /** Custom Skia image for the collapsed group (e.g. from `react-native-skia`'s `useImage`). Takes
    *  precedence over {@link icon}. */
   image?: SkImage;
   /** Text / emoji glyph for the collapsed group (used when {@link image} is unset).

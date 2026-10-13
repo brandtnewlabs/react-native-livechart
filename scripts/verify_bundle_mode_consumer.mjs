@@ -172,8 +172,8 @@ import { LiveChart } from "react-native-livechart";
 
 function App() {
   const data = useSharedValue([
-    { timestamp: 0, value: 100 },
-    { timestamp: 1, value: 101 },
+    { time: 0, value: 100 },
+    { time: 1, value: 101 },
   ]);
   const value = useSharedValue(101);
 
@@ -196,6 +196,36 @@ registerRootComponent(App);
   );
   const installedManifest = JSON.parse(
     readFileSync(installedManifestPath, "utf8"),
+  );
+  const libraryManifest = JSON.parse(
+    readFileSync(
+      path.join(root, "packages/react-native-livechart/package.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(installedManifest.version, libraryManifest.version);
+  assert.equal(installedManifest.peerDependencies["react-native-skia"], "^3.3.0");
+  assert.equal(
+    installedManifest.peerDependencies["@shopify/react-native-skia"],
+    undefined,
+  );
+  assert.equal(
+    installedManifest.scripts.postinstall,
+    undefined,
+    "installing LiveChart must not patch a consumer's native peer automatically",
+  );
+  const installedRoot = path.dirname(installedManifestPath);
+  for (const file of findFiles(installedRoot, (name) => /\.(?:ts|tsx)$/.test(name))) {
+    assert.doesNotMatch(
+      readFileSync(file, "utf8"),
+      /(?:from\s*|import\s*\(|require\s*\()\s*["']@shopify\/react-native-skia["']/,
+      `packed renderer import was not migrated: ${file}`,
+    );
+  }
+  assert.deepEqual(
+    findFiles(installedRoot, (name) => name.endsWith(".patch")),
+    [],
+    "the library must not ship native renderer patches",
   );
   assert.equal(
     installedManifest.exports["."]["react-native"],

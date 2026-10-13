@@ -1,5 +1,5 @@
-import { Blur, Group, Path, Skia } from "@shopify/react-native-skia";
-import { DashPathEffect } from "@shopify/react-native-skia";
+import { Blur, Group, Path, Skia } from "react-native-skia";
+import { DashPathEffect } from "react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { SeriesLineStyle } from "../core/multiSeriesLayout";
 import { SERIES_COLORS } from "../theme";

@@ -1,6 +1,6 @@
 import { JetBrainsMono_400Regular } from "@expo-google-fonts/jetbrains-mono";
 import { Ionicons } from "@expo/vector-icons";
-import { Canvas, Path, Skia } from "@shopify/react-native-skia";
+import { Canvas, Path, Skia } from "react-native-skia";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState, type RefObject } from "react";

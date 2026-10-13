@@ -1,4 +1,4 @@
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 
 /** Caller-owned last-value cache for repeated UI-thread text measurement. */
 export interface TextWidthCache {

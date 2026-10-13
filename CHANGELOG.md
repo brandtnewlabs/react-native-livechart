@@ -9,10 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
-- Align the example app's native dependencies with Expo 57.0.27, deduplicate native
+- Align the example app's native dependencies with Expo 57.0.28, deduplicate native
   modules, and refresh the Metro Bundle Mode patches for 0.84.5. Pin the test
   renderer to the version compatible with React 19.2, and check Expo dependency
   versions, TypeScript, and lint in CI.
+
+### Performance
+
+- Fit the first measured, visible `LiveChartSeries` data immediately, including
+  with animated expansion or an initially empty feed. Subsequent updates keep
+  their configured easing. Initialize compact metadata on the first render and
+  avoid seventeen derived-value mappers for fixed engine props. On Lennart’s
+  iPhone 16, fully framed UI geometry fell from median 3,369 ms to 117 ms across
+  nine Release launches per variant. This adds a Y-range readiness condition to
+  the earlier mount metric; it does not measure first pixels or steady-state CPU.
+  See `docs/multi-series-mount-performance-iphone.md` for the comparison.
+
+- Reduce `LiveChartSeries` mount work by sharing a compact presentation snapshot
+  across layout and legend, bootstrapping it before paint, and initializing the
+  particle runtime only while `degen` is enabled. The demo seeds its feed before
+  the first commit and defers its control panel. On Lennart’s iPhone 16, median
+  chart geometry readiness fell from 138.5 ms to 104 ms in Release builds;
+  this measures UI readiness, not compositor delivery or steady-state CPU.
+  See `docs/multi-series-mount-performance-iphone.md` for the comparison.
+
+## [5.0.0-rc.0] — Unpublished candidate
+
+Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made.
+
+### Breaking
+
+- Replace the `@shopify/react-native-skia` peer with `react-native-skia@^3.3.0`.
+  Apps must migrate their renderer imports and font/image types, install one
+  native Skia package, and rebuild. React 19+ and React Native 0.78+ are now
+  required. Maintained Skia v2 support is not declared in this candidate.
+
+### Changed
+
+- Migrate all runtime, example, mock, and declaration imports to
+  `react-native-skia` 3.3 (Graphite).
+  Existing published LiveChart 4.x releases keep the Shopify peer.
+  Native iOS and Android/Vulkan verification is tracked in
+  [#409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
+- Add an explicit `publish:lib:next` command and a prepublish check that rejects
+  prerelease publication to `latest`. Stable `latest` remains 4.x.
+- Use the published, unmodified Skia 3.3.0 renderer. The experimental native
+  glyph-atlas patch was removed from the example and package before release;
+  the measurements do not establish an allocation regression from Skia 2.6.4.
+
+### Fixed
+
+- Example app: enable outward Y-range easing in Multi-series so revealing a
+  series or extending the range animates instead of jumping. Add an
+  "Animate expansion" control beside Responsiveness and start with its Smooth
+  preset to spread large range changes across more visible steps.
+- Example app: give Kraken's header matching left/right widths so the centered
+  title no longer overlaps the Back button's Android touch area.
 
 ## [4.28.2] — 2026-10-11
 

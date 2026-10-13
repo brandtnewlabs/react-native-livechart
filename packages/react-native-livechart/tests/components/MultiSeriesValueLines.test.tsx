@@ -1,7 +1,7 @@
 import React from "react";
 import { useSharedValue } from "react-native-reanimated";
 
-import { Canvas } from "@shopify/react-native-skia";
+import { Canvas } from "react-native-skia";
 import { render } from "@testing-library/react-native";
 
 import { MultiSeriesValueLines } from "../../src/components/MultiSeriesValueLines";

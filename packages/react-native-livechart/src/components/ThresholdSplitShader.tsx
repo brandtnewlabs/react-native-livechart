@@ -1,4 +1,4 @@
-import { Shader, Skia, type Uniforms } from "@shopify/react-native-skia";
+import { Shader, Skia, type Uniforms } from "react-native-skia";
 import type { SharedValue } from "react-native-reanimated";
 
 import { THRESHOLD_SAMPLE_COUNT } from "../math/threshold";

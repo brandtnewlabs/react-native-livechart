@@ -4,7 +4,7 @@ import {
   Path,
   Text as SkiaText,
   type SkFont,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { useDerivedValue } from "react-native-reanimated";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";

@@ -5,7 +5,7 @@ import {
   RoundedRect,
   Text,
   type SkFont,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import type { ReferenceLineLayout } from "../hooks/useReferenceLine";
 import { usePathBuilder } from "../hooks/usePathBuilder";

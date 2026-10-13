@@ -5,7 +5,7 @@ import {
 } from "../../src/draw/grid";
 import { DEFAULT_PADDING, badgeTailAndCap, pillTextLeftX } from "../../src/draw/line";
 
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 import { render, renderHook } from "@testing-library/react-native";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";

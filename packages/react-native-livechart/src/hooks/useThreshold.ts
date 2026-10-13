@@ -1,4 +1,4 @@
-import { vec, type Uniforms } from "@shopify/react-native-skia";
+import { vec, type Uniforms } from "react-native-skia";
 import { useRef } from "react";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 

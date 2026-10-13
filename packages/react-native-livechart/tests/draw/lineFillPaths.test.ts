@@ -1,4 +1,4 @@
-import type { SkPathBuilder } from "@shopify/react-native-skia";
+import type { SkPathBuilder } from "react-native-skia";
 import { buildLineFillPaths } from "../../src/draw/lineFillPaths";
 import { drawSpline, makeSplineScratch } from "../../src/math/spline";
 import { drawSpline as beforeSpline } from "../../../../demo-lib/performance-baseline/spline";

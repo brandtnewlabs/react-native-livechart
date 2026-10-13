@@ -1,5 +1,5 @@
 import { GRID_METRICS_DEFAULTS, MAX_Y_LABELS } from "../constants";
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 import { measureFontTextWidth } from "../lib/measureFontTextWidth";
 import { lerp } from "../math/lerp";
 import type { GridMetrics } from "../types";

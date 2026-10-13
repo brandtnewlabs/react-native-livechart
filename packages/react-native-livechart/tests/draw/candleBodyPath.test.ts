@@ -1,4 +1,4 @@
-import type { SkPathBuilder } from "@shopify/react-native-skia";
+import type { SkPathBuilder } from "react-native-skia";
 import { buildCandleBodyPath } from "../../src/draw/candleBodyPath";
 import type { CandleRect } from "../../src/draw/candle";
 

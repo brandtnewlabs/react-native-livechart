@@ -4,7 +4,7 @@ import {
   pulseRadialOutset,
 } from "../../src/draw/line";
 
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 import { resolveTheme } from "../../src/theme";
 import {
   resolveChartLayout,

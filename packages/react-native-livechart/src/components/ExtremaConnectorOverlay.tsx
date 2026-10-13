@@ -1,4 +1,4 @@
-import { DashPathEffect, Path } from "@shopify/react-native-skia";
+import { DashPathEffect, Path } from "react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type {

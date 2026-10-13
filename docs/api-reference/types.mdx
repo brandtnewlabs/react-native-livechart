@@ -4,6 +4,12 @@ icon: "code"
 description: "Exported TypeScript types — data shapes, config objects, and the palette."
 ---
 
+In the unpublished LiveChart 5.0.0-rc.0 candidate, font and image types (`DataSourceParam`,
+`SkFontMgr`, `SkImage`) resolve from `react-native-skia`, including emitted
+declarations. Create fonts/images and custom chart children with that same
+renderer package. Published LiveChart 4.x types still use `@shopify/react-native-skia`;
+see [installation](/installation) before migrating.
+
 All types are exported from the package root:
 
 ```tsx

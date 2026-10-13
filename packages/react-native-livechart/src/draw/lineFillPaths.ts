@@ -1,4 +1,4 @@
-import type { SkPathBuilder } from "@shopify/react-native-skia";
+import type { SkPathBuilder } from "react-native-skia";
 import { drawSpline, type SplineScratch } from "../math/spline";
 import { sampleThresholdYAt } from "../math/threshold";
 

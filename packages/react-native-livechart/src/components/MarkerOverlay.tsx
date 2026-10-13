@@ -6,7 +6,7 @@ import {
   type SkFont,
   type SkRect,
   type SkRSXform,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { useMemo, useRef, useState } from "react";
 import { PixelRatio } from "react-native";
 import {

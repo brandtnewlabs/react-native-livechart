@@ -1,4 +1,4 @@
-import { matchFont, Skia, type SkFont } from "@shopify/react-native-skia";
+import { matchFont, Skia, type SkFont } from "react-native-skia";
 import { resolveFontConfig } from "../core/resolveConfig";
 import { MONO_FONT_FAMILY } from "../lib/monoFontFamily";
 import type { BadgeStyleConfig, FontConfig } from "../types";

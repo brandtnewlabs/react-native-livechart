@@ -334,15 +334,17 @@ export default function KrakenShowcase() {
 
       {/* ── Header: real back button + BTC ticker, everything else grey */}
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
-          style={styles.backButton}
-          accessibilityRole="button"
-          accessibilityLabel="Back to Examples"
-        >
-          <Ionicons name="chevron-back" size={26} color={C.text} />
-        </Pressable>
+        <View style={styles.headerLeft}>
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={12}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Examples"
+          >
+            <Ionicons name="chevron-back" size={26} color={C.text} />
+          </Pressable>
+        </View>
         <Text style={styles.hdrTitle}>BTC</Text>
         <View style={styles.headerIcons}>
           <Sk w={26} h={26} r={13} />
@@ -465,14 +467,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  headerLeft: {
+    // Match the three 26px header icons and their two 10px gaps. This centers
+    // the title without extending its touch bounds over the Back button.
+    width: 98,
+  },
   hdrTitle: {
     flex: 1,
     textAlign: "center",
     fontSize: 17,
     fontFamily: FONT_BOLD,
     color: C.text,
-    // Offset the back button so the title is visually centred.
-    marginLeft: -26,
   },
   headerIcons: {
     flexDirection: "row",

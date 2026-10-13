@@ -1,4 +1,4 @@
-import { Skia } from "@shopify/react-native-skia";
+import { Skia } from "react-native-skia";
 import { render } from "@testing-library/react-native";
 import React from "react";
 

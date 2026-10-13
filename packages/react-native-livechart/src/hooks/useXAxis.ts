@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 import { MS_PER_FRAME_60FPS } from "../constants";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";

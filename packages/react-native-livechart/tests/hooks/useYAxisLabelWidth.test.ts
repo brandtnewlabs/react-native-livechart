@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react-native";
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 import { useYAxisLabelWidth } from "../../src/hooks/useYAxisLabelWidth";
 import type { YAxisEntry } from "../../src/draw/grid";
 import { withSharedValueAccessors } from "../support/sharedValueMock";

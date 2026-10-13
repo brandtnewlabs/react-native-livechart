@@ -1,6 +1,6 @@
 import type { ReferenceTagStack } from "../math/referenceTagStack";
 import { useMemo } from "react";
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 import { Gesture } from "react-native-gesture-handler";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";

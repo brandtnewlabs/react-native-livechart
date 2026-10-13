@@ -3,7 +3,7 @@ import {
   PaintStyle,
   drawAsImageFromPicture,
   type SkImage,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { DEGEN_STRIDE } from "../constants";
 
 /** Reference radius of the rasterized white circle sprite (px). */

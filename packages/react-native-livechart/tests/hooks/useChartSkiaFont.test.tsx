@@ -3,7 +3,7 @@ import {
   useFont,
   type SkFont,
   type SkFontMgr,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { renderHook } from "@testing-library/react-native";
 
 import { useChartSkiaFont } from "../../src/hooks/useChartSkiaFont";

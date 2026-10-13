@@ -1,4 +1,4 @@
-import { type SkFont } from "@shopify/react-native-skia";
+import { type SkFont } from "react-native-skia";
 import { useMemo, useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {

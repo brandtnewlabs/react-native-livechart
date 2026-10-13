@@ -7,7 +7,7 @@ import {
   Text as SkiaText,
   vec,
   type SkFont,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { useCallback, useRef } from "react";
 import {
   useAnimatedReaction,

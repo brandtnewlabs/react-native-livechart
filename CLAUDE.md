@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-A high-performance live charting library for React Native, built on `@shopify/react-native-skia`, `react-native-reanimated`, and `react-native-gesture-handler`. All data and live values flow through Reanimated `SharedValue`s so animations run on the UI thread without JS bridge traffic.
+A high-performance live charting library for React Native, built on `react-native-skia`, `react-native-reanimated`, and `react-native-gesture-handler`. The Skia package migration is prepared as unpublished LiveChart 5.0.0-rc.0; published LiveChart 4.x uses `@shopify/react-native-skia`. All data and live values flow through Reanimated `SharedValue`s so animations run on the UI thread without JS bridge traffic.
 
 This is a **monorepo** with npm workspaces:
 - `packages/react-native-livechart/` — the publishable library

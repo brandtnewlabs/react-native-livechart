@@ -1,5 +1,5 @@
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
-import { vec } from "@shopify/react-native-skia";
+import { vec } from "react-native-skia";
 
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ResolvedSegment } from "../core/resolveSegment";

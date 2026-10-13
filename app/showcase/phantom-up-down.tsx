@@ -1,5 +1,5 @@
 import { PlusJakartaSans_500Medium } from "@expo-google-fonts/plus-jakarta-sans";
-import { useFont, type SkFont } from "@shopify/react-native-skia";
+import { useFont, type SkFont } from "react-native-skia";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";

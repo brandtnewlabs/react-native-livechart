@@ -291,6 +291,8 @@ type ChartSettingsControlsProps = {
   setWindowSecs: Dispatch<SetStateAction<number>>;
   smoothing: number;
   setSmoothing: Dispatch<SetStateAction<number>>;
+  animateExpansion: boolean;
+  setAnimateExpansion: Dispatch<SetStateAction<boolean>>;
   scrubDim: number;
   setScrubDim: Dispatch<SetStateAction<number>>;
   seriesTooltip: boolean;
@@ -316,6 +318,13 @@ function ChartSettingsControls(props: ChartSettingsControlsProps) {
         value={props.smoothing}
         onChange={props.setSmoothing}
       />
+      <ControlRow label="Y-axis range">
+        <ToggleChip
+          label="Animate expansion"
+          value={props.animateExpansion}
+          onChange={props.setAnimateExpansion}
+        />
+      </ControlRow>
       <ChipRow
         label="Scrub trailing fade (dimOpacity)"
         options={SCRUB_DIM_OPTIONS}
@@ -352,7 +361,8 @@ export default function MultiSeriesScreen() {
   const [panZoom, setPanZoom] = useState(true);
   const [loading, setLoading] = useState(false);
   const [windowSecs, setWindowSecs] = useState(30);
-  const [smoothing, setSmoothing] = useState(0.12);
+  const [smoothing, setSmoothing] = useState(0.03);
+  const [animateExpansion, setAnimateExpansion] = useState(true);
   const [exaggerate, setExaggerate] = useState(false);
   const [degen, setDegen] = useState(false);
   const [scrubDim, setScrubDim] = useState(0.3);
@@ -465,6 +475,7 @@ export default function MultiSeriesScreen() {
             paused={paused}
             loading={loading}
             smoothing={smoothing}
+            rangeAnimation={{ animateExpansion }}
             exaggerate={exaggerate}
             degen={degen ? true : undefined}
             referenceLines={
@@ -588,6 +599,8 @@ export default function MultiSeriesScreen() {
           setWindowSecs={setWindowSecs}
           smoothing={smoothing}
           setSmoothing={setSmoothing}
+          animateExpansion={animateExpansion}
+          setAnimateExpansion={setAnimateExpansion}
           scrubDim={scrubDim}
           setScrubDim={setScrubDim}
           seriesTooltip={seriesTooltip}

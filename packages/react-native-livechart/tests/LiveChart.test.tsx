@@ -1,4 +1,4 @@
-import { matchFont } from "@shopify/react-native-skia";
+import { matchFont } from "react-native-skia";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import React from "react";

@@ -1,6 +1,6 @@
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 import { GRID_METRICS_DEFAULTS, MS_PER_FRAME_60FPS } from "../constants";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import { computeGridEntries } from "../draw/grid";

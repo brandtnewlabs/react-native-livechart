@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import type { SkFont } from "@shopify/react-native-skia";
+import type { SkFont } from "react-native-skia";
 import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import type { ChartPadding } from "../draw/line";

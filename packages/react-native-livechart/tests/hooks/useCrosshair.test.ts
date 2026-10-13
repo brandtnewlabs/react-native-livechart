@@ -1,4 +1,4 @@
-import { type SkFont } from "@shopify/react-native-skia";
+import { type SkFont } from "react-native-skia";
 import { act, renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
 import { useAnimatedReaction } from "react-native-reanimated";

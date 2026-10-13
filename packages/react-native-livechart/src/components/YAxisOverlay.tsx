@@ -3,7 +3,7 @@ import {
   Group,
   Path,
   type SkFont,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { useState } from "react";
 import {
   useAnimatedReaction,

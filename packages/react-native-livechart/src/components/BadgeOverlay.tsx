@@ -4,7 +4,7 @@ import {
   Text as SkiaText,
   type SkFont,
   type SkPath,
-} from "@shopify/react-native-skia";
+} from "react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 interface BadgeData {
