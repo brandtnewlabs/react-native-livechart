@@ -1134,6 +1134,8 @@ export interface ResolvedLoadingConfig {
   speed: number;
   /** Draw the skeleton Y-axis label placeholders. */
   axisLabels: boolean;
+  /** undefined → never frozen: the squiggle animates while the shell shows */
+  freezeAfterMs: number | undefined;
 }
 
 const LOADING_DEFAULTS: ResolvedLoadingConfig = {
@@ -1142,18 +1144,25 @@ const LOADING_DEFAULTS: ResolvedLoadingConfig = {
   amplitude: LOADING_WAVE_AMPLITUDE,
   speed: LOADING_WAVE_SPEED,
   axisLabels: true,
+  freezeAfterMs: undefined,
 };
 
 /**
  * Resolves the `loading` prop to a fully-typed config or null (not loading).
  * `true` → defaults (loading on, built-in look), object → merged with defaults
  * (loading on, restyled), `false` / omitted → null. So a non-null result is the
- * "is loading" flag and carries the resolved styling.
+ * "is loading" flag and carries the resolved styling. A `freezeAfterMs` of
+ * `NaN` or `Infinity` resolves to `undefined`: no limit, and no frame counting.
  */
 export function resolveLoading(
   prop: boolean | LoadingConfig | undefined,
 ): ResolvedLoadingConfig | null {
-  return resolveToggle(prop, LOADING_DEFAULTS, false);
+  const resolved = resolveToggle(prop, LOADING_DEFAULTS, false);
+  if (resolved === null) return null;
+  const { freezeAfterMs } = resolved;
+  return Number.isNaN(freezeAfterMs) || freezeAfterMs === Infinity
+    ? { ...resolved, freezeAfterMs: undefined }
+    : resolved;
 }
 
 const SCRUB_ACTION_DEFAULTS: ResolvedScrubActionConfig = {

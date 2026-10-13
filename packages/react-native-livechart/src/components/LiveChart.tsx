@@ -1447,6 +1447,7 @@ function resolveLiveChartModelDefaults({
     loadingAmplitude: loadingCfg?.amplitude,
     loadingSpeed: loadingCfg?.speed,
     loadingAxisLabels: loadingCfg?.axisLabels ?? true,
+    loadingFreezeAfterMs: loadingCfg?.freezeAfterMs,
     volumeOpacity: volumeCfg?.opacity ?? 1,
     volumeUpColor: volumeCfg?.upColor ?? palette.candleUp,
     volumeDownColor: volumeCfg?.downColor ?? palette.candleDown,
@@ -3421,6 +3422,7 @@ function ChartStack({
     loadingStrokeWidth,
     loadingAmplitude,
     loadingSpeed,
+    loadingFreezeAfterMs,
     canvasMode,
   } = model;
   return (
@@ -3589,6 +3591,7 @@ function ChartStack({
         lineStrokeWidth={loadingStrokeWidth}
         waveAmplitude={loadingAmplitude}
         waveSpeed={loadingSpeed}
+        waveFreezeAfterMs={loadingFreezeAfterMs}
         opaqueCanvas={canvasMode === "opaque"}
         isStatic={isStatic}
         isFrameLoopActive={isFrameLoopActive}

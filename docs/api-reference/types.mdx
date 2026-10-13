@@ -676,6 +676,7 @@ interface LoadingConfig {
   amplitude?: number;      // base breathing-wave height (px); default 14
   speed?: number;          // breathing-wave speed multiplier; default 1 (0 freezes)
   axisLabels?: boolean;    // draw the skeleton Y-axis placeholders; default true (false = squiggle only)
+  freezeAfterMs?: number;  // freeze the squiggle after this many ms per showing; default none (≤ 0 = frozen at once)
 }
 // Pinch-to-zoom the visible time window (two-finger, focal-anchored). @experimental
 interface ZoomConfig {
