@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Maintenance
+
+- Align the example app's native dependencies with Expo 57.0.28, deduplicate native
+  modules, and refresh the Metro Bundle Mode patches for 0.84.5. Pin the test
+  renderer to the version compatible with React 19.2, and check Expo dependency
+  versions, TypeScript, and lint in CI.
+
 ### Performance
 
 - Fit the first measured, visible `LiveChartSeries` data immediately, including
@@ -58,6 +65,18 @@ Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made
   preset to spread large range changes across more visible steps.
 - Example app: give Kraken's header matching left/right widths so the centered
   title no longer overlaps the Back button's Android touch area.
+
+## [4.28.2] — 2026-10-11
+
+### Performance
+
+- Backport the `LiveChartSeries` mount improvements to the 4.x renderer. Fit the
+  first measured, visible data immediately, including with animated expansion
+  or an initially empty feed; subsequent updates retain configured easing.
+  Initialize compact layout/legend metadata on the first render, avoid seventeen
+  derived-value mappers for fixed engine props, and mount particles only while
+  `degen` is enabled. The demo initializes its feed before the first commit and
+  defers its controls. No public props or exports are added.
 
 ## [4.28.1] — 2026-10-10
 
@@ -1786,6 +1805,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.28.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.2
 [4.28.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.1
 [4.28.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.0
 [4.27.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.27.0

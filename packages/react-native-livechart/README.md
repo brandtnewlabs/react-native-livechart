@@ -93,7 +93,7 @@ From **Expo SDK 53+**, Metro resolves `import` using `package.json` **`exports`*
 
 ### Optional: Worklets Bundle Mode
 
-Bundle Mode is app-level build configuration—there is no LiveChart prop to enable. Because the package ships source, your app automatically compiles LiveChart's worklets in Bundle Mode when Babel and Metro are configured for it. The setup below was verified with **`react-native-worklets` 0.10.0**, Expo 57, and React Native 0.86; check Worklets compatibility before applying it to a different stack.
+Bundle Mode is app-level build configuration—there is no LiveChart prop to enable. Because the package ships source, your app automatically compiles LiveChart's worklets in Bundle Mode when Babel and Metro are configured for it. The setup below was verified with **`react-native-worklets` 0.10.1**, Expo 57.0.28, and React Native 0.86.3; check Worklets compatibility before applying it to a different stack.
 
 ```js
 // babel.config.js — Worklets must remain the last plugin
