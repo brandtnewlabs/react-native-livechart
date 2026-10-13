@@ -758,11 +758,17 @@ export interface BadgeConfig extends BadgeStyleConfig {
    * column ({@link YAxisConfig.labelRightMargin}): it starts at the labels'
    * shared left X, and a value wider than every axis label ends at the
    * column's right edge. The pill keeps its shape and the value stays within
-   * its `padX` padding (a value that doesn't fit there is centered), so the
-   * room on each side follows the right inset and `metrics.badge`. The value
-   * moves sideways when the column's width changes (a wider label entering or
-   * leaving the axis). Centered without that column on the right side, while
-   * the axis floats, and for a `"left"` badge. Default `"center"`.
+   * its `padX` padding, so the room on each side follows the right inset and
+   * `metrics.badge`. Next to the tail, whose taper keeps the value off the
+   * outline, a pill too narrow for both paddings gives up the left one first,
+   * then the right one, so the value moves continuously as the pill narrows:
+   * with room for its right padding it ends `padX` from the pill's end (the
+   * column's right edge when `marginEdge + padX` equals `labelRightMargin`).
+   * A value wider than a tailed pill's body, or one that doesn't fit both
+   * paddings of a pill without a tail, is centered. The value moves sideways
+   * when the column's width changes (a wider label entering or leaving the
+   * axis). Centered without that column on the right side, while the axis
+   * floats, and for a `"left"` badge. Default `"center"`.
    */
   textAlign?: "center" | "yAxisColumn";
   /**

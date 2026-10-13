@@ -77,6 +77,7 @@ function alignmentHint(
   gutter: Gutter,
   largeFont: boolean,
   alignment: BadgeConfig["textAlign"],
+  tail: boolean,
 ): string {
   if (axis !== "column" || leftBadge) {
     return "This layout keeps the badge centered. Column alignment needs a right-side label column and a badge in the right gutter.";
@@ -84,11 +85,13 @@ function alignmentHint(
   if (offset) {
     return "The offset moves both the pill and its value 12 px left, away from the axis column.";
   }
-  if (gutter === "tight") {
-    return "The value stays inside the pill's padding. When it cannot fit with that padding, it falls back to centered. Try Roomy with the larger font.";
-  }
   if (alignment === "center") {
     return "The value is centered in the pill. Compare its first character with the labels below it.";
+  }
+  if (gutter === "tight") {
+    return tail
+      ? "With the tail, a pill too narrow for both paddings gives up the value's left padding first, then the right one. Only a value wider than the pill falls back to centered. Try Roomy with the larger font."
+      : "Without the tail, the value keeps the pill's padding on both sides. When it cannot fit with that padding, it falls back to centered. Try Roomy with the larger font.";
   }
   if (largeFont) {
     return "The larger value ends at the column's right edge. The axis column is still measured with the chart font.";
@@ -133,6 +136,7 @@ export default function BadgeAlignmentScreen() {
     gutter,
     largeFont,
     alignment,
+    tail,
   );
 
   return (
