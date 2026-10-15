@@ -779,6 +779,7 @@ export function resolveViewport(
   return {
     end: prop.end,
     window: prop.window,
+    range: prop.range,
     windowSmoothing: prop.windowSmoothing ?? VIEWPORT_DEFAULTS.windowSmoothing,
   };
 }

@@ -26,23 +26,32 @@ export function useLiveDot(
   edgeValue?: SharedValue<number>,
   followViewEdge = false,
   trackWhileParked = false,
+  /** Keep the dot on recorded geometry when the viewport includes future space. */
+  shouldOmitTipBeyondData = false,
 ) {
   const dotX = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
     if (w === 0) return -100;
     const right = w - padding.right;
-    // While parked (scrolled back / overscrolled) the live point is not at the
-    // plot edge — track its real x so a pan doesn't lose the dot, and hide it
-    // only once the point leaves the window.
-    if (trackWhileParked && !followViewEdge && engine.viewEnd.value != null) {
+    // Buffered or parked windows can put the last point before the plot edge.
+    // Track its real x so a pan doesn't lose the dot, and hide it only once
+    // the point leaves the window.
+    if (
+      shouldOmitTipBeyondData ||
+      (trackWhileParked && !followViewEdge && engine.viewEnd.value != null)
+    ) {
       const data = engine.data.value;
       const last = data[data.length - 1];
       const win = engine.displayWindow.value;
       const chartW = w - padding.left - padding.right;
       if (!last || win <= 0 || chartW <= 0) return -100;
+      if (engine.timestamp.value < data[0].time) return -100;
+      const tipTime = shouldOmitTipBeyondData
+        ? Math.min(last.time, engine.timestamp.value)
+        : last.time;
       const x =
         padding.left +
-        ((last.time - (engine.timestamp.value - win)) / win) * chartW;
+        ((tipTime - (engine.timestamp.value - win)) / win) * chartW;
       return x < padding.left || x > right ? -100 : x;
     }
     return right;
@@ -56,6 +65,11 @@ export function useLiveDot(
     const dMax = engine.displayMax.value;
     const valRange = dMax - dMin;
     if (valRange === 0) return padding.top + chartH / 2;
+    const data = engine.data.value;
+    const last = data[data.length - 1];
+    if (shouldOmitTipBeyondData && last && last.time <= engine.timestamp.value) {
+      return padding.top + ((dMax - last.value) / valRange) * chartH;
+    }
     const v =
       followViewEdge && edgeValue
         ? edgeValue.value

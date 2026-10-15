@@ -1991,6 +1991,7 @@ function useLiveChartController({
   // Shared by the path builders and the marker anchoring so glyphs sit on the
   // rendered line rather than the phantom spline.
   const lineIsLinear = lineProp?.curve === "linear";
+  const shouldOmitTipBeyondData = !!viewport || windowBuffer > 0;
 
   const { linePath, fillPath, thresholdFillPath } = useChartPaths(
     engine,
@@ -2012,6 +2013,7 @@ function useLiveChartController({
     thresholdFillSamples,
     lineProp?.simplify,
     lineGapsCfg?.gaps,
+    shouldOmitTipBeyondData,
   );
   // `effectivePadding.bottom` includes the volume band, so this stops at the
   // price plot's bottom edge.
@@ -2038,6 +2040,7 @@ function useLiveChartController({
     engine.edgeValue,
     badgeCfg?.followViewEdge ?? false,
     dotCfg.trackWhileParked,
+    shouldOmitTipBeyondData,
   );
 
   const momentumSV = useMomentum(engine, momentum);

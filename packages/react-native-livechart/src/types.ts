@@ -2816,10 +2816,12 @@ export interface LiveChartCoreProps {
  */
 export interface ChartViewportControl {
   /** Right-edge unix timestamp in seconds; null follows this chart's live edge.
-   * Honors times past live. An end before the first retained point falls back to live. */
+   * Honors times past live. Without explicit price bounds, an end before the first retained point falls back to live. */
   end: SharedValue<number | null>;
   /** Positive, finite visible width in seconds; null uses the timeWindow prop. */
   window: SharedValue<number | null>;
+  /** Explicit price bounds while end is non-null; null/omitted keeps automatic fitting. */
+  range?: SharedValue<Pick<ChartScale, "min" | "max"> | null>;
 }
 
 /** External viewport state and optional behavior settings for {@link LiveChart}.
