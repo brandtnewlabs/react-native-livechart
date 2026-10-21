@@ -3,7 +3,7 @@ import { useSharedValue } from "react-native-reanimated";
 import { useLiveChartEngine } from "../src/core/useLiveChartEngine";
 import { usePanScroll } from "../src/hooks/usePanScroll";
 import { resetPinchZoom, usePinchZoom } from "../src/hooks/usePinchZoom";
-import type { ViewportConfig } from "../src";
+import type { ChartScale, ViewportConfig } from "../src";
 import { resolveViewport } from "../src/core/resolveConfig";
 
 let mockTick: (dt: number) => boolean;
@@ -130,9 +130,11 @@ async function setup(
       ]);
       const end = useSharedValue<number | null>(80);
       const window = useSharedValue<number | null>(40);
+      const range = useSharedValue<Pick<ChartScale, "min" | "max"> | null>(null);
       const viewport: ViewportConfig = {
         end,
         window,
+        range,
         windowSmoothing: initial.windowSmoothing,
       };
       const viewportCfg = resolveViewport(
@@ -315,4 +317,27 @@ it("watches both adopted values for autoSleep wake-up and settles after external
   expect(engine.timestamp.get()).toBe(120);
   expect(engine.displayWindow.get()).toBe(25);
   expect(mockTick(16.67)).toBe(false);
+});
+
+it.each(["line", "candle"] as const)("adopts price bounds and wakes on range-only writes in %s mode", async (mode) => {
+  const { result } = await setup({ mode });
+  const { engine, viewport } = result.current;
+  viewport.end.set(300);
+  viewport.range!.set({ min: 80, max: 120 });
+  mockTick(16.67);
+  expect(engine.timestamp.get()).toBe(300);
+  expect([engine.displayMin.get(), engine.displayMax.get()]).toEqual([80, 120]);
+  expect(mockTick(16.67)).toBe(false);
+  const before = mockPrepare();
+  viewport.range!.set({ min: 90, max: 130 });
+  expect(mockPrepare()).not.toEqual(before);
+  expect(mockTick(16.67)).toBe(true);
+  expect([engine.displayMin.get(), engine.displayMax.get()]).toEqual([90, 130]);
+  expect(mockTick(16.67)).toBe(false);
+  resetPinchZoom(engine);
+  mockTick(16.67);
+  expect(engine.timestamp.get()).toBe(100);
+  expect(engine.displayMax.get()).toBeLessThan(80);
+  // Reset clears end/window; the optional app-owned range becomes inactive.
+  expect(viewport.range!.get()).toEqual({ min: 90, max: 130 });
 });

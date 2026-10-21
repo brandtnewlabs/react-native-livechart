@@ -23,12 +23,56 @@ preserves those shared values by reference; their contents stay on the UI thread
 | ----------------- | ---------------------------------------------------------------------------- |
 | `end`             | Right-edge timestamp in unix seconds; `null` follows this chart's live edge. |
 | `window`          | Positive, finite visible width in seconds; `null` uses `timeWindow`.         |
+| `range`           | Optional shared value of `{ min, max }` or `null` for exact price bounds while `end` is non-null. |
 | `windowSmoothing` | Default `true`. Set `false` to adopt non-null widths immediately.            |
 
 A non-null end can be at or beyond the pane's own live edge, which lets charts with
 different forming-candle boundaries share a view. The retained-history guard still
-applies: an end before the first point/bar falls back to live without clearing the
-shared value. Keep overlapping history in all panes.
+applies without explicit price bounds: an end before the first point/bar falls
+back to live without clearing the shared value. Keep overlapping history in panes
+that use automatic fitting.
+
+## Fix price bounds for an annotation editor
+
+Supply `range` to keep price coordinates stable while moving into empty past or
+future time. This works in line and candle modes. Both bounds and their difference
+must be finite, with `min < max`; invalid, null, or omitted bounds use automatic
+fitting. With valid bounds, an end before the first retained sample is honored too.
+
+```tsx
+const end = useSharedValue<number | null>(null);
+const window = useSharedValue<number | null>(null);
+const range = useSharedValue<{ min: number; max: number } | null>(null);
+
+// Call from an app worklet to keep an annotation's price coordinates fixed:
+function openEditor(lastSampleTime: number) {
+  "worklet";
+  range.set({ min: 80, max: 120 });
+  window.set(300);
+  end.set(lastSampleTime + 120);
+}
+
+// Pass these same values to the chart:
+<LiveChart data={data} value={value} viewport={{ end, window, range }} />;
+
+// Call from an app worklet to restore auto-fit at the current position:
+function clearPriceBounds() {
+  "worklet";
+  range.set(null);
+}
+```
+
+Explicit bounds apply immediately, overriding automatic fitting, range easing,
+`nonNegative`, `maxValue`, `minRange`, and `yRangeScale`. Gestures and `resetZoom()`
+do not write `range`; clearing `end` makes it inactive. Set `range` to null as well
+if a later pan should return to automatic fitting.
+
+In line mode, an external viewport or positive `windowBuffer` stops the line and
+live dot at the last recorded point, leaving future space empty. The badge and
+value line use that recorded price. The dot hides when its true point leaves the
+window; `dot.trackWhileParked` still controls its scroll-back visibility and pulse.
+`badge.followViewEdge` retains its edge-pinned dot and smoothed edge price. Candle
+indicators keep using candle prices.
 
 ## Copy the leader's drawn range
 
@@ -156,7 +200,7 @@ configured width and live edge (a paused chart remains paused). In a sync group,
 reset the **leader** and let the mirror carry its drawn return into the followers.
 Clearing only a follower will be overwritten by its next leader update.
 
-`autoSleep` observes both supplied shared values, so a settled follower wakes when
+`autoSleep` observes the supplied `end`, `window`, and optional `range`, so a settled follower wakes when
 the leader moves. For idle testing, turn pulse off and freeze the data feed/clock;
 live scrolling or changing feeds can keep an engine awake.
 

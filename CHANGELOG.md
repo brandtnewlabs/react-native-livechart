@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The Time scroll demo includes a fixed-price-range setting, feed freeze, and
+  repeatable history/future-space previews for comparing `viewport.range` off/on.
+
+- Experimental `viewport.range` supplies exact `{ min, max }` price bounds while
+  `viewport.end` is non-null. It keeps annotation coordinates stable in empty past
+  or future space. Invalid/null bounds restore auto-fit; returning to live ignores
+  the override. Range-only writes also wake `autoSleep` charts.
+
 - `LoadingConfig.freezeAfterMs` freezes the loading squiggle once it has
   animated that long (ms) each time the loading or empty shell appears; its
   frame callback stops until the shell next appears. Time is counted in frames
@@ -17,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by default: no limit, as before.
 
 ### Changed
+
+- Line-mode `LiveChart` with an external `viewport` or positive `windowBuffer`
+  stops the line/dot at the last recorded point, leaving future space empty.
+  Badge and value-line prices stay aligned with that point. Existing
+  `badge.followViewEdge`, `dot.trackWhileParked`, and candle-price behavior are
+  preserved.
 
 - `badge.textAlign: "yAxisColumn"` no longer centers the value in a tailed
   right-gutter pill too narrow for both paddings. Next to the tail, whose
@@ -30,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without a tail are unchanged.
 
 ### Maintenance
+
+- Refresh Expo 57 patch dependencies so the example app passes CI's dependency
+  compatibility check.
 
 - Align the example app's native dependencies with Expo 57.0.28, deduplicate native
   modules, and refresh the Metro Bundle Mode patches for 0.84.5. Pin the test

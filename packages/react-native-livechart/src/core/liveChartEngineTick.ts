@@ -1,6 +1,7 @@
 import type {
   CandleGap,
   CandlePoint,
+  ChartScale,
   LiveChartPoint,
   RangeAnimationConfig,
 } from "../types";
@@ -92,6 +93,8 @@ export interface EngineTickInput {
   minRange?: number;
   /** Positive, finite Y-range multiplier around the fitted midpoint (1 = auto-fit). */
   yRangeScale?: number;
+  /** Explicit finite price bounds for a freely positioned external viewport. */
+  viewRange?: Pick<ChartScale, "min" | "max"> | null;
   targetValue: number;
   points: LiveChartPoint[];
   /** Internal notification revision for the selected history; omit to disable reuse. */
@@ -218,6 +221,17 @@ export function tickLiveChartEngineFrame(
   const timestampSecondsPerPixel =
     Math.min(state.displayWindow, targetWindow) / input.canvasWidth;
   const viewEnd = input.viewEnd;
+  const requestedRange = input.viewRange;
+  const viewRange =
+    viewEnd != null &&
+    Number.isFinite(viewEnd) &&
+    requestedRange &&
+    Number.isFinite(requestedRange.min) &&
+    Number.isFinite(requestedRange.max) &&
+    requestedRange.min < requestedRange.max &&
+    Number.isFinite(requestedRange.max - requestedRange.min)
+      ? requestedRange
+      : undefined;
   // First time of the visible series' data — the floor a frozen edge must stay
   // at or above. `-Infinity` when there's no data to bound against, so the freeze
   // still works (we can't strand a plot we have no time bounds for).
@@ -235,10 +249,11 @@ export function tickLiveChartEngineFrame(
   // time-scroll is disabled the hook clears `viewEnd` (and kicks off the glide
   // below), so a stale edge can't keep the window frozen. See #164. With
   // `allowFutureViewEnd` (timeScroll.overscroll) an edge parked past live is
-  // honored too — the data-overlap strand-guard stays in both modes.
+  // honored too. Valid explicit price bounds let external editors position
+  // before the first sample as well, without an empty auto-fit to resolve.
   const scrolledBack =
     viewEnd != null &&
-    viewEnd >= firstDataTime &&
+    (viewRange !== undefined || viewEnd >= firstDataTime) &&
     (viewEnd < liveEdge || input.allowFutureViewEnd === true);
   const canvasChanged =
     state.lastCanvasWidth !== input.canvasWidth ||
@@ -558,6 +573,12 @@ export function tickLiveChartEngineFrame(
         rangeUnitsPerPixel,
       );
     }
+  }
+
+  // Explicit bounds keep a gesture's price coordinates stable, even in empty space.
+  if (viewRange) {
+    state.displayMin = viewRange.min;
+    state.displayMax = viewRange.max;
   }
 
   // Edge value: the price at the visible window's right edge. Following live →
