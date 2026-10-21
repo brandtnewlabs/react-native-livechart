@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The Time scroll demo includes a fixed-price-range setting, feed freeze, and
+  repeatable history/future-space previews for comparing `viewport.range` off/on.
+
 - Experimental `viewport.range` supplies exact `{ min, max }` price bounds while
   `viewport.end` is non-null. It keeps annotation coordinates stable in empty past
   or future space. Invalid/null bounds restore auto-fit; returning to live ignores
