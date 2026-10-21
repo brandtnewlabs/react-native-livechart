@@ -390,14 +390,13 @@ export function buildLinePoints(
     }
   }
 
-  // A scrolled-back / overscrolled window can end after the last data point;
-  // the synthetic tip would then fabricate a flat segment from that point to
-  // the right edge. Callers pass `omitTipBeyondData` to end the line at the
-  // last real point instead.
+  // Without more recorded data at the head, a synthetic tip would extend the
+  // line into future space or overwrite the endpoint's price at the same time.
+  // Callers pass `omitTipBeyondData` to end at the last real point instead.
   if (
     omitTipBeyondData &&
     endIdx === data.length &&
-    data[endIdx - 1].time < head
+    data[endIdx - 1].time <= head
   ) {
     return pts;
   }

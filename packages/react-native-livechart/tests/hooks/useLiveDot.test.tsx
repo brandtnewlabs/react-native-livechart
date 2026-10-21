@@ -80,6 +80,45 @@ describe("useLiveDot", () => {
     expect(result.current.dotY.value).toBeCloseTo(12 + ((10 - 9) / 10) * 60);
   });
 
+  describe("without a synthetic line tip", () => {
+    it("shares the last recorded price with the badge while the engine value eases", async () => {
+      const { result } = await renderHook(() => useLiveDot(
+        engine({ timestamp: 1000, data: [{ time: 985, value: 9 }], displayValue: 5 }),
+        DEFAULT_PADDING, undefined, false, false, true,
+      ));
+      expect(result.current.dotX.value).toBe(100);
+      expect(result.current.dotY.value).toBe(18);
+      expect(result.current.indicatorValue.value).toBe(9);
+    });
+
+    it.each([false, true])("hides an off-screen live point with trackWhileParked=%s", async (trackWhileParked) => {
+      const { result } = await renderHook(() => useLiveDot(
+        engine({ timestamp: 1000, viewEnd: 1000, data: [{ time: 980, value: 1 }, { time: 1010, value: 9 }] }),
+        DEFAULT_PADDING, undefined, false, trackWhileParked, true,
+      ));
+      expect(result.current.dotX.value).toBe(-100);
+    });
+
+    it.each([{ data: [] }, { data: [{ time: 960, value: 9 }] }])("hides missing or left-of-window live data: %p", async ({ data }) => {
+      const { result } = await renderHook(() => useLiveDot(
+        engine({ timestamp: 1000, data }),
+        DEFAULT_PADDING, undefined, false, false, true,
+      ));
+      expect(result.current.dotX.value).toBe(-100);
+    });
+
+    it("keeps followViewEdge pinned and gives its price precedence", async () => {
+      const edgeValue = { value: 7 } as SharedValue<number>;
+      const { result } = await renderHook(() => useLiveDot(
+        engine({ timestamp: 1000, viewEnd: 1000, data: [{ time: 985, value: 9 }], displayValue: 5 }),
+        DEFAULT_PADDING, edgeValue, true, true, true,
+      ));
+      expect(result.current.dotX.value).toBe(188);
+      expect(result.current.dotY.value).toBe(30);
+      expect(result.current.indicatorValue.value).toBe(7);
+    });
+  });
+
   describe("trackWhileParked", () => {
     // Frozen window: [970, 1000] (timestamp 1000, displayWindow 30).
     // chartW = 200 - 12 - 12 = 176; plot right edge = 188.

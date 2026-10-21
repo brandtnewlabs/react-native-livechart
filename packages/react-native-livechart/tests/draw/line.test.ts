@@ -336,6 +336,15 @@ describe("buildLinePoints", () => {
     expect(cut).toEqual(withTip.slice(0, -2));
   });
 
+  it("does not append an eased tip over the last recorded point at the same time", () => {
+    const data = [{ time: 90, value: 2 }, { time: 100, value: 9 }];
+    const cut = buildLinePoints(data, 5, 100, 30, 0, 10, 200, 120, pad, undefined, true);
+    expect(cut).toHaveLength(4);
+    expect(cut.at(-2)).toBe(200 - pad.right);
+    expect(cut.at(-1)).toBeCloseTo(pad.top + 0.1 * (120 - pad.top - pad.bottom));
+    expect(data[1].value).toBe(9);
+  });
+
   it("omitTipBeyondData keeps the tip when data continues past the window end", () => {
     const now = 100;
     const data = [

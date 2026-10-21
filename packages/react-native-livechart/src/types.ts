@@ -1853,7 +1853,9 @@ export interface DotConfig {
    * dot must stay aligned with its badge. Single-series `LiveChart` only
    * (multi-series dots already ride each line's end while scrolled). Default
    * `false` (the dot stays pinned to the right edge with its pulse suppressed
-   * while scrolled back).
+   * while scrolled back). With an external viewport or positive windowBuffer,
+   * a line dot already tracks the recorded endpoint; this option still controls
+   * its scroll-back visibility and pulse.
    *
    * @experimental
    */
@@ -2706,7 +2708,10 @@ export interface LiveChartCoreProps {
   /**
    * Right-edge buffer as a fraction of `timeWindow`. Pushes the live edge past the
    * current time so the latest point has breathing room; pass `0` to land the latest
-   * point exactly at the right edge. Default `0`.
+   * point exactly at the right edge. In line-mode LiveChart, a positive buffer
+   * stops the line/dot at the last recorded point; the badge and value line use
+   * that recorded price. badge.followViewEdge retains its edge-pinned indicators.
+   * Default `0`.
    */
   windowBuffer?: number;
   /**
@@ -2811,16 +2816,24 @@ export interface LiveChartCoreProps {
 
 /**
  * UI-thread scroll/zoom state adopted by a single-series {@link LiveChart}.
- * The app owns leadership and timestamp mapping; gestures write these same values.
+ * The app owns leadership and timestamp mapping; gestures write end/window.
  * @experimental
  */
 export interface ChartViewportControl {
   /** Right-edge unix timestamp in seconds; null follows this chart's live edge.
-   * Honors times past live. Without explicit price bounds, an end before the first retained point falls back to live. */
+   * Honors times past live. Before the first retained point, falls back to live
+   * unless a valid explicit range is supplied. */
   end: SharedValue<number | null>;
   /** Positive, finite visible width in seconds; null uses the timeWindow prop. */
   window: SharedValue<number | null>;
-  /** Explicit price bounds while end is non-null; null/omitted keeps automatic fitting. */
+  /**
+   * Exact price bounds while end is finite and non-null, including empty past or
+   * future space. Both bounds and their difference must be finite, with min < max.
+   * Applied immediately, overriding automatic fitting, range easing, nonNegative,
+   * maxValue, minRange, and yRangeScale. Invalid/null/omitted bounds use auto-fit.
+   * Ignored while end is null (including after resetZoom()); gestures and resets
+   * do not write this optional shared value.
+   */
   range?: SharedValue<Pick<ChartScale, "min" | "max"> | null>;
 }
 
@@ -2831,7 +2844,8 @@ export interface ChartViewportControl {
 export interface ViewportConfig extends ChartViewportControl {
   /** Ease non-null window overrides using the chart's smoothing. Default true.
    * Set false on followers copying a leader's drawn width to avoid easing twice.
-   * Null windows still ease back to timeWindow; Y-range/value smoothing is unchanged. */
+   * Null windows still ease back to timeWindow; value and automatic Y-range
+   * smoothing are unchanged. Explicit range bounds always apply immediately. */
   windowSmoothing?: boolean;
 }
 
@@ -2844,6 +2858,9 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * and wake autoSleep charts. Single-series line/candle only.
    * Pass a ViewportConfig object to enable; false/omitted uses private state.
    * Both shared values are required, so this prop has no true shorthand.
+   * Optional range supplies exact price bounds while end is non-null. In line
+   * mode the line/dot stop at the last recorded point, with badge/value line at
+   * that price; badge.followViewEdge keeps its edge-pinned indicators.
    * @experimental
    */
   viewport?: false | ViewportConfig;

@@ -1991,7 +1991,7 @@ function useLiveChartController({
   // Shared by the path builders and the marker anchoring so glyphs sit on the
   // rendered line rather than the phantom spline.
   const lineIsLinear = lineProp?.curve === "linear";
-  const shouldOmitTipBeyondData = !!viewport || windowBuffer > 0;
+  const shouldOmitTipBeyondData = !isCandle && (!!viewportCfg || windowBuffer > 0);
 
   const { linePath, fillPath, thresholdFillPath } = useChartPaths(
     engine,
@@ -2034,13 +2034,17 @@ function useLiveChartController({
     palette,
   );
 
-  const { dotX, dotY } = useLiveDot(
+  const { dotX, dotY, indicatorValue } = useLiveDot(
     engine,
     effectivePadding,
     engine.edgeValue,
     badgeCfg?.followViewEdge ?? false,
     dotCfg.trackWhileParked,
     shouldOmitTipBeyondData,
+  );
+  const badgeEngine = useMemo(
+    () => ({ ...engine, displayValue: indicatorValue }),
+    [engine, indicatorValue],
   );
 
   const momentumSV = useMomentum(engine, momentum);
@@ -2521,6 +2525,7 @@ function useLiveChartController({
     liveBadgeOpacity,
     overlayScrubFade,
     markerGroupOpacity,
+    badgeEngine,
     momentumSV,
     badgeMomentumSV,
     onDegenShake,
@@ -3821,6 +3826,7 @@ function ChartBadgeLayer({
 }) {
   const {
     badgeFont,
+    badgeEngine,
     engine,
     effectivePadding,
     palette,
@@ -3851,7 +3857,7 @@ function ChartBadgeLayer({
         }
       : null;
   const badgeData = useBadge(
-    engine,
+    badgeEngine,
     effectivePadding,
     palette,
     formatValue,

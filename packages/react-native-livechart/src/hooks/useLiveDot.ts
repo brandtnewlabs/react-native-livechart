@@ -7,7 +7,7 @@ import type { ChartPadding } from "../draw/line";
 
 /**
  * Derive the live dot position (right edge of the chart, mapped to current value).
- * Returns `{ dotX, dotY }` as shared values. Coordinates are set to `-100`
+ * Returns `{ dotX, dotY, indicatorValue }` as shared values. Coordinates are set to `-100`
  * (off-screen sentinel) when canvas dimensions are unavailable.
  *
  * With `followViewEdge` + `edgeValue`, the dot (and the value line that shares
@@ -29,6 +29,19 @@ export function useLiveDot(
   /** Keep the dot on recorded geometry when the viewport includes future space. */
   shouldOmitTipBeyondData = false,
 ) {
+  // A line with no synthetic tip ends at its recorded price. Share that value
+  // with the badge so its text, the value line, and the dot stay aligned even
+  // while the engine's live value is still easing toward a new tick.
+  const indicatorValue = useDerivedValue(() => {
+    if (followViewEdge && edgeValue) return edgeValue.value;
+    if (shouldOmitTipBeyondData) {
+      const data = engine.data.value;
+      const last = data[data.length - 1];
+      if (last && last.time <= engine.timestamp.value) return last.value;
+    }
+    return engine.displayValue.value;
+  });
+
   const dotX = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
     if (w === 0) return -100;
@@ -37,21 +50,18 @@ export function useLiveDot(
     // Track its real x so a pan doesn't lose the dot, and hide it only once
     // the point leaves the window.
     if (
-      shouldOmitTipBeyondData ||
-      (trackWhileParked && !followViewEdge && engine.viewEnd.value != null)
+      !followViewEdge &&
+      (shouldOmitTipBeyondData ||
+        (trackWhileParked && engine.viewEnd.value != null))
     ) {
       const data = engine.data.value;
       const last = data[data.length - 1];
       const win = engine.displayWindow.value;
       const chartW = w - padding.left - padding.right;
       if (!last || win <= 0 || chartW <= 0) return -100;
-      if (engine.timestamp.value < data[0].time) return -100;
-      const tipTime = shouldOmitTipBeyondData
-        ? Math.min(last.time, engine.timestamp.value)
-        : last.time;
       const x =
         padding.left +
-        ((tipTime - (engine.timestamp.value - win)) / win) * chartW;
+        ((last.time - (engine.timestamp.value - win)) / win) * chartW;
       return x < padding.left || x > right ? -100 : x;
     }
     return right;
@@ -65,17 +75,8 @@ export function useLiveDot(
     const dMax = engine.displayMax.value;
     const valRange = dMax - dMin;
     if (valRange === 0) return padding.top + chartH / 2;
-    const data = engine.data.value;
-    const last = data[data.length - 1];
-    if (shouldOmitTipBeyondData && last && last.time <= engine.timestamp.value) {
-      return padding.top + ((dMax - last.value) / valRange) * chartH;
-    }
-    const v =
-      followViewEdge && edgeValue
-        ? edgeValue.value
-        : engine.displayValue.value;
-    return padding.top + ((dMax - v) / valRange) * chartH;
+    return padding.top + ((dMax - indicatorValue.value) / valRange) * chartH;
   });
 
-  return { dotX, dotY } as const;
+  return { dotX, dotY, indicatorValue } as const;
 }

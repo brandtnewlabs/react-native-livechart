@@ -223,8 +223,11 @@ export function tickLiveChartEngineFrame(
   const viewEnd = input.viewEnd;
   const requestedRange = input.viewRange;
   const viewRange =
-    viewEnd != null && Number.isFinite(viewEnd) && requestedRange &&
-    Number.isFinite(requestedRange.min) && Number.isFinite(requestedRange.max) &&
+    viewEnd != null &&
+    Number.isFinite(viewEnd) &&
+    requestedRange &&
+    Number.isFinite(requestedRange.min) &&
+    Number.isFinite(requestedRange.max) &&
     requestedRange.min < requestedRange.max &&
     Number.isFinite(requestedRange.max - requestedRange.min)
       ? requestedRange
@@ -246,7 +249,8 @@ export function tickLiveChartEngineFrame(
   // time-scroll is disabled the hook clears `viewEnd` (and kicks off the glide
   // below), so a stale edge can't keep the window frozen. See #164. With
   // `allowFutureViewEnd` (timeScroll.overscroll) an edge parked past live is
-  // honored too — the data-overlap strand-guard stays in both modes.
+  // honored too. Valid explicit price bounds let external editors position
+  // before the first sample as well, without an empty auto-fit to resolve.
   const scrolledBack =
     viewEnd != null &&
     (viewRange !== undefined || viewEnd >= firstDataTime) &&

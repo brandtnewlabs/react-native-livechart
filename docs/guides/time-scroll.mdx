@@ -189,6 +189,10 @@ easing that drawn width again.
 With `viewport`, non-null overrides survive `timeWindow` changes and switching
 `timeScroll` off. Call `resetZoom()` or clear the pair to return to the defaults.
 Your app owns leadership and any mapping between clocks or gap-free index time.
+For annotation editors, optional `viewport.range` fixes price bounds while `end`
+is non-null, including before the first retained sample or in empty future space.
+Clear `range` to restore automatic fitting; `resetZoom()` clears `end`/`window`
+and makes the retained price bounds inactive.
 See [Synced charts](/guides/synced-charts) for the complete pattern and the
 two-timeframe demo. `LiveChartSeries` does not yet support `viewport`.
 
