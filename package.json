@@ -26,7 +26,7 @@
     "verify:coverage": "npm run typecheck && npm run lint && npm run test:coverage",
     "prepare": "husky",
     "postinstall": "patch-package",
-    "doctor": "npx react-doctor@latest",
+    "doctor": "react-doctor",
     "docs": "cd docs && npx mint@latest dev"
   },
   "dependencies": {

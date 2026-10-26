@@ -14,7 +14,7 @@ This is an npm-workspaces **monorepo**:
 
 ## Prerequisites
 
-- **Node.js 22** (matches CI)
+- **Node.js 24** (matches CI)
 - npm (the repo uses npm workspaces and a committed `package-lock.json`)
 - For running on a device/simulator: the standard Expo / React Native iOS or Android
   toolchain
@@ -40,6 +40,7 @@ npm run typecheck   # tsc --noEmit
 npm run lint        # eslint (expo flat config)
 npm test            # all tests (Jest + jest-expo)
 npm run test:lib    # library tests only
+npm run doctor      # React Doctor version installed from package-lock.json
 npx jest path/to/file   # a single test file
 ```
 
