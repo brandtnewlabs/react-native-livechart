@@ -410,6 +410,22 @@ describe("buildLinePoints decimation", () => {
   const canvasH = 200;
   const chartW = canvasW - pad.left - pad.right; // 376
 
+  it.each([1799, 1809])("preserves the recorded endpoint without a synthetic tip at viewport end %s", (now) => {
+    const data = Array.from({ length: 1800 }, (_, i) => ({
+      time: i,
+      value: [0, 10, 5][i % 3],
+    }));
+    const padding = { left: 0, right: 0, top: 0, bottom: 0 };
+    const out = buildLinePoints(data, 3, now, 1800, 0, 10, 300, 200, padding, undefined, true);
+    const last = data[data.length - 1];
+    // The final sample is neither extreme in its pixel bucket. The line must
+    // still reach its recorded price, which is also used by the live dot/badge.
+    expect(out.at(-2)).toBeCloseTo(((last.time - (now - 1800)) / 1800) * 300);
+    expect(out.at(-1)).toBe(100);
+    expect(out.length / 2).toBeLessThan(data.length);
+    expect(last.value).toBe(5);
+  });
+
   it("keeps the exact per-sample path below ~2 points per pixel", () => {
     const data = Array.from({ length: 50 }, (_, i) => ({ time: i, value: i }));
     const out = buildLinePoints(data, 49, 49, 50, 0, 50, canvasW, canvasH, pad);

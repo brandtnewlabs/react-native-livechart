@@ -388,6 +388,15 @@ export function buildLinePoints(
         padding.top + (displayMax - (b === tailIdx ? liveTailValue! : data[b].value)) * yScale,
       );
     }
+    // Min/max reduction can omit the newest sample when it is not an extremum.
+    // Preserve its position so a line without a synthetic tip meets its live dot.
+    const lastIdx = endIdx - 1;
+    if (b !== lastIdx) {
+      pts.push(
+        padding.left + (data[lastIdx].time - winStart) * xScale,
+        padding.top + (displayMax - (lastIdx === tailIdx ? liveTailValue! : data[lastIdx].value)) * yScale,
+      );
+    }
   }
 
   // Without more recorded data at the head, a synthetic tip would extend the

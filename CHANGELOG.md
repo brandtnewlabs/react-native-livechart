@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pill's body is still centered. Pills with room for both paddings and pills
   without a tail are unchanged.
 
+### Fixed
+
+- Preserve the final recorded sample when reducing dense line data, so controlled
+  or buffered charts end at the same price as their live dot and badge.
+
 ### Maintenance
 
 - Refresh Expo 57 patch dependencies so the example app passes CI's dependency
