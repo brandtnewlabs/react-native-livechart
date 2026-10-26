@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.29.0] — 2026-10-26
+
 ### Added
 
 - The Time scroll demo includes a fixed-price-range setting, feed freeze, and
@@ -50,13 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
-- Refresh Expo 57 patch dependencies so the example app passes CI's dependency
-  compatibility check.
-
-- Align the example app's native dependencies with Expo 57.0.28, deduplicate native
-  modules, and refresh the Metro Bundle Mode patches for 0.84.5. Pin the test
-  renderer to the version compatible with React 19.2, and check Expo dependency
-  versions, TypeScript, and lint in CI.
+- Align the example app with Expo 57.0.31, deduplicate native modules, and refresh
+  the Metro Bundle Mode patches for 0.84.5. Pin the test renderer to the version
+  compatible with React 19.2, and check Expo dependency versions, TypeScript, and
+  lint in CI.
+- Update React Doctor to 0.9.18 and make `npm run doctor` use the installed version.
 
 ## [4.28.2] — 2026-10-11
 
@@ -1797,6 +1797,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.29.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.29.0
 [4.28.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.2
 [4.28.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.1
 [4.28.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.0
