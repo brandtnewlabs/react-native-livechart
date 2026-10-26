@@ -75,6 +75,15 @@ describe("resolveViewport", () => {
     const window = { value: null } as SharedValue<number | null>;
     expect(resolveViewport({ end, window, windowSmoothing })?.windowSmoothing).toBe(windowSmoothing);
   });
+
+  it("preserves the optional range shared value without reading it during render", () => {
+    const range = {
+      get value(): { min: number; max: number } | null { throw new Error("render-time read"); },
+    } as SharedValue<{ min: number; max: number } | null>;
+    const end = { value: 100 } as SharedValue<number | null>;
+    const window = { value: 30 } as SharedValue<number | null>;
+    expect(resolveViewport({ end, window, range })?.range).toBe(range);
+  });
 });
 
 // ─── resolveValueLine ─────────────────────────────────────────────────────────

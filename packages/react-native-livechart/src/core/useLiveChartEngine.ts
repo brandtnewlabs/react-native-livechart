@@ -267,6 +267,8 @@ export interface EngineFrameRefs {
   maxValueSV?: SharedValue<number | undefined>;
   minRangeSV?: SharedValue<number | undefined>;
   yRangeScaleSV?: SharedValue<number>;
+  /** External price bounds read in the same frame as end/window. */
+  viewRangeSV?: ResolvedViewportConfig["range"];
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
@@ -415,6 +417,7 @@ export function applyLiveChartEngineFrame(
   input.maxValue = sv.maxValueSV?.value;
   input.minRange = sv.minRangeSV?.value;
   input.yRangeScale = sv.yRangeScaleSV?.value ?? 1;
+  input.viewRange = sv.viewRangeSV?.value;
   input.nowOverride = sv.nowOverrideSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
   input.targetValue = sv.value.value;
@@ -517,6 +520,7 @@ export function useLiveChartEngine(
   const internalViewWindow = useSharedValue<number | null>(null);
   const viewWindow = viewport?.window ?? internalViewWindow;
   const hasViewport = viewport != null;
+  const viewRange = viewport?.range;
   const windowSmoothing = viewport?.windowSmoothing ?? true;
   const viewWindowSmoothingSV = useDerivedValue(() => windowSmoothing);
   // A change to the `timeWindow` prop (a range / timeframe selector) is an explicit
@@ -695,6 +699,7 @@ export function useLiveChartEngine(
       maxValueSV,
       minRangeSV,
       yRangeScaleSV: yRangeScale,
+      viewRangeSV: viewRange,
       nowOverrideSV,
       windowBufferSV,
       pausedSV,
@@ -766,6 +771,7 @@ export function useLiveChartEngine(
       viewEnd,
       viewWindow,
       viewWindowSmoothingSV,
+      viewRange,
       windowBufferSV,
       yRangeScale,
     ],
@@ -819,14 +825,14 @@ export function useLiveChartEngine(
       exaggerateSV.get(), referenceValue.get(), referenceValues.get(), thresholdRangePoints.get(),
       thresholdRangeExtendToStart.get(), thresholdRangeExtendToNow.get(), nonNegativeSV.get(),
       maxValueSV.get(), minRangeSV.get(), yRangeScale?.get(), nowOverrideSV.get(), windowBufferSV.get(), pausedSV.get(),
-      viewEnd.get(), viewWindow.get(), viewWindowSmoothingSV.get(), allowFutureViewEndSV.get(), returnT.get(), returnFrom.get(),
+      viewEnd.get(), viewWindow.get(), viewRange?.get(), viewWindowSmoothingSV.get(), allowFutureViewEndSV.get(), returnT.get(), returnFrom.get(),
       snapSV.get(), modeSV.get(), candleGapsSV.get(), candleGapBridgeNoTradesSV.get(),
       candleGapBridgeUnavailableSV.get(), candleGapBridgeUnknownSV.get(), isFrameLoopActive?.get(),
       keepAwake?.get(), wakeSignal?.get()];
   }, [pointHistory, candleHistory, data, value, candles, liveCandle, canvasWidth, canvasHeight, timeWindow, smoothing, rangeAnimationSV,
     adaptiveSpeedBoostSV, exaggerateSV, referenceValue, referenceValues, thresholdRangePoints,
     thresholdRangeExtendToStart, thresholdRangeExtendToNow, nonNegativeSV, maxValueSV, minRangeSV, yRangeScale,
-    nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, viewWindowSmoothingSV, allowFutureViewEndSV, returnT,
+    nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, viewRange, viewWindowSmoothingSV, allowFutureViewEndSV, returnT,
     returnFrom, snapSV, modeSV, candleGapsSV, candleGapBridgeNoTradesSV, candleGapBridgeUnavailableSV,
     candleGapBridgeUnknownSV, isFrameLoopActive, keepAwake, wakeSignal]);
 

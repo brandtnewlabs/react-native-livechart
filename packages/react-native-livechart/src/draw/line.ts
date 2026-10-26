@@ -388,16 +388,24 @@ export function buildLinePoints(
         padding.top + (displayMax - (b === tailIdx ? liveTailValue! : data[b].value)) * yScale,
       );
     }
+    // Min/max reduction can omit the newest sample when it is not an extremum.
+    // Preserve its position so a line without a synthetic tip meets its live dot.
+    const lastIdx = endIdx - 1;
+    if (b !== lastIdx) {
+      pts.push(
+        padding.left + (data[lastIdx].time - winStart) * xScale,
+        padding.top + (displayMax - (lastIdx === tailIdx ? liveTailValue! : data[lastIdx].value)) * yScale,
+      );
+    }
   }
 
-  // A scrolled-back / overscrolled window can end after the last data point;
-  // the synthetic tip would then fabricate a flat segment from that point to
-  // the right edge. Callers pass `omitTipBeyondData` to end the line at the
-  // last real point instead.
+  // Without more recorded data at the head, a synthetic tip would extend the
+  // line into future space or overwrite the endpoint's price at the same time.
+  // Callers pass `omitTipBeyondData` to end at the last real point instead.
   if (
     omitTipBeyondData &&
     endIdx === data.length &&
-    data[endIdx - 1].time < head
+    data[endIdx - 1].time <= head
   ) {
     return pts;
   }

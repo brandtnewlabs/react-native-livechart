@@ -459,8 +459,17 @@ provided; everything else has a default.
   Pan and pinch write the same pair; `resetZoom()` clears both. Non-null values
   survive `timeWindow` changes, disabled `timeScroll`, and overscroll-setting changes.
   An external end may exceed this chart's live edge; an end before its first retained
-  point falls back to live without clearing the value. Writes work with gestures
+  point falls back to live unless valid `range` bounds are supplied. Writes work with gestures
   disabled and wake `autoSleep` charts.
+  Optional `range` is a shared value containing `{ min, max }` or `null`. While `end`
+  is finite and non-null, valid bounds apply immediately, including in empty space.
+  Bounds and their difference must be finite, with `min < max`; invalid/null/omitted
+  bounds use automatic fitting. Explicit bounds override automatic fitting, range
+  easing, `nonNegative`, `maxValue`, `minRange`, and `yRangeScale`. `resetZoom()`
+  leaves `range` intact but clears `end`, making those bounds inactive.
+  In line mode, the line and live dot end at the last recorded point. The badge and
+  value line use that recorded price, and a live dot outside the window hides.
+  `badge.followViewEdge` keeps its edge-pinned dot and smoothed edge price.
   `windowSmoothing: false` adopts a non-null width immediately, useful for followers
   copying an already-drawn width. Default `true`; null still eases back to `timeWindow`.
   Single-series line/candle only. **@experimental.** See
@@ -700,6 +709,10 @@ paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset
 
 <ParamField body="windowBuffer" type="number" default="0">
   Right-edge buffer as a fraction of `timeWindow`.
+  In line mode, a positive buffer leaves empty space after the last recorded point;
+  the line and dot end there, and the badge/value line use that recorded price.
+  `badge.followViewEdge` retains its edge-pinned indicators. Candle indicators
+  continue to use candle prices.
 </ParamField>
 
 <ParamField body="nowOverride" type="number">
