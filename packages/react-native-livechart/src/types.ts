@@ -2315,6 +2315,16 @@ export interface LiveChartHandle {
    * ```
    */
   resetZoom(): void;
+  /**
+   * Return to the fitted live view: {@link resetZoom} plus `yRangeScale` → 1 and
+   * a gesture-owned price range cleared, gliding the right edge back to live
+   * with the `timeScroll.returnToLive` timing. What the `resetButton` runs.
+   * Safe to call when already fitted. On LiveChartSeries, which has no price
+   * pan, it is `resetZoom()` plus `yRangeScale` → 1.
+   *
+   * @experimental
+   */
+  resetView(): void;
 }
 
 /**
@@ -2849,6 +2859,80 @@ export interface ViewportConfig extends ChartViewportControl {
   windowSmoothing?: boolean;
 }
 
+/**
+ * Vertical price panning (see {@link LiveChartProps.priceScroll}).
+ *
+ * @experimental Prototype — gesture model and API may change.
+ */
+export interface PriceScrollConfig {
+  /**
+   * When a vertical drag on the plot pans the price window:
+   *  - `"afterScale"` (default) — only once the range was manually changed (a
+   *    price-axis drag, a pinch, or an earlier price pan), so an untouched chart
+   *    still lets a parent ScrollView scroll.
+   *  - `"always"` — every vertical drag pans price.
+   */
+  activation?: "always" | "afterScale";
+  /**
+   * How far the window may travel past the fitted range, as a multiple of the
+   * visible price span. Default `1`.
+   */
+  maxOvershoot?: number;
+}
+
+/**
+ * Floating reset-view button (see {@link LiveChartProps.resetButton}).
+ *
+ * @experimental
+ */
+export interface ResetButtonConfig {
+  /** Where the button sits inside the plot rect. Default `"bottom-center"`. */
+  placement?: "bottom-center" | "bottom-right";
+  /**
+   * Which manual states show the button. Each defaults to `true`; set one to
+   * `false` to ignore that state.
+   */
+  showFor?: {
+    /** A scaled price axis (`yRangeScale !== 1`). */
+    yScale?: boolean;
+    /** A vertically panned price window (`priceScroll`). */
+    priceScroll?: boolean;
+    /** A window scrolled back from the live edge (`timeScroll`). */
+    timeScroll?: boolean;
+    /** A pinched window width (`zoom`). */
+    zoom?: boolean;
+  };
+  /** Distance from the plot's bottom (and right) edge, in px. Default `12`. */
+  margin?: number;
+  /** Fade duration in ms when the button appears or hides. Default `160`. */
+  fadeMs?: number;
+  /**
+   * Built-in button only: glyph rendered in the chart's font family, like
+   * {@link ScrubActionConfig.icon}. Default `"↺"`.
+   */
+  icon?: string;
+  /** Built-in button only: diameter in px. Default `36`. */
+  size?: number;
+  /** Built-in button only: fill color. Defaults to `palette.badgeBg`. */
+  color?: string;
+  /** Built-in button only: glyph color. Defaults to `palette.badgeText`. */
+  iconColor?: string;
+  /** Built-in button only: screen-reader label. The library ships no text of its own. */
+  accessibilityLabel?: string;
+}
+
+/**
+ * Handed to {@link LiveChartProps.renderResetButton}.
+ *
+ * @experimental
+ */
+export interface ResetButtonRenderProps {
+  /** True while the view differs from the fitted live view. */
+  visible: SharedValue<boolean>;
+  /** Runs `resetView()`. Wire it to accessibility activation (`onAccessibilityTap`). */
+  reset: () => void;
+}
+
 /** Props for the single-series `LiveChart` component. */
 export interface LiveChartProps extends LiveChartCoreProps {
   /**
@@ -2864,6 +2948,38 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * @experimental
    */
   viewport?: false | ViewportConfig;
+  /**
+   * Drag the plot vertically to move the price window — with `timeScroll` this
+   * gives free X/Y panning. The pan writes the viewport's price `range` (the
+   * supplied `viewport.range` shared value when one is given, private state
+   * otherwise), which then holds while new data streams in. A price-axis drag
+   * scales that range, and a double-tap on the axis, `resetView()` or a
+   * `snapKey` / mode change clears it. Rides on the `timeScroll` pan, so it
+   * requires `timeScroll`. `true` = defaults, or pass a {@link PriceScrollConfig}.
+   * Default `false`.
+   *
+   * @experimental Prototype — gesture model and API may change.
+   */
+  priceScroll?: boolean | PriceScrollConfig;
+  /**
+   * Floating button that appears once the user has left the fitted live view
+   * (time pan, pinch, price-axis scale or price pan) and returns to it in one
+   * tap (see {@link LiveChartHandle.resetView}). `true` = the built-in round
+   * glyph button, or pass a {@link ResetButtonConfig}. Default `false`.
+   *
+   * @experimental
+   */
+  resetButton?: boolean | ResetButtonConfig;
+  /**
+   * Custom visual for `resetButton`. The chart owns placement, visibility, fade
+   * and the tap, so return a plain view rather than a pressable; the wrapper is
+   * measured, so any size works. Called on the JS thread once per render.
+   *
+   * @experimental
+   */
+  renderResetButton?: (props: ResetButtonRenderProps) => ReactElement;
+  /** Called on the JS thread after the view resets (button tap or `resetView()`). */
+  onResetView?: () => void;
   /** Area gradient fill under the line. `true` = defaults, or pass `GradientConfig`. Default `true`. */
   gradient?: boolean | GradientConfig;
   /**

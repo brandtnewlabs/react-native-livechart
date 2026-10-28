@@ -851,6 +851,11 @@ function PerpsChart({
         scrub={{ tooltipPlacement: "top", dimOpacity: 1 }}
         timeScroll={{ gesture: "holdToScrub", scrubHoldMs: 450 }}
         zoom
+        // Fomo-style X/Y panning: drag the price axis to scale, then a vertical
+        // drag pans price; the centered button brings the view back.
+        yAxis={{ scaleGesture: true }}
+        priceScroll
+        resetButton
         scrubAction={{
           icon: "+",
           snap: 0.5,

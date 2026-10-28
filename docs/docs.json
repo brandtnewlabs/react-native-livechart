@@ -63,6 +63,7 @@
               "guides/time-scroll",
               "guides/synced-charts",
               "guides/y-range-scale",
+              "guides/reset-view",
               "guides/axis-auto-hide"
             ]
           },

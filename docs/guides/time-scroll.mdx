@@ -173,7 +173,60 @@ normal. Calling it again is a safe no-op. A paused chart remains paused, and the
 uses the chart's normal `smoothing` as it settles back to `timeWindow`.
 
 The example app's **Time scroll** screen includes a **Reset zoom** button and a live visible-window
-readout so the behavior can be exercised directly.
+readout so the behavior can be exercised directly. To also return the price scale and a panned
+price window, call `resetView()` or show the floating [`resetButton`](/guides/reset-view).
+
+## Price panning (`priceScroll`)
+
+With `timeScroll` the chart pans through time; with `priceScroll` it also pans through **price**.
+Drag the plot vertically to move the price window up or down, and drag diagonally to move both
+axes at once, TradingView-style free panning.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  timeScroll
+  yAxis={{ scaleGesture: true }}
+  priceScroll
+/>
+```
+
+`priceScroll` rides on the `"holdToScrub"` time-scroll pan, so it needs `timeScroll` in that
+(default) gesture mode. Two activation models:
+
+- **`"afterScale"`** (default) only pans price once the range was manually changed: a price-axis
+  drag ([`yAxis.scaleGesture`](/guides/y-range-scale)), a pinch, or an earlier price pan. Until
+  then a vertical drag falls through, so a chart inside a `ScrollView` still scrolls the page.
+- **`"always"`** claims every vertical drag on the plot. Use it when the chart is not inside a
+  vertical scroller.
+
+```tsx
+<LiveChart data={data} value={value} timeScroll priceScroll={{ activation: "always" }} />
+```
+
+The pan freezes the current auto-fit into an explicit price range the moment the drag turns
+vertical, then shifts it with the finger. That range is the same state as
+[`viewport.range`](#synced-charts): your shared value when you pass `viewport`, private state
+otherwise. Unlike an app-written range it stays active while the chart follows live, so new data
+streams in without moving the window, and the engine keeps it inside the chart's hard bounds
+(`nonNegative`, `maxValue`, `minRange`). A purely horizontal scroll never freezes the range, so
+the Y auto-fit keeps following the visible window as before.
+
+Travel is bounded: neither edge of the window moves more than `maxOvershoot` visible spans past
+the fitted range (default `1`; `0` keeps the data in view at all times). Release has no momentum.
+
+```tsx
+<LiveChart data={data} value={value} timeScroll priceScroll={{ maxOvershoot: 0.5 }} />
+```
+
+Once a price range is panned, dragging the price axis scales **that window** around its midpoint,
+and the axis double tap clears it along with `yRangeScale`. A `snapKey` or `mode` change clears
+it too. The floating [`resetButton`](/guides/reset-view) and `resetView()` return everything at
+once.
+
+The example app's **Time scroll** screen has a **Price scroll** setting (Off / After scale /
+Always).
 
 ## Synced charts
 

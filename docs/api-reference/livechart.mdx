@@ -450,6 +450,47 @@ provided; everything else has a default.
   [Time-scroll](/guides/time-scroll#pinch-to-zoom-zoom).
 </ParamField>
 
+<ParamField body="priceScroll" type="boolean | PriceScrollConfig" default="false">
+  Drag the plot vertically to move the price window; with `timeScroll` this gives
+  free X/Y panning (a diagonal drag moves both axes). Requires `timeScroll` in its
+  default `"holdToScrub"` gesture. `true` uses `activation: "afterScale"`: a
+  vertical drag pans only once the range was manually changed by a price-axis
+  drag (`yAxis.scaleGesture`), a pinch, or an earlier price pan, so an untouched
+  chart still hands vertical drags to a parent `ScrollView`. Pass a
+  [`PriceScrollConfig`](/api-reference/types#config-objects) for
+  `activation: "always"` or to set `maxOvershoot` (travel past the fitted range in
+  visible spans; default `1`). The pan writes `viewport.range` (your shared value
+  when `viewport` is supplied, private state otherwise); the engine keeps that
+  range while following live and clamps it to `nonNegative`, `maxValue` and
+  `minRange`. Price-axis drags then scale the panned window in place; an axis
+  double tap, `resetView()`, or a `snapKey` / `mode` change clears it. No release
+  momentum. **@experimental.** See
+  [Time-scroll → Price panning](/guides/time-scroll#price-panning-pricescroll).
+</ParamField>
+
+<ParamField body="resetButton" type="boolean | ResetButtonConfig" default="false">
+  Float a reset-view button inside the plot while the view differs from the
+  fitted live view (scrolled back, pinched, scaled or price-panned) and hide it
+  while scrubbing. A tap runs the same reset as `resetView()`. `true` places a
+  round glyph button at `"bottom-center"`; pass a
+  [`ResetButtonConfig`](/api-reference/types#config-objects) for
+  `"bottom-right"`, `showFor`, `margin`, fade and the built-in look. The tap is
+  composed ahead of the plot gestures, so it never delays scrub, pan or pinch.
+  **@experimental.** See [Reset view](/guides/reset-view).
+</ParamField>
+
+<ParamField body="renderResetButton" type="(props: ResetButtonRenderProps) => ReactElement">
+  Custom visual for `resetButton`. The chart still owns placement, visibility, the
+  fade and the tap, so return a plain view (not a pressable) and wire `reset` to
+  `onAccessibilityTap` for screen readers. Receives `visible` and `reset`. See
+  [Reset view → Custom button](/guides/reset-view#custom-button).
+</ParamField>
+
+<ParamField body="onResetView" type="() => void">
+  JS-thread callback fired after the reset button or `resetView()` returns the
+  chart to the fitted live view.
+</ParamField>
+
 <ParamField body="viewport" type="false | ViewportConfig" default="false">
   Pass a [`ViewportConfig`](/api-reference/types#config-objects) object to enable
   external control; `false`/omitted keeps private gesture state. Both shared values
@@ -476,13 +517,18 @@ provided; everything else has a default.
   [Synced charts](/guides/synced-charts).
 </ParamField>
 
-### Resetting pinch zoom
+### Resetting the view
 
 Attach a `ref` typed as [`LiveChartHandle`](/api-reference/types#imperative-handle) and call
 `ref.current?.resetZoom()` from a button or any other outside event. It returns the visible width
 to `timeWindow`, clears the focal-point offset, and resumes following the live edge. The reset is
 scheduled on the UI thread and is safe when the chart is already reset. A paused chart remains
 paused. See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button).
+
+`ref.current?.resetView()` goes further: it also returns `yRangeScale` to `1` and clears a price
+range written by `priceScroll` or the axis-scale gesture, gliding the right edge back with the
+`returnToLive` timing. It is what the floating `resetButton` runs. See
+[Reset view](/guides/reset-view).
 
 <ParamField body="onVisibleRangeChange" type="(range: VisibleRange) => void">
   Called as the visible window changes (throttled to ~1 Hz) with

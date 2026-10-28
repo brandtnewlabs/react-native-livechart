@@ -1,0 +1,154 @@
+---
+title: Reset view
+icon: "rotate-left"
+description: "A floating button and resetView() bring a panned, pinched or scaled chart back to the fitted live view."
+---
+
+<Warning>
+  **Experimental.** `resetButton`, `renderResetButton`, `onResetView` and `resetView()` are
+  prototypes. The button is available on `LiveChart`; `resetView()` works on both charts.
+</Warning>
+
+Once a chart can be scrolled back in time, pinched, scaled on the price axis and panned on the
+price axis, nothing short of a timeframe change brings it back. `resetButton` floats a control
+inside the plot while the view differs from the fitted live view and hides it again once the
+chart is back where it started. One tap returns the time window, the price scale and the price
+offset together.
+
+<Note>
+  **Live example:**
+  [`app/demo/time-scroll.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/time-scroll.tsx)
+  includes **Reset view** controls, and
+  [`app/showcase/fomo-perps.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/fomo-perps.tsx)
+  shows the button in a product layout.
+</Note>
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  timeScroll
+  zoom
+  yAxis={{ scaleGesture: true }}
+  priceScroll
+  resetButton
+/>
+```
+
+## What shows the button
+
+The button appears while any of these is true, and fades out (default 160 ms) when none is:
+
+- the window is scrolled back in time (`timeScroll`),
+- the window width was pinched (`zoom`),
+- the price axis was scaled (`yRangeScale` differs from `1`),
+- the price window was panned (`priceScroll`).
+
+It hides while a scrub owns the touch. Pick which states count with `showFor`:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  timeScroll
+  zoom
+  resetButton={{ showFor: { zoom: false, yScale: false } }}
+/>
+```
+
+## Placement and look
+
+The built-in button is a round glyph in `palette` colors, sitting `margin` px inside the plot
+rect and clear of the price-axis gutter and the time labels.
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  timeScroll
+  resetButton={{
+    placement: "bottom-right", // default "bottom-center"
+    margin: 16,                // default 12
+    icon: "↺",                 // drawn with the chart font
+    size: 36,
+    color: "#1f2937",
+    iconColor: "#f9fafb",
+    accessibilityLabel: "Reset chart view",
+  }}
+/>
+```
+
+The glyph uses the chart font, like `scrubAction.icon` and marker icons. If your font lacks the
+default `"↺"`, pass a glyph it has, or render your own button.
+
+## Custom button
+
+`renderResetButton` replaces the visual only. The chart keeps the placement, the visibility and
+fade, and the tap, so return a plain view, not a pressable. The element is measured with
+`onLayout`, so any size works. Wire `reset` to `onAccessibilityTap` so screen readers can
+activate it; `visible` is a `SharedValue` you can use for your own animation.
+
+```tsx
+import { View } from "react-native";
+import type { ResetButtonRenderProps } from "react-native-livechart";
+
+function ResetGlyph({ reset }: ResetButtonRenderProps) {
+  return (
+    <View
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel="Reset chart view"
+      onAccessibilityTap={reset}
+      style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#222" }}
+    >
+      <MyIcon name="rotate-left" />
+    </View>
+  );
+}
+
+<LiveChart
+  data={data}
+  value={value}
+  timeScroll
+  resetButton={{ placement: "bottom-center", margin: 12 }}
+  renderResetButton={(props) => <ResetGlyph {...props} />}
+  onResetView={() => analytics.track("chart_reset")}
+/>;
+```
+
+Keep the render callback stable (`useCallback`) so the chart's memoized overlay does not re-render
+each frame.
+
+## `resetView()` from outside
+
+Both charts expose `resetView()` on the [`LiveChartHandle`](/api-reference/types#imperative-handle).
+It runs on the UI thread and is safe when the view is already fitted:
+
+```tsx
+const chartRef = useRef<LiveChartHandle>(null);
+
+<Button title="Reset" onPress={() => chartRef.current?.resetView()} />;
+<LiveChart ref={chartRef} data={data} value={value} timeScroll zoom priceScroll />;
+```
+
+- The pinch window is cleared and the right edge glides back to live with the
+  [`returnToLive`](/guides/time-scroll#turning-it-back-off) timing (instant when `returnToLive`
+  is `false`).
+- A price range written by `priceScroll` or the axis-scale gesture is cleared. `yRangeScale` lands
+  on `1` in one step in that case, so the display range eases from the panned window to the fit
+  instead of jumping; without a panned range it animates to `1` over 240 ms, as the axis
+  double tap does.
+- An app-written [`viewport.range`](/guides/synced-charts) is left alone, as with `resetZoom()`.
+- `onResetView` fires afterwards on the JS thread.
+
+On `LiveChartSeries`, `resetView()` is `resetZoom()` plus the eased `yRangeScale` reset.
+
+## Notes
+
+- **Gesture order.** The button's tap is composed ahead of the plot gestures and claims only
+  touches that land on the visible button, so it never delays scrub, time-scroll, price pan or
+  pinch.
+- **Hidden means hidden.** While the button is faded out it is not focusable by screen readers
+  and does not receive touches.
+- **Timeframe changes.** A `snapKey` or `mode` change re-frames the chart and clears a
+  gesture-written price range, so the button hides on its own.

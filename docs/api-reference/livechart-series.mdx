@@ -300,6 +300,8 @@ Attach a `ref` typed as [`LiveChartHandle`](/api-reference/types#imperative-hand
 `ref.current?.resetZoom()` to return the shared window to `timeWindow` (or the growing `historyStartTime` span) and the live edge. This is
 the same imperative reset exposed by `LiveChart`. See
 [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button).
+`ref.current?.resetView()` additionally eases `yRangeScale` back to `1`. `priceScroll` and
+`resetButton` are `LiveChart` only. See [Reset view](/guides/reset-view).
 
 <ParamField body="onVisibleRangeChange" type="(range: VisibleRange) => void">
   Called as the visible window changes (~1 Hz) with `{ startSec, endSec,

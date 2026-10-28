@@ -15,6 +15,7 @@ import * as candlePathHooks from "../src/hooks/useCandlePaths";
 import * as chartPathHooks from "../src/hooks/useChartPaths";
 import * as chartOverlayHooks from "../src/hooks/useChartOverlayContext";
 import * as degenHooks from "../src/hooks/useDegen";
+import * as panHooks from "../src/hooks/usePanScroll";
 import * as tradeStreamHooks from "../src/hooks/useTradeStream";
 import * as xAxisHooks from "../src/hooks/useXAxis";
 import * as yAxisHooks from "../src/hooks/useYAxis";
@@ -25,6 +26,7 @@ import type {
   LiveChartProps,
   Marker,
   ReferenceLineRenderProps,
+  ResetButtonRenderProps,
   ThresholdConfig,
   TradeEvent,
 } from "../src/types";
@@ -1746,5 +1748,67 @@ describe("series plot clip", () => {
     });
     expect(clipAbove(pathView(screen, paths.downWicksPath))).toBe(candleClip);
     expect(clipAbove(pathView(screen, paths.upBarsPath))).toBeUndefined();
+  });
+});
+
+describe("price scroll and reset view", () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it("exposes resetView on the handle", async () => {
+    const ref = React.createRef<LiveChartHandle>();
+    function RefHarness() {
+      const data = useSharedValue([{ time: 1700000000, value: 50 }]);
+      const value = useSharedValue(50);
+      return (
+        <LiveChart
+          ref={ref}
+          data={data}
+          value={value}
+          timeScroll
+          zoom
+          priceScroll
+          resetButton
+        />
+      );
+    }
+    await render(<RefHarness />);
+    expect(ref.current?.resetView).toBeInstanceOf(Function);
+    expect(ref.current?.resetZoom).toBeInstanceOf(Function);
+  });
+
+  it("passes the resolved price-scroll config to the time-scroll pan", async () => {
+    const spy = jest.spyOn(panHooks, "usePanScroll");
+    await render(
+      <Harness
+        timeScroll
+        priceScroll={{ activation: "always", maxOvershoot: 0.5 }}
+      />,
+    );
+    expect(spy.mock.calls.at(-1)![0].priceScroll).toEqual({
+      activation: "always",
+      maxOvershoot: 0.5,
+    });
+    await render(<Harness timeScroll />);
+    expect(spy.mock.calls.at(-1)![0].priceScroll).toBeNull();
+  });
+
+  it("renders the built-in reset button, or a custom one through renderResetButton", async () => {
+    const screen = await render(
+      <Harness timeScroll resetButton={{ accessibilityLabel: "Reset chart" }} />,
+    );
+    expect(screen.getByLabelText("Reset chart", { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByText("↺", { includeHiddenElements: true })).toBeTruthy();
+
+    const renderResetButton = jest.fn((_props: ResetButtonRenderProps) => (
+      <View testID="custom-reset" />
+    ));
+    const custom = await render(
+      <Harness timeScroll resetButton renderResetButton={renderResetButton} />,
+    );
+    expect(custom.getByTestId("custom-reset", { includeHiddenElements: true })).toBeTruthy();
+    expect(renderResetButton.mock.calls[0][0].reset).toBeInstanceOf(Function);
+
+    const off = await render(<Harness timeScroll />);
+    expect(off.queryByText("↺", { includeHiddenElements: true })).toBeNull();
   });
 });

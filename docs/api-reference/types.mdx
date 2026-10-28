@@ -684,6 +684,33 @@ interface ZoomConfig {
   minTimeWindow?: number; // tightest window in seconds (max zoom-in); default timeWindow / 8
   maxTimeWindow?: number; // explicit widest window; default full data/anchored history span, at least timeWindow
 }
+// Vertical price panning on the plot (LiveChart, holdToScrub time-scroll). @experimental
+interface PriceScrollConfig {
+  // "afterScale" (default): a vertical drag pans price only once the range was
+  // manually changed (price-axis drag, pinch, earlier price pan), so an untouched
+  // chart still lets a parent ScrollView scroll. "always": every vertical drag pans.
+  activation?: "always" | "afterScale";
+  maxOvershoot?: number; // travel past the fitted range, in visible spans; default 1 (0 = none)
+}
+// Floating reset-view button inside the plot (LiveChart). @experimental
+interface ResetButtonConfig {
+  placement?: "bottom-center" | "bottom-right"; // default "bottom-center"
+  // Which manual states show the button; default all true.
+  showFor?: { yScale?: boolean; priceScroll?: boolean; timeScroll?: boolean; zoom?: boolean };
+  margin?: number;             // distance from the plot edges (px); default 12
+  fadeMs?: number;             // show/hide fade; default 160
+  icon?: string;               // built-in button: glyph drawn with the chart font; default "↺"
+  size?: number;               // built-in button: diameter (px); default 36
+  color?: string;              // built-in button: fill; default palette.badgeBg
+  iconColor?: string;          // built-in button: glyph color; default palette.badgeText
+  accessibilityLabel?: string; // built-in button: screen-reader label
+}
+// Props handed to renderResetButton. The chart owns placement, visibility, fade
+// and the tap, so return a plain view rather than a pressable.
+interface ResetButtonRenderProps {
+  visible: SharedValue<boolean>; // true while the view differs from the fitted live view
+  reset: () => void;             // runs resetView(); wire it to onAccessibilityTap
+}
 // App-owned UI-thread viewport. LiveChart only (line/candle). @experimental
 interface ChartViewportControl {
   end: SharedValue<number | null>;    // right-edge unix seconds; null = follow live
@@ -700,7 +727,11 @@ interface ViewportConfig extends ChartViewportControl {
 // an end before the first retained point falls back to live unless range is valid.
 // range requires finite min/max and difference, with min < max; it applies immediately,
 // overriding auto-fit, range easing, nonNegative, maxValue, minRange, and yRangeScale.
-// Gestures/resetZoom never write range; end=null makes it inactive.
+// resetZoom never writes range; end=null makes an app-written range inactive.
+// With priceScroll, the price pan and axis-scale gestures write range too; such
+// a gesture-written range stays active while following live, is clamped to
+// nonNegative/maxValue/minRange, and is cleared by resetView(), an axis
+// double tap, or a snapKey/mode change.
 // windowSmoothing affects only non-null widths, not value, automatic Y-range, or reset easing.
 // Visible window reported by onVisibleRangeChange (unix seconds). @experimental
 interface VisibleRange {
@@ -820,11 +851,16 @@ interface LiveChartHandle {
   // Reset built-in pinch zoom to timeWindow and clear its focal offset so the
   // chart follows the live edge again. Safe when already reset.
   resetZoom(): void;
+  // Return to the fitted live view: resetZoom() plus yRangeScale back to 1 and,
+  // on LiveChart, a gesture-written price range cleared. The right edge glides
+  // back with the returnToLive timing. Safe when already fitted. @experimental
+  resetView(): void;
 }
 ```
 
 Use `useRef<LiveChartHandle>(null)` and pass the ref to either chart. A paused chart remains paused.
-See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button).
+See [Time-scroll → Reset zoom from a button](/guides/time-scroll#reset-zoom-from-a-button) and
+[Reset view](/guides/reset-view).
 
 On `LiveChart` with `viewport`, `resetZoom()` clears the supplied `end` and `window`
 shared values. In a sync group, reset the leader and mirror its drawn return.
