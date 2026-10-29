@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Experimental `priceScroll` on `LiveChart` pans the price window with a vertical
+  drag on the plot, which together with `timeScroll` gives free X/Y panning. By
+  default (`activation: "afterScale"`) it engages only once the range was
+  manually changed by a price-axis drag, a pinch or an earlier price pan, so an
+  untouched chart still lets a parent `ScrollView` scroll; `"always"` claims every
+  vertical drag. The pan writes `viewport.range` (the app's shared value when
+  supplied, otherwise private state), and the engine keeps a gesture-written
+  range active while following live, clamped to `nonNegative`, `maxValue` and
+  `minRange`. Travel stops `maxOvershoot` visible spans past the fitted range.
+  Price-axis drags scale a panned window in place, a double tap on the axis
+  clears it, and so does a `snapKey` or `mode` change.
+
+- Experimental `resetButton` on `LiveChart` floats a reset-view control inside
+  the plot (`"bottom-center"` or `"bottom-right"`) while the view differs from
+  the fitted live view: scrolled back, pinched, scaled or price-panned, with
+  `showFor` choosing which states count. The built-in button draws a glyph in
+  palette colors; `renderResetButton` supplies a custom visual while the chart
+  keeps placement, visibility, fade and the tap. `onResetView` fires after a
+  reset.
+
+- `LiveChartHandle.resetView()` on both charts returns to the fitted live view:
+  `resetZoom()` plus `yRangeScale` back to 1 and, on `LiveChart`, a
+  gesture-written price range cleared, using the `returnToLive` glide.
+
+- The Time scroll demo adds **Price scroll** (Off / After scale / Always) and
+  **Reset view** settings; a dedicated **Reset view** demo links directly to its
+  matching guide, and the Fomo perps showcase shows the reset button.
+
+### Fixed
+
+- Price panning relinquishes ownership on app-written price bounds or a
+  replacement `viewport.range`, preserving those bounds during resets and
+  framing changes.
+- `onResetView` now fires after reset overrides are applied on the UI thread
+  for imperative resets and accessibility activation, matching button taps.
+- The built-in reset button handles Android TalkBack activation. Custom-button
+  documentation includes the Android accessibility action alongside the iOS tap.
+
 ## [4.29.0] — 2026-10-26
 
 ### Added

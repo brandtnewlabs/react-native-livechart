@@ -69,6 +69,8 @@ import {
   resolveTradeStream,
   resolveValueLine,
   resolveVolume,
+  resolvePriceScroll,
+  resolveResetButton,
   resolveViewport,
   resolveZoom,
   resolveXAxis,
@@ -124,6 +126,7 @@ import { useModeBlend } from "../hooks/useModeBlend";
 import { resolveMomentumProp, useMomentum } from "../hooks/useMomentum";
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { resetPinchZoom, usePinchZoom } from "../hooks/usePinchZoom";
+import { useResetButton } from "../hooks/useResetButton";
 import {
   SERIES_INDICATOR_FADE_MS,
   useSeriesIndicatorOpacity,
@@ -210,6 +213,7 @@ import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
 import { ValueTextOverlay } from "./ValueTextOverlay";
 import { ReferenceLineGroupOverlay } from "./ReferenceLineGroupOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
+import { ResetButtonOverlay } from "./ResetButtonOverlay";
 import { ScrubActionOverlay } from "./ScrubActionOverlay";
 import { SegmentDividerOverlay } from "./SegmentDividerOverlay";
 import { SegmentLineGradient } from "./SegmentLineGradient";
@@ -1510,6 +1514,10 @@ function useLiveChartController({
   nowOverride,
   timeScroll = false,
   viewport,
+  priceScroll = false,
+  resetButton = false,
+  renderResetButton,
+  onResetView,
   returnToLive,
   zoom = false,
   accessibilityLabel,
@@ -1755,6 +1763,8 @@ function useLiveChartController({
     yAxisCfg,
     zoom,
   ]);
+  const priceScrollCfg = useMemo(() => resolvePriceScroll(priceScroll), [priceScroll]);
+  const resetButtonCfg = useMemo(() => resolveResetButton(resetButton), [resetButton]);
 
   const {
     skiaFont,
@@ -2255,6 +2265,9 @@ function useLiveChartController({
     scrubActive: crosshairScrubActive,
     // Clear any live crosshair when a scroll drag takes over.
     onScrollStart: clearCrosshair,
+    // Vertical drags pan the price window once armed (see `priceScroll`).
+    priceScroll: priceScrollCfg,
+    yRangeScale: effectiveYRangeScale,
   });
 
   // Pinch-to-zoom the visible window (two-finger). Anchors at the focal point and
@@ -2270,6 +2283,19 @@ function useLiveChartController({
     maxTimeWindow: zoomCfg?.maxTimeWindow,
     overscroll: timeScrollOverscroll,
     onZoomStart: clearCrosshair,
+  });
+
+  // Floating reset-view button: visibility and placement on the UI thread, a
+  // tap composed ahead of the plot graph (see ChartView), and the JS-thread
+  // `reset` that backs the handle's `resetView()`.
+  const resetButtonState = useResetButton({
+    config: resetButtonCfg,
+    engine,
+    padding: effectivePadding,
+    yRangeScale: effectiveYRangeScale,
+    scrubActive: crosshairScrubActive,
+    returnToLiveMs,
+    onResetView,
   });
 
   const axisAutoHideOpacity = useAxisAutoHide({
@@ -2398,6 +2424,9 @@ function useLiveChartController({
   return {
     effectiveYRangeScale,
     axisScaleActive,
+    resetButtonState,
+    resetButtonCfg,
+    renderResetButton,
     deferAxisScaleHit: deferTapHit,
     clearCrosshair,
     // passthrough props the render needs
@@ -4229,6 +4258,10 @@ function ChartNativeOverlays({ model }: { model: LiveChartModel }) {
     renderTooltip,
     crosshair,
     renderOverlay,
+    resetButtonState,
+    resetButtonCfg,
+    renderResetButton,
+    fontProp,
   } = model;
   const hasAnnotations =
     (markersActive && renderMarker != null) ||
@@ -4281,6 +4314,19 @@ function ChartNativeOverlays({ model }: { model: LiveChartModel }) {
           scrubDotY={crosshair.scrubDotY}
         />
       ) : null}
+      {resetButtonCfg ? (
+        <ResetButtonOverlay
+          config={resetButtonCfg}
+          visible={resetButtonState.visible}
+          rect={resetButtonState.rect}
+          measuredWidth={resetButtonState.measuredWidth}
+          measuredHeight={resetButtonState.measuredHeight}
+          reset={resetButtonState.reset}
+          render={renderResetButton}
+          palette={palette}
+          fontFamily={fontProp?.fontFamily ?? MONO_FONT_FAMILY}
+        />
+      ) : null}
       {renderOverlay ? <ChartCustomConsumerOverlay model={model} /> : null}
     </>
   );
@@ -4318,10 +4364,21 @@ function ChartView({
     deferHit: model.deferAxisScaleHit,
     onStart: model.clearCrosshair,
     gesture: rootGesture,
+    range: model.engine.viewRange,
+    rangeGestureOwned: model.engine.viewRangeGestureOwned,
   });
+  // The reset tap goes first: it claims only touches on the visible button and
+  // fails instantly elsewhere, so the plot graph never waits on it — while a
+  // tap on the button can't be swallowed by the pan's activation offset.
+  const resetTapGesture = model.resetButtonState.tapGesture;
+  const gestureWithReset = useMemo(
+    () =>
+      resetTapGesture ? Gesture.Exclusive(resetTapGesture, gesture) : gesture,
+    [gesture, resetTapGesture],
+  );
 
   return (
-    <GestureDetector gesture={gesture}>
+    <GestureDetector gesture={gestureWithReset}>
       <View
         style={[{ flex: 1, backgroundColor }, style]}
         onLayout={onLayout}
@@ -4347,12 +4404,14 @@ export const LiveChart = memo(
   forwardRef<LiveChartHandle, LiveChartProps>(function LiveChart(props, ref) {
     const model = useLiveChartController(props);
     const { viewEnd, viewWindow } = model.engine;
+    const resetView = model.resetButtonState.reset;
     useImperativeHandle(
       ref,
       () => ({
         resetZoom: () => scheduleOnUI(resetPinchZoom, { viewEnd, viewWindow }),
+        resetView,
       }),
-      [viewEnd, viewWindow],
+      [resetView, viewEnd, viewWindow],
     );
     if (model.xAxisCfg) {
       return <ChartWithXAxis model={model} />;

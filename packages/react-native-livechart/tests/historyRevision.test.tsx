@@ -13,7 +13,7 @@ jest.mock("../src/hooks/useDemandFrameLoop", () => ({
 }));
 jest.mock("react-native-worklets", () => ({
   ...jest.requireActual("react-native-worklets"),
-  scheduleOnUI: (fn: () => void) => fn(),
+  scheduleOnUI: (fn: (...args: unknown[]) => void, ...args: unknown[]) => fn(...args),
 }));
 function feed<T>(initial: T) {
   const listeners = new Map<number, (value: T) => void>();
@@ -60,6 +60,8 @@ jest.mock("react-native-reanimated", () => {
         set(next: unknown) {
           this.value = next;
         },
+        addListener() {},
+        removeListener() {},
       };
     return ref.current;
   };

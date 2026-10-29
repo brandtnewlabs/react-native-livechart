@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   cancelAnimation,
@@ -8,8 +8,12 @@ import {
   withDecay,
   type SharedValue,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
+import type { ResolvedPriceScrollConfig } from "../core/resolveConfig";
+import { writeGestureRange } from "../core/gestureRangeOwnership";
 import type { ChartPadding } from "../draw/line";
+import type { ChartScale } from "../types";
 
 /** Minimum height (px) of the bottom "grab the time ruler" band in axis-drag mode. */
 export const AXIS_GRAB_MIN_PX = 44;
@@ -35,6 +39,17 @@ export interface PanScrollEngineRefs {
   canvasWidth: SharedValue<number>;
   /** Canvas height in px (for the axis-drag band hit-test). */
   canvasHeight: SharedValue<number>;
+  /** Price-pan state (see `priceScroll`). All or none; omitted on engines without it. */
+  viewRange?: SharedValue<Pick<ChartScale, "min" | "max"> | null>;
+  viewRangeGestureOwned?: SharedValue<boolean>;
+  /** Eased display range, snapshotted into `viewRange` when a price pan begins. */
+  displayMin?: SharedValue<number>;
+  displayMax?: SharedValue<number>;
+  /** Fitted range the pan may travel `maxOvershoot` spans past. */
+  fitMin?: SharedValue<number>;
+  fitMax?: SharedValue<number>;
+  /** Pinch-zoom override; a non-null width arms an `"afterScale"` price pan. */
+  viewWindow?: SharedValue<number | null>;
 }
 
 export interface UsePanScrollOptions {
@@ -93,6 +108,14 @@ export interface UsePanScrollOptions {
   fling?: boolean;
   /** Re-clamp parked state on config changes. False for an app-owned viewport. Default true. */
   clampOnOverscrollChange?: boolean;
+  /**
+   * Vertical price panning (`holdToScrub` mode only). Resolved from
+   * `priceScroll`; `null` keeps the classic horizontal-only pan that fails on
+   * vertical travel so a parent vertical scroll wins.
+   */
+  priceScroll?: ResolvedPriceScrollConfig | null;
+  /** Manual Y-range scale; `!== 1` arms an `"afterScale"` price pan. */
+  yRangeScale?: SharedValue<number>;
 }
 
 /**
@@ -207,11 +230,57 @@ export function axisBandTop(canvasHeight: number, padBottom: number): number {
 }
 
 /**
+ * Whether a vertical drag pans price. Mirrored into React state between
+ * gestures so the pan's native activation offsets claim vertical travel only
+ * while armed; an untouched chart still hands vertical drags to a parent
+ * ScrollView.
+ */
+export function isPriceScrollArmed(
+  activation: "always" | "afterScale",
+  yRangeScale: number,
+  viewWindow: number | null,
+  hasGestureRange: boolean,
+): boolean {
+  "worklet";
+  if (activation === "always") return true;
+  return yRangeScale !== 1 || viewWindow !== null || hasGestureRange;
+}
+
+/**
+ * Next price bounds after dragging `changeY` px (drag down ⇒ the plot content
+ * moves down ⇒ higher prices come into view ⇒ both bounds rise), clamped so
+ * neither bound travels more than `maxOvershoot` spans past the fitted range.
+ * Returns `cur` unchanged when the span or plot height is degenerate.
+ */
+export function nextPriceRange(
+  cur: Pick<ChartScale, "min" | "max">,
+  changeY: number,
+  plotHeight: number,
+  fitMin: number,
+  fitMax: number,
+  maxOvershoot: number,
+): Pick<ChartScale, "min" | "max"> {
+  "worklet";
+  const span = cur.max - cur.min;
+  if (!(span > 0) || !(plotHeight > 0) || !Number.isFinite(changeY)) return cur;
+  let shift = (changeY / plotHeight) * span;
+  if (Number.isFinite(fitMin) && Number.isFinite(fitMax) && fitMin < fitMax) {
+    const allowance = span * maxOvershoot;
+    const lo = fitMin - allowance;
+    const hi = fitMax + allowance;
+    if (cur.min + shift < lo) shift = lo - cur.min;
+    if (cur.max + shift > hi) shift = hi - cur.max;
+  }
+  return { min: cur.min + shift, max: cur.max + shift };
+}
+
+/**
  * Horizontal pan that scrolls the chart back through time. Pick the activation
  * with `mode`:
  *  - `"holdToScrub"` — a one-finger drag anywhere (activates on horizontal
- *    travel; vertical falls through). Scrub must be press-and-hold so a quick
- *    drag races past it (compose with `Gesture.Race`).
+ *    travel; vertical falls through unless `priceScroll` is armed, then it
+ *    pans price). Scrub must be press-and-hold so a quick drag races past it
+ *    (compose with `Gesture.Race`).
  *  - `"axisDrag"` — a one-finger drag starting in the bottom X-axis band, gated
  *    via `manualActivation` (compose with `Gesture.Exclusive`, this gesture
  *    first: outside the band it fails instantly so scrub runs).
@@ -232,17 +301,59 @@ export function usePanScroll({
   overscroll = 0,
   fling = true,
   clampOnOverscrollChange = true,
+  priceScroll = null,
+  yRangeScale,
 }: UsePanScrollOptions): ReturnType<typeof Gesture.Pan> {
-  const { viewEnd, liveEdge, displayWindow, canvasWidth, canvasHeight } = engine;
+  const {
+    viewEnd,
+    liveEdge,
+    displayWindow,
+    canvasWidth,
+    canvasHeight,
+    viewRange,
+    viewRangeGestureOwned,
+    displayMin,
+    displayMax,
+    fitMin,
+    fitMax,
+    viewWindow,
+  } = engine;
   const padLeft = padding.left;
   const padRight = padding.right;
+  const padTop = padding.top;
   const padBottom = padding.bottom;
+  const priceActivation = priceScroll?.activation ?? null;
+  const maxOvershoot = priceScroll?.maxOvershoot ?? 1;
 
   // Axis-drag activation tracking (manualActivation). Created unconditionally so
   // the hook order is stable; unused in hold-to-scrub mode.
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const armed = useSharedValue(false);
+  // Set once an armed drag has shown vertical intent; only then does the pan
+  // take the price range, so a horizontal scroll keeps the Y auto-fit.
+  const priceEngaged = useSharedValue(false);
+  // Price-pan arming (holdToScrub + priceScroll). RNGH evaluates activation
+  // offsets natively per recognizer, so the arming is mirrored into React
+  // state and the pan is rebuilt with a vertical active offset while armed.
+  // It flips between gestures (after a scale, pinch, pan or reset), never
+  // mid-drag, and native activation beats a parent ScrollView's own slop the
+  // same way the horizontal offset does.
+  const [priceArmed, setPriceArmed] = useState(priceActivation === "always");
+  useAnimatedReaction(
+    () =>
+      priceActivation !== null &&
+      isPriceScrollArmed(
+        priceActivation,
+        yRangeScale?.get() ?? 1,
+        viewWindow?.get() ?? null,
+        (viewRangeGestureOwned?.get() ?? false) && (viewRange?.get() ?? null) !== null,
+      ),
+    /* istanbul ignore next -- UI-thread reaction; the pure predicate is unit-tested */
+    (next, prev) => {
+      if (next !== prev) scheduleOnRN(setPriceArmed, next);
+    },
+  );
   const overscrollSV = useDerivedValue(() => overscroll);
 
   // A runtime config change (the demo exposes Off / 50% / 90%) applies to an
@@ -298,9 +409,19 @@ export function usePanScroll({
 
     const onChange =
       /* istanbul ignore next -- gesture worklet runs on the UI thread, not in Jest */
-      (e: { changeX: number }) => {
+      (e: { changeX: number; changeY: number; translationY: number }) => {
         "worklet";
         if (scrubActive?.get()) return;
+        // Vertical travel engages the price pan at any point of the drag, so a
+        // drag that starts horizontal and turns diagonal moves both axes while
+        // a purely horizontal scroll keeps the Y auto-fit.
+        if (
+          priceArmed &&
+          !priceEngaged.get() &&
+          Math.abs(e.translationY) > AXIS_ACTIVATE_PX
+        ) {
+          priceEngaged.set(true);
+        }
         const win = displayWindow.get();
         const chartW = canvasWidth.get() - padLeft - padRight;
         if (chartW <= 0) return;
@@ -308,6 +429,27 @@ export function usePanScroll({
         const cur = viewEnd.get() ?? edge;
         const lo = panLowerBound(minTime.get(), win, edge, overscroll);
         viewEnd.set(nextViewEnd(cur, e.changeX, chartW, win, edge, lo, overscroll));
+        if (priceEngaged.get() && viewRange && viewRangeGestureOwned && displayMin && displayMax) {
+          let range = viewRange.get();
+          if (!(viewRangeGestureOwned.get() && range !== null)) {
+            // Freeze the auto-fit into an explicit range the moment the drag turns
+            // vertical, so the drag moves a fixed window; a range an earlier pan
+            // left behind carries on from where it is.
+            range = { min: displayMin.get(), max: displayMax.get() };
+          }
+          writeGestureRange(
+            viewRange,
+            viewRangeGestureOwned,
+            nextPriceRange(
+              range,
+              e.changeY,
+              canvasHeight.get() - padTop - padBottom,
+              fitMin?.get() ?? NaN,
+              fitMax?.get() ?? NaN,
+              maxOvershoot,
+            ),
+          );
+        }
       };
 
     const onEnd =
@@ -351,6 +493,7 @@ export function usePanScroll({
       () => {
         "worklet";
         scrollActive?.set(false);
+        priceEngaged.set(false);
       };
 
     if (mode === "axisDrag") {
@@ -398,6 +541,22 @@ export function usePanScroll({
         .onFinalize(onFinalize);
     }
 
+    if (priceActivation !== null && priceArmed) {
+      // holdToScrub + armed priceScroll: vertical travel activates the pan too,
+      // so a vertical drag pans price (a parent vertical scroll never sees it)
+      // and a diagonal drag moves both axes. Unarmed charts use the classic pan
+      // below, which fails on vertical travel.
+      return Gesture.Pan()
+        .enabled(enabled)
+        .maxPointers(1)
+        .activeOffsetX([-AXIS_ACTIVATE_PX, AXIS_ACTIVATE_PX])
+        .activeOffsetY([-AXIS_ACTIVATE_PX, AXIS_ACTIVATE_PX])
+        .onStart(onStart)
+        .onChange(onChange)
+        .onEnd(onEnd)
+        .onFinalize(onFinalize);
+    }
+
     // holdToScrub (default): a one-finger drag anywhere scrolls. Activate on
     // horizontal travel so a quick one-finger drag scrolls; a still press-hold
     // crosses no offset and falls through to the scrub gesture (which owns the
@@ -415,10 +574,15 @@ export function usePanScroll({
     armed,
     canvasHeight,
     canvasWidth,
+    displayMax,
+    displayMin,
     displayWindow,
     enabled,
+    fitMax,
+    fitMin,
     fling,
     liveEdge,
+    maxOvershoot,
     minTime,
     mode,
     onScrollStart,
@@ -426,11 +590,19 @@ export function usePanScroll({
     padBottom,
     padLeft,
     padRight,
+    padTop,
+    priceActivation,
+    priceArmed,
+    priceEngaged,
     scrollActive,
     scrubActive,
     startX,
     startY,
     viewEnd,
+    viewRange,
+    viewRangeGestureOwned,
+    viewWindow,
     wakeEngine,
+    yRangeScale,
   ]);
 }

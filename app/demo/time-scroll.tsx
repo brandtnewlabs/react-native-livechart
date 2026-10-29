@@ -76,6 +76,19 @@ const RETURN_TO_LIVE: Record<ReturnMode, boolean | { duration: number }> = {
   slow: { duration: 900 },
 };
 
+// `priceScroll` pans the price window with a vertical drag. "After scale" only
+// engages once the price axis was dragged or the window pinched, so a vertical
+// drag on an untouched chart still scrolls this demo's own ScrollView.
+type PriceScroll = "off" | "afterScale" | "always";
+
+const PRICE_SCROLL_OPTIONS: { value: PriceScroll; label: string }[] = [
+  { value: "off", label: "Off" },
+  { value: "afterScale", label: "After scale" },
+  { value: "always", label: "Always" },
+];
+
+const RESET_BUTTON_CONFIG = { accessibilityLabel: "Reset chart view" };
+
 function CaptureViewport({
   ctx,
   onScale,
@@ -170,6 +183,17 @@ function useAnnotationViewport(chartRef: React.RefObject<LiveChartHandle | null>
 }
 
 export default function TimeScrollScreen() {
+  return <TimeScrollDemo />;
+}
+
+/** Shared interaction demo, also opened directly from the reset-view guide. */
+export function TimeScrollDemo({
+  title = "Time scroll",
+  docs = "guides/time-scroll",
+}: {
+  title?: string;
+  docs?: string;
+}) {
   const chartRef = useRef<LiveChartHandle>(null);
   const annotationViewport = useAnnotationViewport(chartRef);
   const [frozenNow, setFrozenNow] = useState<number>();
@@ -187,6 +211,8 @@ export default function TimeScrollScreen() {
   const [trackWhileParked, setTrackWhileParked] = useState(false);
   const [returnMode, setReturnMode] = useState<ReturnMode>("glide");
   const [zoomOn, setZoomOn] = useState(true);
+  const [priceScroll, setPriceScroll] = useState<PriceScroll>("afterScale");
+  const [resetButton, setResetButton] = useState(true);
   const [scrub, setScrub] = useState(true);
   const [orderTicket, setOrderTicket] = useState(true);
   const [floatAxis, setFloatAxis] = useState(true);
@@ -221,9 +247,9 @@ export default function TimeScrollScreen() {
 
   return (
     <DemoScreen
-      title="Time scroll"
-      docs="guides/time-scroll"
-      description={`${hint} Pinch to zoom time. Freeze the feed, compare history and future space with Fixed price range off, then return live and turn it on to keep the same price bounds.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
+      title={title}
+      docs={docs}
+      description={`${hint} Pinch to zoom time. Drag the price axis to scale, then drag the plot vertically to pan price; the floating button resets the view. Freeze the feed, compare history and future space with Fixed price range off, then return live and turn it on to keep the same price bounds.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
       chart={
         <LiveChart
           ref={chartRef}
@@ -239,7 +265,7 @@ export default function TimeScrollScreen() {
           nowOverride={frozenNow}
           viewport={annotationViewport.viewport}
           renderOverlay={annotationViewport.renderOverlay}
-          yAxis={{ float: floatAxis }}
+          yAxis={{ float: floatAxis, scaleGesture: true }}
           badge={{ followViewEdge }}
           dot={{ trackWhileParked }}
           timeScroll={
@@ -255,6 +281,15 @@ export default function TimeScrollScreen() {
           }
           returnToLive={RETURN_TO_LIVE[returnMode]}
           zoom={zoomOn}
+          // Vertical drag pans the price window (free X/Y panning with the
+          // time-scroll pan). Needs the "holdToScrub" gesture above.
+          priceScroll={
+            priceScroll === "off" ? false : { activation: priceScroll }
+          }
+          // Floating reset-view button: shows once the view leaves the fitted
+          // live view (scrolled back, pinched, scaled or price-panned).
+          resetButton={resetButton ? RESET_BUTTON_CONFIG : false}
+          onResetView={() => console.log("reset view")}
           // Paging callbacks (Phase 3): log the visible range (~1 Hz) and show an
           // indicator while the left edge is near the oldest seeded candle. The
           // indicator persists until you scroll back to the live edge (clears on
@@ -379,6 +414,28 @@ export default function TimeScrollScreen() {
           label="Reset zoom"
           active={false}
           onPress={() => chartRef.current?.resetZoom()}
+        />
+      </ControlRow>
+
+      {gesture === "holdToScrub" ? (
+        <ChipRow
+          label="Price scroll (vertical drag pans price)"
+          options={PRICE_SCROLL_OPTIONS}
+          value={priceScroll}
+          onChange={setPriceScroll}
+        />
+      ) : null}
+
+      <ControlRow label="Reset view">
+        <ToggleChip
+          label="resetButton"
+          value={resetButton}
+          onChange={setResetButton}
+        />
+        <Chip
+          label="resetView()"
+          active={false}
+          onPress={() => chartRef.current?.resetView()}
         />
       </ControlRow>
 

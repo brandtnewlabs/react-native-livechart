@@ -38,6 +38,10 @@ describe("pixel-aware engine publication", () => {
       lastYRangeScale: 1,
       lastCanvasWidth: 200,
       lastCanvasHeight: 100,
+      fitMin: 9.8,
+      fitMax: 10.2,
+      adjustedViewRangeMin: NaN,
+      adjustedViewRangeMax: NaN,
     };
     const before = { ...state };
 

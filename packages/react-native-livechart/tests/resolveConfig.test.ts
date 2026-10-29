@@ -14,8 +14,10 @@ import {
   resolveMarkerCluster,
   resolveMetrics,
   resolveMultiSeriesDot,
+  resolvePriceScroll,
   resolvePulse,
   resolveReferenceLineConfig,
+  resolveResetButton,
   resolveLoading,
   resolveFling,
   resolveOverscroll,
@@ -2212,5 +2214,60 @@ describe("resolveMarkerCluster", () => {
     expect(resolveMarkerCluster({ groupBadge: badge }).groupBadge).toEqual(
       badge,
     );
+  });
+});
+
+describe("resolvePriceScroll", () => {
+  it("is opt-in with after-scale arming and one span of overshoot", () => {
+    expect(resolvePriceScroll(undefined)).toBeNull();
+    expect(resolvePriceScroll(false)).toBeNull();
+    expect(resolvePriceScroll(true)).toEqual({
+      activation: "afterScale",
+      maxOvershoot: 1,
+    });
+    expect(resolvePriceScroll({ activation: "always", maxOvershoot: 0 })).toEqual({
+      activation: "always",
+      maxOvershoot: 0,
+    });
+  });
+
+  it("falls back to the default overshoot for malformed values", () => {
+    for (const maxOvershoot of [-1, NaN, Infinity]) {
+      expect(resolvePriceScroll({ maxOvershoot })?.maxOvershoot).toBe(1);
+    }
+  });
+});
+
+describe("resolveResetButton", () => {
+  const defaults = {
+    placement: "bottom-center",
+    showFor: { yScale: true, priceScroll: true, timeScroll: true, zoom: true },
+    margin: 12,
+    fadeMs: 160,
+    icon: "↺",
+    size: 36,
+    color: undefined,
+    iconColor: undefined,
+    accessibilityLabel: undefined,
+  };
+
+  it("is opt-in and merges showFor per key", () => {
+    expect(resolveResetButton(undefined)).toBeNull();
+    expect(resolveResetButton(false)).toBeNull();
+    expect(resolveResetButton(true)).toEqual(defaults);
+    expect(
+      resolveResetButton({
+        placement: "bottom-right",
+        showFor: { zoom: false },
+        color: "#000",
+        accessibilityLabel: "Reset",
+      }),
+    ).toEqual({
+      ...defaults,
+      placement: "bottom-right",
+      showFor: { ...defaults.showFor, zoom: false },
+      color: "#000",
+      accessibilityLabel: "Reset",
+    });
   });
 });

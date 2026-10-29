@@ -33,6 +33,8 @@ import type {
   ScrubActionConfig,
   ScrubConfig,
   PerSeriesTooltipConfig,
+  PriceScrollConfig,
+  ResetButtonConfig,
   SelectionDotConfig,
   SelectionDotProps,
   SelectionDotRingConfig,
@@ -804,6 +806,80 @@ export function resolveZoom(
   prop: boolean | ZoomConfig | undefined,
 ): ResolvedZoomConfig | null {
   return resolveToggle(prop, ZOOM_DEFAULTS, false);
+}
+
+export interface ResolvedPriceScrollConfig {
+  activation: "always" | "afterScale";
+  /** Non-negative, finite multiple of the visible span. */
+  maxOvershoot: number;
+}
+
+const PRICE_SCROLL_DEFAULTS: ResolvedPriceScrollConfig = {
+  activation: "afterScale",
+  maxOvershoot: 1,
+};
+
+/**
+ * Resolves the `priceScroll` prop to a config or null (disabled). `true` →
+ * defaults, object → merged, falsy → null. A malformed `maxOvershoot` falls
+ * back to the default rather than unbounding the pan.
+ */
+export function resolvePriceScroll(
+  prop: boolean | PriceScrollConfig | undefined,
+): ResolvedPriceScrollConfig | null {
+  const resolved = resolveToggle(prop, PRICE_SCROLL_DEFAULTS, false);
+  if (resolved === null) return null;
+  const validOvershoot =
+    Number.isFinite(resolved.maxOvershoot) && resolved.maxOvershoot >= 0;
+  return validOvershoot
+    ? resolved
+    : { ...resolved, maxOvershoot: PRICE_SCROLL_DEFAULTS.maxOvershoot };
+}
+
+export interface ResolvedResetButtonConfig {
+  placement: "bottom-center" | "bottom-right";
+  showFor: {
+    yScale: boolean;
+    priceScroll: boolean;
+    timeScroll: boolean;
+    zoom: boolean;
+  };
+  margin: number;
+  fadeMs: number;
+  icon: string;
+  size: number;
+  /** undefined → palette.badgeBg at render time */
+  color: string | undefined;
+  /** undefined → palette.badgeText at render time */
+  iconColor: string | undefined;
+  accessibilityLabel: string | undefined;
+}
+
+const RESET_BUTTON_DEFAULTS: ResolvedResetButtonConfig = {
+  placement: "bottom-center",
+  showFor: { yScale: true, priceScroll: true, timeScroll: true, zoom: true },
+  margin: 12,
+  fadeMs: 160,
+  icon: "↺",
+  size: 36,
+  color: undefined,
+  iconColor: undefined,
+  accessibilityLabel: undefined,
+};
+
+/**
+ * Resolves the `resetButton` prop to a config or null (disabled). `true` →
+ * defaults, object → merged (`showFor` merges per key), falsy → null.
+ */
+export function resolveResetButton(
+  prop: boolean | ResetButtonConfig | undefined,
+): ResolvedResetButtonConfig | null {
+  const resolved = resolveToggle(prop, RESET_BUTTON_DEFAULTS, false);
+  if (resolved === null || typeof prop !== "object") return resolved;
+  return {
+    ...resolved,
+    showFor: { ...RESET_BUTTON_DEFAULTS.showFor, ...prop.showFor },
+  };
 }
 
 /**

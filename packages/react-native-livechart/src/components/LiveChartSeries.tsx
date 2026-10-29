@@ -72,6 +72,7 @@ import { useMultiSeriesDegen } from "../hooks/useMultiSeriesDegen";
 import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { resetPinchZoom, usePinchZoom } from "../hooks/usePinchZoom";
+import { resetSeriesView } from "../hooks/resetView";
 import { useMultiSeriesReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import {
   SERIES_INDICATOR_FADE_MS,
@@ -784,6 +785,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   );
 
   return {
+    effectiveYRangeScale,
     // passthrough props the render needs
     series,
     seriesOpacity: resolvedSeriesOpacity,
@@ -1490,12 +1492,15 @@ export const LiveChartSeries = forwardRef<
 >(function LiveChartSeries(props, ref) {
   const model = useLiveChartSeriesController(props);
   const { viewEnd, viewWindow } = model.engine;
+  const yRangeScale = model.effectiveYRangeScale;
   useImperativeHandle(
     ref,
     () => ({
       resetZoom: () => scheduleOnUI(resetPinchZoom, { viewEnd, viewWindow }),
+      resetView: () =>
+        scheduleOnUI(resetSeriesView, { viewEnd, viewWindow, yRangeScale }),
     }),
-    [viewEnd, viewWindow],
+    [viewEnd, viewWindow, yRangeScale],
   );
   const {
     rootGesture,

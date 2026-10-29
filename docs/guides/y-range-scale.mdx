@@ -114,6 +114,11 @@ require an overlay or a mirrored plot rectangle.
 - `maxValue` is applied after scaling, so that hard ceiling still wins.
 - Values must be positive and finite. Invalid values safely behave as `1`; clamp gesture output to
   a product-appropriate range as shown above.
+- With [`priceScroll`](/guides/time-scroll#price-panning-pricescroll), a scaled axis arms the
+  vertical price pan. Once the price window has been panned, an axis drag scales that window in
+  place around its midpoint by the same step the multiplier takes, so the `minScale` / `maxScale`
+  bounds still hold overall. The double tap then clears the panned window as well as the
+  multiplier, and the floating [`resetButton`](/guides/reset-view) does the same.
 
 `yRangeScale` changes the value range only. It composes with [`timeScroll` and `zoom`](/guides/time-scroll),
 which control the visible time window.

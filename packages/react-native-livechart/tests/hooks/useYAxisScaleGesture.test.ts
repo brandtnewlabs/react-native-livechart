@@ -9,9 +9,11 @@ import {
 import {
   draggedYAxisScale,
   isYAxisScaleHit,
+  scaledPriceRange,
   useYAxisScaleGesture,
   useYAxisScaleValue,
 } from "../../src/hooks/useYAxisScaleGesture";
+import type { ChartScale } from "../../src/types";
 
 jest.mock("react-native-reanimated", () => {
   const React = jest.requireActual<typeof import("react")>("react");
@@ -429,5 +431,100 @@ describe("private scale state", () => {
     await rerender({ value: undefined });
     expect(result.current).toBe(internal);
     expect(result.current.get()).toBe(2);
+  });
+});
+
+describe("gesture-owned price range", () => {
+  it("scales a range about its midpoint and keeps invalid results out", () => {
+    expect(scaledPriceRange({ min: 0, max: 100 }, 2)).toEqual({ min: -50, max: 150 });
+    expect(scaledPriceRange({ min: 0, max: 100 }, 0.5)).toEqual({ min: 25, max: 75 });
+    const range = { min: 0, max: 100 };
+    expect(scaledPriceRange(range, 0)).toBe(range);
+    expect(scaledPriceRange(range, Infinity)).toBe(range);
+  });
+
+  async function setupWithRange(owned: boolean) {
+    const engine = {
+      canvasWidth: shared(400),
+      canvasHeight: shared(300),
+      displayMin: shared(0),
+      displayMax: shared(100),
+      displayWindow: shared(60),
+      timestamp: shared(1000),
+      wake: jest.fn(),
+    };
+    const scale = shared(2);
+    const range = shared<Pick<ChartScale, "min" | "max"> | null>({
+      min: 0,
+      max: 100,
+    });
+    const rangeGestureOwned = shared(owned);
+    const hook = await renderHook(() =>
+      useYAxisScaleGesture({
+        engine,
+        padding,
+        font,
+        scale,
+        gesture: Gesture.Simultaneous(Gesture.Pan(), Gesture.Pinch()),
+        entries: shared(entries),
+        axis: resolveYAxis({ scaleGesture: true }),
+        range,
+        rangeGestureOwned,
+      }),
+    );
+    const [pan, reset] = hook.result.current.toGestureArray();
+    return {
+      pan: pan.handlers as unknown as Handlers,
+      reset: reset.handlers as unknown as Handlers,
+      scale,
+      range,
+      rangeGestureOwned,
+    };
+  }
+
+  it("scales a gesture-owned range in place by the step the absolute scale takes", async () => {
+    const { pan, scale, range } = await setupWithRange(true);
+    const state = { ...manager(), end: jest.fn() };
+    pan.onTouchesDown(down(370), state);
+    pan.onStart();
+    pan.onTouchesMove(down(370, 260));
+    expect(scale.get()).toBeCloseTo(2 * Math.E);
+    const next = range.get()!;
+    expect(next.min).toBeCloseTo(50 - 50 * Math.E);
+    expect(next.max).toBeCloseTo(50 + 50 * Math.E);
+
+    // A second drag continues from the running total, so maxScale (10) bounds
+    // the overall factor instead of each drag's own factor compounding.
+    pan.onTouchesUp({}, state);
+    pan.onFinalize();
+    pan.onTouchesDown(down(370), state);
+    pan.onTouchesMove(down(370, 1000));
+    expect(scale.get()).toBe(10);
+    const clamped = range.get()!;
+    expect(clamped.max - clamped.min).toBeCloseTo(
+      (next.max - next.min) * (10 / (2 * Math.E)),
+    );
+  });
+
+  it("leaves an app-written range alone and scales the multiplier instead", async () => {
+    const { pan, scale, range } = await setupWithRange(false);
+    const state = { ...manager(), end: jest.fn() };
+    pan.onTouchesDown(down(370), state);
+    pan.onTouchesMove(down(370, 260));
+    expect(scale.get()).toBeCloseTo(2 * Math.E);
+    expect(range.get()).toEqual({ min: 0, max: 100 });
+  });
+
+  it("double-tap clears a gesture-owned range and lands the scale in one step", async () => {
+    const owned = await setupWithRange(true);
+    owned.reset.onEnd({}, true);
+    expect(owned.range.get()).toBeNull();
+    expect(owned.rangeGestureOwned.get()).toBe(false);
+    expect(owned.scale.get()).toBe(1);
+
+    const app = await setupWithRange(false);
+    app.reset.onEnd({}, true);
+    expect(app.range.get()).toEqual({ min: 0, max: 100 });
+    expect(app.scale.get()).toBe(1);
   });
 });
