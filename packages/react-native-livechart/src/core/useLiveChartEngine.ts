@@ -16,6 +16,7 @@ import {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
+import { scheduleOnUI } from "react-native-worklets";
 import { useDemandFrameLoop } from "../hooks/useDemandFrameLoop";
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type {
@@ -41,6 +42,7 @@ import {
 
 import { useHistoryRevision } from "./useHistoryRevision";
 import type { ResolvedViewportConfig } from "./resolveConfig";
+import { useGestureRangeOwnership, writeGestureRange } from "./gestureRangeOwnership";
 
 export interface EngineConfig {
   /** External scroll/zoom values adopted in place of private gesture state. */
@@ -216,8 +218,9 @@ export interface ChartEngineRange {
   viewRange: SharedValue<Pick<ChartScale, "min" | "max"> | null>;
   /**
    * True while {@link viewRange} was written by a gesture, which keeps it
-   * applied while following live. Cleared by a reset, a double-tap on the
-   * axis, and a `snapKey` / mode change.
+   * applied while following live. An app write or replacement viewport gives
+   * ownership back to the app. Resets, axis double-taps and framing changes
+   * clear only gesture-owned bounds.
    */
   viewRangeGestureOwned: SharedValue<boolean>;
   /** Fitted Y bounds the eased display range pursues, before a range override. */
@@ -387,6 +390,7 @@ export function clearGestureOwnedRange(
   viewRange: SharedValue<Pick<ChartScale, "min" | "max"> | null>,
   viewRangeGestureOwned: SharedValue<boolean>,
 ): void {
+  "worklet";
   if (!viewRangeGestureOwned.get()) return;
   viewRange.set(null);
   viewRangeGestureOwned.set(false);
@@ -521,7 +525,10 @@ export function applyLiveChartEngineFrame(
     Number.isFinite(adjustedMin) &&
     Number.isFinite(adjustedMax)
   ) {
-    sv.viewRangeSV.value = { min: adjustedMin, max: adjustedMax };
+    writeGestureRange(sv.viewRangeSV, sv.viewRangeFollowsLiveSV, {
+      min: adjustedMin,
+      max: adjustedMax,
+    });
   }
   // Clear the one-shot snap so the next frame eases normally again — but only
   // once a real (measured) frame consumed it. The tick early-returns on a
@@ -597,11 +604,11 @@ export function useLiveChartEngine(
   // gesture-owned so the tick keeps applying them while following live.
   const internalViewRange = useSharedValue<Pick<ChartScale, "min" | "max"> | null>(null);
   const viewRange = viewport?.range ?? internalViewRange;
-  const viewRangeGestureOwned = useSharedValue(false);
+  const viewRangeGestureOwned = useGestureRangeOwnership(viewRange);
   const fitMin = useSharedValue(0);
   const fitMax = useSharedValue(1);
   const clearGestureRange = useCallback(
-    () => clearGestureOwnedRange(viewRange, viewRangeGestureOwned),
+    () => scheduleOnUI(clearGestureOwnedRange, viewRange, viewRangeGestureOwned),
     [viewRange, viewRangeGestureOwned],
   );
   // A mode switch (line ↔ candle) re-frames the price range like a `snapKey`

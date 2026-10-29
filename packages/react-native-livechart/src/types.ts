@@ -2841,8 +2841,11 @@ export interface ChartViewportControl {
    * future space. Both bounds and their difference must be finite, with min < max.
    * Applied immediately, overriding automatic fitting, range easing, nonNegative,
    * maxValue, minRange, and yRangeScale. Invalid/null/omitted bounds use auto-fit.
-   * Ignored while end is null (including after resetZoom()); gestures and resets
-   * do not write this optional shared value.
+   * App-written bounds are ignored while end is null (including after resetZoom()).
+   * With priceScroll, gestures write this range too: gesture-owned bounds stay
+   * active while following live and obey the chart's hard bounds. A later app
+   * write or replacement range SharedValue restores the app-owned contract;
+   * resetView(), axis double-tap and framing changes preserve app-written bounds.
    */
   range?: SharedValue<Pick<ChartScale, "min" | "max"> | null>;
 }
@@ -2929,7 +2932,10 @@ export interface ResetButtonConfig {
 export interface ResetButtonRenderProps {
   /** True while the view differs from the fitted live view. */
   visible: SharedValue<boolean>;
-  /** Runs `resetView()`. Wire it to accessibility activation (`onAccessibilityTap`). */
+  /**
+   * Runs `resetView()`. Wire to `onAccessibilityTap` on iOS and the `activate`
+   * action through `accessibilityActions` / `onAccessibilityAction` on Android.
+   */
   reset: () => void;
 }
 
@@ -2952,7 +2958,8 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * Drag the plot vertically to move the price window — with `timeScroll` this
    * gives free X/Y panning. The pan writes the viewport's price `range` (the
    * supplied `viewport.range` shared value when one is given, private state
-   * otherwise), which then holds while new data streams in. A price-axis drag
+   * otherwise), which then holds while new data streams in. A later app write
+   * or replacement range SharedValue relinquishes gesture ownership. A price-axis drag
    * scales that range, and a double-tap on the axis, `resetView()` or a
    * `snapKey` / mode change clears it. Rides on the `timeScroll` pan, so it
    * requires `timeScroll`. `true` = defaults, or pass a {@link PriceScrollConfig}.
@@ -2978,7 +2985,10 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * @experimental
    */
   renderResetButton?: (props: ResetButtonRenderProps) => ReactElement;
-  /** Called on the JS thread after the view resets (button tap or `resetView()`). */
+  /**
+   * Called on the JS thread after the reset overrides are applied on the UI
+   * thread (button tap or `resetView()`). Return animations may still be running.
+   */
   onResetView?: () => void;
   /** Area gradient fill under the line. `true` = defaults, or pass `GradientConfig`. Default `true`. */
   gradient?: boolean | GradientConfig;

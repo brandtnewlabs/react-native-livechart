@@ -63,9 +63,17 @@ function clearPriceBounds() {
 ```
 
 Explicit bounds apply immediately, overriding automatic fitting, range easing,
-`nonNegative`, `maxValue`, `minRange`, and `yRangeScale`. Gestures and `resetZoom()`
-do not write `range`; clearing `end` makes it inactive. Set `range` to null as well
-if a later pan should return to automatic fitting.
+`nonNegative`, `maxValue`, `minRange`, and `yRangeScale`. `resetZoom()` does not write
+`range`; clearing `end` makes app-written bounds inactive. Set `range` to null as
+well if a later time pan should return to automatic fitting.
+
+With [`priceScroll`](/guides/time-scroll#price-panning-pricescroll), price pans and
+subsequent price-axis drags write this shared value too. Gesture-written bounds
+remain active while following live, obey `nonNegative`, `maxValue`, and `minRange`,
+and are cleared by `resetView()`, axis double-tap, or a `snapKey` / `mode` change.
+The next app write (including `modify()`) or replacement range SharedValue gives
+ownership back to the app immediately, so those bounds are preserved by resets
+and framing changes.
 
 In line mode, an external viewport or positive `windowBuffer` stops the line and
 live dot at the last recorded point, leaving future space empty. The badge and

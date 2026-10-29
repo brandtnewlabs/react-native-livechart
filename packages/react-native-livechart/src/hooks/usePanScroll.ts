@@ -11,6 +11,7 @@ import {
 import { scheduleOnRN } from "react-native-worklets";
 
 import type { ResolvedPriceScrollConfig } from "../core/resolveConfig";
+import { writeGestureRange } from "../core/gestureRangeOwnership";
 import type { ChartPadding } from "../draw/line";
 import type { ChartScale } from "../types";
 
@@ -435,9 +436,10 @@ export function usePanScroll({
             // vertical, so the drag moves a fixed window; a range an earlier pan
             // left behind carries on from where it is.
             range = { min: displayMin.get(), max: displayMax.get() };
-            viewRangeGestureOwned.set(true);
           }
-          viewRange.set(
+          writeGestureRange(
+            viewRange,
+            viewRangeGestureOwned,
             nextPriceRange(
               range,
               e.changeY,

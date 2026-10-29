@@ -15,13 +15,35 @@ inside the plot while the view differs from the fitted live view and hides it ag
 chart is back where it started. One tap returns the time window, the price scale and the price
 offset together.
 
+<Frame caption="Scale and pan candles or lines, then restore the live view with the reset button. The same reset also clears pinch zoom.">
+  <video autoPlay loop muted playsInline controls poster="/media/reset-view.jpg" src="/media/reset-view.mp4" />
+</Frame>
+
 <Note>
   **Live example:**
+  [`app/demo/reset-view.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/reset-view.tsx)
+  opens this guide's demo directly.
   [`app/demo/time-scroll.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/demo/time-scroll.tsx)
-  includes **Reset view** controls, and
+  shares the same interaction controls, and
   [`app/showcase/fomo-perps.tsx`](https://github.com/brandtnewlabs/react-native-livechart/blob/main/app/showcase/fomo-perps.tsx)
   shows the button in a product layout.
 </Note>
+
+## Try it in the example app
+
+Open **Demos → Interaction → Reset view** (also available under **Time scroll**).
+The demo starts with price panning
+set to **After scale**, pinch zoom on, and the reset button enabled, in candle mode.
+
+1. Drag the price-axis labels vertically to scale the range and arm price panning.
+2. Drag vertically inside the plot to move its price window, or diagonally to pan
+   time and price together. Pinch with two fingers to change the time window.
+3. Tap the floating reset button to restore the fitted live view. The **Reset view**
+   controls also expose `resetView()` and let you hide or show the button.
+4. Switch **Chart type** to **Line** to try the same interactions on a line chart.
+
+The **Price scroll** controls offer **Off**, **After scale**, and **Always**. The
+**Fomo perps** showcase also enables price panning and the floating reset button.
 
 ```tsx
 <LiveChart
@@ -85,8 +107,10 @@ default `"↺"`, pass a glyph it has, or render your own button.
 
 `renderResetButton` replaces the visual only. The chart keeps the placement, the visibility and
 fade, and the tap, so return a plain view, not a pressable. The element is measured with
-`onLayout`, so any size works. Wire `reset` to `onAccessibilityTap` so screen readers can
-activate it; `visible` is a `SharedValue` you can use for your own animation.
+`onLayout`, so any size works. Wire `reset` to `onAccessibilityTap` on iOS and an
+`activate` accessibility action on Android so screen readers can activate it;
+`visible` is a `SharedValue` you can use for your own animation. The built-in
+button handles both platforms.
 
 ```tsx
 import { View } from "react-native";
@@ -99,6 +123,10 @@ function ResetGlyph({ reset }: ResetButtonRenderProps) {
       accessibilityRole="button"
       accessibilityLabel="Reset chart view"
       onAccessibilityTap={reset}
+      accessibilityActions={[{ name: "activate" }]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === "activate") reset();
+      }}
       style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#222" }}
     >
       <MyIcon name="rotate-left" />
@@ -139,7 +167,11 @@ const chartRef = useRef<LiveChartHandle>(null);
   instead of jumping; without a panned range it animates to `1` over 240 ms, as the axis
   double tap does.
 - An app-written [`viewport.range`](/guides/synced-charts) is left alone, as with `resetZoom()`.
-- `onResetView` fires afterwards on the JS thread.
+  A later app write, including `modify()`, or a replacement `viewport.range` gives
+  ownership back to the app after a price pan.
+- `onResetView` fires on the JS thread after the reset overrides have been applied
+  on the UI thread, for both button taps and `resetView()`. Return animations may
+  still be running.
 
 On `LiveChartSeries`, `resetView()` is `resetZoom()` plus the eased `yRangeScale` reset.
 

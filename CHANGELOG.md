@@ -34,7 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gesture-written price range cleared, using the `returnToLive` glide.
 
 - The Time scroll demo adds **Price scroll** (Off / After scale / Always) and
-  **Reset view** settings; the Fomo perps showcase shows the reset button.
+  **Reset view** settings; a dedicated **Reset view** demo links directly to its
+  matching guide, and the Fomo perps showcase shows the reset button.
+
+### Fixed
+
+- Price panning relinquishes ownership on app-written price bounds or a
+  replacement `viewport.range`, preserving those bounds during resets and
+  framing changes.
+- `onResetView` now fires after reset overrides are applied on the UI thread
+  for imperative resets and accessibility activation, matching button taps.
+- The built-in reset button handles Android TalkBack activation. Custom-button
+  documentation includes the Android accessibility action alongside the iOS tap.
 
 ## [4.29.0] — 2026-10-26
 

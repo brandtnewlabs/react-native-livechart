@@ -12,6 +12,7 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import type { ResolvedYAxisConfig } from "../core/resolveConfig";
+import { writeGestureRange } from "../core/gestureRangeOwnership";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import { rightAnchoredYAxisColumnLayout, type YAxisEntry } from "../draw/grid";
 import type { ChartPadding } from "../draw/line";
@@ -220,14 +221,18 @@ export function useYAxisScaleGesture({
           maxScale,
         );
         const fromRange = startRange.get();
-        if (fromRange !== null && range) {
+        if (fromRange !== null && range && rangeGestureOwned?.get()) {
           // A panned window scales in place by the same step the absolute scale
           // takes, so repeated drags stay within [minScale, maxScale] overall
           // instead of compounding. The tick ignores `scale` while the range is
           // applied, so updating it only keeps that running total.
           const validFrom =
             Number.isFinite(fromScale) && fromScale > 0 ? fromScale : 1;
-          range.set(scaledPriceRange(fromRange, nextScale / validFrom));
+          writeGestureRange(
+            range,
+            rangeGestureOwned,
+            scaledPriceRange(fromRange, nextScale / validFrom),
+          );
         }
         scale.set(nextScale);
       })

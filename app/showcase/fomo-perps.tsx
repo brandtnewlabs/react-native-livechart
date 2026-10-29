@@ -42,6 +42,8 @@ import { runOnJS } from "react-native-worklets";
 
 import { useSimulatedChartData } from "../../sim/useSimulatedChartData";
 
+const RESET_BUTTON_CONFIG = { accessibilityLabel: "Reset chart view" };
+
 /**
  * Fomo · Perps — ETH perpetuals detail recreation.
  *
@@ -855,7 +857,7 @@ function PerpsChart({
         // drag pans price; the centered button brings the view back.
         yAxis={{ scaleGesture: true }}
         priceScroll
-        resetButton
+        resetButton={RESET_BUTTON_CONFIG}
         scrubAction={{
           icon: "+",
           snap: 0.5,

@@ -1,5 +1,6 @@
 import { renderHook } from "@testing-library/react-native";
 import type { SharedValue } from "react-native-reanimated";
+import { scheduleOnUI } from "react-native-worklets";
 
 import { resolveResetButton } from "../../src/core/resolveConfig";
 import { useResetButton } from "../../src/hooks/useResetButton";
@@ -29,7 +30,7 @@ jest.mock("react-native-reanimated", () => {
 jest.mock("react-native-worklets", () => ({
   ...jest.requireActual("react-native-worklets"),
   // No second runtime under Jest: run scheduled work inline.
-  scheduleOnUI: (fn: (...args: unknown[]) => void, ...args: unknown[]) => fn(...args),
+  scheduleOnUI: jest.fn((fn: (...args: unknown[]) => void, ...args: unknown[]) => fn(...args)),
   scheduleOnRN: (fn: (...args: unknown[]) => void, ...args: unknown[]) => fn(...args),
 }));
 
@@ -177,5 +178,25 @@ describe("useResetButton", () => {
     expect(yRangeScale.get()).toBe(1);
     expect(onResetView).toHaveBeenCalledTimes(1);
     expect(result.current.visible.get()).toBe(false);
+  });
+
+  it("waits for the UI reset before notifying the host", async () => {
+    const { result, engine, onResetView } = await setup();
+    engine.viewEnd.set(900);
+    engine.viewWindow.set(45);
+    onResetView.mockImplementation(() => {
+      expect(engine.viewEnd.get()).toBeNull();
+      expect(engine.viewWindow.get()).toBeNull();
+    });
+    const queue: Array<() => void> = [];
+    jest.mocked(scheduleOnUI).mockImplementationOnce((fn, ...args) => {
+      queue.push(() => fn(...args));
+    });
+    result.current.reset();
+    expect(engine.viewEnd.get()).toBe(900);
+    expect(onResetView).not.toHaveBeenCalled();
+    queue[0]();
+    expect(onResetView).toHaveBeenCalledTimes(1);
+    expect(engine.wake).toHaveBeenCalledTimes(1);
   });
 });

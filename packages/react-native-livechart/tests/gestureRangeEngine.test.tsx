@@ -48,7 +48,7 @@ function frameRefs(overrides: Record<string, unknown> = {}) {
     extremaMaxValue: { value: NaN },
     extremaMinTime: { value: NaN },
     extremaMaxTime: { value: NaN },
-    viewEnd: { value: null as number | null },
+    viewEndSV: { value: null as number | null },
     viewRangeSV: { value: { min: -10, max: 10 } as Range | null },
     viewRangeFollowsLiveSV: { value: true },
     nonNegativeSV: { value: true },
@@ -85,13 +85,32 @@ describe("applyLiveChartEngineFrame with a gesture-owned range", () => {
     expect([sv.displayMin.value, sv.displayMax.value]).toEqual([5, 15]);
   });
 
+  it("retains gesture ownership after the clamp's synchronous range notification", () => {
+    const sv = frameRefs();
+    let range = sv.viewRangeSV.value;
+    Object.defineProperty(sv.viewRangeSV, "value", {
+      get: () => range,
+      set: (next: Range | null) => {
+        range = next;
+        sv.viewRangeFollowsLiveSV.value = false;
+      },
+    });
+    applyLiveChartEngineFrame(
+      { timeSincePreviousFrame: 16.67 },
+      sv as unknown as EngineFrameRefs,
+      makeEngineFrameScratch(),
+    );
+    expect(range).toEqual({ min: 0, max: 20 });
+    expect(sv.viewRangeFollowsLiveSV.value).toBe(true);
+  });
+
   it("never rewrites an app-written range", () => {
     const range = { min: -10, max: 10 };
     const sv = frameRefs({
       viewRangeSV: { value: range },
       viewRangeFollowsLiveSV: { value: false },
       // Parked before live: an app-written range applies only while scrolled back.
-      viewEnd: { value: 1699999990 },
+      viewEndSV: { value: 1699999990 },
     });
     applyLiveChartEngineFrame(
       { timeSincePreviousFrame: 16.67 },

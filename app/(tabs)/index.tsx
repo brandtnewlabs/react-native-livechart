@@ -105,7 +105,7 @@ const SECTIONS: DemoSection[] = [
       {
         href: "/demo/time-scroll",
         title: "Time scroll",
-        blurb: "timeScroll: one-finger drag to pan back through candle history; release at the live edge to resume.",
+        blurb: "Pan time and price, pinch to zoom, then return to the fitted live view with the reset button.",
       },
       {
         href: "/demo/synced-charts" as Href,
@@ -116,6 +116,11 @@ const SECTIONS: DemoSection[] = [
         href: "/demo/y-range-scale" as Href,
         title: "Y-range scale",
         blurb: "yRangeScale: drag the price gutter to stretch or compress the fitted Y-axis range.",
+      },
+      {
+        href: "/demo/reset-view" as Href,
+        title: "Reset view",
+        blurb: "Pan, pinch, or scale the chart, then restore the fitted live view with one tap.",
       },
       {
         href: "/demo/axis-auto-hide" as Href,

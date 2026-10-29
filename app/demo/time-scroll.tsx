@@ -87,6 +87,8 @@ const PRICE_SCROLL_OPTIONS: { value: PriceScroll; label: string }[] = [
   { value: "always", label: "Always" },
 ];
 
+const RESET_BUTTON_CONFIG = { accessibilityLabel: "Reset chart view" };
+
 function CaptureViewport({
   ctx,
   onScale,
@@ -181,6 +183,17 @@ function useAnnotationViewport(chartRef: React.RefObject<LiveChartHandle | null>
 }
 
 export default function TimeScrollScreen() {
+  return <TimeScrollDemo />;
+}
+
+/** Shared interaction demo, also opened directly from the reset-view guide. */
+export function TimeScrollDemo({
+  title = "Time scroll",
+  docs = "guides/time-scroll",
+}: {
+  title?: string;
+  docs?: string;
+}) {
   const chartRef = useRef<LiveChartHandle>(null);
   const annotationViewport = useAnnotationViewport(chartRef);
   const [frozenNow, setFrozenNow] = useState<number>();
@@ -234,8 +247,8 @@ export default function TimeScrollScreen() {
 
   return (
     <DemoScreen
-      title="Time scroll"
-      docs="guides/time-scroll"
+      title={title}
+      docs={docs}
       description={`${hint} Pinch to zoom time. Drag the price axis to scale, then drag the plot vertically to pan price; the floating button resets the view. Freeze the feed, compare history and future space with Fixed price range off, then return live and turn it on to keep the same price bounds.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
       chart={
         <LiveChart
@@ -275,7 +288,7 @@ export default function TimeScrollScreen() {
           }
           // Floating reset-view button: shows once the view leaves the fitted
           // live view (scrolled back, pinched, scaled or price-panned).
-          resetButton={resetButton}
+          resetButton={resetButton ? RESET_BUTTON_CONFIG : false}
           onResetView={() => console.log("reset view")}
           // Paging callbacks (Phase 3): log the visible range (~1 Hz) and show an
           // indicator while the left edge is near the oldest seeded candle. The

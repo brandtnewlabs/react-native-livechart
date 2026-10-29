@@ -1,7 +1,7 @@
 import { act, fireEvent, render } from "@testing-library/react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import { View } from "react-native";
-import { useSharedValue, type SharedValue } from "react-native-reanimated";
+import type { SharedValue } from "react-native-reanimated";
 
 import { ResetButtonOverlay } from "../../src/components/ResetButtonOverlay";
 import { resolveResetButton } from "../../src/core/resolveConfig";
@@ -9,6 +9,30 @@ import type { ResetButtonRect } from "../../src/hooks/resetButtonLayout";
 import { resolveTheme } from "../../src/theme";
 import type { ResetButtonRenderProps } from "../../src/types";
 import { getAllByHostType } from "../rntl14";
+
+jest.mock("react-native-reanimated", () => {
+  const React = jest.requireActual<typeof import("react")>("react");
+  return {
+    __esModule: true,
+    ...jest.requireActual("react-native-reanimated"),
+    // Run the reaction after commit, with the previous prepared value retained.
+    // Native UI mappers do not execute in this repository's Jest environment.
+    useAnimatedReaction: <T,>(prepare: () => T, react: (next: T, previous: T | null) => void) => {
+      const previous = React.useRef<T | null>(null);
+      React.useEffect(() => {
+        const next = prepare();
+        if (next !== previous.current) react(next, previous.current);
+        previous.current = next;
+      });
+    },
+  };
+});
+
+jest.mock("react-native-worklets", () => ({
+  ...jest.requireActual("react-native-worklets"),
+  scheduleOnRN: (fn: (...args: unknown[]) => void, ...args: unknown[]) =>
+    queueMicrotask(() => fn(...args)),
+}));
 
 /** Flush the `scheduleOnRN` microtask behind the visibility mirror inside `act`. */
 function flushScheduleOnRN() {
@@ -47,8 +71,8 @@ function Harness({
   measuredWidth?: SharedValue<number>;
   measuredHeight?: SharedValue<number>;
 }) {
-  const visibleSV = useSharedValue(visible);
-  const rect = useSharedValue<ResetButtonRect>({ x: 154, y: 192, width: 36, height: 36 });
+  const visibleSV = useMemo(() => shared(visible), [visible]);
+  const rect = useMemo(() => shared<ResetButtonRect>({ x: 154, y: 192, width: 36, height: 36 }), []);
   return (
     <ResetButtonOverlay
       config={config}
@@ -95,6 +119,18 @@ describe("ResetButtonOverlay", () => {
     );
   });
 
+  it("handles Android activation without resetting for unrelated accessibility actions", async () => {
+    const reset = jest.fn();
+    const screen = await render(<Harness reset={reset} />);
+    await flushScheduleOnRN();
+    const button = screen.getByRole("button", { name: "Reset chart" });
+    expect(button.props.accessibilityActions).toEqual([{ name: "activate" }]);
+    await fireEvent(button, "accessibilityAction", { nativeEvent: { actionName: "increment" } });
+    expect(reset).not.toHaveBeenCalled();
+    await fireEvent(button, "accessibilityAction", { nativeEvent: { actionName: "activate" } });
+    expect(reset).toHaveBeenCalledTimes(1);
+  });
+
   it("hands a custom visual the visibility and reset, and measures it", async () => {
     const reset = jest.fn();
     const renderButton = jest.fn((props: ResetButtonRenderProps) => (
@@ -133,10 +169,15 @@ describe("ResetButtonOverlay", () => {
     expect(wrapper.props.accessibilityElementsHidden).toBe(true);
     expect(wrapper.props.importantForAccessibility).toBe("no-hide-descendants");
 
-    const shown = await render(<Harness visible />);
+    await screen.rerender(<Harness visible />);
     await flushScheduleOnRN();
-    const shownWrapper = getAllByHostType(shown, View)[0];
+    const shownWrapper = getAllByHostType(screen, View)[0];
     expect(shownWrapper.props.pointerEvents).toBe("box-none");
     expect(shownWrapper.props.accessibilityElementsHidden).toBe(false);
+    expect(screen.getByRole("button", { name: "Reset chart" })).toBeTruthy();
+
+    await screen.rerender(<Harness visible={false} />);
+    await flushScheduleOnRN();
+    expect(screen.queryByRole("button", { name: "Reset chart" })).toBeNull();
   });
 });

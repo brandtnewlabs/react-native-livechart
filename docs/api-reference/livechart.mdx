@@ -464,7 +464,9 @@ provided; everything else has a default.
   range while following live and clamps it to `nonNegative`, `maxValue` and
   `minRange`. Price-axis drags then scale the panned window in place; an axis
   double tap, `resetView()`, or a `snapKey` / `mode` change clears it. No release
-  momentum. **@experimental.** See
+  momentum. Writing new app bounds or replacing `viewport.range` relinquishes
+  gesture ownership; those bounds retain the app-controlled contract and are
+  preserved by resets and framing changes. **@experimental.** See
   [Time-scroll → Price panning](/guides/time-scroll#price-panning-pricescroll).
 </ParamField>
 
@@ -482,13 +484,14 @@ provided; everything else has a default.
 <ParamField body="renderResetButton" type="(props: ResetButtonRenderProps) => ReactElement">
   Custom visual for `resetButton`. The chart still owns placement, visibility, the
   fade and the tap, so return a plain view (not a pressable) and wire `reset` to
-  `onAccessibilityTap` for screen readers. Receives `visible` and `reset`. See
+  `onAccessibilityTap` on iOS and an `activate` accessibility action on Android
+  for screen readers. Receives `visible` and `reset`. See
   [Reset view → Custom button](/guides/reset-view#custom-button).
 </ParamField>
 
 <ParamField body="onResetView" type="() => void">
-  JS-thread callback fired after the reset button or `resetView()` returns the
-  chart to the fitted live view.
+  JS-thread callback fired after the reset button or `resetView()` applies its
+  reset overrides on the UI thread. Return animations may still be running.
 </ParamField>
 
 <ParamField body="viewport" type="false | ViewportConfig" default="false">

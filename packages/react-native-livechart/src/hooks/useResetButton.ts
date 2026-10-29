@@ -143,10 +143,15 @@ export function useResetButton({
     ],
   );
 
+  const resetOnUI = useCallback(() => {
+    "worklet";
+    wake?.();
+    resetChartView(refs);
+    if (onResetView) scheduleOnRN(onResetView);
+  }, [onResetView, refs, wake]);
   const reset = useCallback(() => {
-    scheduleOnUI(resetChartView, refs);
-    onResetView?.();
-  }, [onResetView, refs]);
+    scheduleOnUI(resetOnUI);
+  }, [resetOnUI]);
 
   const tapGesture = useMemo(() => {
     if (!enabled) return null;
@@ -168,11 +173,9 @@ export function useResetButton({
       .onEnd((_event, success) => {
         "worklet";
         if (!success) return;
-        wake?.();
-        resetChartView(refs);
-        if (onResetView) scheduleOnRN(onResetView);
+        resetOnUI();
       });
-  }, [enabled, onResetView, rect, refs, visible, wake]);
+  }, [enabled, rect, resetOnUI, visible]);
 
   return { visible, rect, measuredWidth, measuredHeight, tapGesture, reset };
 }

@@ -1,10 +1,17 @@
 import { renderHook } from "@testing-library/react-native";
 import { useSharedValue } from "react-native-reanimated";
-import { useLiveChartEngine } from "../src/core/useLiveChartEngine";
+import { clearGestureOwnedRange, useLiveChartEngine } from "../src/core/useLiveChartEngine";
 import { usePanScroll } from "../src/hooks/usePanScroll";
 import { resetPinchZoom, usePinchZoom } from "../src/hooks/usePinchZoom";
 import type { ChartScale, ViewportConfig } from "../src";
 import { resolveViewport } from "../src/core/resolveConfig";
+import { writeGestureRange } from "../src/core/gestureRangeOwnership";
+
+jest.mock("react-native-worklets", () => ({
+  ...jest.requireActual("react-native-worklets"),
+  // Execute lifecycle subscriptions without serializing Jest's SharedValue doubles.
+  scheduleOnUI: (fn: (...args: unknown[]) => void, ...args: unknown[]) => fn(...args),
+}));
 
 let mockTick: (dt: number) => boolean;
 let mockPrepare: () => unknown[];
@@ -28,16 +35,22 @@ jest.mock("react-native-reanimated", () => {
   return {
     ...jest.requireActual("react-native-reanimated"),
     useSharedValue: <T,>(initial: T) => {
+      let current = initial;
+      const listeners = new Map<number, (mockValue: T) => void>();
       const ref = React.useRef({
-        value: initial,
+        get value() { return current; },
+        set value(next: T) {
+          current = next;
+          listeners.forEach((listener) => listener(next));
+        },
         get() {
           return this.value;
         },
         set(next: T) {
           this.value = next;
         },
-        addListener() {},
-        removeListener() {},
+        addListener(id: number, listener: (mockValue: T) => void) { listeners.set(id, listener); },
+        removeListener(id: number) { listeners.delete(id); },
       });
       return ref.current;
     },
@@ -340,4 +353,25 @@ it.each(["line", "candle"] as const)("adopts price bounds and wakes on range-onl
   expect(engine.displayMax.get()).toBeLessThan(80);
   // Reset clears end/window; the optional app-owned range becomes inactive.
   expect(viewport.range!.get()).toEqual({ min: 90, max: 130 });
+});
+
+it.each(["line", "candle"] as const)("returns a panned %s range to the app-owned contract on the next app write", async (mode) => {
+  const { result } = await setup({ mode });
+  const { engine, viewport } = result.current;
+  viewport.end.set(null);
+  writeGestureRange(viewport.range!, engine.viewRangeGestureOwned, { min: 80, max: 120 });
+  mockTick(16.67);
+  expect([engine.displayMin.get(), engine.displayMax.get()]).toEqual([80, 120]);
+
+  const appRange = { min: -20, max: 100 };
+  viewport.range!.set(appRange);
+  expect(engine.viewRangeGestureOwned.get()).toBe(false);
+  // App-written bounds are inactive while following live.
+  mockTick(16.67);
+  expect(engine.displayMax.get()).toBeLessThan(80);
+  viewport.end.set(300);
+  mockTick(16.67);
+  expect([engine.displayMin.get(), engine.displayMax.get()]).toEqual([-20, 100]);
+  clearGestureOwnedRange(engine.viewRange, engine.viewRangeGestureOwned);
+  expect(viewport.range!.get()).toBe(appRange);
 });

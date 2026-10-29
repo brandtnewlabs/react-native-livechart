@@ -709,7 +709,7 @@ interface ResetButtonConfig {
 // and the tap, so return a plain view rather than a pressable.
 interface ResetButtonRenderProps {
   visible: SharedValue<boolean>; // true while the view differs from the fitted live view
-  reset: () => void;             // runs resetView(); wire it to onAccessibilityTap
+  reset: () => void;             // runs resetView(); wire to iOS onAccessibilityTap / Android activate action
 }
 // App-owned UI-thread viewport. LiveChart only (line/candle). @experimental
 interface ChartViewportControl {
@@ -732,6 +732,8 @@ interface ViewportConfig extends ChartViewportControl {
 // a gesture-written range stays active while following live, is clamped to
 // nonNegative/maxValue/minRange, and is cleared by resetView(), an axis
 // double tap, or a snapKey/mode change.
+// A later app write (including modify()) or replacement range SharedValue
+// relinquishes gesture ownership; app-written bounds are preserved by resets.
 // windowSmoothing affects only non-null widths, not value, automatic Y-range, or reset easing.
 // Visible window reported by onVisibleRangeChange (unix seconds). @experimental
 interface VisibleRange {

@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactElement } from "react";
-import { StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { StyleSheet, Text, View, type AccessibilityActionEvent, type LayoutChangeEvent } from "react-native";
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -74,6 +74,12 @@ export function ResetButtonOverlay({
     },
     [measuredHeight, measuredWidth],
   );
+  const onAccessibilityAction = useCallback(
+    (event: AccessibilityActionEvent) => {
+      if (event.nativeEvent.actionName === "activate") reset();
+    },
+    [reset],
+  );
 
   return (
     <Animated.View
@@ -91,6 +97,8 @@ export function ResetButtonOverlay({
           accessibilityRole="button"
           accessibilityLabel={config.accessibilityLabel}
           onAccessibilityTap={reset}
+          accessibilityActions={[{ name: "activate" }]}
+          onAccessibilityAction={onAccessibilityAction}
           style={{
             width: config.size,
             height: config.size,
