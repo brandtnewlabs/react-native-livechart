@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.30.0] — 2026-10-29
+
 ### Added
 
 - Experimental `priceScroll` on `LiveChart` pans the price window with a vertical
@@ -1837,6 +1839,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.30.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.0
 [4.29.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.29.0
 [4.28.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.2
 [4.28.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.1
