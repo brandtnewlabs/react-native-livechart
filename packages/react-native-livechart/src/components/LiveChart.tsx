@@ -2223,6 +2223,7 @@ function useLiveChartController({
     onScrubCandleChange,
     resolveScrubMarkerOptions(scrubCfg, markersSV),
     axisScaleActive,
+    shouldOmitTipBeyondData,
   );
 
   // Capture only the shared value in the worklets below. Referencing

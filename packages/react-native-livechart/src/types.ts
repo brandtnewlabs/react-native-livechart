@@ -2722,8 +2722,9 @@ export interface LiveChartCoreProps {
    * current time so the latest point has breathing room; pass `0` to land the latest
    * point exactly at the right edge. In line-mode LiveChart, a positive buffer
    * stops the line/dot at the last recorded point; the badge and value line use
-   * that recorded price. badge.followViewEdge pins indicators to the edge only
-   * when the latest recorded point leaves the visible time window.
+   * that recorded price. Plain scrub also clamps to that latest recorded point.
+   * badge.followViewEdge pins indicators to the edge only when the latest
+   * recorded point leaves the visible time window.
    * Default `0`.
    */
   windowBuffer?: number;
@@ -2953,8 +2954,9 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * Both shared values are required, so this prop has no true shorthand.
    * Optional range supplies exact price bounds while end is non-null. In line
    * mode the line/dot stop at the last recorded point, with badge/value line at
-   * that price; badge.followViewEdge pins indicators to the edge only when the
-   * latest recorded point leaves the visible time window.
+   * that price; plain scrub also clamps to that latest recorded point.
+   * badge.followViewEdge pins indicators to the edge only when the latest
+   * recorded point leaves the visible time window.
    * @experimental
    */
   viewport?: false | ViewportConfig;

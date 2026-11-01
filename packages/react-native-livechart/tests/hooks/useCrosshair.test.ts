@@ -39,6 +39,26 @@ jest.mock("react-native-reanimated", () => {
       get() { return this.value; },
       set(next: T) { this.value = next; },
     }).current,
+    // Re-run the updater on read so gesture writes to scrubPointerX show through
+    // the derived scrubX. Keep a writable `.set` for tests that poke the value.
+    useDerivedValue: <T,>(updater: () => T) => {
+      const sv = {
+        _override: undefined as T | undefined,
+        get() {
+          return this._override !== undefined ? this._override : updater();
+        },
+        set(next: T) {
+          this._override = next;
+        },
+        get value() {
+          return this.get();
+        },
+        set value(next: T) {
+          this.set(next);
+        },
+      };
+      return sv;
+    },
     useAnimatedReaction: jest.fn(),
   };
 });

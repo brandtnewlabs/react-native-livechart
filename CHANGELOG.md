@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   badge, value line, and live dot stay on the latest recorded point while it is
   inside the visible time window, and only pin to the visible right-edge price
   after that point leaves.
+- Plain scrub on those same buffered/viewport line charts clamps to the latest
+  recorded point, so a held crosshair cannot read a synthetic price in empty
+  future space as data or the viewport moves.
 
 ## [4.30.0] — 2026-10-29
 

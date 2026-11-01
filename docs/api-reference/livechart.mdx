@@ -513,8 +513,9 @@ provided; everything else has a default.
   leaves `range` intact but clears `end`, making those bounds inactive.
   In line mode, the line and live dot end at the last recorded point. The badge and
   value line use that recorded price, and a live dot outside the window hides.
-  `badge.followViewEdge` pins indicators to the edge only when the latest recorded
-  point leaves the visible time window.
+  Plain scrub clamps to that latest recorded point. `badge.followViewEdge` pins
+  indicators to the edge only when the latest recorded point leaves the visible
+  time window.
   `windowSmoothing: false` adopts a non-null width immediately, useful for followers
   copying an already-drawn width. Default `true`; null still eases back to `timeWindow`.
   Single-series line/candle only. **@experimental.** See
@@ -761,9 +762,10 @@ range written by `priceScroll` or the axis-scale gesture, gliding the right edge
   Right-edge buffer as a fraction of `timeWindow`.
   In line mode, a positive buffer leaves empty space after the last recorded point;
   the line and dot end there, and the badge/value line use that recorded price.
-  `badge.followViewEdge` pins indicators to the edge only when the latest recorded
-  point leaves the visible time window. Candle indicators continue to use candle
-  prices.
+  Plain scrub also clamps to that latest recorded point so a held crosshair cannot
+  read empty future space. `badge.followViewEdge` pins indicators to the edge only
+  when the latest recorded point leaves the visible time window. Candle indicators
+  continue to use candle prices.
 </ParamField>
 
 <ParamField body="nowOverride" type="number">

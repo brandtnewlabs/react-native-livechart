@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
+  useDerivedValue,
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
@@ -218,6 +219,8 @@ export function useCrosshair(
   markerOptions?: ScrubMarkerOptions,
   /** Price-axis ownership also guards against stale native long-press events. */
   axisScaleActive?: SharedValue<boolean>,
+  /** Buffered line charts must not expose synthetic prices in future space. */
+  shouldClampToLatestPoint = false,
 ): CrosshairState {
   // Config objects may be recreated without changing the plot geometry. Keep
   // worklet closures and gestures stable until an actual inset changes.
@@ -226,7 +229,7 @@ export function useCrosshair(
     () => ({ top, right, bottom, left }),
     [top, right, bottom, left],
   );
-  const scrubX = useSharedValue(-1);
+  const scrubPointerX = useSharedValue(-1);
   const scrubActive = useSharedValue(false);
   // Tracks whether the active scrub phase actually began, so a tap that never
   // activates doesn't emit a spurious onGestureEnd.
@@ -284,6 +287,24 @@ export function useCrosshair(
     onScrubAction,
     clampToPlot,
   );
+
+  // Keep the pointer separate so a held scrub follows new data and viewport changes.
+  const scrubX = useDerivedValue(() => {
+    const x = scrubPointerX.get();
+    if (!shouldClampToLatestPoint || isCandleMode || hasScrubAction || x < 0) {
+      return x;
+    }
+    const points = engine.data.get();
+    const last = points[points.length - 1];
+    const windowSecs = engine.displayWindow.get();
+    const chartWidth = engine.canvasWidth.get() - padding.left - padding.right;
+    if (!last || windowSecs <= 0 || chartWidth <= 0) {
+      return x;
+    }
+    const startTime = engine.timestamp.get() - windowSecs;
+    const latestX = padding.left + ((last.time - startTime) / windowSecs) * chartWidth;
+    return Math.min(x, latestX);
+  });
 
   // Monospace advance width, measured once per render (not per scrub frame) so
   // the tooltip layout worklet can size text by character count instead of a
@@ -850,7 +871,7 @@ export function useCrosshair(
             padding,
             canvasWidthSV.get(),
             clampPlainScrubToPlot,
-            scrubX,
+            scrubPointerX,
             scrubActive,
             gestureStarted,
           );
@@ -891,7 +912,7 @@ export function useCrosshair(
             padding,
             canvasWidthSV.get(),
             clampPlainScrubToPlot,
-            scrubX,
+            scrubPointerX,
             scrubActive,
           );
         },
@@ -1066,7 +1087,7 @@ export function useCrosshair(
     scrollActiveSV,
     scrubActive,
     scrubBottomExclude,
-    scrubX,
+    scrubPointerX,
     snapToCandles,
     timestampSV,
   ]);

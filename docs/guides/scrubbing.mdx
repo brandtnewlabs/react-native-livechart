@@ -52,6 +52,11 @@ to the nearest plot edge. Scrub-action gestures retain their existing behavior.
 The option works on `LiveChart` and `LiveChartSeries` and defaults to `false`
 for backwards compatibility.
 
+On line-mode `LiveChart` with a positive `windowBuffer` or an external viewport,
+plain scrub also clamps to the latest recorded point so a held crosshair cannot
+read empty future space as data or the viewport moves. Candle mode and
+`scrubAction` are unchanged.
+
 ## Snap to candle centers (`snapToCandles`)
 
 In candle mode the crosshair glides continuously under the finger by default. Set
