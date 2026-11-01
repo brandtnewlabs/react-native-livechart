@@ -178,8 +178,8 @@ export const HIDDEN_TOOLTIP: TooltipLayout = {
 
 export interface CrosshairState {
   scrubMarkers: SharedValue<Marker[]>;
-  scrubX: SharedValue<number>;
-  scrubActive: SharedValue<boolean>;
+  scrubX: SharedValue<number> | DerivedValue<number>;
+  scrubActive: SharedValue<boolean> | DerivedValue<boolean>;
   scrubTime: SharedValue<number>;
   scrubValue: SharedValue<number | null>;
   crosshairOpacity: SharedValue<number>;

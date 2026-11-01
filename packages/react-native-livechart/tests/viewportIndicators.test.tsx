@@ -16,7 +16,8 @@ it.each([
   { mode: "line" as const, controlled: true, buffer: 0, recorded: true },
   { mode: "candle" as const, controlled: false, buffer: 0.1, recorded: false },
   { mode: "candle" as const, controlled: true, buffer: 0, recorded: false },
-])("keeps indicator prices aligned in $mode mode (viewport=$controlled, buffer=$buffer)", async ({ mode, controlled, buffer, recorded }) => {
+].flatMap((config) => [false, true].map((follow) => ({ ...config, follow }))))(
+"keeps indicator prices aligned in $mode mode (viewport=$controlled, buffer=$buffer, follow=$follow)", async ({ mode, controlled, buffer, recorded, follow }) => {
   // Derived values freeze at mount in Jest. Seed the engine before its consumers
   // read it, with deliberately different recorded-line and live-candle prices.
   const engineSpy = jest.spyOn(engines, "useLiveChartEngine").mockImplementation((config) => {
@@ -26,6 +27,7 @@ it.each([
     engine.displayMin.set(0);
     engine.displayMax.set(10);
     engine.displayValue.set(9);
+    engine.edgeValue.set(7);
     engine.timestamp.set(1000);
     engine.displayWindow.set(30);
     // Bypass the reveal bridge, whose UI-thread morph does not run in Jest.
@@ -42,17 +44,20 @@ it.each([
     const end = useSharedValue<number | null>(null);
     const window = useSharedValue<number | null>(null);
     return <LiveChart data={data} value={value} mode={mode} candles={candles} liveCandle={liveCandle}
-      viewport={controlled ? { end, window } : false} windowBuffer={buffer} badge valueLine dot />;
+      viewport={controlled ? { end, window } : false} windowBuffer={buffer}
+      badge={{ followViewEdge: follow }} valueLine dot />;
   }
   try {
     await render(<Chart />);
     const { dotX, dotY } = dotSpy.mock.results.at(-1)!.value;
     const [engine, padding] = dotSpy.mock.calls.at(-1)!;
     const badgeEngine = badgeSpy.mock.calls.at(-1)![0];
-    const expectedValue = recorded ? 2 : 9;
+    const expectedValue = recorded ? 2 : follow ? 7 : 9;
     const expectedY = padding.top + ((10 - expectedValue) / 10) * (100 - padding.top - padding.bottom);
     expect(dotY.value).toBeCloseTo(expectedY);
     expect(badgeEngine.displayValue.get()).toBe(expectedValue);
+    const formatValue = badgeSpy.mock.calls.at(-1)![3];
+    expect(badgeSpy.mock.results.at(-1)!.value.get().text).toBe(formatValue(expectedValue));
     const right = 200 - padding.right;
     expect(dotX.value).toBeCloseTo(recorded ? (padding.left + right) / 2 : right);
     expect(pathSpy.mock.calls.at(-1)![10]).toBe(recorded);

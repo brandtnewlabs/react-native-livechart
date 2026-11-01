@@ -5,7 +5,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cancelAnimation,
   Easing,
@@ -319,7 +319,7 @@ export interface EngineFrameRefs {
   /** Receives the smoothed right-edge value each frame. Optional for callers/tests. */
   edgeValueSV?: SharedValue<number>;
   /**
-   * One-shot "snap the framing this frame" flag (set by the `snapKey` effect).
+   * One-shot "snap the framing this frame" flag (set by the `snapKey` reaction).
    * Consumed and cleared by {@link applyLiveChartEngineFrame} after the tick.
    * Optional for callers/tests.
    */
@@ -739,25 +739,16 @@ export function useLiveChartEngine(
 
   // High-frequency data reads directly from the caller's shared values —
   // no useDerivedValue bridging, no closure serialization per tick.
-  // One-shot "snap the framing" flag. The effect below flips it to `true` when
-  // `snapKey` changes; the next frame consumes it (bypassing `smoothing` for the
-  // window / range / value) and clears it, so a timeframe / dataset switch lands
-  // in one frame while live ticks stay smoothed. See `snapKey`.
+  // One-shot "snap the framing" flag. The selection reaction below consumes it
+  // after the UI-thread config is current, bypassing smoothing for that update
+  // while ordinary live ticks keep their smoothing. See `snapKey`.
   const snapSV = useSharedValue(false);
-  // Compare against the previous key (not a "first render" flag) so React 18
-  // StrictMode's double-invoked mount effect can't fire a spurious snap.
-  const lastSnapKey = useRef(snapKey);
-  // Layout effect, not passive: a passive effect runs after the commit has
-  // painted, so the frame between them draws the new data/candleWidth against
-  // the OLD framing (a one-frame squeeze on a timeframe switch). Flipping the
-  // flag before paint lets the first frame with the new props consume the snap.
-  useLayoutEffect(() => {
-    if (snapKey === lastSnapKey.current) return;
-    lastSnapKey.current = snapKey;
-    snapSV.set(true);
-    // The new framing lands on the fit, not on a window panned for the old data.
-    clearGestureRange();
-  }, [snapKey, snapSV, clearGestureRange]);
+  // Comparing keys avoids a spurious mount snap during StrictMode replay.
+  const lastSnapKey = useSharedValue(snapKey);
+  const snapConfiguration = useDerivedValue(() => ({
+    key: snapKey,
+    configuredWindow: configuredTimeWindow,
+  }));
 
   // Static charts run zero per-frame loops. `isStaticSV` gates both the
   // frame-callback autostart and the one-shot settle reaction below.
@@ -888,6 +879,72 @@ export function useLiveChartEngine(
     // react-doctor-disable-next-line react-doctor/no-ref-current-in-render -- false positive for React's documented lazy-ref exception
     frameScratchRef.current = makeEngineFrameScratch();
   }
+
+  // Settle before the path mappers observe new series/config; waiting for the
+  // next frame callback lets those paths combine new data with the old scale.
+  useAnimatedReaction(
+    () => ({
+      configuration: snapConfiguration.get(),
+      effectiveWindow: timeWindow.get(),
+      windowOverride: viewWindow.get(),
+      // Config mappers can be re-registered after this reaction. Reading their
+      // values here keeps the snap downstream of the complete framing update.
+      framingInputs: [
+        viewEnd.get(),
+        viewRange.get(),
+        modeSV.get(),
+        nowOverrideSV.get(),
+        windowBufferSV.get(),
+        smoothing.get(),
+        rangeAnimationSV.get(),
+        adaptiveSpeedBoostSV.get(),
+        exaggerateSV.get(),
+        maxValueSV.get(),
+        minRangeSV.get(),
+        nonNegativeSV.get(),
+        yRangeScale?.get(),
+        referenceValue.get(),
+        referenceValues.get(),
+        thresholdRangePoints.get(),
+        thresholdRangeExtendToStart.get(),
+        thresholdRangeExtendToNow.get(),
+        pausedSV.get(),
+        allowFutureViewEndSV.get(),
+        viewWindowSmoothingSV.get(),
+        candleGapsSV.get(),
+        candleGapBridgeNoTradesSV.get(),
+        candleGapBridgeUnavailableSV.get(),
+        candleGapBridgeUnknownSV.get(),
+      ],
+    }),
+    ({ configuration, effectiveWindow, windowOverride }) => {
+      if (configuration.key === lastSnapKey.get()) {
+        return;
+      }
+      const expectedWindow = windowOverride ?? configuration.configuredWindow;
+      if (effectiveWindow !== expectedWindow) {
+        return;
+      }
+      lastSnapKey.set(configuration.key);
+      // The new framing lands on the fit, not on a window panned for the old data.
+      clearGestureOwnedRange(viewRange, viewRangeGestureOwned);
+      snapSV.set(true);
+      applyLiveChartEngineFrame(
+        { timeSincePreviousFrame: MS_PER_FRAME_60FPS },
+        frameRefs,
+        frameScratchRef.current!,
+      );
+    },
+    // Keep this mapper ahead of path consumers across React config changes.
+    [snapConfiguration, timeWindow, viewWindow, viewEnd, viewRange, viewRangeGestureOwned, modeSV,
+      nowOverrideSV, windowBufferSV, smoothing, maxValueSV, minRangeSV,
+      nonNegativeSV, yRangeScale, referenceValue, referenceValues,
+      rangeAnimationSV, adaptiveSpeedBoostSV, exaggerateSV,
+      thresholdRangePoints, thresholdRangeExtendToStart, thresholdRangeExtendToNow,
+      pausedSV, allowFutureViewEndSV, viewWindowSmoothingSV, candleGapsSV,
+      candleGapBridgeNoTradesSV, candleGapBridgeUnavailableSV, candleGapBridgeUnknownSV,
+      lastSnapKey, snapSV, frameRefs, frameScratchRef],
+  );
 
   const tickFrame = useCallback((dt: number): boolean => {
     "worklet";

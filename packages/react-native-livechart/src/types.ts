@@ -776,7 +776,9 @@ export interface BadgeConfig extends BadgeStyleConfig {
    * indicators — the badge, the value line, and the live dot — to the price at
    * the visible window's right edge instead of the live price, so they track the
    * last visible price as you pan. The badge's momentum color is derived at that
-   * same historical edge, so incoming live ticks do not recolor it. Default
+   * same historical edge, so incoming live ticks do not recolor it. Buffered or
+   * controlled lines track the latest recorded point while it is inside the
+   * visible time window, and follow the edge only after it leaves. Default
    * `false`.
    *
    * @experimental
@@ -2720,7 +2722,11 @@ export interface LiveChartCoreProps {
    * current time so the latest point has breathing room; pass `0` to land the latest
    * point exactly at the right edge. In line-mode LiveChart, a positive buffer
    * stops the line/dot at the last recorded point; the badge and value line use
-   * that recorded price. badge.followViewEdge retains its edge-pinned indicators.
+   * that recorded price. Plain scrub also clamps to that latest recorded point.
+   * If it leaves the window to the left, the scrub hides and onScrub clears
+   * until recorded data re-enters the window.
+   * badge.followViewEdge pins indicators to the edge only when the latest
+   * recorded point leaves the visible time window.
    * Default `0`.
    */
   windowBuffer?: number;
@@ -2950,7 +2956,11 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * Both shared values are required, so this prop has no true shorthand.
    * Optional range supplies exact price bounds while end is non-null. In line
    * mode the line/dot stop at the last recorded point, with badge/value line at
-   * that price; badge.followViewEdge keeps its edge-pinned indicators.
+   * that price; plain scrub also clamps to that latest recorded point.
+   * If it leaves the window to the left, the scrub hides and onScrub clears
+   * until recorded data re-enters the window.
+   * badge.followViewEdge pins indicators to the edge only when the latest
+   * recorded point leaves the visible time window.
    * @experimental
    */
   viewport?: false | ViewportConfig;

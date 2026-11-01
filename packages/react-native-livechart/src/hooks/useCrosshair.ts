@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import {
   useAnimatedReaction,
+  useDerivedValue,
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
@@ -218,6 +219,8 @@ export function useCrosshair(
   markerOptions?: ScrubMarkerOptions,
   /** Price-axis ownership also guards against stale native long-press events. */
   axisScaleActive?: SharedValue<boolean>,
+  /** Buffered line charts must not expose synthetic prices in future space. */
+  shouldClampToLatestPoint = false,
 ): CrosshairState {
   // Config objects may be recreated without changing the plot geometry. Keep
   // worklet closures and gestures stable until an actual inset changes.
@@ -226,8 +229,8 @@ export function useCrosshair(
     () => ({ top, right, bottom, left }),
     [top, right, bottom, left],
   );
-  const scrubX = useSharedValue(-1);
-  const scrubActive = useSharedValue(false);
+  const scrubPointerX = useSharedValue(-1);
+  const scrubGestureActive = useSharedValue(false);
   // Tracks whether the active scrub phase actually began, so a tap that never
   // activates doesn't emit a spurious onGestureEnd.
   const gestureStarted = useSharedValue(false);
@@ -283,6 +286,32 @@ export function useCrosshair(
     scrubAction,
     onScrubAction,
     clampToPlot,
+  );
+
+  // Keep the pointer separate so a held scrub follows new data and viewport changes.
+  const scrubX = useDerivedValue(() => {
+    const x = scrubPointerX.get();
+    if (!shouldClampToLatestPoint || isCandleMode || hasScrubAction || x < 0) {
+      return x;
+    }
+    const points = engine.data.get();
+    const last = points[points.length - 1];
+    const windowSecs = engine.displayWindow.get();
+    const chartWidth = engine.canvasWidth.get() - padding.left - padding.right;
+    if (!last || windowSecs <= 0 || chartWidth <= 0) {
+      return -1;
+    }
+    const startTime = engine.timestamp.get() - windowSecs;
+    // There is no recorded price to select in an entirely future window.
+    if (last.time < startTime) return -1;
+    const latestX = padding.left + ((last.time - startTime) / windowSecs) * chartWidth;
+    return Math.min(x, latestX);
+  });
+  // Preserve the gesture while hiding an unavailable selection. It can become
+  // visible again without another touch when data or the viewport moves back.
+  const scrubActive = useDerivedValue(() =>
+    scrubGestureActive.get() &&
+    (!shouldClampToLatestPoint || isCandleMode || hasScrubAction || scrubX.get() >= 0),
   );
 
   // Monospace advance width, measured once per render (not per scrub frame) so
@@ -616,7 +645,8 @@ export function useCrosshair(
     () => {
       "worklet";
       if (!hasOnScrub) return "__idle__";
-      if (!scrubActive.get()) return "__inactive__";
+      if (!scrubGestureActive.get()) return "__inactive__";
+      if (!scrubActive.get()) return "__unavailable__";
       const time = scrubTime.get();
       const val = scrubValue.get();
       const x = scrubX.get();
@@ -647,9 +677,11 @@ export function useCrosshair(
       "worklet";
       if (!hasOnScrub) return;
       if (typeof curr === "string") {
-        // No ScrubPoint can represent an unpriced gap. Clear opt-in trade
-        // readouts once when leaving a valid point rather than leave stale data.
-        if (markerOptions && curr === "__pending__" && prev && typeof prev === "object") {
+        // Clear unavailable buffered selections and opt-in gap readouts once.
+        if (
+          (curr === "__unavailable__" || (markerOptions && curr === "__pending__")) &&
+          prev && typeof prev === "object"
+        ) {
           scheduleOnRN(handleScrubEnd);
         }
         return;
@@ -837,7 +869,7 @@ export function useCrosshair(
           }
           // Defer to a marker / pressable badge under the finger: don't start a
           // live scrub (or drop a crosshair) where the press is routed to an
-          // overlay tap. `scrubActive` is only set here, so bailing in `onStart`
+          // overlay tap. The gesture latch is only set here, so bailing in `onStart`
           // also keeps a follow-on drag from showing a crosshair — no `onUpdate`
           // guard needed. (Plain-scrub counterpart of the scrub-action tap defer.)
           if (
@@ -850,8 +882,8 @@ export function useCrosshair(
             padding,
             canvasWidthSV.get(),
             clampPlainScrubToPlot,
-            scrubX,
-            scrubActive,
+            scrubPointerX,
+            scrubGestureActive,
             gestureStarted,
           );
           if (hasOnGestureStart) scheduleOnRN(handleGestureStart);
@@ -891,8 +923,8 @@ export function useCrosshair(
             padding,
             canvasWidthSV.get(),
             clampPlainScrubToPlot,
-            scrubX,
-            scrubActive,
+            scrubPointerX,
+            scrubGestureActive,
           );
         },
       )
@@ -900,11 +932,10 @@ export function useCrosshair(
         /* istanbul ignore next */ () => {
           "worklet";
           resetDelayedPanGuard(fingerDown, panActivated, holdBroken);
-          // A lock-adjust drag leaves the reticle in place (scrubActive was never
-          // set); a live-scrub clears its crosshair. Always clear scrubActive so a
-          // stray scrub can never linger behind a placed reticle.
-          if (scrubActive.get()) {
-            scrubActive.set(false);
+          // A lock-adjust drag leaves the reticle in place. End the gesture even
+          // when its visible selection is hidden outside the recorded window.
+          if (scrubGestureActive.get()) {
+            scrubGestureActive.set(false);
             if (hasOnScrub) scheduleOnRN(handleScrubEnd);
           }
           if (gestureStarted.get()) {
@@ -990,7 +1021,7 @@ export function useCrosshair(
       if (deferTapHit !== undefined && deferTapHit(e.x, e.y)) return;
       // 3. Place / move the reticle. Clear any in-progress live-scrub so its
       //    crosshair never shows behind the placed reticle.
-      scrubActive.set(false);
+      scrubGestureActive.set(false);
       lockX.set(
         clampPlotX(e.x, padding.left, canvasWidthSV.get(), padding.right),
       );
@@ -1064,9 +1095,9 @@ export function useCrosshair(
     padding,
     panActivated,
     scrollActiveSV,
-    scrubActive,
+    scrubGestureActive,
     scrubBottomExclude,
-    scrubX,
+    scrubPointerX,
     snapToCandles,
     timestampSV,
   ]);

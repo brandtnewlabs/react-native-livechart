@@ -363,6 +363,7 @@ interface ScrubActionPoint {
 
 ```ts
 interface LiveChartProps {
+  // null when the gesture ends or a selected recorded tip leaves a buffered/controlled window.
   onScrub?: (point: ScrubPoint | null) => void;
   // OHLC snapshot on candle entry/re-entry; null on exit, gap, or leaving candle mode.
   onScrubCandleChange?: (candle: CandlePoint | null) => void;
@@ -506,6 +507,8 @@ interface BadgeConfig {
   offsetY?: number;         // nudge the whole badge vertically (px); default 0
   followViewEdge?: boolean; // while time-scrolled, track the price at the visible
                             // window's right edge (badge value/color + value line + dot);
+                            // buffered/controlled lines stay on the latest recorded
+                            // point while it is in the window, then follow the edge;
                             // default false
 }
 interface PulseConfig {
