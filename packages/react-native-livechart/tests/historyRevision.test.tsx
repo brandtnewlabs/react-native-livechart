@@ -120,7 +120,9 @@ it.each([false, true])(
     result.current.canvasHeight.set(200);
     expect(raw.addListener).toHaveBeenCalledTimes(1);
     expect(bridged.addListener).toHaveBeenCalledTimes(1);
-    const settle = mockReactions[1];
+    // Hook-order reactions: snap settle, scrollEnabled return-to-live, then
+    // the static one-shot settle (last).
+    const settle = mockReactions[mockReactions.length - 1];
     let previous: unknown = null;
     const tick = () => {
       if (isStatic) {

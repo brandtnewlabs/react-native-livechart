@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `snapKey` framing now settles on the UI thread via an animated reaction after
+  the framing SharedValues are current, instead of a layout effect that could
+  let path mappers draw one frame of new data against the previous scale.
+
+### Changed
+
+- With `badge.followViewEdge` on a buffered or viewport-controlled line, the
+  badge, value line, and live dot stay on the latest recorded point while it is
+  inside the visible time window, and only pin to the visible right-edge price
+  after that point leaves.
+
 ## [4.30.0] — 2026-10-29
 
 ### Added

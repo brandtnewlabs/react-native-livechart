@@ -107,15 +107,36 @@ describe("useLiveDot", () => {
       expect(result.current.dotX.value).toBe(-100);
     });
 
-    it("keeps followViewEdge pinned and gives its price precedence", async () => {
+    it("tracks the recorded tip while it stays inside the window with followViewEdge", async () => {
       const edgeValue = { value: 7 } as SharedValue<number>;
       const { result } = await renderHook(() => useLiveDot(
         engine({ timestamp: 1000, viewEnd: 1000, data: [{ time: 985, value: 9 }], displayValue: 5 }),
         DEFAULT_PADDING, edgeValue, true, true, true,
       ));
+      // tip still in [970, 1000] → stay on recorded geometry, not the edge.
+      expect(result.current.dotX.value).toBe(100);
+      expect(result.current.dotY.value).toBe(18);
+      expect(result.current.indicatorValue.value).toBe(9);
+      expect(result.current.isFollowingViewEdge.value).toBe(false);
+    });
+
+    it("resumes followViewEdge once the recorded tip leaves the window", async () => {
+      const edgeValue = { value: 7 } as SharedValue<number>;
+      const { result } = await renderHook(() => useLiveDot(
+        engine({
+          timestamp: 1000,
+          viewEnd: 1000,
+          data: [{ time: 960, value: 9 }],
+          displayValue: 5,
+          displayMin: 0,
+          displayMax: 10,
+        }),
+        DEFAULT_PADDING, edgeValue, true, true, true,
+      ));
       expect(result.current.dotX.value).toBe(188);
       expect(result.current.dotY.value).toBe(30);
       expect(result.current.indicatorValue.value).toBe(7);
+      expect(result.current.isFollowingViewEdge.value).toBe(true);
     });
   });
 

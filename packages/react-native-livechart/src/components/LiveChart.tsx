@@ -2044,7 +2044,7 @@ function useLiveChartController({
     palette,
   );
 
-  const { dotX, dotY, indicatorValue } = useLiveDot(
+  const { dotX, dotY, indicatorValue, isFollowingViewEdge } = useLiveDot(
     engine,
     effectivePadding,
     engine.edgeValue,
@@ -2063,7 +2063,7 @@ function useLiveChartController({
   // result; while scrolled back, detect against the data prefix ending at the
   // visible right-edge timestamp so incoming live ticks cannot change the pill.
   const badgeMomentumSV = useDerivedValue(() =>
-    badgeCfg?.followViewEdge && engine.viewEnd.value !== null
+    isFollowingViewEdge.value && engine.viewEnd.value !== null
       ? resolveMomentumProp(momentum, engine.data.value, engine.timestamp.value)
       : momentumSV.value,
   );

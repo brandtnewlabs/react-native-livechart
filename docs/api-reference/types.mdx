@@ -506,6 +506,8 @@ interface BadgeConfig {
   offsetY?: number;         // nudge the whole badge vertically (px); default 0
   followViewEdge?: boolean; // while time-scrolled, track the price at the visible
                             // window's right edge (badge value/color + value line + dot);
+                            // buffered/controlled lines stay on the latest recorded
+                            // point while it is in the window, then follow the edge;
                             // default false
 }
 interface PulseConfig {

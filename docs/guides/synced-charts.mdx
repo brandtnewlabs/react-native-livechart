@@ -79,8 +79,8 @@ In line mode, an external viewport or positive `windowBuffer` stops the line and
 live dot at the last recorded point, leaving future space empty. The badge and
 value line use that recorded price. The dot hides when its true point leaves the
 window; `dot.trackWhileParked` still controls its scroll-back visibility and pulse.
-`badge.followViewEdge` retains its edge-pinned dot and smoothed edge price. Candle
-indicators keep using candle prices.
+`badge.followViewEdge` pins indicators to the edge only when the latest recorded
+point leaves the visible time window. Candle indicators keep using candle prices.
 
 ## Copy the leader's drawn range
 

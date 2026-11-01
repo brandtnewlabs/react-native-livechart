@@ -329,8 +329,11 @@ hidden** by default (they'd mark a price that isn't in view). Set
 line, and live dot** instead track the price at the **visible window's right edge** — the last
 price you can see — and snap back to the live value when you return to the live edge. The badge's
 momentum color is calculated at that same historical edge, so new live ticks cannot recolor a
-stationary historical badge. To keep the badge, dot, and value line pinned at the off-screen live
-price instead (the pre-4.12 behavior), set `timeScroll={{ hideLiveOnScrollBack: false }}`.
+stationary historical badge. With a positive `windowBuffer` or an external viewport, those
+indicators stay on the latest recorded point while it is still inside the visible time window,
+and only pin to the edge after that point leaves. To keep the badge, dot, and value line pinned
+at the off-screen live price instead (the pre-4.12 behavior), set
+`timeScroll={{ hideLiveOnScrollBack: false }}`.
 
 The plotted line is independent of those overlay settings: while scrolled back, it always ends
 at the visible window's right-edge value and never connects the historical window to the current
