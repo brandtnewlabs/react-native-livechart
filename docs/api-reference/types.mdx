@@ -363,6 +363,7 @@ interface ScrubActionPoint {
 
 ```ts
 interface LiveChartProps {
+  // null when the gesture ends or a selected recorded tip leaves a buffered/controlled window.
   onScrub?: (point: ScrubPoint | null) => void;
   // OHLC snapshot on candle entry/re-entry; null on exit, gap, or leaving candle mode.
   onScrubCandleChange?: (candle: CandlePoint | null) => void;

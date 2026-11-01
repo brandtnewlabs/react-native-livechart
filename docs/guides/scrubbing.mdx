@@ -54,8 +54,10 @@ for backwards compatibility.
 
 On line-mode `LiveChart` with a positive `windowBuffer` or an external viewport,
 plain scrub also clamps to the latest recorded point so a held crosshair cannot
-read empty future space as data or the viewport moves. Candle mode and
-`scrubAction` are unchanged.
+read empty future space as data or the viewport moves. If the recorded tip leaves
+the window to the left, the crosshair and tooltip hide and `onScrub` receives
+`null`. The held gesture resumes its selection if recorded data re-enters the
+window. Candle mode and `scrubAction` are unchanged.
 
 ## Snap to candle centers (`snapToCandles`)
 

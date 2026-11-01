@@ -3900,8 +3900,9 @@ function ChartBadgeLayer({
     metricsCfg.badge,
     metricsCfg.motion.badgeColorSpeed,
     yAxisFloat,
-    engine.edgeValue,
-    badgeCfg.followViewEdge,
+    // The controller already resolves recorded-tip versus view-edge pricing.
+    undefined,
+    false,
     badgeCfg.radius,
     badgeCfg.textColor,
     labelColumn?.entries,

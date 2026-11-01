@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `snapKey` framing now settles on the UI thread via an animated reaction after
   the framing SharedValues are current, instead of a layout effect that could
   let path mappers draw one frame of new data against the previous scale.
+- Same-render `snapKey` changes include exaggeration, threshold range inputs,
+  and the remaining framing settings before consuming the snap.
+- Buffered/viewport-controlled `badge.followViewEdge` badges use the same
+  recorded-tip or edge price as their dot and value line.
+- A buffered line scrub hides and clears `onScrub` when its recorded tip moves
+  left of the window, then resumes the held gesture when recorded data re-enters.
 
 ### Changed
 

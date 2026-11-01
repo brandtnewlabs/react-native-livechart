@@ -150,6 +150,15 @@ function makeEngine(
   }) as unknown as SingleEngineState;
 }
 
+function setScrubbing(crosshair: ReturnType<typeof useCrosshair>, active: boolean) {
+  const handlers = getGestureConfig(crosshair.gesture);
+  if (active) {
+    (handlers.onStart[0] as (event: { x: number; y: number }) => void)({ x: 160, y: 80 });
+  } else {
+    (handlers.onFinalize[0] as () => void)();
+  }
+}
+
 // ─── computeScrubTime ────────────────────────────────────────────────────────
 
 describe("computeScrubTime", () => {
@@ -1331,6 +1340,120 @@ describe("memoized crosshair callbacks", () => {
   });
 });
 
+describe("buffered line scrub", () => {
+  async function setup(clampToLatest = true, empty = false) {
+    jest.mocked(useAnimatedReaction).mockClear();
+    const engine = makeEngine({
+      data: { value: empty ? [] : [
+        { time: 1_700_000_000, value: 10 },
+        { time: 1_700_000_015, value: 50 },
+      ] },
+    });
+    const onScrub = jest.fn();
+    const onGestureEnd = jest.fn();
+    const { result } = await renderHook(() => useCrosshair(
+      engine, padding, palette, formatValue, formatTime, font, true,
+      onScrub, undefined, 0, undefined, onGestureEnd, undefined, undefined,
+      undefined, undefined, "side", true, true, 8, 0, undefined, true, false,
+      undefined, undefined, undefined, clampToLatest,
+    ));
+    const calls = jest.mocked(useAnimatedReaction).mock.calls;
+    const [prepareSnapshot, publishSnapshot] = calls[0];
+    const [prepareCallback, publishCallback] = calls[calls.length - 2];
+    let previous: unknown = null;
+    const step = async () => {
+      await act(async () => {
+        publishSnapshot(prepareSnapshot(), null);
+        const next = prepareCallback();
+        publishCallback(next, previous);
+        previous = next;
+      });
+    };
+    const crosshair = result.current;
+    const handlers = getGestureConfig(crosshair.gesture);
+    const start = () => (handlers.onStart[0] as (event: { x: number; y: number }) => void)(
+      { x: 400 - padding.right, y: 80 },
+    );
+    return { engine, crosshair, onScrub, onGestureEnd, step, start };
+  }
+
+  it("clamps a held pointer to newly recorded points without another gesture update", async () => {
+    const view = await setup();
+    view.start();
+    await view.step();
+    expect(view.onScrub).toHaveBeenLastCalledWith(expect.objectContaining({
+      time: 1_700_000_015, value: 50,
+    }));
+    view.engine.data.set([...view.engine.data.get(), { time: 1_700_000_020, value: 60 }]);
+    await view.step();
+    expect(view.onScrub).toHaveBeenLastCalledWith(expect.objectContaining({
+      time: 1_700_000_020, value: 60,
+    }));
+  });
+
+  it("clears an off-screen selection and resumes the same gesture when it re-enters", async () => {
+    const view = await setup();
+    view.start();
+    await view.step();
+    // The last point is one second left of the visible window: its projected X
+    // would otherwise lie in the left gutter despite clampToPlot being enabled.
+    view.engine.timestamp.set(1_700_000_046);
+    await view.step();
+    await view.step();
+    expect(view.crosshair.scrubX.get()).toBe(-1);
+    expect(view.crosshair.scrubActive.get()).toBe(false);
+    expect(view.crosshair.scrubTime.get()).toBe(-1);
+    expect(view.crosshair.scrubValue.get()).toBeNull();
+    expect(view.crosshair.scrubDotY.get()).toBe(-1);
+    expect(view.crosshair.crosshairOpacity.get()).toBe(0);
+    expect(view.crosshair.tooltipLayout.get()).toBe(HIDDEN_TOOLTIP);
+    expect(view.onScrub.mock.calls.map(([point]) => point === null)).toEqual([false, true]);
+    expect(view.onGestureEnd).not.toHaveBeenCalled();
+
+    view.engine.timestamp.set(1_700_000_030);
+    await view.step();
+    expect(view.crosshair.scrubActive.get()).toBe(true);
+    expect(view.onScrub).toHaveBeenLastCalledWith(expect.objectContaining({
+      time: 1_700_000_015, value: 50,
+    }));
+    await act(async () => { setScrubbing(view.crosshair, false); });
+    expect(view.onGestureEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a recorded point selectable at the exact left plot edge", async () => {
+    const view = await setup();
+    view.start();
+    view.engine.timestamp.set(1_700_000_045);
+    await view.step();
+    expect(view.crosshair.scrubX.get()).toBe(padding.left);
+    expect(view.crosshair.scrubActive.get()).toBe(true);
+    expect(view.onScrub).toHaveBeenLastCalledWith(expect.objectContaining({
+      time: 1_700_000_015, value: 50,
+    }));
+  });
+
+  it("waits for recorded data before exposing a selection", async () => {
+    const view = await setup(true, true);
+    view.start();
+    await view.step();
+    expect(view.crosshair.scrubActive.get()).toBe(false);
+    expect(view.onScrub).not.toHaveBeenCalled();
+    view.engine.data.set([{ time: 1_700_000_015, value: 50 }]);
+    await view.step();
+    expect(view.crosshair.scrubActive.get()).toBe(true);
+    expect(view.onScrub).toHaveBeenLastCalledWith(expect.objectContaining({ value: 50 }));
+  });
+
+  it("preserves ordinary line scrubbing at the plot edge", async () => {
+    const view = await setup(false);
+    view.start();
+    await view.step();
+    expect(view.crosshair.scrubX.get()).toBe(400 - padding.right);
+    expect(view.crosshair.scrubActive.get()).toBe(true);
+    expect(view.onScrub).toHaveBeenLastCalledWith(expect.objectContaining({ time: 1_700_000_030 }));
+  });
+});
+
 describe("useCrosshair marker callback payload", () => {
   async function setup(enabled = true) {
     jest.mocked(useAnimatedReaction).mockClear();
@@ -1343,7 +1466,7 @@ describe("useCrosshair marker callback payload", () => {
       undefined, enabled ? { markers, radius: 16 } : undefined,
     ));
     const crosshair = result.current;
-    crosshair.scrubActive.set(true);
+    setScrubbing(crosshair, true);
     crosshair.scrubTime.set(1_700_000_015);
     crosshair.scrubValue.set(50);
     crosshair.scrubX.set(160);
@@ -1466,7 +1589,7 @@ describe("useCrosshair onScrubCandleChange", () => {
     await step();
     expect(onScrubCandleChange).not.toHaveBeenCalled();
 
-    crosshair.scrubActive.set(true);
+    setScrubbing(crosshair, true);
     scrubCandle.set(first);
     await step();
     expect(onScrubCandleChange).toHaveBeenLastCalledWith(first);
@@ -1480,7 +1603,7 @@ describe("useCrosshair onScrubCandleChange", () => {
     await step();
     expect(onScrubCandleChange).toHaveBeenLastCalledWith(second);
 
-    crosshair.scrubActive.set(false);
+    setScrubbing(crosshair, false);
     await step();
     expect(onScrubCandleChange).toHaveBeenLastCalledWith(null);
     expect(onScrubCandleChange).toHaveBeenCalledTimes(3);
@@ -1491,7 +1614,7 @@ describe("useCrosshair onScrubCandleChange", () => {
     ["without a callback", "candle" as const, undefined],
   ])("stays idle %s", async (_label, mode, onScrubCandleChange) => {
     const { crosshair, step } = await setup(mode, onScrubCandleChange);
-    crosshair.scrubActive.set(true);
+    setScrubbing(crosshair, true);
     crosshair.scrubCandle!.set(first);
     expect(await step()).toBeNull();
     expect(onScrubCandleChange ?? jest.fn()).not.toHaveBeenCalled();
@@ -1500,7 +1623,7 @@ describe("useCrosshair onScrubCandleChange", () => {
   it("clears the selected candle once when switching to line mode mid-scrub", async () => {
     const callback = jest.fn();
     const { crosshair, step, rerender } = await setup("candle", callback);
-    crosshair.scrubActive.set(true);
+    setScrubbing(crosshair, true);
     crosshair.scrubCandle!.set(first);
     await step();
 
@@ -1517,7 +1640,7 @@ describe("useCrosshair onScrubCandleChange", () => {
   it("clears once in a gap and fires again when revisiting the same candle", async () => {
     const callback = jest.fn();
     const { crosshair, step } = await setup("candle", callback);
-    crosshair.scrubActive.set(true);
+    setScrubbing(crosshair, true);
     crosshair.scrubCandle!.set(first);
     await step();
     crosshair.scrubCandle!.set(null);
@@ -1525,7 +1648,7 @@ describe("useCrosshair onScrubCandleChange", () => {
     await step();
     crosshair.scrubCandle!.set(first);
     await step();
-    crosshair.scrubActive.set(false);
+    setScrubbing(crosshair, false);
     await step();
     expect(callback.mock.calls).toEqual([[first], [null], [first], [null]]);
   });
@@ -1534,7 +1657,7 @@ describe("useCrosshair onScrubCandleChange", () => {
     const original = jest.fn();
     const replacement = jest.fn();
     const { crosshair, step, rerender } = await setup("candle", original);
-    crosshair.scrubActive.set(true);
+    setScrubbing(crosshair, true);
     crosshair.scrubCandle!.set(first);
     await step();
     await rerender({ mode: "candle", onScrubCandleChange: replacement });
