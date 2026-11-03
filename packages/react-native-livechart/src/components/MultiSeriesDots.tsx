@@ -1,6 +1,12 @@
 import { BlurMask, Circle, Group } from "@shopify/react-native-skia";
 
-import { useDerivedValue, type SharedValue } from "react-native-reanimated";
+import { useEffect } from "react";
+import {
+  useDerivedValue,
+  useFrameCallback,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
 import { lineTipX, type ChartPadding } from "../draw/line";
 import type {
   ResolvedDotGlowConfig,
@@ -23,7 +29,9 @@ function SeriesDotAtIndex({
   ringColor,
   pulse,
   viewEnd,
+  pulseClockMs,
 }: {
+  pulseClockMs: SharedValue<number>;
   index: number;
   engine: MultiEngineState;
   padding: ChartPadding;
@@ -70,10 +78,9 @@ function SeriesDotAtIndex({
   });
 
   const pulseRadius = useDerivedValue(() => {
-    // A live heartbeat on a frozen historical point is wrong (and `timestamp` is
-    // frozen, so it wouldn't animate) — suppress the pulse while scrolled back.
+    // A live heartbeat would mislabel a frozen historical point.
     if (!pulse || viewEnd?.value != null) return 0;
-    const nowMs = engine.timestamp.value * 1000 + index * PULSE_STAGGER_MS;
+    const nowMs = pulseClockMs.value + index * PULSE_STAGGER_MS;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
     return MIN_PULSE_RADIUS + t * (pulse.maxRadius - MIN_PULSE_RADIUS);
@@ -81,7 +88,7 @@ function SeriesDotAtIndex({
 
   const pulseOpacity = useDerivedValue(() => {
     if (!pulse || viewEnd?.value != null) return 0;
-    const nowMs = engine.timestamp.value * 1000 + index * PULSE_STAGGER_MS;
+    const nowMs = pulseClockMs.value + index * PULSE_STAGGER_MS;
     const t = (nowMs % pulse.interval) / pulse.duration;
     if (t >= 1) return 0;
     return pulse.opacity * (1 - t);
@@ -155,6 +162,17 @@ export function MultiSeriesDots({
   /** Number of live series slots to mount. */
   seriesCount: number;
 }) {
+  // Presentation time may advance only when a consumer publishes data. The
+  // decorative heartbeat must follow display frames independently of it.
+  const pulseClockMs = useSharedValue(0);
+  const pulseClock = useFrameCallback((frame) => {
+    if (!pulse || viewEnd?.get() != null) return;
+    pulseClockMs.value = frame.timestamp;
+  }, pulse != null);
+  useEffect(() => {
+    pulseClock.setActive(pulse != null);
+  }, [pulse, pulseClock]);
+
   return (
     <Group>
       {Array.from({ length: seriesCount }, (_, i) => (
@@ -170,6 +188,7 @@ export function MultiSeriesDots({
           ringColor={ringColor}
           pulse={pulse}
           viewEnd={viewEnd}
+          pulseClockMs={pulseClockMs}
         />
       ))}
     </Group>
