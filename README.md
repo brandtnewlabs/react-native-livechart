@@ -43,19 +43,63 @@ See every feature in motion — line & area, candlestick, multi-series, scrubbin
 
 ## Install
 
+Choose the release line that matches your renderer. **Stable 4.x remains the default**;
+**5.0.0-rc.0 is available for testing under `next`**.
+
+| Release line | Install | Renderer |
+| --- | --- | --- |
+| Stable 4.x (`latest`) | `npm install react-native-livechart@4 @shopify/react-native-skia@2.6.4` | Shopify Skia v2 |
+| 5.x release candidate (`next`) | `npm install react-native-livechart@next react-native-skia@3.9.1` | New Skia 3 / Graphite |
+
+`npm install react-native-livechart` continues to select stable 4.x.
+To pin the current RC, use `react-native-livechart@5.0.0-rc.0` instead of `@next`.
+Both lines include the 4.30.2 APIs and fixes; compatible fixes continue on 4.x.
+
+### Try the new Skia renderer
+
+For an existing app, remove the old renderer before installing the RC:
+
 ```bash
-npm install react-native-livechart
+npm uninstall @shopify/react-native-skia
+npm install react-native-livechart@next react-native-skia@3.9.1
 ```
+
+Rename every Skia import to `react-native-skia`, including custom chart children,
+font managers and images. Reinstall iOS pods where applicable and rebuild the
+native app. Install only one renderer package name.
+
+The RC requires React 19+, React Native 0.79+, iOS 15.1+ or Android API 26+ with
+Vulkan 1.1. Use a native development or Release build; Expo Go does not contain
+the new renderer. Other peer dependencies and Babel setup remain required.
+
+### Return to stable 4.x
+
+```bash
+npm uninstall react-native-skia
+npm install react-native-livechart@4 @shopify/react-native-skia@2.6.4
+```
+
+Restore Skia imports to `@shopify/react-native-skia`, reinstall iOS pods where
+applicable, and rebuild.
+
+See the [GitHub prerelease](https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v5.0.0-rc.0)
+for release notes and known verification limits. Fresh physical Android 3.9.1 QA
+remains outstanding. Report RC issues with your platform, renderer version and
+a reproduction in [GitHub Issues](https://github.com/brandtnewlabs/react-native-livechart/issues).
+
+See the [installation and migration guide](https://react-native-livechart.brandtnewlabs.com/installation).
+
 
 ### Peer dependencies
 
-Install the library's **peer dependencies** in your app (versions should match your React Native / Expo SDK):
+Install the library's **peer dependencies** in your app (versions should match your React Native / Expo SDK). Choose the Skia peer for your release line:
 
 | Peer                           | Role                                |
 | ------------------------------ | ----------------------------------- |
 | `react`                        | UI                                  |
 | `react-native`                 | Host                                |
-| `@shopify/react-native-skia`   | Canvas rendering                    |
+| `@shopify/react-native-skia` | Canvas rendering for stable 4.x |
+| `react-native-skia` | Canvas rendering for 5.x RC (use instead of Shopify) |
 | `react-native-reanimated`      | Shared values, animations, worklets |
 | `react-native-worklets`        | Required by Reanimated 4+           |
 | `react-native-gesture-handler` | Pan / scrub gestures                |
