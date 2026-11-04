@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update the unpublished Skia 3 candidate to `react-native-skia@^3.9.1` and pin
+  the example to 3.9.1; raise the React Native peer to 0.79+. Preserve Android
+  canvas composition with explicit
+  `android.backingView`/`android.opaque` options. Build marker and particle atlases
+  from shared GPU snapshots, avoiding the now-asynchronous CPU readback helper.
+
 ### Maintenance
 
 - Align the example app's native dependencies with Expo 57.0.28, deduplicate native
@@ -15,6 +23,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   versions, TypeScript, and lint in CI.
 
 ### Performance
+
+- Avoid redundant native transforms for stationary custom reference tags by
+  narrowing the positioning worklet's captured inputs. Three new paired iPhone
+  runs average 55.47% CPU before and 54.35% after (-2.0%), with a
+  small change in two pairs. The full multi-series regression remains: the
+  optimized candidate uses 5.3% more CPU than Shopify in this cohort.
+  See `docs/performance-multi-series-cpu-investigation-iphone.md`.
+
+- Compare the 3.9.1 candidate against published LiveChart 4.30.2 with Shopify
+  Skia 2.6.4 in 18 new iPhone Release captures. CPU changes are -24.4% line,
+  -16.8% candle and +11.3% multi-series; physical memory falls 54–67%.
+  The multi-series CPU tradeoff and delivered-FPS uncertainty remain. See
+  `docs/performance-shopify-vs-skia-3.9.1-iphone.md`.
+
+- Re-measure Skia 3.9.1 against 3.3.0 in 18 matched-toolchain iPhone Release
+  captures. Average CPU changes are -3.9% line, -1.8% candle and +0.1%
+  multi-series; memory changes stay below 1%. Delivered frame pacing remains
+  unresolved because of compositor attribution gaps. See
+  `docs/performance-skia-3.9.1-iphone.md`.
 
 - Fit the first measured, visible `LiveChartSeries` data immediately, including
   with animated expansion or an initially empty feed. Subsequent updates keep
@@ -35,25 +62,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc.0] — Unpublished candidate
 
-Prepared for Skia 3.3.0; no npm publication, tag or GitHub release has been made.
+Prepared for Skia 3.9.1 (initially 3.3.0); no npm publication, tag or GitHub
+release has been made.
 
 ### Breaking
 
-- Replace the `@shopify/react-native-skia` peer with `react-native-skia@^3.3.0`.
+- Replace the `@shopify/react-native-skia` peer with `react-native-skia@^3.9.1`.
   Apps must migrate their renderer imports and font/image types, install one
-  native Skia package, and rebuild. React 19+ and React Native 0.78+ are now
+  native Skia package, and rebuild. React 19+ and React Native 0.79+ are now
   required. Maintained Skia v2 support is not declared in this candidate.
 
 ### Changed
 
 - Migrate all runtime, example, mock, and declaration imports to
-  `react-native-skia` 3.3 (Graphite).
+  `react-native-skia` 3.9.1 (Graphite).
   Existing published LiveChart 4.x releases keep the Shopify peer.
   Native iOS and Android/Vulkan verification is tracked in
   [#409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
 - Add an explicit `publish:lib:next` command and a prepublish check that rejects
   prerelease publication to `latest`. Stable `latest` remains 4.x.
-- Use the published, unmodified Skia 3.3.0 renderer. The experimental native
+- Use the published, unmodified Skia 3.9.1 renderer. The experimental native
   glyph-atlas patch was removed from the example and package before release;
   the measurements do not establish an allocation regression from Skia 2.6.4.
 

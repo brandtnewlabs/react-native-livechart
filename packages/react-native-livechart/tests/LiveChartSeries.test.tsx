@@ -81,7 +81,7 @@ describe("LiveChartSeries", () => {
     const screen = await render(<H />);
     await waitFor(() => expect(screen.getByText("A")).toBeTruthy());
     const views = getAllByHostType(screen, View);
-    expect(views.some((view) => view.props.opaque === true)).toBe(true);
+    expect(views.some((view) => view.props.android?.opaque === true && view.props.android?.backingView === "SurfaceView")).toBe(true);
     expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(false);
   });
 

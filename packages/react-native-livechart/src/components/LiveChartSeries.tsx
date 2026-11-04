@@ -1316,7 +1316,10 @@ function SeriesCanvas({ model }: { model: LiveChartSeriesModel }) {
     <Canvas
       key={canvasMode}
       style={{ flex: 1, minHeight: layoutHeight || 1 }}
-      opaque={canvasMode === "opaque"}
+      android={{
+        opaque: canvasMode === "opaque",
+        backingView: canvasMode === "opaque" ? "SurfaceView" : "TextureView",
+      }}
     >
       {canvasMode === "opaque" ? (
         <Rect

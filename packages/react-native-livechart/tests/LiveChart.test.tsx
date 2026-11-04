@@ -251,7 +251,7 @@ describe("LiveChart", () => {
     );
     let views = getAllByHostType(screen, View);
 
-    expect(views.some((view) => view.props.opaque === true)).toBe(true);
+    expect(views.some((view) => view.props.android?.opaque === true && view.props.android?.backingView === "SurfaceView")).toBe(true);
     expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(false);
     expect(
       views.some(
@@ -283,7 +283,7 @@ describe("LiveChart", () => {
     const screen = await render(<Harness canvasMode="transparent" />);
     const views = getAllByHostType(screen, View);
 
-    expect(views.some((view) => view.props.opaque === false)).toBe(true);
+    expect(views.some((view) => view.props.android?.opaque === false && view.props.android?.backingView === "TextureView")).toBe(true);
     expect(views.some((view) => view.props.blendMode === "dstOut")).toBe(true);
   });
 

@@ -1,4 +1,68 @@
-# LiveChart 5 release candidate for Skia 3.3
+# LiveChart 5 release preparation
+
+## Proposed release and support policy — November 4, 2026
+
+Registry checks today show LiveChart **4.30.2** on `latest`; **5.0.0-rc.0** is
+still unpublished. This checkout targets `react-native-skia@^3.9.1`, React 19+
+and React Native 0.79+. The example pins Skia 3.9.1.
+
+Maintain two LiveChart major versions under the existing npm package name:
+
+| LiveChart line | Renderer package | Proposed maintenance |
+| --- | --- | --- |
+| 4.x | `@shopify/react-native-skia` v2 | Keep existing apps supported; backport compatible bug fixes |
+| 5.x | `react-native-skia@^3.9.1` | New renderer release line |
+
+Consumers choose their LiveChart major explicitly; each artifact has one static
+renderer import namespace and the corresponding peer dependency. Both Skia
+package names must not be installed together: they register the same native
+module. See the upstream [migration guide](https://wcandillon.github.io/react-native-skia/docs/getting-started/migration/).
+
+There is also maintained Skia v2 under the **new** package name:
+`react-native-skia@2.15.2` is currently tagged `release-2.x`. That is an additional
+compatibility target, distinct from the Shopify package used by LiveChart 4.x.
+Support for it is not verified or declared in the current 5.x candidate. Adding
+it would require a version-compatible drawing adapter, matching public types,
+and packed-consumer/native checks against both v2 and v3 before widening peers.
+
+### Publication sequence
+
+1. Reconcile the candidate with the current 4.30.2 baseline before packaging.
+   The last common commit with the current stable branch is `c6785ec`; stable
+   changes missing from the candidate include viewport/explicit price range,
+   price scrolling/reset-view, snap/indicator alignment and display-frame pulse
+   fixes. Preserve those APIs and fixes alongside the renderer migration.
+2. Prepare **5.0.0-rc.0** for npm's **`next`** tag. Keep 4.30.2 on **`latest`**
+   during the candidate period. Verify the actual package, its peer tree and
+   public declarations in a consumer app, and smoke-test the supported native
+   platforms. Retain the accepted scrub CPU tradeoff in release notes.
+3. When promoting a stable **5.0.0**, first tag the supported 4.x release
+   **`legacy`**, then publish 5.x under **`latest`**. Existing apps can install
+   `react-native-livechart@4`; new-renderer apps can select `@5`.
+4. Publish subsequent 4.x maintenance releases explicitly under **`legacy`**.
+   Add a matching publish guard on the maintenance line so a default publish
+   cannot replace the 5.x `latest` tag. Keep the existing explicit `next` guard
+   for prereleases. Every publication still needs its version tag, changelog
+   entry and GitHub Release.
+
+Keep shared engine/interaction fixes aligned across the two release lines, with
+renderer-specific changes isolated. Maintain clearly labelled 4.x and 5.x
+installation/API documentation. Supporting both major versions does not mean
+loading both native renderers into one app.
+
+Current performance evidence is in the
+[Shopify comparison](performance-shopify-vs-skia-3.9.1-iphone.md) and the
+[CPU investigation](performance-multi-series-cpu-investigation-iphone.md).
+The retained reference-tag optimization averages 2.0% less CPU in three paired
+iPhone runs; the remaining whole-workload gap versus Shopify is 5.3%,
+concentrated in the scrub-heavy phase. The post-scrub period includes visibility
+toggles and is not a pure idle benchmark. No delivered-FPS ranking is established.
+
+The policy above is a preparation proposal; no version, npm tag or publication
+was changed while documenting it. Earlier preparation and device results below
+describe the historical Skia 3.3.0 candidate unless explicitly dated otherwise.
+
+## Historical Skia 3.3 release candidate
 
 Prepared locally on 2026-10-10 as **5.0.0-rc.0**. No npm publication, Git tag or
 GitHub release was created. At preparation time the registry's stable `latest`

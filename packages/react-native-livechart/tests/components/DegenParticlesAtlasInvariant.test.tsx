@@ -37,6 +37,7 @@ jest.mock('react-native-skia', () => ({
   },
   PaintStyle: { Fill: 0 },
   Skia: {
+    Surface: { MakeOffscreen: () => ({ getCanvas: () => ({ drawPicture: () => undefined }), flush: () => undefined, makeImageSnapshot: () => ({}), dispose: () => undefined }) },
     Color: (color: string): string => color,
     Paint: () => ({
       setAntiAlias: () => undefined,

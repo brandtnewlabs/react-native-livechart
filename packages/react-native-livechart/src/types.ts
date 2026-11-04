@@ -55,7 +55,8 @@ export type FontWeight =
 export type ThemeMode = "light" | "dark";
 
 /** Skia canvas composition mode. Android uses TextureView for `"transparent"`
- * and an opaque SurfaceView for `"opaque"`. */
+ * and an opaque SurfaceView for `"opaque"`, selected through Skia's
+ * `android.backingView` and `android.opaque` options (Skia 3.9.1+). */
 export type CanvasMode = "transparent" | "opaque";
 
 /**

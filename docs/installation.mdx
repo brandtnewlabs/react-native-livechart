@@ -37,11 +37,11 @@ for your toolchain.
 
 ## LiveChart 5 release candidate
 
-The unpublished **5.0.0-rc.0** package targets `react-native-skia` **^3.3.0**, React **19+**, and
-React Native **0.78+**. The example pins Skia **3.3.0**. Maintained Skia 2.15.1
+The unpublished **5.0.0-rc.0** package targets `react-native-skia` **^3.9.1**, React **19+**, and
+React Native **0.79+**. The example pins Skia **3.9.1**. Maintained Skia 2.15.1
 support is pending verification and is not included in the candidate peer range.
 
-Remove `@shopify/react-native-skia`, install `react-native-skia@3.3.0`, and rename
+Remove `@shopify/react-native-skia`, install `react-native-skia@3.9.1`, and rename
 your Skia imports, including custom chart children and font/image types. Never
 install both names together: they contain the same native module. Reinstall pods
 and rebuild the native app after changing the renderer.
@@ -64,18 +64,19 @@ the resulting tarball into your app, alongside the renderer:
 
 ```bash
 npm uninstall @shopify/react-native-skia
-npm install /path/to/react-native-livechart-5.0.0-rc.0.tgz react-native-skia@3.3.0
+npm install /path/to/react-native-livechart-5.0.0-rc.0.tgz react-native-skia@3.9.1
 ```
 
-The published `latest` remains LiveChart 4.28.1. This candidate includes its
-live-price smoothing and line/dot alignment correction. When prerelease publication is
-explicitly requested, `npm run publish:lib:next` selects the `next` dist-tag.
+Published LiveChart 4.x releases retain the Shopify renderer. This candidate
+includes the live-price smoothing and line/dot alignment correction. When
+prerelease publication is explicitly requested, `npm run publish:lib:next` selects the `next` dist-tag.
 A prepublish check rejects prerelease publication to `latest`; npm's workspace
 publish command can otherwise ignore `publishConfig.tag`.
 
 The removed Canvas props (`debug`, `colorSpace`, `androidWarmup`) and removed
 `NativeSkiaViewProps` type are not used or exported by LiveChart. The existing
-`canvasMode` API continues to map to Skia's `opaque` Canvas prop.
+`canvasMode` API maps to Skia's `android.opaque` and explicit
+`android.backingView` options.
 
 ## Babel
 
