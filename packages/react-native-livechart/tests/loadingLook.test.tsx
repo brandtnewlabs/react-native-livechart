@@ -9,6 +9,7 @@ type ShellProps = {
   waveAmplitude?: number;
   waveSpeed?: number;
   showAxisLabels?: boolean;
+  waveFreezeAfterMs?: number;
 };
 const mockShellProps: ShellProps[] = [];
 jest.mock("../src/components/LoadingOverlay", () => ({
@@ -38,6 +39,7 @@ const LOOK: LoadingConfig = {
   amplitude: 22,
   speed: 1.5,
   axisLabels: false,
+  freezeAfterMs: 10_000,
 };
 
 beforeEach(() => {
@@ -69,6 +71,7 @@ describe("the loading look outlives `loading`", () => {
       waveAmplitude: 22,
       waveSpeed: 1.5,
       showAxisLabels: false,
+      waveFreezeAfterMs: 10_000,
     });
     // useChartPaths(engine, padding, morphT, thresholdY, linear, squiggleAmplitude, squiggleSpeed, …)
     const morph = mockMorphArgs[mockMorphArgs.length - 1];
@@ -96,6 +99,7 @@ describe("the loading look outlives `loading`", () => {
       waveAmplitude: 22,
       waveSpeed: 1.5,
       showAxisLabels: false,
+      waveFreezeAfterMs: 10_000,
     });
   });
 });

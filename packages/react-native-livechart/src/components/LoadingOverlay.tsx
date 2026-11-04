@@ -20,6 +20,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import {
   BADGE_METRICS_DEFAULTS,
   EMPTY_STATE_METRICS_DEFAULTS,
+  MS_PER_FRAME_60FPS,
 } from "../constants";
 import {
   badgeTailAndCap,
@@ -32,7 +33,12 @@ import {
   type ReanimatedPathBuilder,
 } from "../hooks/usePathBuilder";
 import { drawSpline } from "../math/spline";
-import { buildSquigglyPts, squiggleClockSeconds } from "../math/squiggly";
+import {
+  buildSquigglyPts,
+  squiggleClockSeconds,
+  squiggleFrozen,
+  squiggleShownMsAfterFrame,
+} from "../math/squiggly";
 import type {
   BadgeMetrics,
   EmptyStateMetrics,
@@ -77,6 +83,7 @@ export function LoadingOverlay({
   lineStrokeWidth,
   waveAmplitude = 14,
   waveSpeed = 1,
+  waveFreezeAfterMs,
   opaqueCanvas = false,
 }: {
   engine: ChartEngineLayout;
@@ -97,6 +104,11 @@ export function LoadingOverlay({
   waveAmplitude?: number;
   /** Breathing-wave speed multiplier. */
   waveSpeed?: number;
+  /**
+   * Animated time (ms) per showing of the loading / empty shell before the
+   * squiggle freezes (`LoadingConfig.freezeAfterMs`). Omit → no limit.
+   */
+  waveFreezeAfterMs?: number;
   /** Paint the owned background instead of erasing destination alpha. */
   opaqueCanvas?: boolean;
   /** Mirror the badge prop so labels align with GridOverlay's label positions. */
@@ -141,23 +153,49 @@ export function LoadingOverlay({
   // the engine clock between data updates, which froze the loading line with it
   // (the pulse clock in DotOverlay has the same fix). Ticks only while the shell
   // shows (loading, empty, or mid-reveal) on a chart whose frame loops run: never
-  // on a `static` chart, while `isFrameLoopActive` is off, or at wave speed 0.
+  // on a `static` chart, while `isFrameLoopActive` is off, at wave speed 0, or
+  // once the shell has used up `freezeAfterMs`.
   const squiggleClock = useSharedValue(squiggleClockSeconds());
-  /* istanbul ignore next -- frame-callback worklet runs on the UI thread, not in Jest */
-  const squiggleFrames = useFrameCallback(() => {
+  // `freezeAfterMs`: the time the squiggle has animated in this showing of the
+  // loading / empty shell, in frames drawn (only counted with a limit). The
+  // reveal doesn't count: it is bounded by its own duration, and its morph
+  // phases its wave on the wall clock, so a shell frozen through it would show
+  // two waves out of step.
+  const squiggleShownMs = useSharedValue(0);
+  const squiggleFrames = useFrameCallback((frame) => {
     if (isFrameLoopActive?.get() === false) return;
-    squiggleClock.value = squiggleClockSeconds();
+    if (waveFreezeAfterMs !== undefined && (isLoading.get() || isEmpty.value)) {
+      const shown = squiggleShownMsAfterFrame(
+        squiggleShownMs.get(),
+        frame.timeSincePreviousFrame ?? MS_PER_FRAME_60FPS,
+      );
+      squiggleShownMs.set(shown);
+      // Out of time: freeze. The reaction below stops this callback.
+      if (squiggleFrozen(shown, waveFreezeAfterMs)) return;
+    }
+    squiggleClock.set(squiggleClockSeconds());
   }, false);
   const setSquiggleTicking = useCallback(
     (on: boolean) => squiggleFrames.setActive(on),
     [squiggleFrames],
+  );
+  // Each time the shell appears (on mount, or after data has shown), the
+  // squiggle gets the whole `freezeAfterMs` again. Loading and the empty state
+  // that follows it share one.
+  useAnimatedReaction(
+    () => isLoading.get() || isEmpty.value,
+    (shown, previous) => {
+      if (shown && shown !== previous) squiggleShownMs.set(0);
+    },
   );
   useAnimatedReaction(
     () =>
       !isStatic &&
       waveSpeed !== 0 &&
       isFrameLoopActive?.get() !== false &&
-      (isLoading.get() || isEmpty.value || morphT.get() < 1),
+      (isLoading.get() || isEmpty.value
+        ? !squiggleFrozen(squiggleShownMs.get(), waveFreezeAfterMs)
+        : morphT.get() < 1),
     (ticking, previous) => {
       if (ticking === previous) return;
       // Start from now, not from wherever the clock stopped when the shell last hid:

@@ -13,6 +13,9 @@ For an opaque chart, you can profile Skia's `SurfaceView` path:
 <LiveChart data={data} value={value} canvasMode="opaque" />
 ```
 
+Skia 3.9.1 uses explicit `android.backingView: "SurfaceView"` with
+`android.opaque: true` for this mode. Transparent mode selects `TextureView`.
+
 `canvasMode="opaque"` is experimental and opt-in. The chart paints the resolved palette
 background as the first canvas draw, then uses background-color composites for the left-edge
 fade, scrub dim, and loading/empty label gap. This preserves those effects without relying on

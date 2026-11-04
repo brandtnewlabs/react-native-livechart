@@ -177,16 +177,29 @@ export function useBadge(
         badgeMetrics,
       );
       // textAlign "yAxisColumn": the range the value may take inside the
-      // pill's horizontal padding. When it doesn't fit there, it stays centered.
-      const minTextX = bodyLeft + badgeMetrics.padX;
-      const maxTextX = bodyRight - badgeMetrics.padX - textW;
+      // pill's horizontal padding. A tail-less pill keeps `padX` on both
+      // sides. Next to the tail, whose taper already keeps the value off the
+      // outline, a pill too narrow for both paddings gives up the left one
+      // first, then the right one, so the value never jumps as the pill
+      // narrows. When the paddings kept don't fit, it stays centered.
+      const spare = pillW - textW;
+      const padLeft = showTail
+        ? Math.min(badgeMetrics.padX, Math.max(spare - badgeMetrics.padX, 0))
+        : badgeMetrics.padX;
+      const padRight = showTail
+        ? Math.min(badgeMetrics.padX, Math.max(spare, 0))
+        : badgeMetrics.padX;
+      const minTextX = bodyLeft + padLeft;
+      const maxTextX = bodyRight - padRight - textW;
       if (
         yAxisEntries !== undefined &&
         labelRightMargin !== undefined &&
-        minTextX <= maxTextX
+        // minTextX <= maxTextX, tested on `spare`: where the two bounds meet
+        // (a narrow tailed pill), a rounding error must not flip to centered.
+        padLeft <= spare - padRight
       ) {
         // Start at the labels' shared left X; a value wider than every label
-        // ends at the column's right edge instead. Kept inside the padding, so
+        // ends at the column's right edge instead. Kept inside that range, so
         // the alignment gives way where the two disagree.
         const { labelX } = rightAnchoredYAxisColumnLayout(
           w,

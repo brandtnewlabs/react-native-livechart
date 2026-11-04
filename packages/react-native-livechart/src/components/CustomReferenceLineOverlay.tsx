@@ -205,10 +205,14 @@ function CustomReferenceLineView({
 
   const tagOffsetY = useDerivedValue(() => tagStack?.get().offsets[index] ?? 0);
   const anchor = resolveAnchor(line);
+  // Capture width separately: Reanimated subscribes to every SharedValue in
+  // captured objects. Capturing engine would resend the native transform on
+  // every clock/range tick even when the clamped y/edge stay unchanged.
+  const canvasWidth = engine.canvasWidth;
   const animatedStyle = useAnimatedStyle(() => {
     const yy = y.get();
     const s = size.get();
-    const w = engine.canvasWidth.get();
+    const w = canvasWidth.get();
     const visible = yy >= 0 && w > 0 && (!offAxisOnly || edge.get() !== "in");
     const x1 = padding.left;
     const x2 = w - padding.right;

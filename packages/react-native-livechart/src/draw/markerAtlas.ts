@@ -1,9 +1,9 @@
+import { imageFromPicture } from "./imageFromPicture";
 import {
   Skia,
   PaintStyle,
   StrokeCap,
   StrokeJoin,
-  drawAsImageFromPicture,
   type SkCanvas,
   type SkFont,
   type SkImage,
@@ -493,6 +493,6 @@ export function buildMarkerAtlas(
     x += spec.w;
   }
   const picture = recorder.finishRecordingAsPicture();
-  const image = drawAsImageFromPicture(picture, { width: texW, height: texH });
+  const image = imageFromPicture(picture, { width: texW, height: texH });
   return { image, cells, scale, digitWidths };
 }

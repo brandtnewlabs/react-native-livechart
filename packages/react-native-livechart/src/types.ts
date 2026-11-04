@@ -55,7 +55,8 @@ export type FontWeight =
 export type ThemeMode = "light" | "dark";
 
 /** Skia canvas composition mode. Android uses TextureView for `"transparent"`
- * and an opaque SurfaceView for `"opaque"`. */
+ * and an opaque SurfaceView for `"opaque"`, selected through Skia's
+ * `android.backingView` and `android.opaque` options (Skia 3.9.1+). */
 export type CanvasMode = "transparent" | "opaque";
 
 /**
@@ -758,11 +759,17 @@ export interface BadgeConfig extends BadgeStyleConfig {
    * column ({@link YAxisConfig.labelRightMargin}): it starts at the labels'
    * shared left X, and a value wider than every axis label ends at the
    * column's right edge. The pill keeps its shape and the value stays within
-   * its `padX` padding (a value that doesn't fit there is centered), so the
-   * room on each side follows the right inset and `metrics.badge`. The value
-   * moves sideways when the column's width changes (a wider label entering or
-   * leaving the axis). Centered without that column on the right side, while
-   * the axis floats, and for a `"left"` badge. Default `"center"`.
+   * its `padX` padding, so the room on each side follows the right inset and
+   * `metrics.badge`. Next to the tail, whose taper keeps the value off the
+   * outline, a pill too narrow for both paddings gives up the left one first,
+   * then the right one, so the value moves continuously as the pill narrows:
+   * with room for its right padding it ends `padX` from the pill's end (the
+   * column's right edge when `marginEdge + padX` equals `labelRightMargin`).
+   * A value wider than a tailed pill's body, or one that doesn't fit both
+   * paddings of a pill without a tail, is centered. The value moves sideways
+   * when the column's width changes (a wider label entering or leaving the
+   * axis). Centered without that column on the right side, while the axis
+   * floats, and for a `"left"` badge. Default `"center"`.
    */
   textAlign?: "center" | "yAxisColumn";
   /**
@@ -770,7 +777,9 @@ export interface BadgeConfig extends BadgeStyleConfig {
    * indicators — the badge, the value line, and the live dot — to the price at
    * the visible window's right edge instead of the live price, so they track the
    * last visible price as you pan. The badge's momentum color is derived at that
-   * same historical edge, so incoming live ticks do not recolor it. Default
+   * same historical edge, so incoming live ticks do not recolor it. Buffered or
+   * controlled lines track the latest recorded point while it is inside the
+   * visible time window, and follow the edge only after it leaves. Default
    * `false`.
    *
    * @experimental
@@ -1848,7 +1857,9 @@ export interface DotConfig {
    * dot must stay aligned with its badge. Single-series `LiveChart` only
    * (multi-series dots already ride each line's end while scrolled). Default
    * `false` (the dot stays pinned to the right edge with its pulse suppressed
-   * while scrolled back).
+   * while scrolled back). With an external viewport or positive windowBuffer,
+   * a line dot already tracks the recorded endpoint; this option still controls
+   * its scroll-back visibility and pulse.
    *
    * @experimental
    */
@@ -2308,6 +2319,16 @@ export interface LiveChartHandle {
    * ```
    */
   resetZoom(): void;
+  /**
+   * Return to the fitted live view: {@link resetZoom} plus `yRangeScale` → 1 and
+   * a gesture-owned price range cleared, gliding the right edge back to live
+   * with the `timeScroll.returnToLive` timing. What the `resetButton` runs.
+   * Safe to call when already fitted. On LiveChartSeries, which has no price
+   * pan, it is `resetZoom()` plus `yRangeScale` → 1.
+   *
+   * @experimental
+   */
+  resetView(): void;
 }
 
 /**
@@ -2395,6 +2416,13 @@ export interface LoadingConfig {
    * squiggle with no placeholder ticks. Default `true`.
    */
   axisLabels?: boolean;
+  /**
+   * Freezes the squiggle once it has animated this long (ms) each time the
+   * loading or empty shell appears; it moves again when the shell next appears.
+   * Counted in frames drawn, so time in the background doesn't count. `0` or
+   * less freezes it from the start. Default `undefined`: no limit.
+   */
+  freezeAfterMs?: number;
 }
 
 /** Y-range easing shared by both charts, independent of value/window tracking. */
@@ -2488,7 +2516,8 @@ export interface LiveChartCoreProps {
    * `true` shows the shell with the defaults; pass a {@link LoadingConfig} to
    * restyle it — `color` / `strokeWidth` for the squiggle + skeleton, `amplitude`
    * / `speed` for the breathing wave, `axisLabels` to toggle the skeleton
-   * placeholders. `false` / omitted is "not loading". Toggle between the config
+   * placeholders, `freezeAfterMs` to freeze the wave after a while.
+   * `false` / omitted is "not loading". Toggle between the config
    * and `false` as data loads (e.g. `loading={isLoading && cfg}`). The loading→live
    * reveal duration is governed separately by {@link TransitionConfig.reveal} (the
    * `transitions` prop).
@@ -2693,7 +2722,14 @@ export interface LiveChartCoreProps {
   /**
    * Right-edge buffer as a fraction of `timeWindow`. Pushes the live edge past the
    * current time so the latest point has breathing room; pass `0` to land the latest
-   * point exactly at the right edge. Default `0`.
+   * point exactly at the right edge. In line-mode LiveChart, a positive buffer
+   * stops the line/dot at the last recorded point; the badge and value line use
+   * that recorded price. Plain scrub also clamps to that latest recorded point.
+   * If it leaves the window to the left, the scrub hides and onScrub clears
+   * until recorded data re-enters the window.
+   * badge.followViewEdge pins indicators to the edge only when the latest
+   * recorded point leaves the visible time window.
+   * Default `0`.
    */
   windowBuffer?: number;
   /**
@@ -2798,15 +2834,28 @@ export interface LiveChartCoreProps {
 
 /**
  * UI-thread scroll/zoom state adopted by a single-series {@link LiveChart}.
- * The app owns leadership and timestamp mapping; gestures write these same values.
+ * The app owns leadership and timestamp mapping; gestures write end/window.
  * @experimental
  */
 export interface ChartViewportControl {
   /** Right-edge unix timestamp in seconds; null follows this chart's live edge.
-   * Honors times past live. An end before the first retained point falls back to live. */
+   * Honors times past live. Before the first retained point, falls back to live
+   * unless a valid explicit range is supplied. */
   end: SharedValue<number | null>;
   /** Positive, finite visible width in seconds; null uses the timeWindow prop. */
   window: SharedValue<number | null>;
+  /**
+   * Exact price bounds while end is finite and non-null, including empty past or
+   * future space. Both bounds and their difference must be finite, with min < max.
+   * Applied immediately, overriding automatic fitting, range easing, nonNegative,
+   * maxValue, minRange, and yRangeScale. Invalid/null/omitted bounds use auto-fit.
+   * App-written bounds are ignored while end is null (including after resetZoom()).
+   * With priceScroll, gestures write this range too: gesture-owned bounds stay
+   * active while following live and obey the chart's hard bounds. A later app
+   * write or replacement range SharedValue restores the app-owned contract;
+   * resetView(), axis double-tap and framing changes preserve app-written bounds.
+   */
+  range?: SharedValue<Pick<ChartScale, "min" | "max"> | null>;
 }
 
 /** External viewport state and optional behavior settings for {@link LiveChart}.
@@ -2816,8 +2865,86 @@ export interface ChartViewportControl {
 export interface ViewportConfig extends ChartViewportControl {
   /** Ease non-null window overrides using the chart's smoothing. Default true.
    * Set false on followers copying a leader's drawn width to avoid easing twice.
-   * Null windows still ease back to timeWindow; Y-range/value smoothing is unchanged. */
+   * Null windows still ease back to timeWindow; value and automatic Y-range
+   * smoothing are unchanged. Explicit range bounds always apply immediately. */
   windowSmoothing?: boolean;
+}
+
+/**
+ * Vertical price panning (see {@link LiveChartProps.priceScroll}).
+ *
+ * @experimental Prototype — gesture model and API may change.
+ */
+export interface PriceScrollConfig {
+  /**
+   * When a vertical drag on the plot pans the price window:
+   *  - `"afterScale"` (default) — only once the range was manually changed (a
+   *    price-axis drag, a pinch, or an earlier price pan), so an untouched chart
+   *    still lets a parent ScrollView scroll.
+   *  - `"always"` — every vertical drag pans price.
+   */
+  activation?: "always" | "afterScale";
+  /**
+   * How far the window may travel past the fitted range, as a multiple of the
+   * visible price span. Default `1`.
+   */
+  maxOvershoot?: number;
+}
+
+/**
+ * Floating reset-view button (see {@link LiveChartProps.resetButton}).
+ *
+ * @experimental
+ */
+export interface ResetButtonConfig {
+  /** Where the button sits inside the plot rect. Default `"bottom-center"`. */
+  placement?: "bottom-center" | "bottom-right";
+  /**
+   * Which manual states show the button. Each defaults to `true`; set one to
+   * `false` to ignore that state.
+   */
+  showFor?: {
+    /** A scaled price axis (`yRangeScale !== 1`). */
+    yScale?: boolean;
+    /** A vertically panned price window (`priceScroll`). */
+    priceScroll?: boolean;
+    /** A window scrolled back from the live edge (`timeScroll`). */
+    timeScroll?: boolean;
+    /** A pinched window width (`zoom`). */
+    zoom?: boolean;
+  };
+  /** Distance from the plot's bottom (and right) edge, in px. Default `12`. */
+  margin?: number;
+  /** Fade duration in ms when the button appears or hides. Default `160`. */
+  fadeMs?: number;
+  /**
+   * Built-in button only: glyph rendered in the chart's font family, like
+   * {@link ScrubActionConfig.icon}. Default `"↺"`.
+   */
+  icon?: string;
+  /** Built-in button only: diameter in px. Default `36`. */
+  size?: number;
+  /** Built-in button only: fill color. Defaults to `palette.badgeBg`. */
+  color?: string;
+  /** Built-in button only: glyph color. Defaults to `palette.badgeText`. */
+  iconColor?: string;
+  /** Built-in button only: screen-reader label. The library ships no text of its own. */
+  accessibilityLabel?: string;
+}
+
+/**
+ * Handed to {@link LiveChartProps.renderResetButton}.
+ *
+ * @experimental
+ */
+export interface ResetButtonRenderProps {
+  /** True while the view differs from the fitted live view. */
+  visible: SharedValue<boolean>;
+  /**
+   * Runs `resetView()`. Wire to `onAccessibilityTap` on iOS and the `activate`
+   * action through `accessibilityActions` / `onAccessibilityAction` on Android.
+   */
+  reset: () => void;
 }
 
 /** Props for the single-series `LiveChart` component. */
@@ -2829,9 +2956,52 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * and wake autoSleep charts. Single-series line/candle only.
    * Pass a ViewportConfig object to enable; false/omitted uses private state.
    * Both shared values are required, so this prop has no true shorthand.
+   * Optional range supplies exact price bounds while end is non-null. In line
+   * mode the line/dot stop at the last recorded point, with badge/value line at
+   * that price; plain scrub also clamps to that latest recorded point.
+   * If it leaves the window to the left, the scrub hides and onScrub clears
+   * until recorded data re-enters the window.
+   * badge.followViewEdge pins indicators to the edge only when the latest
+   * recorded point leaves the visible time window.
    * @experimental
    */
   viewport?: false | ViewportConfig;
+  /**
+   * Drag the plot vertically to move the price window — with `timeScroll` this
+   * gives free X/Y panning. The pan writes the viewport's price `range` (the
+   * supplied `viewport.range` shared value when one is given, private state
+   * otherwise), which then holds while new data streams in. A later app write
+   * or replacement range SharedValue relinquishes gesture ownership. A price-axis drag
+   * scales that range, and a double-tap on the axis, `resetView()` or a
+   * `snapKey` / mode change clears it. Rides on the `timeScroll` pan, so it
+   * requires `timeScroll`. `true` = defaults, or pass a {@link PriceScrollConfig}.
+   * Default `false`.
+   *
+   * @experimental Prototype — gesture model and API may change.
+   */
+  priceScroll?: boolean | PriceScrollConfig;
+  /**
+   * Floating button that appears once the user has left the fitted live view
+   * (time pan, pinch, price-axis scale or price pan) and returns to it in one
+   * tap (see {@link LiveChartHandle.resetView}). `true` = the built-in round
+   * glyph button, or pass a {@link ResetButtonConfig}. Default `false`.
+   *
+   * @experimental
+   */
+  resetButton?: boolean | ResetButtonConfig;
+  /**
+   * Custom visual for `resetButton`. The chart owns placement, visibility, fade
+   * and the tap, so return a plain view rather than a pressable; the wrapper is
+   * measured, so any size works. Called on the JS thread once per render.
+   *
+   * @experimental
+   */
+  renderResetButton?: (props: ResetButtonRenderProps) => ReactElement;
+  /**
+   * Called on the JS thread after the reset overrides are applied on the UI
+   * thread (button tap or `resetView()`). Return animations may still be running.
+   */
+  onResetView?: () => void;
   /** Area gradient fill under the line. `true` = defaults, or pass `GradientConfig`. Default `true`. */
   gradient?: boolean | GradientConfig;
   /**

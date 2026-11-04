@@ -168,7 +168,7 @@ module.exports = getBundleModeMetroConfig(getDefaultConfig(__dirname));
 import { View } from "react-native";
 import { registerRootComponent } from "expo";
 import { useSharedValue } from "react-native-reanimated";
-import { LiveChart } from "react-native-livechart";
+import { LiveChart, LiveChartSeries } from "react-native-livechart";
 
 function App() {
   const data = useSharedValue([
@@ -176,10 +176,12 @@ function App() {
     { time: 1, value: 101 },
   ]);
   const value = useSharedValue(101);
+  const series = useSharedValue([{ id: "price", label: "Price", data: [{ time: 0, value: 100 }, { time: 1, value: 101 }], value: 101 }]);
 
   return (
     <View style={{ flex: 1 }}>
       <LiveChart data={data} value={value} />
+      <LiveChartSeries series={series} />
     </View>
   );
 }
@@ -204,7 +206,7 @@ registerRootComponent(App);
     ),
   );
   assert.equal(installedManifest.version, libraryManifest.version);
-  assert.equal(installedManifest.peerDependencies["react-native-skia"], "^3.3.0");
+  assert.equal(installedManifest.peerDependencies["react-native-skia"], "^3.9.1");
   assert.equal(
     installedManifest.peerDependencies["@shopify/react-native-skia"],
     undefined,
@@ -245,6 +247,35 @@ registerRootComponent(App);
     /Optional: Worklets Bundle Mode/,
     "packed package must include the Bundle Mode consumer setup",
   );
+
+  write("consumer.tsx", `import React, { createRef } from "react";
+import { useSharedValue } from "react-native-reanimated";
+import { LiveChart, LiveChartSeries, type LiveChartHandle, type ChartScale } from "react-native-livechart";
+
+function Consumer() {
+  const data = useSharedValue([{ time: 0, value: 100 }]);
+  const value = useSharedValue(100);
+  const series = useSharedValue([{ id: "price", data: [{ time: 0, value: 100 }], value: 100 }]);
+  const end = useSharedValue<number | null>(null);
+  const window = useSharedValue<number | null>(null);
+  const range = useSharedValue<Pick<ChartScale, "min" | "max"> | null>(null);
+  const ref = createRef<LiveChartHandle>();
+  ref.current?.resetView();
+  return <>
+    <LiveChart ref={ref} data={data} value={value}
+      viewport={{ end, window, range }} timeScroll priceScroll={{ activation: "always" }}
+      resetButton={{ placement: "bottom-right" }} loading={{ freezeAfterMs: 1000 }} />
+    <LiveChartSeries ref={ref} series={series} />
+  </>;
+}
+void Consumer;
+`);
+  run(process.execPath, [
+    path.join(root, "node_modules/typescript/bin/tsc"),
+    "--ignoreConfig", "--noEmit", "--strict", "--skipLibCheck", "--jsx", "react-jsx",
+    "--module", "preserve", "--moduleResolution", "bundler", "--target", "esnext",
+    "consumer.tsx",
+  ]);
 
   const expoCli = path.join(root, "node_modules", "expo", "bin", "cli");
   run(process.execPath, [

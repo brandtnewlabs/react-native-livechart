@@ -72,6 +72,7 @@ import { useMultiSeriesDegen } from "../hooks/useMultiSeriesDegen";
 import { useMultiSeriesLinePaths } from "../hooks/useMultiSeriesLinePaths";
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { resetPinchZoom, usePinchZoom } from "../hooks/usePinchZoom";
+import { resetSeriesView } from "../hooks/resetView";
 import { useMultiSeriesReverseMorphInputs } from "../hooks/useReverseMorphEngineInputs";
 import {
   SERIES_INDICATOR_FADE_MS,
@@ -784,6 +785,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
   );
 
   return {
+    effectiveYRangeScale,
     // passthrough props the render needs
     series,
     seriesOpacity: resolvedSeriesOpacity,
@@ -832,6 +834,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     loadingAmplitude: loadingLook?.amplitude,
     loadingSpeed: loadingLook?.speed,
     loadingAxisLabels: loadingLook?.axisLabels ?? true,
+    loadingFreezeAfterMs: loadingLook?.freezeAfterMs,
     effectiveSeries,
     layoutHeight,
     onLayout,
@@ -951,6 +954,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
     loadingStrokeWidth,
     loadingAmplitude,
     loadingSpeed,
+    loadingFreezeAfterMs,
     canvasMode,
     activeSeriesCount,
     refLineKeys,
@@ -1093,6 +1097,7 @@ function SeriesChartStack({ model }: { model: LiveChartSeriesModel }) {
         lineStrokeWidth={loadingStrokeWidth}
         waveAmplitude={loadingAmplitude}
         waveSpeed={loadingSpeed}
+        waveFreezeAfterMs={loadingFreezeAfterMs}
         opaqueCanvas={canvasMode === "opaque"}
       />
     </Group>
@@ -1316,7 +1321,10 @@ function SeriesCanvas({ model }: { model: LiveChartSeriesModel }) {
     <Canvas
       key={canvasMode}
       style={{ flex: 1, minHeight: layoutHeight || 1 }}
-      opaque={canvasMode === "opaque"}
+      android={{
+        opaque: canvasMode === "opaque",
+        backingView: canvasMode === "opaque" ? "SurfaceView" : "TextureView",
+      }}
     >
       {canvasMode === "opaque" ? (
         <Rect
@@ -1487,12 +1495,15 @@ export const LiveChartSeries = forwardRef<
 >(function LiveChartSeries(props, ref) {
   const model = useLiveChartSeriesController(props);
   const { viewEnd, viewWindow } = model.engine;
+  const yRangeScale = model.effectiveYRangeScale;
   useImperativeHandle(
     ref,
     () => ({
       resetZoom: () => scheduleOnUI(resetPinchZoom, { viewEnd, viewWindow }),
+      resetView: () =>
+        scheduleOnUI(resetSeriesView, { viewEnd, viewWindow, yRangeScale }),
     }),
-    [viewEnd, viewWindow],
+    [viewEnd, viewWindow, yRangeScale],
   );
   const {
     rootGesture,

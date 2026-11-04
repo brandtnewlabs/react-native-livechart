@@ -1,10 +1,19 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
 import {
   LiveChart,
+  type ChartOverlayContext,
+  type ChartScale,
   type LiveChartHandle,
   type ScrubActionPoint,
+  type ViewportConfig,
 } from "react-native-livechart";
+import {
+  cancelAnimation,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
+import { scheduleOnUI } from "react-native-worklets";
 
 import { DemoScreen } from "../../demo-lib/DemoScreen";
 import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
@@ -67,8 +76,127 @@ const RETURN_TO_LIVE: Record<ReturnMode, boolean | { duration: number }> = {
   slow: { duration: 900 },
 };
 
+// `priceScroll` pans the price window with a vertical drag. "After scale" only
+// engages once the price axis was dragged or the window pinched, so a vertical
+// drag on an untouched chart still scrolls this demo's own ScrollView.
+type PriceScroll = "off" | "afterScale" | "always";
+
+const PRICE_SCROLL_OPTIONS: { value: PriceScroll; label: string }[] = [
+  { value: "off", label: "Off" },
+  { value: "afterScale", label: "After scale" },
+  { value: "always", label: "Always" },
+];
+
+const RESET_BUTTON_CONFIG = { accessibilityLabel: "Reset chart view" };
+
+function CaptureViewport({
+  ctx,
+  onScale,
+}: {
+  ctx: ChartOverlayContext;
+  onScale: (scale: SharedValue<ChartScale>) => void;
+}) {
+  const { scale } = ctx;
+  useEffect(() => onScale(scale), [scale, onScale]);
+  return null;
+}
+
+function useAnnotationViewport(chartRef: React.RefObject<LiveChartHandle | null>) {
+  const [active, setActive] = useState(false);
+  const [fixedRange, setFixedRange] = useState(false);
+  const end = useSharedValue<number | null>(null);
+  const window = useSharedValue<number | null>(null);
+  const range = useSharedValue<Pick<ChartScale, "min" | "max"> | null>(null);
+  const drawn = useRef<SharedValue<ChartScale> | null>(null);
+  const viewport = useMemo<ViewportConfig>(
+    () => ({ end, window, range, windowSmoothing: false }),
+    [end, window, range],
+  );
+  const captureScale = useCallback((scale: SharedValue<ChartScale>) => {
+    drawn.current = scale;
+  }, []);
+  const renderOverlay = useCallback(
+    (ctx: ChartOverlayContext) => <CaptureViewport ctx={ctx} onScale={captureScale} />,
+    [captureScale],
+  );
+
+  // Restore the private gesture state after leaving the annotation viewport.
+  useEffect(() => {
+    if (!active) chartRef.current?.resetZoom();
+  }, [active, chartRef]);
+
+  const toggleRange = (fixed: boolean) => {
+    const scale = drawn.current;
+    if (!scale) return;
+    setActive(true);
+    setFixedRange(fixed);
+    scheduleOnUI(() => {
+      "worklet";
+      const current = scale.get();
+      if (fixed) {
+        cancelAnimation(end);
+        cancelAnimation(window);
+        end.set(current.now);
+        window.set(current.window);
+        range.set({ min: current.min, max: current.max });
+      } else {
+        range.set(null);
+      }
+    });
+  };
+
+  const preview = (now: number, offset: number) => {
+    const scale = drawn.current;
+    setActive(true);
+    scheduleOnUI(() => {
+      "worklet";
+      const width = scale?.get().window ?? WINDOW_SECS;
+      cancelAnimation(end);
+      cancelAnimation(window);
+      window.set(width);
+      end.set(now + offset * width);
+    });
+  };
+
+  const returnToLive = () => {
+    chartRef.current?.resetZoom();
+    setFixedRange(false);
+    setActive(false);
+    scheduleOnUI(() => {
+      "worklet";
+      cancelAnimation(end);
+      cancelAnimation(window);
+      end.set(null);
+      window.set(null);
+      range.set(null);
+    });
+  };
+
+  return {
+    viewport: active ? viewport : false as const,
+    renderOverlay,
+    fixedRange,
+    toggleRange,
+    preview,
+    returnToLive,
+  };
+}
+
 export default function TimeScrollScreen() {
+  return <TimeScrollDemo />;
+}
+
+/** Shared interaction demo, also opened directly from the reset-view guide. */
+export function TimeScrollDemo({
+  title = "Time scroll",
+  docs = "guides/time-scroll",
+}: {
+  title?: string;
+  docs?: string;
+}) {
   const chartRef = useRef<LiveChartHandle>(null);
+  const annotationViewport = useAnnotationViewport(chartRef);
+  const [frozenNow, setFrozenNow] = useState<number>();
   const [mode, setMode] = useState<"candle" | "line">("candle");
   const [gesture, setGesture] = useState<Gesture>("holdToScrub");
   const [holdMs, setHoldMs] = useState(500);
@@ -83,6 +211,8 @@ export default function TimeScrollScreen() {
   const [trackWhileParked, setTrackWhileParked] = useState(false);
   const [returnMode, setReturnMode] = useState<ReturnMode>("glide");
   const [zoomOn, setZoomOn] = useState(true);
+  const [priceScroll, setPriceScroll] = useState<PriceScroll>("afterScale");
+  const [resetButton, setResetButton] = useState(true);
   const [scrub, setScrub] = useState(true);
   const [orderTicket, setOrderTicket] = useState(true);
   const [floatAxis, setFloatAxis] = useState(true);
@@ -93,6 +223,7 @@ export default function TimeScrollScreen() {
   // just switches which the chart renders. Time-scroll is mode-agnostic — it
   // pans the window regardless of line vs candle.
   const { data, value, candles, liveCandle } = useSimulatedChartData({
+    paused: frozenNow !== undefined,
     multiSeries: false,
     candleAggregation: true,
     tradeStream: false,
@@ -116,9 +247,9 @@ export default function TimeScrollScreen() {
 
   return (
     <DemoScreen
-      title="Time scroll"
-      docs="guides/time-scroll"
-      description={`${hint} Pinch with two fingers to zoom the window in/out (anchored at your fingers). The chart stops auto-scrolling while panned; ${fling ? "fling" : "release"} back to the live edge to resume. Turn off Fling inertia to stop exactly where your finger lifts. Works for line and candle; one-finger plot scrub is unchanged.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
+      title={title}
+      docs={docs}
+      description={`${hint} Pinch to zoom time. Drag the price axis to scale, then drag the plot vertically to pan price; the floating button resets the view. Freeze the feed, compare history and future space with Fixed price range off, then return live and turn it on to keep the same price bounds.${reachedStart ? "  ● Reached oldest data (onReachStart fired — page here)" : ""}`}
       chart={
         <LiveChart
           ref={chartRef}
@@ -131,7 +262,10 @@ export default function TimeScrollScreen() {
           accentColor={ACCENT}
           theme={APP_THEME}
           timeWindow={WINDOW_SECS}
-          yAxis={{ float: floatAxis }}
+          nowOverride={frozenNow}
+          viewport={annotationViewport.viewport}
+          renderOverlay={annotationViewport.renderOverlay}
+          yAxis={{ float: floatAxis, scaleGesture: true }}
           badge={{ followViewEdge }}
           dot={{ trackWhileParked }}
           timeScroll={
@@ -147,6 +281,15 @@ export default function TimeScrollScreen() {
           }
           returnToLive={RETURN_TO_LIVE[returnMode]}
           zoom={zoomOn}
+          // Vertical drag pans the price window (free X/Y panning with the
+          // time-scroll pan). Needs the "holdToScrub" gesture above.
+          priceScroll={
+            priceScroll === "off" ? false : { activation: priceScroll }
+          }
+          // Floating reset-view button: shows once the view leaves the fitted
+          // live view (scrolled back, pinched, scaled or price-panned).
+          resetButton={resetButton ? RESET_BUTTON_CONFIG : false}
+          onResetView={() => console.log("reset view")}
           // Paging callbacks (Phase 3): log the visible range (~1 Hz) and show an
           // indicator while the left edge is near the oldest seeded candle. The
           // indicator persists until you scroll back to the live edge (clears on
@@ -166,6 +309,43 @@ export default function TimeScrollScreen() {
         />
       }
     >
+      <ChipRow
+        label="Chart type"
+        options={MODE_OPTIONS}
+        value={mode}
+        onChange={setMode}
+      />
+      <ControlRow label="Annotation viewport">
+        <ToggleChip
+          label={`Fixed price range: ${annotationViewport.fixedRange ? "On" : "Off"}`}
+          value={annotationViewport.fixedRange}
+          onChange={annotationViewport.toggleRange}
+        />
+        <ToggleChip
+          label="Freeze feed"
+          value={frozenNow !== undefined}
+          onChange={(freeze) =>
+            setFrozenNow(freeze ? Date.now() / 1000 : undefined)
+          }
+        />
+      </ControlRow>
+      <ControlRow label="Compare the same positions">
+        <Chip
+          label="History"
+          active={false}
+          onPress={() => annotationViewport.preview(frozenNow ?? Date.now() / 1000, -0.5)}
+        />
+        <Chip
+          label="Future space"
+          active={false}
+          onPress={() => annotationViewport.preview(frozenNow ?? Date.now() / 1000, 0.65)}
+        />
+        <Chip
+          label="Return live"
+          active={false}
+          onPress={annotationViewport.returnToLive}
+        />
+      </ControlRow>
       <ControlRow label="Live indicator behavior">
         <ToggleChip
           label="Follow visible edge"
@@ -183,13 +363,6 @@ export default function TimeScrollScreen() {
           onChange={setTrackWhileParked}
         />
       </ControlRow>
-
-      <ChipRow
-        label="Chart type"
-        options={MODE_OPTIONS}
-        value={mode}
-        onChange={setMode}
-      />
 
       <ChipRow
         label="Scroll gesture (A/B)"
@@ -241,6 +414,28 @@ export default function TimeScrollScreen() {
           label="Reset zoom"
           active={false}
           onPress={() => chartRef.current?.resetZoom()}
+        />
+      </ControlRow>
+
+      {gesture === "holdToScrub" ? (
+        <ChipRow
+          label="Price scroll (vertical drag pans price)"
+          options={PRICE_SCROLL_OPTIONS}
+          value={priceScroll}
+          onChange={setPriceScroll}
+        />
+      ) : null}
+
+      <ControlRow label="Reset view">
+        <ToggleChip
+          label="resetButton"
+          value={resetButton}
+          onChange={setResetButton}
+        />
+        <Chip
+          label="resetView()"
+          active={false}
+          onPress={() => chartRef.current?.resetView()}
         />
       </ControlRow>
 

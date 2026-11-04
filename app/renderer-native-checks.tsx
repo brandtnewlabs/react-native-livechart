@@ -73,7 +73,7 @@ export default function RendererNativeChecksScreen() {
       <Canvas
         ref={canvas}
         style={{ height: large ? 220 : 160 }}
-        opaque
+        android={{ opaque: true, backingView: "SurfaceView" }}
         highBitDepth={highBitDepth}
       >
         <Circle cx={cx} cy={90} r={8} color="#22c55e" />

@@ -43,13 +43,24 @@ See every feature in motion — line & area, candlestick, multi-series, scrubbin
 
 ## Install
 
-> This checkout prepares **LiveChart 5.0.0-rc.0** for `react-native-skia` 3.3+.
-> The candidate is unpublished. Published LiveChart 4.x still uses `@shopify/react-native-skia`.
-> Match your LiveChart release to the renderer; do not install both Skia names.
+This checkout prepares **5.0.0-rc.0** for `react-native-skia` **3.9.1+**.
+The RC is not published yet. The supported **4.x** line keeps the Shopify renderer.
 
-```bash
-npm install react-native-livechart
-```
+| Release line | Install | Renderer |
+| --- | --- | --- |
+| Stable 4.x (`latest` during the RC) | `npm install react-native-livechart@4` | `@shopify/react-native-skia` v2 |
+| 5.x RC (`next`, once published) | `npm install react-native-livechart@next` | `react-native-skia@^3.9.1` |
+
+To test before publication, run `npm run pack:lib` in this repository and install
+its `react-native-livechart-5.0.0-rc.0.tgz` file into your app. When migrating to
+5.x, remove `@shopify/react-native-skia`, install `react-native-skia@3.9.1`, update
+all Skia imports (including fonts, images and custom children), and rebuild the
+native app. Install only one Skia package name.
+
+5.x includes the 4.30.2 APIs and fixes, including viewport price ranges,
+price scrolling, reset-view controls and display-frame dot pulses. Compatible
+bug fixes will continue to be backported to 4.x; see the
+[release and support policy](docs/skia-3-release-preparation.md).
 
 ### Peer dependencies
 
@@ -66,11 +77,16 @@ Install the library's **peer dependencies** in your app (versions should match y
 
 Follow the Skia, Reanimated, and Gesture Handler install docs for your toolchain (Babel plugin, `GestureHandlerRootView`, etc.).
 
-LiveChart 5.0.0-rc.0 targets `react-native-skia@^3.3.0`, React 19+, and React
-Native 0.78+. Graphite requires iOS 15.1+ and Android API 26+ with Vulkan, and a
+LiveChart 5.0.0-rc.0 targets `react-native-skia@^3.9.1`, React 19+, and React
+Native 0.79+. Graphite requires iOS 15.1+ and Android API 26+ with Vulkan 1.1, and a
 native build rather than Expo Go. Physical iPhone and Android/Vulkan QA is
 documented, including a historical patch experiment. That patch has been removed;
-fresh unmodified-renderer route and recorder checks passed on both phones.
+Historical Skia 3.3 route and recorder checks passed on both phones;
+Fresh iPhone results compare [Skia 3.9.1 against Shopify Skia](docs/performance-shopify-vs-skia-3.9.1-iphone.md)
+and [against Skia 3.3](docs/performance-skia-3.9.1-iphone.md);
+Fresh 3.9.1 Release smoke checks pass on iPhone and an Android emulator with
+16 KB pages; physical Android 3.9.1 QA remains outstanding. See the
+[RC verification record](docs/skia-3-release-preparation.md).
 Maintained Skia v2 support is not declared. See the [installation and migration guide](https://react-native-livechart.brandtnewlabs.com/installation)
 and [issue #409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
 
@@ -93,7 +109,7 @@ From **Expo SDK 53+**, Metro resolves `import` using `package.json` **`exports`*
 
 ### Optional: Worklets Bundle Mode
 
-Bundle Mode is app-level build configuration—there is no LiveChart prop to enable. Because the package ships source, your app automatically compiles LiveChart's worklets in Bundle Mode when Babel and Metro are configured for it. The setup below was verified with **`react-native-worklets` 0.10.1**, Expo 57.0.28, and React Native 0.86.3; check Worklets compatibility before applying it to a different stack.
+Bundle Mode is app-level build configuration—there is no LiveChart prop to enable. Because the package ships source, your app automatically compiles LiveChart's worklets in Bundle Mode when Babel and Metro are configured for it. The setup below was verified with **`react-native-worklets` 0.10.1**, Expo 57.0.31, and React Native 0.86.3; check Worklets compatibility before applying it to a different stack.
 
 ```js
 // babel.config.js — Worklets must remain the last plugin

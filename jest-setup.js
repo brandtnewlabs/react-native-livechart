@@ -138,6 +138,7 @@ jest.mock("react-native-skia", () => {
     restore: jest.fn(),
     translate: jest.fn(),
     scale: jest.fn(),
+    drawPicture: jest.fn(),
     drawCircle: jest.fn(),
     drawText: jest.fn(),
     drawPath: jest.fn(),
@@ -190,11 +191,11 @@ jest.mock("react-native-skia", () => {
     PaintStyle: { Fill: 0, Stroke: 1 },
     StrokeCap: { Butt: 0, Round: 1, Square: 2 },
     StrokeJoin: { Miter: 0, Round: 1, Bevel: 2 },
-    drawAsImageFromPicture: jest.fn(() => ({})),
     matchFont: jest.fn(() => mockFont),
     useFont: jest.fn(() => mockFont),
     useFonts: jest.fn(() => null),
     Skia: {
+      Surface: { MakeOffscreen: jest.fn(() => ({ getCanvas: createCanvas, flush: jest.fn(), makeImageSnapshot: jest.fn(() => ({})), dispose: jest.fn() })) },
       Path: {
         Make: jest.fn(() => createPath()),
       },

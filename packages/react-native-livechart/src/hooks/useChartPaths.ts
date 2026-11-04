@@ -64,6 +64,8 @@ export function useChartPaths(
   simplifyTolerance = 0,
   /** Explicit empty intervals that split line and fill geometry. */
   lineGaps: CandleGap[] = [],
+  /** Controlled or buffered viewports must not fabricate prices in future space. */
+  shouldOmitTipBeyondData = false,
 ) {
   const lineBuilder = usePathBuilder();
   const fillBuilder = usePathBuilder();
@@ -148,10 +150,10 @@ export function useChartPaths(
       engine.canvasHeight.get(),
       padding,
       simplify > 0 ? cache.rawPts : buf,
-      // Only a live-following chart may extend the line to the right edge; a
-      // parked (scrolled-back / overscrolled) window ends at its last real
-      // point rather than fabricating a flat line into dataless space.
-      engine.viewEnd.get() != null,
+      // Only an unbuffered live-following chart may extend to the right edge;
+      // controlled or parked windows end at their last real point rather than
+      // fabricating a flat line into dataless space.
+      shouldOmitTipBeyondData || engine.viewEnd.get() != null,
     );
     const chartWidth = canvasWidth - padding.left - padding.right;
     const absoluteXOffset =

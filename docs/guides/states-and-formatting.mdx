@@ -60,12 +60,38 @@ the whole config while it fades out, after `loading` has turned off. The
 same config works on `LiveChartSeries`. The loading→live reveal duration itself is controlled by the
 [`transitions.reveal`](/guides/transitions) prop.
 
+### Freezing the wave
+
+The squiggle animates for as long as the shell shows. A load that keeps failing and retrying, or a
+chart left empty, can show it for minutes, redrawing it every frame. `freezeAfterMs` freezes the
+squiggle once it has animated that long each time the shell appears; its frame callback stops, and
+it moves again when the shell next appears:
+
+```tsx
+<LiveChart data={data} value={value} loading={!ready && { freezeAfterMs: 10_000 }} />
+```
+
+- Time is counted in frames drawn, at most 34 ms each, so time the app spends in the background, or
+  while `LiveChart`'s `isFrameLoopActive` is `false`, doesn't use it up.
+- Loading and the empty state that follows it share one budget while the shell stays up. It starts
+  over when the shell appears again after data has shown, also when the data is cleared mid-reveal.
+- The reveal always animates (`transitions.reveal` bounds it). A frozen squiggle picks the wave up
+  at the current phase as the reveal starts (its shape changes in one frame), so the shell and the
+  morph show one wave.
+- The empty shell takes the limit from the last `loading` config, like the rest of the look; a chart
+  that has never been loading has no limit.
+- `0` or less freezes the squiggle from the start. Omit it (the default) for no limit; `Infinity` and
+  `NaN` mean no limit too.
+- It freezes only the squiggle. The chart's own frame loop is unaffected; with `autoSleep`, a loading
+  or empty chart stays awake.
+
 ## Empty state
 
 When there are no samples and `loading` is `false`, the chart shows an empty shell with a label.
 A single line point or committed candle is valid data and renders normally. Customize the empty
 label with `emptyText`. A chart that has been loading keeps that `loading` config's look (color,
-stroke, wave, placeholders) on its empty shell; one that never loaded uses the defaults.
+stroke, wave, placeholders, [`freezeAfterMs`](#freezing-the-wave)) on its empty shell; one that
+never loaded uses the defaults, with no freeze limit.
 
 ```tsx
 <LiveChart data={data} value={value} emptyText="Waiting for trades…" />

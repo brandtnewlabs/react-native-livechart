@@ -5,7 +5,7 @@
  *
  * @see https://github.com/benjitaylor/liveline
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cancelAnimation,
   Easing,
@@ -16,11 +16,13 @@ import {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
+import { scheduleOnUI } from "react-native-worklets";
 import { useDemandFrameLoop } from "../hooks/useDemandFrameLoop";
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
 import type {
   CandleGap,
   CandlePoint,
+  ChartScale,
   LiveChartFrameStats,
   LiveChartPoint,
   RangeAnimationConfig,
@@ -40,6 +42,7 @@ import {
 
 import { useHistoryRevision } from "./useHistoryRevision";
 import type { ResolvedViewportConfig } from "./resolveConfig";
+import { useGestureRangeOwnership, writeGestureRange } from "./gestureRangeOwnership";
 
 export interface EngineConfig {
   /** External scroll/zoom values adopted in place of private gesture state. */
@@ -209,6 +212,28 @@ export interface ChartEngineEdge {
   edgeValue: SharedValue<number>;
 }
 
+/** Price-range state shared by the price-pan / axis-scale gestures and the reset button. */
+export interface ChartEngineRange {
+  /** Explicit price bounds: the app's `viewport.range` when supplied, else private state. */
+  viewRange: SharedValue<Pick<ChartScale, "min" | "max"> | null>;
+  /**
+   * True while {@link viewRange} was written by a gesture, which keeps it
+   * applied while following live. An app write or replacement viewport gives
+   * ownership back to the app. Resets, axis double-taps and framing changes
+   * clear only gesture-owned bounds.
+   */
+  viewRangeGestureOwned: SharedValue<boolean>;
+  /** Fitted Y bounds the eased display range pursues, before a range override. */
+  fitMin: SharedValue<number>;
+  fitMax: SharedValue<number>;
+}
+
+/** "Return to live" glide state (see `EngineTickInput.returnT`). */
+export interface ChartEngineReturnToLive {
+  returnT: SharedValue<number>;
+  returnFrom: SharedValue<number>;
+}
+
 export interface SingleEngineState
   extends ChartEngineLayout,
     ChartEngineExtrema {
@@ -267,6 +292,13 @@ export interface EngineFrameRefs {
   maxValueSV?: SharedValue<number | undefined>;
   minRangeSV?: SharedValue<number | undefined>;
   yRangeScaleSV?: SharedValue<number>;
+  /** External price bounds read in the same frame as end/window. */
+  viewRangeSV?: ResolvedViewportConfig["range"];
+  /** Honor `viewRangeSV` while following live (a gesture-owned range). */
+  viewRangeFollowsLiveSV?: SharedValue<boolean>;
+  /** Fitted bounds written back each frame (see `EngineTickMutable.fitMin`). */
+  fitMinSV?: SharedValue<number>;
+  fitMaxSV?: SharedValue<number>;
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
@@ -287,7 +319,7 @@ export interface EngineFrameRefs {
   /** Receives the smoothed right-edge value each frame. Optional for callers/tests. */
   edgeValueSV?: SharedValue<number>;
   /**
-   * One-shot "snap the framing this frame" flag (set by the `snapKey` effect).
+   * One-shot "snap the framing this frame" flag (set by the `snapKey` reaction).
    * Consumed and cleared by {@link applyLiveChartEngineFrame} after the tick.
    * Optional for callers/tests.
    */
@@ -328,6 +360,10 @@ export function makeEngineFrameScratch(): EngineFrameScratch {
       extremaMaxValue: NaN,
       extremaMinTime: NaN,
       extremaMaxTime: NaN,
+      fitMin: 0,
+      fitMax: 1,
+      adjustedViewRangeMin: NaN,
+      adjustedViewRangeMax: NaN,
       lastCanvasWidth: undefined,
       lastCanvasHeight: undefined,
     },
@@ -343,6 +379,21 @@ export function makeEngineFrameScratch(): EngineFrameScratch {
       points: [],
     },
   };
+}
+
+/**
+ * Drop a gesture-written price range so the next frame lands on the fit (a
+ * `snapKey` or `mode` change re-frames the chart). An app-written range,
+ * which the app owns, is left alone.
+ */
+export function clearGestureOwnedRange(
+  viewRange: SharedValue<Pick<ChartScale, "min" | "max"> | null>,
+  viewRangeGestureOwned: SharedValue<boolean>,
+): void {
+  "worklet";
+  if (!viewRangeGestureOwned.get()) return;
+  viewRange.set(null);
+  viewRangeGestureOwned.set(false);
 }
 
 /**
@@ -371,6 +422,10 @@ export function applyLiveChartEngineFrame(
     extremaMaxValue: NaN,
     extremaMinTime: NaN,
     extremaMaxTime: NaN,
+    fitMin: 0,
+    fitMax: 1,
+    adjustedViewRangeMin: NaN,
+    adjustedViewRangeMax: NaN,
     lastCanvasWidth: undefined,
     lastCanvasHeight: undefined,
   };
@@ -385,6 +440,8 @@ export function applyLiveChartEngineFrame(
   state.extremaMaxValue = sv.extremaMaxValue.value;
   state.extremaMinTime = sv.extremaMinTime.value;
   state.extremaMaxTime = sv.extremaMaxTime.value;
+  state.fitMin = sv.fitMinSV?.value ?? state.fitMin;
+  state.fitMax = sv.fitMaxSV?.value ?? state.fitMax;
 
   const input: EngineTickInput = scratch?.input ?? {
     dt,
@@ -415,6 +472,8 @@ export function applyLiveChartEngineFrame(
   input.maxValue = sv.maxValueSV?.value;
   input.minRange = sv.minRangeSV?.value;
   input.yRangeScale = sv.yRangeScaleSV?.value ?? 1;
+  input.viewRange = sv.viewRangeSV?.value;
+  input.viewRangeFollowsLive = sv.viewRangeFollowsLiveSV?.value ?? false;
   input.nowOverride = sv.nowOverrideSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
   input.targetValue = sv.value.value;
@@ -452,6 +511,25 @@ export function applyLiveChartEngineFrame(
   sv.extremaMaxValue.value = state.extremaMaxValue;
   sv.extremaMinTime.value = state.extremaMinTime;
   sv.extremaMaxTime.value = state.extremaMaxTime;
+  if (sv.fitMinSV && state.fitMin !== undefined) sv.fitMinSV.value = state.fitMin;
+  if (sv.fitMaxSV && state.fitMax !== undefined) sv.fitMaxSV.value = state.fitMax;
+  // A gesture-owned range the tick had to clamp is written back, so the next
+  // gesture frame continues from the clamped bounds instead of drifting past them.
+  const adjustedMin = state.adjustedViewRangeMin;
+  const adjustedMax = state.adjustedViewRangeMax;
+  if (
+    sv.viewRangeSV &&
+    sv.viewRangeFollowsLiveSV?.value === true &&
+    adjustedMin !== undefined &&
+    adjustedMax !== undefined &&
+    Number.isFinite(adjustedMin) &&
+    Number.isFinite(adjustedMax)
+  ) {
+    writeGestureRange(sv.viewRangeSV, sv.viewRangeFollowsLiveSV, {
+      min: adjustedMin,
+      max: adjustedMax,
+    });
+  }
   // Clear the one-shot snap so the next frame eases normally again — but only
   // once a real (measured) frame consumed it. The tick early-returns on a
   // zero-size canvas (before applying the snap), so keep the flag pending until
@@ -468,7 +546,11 @@ export function applyLiveChartEngineFrame(
 
 export function useLiveChartEngine(
   config: EngineConfig,
-): SingleEngineState & ChartEngineScroll & ChartEngineEdge & { wake: () => void } {
+): SingleEngineState &
+  ChartEngineScroll &
+  ChartEngineEdge &
+  ChartEngineRange &
+  ChartEngineReturnToLive & { wake: () => void } {
   const {
     viewport,
     data,
@@ -517,6 +599,26 @@ export function useLiveChartEngine(
   const internalViewWindow = useSharedValue<number | null>(null);
   const viewWindow = viewport?.window ?? internalViewWindow;
   const hasViewport = viewport != null;
+  // Explicit price bounds. The price-pan / axis-scale gestures write these (the
+  // app's `viewport.range` when supplied, else private state) and mark them
+  // gesture-owned so the tick keeps applying them while following live.
+  const internalViewRange = useSharedValue<Pick<ChartScale, "min" | "max"> | null>(null);
+  const viewRange = viewport?.range ?? internalViewRange;
+  const viewRangeGestureOwned = useGestureRangeOwnership(viewRange);
+  const fitMin = useSharedValue(0);
+  const fitMax = useSharedValue(1);
+  const clearGestureRange = useCallback(
+    () => scheduleOnUI(clearGestureOwnedRange, viewRange, viewRangeGestureOwned),
+    [viewRange, viewRangeGestureOwned],
+  );
+  // A mode switch (line ↔ candle) re-frames the price range like a `snapKey`
+  // change does below, so a panned window from the other mode doesn't linger.
+  const lastMode = useRef(mode);
+  useEffect(() => {
+    if (mode === lastMode.current) return;
+    lastMode.current = mode;
+    clearGestureRange();
+  }, [mode, clearGestureRange]);
   const windowSmoothing = viewport?.windowSmoothing ?? true;
   const viewWindowSmoothingSV = useDerivedValue(() => windowSmoothing);
   // A change to the `timeWindow` prop (a range / timeframe selector) is an explicit
@@ -637,23 +739,16 @@ export function useLiveChartEngine(
 
   // High-frequency data reads directly from the caller's shared values —
   // no useDerivedValue bridging, no closure serialization per tick.
-  // One-shot "snap the framing" flag. The effect below flips it to `true` when
-  // `snapKey` changes; the next frame consumes it (bypassing `smoothing` for the
-  // window / range / value) and clears it, so a timeframe / dataset switch lands
-  // in one frame while live ticks stay smoothed. See `snapKey`.
+  // One-shot "snap the framing" flag. The selection reaction below consumes it
+  // after the UI-thread config is current, bypassing smoothing for that update
+  // while ordinary live ticks keep their smoothing. See `snapKey`.
   const snapSV = useSharedValue(false);
-  // Compare against the previous key (not a "first render" flag) so React 18
-  // StrictMode's double-invoked mount effect can't fire a spurious snap.
-  const lastSnapKey = useRef(snapKey);
-  // Layout effect, not passive: a passive effect runs after the commit has
-  // painted, so the frame between them draws the new data/candleWidth against
-  // the OLD framing (a one-frame squeeze on a timeframe switch). Flipping the
-  // flag before paint lets the first frame with the new props consume the snap.
-  useLayoutEffect(() => {
-    if (snapKey === lastSnapKey.current) return;
-    lastSnapKey.current = snapKey;
-    snapSV.set(true);
-  }, [snapKey, snapSV]);
+  // Comparing keys avoids a spurious mount snap during StrictMode replay.
+  const lastSnapKey = useSharedValue(snapKey);
+  const snapConfiguration = useDerivedValue(() => ({
+    key: snapKey,
+    configuredWindow: configuredTimeWindow,
+  }));
 
   // Static charts run zero per-frame loops. `isStaticSV` gates both the
   // frame-callback autostart and the one-shot settle reaction below.
@@ -695,6 +790,10 @@ export function useLiveChartEngine(
       maxValueSV,
       minRangeSV,
       yRangeScaleSV: yRangeScale,
+      viewRangeSV: viewRange,
+      viewRangeFollowsLiveSV: viewRangeGestureOwned,
+      fitMinSV: fitMin,
+      fitMaxSV: fitMax,
       nowOverrideSV,
       windowBufferSV,
       pausedSV,
@@ -766,6 +865,10 @@ export function useLiveChartEngine(
       viewEnd,
       viewWindow,
       viewWindowSmoothingSV,
+      viewRange,
+      viewRangeGestureOwned,
+      fitMin,
+      fitMax,
       windowBufferSV,
       yRangeScale,
     ],
@@ -776,6 +879,72 @@ export function useLiveChartEngine(
     // react-doctor-disable-next-line react-doctor/no-ref-current-in-render -- false positive for React's documented lazy-ref exception
     frameScratchRef.current = makeEngineFrameScratch();
   }
+
+  // Settle before the path mappers observe new series/config; waiting for the
+  // next frame callback lets those paths combine new data with the old scale.
+  useAnimatedReaction(
+    () => ({
+      configuration: snapConfiguration.get(),
+      effectiveWindow: timeWindow.get(),
+      windowOverride: viewWindow.get(),
+      // Config mappers can be re-registered after this reaction. Reading their
+      // values here keeps the snap downstream of the complete framing update.
+      framingInputs: [
+        viewEnd.get(),
+        viewRange.get(),
+        modeSV.get(),
+        nowOverrideSV.get(),
+        windowBufferSV.get(),
+        smoothing.get(),
+        rangeAnimationSV.get(),
+        adaptiveSpeedBoostSV.get(),
+        exaggerateSV.get(),
+        maxValueSV.get(),
+        minRangeSV.get(),
+        nonNegativeSV.get(),
+        yRangeScale?.get(),
+        referenceValue.get(),
+        referenceValues.get(),
+        thresholdRangePoints.get(),
+        thresholdRangeExtendToStart.get(),
+        thresholdRangeExtendToNow.get(),
+        pausedSV.get(),
+        allowFutureViewEndSV.get(),
+        viewWindowSmoothingSV.get(),
+        candleGapsSV.get(),
+        candleGapBridgeNoTradesSV.get(),
+        candleGapBridgeUnavailableSV.get(),
+        candleGapBridgeUnknownSV.get(),
+      ],
+    }),
+    ({ configuration, effectiveWindow, windowOverride }) => {
+      if (configuration.key === lastSnapKey.get()) {
+        return;
+      }
+      const expectedWindow = windowOverride ?? configuration.configuredWindow;
+      if (effectiveWindow !== expectedWindow) {
+        return;
+      }
+      lastSnapKey.set(configuration.key);
+      // The new framing lands on the fit, not on a window panned for the old data.
+      clearGestureOwnedRange(viewRange, viewRangeGestureOwned);
+      snapSV.set(true);
+      applyLiveChartEngineFrame(
+        { timeSincePreviousFrame: MS_PER_FRAME_60FPS },
+        frameRefs,
+        frameScratchRef.current!,
+      );
+    },
+    // Keep this mapper ahead of path consumers across React config changes.
+    [snapConfiguration, timeWindow, viewWindow, viewEnd, viewRange, viewRangeGestureOwned, modeSV,
+      nowOverrideSV, windowBufferSV, smoothing, maxValueSV, minRangeSV,
+      nonNegativeSV, yRangeScale, referenceValue, referenceValues,
+      rangeAnimationSV, adaptiveSpeedBoostSV, exaggerateSV,
+      thresholdRangePoints, thresholdRangeExtendToStart, thresholdRangeExtendToNow,
+      pausedSV, allowFutureViewEndSV, viewWindowSmoothingSV, candleGapsSV,
+      candleGapBridgeNoTradesSV, candleGapBridgeUnavailableSV, candleGapBridgeUnknownSV,
+      lastSnapKey, snapSV, frameRefs, frameScratchRef],
+  );
 
   const tickFrame = useCallback((dt: number): boolean => {
     "worklet";
@@ -819,14 +988,14 @@ export function useLiveChartEngine(
       exaggerateSV.get(), referenceValue.get(), referenceValues.get(), thresholdRangePoints.get(),
       thresholdRangeExtendToStart.get(), thresholdRangeExtendToNow.get(), nonNegativeSV.get(),
       maxValueSV.get(), minRangeSV.get(), yRangeScale?.get(), nowOverrideSV.get(), windowBufferSV.get(), pausedSV.get(),
-      viewEnd.get(), viewWindow.get(), viewWindowSmoothingSV.get(), allowFutureViewEndSV.get(), returnT.get(), returnFrom.get(),
+      viewEnd.get(), viewWindow.get(), viewRange.get(), viewRangeGestureOwned.get(), viewWindowSmoothingSV.get(), allowFutureViewEndSV.get(), returnT.get(), returnFrom.get(),
       snapSV.get(), modeSV.get(), candleGapsSV.get(), candleGapBridgeNoTradesSV.get(),
       candleGapBridgeUnavailableSV.get(), candleGapBridgeUnknownSV.get(), isFrameLoopActive?.get(),
       keepAwake?.get(), wakeSignal?.get()];
   }, [pointHistory, candleHistory, data, value, candles, liveCandle, canvasWidth, canvasHeight, timeWindow, smoothing, rangeAnimationSV,
     adaptiveSpeedBoostSV, exaggerateSV, referenceValue, referenceValues, thresholdRangePoints,
     thresholdRangeExtendToStart, thresholdRangeExtendToNow, nonNegativeSV, maxValueSV, minRangeSV, yRangeScale,
-    nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, viewWindowSmoothingSV, allowFutureViewEndSV, returnT,
+    nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, viewRange, viewRangeGestureOwned, viewWindowSmoothingSV, allowFutureViewEndSV, returnT,
     returnFrom, snapSV, modeSV, candleGapsSV, candleGapBridgeNoTradesSV, candleGapBridgeUnavailableSV,
     candleGapBridgeUnknownSV, isFrameLoopActive, keepAwake, wakeSignal]);
 
@@ -950,6 +1119,12 @@ export function useLiveChartEngine(
     timestamp,
     viewEnd,
     viewWindow,
+    viewRange,
+    viewRangeGestureOwned,
+    fitMin,
+    fitMax,
+    returnT,
+    returnFrom,
     liveEdge,
     edgeValue,
     extremaMinValue,

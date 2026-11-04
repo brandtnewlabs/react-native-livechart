@@ -1,7 +1,7 @@
+import { imageFromPicture } from "./imageFromPicture";
 import {
   Skia,
   PaintStyle,
-  drawAsImageFromPicture,
   type SkImage,
 } from "react-native-skia";
 import { DEGEN_STRIDE } from "../constants";
@@ -39,7 +39,7 @@ export function buildParticleSprite(): ParticleSprite {
   const canvas = recorder.beginRecording(Skia.XYWHRect(0, 0, S, S));
   canvas.drawCircle(S / 2, S / 2, R, paint);
   const picture = recorder.finishRecordingAsPicture();
-  const image = drawAsImageFromPicture(picture, { width: S, height: S });
+  const image = imageFromPicture(picture, { width: S, height: S });
   return { image, size: S, radius: R };
 }
 

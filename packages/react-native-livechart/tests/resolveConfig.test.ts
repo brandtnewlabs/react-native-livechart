@@ -14,8 +14,10 @@ import {
   resolveMarkerCluster,
   resolveMetrics,
   resolveMultiSeriesDot,
+  resolvePriceScroll,
   resolvePulse,
   resolveReferenceLineConfig,
+  resolveResetButton,
   resolveLoading,
   resolveFling,
   resolveOverscroll,
@@ -74,6 +76,15 @@ describe("resolveViewport", () => {
     const end = { value: null } as SharedValue<number | null>;
     const window = { value: null } as SharedValue<number | null>;
     expect(resolveViewport({ end, window, windowSmoothing })?.windowSmoothing).toBe(windowSmoothing);
+  });
+
+  it("preserves the optional range shared value without reading it during render", () => {
+    const range = {
+      get value(): { min: number; max: number } | null { throw new Error("render-time read"); },
+    } as SharedValue<{ min: number; max: number } | null>;
+    const end = { value: 100 } as SharedValue<number | null>;
+    const window = { value: 30 } as SharedValue<number | null>;
+    expect(resolveViewport({ end, window, range })?.range).toBe(range);
   });
 });
 
@@ -983,6 +994,7 @@ describe("resolveLoading", () => {
     amplitude: 14,
     speed: 1,
     axisLabels: true,
+    freezeAfterMs: undefined,
   };
 
   it("returns null for undefined / false (not loading)", () => {
@@ -1015,6 +1027,25 @@ describe("resolveLoading", () => {
       ...DEFAULTS,
       axisLabels: false,
     });
+  });
+
+  it("carries freezeAfterMs, unset (no limit) by default", () => {
+    // A resolved key, even when unset: useLoadingLook compares the look key by key.
+    expect(resolveLoading(true)).toHaveProperty("freezeAfterMs", undefined);
+    expect(resolveLoading({ freezeAfterMs: 10_000 })).toEqual({
+      ...DEFAULTS,
+      freezeAfterMs: 10_000,
+    });
+  });
+
+  it("resolves a NaN or Infinity freezeAfterMs to no limit", () => {
+    for (const freezeAfterMs of [NaN, Infinity]) {
+      const resolved = resolveLoading({ freezeAfterMs, color: "#64748b" });
+      expect(resolved).toHaveProperty("freezeAfterMs", undefined);
+      expect(resolved).toEqual({ ...DEFAULTS, color: "#64748b" });
+    }
+    // 0 and below stay: they freeze from the start.
+    expect(resolveLoading({ freezeAfterMs: -1 })?.freezeAfterMs).toBe(-1);
   });
 });
 
@@ -2183,5 +2214,60 @@ describe("resolveMarkerCluster", () => {
     expect(resolveMarkerCluster({ groupBadge: badge }).groupBadge).toEqual(
       badge,
     );
+  });
+});
+
+describe("resolvePriceScroll", () => {
+  it("is opt-in with after-scale arming and one span of overshoot", () => {
+    expect(resolvePriceScroll(undefined)).toBeNull();
+    expect(resolvePriceScroll(false)).toBeNull();
+    expect(resolvePriceScroll(true)).toEqual({
+      activation: "afterScale",
+      maxOvershoot: 1,
+    });
+    expect(resolvePriceScroll({ activation: "always", maxOvershoot: 0 })).toEqual({
+      activation: "always",
+      maxOvershoot: 0,
+    });
+  });
+
+  it("falls back to the default overshoot for malformed values", () => {
+    for (const maxOvershoot of [-1, NaN, Infinity]) {
+      expect(resolvePriceScroll({ maxOvershoot })?.maxOvershoot).toBe(1);
+    }
+  });
+});
+
+describe("resolveResetButton", () => {
+  const defaults = {
+    placement: "bottom-center",
+    showFor: { yScale: true, priceScroll: true, timeScroll: true, zoom: true },
+    margin: 12,
+    fadeMs: 160,
+    icon: "↺",
+    size: 36,
+    color: undefined,
+    iconColor: undefined,
+    accessibilityLabel: undefined,
+  };
+
+  it("is opt-in and merges showFor per key", () => {
+    expect(resolveResetButton(undefined)).toBeNull();
+    expect(resolveResetButton(false)).toBeNull();
+    expect(resolveResetButton(true)).toEqual(defaults);
+    expect(
+      resolveResetButton({
+        placement: "bottom-right",
+        showFor: { zoom: false },
+        color: "#000",
+        accessibilityLabel: "Reset",
+      }),
+    ).toEqual({
+      ...defaults,
+      placement: "bottom-right",
+      showFor: { ...defaults.showFor, zoom: false },
+      color: "#000",
+      accessibilityLabel: "Reset",
+    });
   });
 });
