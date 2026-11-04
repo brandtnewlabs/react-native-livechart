@@ -58,6 +58,7 @@ describe("LiveChartSeries", () => {
 
     await render(<H />);
     expect(ref.current?.resetZoom).toBeInstanceOf(Function);
+    expect(ref.current?.resetView).toBeInstanceOf(Function);
   });
 
   it("opts into an opaque canvas and replaces destination-alpha masks", async () => {

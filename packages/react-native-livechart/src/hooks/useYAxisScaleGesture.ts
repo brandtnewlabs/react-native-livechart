@@ -12,9 +12,11 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import type { ResolvedYAxisConfig } from "../core/resolveConfig";
+import { writeGestureRange } from "../core/gestureRangeOwnership";
 import type { ChartEngineLayout } from "../core/useLiveChartEngine";
 import { rightAnchoredYAxisColumnLayout, type YAxisEntry } from "../draw/grid";
 import type { ChartPadding } from "../draw/line";
+import type { ChartScale } from "../types";
 
 /** Preserve private scale state across gesture/axis toggles on a mounted chart. */
 export function useYAxisScaleValue(external?: SharedValue<number>) {
@@ -81,6 +83,24 @@ export function draggedYAxisScale(
   );
 }
 
+/**
+ * Scale explicit price bounds about their midpoint by `factor` (> 1 widens).
+ * Returns `range` unchanged when the result would be degenerate or overflow.
+ */
+export function scaledPriceRange(
+  range: Pick<ChartScale, "min" | "max">,
+  factor: number,
+): Pick<ChartScale, "min" | "max"> {
+  "worklet";
+  const mid = range.min / 2 + range.max / 2;
+  const half = ((range.max - range.min) / 2) * factor;
+  const min = mid - half;
+  const max = mid + half;
+  return Number.isFinite(min) && Number.isFinite(max) && min < max
+    ? { min, max }
+    : range;
+}
+
 type Options = {
   engine: Pick<ChartEngineLayout, "canvasWidth" | "canvasHeight"> & {
     wake?: () => void;
@@ -97,6 +117,13 @@ type Options = {
   deferHit?: (x: number, y: number) => boolean;
   onStart?: () => void;
   active?: SharedValue<boolean>;
+  /**
+   * Explicit price bounds (see `priceScroll`). While gesture-owned, a drag
+   * scales these about their midpoint instead of `scale`, and a double-tap
+   * clears them along with the scale.
+   */
+  range?: SharedValue<Pick<ChartScale, "min" | "max"> | null>;
+  rangeGestureOwned?: SharedValue<boolean>;
 };
 
 /** Owns gutter touches at touch-down; fails immediately everywhere else. */
@@ -112,8 +139,12 @@ export function useYAxisScaleGesture({
   deferHit,
   onStart,
   active,
+  range,
+  rangeGestureOwned,
 }: Options) {
   const startScale = useSharedValue(1);
+  // Gesture-owned bounds at touch-down; null scales `scale` instead.
+  const startRange = useSharedValue<Pick<ChartScale, "min" | "max"> | null>(null);
   const startY = useSharedValue(0);
   const armed = useSharedValue(false);
   const { canvasWidth, canvasHeight, wake } = engine;
@@ -164,6 +195,7 @@ export function useYAxisScaleGesture({
         // the drag here so the first move cannot reuse a previous drag's scale.
         cancelAnimation(scale);
         startScale.set(scale.get());
+        startRange.set(range && rangeGestureOwned?.get() ? range.get() : null);
         startY.set(touch.y);
         armed.set(true);
         active?.set(true);
@@ -180,15 +212,29 @@ export function useYAxisScaleGesture({
         "worklet";
         const touch = event.allTouches[0];
         if (!armed.get() || !touch) return;
-        scale.set(
-          draggedYAxisScale(
-            startScale.get(),
-            touch.y - startY.get(),
-            dragDistance,
-            minScale,
-            maxScale,
-          ),
+        const fromScale = startScale.get();
+        const nextScale = draggedYAxisScale(
+          fromScale,
+          touch.y - startY.get(),
+          dragDistance,
+          minScale,
+          maxScale,
         );
+        const fromRange = startRange.get();
+        if (fromRange !== null && range && rangeGestureOwned?.get()) {
+          // A panned window scales in place by the same step the absolute scale
+          // takes, so repeated drags stay within [minScale, maxScale] overall
+          // instead of compounding. The tick ignores `scale` while the range is
+          // applied, so updating it only keeps that running total.
+          const validFrom =
+            Number.isFinite(fromScale) && fromScale > 0 ? fromScale : 1;
+          writeGestureRange(
+            range,
+            rangeGestureOwned,
+            scaledPriceRange(fromRange, nextScale / validFrom),
+          );
+        }
+        scale.set(nextScale);
       })
       .onTouchesUp((_event, manager) => {
         "worklet";
@@ -222,11 +268,19 @@ export function useYAxisScaleGesture({
         if (!success) return;
         wake?.();
         cancelAnimation(scale);
-        scale.set(
-          withTiming(Math.max(minScale, Math.min(maxScale, 1)), {
-            duration: 240,
-          }),
-        );
+        if (range && rangeGestureOwned?.get()) {
+          // Land the scale in one step so the display range eases from the
+          // panned window to the fit (see `resetChartView`).
+          range.set(null);
+          rangeGestureOwned.set(false);
+          scale.set(Math.max(minScale, Math.min(maxScale, 1)));
+        } else {
+          scale.set(
+            withTiming(Math.max(minScale, Math.min(maxScale, 1)), {
+              duration: 240,
+            }),
+          );
+        }
         onStart?.();
       });
     return Gesture.Simultaneous(pan, reset);
@@ -245,6 +299,9 @@ export function useYAxisScaleGesture({
     font,
     deferHit,
     scale,
+    range,
+    rangeGestureOwned,
+    startRange,
     startScale,
     startY,
     armed,

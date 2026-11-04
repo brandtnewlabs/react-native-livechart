@@ -7,22 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0-rc.0] — 2026-11-04 (prepared, unpublished)
+
+Prepared for `next` with Skia 3.9.1 and the full 4.30.2 baseline. No npm
+publication, version tag or GitHub Release has been created.
+
+### Included from stable 4.x
+
+- Bring the complete 4.30.2 baseline into 5.x: `loading.freezeAfterMs`, badge
+  padding alignment, explicit `viewport.range` and recorded endpoints,
+  experimental `priceScroll` and reset-view controls, `LiveChartHandle.resetView()`,
+  snap/framing and indicator fixes, and display-frame live-dot pulses.
+- Keep 4.x supported with the Shopify renderer. During the RC period, npm's
+  `latest` stays on 4.30.2; this candidate is prepared exclusively for `next`.
+
+### Breaking
+
+- Replace the `@shopify/react-native-skia` peer with `react-native-skia@^3.9.1`.
+  Apps must migrate their renderer imports and font/image types, install one
+  native Skia package, and rebuild. React 19+ and React Native 0.79+ are now
+  required. Maintained Skia v2 support is not declared in this candidate.
+
 ### Changed
 
-- Update the unpublished Skia 3 candidate to `react-native-skia@^3.9.1` and pin
-  the example to 3.9.1; raise the React Native peer to 0.79+. Preserve Android
-  canvas composition with explicit
-  `android.backingView`/`android.opaque` options. Build marker and particle atlases
-  from shared GPU snapshots, avoiding the now-asynchronous CPU readback helper.
+- Migrate all runtime, example, mock, and declaration imports to
+  `react-native-skia` 3.9.1 (Graphite).
+  Existing published LiveChart 4.x releases keep the Shopify peer.
+  Native iOS and Android/Vulkan verification is tracked in
+  [#409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
+- Add an explicit `publish:lib:next` command and a prepublish check that requires
+  the configured release-line tag (`next` for this RC). Stable `latest` remains 4.x.
+- Use the published, unmodified Skia 3.9.1 renderer. The experimental native
+  glyph-atlas patch was removed from the example and package before release;
+  the measurements do not establish an allocation regression from Skia 2.6.4.
+
+- Preserve Android canvas composition through explicit `android.backingView`
+  and `android.opaque` options. Build marker and particle atlases from shared
+  GPU snapshots, avoiding the now-asynchronous CPU readback helper.
+
+### Fixed
+
+- Example app: enable outward Y-range easing in Multi-series so revealing a
+  series or extending the range animates instead of jumping. Add an
+  "Animate expansion" control beside Responsiveness and start with its Smooth
+  preset to spread large range changes across more visible steps.
+- Example app: give Kraken's header matching left/right widths so the centered
+  title no longer overlaps the Back button's Android touch area.
 
 ### Maintenance
 
-- Align the example app's native dependencies with Expo 57.0.28, deduplicate native
+- Align the example app's native dependencies with Expo 57.0.31, deduplicate native
   modules, and refresh the Metro Bundle Mode patches for 0.84.5. Pin the test
   renderer to the version compatible with React 19.2, and check Expo dependency
   versions, TypeScript, and lint in CI.
 
 ### Performance
+
+These measurements predate the 4.30.2 integration. They document the accepted
+renderer tradeoff, not a new benchmark of the final RC package.
 
 - Avoid redundant native transforms for stationary custom reference tags by
   narrowing the positioning worklet's captured inputs. Three new paired iPhone
@@ -60,39 +102,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   this measures UI readiness, not compositor delivery or steady-state CPU.
   See `docs/multi-series-mount-performance-iphone.md` for the comparison.
 
-## [5.0.0-rc.0] — Unpublished candidate
-
-Prepared for Skia 3.9.1 (initially 3.3.0); no npm publication, tag or GitHub
-release has been made.
-
-### Breaking
-
-- Replace the `@shopify/react-native-skia` peer with `react-native-skia@^3.9.1`.
-  Apps must migrate their renderer imports and font/image types, install one
-  native Skia package, and rebuild. React 19+ and React Native 0.79+ are now
-  required. Maintained Skia v2 support is not declared in this candidate.
-
-### Changed
-
-- Migrate all runtime, example, mock, and declaration imports to
-  `react-native-skia` 3.9.1 (Graphite).
-  Existing published LiveChart 4.x releases keep the Shopify peer.
-  Native iOS and Android/Vulkan verification is tracked in
-  [#409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
-- Add an explicit `publish:lib:next` command and a prepublish check that rejects
-  prerelease publication to `latest`. Stable `latest` remains 4.x.
-- Use the published, unmodified Skia 3.9.1 renderer. The experimental native
-  glyph-atlas patch was removed from the example and package before release;
-  the measurements do not establish an allocation regression from Skia 2.6.4.
+## [4.30.2] — 2026-11-04
 
 ### Fixed
 
-- Example app: enable outward Y-range easing in Multi-series so revealing a
-  series or extending the range animates instead of jumping. Add an
-  "Animate expansion" control beside Responsiveness and start with its Smooth
-  preset to spread large range changes across more visible steps.
-- Example app: give Kraken's header matching left/right widths so the centered
-  title no longer overlaps the Back button's Android touch area.
+- Multi-series live-dot pulses now advance on display frames even when chart
+  presentation time is fixed or updates less often. All dots share one UI-thread
+  clock. Parked charts still hide their pulses.
+- Single-series live-dot pulses now advance on each visible display frame
+  instead of half-pixel radius steps. The clock still parks during the fully
+  transparent interval.
+
+## [4.30.1] — 2026-11-01
+
+### Fixed
+
+- `snapKey` framing now settles on the UI thread via an animated reaction after
+  the framing SharedValues are current, instead of a layout effect that could
+  let path mappers draw one frame of new data against the previous scale.
+- Same-render `snapKey` changes include exaggeration, threshold range inputs,
+  and the remaining framing settings before consuming the snap.
+- Buffered/viewport-controlled `badge.followViewEdge` badges use the same
+  recorded-tip or edge price as their dot and value line.
+- A buffered line scrub hides and clears `onScrub` when its recorded tip moves
+  left of the window, then resumes the held gesture when recorded data re-enters.
+
+### Changed
+
+- With `badge.followViewEdge` on a buffered or viewport-controlled line, the
+  badge, value line, and live dot stay on the latest recorded point while it is
+  inside the visible time window, and only pin to the visible right-edge price
+  after that point leaves.
+- Plain scrub on those same buffered/viewport line charts clamps to the latest
+  recorded point, so a held crosshair cannot read a synthetic price in empty
+  future space as data or the viewport moves.
+
+## [4.30.0] — 2026-10-29
+
+### Added
+
+- Experimental `priceScroll` on `LiveChart` pans the price window with a vertical
+  drag on the plot, which together with `timeScroll` gives free X/Y panning. By
+  default (`activation: "afterScale"`) it engages only once the range was
+  manually changed by a price-axis drag, a pinch or an earlier price pan, so an
+  untouched chart still lets a parent `ScrollView` scroll; `"always"` claims every
+  vertical drag. The pan writes `viewport.range` (the app's shared value when
+  supplied, otherwise private state), and the engine keeps a gesture-written
+  range active while following live, clamped to `nonNegative`, `maxValue` and
+  `minRange`. Travel stops `maxOvershoot` visible spans past the fitted range.
+  Price-axis drags scale a panned window in place, a double tap on the axis
+  clears it, and so does a `snapKey` or `mode` change.
+
+- Experimental `resetButton` on `LiveChart` floats a reset-view control inside
+  the plot (`"bottom-center"` or `"bottom-right"`) while the view differs from
+  the fitted live view: scrolled back, pinched, scaled or price-panned, with
+  `showFor` choosing which states count. The built-in button draws a glyph in
+  palette colors; `renderResetButton` supplies a custom visual while the chart
+  keeps placement, visibility, fade and the tap. `onResetView` fires after a
+  reset.
+
+- `LiveChartHandle.resetView()` on both charts returns to the fitted live view:
+  `resetZoom()` plus `yRangeScale` back to 1 and, on `LiveChart`, a
+  gesture-written price range cleared, using the `returnToLive` glide.
+
+- The Time scroll demo adds **Price scroll** (Off / After scale / Always) and
+  **Reset view** settings; a dedicated **Reset view** demo links directly to its
+  matching guide, and the Fomo perps showcase shows the reset button.
+
+### Fixed
+
+- Price panning relinquishes ownership on app-written price bounds or a
+  replacement `viewport.range`, preserving those bounds during resets and
+  framing changes.
+- `onResetView` now fires after reset overrides are applied on the UI thread
+  for imperative resets and accessibility activation, matching button taps.
+- The built-in reset button handles Android TalkBack activation. Custom-button
+  documentation includes the Android accessibility action alongside the iOS tap.
+
+## [4.29.0] — 2026-10-26
+
+### Added
+
+- The Time scroll demo includes a fixed-price-range setting, feed freeze, and
+  repeatable history/future-space previews for comparing `viewport.range` off/on.
+
+- Experimental `viewport.range` supplies exact `{ min, max }` price bounds while
+  `viewport.end` is non-null. It keeps annotation coordinates stable in empty past
+  or future space. Invalid/null bounds restore auto-fit; returning to live ignores
+  the override. Range-only writes also wake `autoSleep` charts.
+
+- `LoadingConfig.freezeAfterMs` freezes the loading squiggle once it has
+  animated that long (ms) each time the loading or empty shell appears; its
+  frame callback stops until the shell next appears. Time is counted in frames
+  drawn (at most 34 ms each), so time in the background doesn't use it up; the
+  reveal morph always animates, and `0` or less freezes from the start. Omitted
+  by default: no limit, as before.
+
+### Changed
+
+- Line-mode `LiveChart` with an external `viewport` or positive `windowBuffer`
+  stops the line/dot at the last recorded point, leaving future space empty.
+  Badge and value-line prices stay aligned with that point. Existing
+  `badge.followViewEdge`, `dot.trackWhileParked`, and candle-price behavior are
+  preserved.
+
+- `badge.textAlign: "yAxisColumn"` no longer centers the value in a tailed
+  right-gutter pill too narrow for both paddings. Next to the tail, whose
+  taper already keeps the value off the outline, the pill gives up the left
+  padding first, then the right one, so the value moves continuously as the
+  pill narrows. With room for its right padding it ends `padX` from the pill's
+  end (the column's right edge when `marginEdge + padX` equals
+  `labelRightMargin`); before, it was centered, half the missing padding to the
+  right (2 px with `padX: 4` and no left padding). Only a value wider than the
+  pill's body is still centered. Pills with room for both paddings and pills
+  without a tail are unchanged.
+
+### Fixed
+
+- Preserve the final recorded sample when reducing dense line data, so controlled
+  or buffered charts end at the same price as their live dot and badge.
+
+### Maintenance
+
+- Align the example app with Expo 57.0.31, deduplicate native modules, and refresh
+  the Metro Bundle Mode patches for 0.84.5. Pin the test renderer to the version
+  compatible with React 19.2, and check Expo dependency versions, TypeScript, and
+  lint in CI.
+- Update React Doctor to 0.9.18 and make `npm run doctor` use the installed version.
 
 ## [4.28.2] — 2026-10-11
 
@@ -1833,6 +1969,10 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.30.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.2
+[4.30.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.1
+[4.30.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.0
+[4.29.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.29.0
 [4.28.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.2
 [4.28.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.1
 [4.28.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.0

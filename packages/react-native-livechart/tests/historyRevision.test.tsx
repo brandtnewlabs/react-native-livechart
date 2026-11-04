@@ -13,7 +13,7 @@ jest.mock("../src/hooks/useDemandFrameLoop", () => ({
 }));
 jest.mock("react-native-worklets", () => ({
   ...jest.requireActual("react-native-worklets"),
-  scheduleOnUI: (fn: () => void) => fn(),
+  scheduleOnUI: (fn: (...args: unknown[]) => void, ...args: unknown[]) => fn(...args),
 }));
 function feed<T>(initial: T) {
   const listeners = new Map<number, (value: T) => void>();
@@ -60,6 +60,8 @@ jest.mock("react-native-reanimated", () => {
         set(next: unknown) {
           this.value = next;
         },
+        addListener() {},
+        removeListener() {},
       };
     return ref.current;
   };
@@ -118,7 +120,9 @@ it.each([false, true])(
     result.current.canvasHeight.set(200);
     expect(raw.addListener).toHaveBeenCalledTimes(1);
     expect(bridged.addListener).toHaveBeenCalledTimes(1);
-    const settle = mockReactions[1];
+    // Hook-order reactions: snap settle, scrollEnabled return-to-live, then
+    // the static one-shot settle (last).
+    const settle = mockReactions[mockReactions.length - 1];
     let previous: unknown = null;
     const tick = () => {
       if (isStatic) {

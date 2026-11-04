@@ -219,6 +219,11 @@ taps with `onSeriesToggle`:
 
 ## Per-series dots
 
+Live-dot pulses use a shared UI-thread animation clock. They remain smooth when
+`nowOverride` holds chart time fixed or data arrives less often than display
+frames. Their 200 ms per-series stagger and configured interval stay unchanged.
+Pulses are hidden while the viewport is parked in history.
+
 The `dot` prop controls the live dots, their pulse, optional static glow,
 value lines, and inline labels. Each dot has a crisp contrasting outer ring (in
 the chart background color) by default, matching the single-series live dot so

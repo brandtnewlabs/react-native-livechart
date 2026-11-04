@@ -1,6 +1,7 @@
 import type {
   CandleGap,
   CandlePoint,
+  ChartScale,
   LiveChartPoint,
   RangeAnimationConfig,
 } from "../types";
@@ -51,6 +52,22 @@ export interface EngineTickMutable {
   extremaMaxValue: number;
   extremaMinTime: number;
   extremaMaxTime: number;
+  /**
+   * Fitted Y bounds this frame — the target the eased display range pursues,
+   * before an explicit {@link EngineTickInput.viewRange} overrides it. The
+   * price-pan gesture clamps its travel against these. Written every frame;
+   * optional so existing state literals stay valid.
+   */
+  fitMin?: number;
+  fitMax?: number;
+  /**
+   * A gesture-owned {@link EngineTickInput.viewRange} after
+   * {@link clampGestureRange}, when the clamp changed it. The engine writes it
+   * back to the shared value so the next gesture frame starts from the clamped
+   * bounds. `NaN` when nothing was adjusted; written every frame.
+   */
+  adjustedViewRangeMin?: number;
+  adjustedViewRangeMax?: number;
   /** Previous frame's yRangeScale — detects an in-flight scale drag. */
   lastYRangeScale?: number;
   /** Canvas width observed by the previous measured tick. */
@@ -92,6 +109,15 @@ export interface EngineTickInput {
   minRange?: number;
   /** Positive, finite Y-range multiplier around the fitted midpoint (1 = auto-fit). */
   yRangeScale?: number;
+  /** Explicit finite price bounds for a freely positioned external viewport. */
+  viewRange?: Pick<ChartScale, "min" | "max"> | null;
+  /**
+   * Apply {@link viewRange} while following live too (`viewEnd` null). Set for
+   * a range written by the price-pan / axis-scale gestures, so the price window
+   * holds as new data streams in. An app-written range keeps the
+   * `viewEnd`-only rule. Default `false`.
+   */
+  viewRangeFollowsLive?: boolean;
   targetValue: number;
   points: LiveChartPoint[];
   /** Internal notification revision for the selected history; omit to disable reuse. */
@@ -200,6 +226,44 @@ export function advanceTimestampByPixel(
 }
 
 /**
+ * Keep a gesture-owned explicit range inside the chart's hard bounds, which
+ * the fit normally enforces: widen a span below `minRange` about its midpoint,
+ * then slide the window to respect `nonNegative` / `maxValue`. Returns the
+ * input object itself when nothing changes.
+ */
+export function clampGestureRange(
+  range: Pick<ChartScale, "min" | "max">,
+  nonNegative: boolean,
+  maxValue: number | undefined,
+  minRange: number | undefined,
+): Pick<ChartScale, "min" | "max"> {
+  "worklet";
+  let min = range.min;
+  let max = range.max;
+  if (
+    minRange !== undefined &&
+    minRange > 0 &&
+    Number.isFinite(minRange) &&
+    max - min < minRange
+  ) {
+    const mid = min / 2 + max / 2;
+    min = mid - minRange / 2;
+    max = mid + minRange / 2;
+  }
+  if (nonNegative && min < 0) {
+    max -= min;
+    min = 0;
+  }
+  if (maxValue !== undefined && max > maxValue) {
+    min -= max - maxValue;
+    max = maxValue;
+    if (nonNegative && min < 0) min = 0;
+  }
+  if (!(Number.isFinite(min) && Number.isFinite(max) && min < max)) return range;
+  return min === range.min && max === range.max ? range : { min, max };
+}
+
+/**
  * One frame of the live chart engine (mirrors `useLiveChartEngine` worklet body).
  * Mutates `state` in place for testability and reuse from the hook.
  */
@@ -218,6 +282,17 @@ export function tickLiveChartEngineFrame(
   const timestampSecondsPerPixel =
     Math.min(state.displayWindow, targetWindow) / input.canvasWidth;
   const viewEnd = input.viewEnd;
+  const requestedRange = input.viewRange;
+  const viewRange =
+    ((viewEnd != null && Number.isFinite(viewEnd)) ||
+      input.viewRangeFollowsLive === true) &&
+    requestedRange &&
+    Number.isFinite(requestedRange.min) &&
+    Number.isFinite(requestedRange.max) &&
+    requestedRange.min < requestedRange.max &&
+    Number.isFinite(requestedRange.max - requestedRange.min)
+      ? requestedRange
+      : undefined;
   // First time of the visible series' data — the floor a frozen edge must stay
   // at or above. `-Infinity` when there's no data to bound against, so the freeze
   // still works (we can't strand a plot we have no time bounds for).
@@ -235,10 +310,11 @@ export function tickLiveChartEngineFrame(
   // time-scroll is disabled the hook clears `viewEnd` (and kicks off the glide
   // below), so a stale edge can't keep the window frozen. See #164. With
   // `allowFutureViewEnd` (timeScroll.overscroll) an edge parked past live is
-  // honored too — the data-overlap strand-guard stays in both modes.
+  // honored too. Valid explicit price bounds let external editors position
+  // before the first sample as well, without an empty auto-fit to resolve.
   const scrolledBack =
     viewEnd != null &&
-    viewEnd >= firstDataTime &&
+    (viewRange !== undefined || viewEnd >= firstDataTime) &&
     (viewEnd < liveEdge || input.allowFutureViewEnd === true);
   const canvasChanged =
     state.lastCanvasWidth !== input.canvasWidth ||
@@ -529,6 +605,8 @@ export function tickLiveChartEngineFrame(
     if (input.nonNegative && tMin < 0) tMin = 0;
     const maxV = input.maxValue;
     if (maxV !== undefined && tMax > maxV) tMax = maxV;
+    state.fitMin = tMin;
+    state.fitMax = tMax;
 
     const disjoint = tMin >= state.displayMax || tMax <= state.displayMin;
     // A subpixel settle must not jump across the other bound of a disjoint fit.
@@ -558,6 +636,29 @@ export function tickLiveChartEngineFrame(
         rangeUnitsPerPixel,
       );
     }
+  }
+
+  // Explicit bounds keep a gesture's price coordinates stable, even in empty space.
+  state.adjustedViewRangeMin = NaN;
+  state.adjustedViewRangeMax = NaN;
+  if (viewRange) {
+    // An app-written range is applied verbatim (the app owns its bounds); a
+    // gesture-written one must still honor the chart's hard bounds.
+    const bounded =
+      input.viewRangeFollowsLive === true
+        ? clampGestureRange(
+            viewRange,
+            input.nonNegative === true,
+            input.maxValue,
+            input.minRange,
+          )
+        : viewRange;
+    if (bounded !== viewRange) {
+      state.adjustedViewRangeMin = bounded.min;
+      state.adjustedViewRangeMax = bounded.max;
+    }
+    state.displayMin = bounded.min;
+    state.displayMax = bounded.max;
   }
 
   // Edge value: the price at the visible window's right edge. Following live →

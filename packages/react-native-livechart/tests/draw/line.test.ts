@@ -336,6 +336,15 @@ describe("buildLinePoints", () => {
     expect(cut).toEqual(withTip.slice(0, -2));
   });
 
+  it("does not append an eased tip over the last recorded point at the same time", () => {
+    const data = [{ time: 90, value: 2 }, { time: 100, value: 9 }];
+    const cut = buildLinePoints(data, 5, 100, 30, 0, 10, 200, 120, pad, undefined, true);
+    expect(cut).toHaveLength(4);
+    expect(cut.at(-2)).toBe(200 - pad.right);
+    expect(cut.at(-1)).toBeCloseTo(pad.top + 0.1 * (120 - pad.top - pad.bottom));
+    expect(data[1].value).toBe(9);
+  });
+
   it("omitTipBeyondData keeps the tip when data continues past the window end", () => {
     const now = 100;
     const data = [
@@ -400,6 +409,22 @@ describe("buildLinePoints decimation", () => {
   const canvasW = 400;
   const canvasH = 200;
   const chartW = canvasW - pad.left - pad.right; // 376
+
+  it.each([1799, 1809])("preserves the recorded endpoint without a synthetic tip at viewport end %s", (now) => {
+    const data = Array.from({ length: 1800 }, (_, i) => ({
+      time: i,
+      value: [0, 10, 5][i % 3],
+    }));
+    const padding = { left: 0, right: 0, top: 0, bottom: 0 };
+    const out = buildLinePoints(data, 3, now, 1800, 0, 10, 300, 200, padding, undefined, true);
+    const last = data[data.length - 1];
+    // The final sample is neither extreme in its pixel bucket. The line must
+    // still reach its recorded price, which is also used by the live dot/badge.
+    expect(out.at(-2)).toBeCloseTo(((last.time - (now - 1800)) / 1800) * 300);
+    expect(out.at(-1)).toBe(100);
+    expect(out.length / 2).toBeLessThan(data.length);
+    expect(last.value).toBe(5);
+  });
 
   it("keeps the exact per-sample path below ~2 points per pixel", () => {
     const data = Array.from({ length: 50 }, (_, i) => ({ time: i, value: i }));

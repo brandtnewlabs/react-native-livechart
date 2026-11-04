@@ -189,6 +189,10 @@ tolerance guidance, multi-series overrides, and rendering-cost details.
 
 ## Badge, dot, and value line
 
+The pulse uses a UI-thread clock and advances on each visible display frame,
+including with a fixed `nowOverride`. It parks its clock while fully transparent
+between pulses. `static` disables the pulse; `isFrameLoopActive` suspends it.
+
 By default the chart draws a value badge at the tip, a pulsing live dot, and (optionally) a
 dashed value line across the plot.
 

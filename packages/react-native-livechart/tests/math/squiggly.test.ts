@@ -2,6 +2,8 @@ import {
   blendPtsY,
   buildSquigglyPts,
   smoothstep,
+  squiggleFrozen,
+  squiggleShownMsAfterFrame,
   squigglifyPts,
   squigglyYAt,
 } from "../../src/math/squiggly";
@@ -185,5 +187,37 @@ describe("blendPtsY", () => {
     expect(out).toHaveLength(from.length);
     expect(out).not.toBe(from);
     expect(out).not.toBe(to);
+  });
+});
+
+// ─── freezeAfterMs budget ────────────────────────────────────────────────────
+
+describe("squiggleShownMsAfterFrame", () => {
+  it("adds the frame's duration", () => {
+    expect(squiggleShownMsAfterFrame(100, 16.67)).toBeCloseTo(116.67);
+  });
+
+  it("counts a long frame (back from the background, a stall) as 34 ms", () => {
+    expect(squiggleShownMsAfterFrame(100, 60_000)).toBe(134);
+  });
+
+  it("never counts backwards", () => {
+    expect(squiggleShownMsAfterFrame(100, -5)).toBe(100);
+  });
+});
+
+describe("squiggleFrozen", () => {
+  it("never freezes without a limit", () => {
+    expect(squiggleFrozen(1e9, undefined)).toBe(false);
+  });
+
+  it("freezes once the shown time reaches the limit", () => {
+    expect(squiggleFrozen(9_999, 10_000)).toBe(false);
+    expect(squiggleFrozen(10_000, 10_000)).toBe(true);
+  });
+
+  it("freezes from the start at 0 or less", () => {
+    expect(squiggleFrozen(0, 0)).toBe(true);
+    expect(squiggleFrozen(0, -1)).toBe(true);
   });
 });

@@ -188,8 +188,15 @@ By default the live badge centers its value in the pill. To line it up with the 
 `badge={{ textAlign: "yAxisColumn" }}`: the value starts at the labels' left X, and a value wider
 than every axis label ends at the column's right edge. Two trade-offs make this opt-in:
 
-- The pill keeps its shape and the value stays within its `padX` padding (a value that doesn't fit
-  there is centered), so the room on each side comes from the right inset and the badge metrics.
+- The pill keeps its shape and the value stays within its `padX` padding, so the room on each side
+  comes from the right inset and the badge metrics. Next to the tail, whose taper already keeps the
+  value off the outline, a pill too narrow for both paddings gives up the left one first, then the
+  right one, so the value moves continuously as the pill narrows. With an inset of `dotGap`, the
+  tail (`tailLength` plus half the pill's height), the value, `padX` and `marginEdge`, the value ends
+  `padX` from the pill's end (the column's right edge when `marginEdge + padX` equals
+  `labelRightMargin`). The value's width is Skia's `measureText` box, which can be wider than the
+  glyph advances. A value wider than a tailed pill's body, or one that doesn't fit both paddings of
+  a pill without a tail, is centered.
   The automatic right inset reserves room for one more digit, which ends up left of the value. For
   even padding, size `insets.right` for your widest price and set `metrics.badge` so
   `marginEdge + padX` equals `labelRightMargin`.

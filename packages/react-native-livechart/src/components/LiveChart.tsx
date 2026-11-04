@@ -69,6 +69,8 @@ import {
   resolveTradeStream,
   resolveValueLine,
   resolveVolume,
+  resolvePriceScroll,
+  resolveResetButton,
   resolveViewport,
   resolveZoom,
   resolveXAxis,
@@ -124,6 +126,7 @@ import { useModeBlend } from "../hooks/useModeBlend";
 import { resolveMomentumProp, useMomentum } from "../hooks/useMomentum";
 import { AXIS_GRAB_MIN_PX, usePanScroll } from "../hooks/usePanScroll";
 import { resetPinchZoom, usePinchZoom } from "../hooks/usePinchZoom";
+import { useResetButton } from "../hooks/useResetButton";
 import {
   SERIES_INDICATOR_FADE_MS,
   useSeriesIndicatorOpacity,
@@ -210,6 +213,7 @@ import { MultiSeriesTooltipStack } from "./MultiSeriesTooltipStack";
 import { ValueTextOverlay } from "./ValueTextOverlay";
 import { ReferenceLineGroupOverlay } from "./ReferenceLineGroupOverlay";
 import { ReferenceLineOverlay } from "./ReferenceLineOverlay";
+import { ResetButtonOverlay } from "./ResetButtonOverlay";
 import { ScrubActionOverlay } from "./ScrubActionOverlay";
 import { SegmentDividerOverlay } from "./SegmentDividerOverlay";
 import { SegmentLineGradient } from "./SegmentLineGradient";
@@ -1447,6 +1451,7 @@ function resolveLiveChartModelDefaults({
     loadingAmplitude: loadingCfg?.amplitude,
     loadingSpeed: loadingCfg?.speed,
     loadingAxisLabels: loadingCfg?.axisLabels ?? true,
+    loadingFreezeAfterMs: loadingCfg?.freezeAfterMs,
     volumeOpacity: volumeCfg?.opacity ?? 1,
     volumeUpColor: volumeCfg?.upColor ?? palette.candleUp,
     volumeDownColor: volumeCfg?.downColor ?? palette.candleDown,
@@ -1509,6 +1514,10 @@ function useLiveChartController({
   nowOverride,
   timeScroll = false,
   viewport,
+  priceScroll = false,
+  resetButton = false,
+  renderResetButton,
+  onResetView,
   returnToLive,
   zoom = false,
   accessibilityLabel,
@@ -1754,6 +1763,8 @@ function useLiveChartController({
     yAxisCfg,
     zoom,
   ]);
+  const priceScrollCfg = useMemo(() => resolvePriceScroll(priceScroll), [priceScroll]);
+  const resetButtonCfg = useMemo(() => resolveResetButton(resetButton), [resetButton]);
 
   const {
     skiaFont,
@@ -1990,6 +2001,7 @@ function useLiveChartController({
   // Shared by the path builders and the marker anchoring so glyphs sit on the
   // rendered line rather than the phantom spline.
   const lineIsLinear = lineProp?.curve === "linear";
+  const shouldOmitTipBeyondData = !isCandle && (!!viewportCfg || windowBuffer > 0);
 
   const { linePath, fillPath, thresholdFillPath } = useChartPaths(
     engine,
@@ -2011,6 +2023,7 @@ function useLiveChartController({
     thresholdFillSamples,
     lineProp?.simplify,
     lineGapsCfg?.gaps,
+    shouldOmitTipBeyondData,
   );
   // `effectivePadding.bottom` includes the volume band, so this stops at the
   // price plot's bottom edge.
@@ -2031,12 +2044,17 @@ function useLiveChartController({
     palette,
   );
 
-  const { dotX, dotY } = useLiveDot(
+  const { dotX, dotY, indicatorValue, isFollowingViewEdge } = useLiveDot(
     engine,
     effectivePadding,
     engine.edgeValue,
     badgeCfg?.followViewEdge ?? false,
     dotCfg.trackWhileParked,
+    shouldOmitTipBeyondData,
+  );
+  const badgeEngine = useMemo(
+    () => ({ ...engine, displayValue: indicatorValue }),
+    [engine, indicatorValue],
   );
 
   const momentumSV = useMomentum(engine, momentum);
@@ -2045,7 +2063,7 @@ function useLiveChartController({
   // result; while scrolled back, detect against the data prefix ending at the
   // visible right-edge timestamp so incoming live ticks cannot change the pill.
   const badgeMomentumSV = useDerivedValue(() =>
-    badgeCfg?.followViewEdge && engine.viewEnd.value !== null
+    isFollowingViewEdge.value && engine.viewEnd.value !== null
       ? resolveMomentumProp(momentum, engine.data.value, engine.timestamp.value)
       : momentumSV.value,
   );
@@ -2205,6 +2223,7 @@ function useLiveChartController({
     onScrubCandleChange,
     resolveScrubMarkerOptions(scrubCfg, markersSV),
     axisScaleActive,
+    shouldOmitTipBeyondData,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -2247,6 +2266,9 @@ function useLiveChartController({
     scrubActive: crosshairScrubActive,
     // Clear any live crosshair when a scroll drag takes over.
     onScrollStart: clearCrosshair,
+    // Vertical drags pan the price window once armed (see `priceScroll`).
+    priceScroll: priceScrollCfg,
+    yRangeScale: effectiveYRangeScale,
   });
 
   // Pinch-to-zoom the visible window (two-finger). Anchors at the focal point and
@@ -2262,6 +2284,19 @@ function useLiveChartController({
     maxTimeWindow: zoomCfg?.maxTimeWindow,
     overscroll: timeScrollOverscroll,
     onZoomStart: clearCrosshair,
+  });
+
+  // Floating reset-view button: visibility and placement on the UI thread, a
+  // tap composed ahead of the plot graph (see ChartView), and the JS-thread
+  // `reset` that backs the handle's `resetView()`.
+  const resetButtonState = useResetButton({
+    config: resetButtonCfg,
+    engine,
+    padding: effectivePadding,
+    yRangeScale: effectiveYRangeScale,
+    scrubActive: crosshairScrubActive,
+    returnToLiveMs,
+    onResetView,
   });
 
   const axisAutoHideOpacity = useAxisAutoHide({
@@ -2390,6 +2425,9 @@ function useLiveChartController({
   return {
     effectiveYRangeScale,
     axisScaleActive,
+    resetButtonState,
+    resetButtonCfg,
+    renderResetButton,
     deferAxisScaleHit: deferTapHit,
     clearCrosshair,
     // passthrough props the render needs
@@ -2517,6 +2555,7 @@ function useLiveChartController({
     liveBadgeOpacity,
     overlayScrubFade,
     markerGroupOpacity,
+    badgeEngine,
     momentumSV,
     badgeMomentumSV,
     onDegenShake,
@@ -3421,6 +3460,7 @@ function ChartStack({
     loadingStrokeWidth,
     loadingAmplitude,
     loadingSpeed,
+    loadingFreezeAfterMs,
     canvasMode,
   } = model;
   return (
@@ -3589,6 +3629,7 @@ function ChartStack({
         lineStrokeWidth={loadingStrokeWidth}
         waveAmplitude={loadingAmplitude}
         waveSpeed={loadingSpeed}
+        waveFreezeAfterMs={loadingFreezeAfterMs}
         opaqueCanvas={canvasMode === "opaque"}
         isStatic={isStatic}
         isFrameLoopActive={isFrameLoopActive}
@@ -3815,6 +3856,7 @@ function ChartBadgeLayer({
 }) {
   const {
     badgeFont,
+    badgeEngine,
     engine,
     effectivePadding,
     palette,
@@ -3845,7 +3887,7 @@ function ChartBadgeLayer({
         }
       : null;
   const badgeData = useBadge(
-    engine,
+    badgeEngine,
     effectivePadding,
     palette,
     formatValue,
@@ -3858,8 +3900,9 @@ function ChartBadgeLayer({
     metricsCfg.badge,
     metricsCfg.motion.badgeColorSpeed,
     yAxisFloat,
-    engine.edgeValue,
-    badgeCfg.followViewEdge,
+    // The controller already resolves recorded-tip versus view-edge pricing.
+    undefined,
+    false,
     badgeCfg.radius,
     badgeCfg.textColor,
     labelColumn?.entries,
@@ -4220,6 +4263,10 @@ function ChartNativeOverlays({ model }: { model: LiveChartModel }) {
     renderTooltip,
     crosshair,
     renderOverlay,
+    resetButtonState,
+    resetButtonCfg,
+    renderResetButton,
+    fontProp,
   } = model;
   const hasAnnotations =
     (markersActive && renderMarker != null) ||
@@ -4272,6 +4319,19 @@ function ChartNativeOverlays({ model }: { model: LiveChartModel }) {
           scrubDotY={crosshair.scrubDotY}
         />
       ) : null}
+      {resetButtonCfg ? (
+        <ResetButtonOverlay
+          config={resetButtonCfg}
+          visible={resetButtonState.visible}
+          rect={resetButtonState.rect}
+          measuredWidth={resetButtonState.measuredWidth}
+          measuredHeight={resetButtonState.measuredHeight}
+          reset={resetButtonState.reset}
+          render={renderResetButton}
+          palette={palette}
+          fontFamily={fontProp?.fontFamily ?? MONO_FONT_FAMILY}
+        />
+      ) : null}
       {renderOverlay ? <ChartCustomConsumerOverlay model={model} /> : null}
     </>
   );
@@ -4309,10 +4369,21 @@ function ChartView({
     deferHit: model.deferAxisScaleHit,
     onStart: model.clearCrosshair,
     gesture: rootGesture,
+    range: model.engine.viewRange,
+    rangeGestureOwned: model.engine.viewRangeGestureOwned,
   });
+  // The reset tap goes first: it claims only touches on the visible button and
+  // fails instantly elsewhere, so the plot graph never waits on it — while a
+  // tap on the button can't be swallowed by the pan's activation offset.
+  const resetTapGesture = model.resetButtonState.tapGesture;
+  const gestureWithReset = useMemo(
+    () =>
+      resetTapGesture ? Gesture.Exclusive(resetTapGesture, gesture) : gesture,
+    [gesture, resetTapGesture],
+  );
 
   return (
-    <GestureDetector gesture={gesture}>
+    <GestureDetector gesture={gestureWithReset}>
       <View
         style={[{ flex: 1, backgroundColor }, style]}
         onLayout={onLayout}
@@ -4338,12 +4409,14 @@ export const LiveChart = memo(
   forwardRef<LiveChartHandle, LiveChartProps>(function LiveChart(props, ref) {
     const model = useLiveChartController(props);
     const { viewEnd, viewWindow } = model.engine;
+    const resetView = model.resetButtonState.reset;
     useImperativeHandle(
       ref,
       () => ({
         resetZoom: () => scheduleOnUI(resetPinchZoom, { viewEnd, viewWindow }),
+        resetView,
       }),
-      [viewEnd, viewWindow],
+      [resetView, viewEnd, viewWindow],
     );
     if (model.xAxisCfg) {
       return <ChartWithXAxis model={model} />;

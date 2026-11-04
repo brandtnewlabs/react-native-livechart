@@ -7,12 +7,15 @@ import type { ChartPadding } from "../draw/line";
 
 /**
  * Derive the live dot position (right edge of the chart, mapped to current value).
- * Returns `{ dotX, dotY }` as shared values. Coordinates are set to `-100`
- * (off-screen sentinel) when canvas dimensions are unavailable.
+ * Returns `{ dotX, dotY, indicatorValue, isFollowingViewEdge }` as shared values.
+ * Coordinates are set to `-100` (off-screen sentinel) when canvas dimensions are
+ * unavailable.
  *
  * With `followViewEdge` + `edgeValue`, the dot (and the value line that shares
  * `dotY`) tracks the visible window's right-edge price while scrolled back, so it
  * stays aligned with a `followViewEdge` badge instead of marking the live value.
+ * Buffered/controlled lines keep the dot on their latest recorded point while
+ * it is inside the visible time window; edge-following resumes outside it.
  *
  * With `trackWhileParked` (`dot.trackWhileParked`), the dot instead tracks the
  * **true live point's x** while scrolled back / overscrolled (`viewEnd`
@@ -26,15 +29,68 @@ export function useLiveDot(
   edgeValue?: SharedValue<number>,
   followViewEdge = false,
   trackWhileParked = false,
+  /** Keep the dot on recorded geometry when the viewport includes future space. */
+  shouldOmitTipBeyondData = false,
 ) {
+  const visibleRecordedTip = useDerivedValue(() => {
+    if (!shouldOmitTipBeyondData) {
+      return null;
+    }
+    const data = engine.data.value;
+    const last = data[data.length - 1];
+    const win = engine.displayWindow.value;
+    const end = engine.timestamp.value;
+    const chartW = engine.canvasWidth.value - padding.left - padding.right;
+    if (!last || win <= 0 || chartW <= 0) {
+      return null;
+    }
+    if (last.time < end - win || last.time > end) {
+      return null;
+    }
+    return {
+      x: padding.left + ((last.time - (end - win)) / win) * chartW,
+      value: last.value,
+    };
+  });
+  const isFollowingViewEdge = useDerivedValue(
+    () => followViewEdge && visibleRecordedTip.value === null,
+  );
+
+  // A line with no synthetic tip ends at its recorded price. Share that value
+  // with the badge so its text, the value line, and the dot stay aligned even
+  // while the engine's live value is still easing toward a new tick.
+  const indicatorValue = useDerivedValue(() => {
+    const tip = visibleRecordedTip.value;
+    if (tip) {
+      return tip.value;
+    }
+    if (isFollowingViewEdge.value && edgeValue) {
+      return edgeValue.value;
+    }
+    if (shouldOmitTipBeyondData) {
+      const data = engine.data.value;
+      const last = data[data.length - 1];
+      if (last && last.time <= engine.timestamp.value) return last.value;
+    }
+    return engine.displayValue.value;
+  });
+
   const dotX = useDerivedValue(() => {
     const w = engine.canvasWidth.value;
     if (w === 0) return -100;
     const right = w - padding.right;
-    // While parked (scrolled back / overscrolled) the live point is not at the
-    // plot edge — track its real x so a pan doesn't lose the dot, and hide it
-    // only once the point leaves the window.
-    if (trackWhileParked && !followViewEdge && engine.viewEnd.value != null) {
+    const tip = visibleRecordedTip.value;
+    if (tip) {
+      return tip.x;
+    }
+    // Buffered or parked windows can put the last point before the plot edge.
+    // Track its real x so a pan doesn't lose the dot, and hide it only once
+    // the point leaves the window.
+    if (
+      !followViewEdge &&
+      (shouldOmitTipBeyondData ||
+        (trackWhileParked && engine.viewEnd.value != null))
+    ) {
       const data = engine.data.value;
       const last = data[data.length - 1];
       const win = engine.displayWindow.value;
@@ -56,12 +112,8 @@ export function useLiveDot(
     const dMax = engine.displayMax.value;
     const valRange = dMax - dMin;
     if (valRange === 0) return padding.top + chartH / 2;
-    const v =
-      followViewEdge && edgeValue
-        ? edgeValue.value
-        : engine.displayValue.value;
-    return padding.top + ((dMax - v) / valRange) * chartH;
+    return padding.top + ((dMax - indicatorValue.value) / valRange) * chartH;
   });
 
-  return { dotX, dotY } as const;
+  return { dotX, dotY, indicatorValue, isFollowingViewEdge } as const;
 }

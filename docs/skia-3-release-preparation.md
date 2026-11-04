@@ -1,66 +1,121 @@
 # LiveChart 5 release preparation
 
-## Proposed release and support policy — November 4, 2026
+## Release and support policy — November 4, 2026
 
-Registry checks today show LiveChart **4.30.2** on `latest`; **5.0.0-rc.0** is
-still unpublished. This checkout targets `react-native-skia@^3.9.1`, React 19+
-and React Native 0.79+. The example pins Skia 3.9.1.
+Prepare **5.0.0-rc.0** for **`next`**, using `react-native-skia@^3.9.1`,
+React 19+ and React Native 0.79+. The example pins Skia 3.9.1.
+The RC remains unpublished; npm `latest` remains **4.30.2**.
 
-Maintain two LiveChart major versions under the existing npm package name:
+Maintain two LiveChart majors under the existing npm package name:
 
-| LiveChart line | Renderer package | Proposed maintenance |
+| LiveChart line | Renderer | Support |
 | --- | --- | --- |
-| 4.x | `@shopify/react-native-skia` v2 | Keep existing apps supported; backport compatible bug fixes |
+| 4.x | `@shopify/react-native-skia` v2 | Compatible bug fixes and maintenance |
 | 5.x | `react-native-skia@^3.9.1` | New renderer release line |
 
-Consumers choose their LiveChart major explicitly; each artifact has one static
-renderer import namespace and the corresponding peer dependency. Both Skia
-package names must not be installed together: they register the same native
-module. See the upstream [migration guide](https://wcandillon.github.io/react-native-skia/docs/getting-started/migration/).
+`v4.30.2` (`367ed166`) is merged into the 5.x candidate. This includes
+`loading.freezeAfterMs`, badge padding alignment, viewport price ranges and
+recorded endpoints, price scrolling/reset-view, snap/framing/indicator fixes,
+and display-frame dot pulses. A token-level comparison confirms that the
+public index and types match 4.30.2 after normalizing the renderer import.
+Runtime differences are limited to the new Canvas options, GPU atlas snapshots,
+and the retained reference-tag dependency optimization.
 
-There is also maintained Skia v2 under the **new** package name:
-`react-native-skia@2.15.2` is currently tagged `release-2.x`. That is an additional
-compatibility target, distinct from the Shopify package used by LiveChart 4.x.
-Support for it is not verified or declared in the current 5.x candidate. Adding
-it would require a version-compatible drawing adapter, matching public types,
-and packed-consumer/native checks against both v2 and v3 before widening peers.
+The local **`codex/maintenance-v4`** branch points to `v4.30.2` and retains the
+Shopify peer. The 5.x work stays on **`codex/skia-latest-performance`**; stable
+`main` is not replaced by this preparation. Keep compatible engine and interaction
+fixes aligned between the branches. Validate renderer changes independently.
+The existing [4.x README](https://github.com/brandtnewlabs/react-native-livechart/blob/v4.30.2/README.md)
+preserves installation instructions and API documentation for Shopify apps.
+
+Each artifact imports one renderer namespace and declares its matching peer.
+Do not install both Skia names in one app: they register the same native module.
+See the upstream [migration guide](https://wcandillon.github.io/react-native-skia/docs/getting-started/migration/).
+The maintained v2 release under the *new* name (`react-native-skia@2.15.2`) is
+an additional compatibility target. It has not been verified and is not in the
+5.x peer range. Supporting it would require an adapter, matching public types,
+and packed-consumer/native checks before widening the peer range.
 
 ### Publication sequence
 
-1. Reconcile the candidate with the current 4.30.2 baseline before packaging.
-   The last common commit with the current stable branch is `c6785ec`; stable
-   changes missing from the candidate include viewport/explicit price range,
-   price scrolling/reset-view, snap/indicator alignment and display-frame pulse
-   fixes. Preserve those APIs and fixes alongside the renderer migration.
-2. Prepare **5.0.0-rc.0** for npm's **`next`** tag. Keep 4.30.2 on **`latest`**
-   during the candidate period. Verify the actual package, its peer tree and
-   public declarations in a consumer app, and smoke-test the supported native
-   platforms. Retain the accepted scrub CPU tradeoff in release notes.
-3. When promoting a stable **5.0.0**, first tag the supported 4.x release
-   **`legacy`**, then publish 5.x under **`latest`**. Existing apps can install
-   `react-native-livechart@4`; new-renderer apps can select `@5`.
-4. Publish subsequent 4.x maintenance releases explicitly under **`legacy`**.
-   Add a matching publish guard on the maintenance line so a default publish
-   cannot replace the 5.x `latest` tag. Keep the existing explicit `next` guard
-   for prereleases. Every publication still needs its version tag, changelog
-   entry and GitHub Release.
+1. Publish the prepared RC explicitly with `npm run publish:lib:next` only when
+   publication is requested. The prepublish guard requires the configured tag,
+   and rejects default `latest` and other mismatched tags. Keep **4.30.2 on
+   `latest`** throughout the RC period. Install 4.x with `@4`, the published RC
+   with `@next`, or the prepared tarball before publication.
+2. For the RC, push the release commit and `v5.0.0-rc.0` tag from the candidate
+   branch and create a GitHub **prerelease**, without marking it Latest.
+   Run the scoped npm publish dry-run before publishing. Do not merge v5 into
+   stable `main` during this preparation.
+3. Before publishing stable **5.0.0** to `latest`, give the supported 4.x version
+   the **`legacy`** tag. Promote the validated v5 source through the normal review
+   flow and update its manifest and guard to require `latest`.
+4. Publish subsequent 4.x maintenance versions explicitly to **`legacy`**.
+   Backport the generic publish guard and set `publishConfig.tag` to `legacy`
+   on that branch before the first maintenance publication after v5 promotion.
+   Until promotion, 4.x maintenance can continue on `latest`. Every publication
+   needs its changelog, version tag and GitHub Release.
 
-Keep shared engine/interaction fixes aligned across the two release lines, with
-renderer-specific changes isolated. Maintain clearly labelled 4.x and 5.x
-installation/API documentation. Supporting both major versions does not mean
-loading both native renderers into one app.
+### Performance evidence
 
-Current performance evidence is in the
-[Shopify comparison](performance-shopify-vs-skia-3.9.1-iphone.md) and the
-[CPU investigation](performance-multi-series-cpu-investigation-iphone.md).
-The retained reference-tag optimization averages 2.0% less CPU in three paired
-iPhone runs; the remaining whole-workload gap versus Shopify is 5.3%,
-concentrated in the scrub-heavy phase. The post-scrub period includes visibility
-toggles and is not a pure idle benchmark. No delivered-FPS ranking is established.
+The [Shopify comparison](performance-shopify-vs-skia-3.9.1-iphone.md) and
+[CPU investigation](performance-multi-series-cpu-investigation-iphone.md)
+**predate this 4.30.2 integration**. They document the accepted migration
+tradeoff, not a new benchmark of the final RC package. The reference-tag
+optimization averaged 2.0% less CPU in three paired iPhone runs; the remaining
+whole-workload gap versus Shopify was 5.3%, concentrated in the scrub-heavy
+phase. The post-scrub period includes visibility toggles and is not a pure idle
+benchmark. No delivered-FPS ranking was established.
 
-The policy above is a preparation proposal; no version, npm tag or publication
-was changed while documenting it. Earlier preparation and device results below
-describe the historical Skia 3.3.0 candidate unless explicitly dated otherwise.
+### Current package verification
+
+Release checks and the final tarball are recorded under
+`.agent-device/release-5-rc0-20261104/`. The source ships with declarations,
+README and license; native rendering dependencies remain peers. No experimental
+Skia patch is shipped.
+
+- npm 10 clean installation and npm 11 CI dry-run pass; the lock retains the
+  optional `@emnapi` entries required by CI.
+- `npm run verify` passes: 166 suites, 2,316 tests, five existing skips.
+- Expo dependency validation and the native peer tree pass.
+- The packed package passes a normal lifecycle-enabled install, strict consumer
+  type checking (both charts, viewport range, price scrolling, reset-view and
+  loading freeze), and a Hermes iOS Worklets Bundle Mode export of both charts.
+- An explicit `next` publish dry-run passes. Eleven publishing-guard tests cover
+  RC `next`, stable `latest`, future maintenance `legacy`, and mismatched tags.
+- React Doctor latest scores 92/100 with one complexity warning. The entire
+  warned `useLiveChartController` function is identical to stable 4.30.2; the
+  warning is inherited, rather than introduced by release preparation.
+
+### Native smoke checks — integrated 3.9.1 candidate
+
+Fresh native Release builds pass with Expo 57.0.31 / React Native 0.86.3:
+
+| Target | Results |
+| --- | --- |
+| Lennart's physical iPhone 16, iOS 26.6 | Line/candle rendering, explicit viewport price range, history navigation, time-pan → floating reset → restored view, multi-series/toggles/scrub, marker glyphs, degen enabled, GPU snapshot, font 9/9, first/second recording and replay, format/size changes pass |
+| Existing Pixel 10 Pro XL emulator, Android 37.1, 16 KB pages | Line/candle rendering, explicit viewport price range/history/future/live controls, time-pan and reset button, multi-series/toggles/scrub, buy/sell/fan marker glyphs, degen enabled, GPU snapshot, font 9/9, first/second recording and replay, format/size changes pass |
+
+The Android emulator retains its existing 8 cores, 8 GB RAM and automatic GPU
+settings. Its Vulkan renderer draws the chart and native recorder checks.
+These are focused functional smoke checks, not a new 45-route sweep or
+performance comparison. Fresh physical Android 3.9.1 QA remains outstanding.
+Screenshots, accessibility evidence, build logs and scripts are retained in the
+release evidence directory. The Mobile Dev panel installed the iPhone build;
+its unsigned touch runner could not operate the phone, so the previously
+configured signed runner performed the iPhone interactions.
+
+### Prepared artifact
+
+The final package identity is recorded in `package-audit.json` and
+`SHA256SUMS` beside `react-native-livechart-5.0.0-rc.0.tgz` in the release
+evidence directory. The artifact contains **477 files**, **502194 bytes**.
+SHA-256: `88e90fd2b27455621eeb899d429c782e57053ad12744aafdc0b7ca37b8c828ca`.
+The artifact is prepared for `next`; no publication, remote
+push, version tag or GitHub Release has been created.
+
+The records below describe the earlier **Skia 3.3.0** candidate and are retained
+as historical evidence. Their tarballs and device results are not the final RC.
 
 ## Historical Skia 3.3 release candidate
 
@@ -72,9 +127,9 @@ The stable price-update correction has since been published as **4.28.1**
 ([release](https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.28.1)).
 The v5 branch now includes that released main baseline, retains the identical
 smoothing/alignment correction, and keeps the complete 4.28.1 changelog entry.
-This candidate remains unpublished; npm `latest` is **4.28.1**.
+At that time the candidate remained unpublished and npm `latest` was **4.28.1**.
 
-## Current renderer configuration
+### Renderer configuration at that time
 
 The candidate uses the published, **unmodified `react-native-skia@3.3.0`**.
 At the user's request, the experimental glyph-atlas patch was removed from the
@@ -113,7 +168,7 @@ The new library fix is also rebuilt, installed and launched on Lennart's iPhone.
 The additional focused iPhone price-animation recording was skipped at the
 user's request on 2026-10-10; launch verification is not a motion recording.
 
-## Package
+### Historical package
 
 - `react-native-skia@^3.3.0` stays a peer, with React 19+, React Native 0.78+,
   Reanimated 4+, Worklets 0.7+ and Gesture Handler 2+.
@@ -135,7 +190,7 @@ SHA-256: `5adc54eb93c49cb4b33c001a6e9be48bac0635a5978a5815c2bf3d61d8f48ded`.
 The prior patched tarball is historical evidence under
 `.agent-device/skia409/patch-removal/previous-patched-candidate.tgz`.
 
-## Verification and evidence
+### Historical verification and evidence
 
 Before patch removal, typecheck/lint, 148 suites / 2,139 tests (five skipped),
 declaration build, packed-consumer type checks, normal installation and a valid
