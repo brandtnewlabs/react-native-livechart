@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.30.2] — 2026-11-04
+
 ### Fixed
 
 - Multi-series live-dot pulses now advance on display frames even when chart
@@ -1872,6 +1874,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.30.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.2
 [4.30.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.1
 [4.30.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.0
 [4.29.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.29.0
