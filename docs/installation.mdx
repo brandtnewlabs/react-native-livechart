@@ -7,20 +7,20 @@ description: "Install react-native-livechart and configure its peer dependencies
 ## Install
 
 <Note>
-  This page describes the LiveChart 5.0.0-rc.0 candidate, targeting
-  `react-native-skia@^3.9.1`. It is prepared locally and not published yet.
-  Supported LiveChart 4.x uses `@shopify/react-native-skia` v2.
+  **Stable 4.x is the default.** LiveChart **5.0.0-rc.0** is available under
+  `next` for testing the new Skia renderer. Both lines include the 4.30.2 APIs
+  and fixes; compatible fixes continue on 4.x.
 </Note>
 
 | Release line | Installation | Renderer |
 | --- | --- | --- |
-| Stable 4.x | `npm install react-native-livechart@4` | `@shopify/react-native-skia` v2 |
-| 5.x RC, once published under `next` | `npm install react-native-livechart@next` | `react-native-skia@^3.9.1` |
+| Stable 4.x (`latest`) | `npm install react-native-livechart@4 @shopify/react-native-skia@2.6.4` | Shopify Skia v2 |
+| 5.x release candidate (`next`) | `npm install react-native-livechart@next react-native-skia@3.9.1` | New Skia 3 / Graphite |
 
-During the RC period, `latest` remains 4.x. Compatible bug fixes continue on
-4.x; a stable 5.x release will move 4.x maintenance to the `legacy` tag.
-The 5.x candidate includes all 4.30.2 APIs and fixes, including viewport price
-ranges, price scrolling, reset-view controls and display-frame dot pulses.
+`npm install react-native-livechart` continues to select stable 4.x.
+To pin the current RC, use `react-native-livechart@5.0.0-rc.0` in place of `@next`.
+A future stable 5.x release will move 4.x maintenance to the `legacy` tag;
+`react-native-livechart@4` will continue to select the 4.x line.
 
 ## Peer dependencies
 
@@ -43,7 +43,7 @@ for your toolchain.
 
 ## LiveChart 5 release candidate
 
-The unpublished **5.0.0-rc.0** package targets `react-native-skia` **^3.9.1**, React **19+**, and
+The **5.0.0-rc.0** package targets `react-native-skia` **^3.9.1**, React **19+**, and
 React Native **0.79+**. The example pins Skia **3.9.1**. Maintained Skia 2.15.2
 support is pending verification and is not included in the candidate peer range.
 
@@ -65,21 +65,32 @@ with 16 KB pages; physical Android 3.9.1 QA remains outstanding.
 Maintained-v2 support is not declared. Detailed results and the exact follow-up
 tests are tracked in [issue #409](https://github.com/brandtnewlabs/react-native-livechart/issues/409).
 
-### Test the unpublished candidate
-
-From this repository, create a local package with `npm run pack:lib`. Install
-the resulting tarball into your app, alongside the renderer:
+### Migrate an existing app to the RC
 
 ```bash
 npm uninstall @shopify/react-native-skia
-npm install /path/to/react-native-livechart-5.0.0-rc.0.tgz react-native-skia@3.9.1
+npm install react-native-livechart@next react-native-skia@3.9.1
 ```
 
-Published LiveChart 4.x releases retain the Shopify renderer. This candidate
-includes the live-price smoothing and line/dot alignment correction. When
-prerelease publication is explicitly requested, `npm run publish:lib:next` selects the `next` dist-tag.
-A prepublish check requires the configured `next` tag; npm's workspace
-publish command can otherwise ignore `publishConfig.tag`.
+Update every renderer import to `react-native-skia`, including custom chart
+children, font managers and images. Reinstall iOS pods where applicable, then
+rebuild your native app. Do not install both renderer packages together.
+Other peer dependencies and the Babel setup below are still required.
+
+### Return to stable 4.x
+
+```bash
+npm uninstall react-native-skia
+npm install react-native-livechart@4 @shopify/react-native-skia@2.6.4
+```
+
+Restore renderer imports to `@shopify/react-native-skia`, reinstall iOS pods where
+applicable, and rebuild. Published 4.x releases keep the Shopify renderer.
+
+See the [5.0.0-rc.0 GitHub prerelease](https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v5.0.0-rc.0)
+for release notes and the known verification limits. Report RC issues with your
+platform, renderer version and a reproduction in
+[GitHub Issues](https://github.com/brandtnewlabs/react-native-livechart/issues).
 
 The removed Canvas props (`debug`, `colorSpace`, `androidWarmup`) and removed
 `NativeSkiaViewProps` type are not used or exported by LiveChart. The existing

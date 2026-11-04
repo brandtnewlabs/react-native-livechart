@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [5.0.0-rc.0] — 2026-11-04 (prepared, unpublished)
+## [5.0.0-rc.0] — 2026-11-04
 
-Prepared for `next` with Skia 3.9.1 and the full 4.30.2 baseline. No npm
-publication, version tag or GitHub Release has been created.
+Released under `next` with Skia 3.9.1 and the full 4.30.2 baseline.
+Stable npm `latest` remains 4.30.2.
 
 ### Included from stable 4.x
 
@@ -19,7 +19,7 @@ publication, version tag or GitHub Release has been created.
   experimental `priceScroll` and reset-view controls, `LiveChartHandle.resetView()`,
   snap/framing and indicator fixes, and display-frame live-dot pulses.
 - Keep 4.x supported with the Shopify renderer. During the RC period, npm's
-  `latest` stays on 4.30.2; this candidate is prepared exclusively for `next`.
+  `latest` stays on 4.30.2; this release candidate is published exclusively under `next`.
 
 ### Breaking
 
@@ -1969,6 +1969,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[5.0.0-rc.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v5.0.0-rc.0
 [4.30.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.2
 [4.30.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.1
 [4.30.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.0

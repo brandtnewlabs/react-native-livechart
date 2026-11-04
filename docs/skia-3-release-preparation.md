@@ -2,9 +2,9 @@
 
 ## Release and support policy — November 4, 2026
 
-Prepare **5.0.0-rc.0** for **`next`**, using `react-native-skia@^3.9.1`,
+Release **5.0.0-rc.0** under **`next`**, using `react-native-skia@^3.9.1`,
 React 19+ and React Native 0.79+. The example pins Skia 3.9.1.
-The RC remains unpublished; npm `latest` remains **4.30.2**.
+The RC is published under `next`; npm `latest` remains **4.30.2**.
 
 Maintain two LiveChart majors under the existing npm package name:
 
@@ -22,7 +22,7 @@ Runtime differences are limited to the new Canvas options, GPU atlas snapshots,
 and the retained reference-tag dependency optimization.
 
 The local **`codex/maintenance-v4`** branch points to `v4.30.2` and retains the
-Shopify peer. The 5.x work stays on **`codex/skia-latest-performance`**; stable
+Shopify peer. PR #430 merged the 5.x work into **`codex/skia-3-release-preparation`**; stable
 `main` is not replaced by this preparation. Keep compatible engine and interaction
 fixes aligned between the branches. Validate renderer changes independently.
 The existing [4.x README](https://github.com/brandtnewlabs/react-native-livechart/blob/v4.30.2/README.md)
@@ -105,14 +105,16 @@ release evidence directory. The Mobile Dev panel installed the iPhone build;
 its unsigned touch runner could not operate the phone, so the previously
 configured signed runner performed the iPhone interactions.
 
-### Prepared artifact
+### Pre-publication artifact
 
 The final package identity is recorded in `package-audit.json` and
 `SHA256SUMS` beside `react-native-livechart-5.0.0-rc.0.tgz` in the release
 evidence directory. The artifact contains **477 files**, **502194 bytes**.
 SHA-256: `88e90fd2b27455621eeb899d429c782e57053ad12744aafdc0b7ca37b8c828ca`.
-The artifact is prepared for `next`; no publication, remote
-push, version tag or GitHub Release has been created.
+This pre-publication artifact predates the final rollout documentation edits.
+The published tarball identity is available from `npm view react-native-livechart@5.0.0-rc.0 dist`.
+The RC is published under `next` with a `v5.0.0-rc.0` tag and GitHub prerelease;
+stable `latest` remains 4.30.2.
 
 The records below describe the earlier **Skia 3.3.0** candidate and are retained
 as historical evidence. Their tarballs and device results are not the final RC.

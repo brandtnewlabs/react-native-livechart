@@ -43,19 +43,35 @@ See every feature in motion — line & area, candlestick, multi-series, scrubbin
 
 ## Install
 
-This checkout prepares **5.0.0-rc.0** for `react-native-skia` **3.9.1+**.
-The RC is not published yet. The supported **4.x** line keeps the Shopify renderer.
+Choose the release line that matches your renderer. **Stable 4.x remains the default**;
+**5.0.0-rc.0 is available for testing under `next`**.
 
 | Release line | Install | Renderer |
 | --- | --- | --- |
-| Stable 4.x (`latest` during the RC) | `npm install react-native-livechart@4` | `@shopify/react-native-skia` v2 |
-| 5.x RC (`next`, once published) | `npm install react-native-livechart@next` | `react-native-skia@^3.9.1` |
+| Stable 4.x (`latest`) | `npm install react-native-livechart@4 @shopify/react-native-skia@2.6.4` | Shopify Skia v2 |
+| 5.x release candidate (`next`) | `npm install react-native-livechart@next react-native-skia@3.9.1` | New Skia 3 / Graphite |
 
-To test before publication, run `npm run pack:lib` in this repository and install
-its `react-native-livechart-5.0.0-rc.0.tgz` file into your app. When migrating to
-5.x, remove `@shopify/react-native-skia`, install `react-native-skia@3.9.1`, update
-all Skia imports (including fonts, images and custom children), and rebuild the
-native app. Install only one Skia package name.
+`npm install react-native-livechart` continues to select stable 4.x. To test this
+exact RC, use `react-native-livechart@5.0.0-rc.0` instead of `@next`.
+
+**Migrating an existing app to the RC:**
+
+```bash
+npm uninstall @shopify/react-native-skia
+npm install react-native-livechart@next react-native-skia@3.9.1
+```
+
+Rename all Skia imports to `react-native-skia`, including fonts, images and
+custom chart children. Reinstall iOS pods where applicable and rebuild the native
+app; Expo Go cannot run this renderer. Install only one Skia package name.
+The RC requires React 19+, React Native 0.79+, iOS 15.1+ or Android API 26+ with
+Vulkan 1.1. Other peer dependencies and Babel setup remain required below.
+
+To return to stable, remove `react-native-skia`, install the stable command above,
+restore imports to `@shopify/react-native-skia`, and rebuild.
+
+See the [installation and migration guide](https://react-native-livechart.brandtnewlabs.com/installation)
+and [GitHub prerelease](https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v5.0.0-rc.0).
 
 5.x includes the 4.30.2 APIs and fixes, including viewport price ranges,
 price scrolling, reset-view controls and display-frame dot pulses. Compatible
