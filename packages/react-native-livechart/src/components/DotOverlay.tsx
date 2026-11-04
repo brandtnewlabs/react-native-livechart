@@ -14,13 +14,11 @@ import type {
 import type { LiveChartPalette } from "../types";
 
 const MIN_PULSE_RADIUS = 9;
-const PULSE_PIXEL_STEP = 0.5;
 
 /**
- * Quantizes the pulse clock to visible radius changes and parks it while the
- * pulse is fully transparent.
+ * Advances on every visible display frame and parks while fully transparent.
  */
-export function quantizePulseClock(
+export function pulseClockTime(
   timestamp: number,
   interval: number,
   duration: number,
@@ -33,12 +31,7 @@ export function quantizePulseClock(
 
   const radiusTravel = maxRadius - MIN_PULSE_RADIUS;
   if (!(radiusTravel > 0) || !(duration > 0)) return cycleStart;
-  const millisecondsPerStep =
-    (duration * PULSE_PIXEL_STEP) / radiusTravel;
-  return (
-    cycleStart +
-    Math.floor(elapsed / millisecondsPerStep) * millisecondsPerStep
-  );
+  return timestamp;
 }
 
 /**
@@ -97,7 +90,7 @@ export function DotOverlay({
   /* istanbul ignore next -- frame-callback worklet runs on the UI thread, not in Jest */
   const pulseClock = useFrameCallback((frame) => {
     if (!pulse || isFrameLoopActive?.get() === false) return;
-    pulseClockMs.value = quantizePulseClock(
+    pulseClockMs.value = pulseClockTime(
       frame.timestamp,
       pulse.interval,
       pulse.duration,

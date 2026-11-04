@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Multi-series live-dot pulses now advance on display frames even when chart
+  presentation time is fixed or updates less often. All dots share one UI-thread
+  clock. Parked charts still hide their pulses.
+- Single-series live-dot pulses now advance on each visible display frame
+  instead of half-pixel radius steps. The clock still parks during the fully
+  transparent interval.
+
 ## [4.30.1] — 2026-11-01
 
 ### Fixed
