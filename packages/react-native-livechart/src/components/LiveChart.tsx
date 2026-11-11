@@ -1511,6 +1511,7 @@ function useLiveChartController({
   minRange,
   yRangeScale,
   windowBuffer = 0,
+  windowBufferSeconds = 0,
   nowOverride,
   timeScroll = false,
   viewport,
@@ -1901,6 +1902,7 @@ function useLiveChartController({
     minRange,
     yRangeScale: effectiveYRangeScale,
     windowBuffer,
+    windowBufferSeconds,
     nowOverride,
     mode,
   });
@@ -2001,7 +2003,8 @@ function useLiveChartController({
   // Shared by the path builders and the marker anchoring so glyphs sit on the
   // rendered line rather than the phantom spline.
   const lineIsLinear = lineProp?.curve === "linear";
-  const shouldOmitTipBeyondData = !isCandle && (!!viewportCfg || windowBuffer > 0);
+  const shouldOmitTipBeyondData =
+    !isCandle && (!!viewportCfg || windowBuffer > 0 || windowBufferSeconds > 0);
 
   const { linePath, fillPath, thresholdFillPath } = useChartPaths(
     engine,

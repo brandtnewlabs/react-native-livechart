@@ -68,13 +68,15 @@ when width changes. Inline labels and axis badges may need extra space;
 
 <ParamField body="historyStartTime" type="number">
   Authoritative history start in Unix seconds. While following without a zoom
-  override, `window = (now - historyStartTime) / (1 - windowBuffer)` keeps this
-  timestamp at the left edge as time advances. Use `0 <= windowBuffer < 1`.
-  Pan freezes the edge and unzoomed width; pinch overrides remain active.
-  `ref.current?.resetZoom()` restores the growing live window. Default zoom-out
-  bounds include this full span, even when the retained first sample starts later.
-  Non-finite or future starts fall back to `timeWindow`. See
-  [All history](/guides/multi-series#all-history).
+  override,
+  `window = (now + windowBufferSeconds - historyStartTime) / (1 - windowBuffer)`
+  keeps this timestamp at the left edge as time advances. Use
+  `0 <= windowBuffer < 1`. Absolute `windowBufferSeconds` grow the unzoomed span
+  without shrinking under pinch. Pan freezes the edge and unzoomed width; pinch
+  overrides remain active. `ref.current?.resetZoom()` restores the growing live
+  window. Default zoom-out bounds include this full span, even when the retained
+  first sample starts later. Non-finite or future starts fall back to
+  `timeWindow`. See [All history](/guides/multi-series#all-history).
 </ParamField>
 
 ## Series opacity

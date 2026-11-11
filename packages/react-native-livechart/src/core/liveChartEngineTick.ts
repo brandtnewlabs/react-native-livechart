@@ -128,6 +128,8 @@ export interface EngineTickInput {
   nowOverride?: number;
   /** Right-edge buffer as a fraction of the time window (pushes the live edge past "now"). */
   windowBuffer?: number;
+  /** Right-edge buffer in seconds. Does not scale with the visible window. */
+  windowBufferSeconds?: number;
   /** When true, freeze the viewport timestamp and skip displayWindow lerp */
   paused?: boolean;
   /**
@@ -274,7 +276,10 @@ export function tickLiveChartEngineFrame(
 ): void {
   "worklet";
   const baseNow = input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
-  const liveEdge = baseNow + (input.windowBuffer ?? 0) * input.timeWindow;
+  const liveEdge =
+    baseNow +
+    (input.windowBuffer ?? 0) * input.timeWindow +
+    Math.max(0, input.windowBufferSeconds ?? 0);
   const targetWindow = input.viewWindow ?? input.timeWindow;
   // Keep clock rounding below half a pixel of the displayed window as it
   // changes. Using only the target window during expansion can leave "now"

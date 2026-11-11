@@ -770,6 +770,13 @@ range written by `priceScroll` or the axis-scale gesture, gliding the right edge
   visible time window. Candle indicators continue to use candle prices.
 </ParamField>
 
+<ParamField body="windowBufferSeconds" type="number" default="0">
+  Right-edge buffer in seconds, added past now on top of `windowBuffer`. Unlike
+  the fraction, this duration does not shrink when the visible window is pinched.
+  In line mode it also drives tip omission and scrub clamping the same way a
+  positive `windowBuffer` does.
+</ParamField>
+
 <ParamField body="nowOverride" type="number">
   Override the engine's "now" (unix seconds) — useful for historical playback.
 </ParamField>

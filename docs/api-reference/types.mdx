@@ -1124,8 +1124,13 @@ uses the same clock. See [Replay clock](/guides/multi-series#replay-clock).
 
 `LiveChartSeriesProps.historyStartTime?: number` is an authoritative Unix-second
 start for a growing live window. With no pan/zoom override, the displayed width
-is `(now - historyStartTime) / (1 - windowBuffer)`. Buffer must be in `[0, 1)`;
-invalid/future starts use `timeWindow`. `resetZoom()` resumes the growing view.
-Default pinch maximum includes this full span, independent of retained sample
-timestamps. Explicit zoom bounds take precedence, including maxima smaller than
-`timeWindow`. See [All history](/guides/multi-series#all-history).
+is `(now + windowBufferSeconds - historyStartTime) / (1 - windowBuffer)`.
+Fractional buffer must be in `[0, 1)`; invalid/future starts use `timeWindow`.
+`resetZoom()` resumes the growing view. Default pinch maximum includes this full
+span, independent of retained sample timestamps. Explicit zoom bounds take
+precedence, including maxima smaller than `timeWindow`. See
+[All history](/guides/multi-series#all-history).
+
+`LiveChartCoreProps.windowBufferSeconds?: number` adds a fixed right-edge buffer
+in seconds on top of `windowBuffer`. It does not shrink when the visible window
+is pinched. Default `0`.
