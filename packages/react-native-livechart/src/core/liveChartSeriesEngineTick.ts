@@ -131,20 +131,8 @@ export function tickLiveChartSeriesEngineFrame(
   const start = input.historyStartTime;
   // Absolute seconds sit past now, so the unzoomed span grows by that duration and
   // the history start stays on the left edge.
-  const fullWindow = (() => {
-    if (start == null) {
-      return null;
-    }
-    const hasUsableHistoryStart = Number.isFinite(start) && start < baseNow;
-    if (!hasUsableHistoryStart) {
-      return null;
-    }
-    const hasUsableBuffer = buffer >= 0 && buffer < 1;
-    if (!hasUsableBuffer) {
-      return null;
-    }
-    return (baseNow + bufferSeconds - start) / (1 - buffer);
-  })();
+  const fullWindow = start != null && Number.isFinite(start) && start < baseNow &&
+    buffer >= 0 && buffer < 1 ? (baseNow + bufferSeconds - start) / (1 - buffer) : null;
   state.currentTime = baseNow;
   state.fullHistoryWindow = fullWindow;
   const liveWindow = input.viewWindow ?? fullWindow ?? input.timeWindow;
