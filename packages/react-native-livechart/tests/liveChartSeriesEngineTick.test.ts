@@ -229,6 +229,31 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     expect(s.timestamp).toBe(2003);
   });
 
+  it("grows the history-start window by windowBufferSeconds", () => {
+    const s = baseMulti();
+    tickLiveChartSeriesEngineFrame(s, {
+      dt: 16.67,
+      canvasWidth: 200,
+      canvasHeight: 100,
+      timeWindow: 60,
+      smoothing: 1,
+      exaggerate: false,
+      referenceValue: undefined,
+      nowOverride: 3760,
+      historyStartTime: 1000,
+      windowBuffer: 0.04,
+      windowBufferSeconds: 96,
+      series: [{ id: "a", data: [{ time: 1000, value: 1 }, { time: 3760, value: 2 }], value: 2 }],
+      nowSeconds: 1000,
+    });
+    // fullWindow = (3760 + 96 - 1000) / 0.96 = 2975
+    // liveEdge = 3760 + 0.04 * 2975 + 96 = 3975
+    expect(s.fullHistoryWindow).toBe(2975);
+    expect(s.liveEdge).toBe(3975);
+    expect(s.timestamp).toBe(3975);
+    expect(s.timestamp - s.displayWindow).toBe(1000);
+  });
+
   it("excludes hidden series from Y-range", () => {
     const s = baseMulti();
     tickLiveChartSeriesEngineFrame(s, {

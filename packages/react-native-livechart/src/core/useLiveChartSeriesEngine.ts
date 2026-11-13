@@ -37,6 +37,8 @@ export interface MultiSeriesEngineConfig {
   nowOverride?: number;
   presentationTime?: SharedValue<number | undefined>;
   windowBuffer?: number;
+  /** Right-edge buffer in seconds. Does not scale with the visible window. */
+  windowBufferSeconds?: number;
   paused?: boolean;
   /**
    * Whether the `timeScroll` gesture is active. Flipping to `false` while scrolled
@@ -102,6 +104,8 @@ export interface MultiEngineFrameRefs {
   currentTimeSV?: SharedValue<number>;
   fullHistoryWindowSV?: SharedValue<number | null>;
   windowBufferSV?: FrameParameter<number>;
+  /** Preserves the absolute future boundary independently of the zoom window. */
+  windowBufferSecondsSV?: FrameParameter<number>;
   pausedSV: FrameParameter<boolean>;
   /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
   viewEndSV?: SharedValue<number | null>;
@@ -284,6 +288,7 @@ export function applyLiveChartSeriesEngineFrame(
   input.presentationTime = sv.presentationTimeSV?.value;
   input.historyStartTime = sv.historyStartTimeSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
+  input.windowBufferSeconds = sv.windowBufferSecondsSV?.value ?? 0;
   input.series = seriesSnap;
   input.nowSeconds = Date.now() / 1000;
   input.paused = sv.pausedSV.value;
@@ -361,6 +366,7 @@ export function useLiveChartSeriesEngine(
   const minRangeSV = { value: config.minRange };
   const nowOverrideSV = { value: config.nowOverride };
   const windowBufferSV = { value: config.windowBuffer ?? 0 };
+  const windowBufferSecondsSV = { value: config.windowBufferSeconds ?? 0 };
   const pausedSV = { value: config.paused ?? false };
   // Whether time-scroll is active — drives the return-to-live reaction below.
   // Defaults to enabled (legacy behavior).
@@ -462,6 +468,7 @@ export function useLiveChartSeriesEngine(
     presentationTimeSV: config.presentationTime,
     currentTimeSV: currentTime,
     windowBufferSV,
+    windowBufferSecondsSV,
     pausedSV,
     viewEndSV: viewEnd,
     allowFutureViewEndSV,

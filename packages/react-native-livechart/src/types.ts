@@ -2731,6 +2731,12 @@ export interface LiveChartCoreProps {
    */
   windowBuffer?: number;
   /**
+   * Right-edge buffer in seconds, added past now on top of {@link windowBuffer}.
+   * Unlike the fraction, this duration does not shrink when the visible window
+   * is pinched. Default `0`.
+   */
+  windowBufferSeconds?: number;
+  /**
    * Override the engine's "now" (unix seconds). Pass the latest data timestamp to
    * treat the most recent point as the current time — combine with `windowBuffer={0}`
    * and `timeWindow = maxT - minT` to fill the canvas edge-to-edge with historical data.

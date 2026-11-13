@@ -15,12 +15,15 @@ description: "Render a fixed historical span edge-to-edge instead of a live-scro
 </Frame>
 
 To render a fixed historical span edge-to-edge — rather than a live-scrolling tail — freeze the
-engine's clock with `nowOverride` and reserve a little right-edge space with `windowBuffer`:
+engine's clock with `nowOverride` and reserve a little right-edge space with `windowBuffer`
+(and optionally `windowBufferSeconds`):
 
 - **`nowOverride`** — override the engine's "now" (unix seconds). Set it to your dataset's last
   timestamp so the window ends exactly there.
 - **`windowBuffer`** — right-edge padding as a fraction of `timeWindow`, so the latest point
   isn't flush against the edge.
+- **`windowBufferSeconds`** — absolute right-edge padding in seconds on top of the fraction.
+  Prefer this when pinch-zoom must keep a fixed breathing-room duration.
 
 ```tsx
 <LiveChart
