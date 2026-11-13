@@ -44,6 +44,7 @@ export function useReferenceTagStack({
       if (referenceLineForm(line) !== "line" || line.value === undefined) continue;
       const value = values[i] ?? line.value;
       const offAxis = classifyReferenceEdge(value, min, max) !== "in";
+      if (offAxis && line.offAxis === "hide") continue;
       if (custom[i] || (offAxisCustom[i] && offAxis)) {
         const size = sizes[keys[i]];
         if (!size || w <= 0 || h - padding.top - padding.bottom <= 0) continue;
@@ -69,7 +70,10 @@ export function useReferenceTagStack({
       if (name) tags.push({ ...name, index: i, lineId: line.id, key: keys[i] + ":name", kind: "name", lineY: layout.y });
       if (layout.valueBadge) tags.push({ ...layout.valueBadge, index: i, lineId: line.id, key: keys[i] + ":value", kind: "value", lineY: layout.y });
     }
-    return stackReferenceTags(tags, padding.top, h - padding.bottom, radius, obstacle?.get() ?? null);
+    // Pack within the canvas, not the plot, so a tag whose line sits at the plot's
+    // edge stays centered on it, spilling into the inset, instead of being pushed
+    // inwards off its line.
+    return stackReferenceTags(tags, 0, h, radius, obstacle?.get() ?? null);
   }, (next, previous) => {
     // Avoid waking every tag mapper when the engine ticks but geometry is steady.
     if (previous && next.tags.length === previous.tags.length && next.tags.every((t, i) => {

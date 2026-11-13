@@ -156,6 +156,14 @@ export interface ReferenceLine {
    */
   excludeFromRange?: boolean;
   /**
+   * What a Form-A line with a `badge` / `valueBadge` does once its value leaves
+   * the visible range: `"pin"` its tags to the nearest plot edge with a chevron,
+   * or `"hide"` the line and its tags until the value scrolls back into view.
+   * `"hide"` also suppresses `renderOffAxisReferenceLine` for the line. Lines
+   * without a badge are always hidden off-screen. Default `"pin"`.
+   */
+  offAxis?: "pin" | "hide";
+  /**
    * Render the Form-A value as a **pill badge** — an icon and/or text tag pinned
    * to a plot edge at the line's value, with a dashed connector running to the
    * opposite edge (instead of a plain gutter label that collides with the Y-axis

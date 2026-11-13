@@ -237,6 +237,9 @@ interface ReferenceLine {
   labelPosition?: "left" | "center" | "right";
   showValue?: boolean;
   excludeFromRange?: boolean;
+  // Off-screen behavior of a badged Form-A line: "pin" (default) pins its pills to
+  // the nearest plot edge with a chevron; "hide" hides the line and its pills:
+  offAxis?: "pin" | "hide";
   // Pill badge for a Form-A line (working orders, alerts, targets) — pinned to an
   // edge with a dashed connector; auto-pins with a chevron when off-screen:
   badge?: boolean | ReferenceLineBadgeConfig;

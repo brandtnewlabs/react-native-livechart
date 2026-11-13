@@ -139,6 +139,26 @@ referenceLines={[
 It supersedes the legacy `offAxisBadge` (still supported), which only appears once the value is
 off-screen and takes no icon.
 
+### Hiding off-screen pills (`offAxis`)
+
+Pinning suits lines the user must always be able to reach, such as a working order they can
+drag. For context lines such as a liquidation price or a position's entry, set
+`offAxis: "hide"`: the line and its pills hide while the value is off-screen and return when it
+scrolls back into view.
+
+```tsx
+referenceLines={[
+  // context: hides off-screen
+  { id: "liq", value: 61200, label: "Liq. price", badge: true, valueBadge: true, offAxis: "hide" },
+  // draggable order: keeps pinning so it stays grabbable
+  { id: "limit", value: 64850, label: "Limit", badge: true, valueBadge: true, draggable: true },
+]}
+```
+
+A hidden line has no tap or drag target, is left out of grouping counts, and also suppresses
+`renderOffAxisReferenceLine`. In-range rendering is unchanged. Lines without a badge are always
+hidden off-screen, so `offAxis` only affects lines with `badge`, `valueBadge`, or `offAxisBadge`.
+
 ## Separate price pills (`valueBadge`)
 
 Use a left name badge and a separate price pill for take-profit, stop-loss, and
@@ -180,6 +200,7 @@ through `onChange`.
   label; an explicit `label` remains and defaults to the left side.
 - Both pills pin together when the value is off-screen, with a directional
   chevron on the name pill (or the price pill when there is no name badge).
+  With `offAxis: "hide"`, both hide together instead.
   Grouping counts each reference line once and hides both pills when collapsed;
   the count handle does not show an aggregate price.
 - In `LiveChart`, either pill can be tapped with `onReferenceLinePress` or used
@@ -440,8 +461,8 @@ the count reflects only collapsed built-in tags. The count pill takes the same s
 for the count label.
 
 Badged lines far above the visible range group at the top edge, just as lines below it group
-at the bottom. Off-axis lines without `badge`, `valueBadge`, or `offAxisBadge` are hidden, so they do not
-increase a visible group's count.
+at the bottom. Off-axis lines without `badge`, `valueBadge`, or `offAxisBadge`, or with
+`offAxis: "hide"`, are hidden, so they do not increase a visible group's count.
 
 ### Stacking tags
 
@@ -455,7 +476,9 @@ Stacking moves tags vertically on the UI thread while the price strokes remain a
 their real values. Name and value pills are measured separately; horizontally
 separate columns (left, right, and price axis) pack independently. Different font
 sizes, badge offsets, plain in-range labels, and measured custom React Native
-tags all participate. Off-axis handles stay within the plot. `radius` is the
+tags all participate. Tags pack within the full canvas, not just the plot, so a
+tag on a line at the plot's top or bottom edge stays centered on its line and
+spills into the inset instead of being pushed off it. `radius` is the
 minimum center-to-center spacing; measured heights plus a 2 px gap take precedence.
 Count-pill `badge` and `format` settings apply only to `mode: "collapse"`.
 
@@ -464,7 +487,7 @@ position and offsets. Set `avoidValueBadge: false` to disable this reservation.
 A hidden or disabled badge reserves no space. If the plot cannot fit every tag,
 spacing and badge avoidance are best effort; all tags remain present and their
 price values stay unchanged. Increase the chart height or use collapse for very
-dense sets. Tags taller than the plot may extend beyond it.
+dense sets. Tags taller than the canvas may extend beyond it.
 
 Press and drag targets follow the moved tags. Starting a drag compensates for
 the tag's initial displacement so the price does not jump to the tag's new Y.
