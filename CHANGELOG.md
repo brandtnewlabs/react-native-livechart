@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ReferenceLine.offAxis` (`"pin"` | `"hide"`, default `"pin"`) controls what
+  a badged Form-A line does once its value leaves the visible range. `"hide"`
+  hides the line, its name and price pills, and any `renderOffAxisReferenceLine`
+  tag until the value is back in range, and leaves it out of grouping counts
+  and tap/drag targets. Use it for context lines (liquidation, entry) and keep
+  `"pin"` for lines the user must always reach.
+
+### Changed
+
+- `referenceLineGrouping={{ mode: "stack" }}` packs tags within the full canvas
+  instead of the plot, so a tag on a line at the plot's top or bottom edge stays
+  centered on its line instead of being pushed inwards off it. Tags near an edge
+  can now extend into the top or bottom inset by up to half their height, and
+  further when stacked.
+
 ## [4.30.2] — 2026-11-04
 
 ### Fixed
