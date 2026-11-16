@@ -665,6 +665,32 @@ describe("tickLiveChartEngineFrame", () => {
     expect(s.timestamp).toBe(5000);
   });
 
+  it.each([
+    { windowBuffer: undefined, padding: 5 },
+    { windowBuffer: 0.1, padding: 8 },
+  ])("preserves $padding seconds of live padding as the clock advances", ({ windowBuffer, padding }) => {
+    const s = baseState();
+    for (const nowSeconds of [1000, 1003, 1012]) {
+      tickLiveChartEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.08,
+        exaggerate: false,
+        referenceValue: undefined,
+        windowBuffer,
+        windowBufferSeconds: 5,
+        targetValue: 1,
+        points: [{ time: nowSeconds, value: 1 }],
+        nowSeconds,
+      });
+      expect(s.timestamp).toBeCloseTo(nowSeconds + padding, 10);
+      expect(s.liveEdge).toBeCloseTo(nowSeconds + padding, 10);
+      expect(s.displayWindow).toBe(30);
+    }
+  });
+
   it("freezes timestamp when paused=true", () => {
     const s = { ...baseState(), timestamp: 999 };
     tickLiveChartEngineFrame(s, {
