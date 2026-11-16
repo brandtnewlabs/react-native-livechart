@@ -32,9 +32,40 @@ engine's clock with `nowOverride` and reserve a little right-edge space with `wi
   timeWindow={span}
   nowOverride={lastTime}
   windowBuffer={0.04}
-  paused
 />
 ```
+
+## Fixed-duration padding
+
+Use `windowBufferSeconds` on either `LiveChart` or `LiveChartSeries` to keep a
+fixed duration of future space while pinching:
+
+```tsx
+<LiveChart
+  data={history}
+  value={lastValue}
+  nowOverride={lastTime}
+  timeWindow={100}
+  windowBuffer={0.1}
+  windowBufferSeconds={5}
+  zoom={{ minTimeWindow: 10 }}
+/>
+```
+
+While following live, total padding is
+`windowBuffer * zoomedWindow + Math.max(0, windowBufferSeconds)`: this example
+reserves 15 seconds at a 100-second window and 10 seconds at a 50-second window.
+The five-second portion stays fixed in time, not in pixels. Negative seconds
+are treated as zero. If the total padding reaches the visible window's width,
+the recorded data moves offscreen; choose a suitable minimum zoom window.
+Pan and focal-anchored pinch can park the chart in history, where the viewport
+edge takes precedence. `ref.current?.resetZoom()` restores the configured window
+and live edge.
+
+The historical-data demo exposes fractional and seconds padding, window sizes,
+pinch/reset, and a two-series history mode. Its visible-range readout shows the
+measured window and edges. In history mode, **Advance 60s** moves the clock while
+the start stays at zero; reset zoom to restore that growing span.
 
 See the full prop list in the [`LiveChart` reference](/api-reference/livechart), and the live
 [Playback](/guides/playback) controls for tuning the window, smoothing, and Y-axis range.

@@ -1133,4 +1133,6 @@ precedence, including maxima smaller than `timeWindow`. See
 
 `LiveChartCoreProps.windowBufferSeconds?: number` adds a fixed right-edge buffer
 in seconds on top of `windowBuffer`. It does not shrink when the visible window
-is pinched. Default `0`.
+is pinched; its pixel width does change. Negative values are treated as `0`.
+Keep total padding below the zoomed window to keep recorded data visible.
+Default `0`.

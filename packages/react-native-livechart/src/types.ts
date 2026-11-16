@@ -2733,7 +2733,9 @@ export interface LiveChartCoreProps {
   /**
    * Right-edge buffer in seconds, added past now on top of {@link windowBuffer}.
    * Unlike the fraction, this duration does not shrink when the visible window
-   * is pinched. Default `0`.
+   * is pinched. Negative values are treated as `0`. This reserves time, not a
+   * fixed pixel width; keep the total buffer below the zoomed window to keep
+   * recorded data visible. Default `0`.
    */
   windowBufferSeconds?: number;
   /**
@@ -3256,7 +3258,8 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
   /**
    * Authoritative history start (Unix seconds). While following without a zoom
    * override, grows the window to keep this time at the left edge, including
-   * `windowBuffer` (must be < 1). Pan/zoom overrides remain usable; resetZoom()
+   * `windowBuffer` (must be in [0, 1)) and `windowBufferSeconds`.
+   * Pan/zoom overrides remain usable; resetZoom()
    * restores following. A non-finite or future start falls back to timeWindow.
    */
   historyStartTime?: number;

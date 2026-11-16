@@ -66,6 +66,14 @@ when width changes. Inline labels and axis badges may need extra space;
 
 ## Growing history window
 
+Both `windowBuffer` and `windowBufferSeconds` are shared with `LiveChart`.
+The first reserves a fraction of the zoomed window; the second adds a fixed
+duration (default `0`, negative values treated as `0`). For example,
+`windowBuffer={0.1}` and `windowBufferSeconds={5}` reserve 15 seconds in a
+100-second window and 10 seconds in a 50-second window. This is fixed time,
+not fixed pixels. Keep the total padding below the zoomed window to keep data
+visible. See [right-edge padding](/guides/historical-data#fixed-duration-padding).
+
 <ParamField body="historyStartTime" type="number">
   Authoritative history start in Unix seconds. While following without a zoom
   override,
