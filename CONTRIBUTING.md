@@ -14,7 +14,7 @@ This is an npm-workspaces **monorepo**:
 
 ## Prerequisites
 
-- **Node.js 24** (matches CI)
+- **Node.js 26** (matches CI)
 - npm (the repo uses npm workspaces and a committed `package-lock.json`)
 - For running on a device/simulator: the standard Expo / React Native iOS or Android
   toolchain
