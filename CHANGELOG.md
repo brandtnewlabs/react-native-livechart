@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `windowBufferSeconds` on both charts adds a fixed right-edge buffer in seconds
+  on top of the fractional `windowBuffer`. Unlike the fraction, it does not
+  shrink when the visible window is pinched. With `historyStartTime`, the
+  growing unzoomed span includes that absolute duration so the start stays on
+  the left edge. Line-mode `LiveChart` also treats a positive seconds buffer
+  like a fractional one for tip omission / scrub clamping.
+- The historical-data demo compares fractional and fixed-duration padding on
+  both charts, including pinch/reset and an anchored growing history window.
+
 ## [4.30.2] — 2026-11-04
 
 ### Fixed
