@@ -52,3 +52,18 @@ changes wake the engine as needed.
 single-series `LiveChart`. See the [API reference](/api-reference/livechart) and
 [Historical data](/guides/historical-data#experimental-automatic-sleep) for its
 continuous-effect and static-mode rules.
+
+## Switching static mode
+
+You can toggle `static` while `autoSleep` remains enabled without remounting the
+chart. Static mode stops the demand loop and removes its input subscriptions;
+returning to live mode starts a fresh loop. Toggling `autoSleep` itself is also
+supported, including on native Reanimated 4.7.
+
+```tsx
+<LiveChart data={data} value={value} autoSleep static={showHistory} />
+```
+
+Use `static` for a historical chart. To gate live engine ticks from the UI thread,
+keep `static={false}` and pass an `isFrameLoopActive` shared value instead.
+Neither option stops your external data source.

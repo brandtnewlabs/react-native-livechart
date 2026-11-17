@@ -1,12 +1,37 @@
 import { act, renderHook } from "@testing-library/react-native";
 
-let mockNotifyInput: () => void = () => {};
+const mockMappers = new Map<number, { run: () => void; inputs: unknown[] }>();
+let mockMapperId = 0;
+function mockStartMapper(run: () => void, inputs: unknown[] = []) {
+  const id = ++mockMapperId;
+  mockMappers.set(id, { run, inputs });
+  return id;
+}
+function mockStopMapper(id: number) { mockMappers.delete(id); }
+function mockNotifyInput(input?: unknown) {
+  mockMappers.forEach((mapper) => {
+    if (input === undefined || mapper.inputs.includes(input)) mapper.run();
+  });
+}
+
 jest.mock("react-native-reanimated", () => {
   const actual = jest.requireActual("react-native-reanimated");
+  const { useEffect } = jest.requireActual("react");
   return {
     ...actual,
-    useAnimatedReaction: (prepare: () => unknown, react: () => void) => {
-      mockNotifyInput = () => { prepare(); react(); };
+    startMapper: mockStartMapper,
+    stopMapper: mockStopMapper,
+    // Reanimated 4.7 native ignores explicit dependencies and derives them from
+    // the worklet closures. Object.values also accepts the newer array closures.
+    useAnimatedReaction: (prepare: (() => unknown) & { __closure?: object }, react: (() => void) & { __closure?: object }) => {
+      const dependencies = [
+        ...Object.values(prepare.__closure ?? {}),
+        ...Object.values(react.__closure ?? {}),
+      ];
+      useEffect(() => {
+        const id = mockStartMapper(() => { prepare(); react(); }, Object.values(prepare.__closure ?? {}));
+        return () => mockStopMapper(id);
+      }, dependencies);
     },
   };
 });
@@ -28,6 +53,7 @@ function frame(dt = 1000 / 60) {
 }
 function frames(count: number) { for (let i = 0; i < count; i++) frame(); }
 beforeEach(() => {
+  mockMappers.clear();
   queue = [];
   now = 0;
   raf = jest.spyOn(global, "requestAnimationFrame").mockImplementation((callback) => {
@@ -87,4 +113,55 @@ it("does not start or wake a disabled loop", async () => {
   await act(() => { result.current(); mockNotifyInput(); frames(20); });
   expect(queue).toHaveLength(0);
   expect(tick).not.toHaveBeenCalled();
+});
+
+it.each(["object", "array"])("toggles the native input subscription without changing effect dependency size (%s closure)", async (shape) => {
+  const input = { get: () => 42 };
+  const prepare = Object.assign(jest.fn(() => input.get()), {
+    __closure: shape === "array" ? [input] : { input },
+  });
+  const tick = jest.fn(() => false);
+  const errors = jest.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const { rerender, unmount } = await renderHook(
+      ({ enabled }: { enabled: boolean }) => useDemandFrameLoop(enabled, prepare, tick),
+      { initialProps: { enabled: true } },
+    );
+    for (const enabled of [false, true, false, true]) {
+      await rerender({ enabled });
+      expect(errors.mock.calls.filter((args) => String(args[0]).includes("changed size"))).toEqual([]);
+      const before = prepare.mock.calls.length;
+      await act(() => { mockNotifyInput(input); frames(30); });
+      expect(prepare.mock.calls.length - before).toBe(enabled ? 1 : 0);
+    }
+    await unmount();
+    expect(mockMappers.size).toBe(0);
+    expect(errors.mock.calls.filter((args) => String(args[0]).includes("changed size"))).toEqual([]);
+  } finally {
+    errors.mockRestore();
+  }
+});
+
+it("rebinds changed input sets and drops old subscriptions", async () => {
+  const first = { get: () => 1 };
+  const second = { get: () => 2 };
+  const third = { get: () => 3 };
+  const prepare = Object.assign(jest.fn(() => first.get()), { __closure: { first } });
+  const replacement = Object.assign(jest.fn(() => second.get() + third.get()), { __closure: [second, third] });
+  const tick = jest.fn(() => false);
+  const { rerender, unmount } = await renderHook(
+    ({ read }: { read: () => unknown }) => useDemandFrameLoop(true, read, tick),
+    { initialProps: { read: prepare } },
+  );
+  await act(() => { frames(30); });
+  await rerender({ read: replacement });
+  expect(mockMappers.size).toBe(1);
+  await act(() => { mockNotifyInput(first); });
+  expect(prepare).not.toHaveBeenCalled();
+  expect(replacement).not.toHaveBeenCalled();
+  await act(() => { mockNotifyInput(second); mockNotifyInput(third); });
+  expect(replacement).toHaveBeenCalledTimes(2);
+  expect(queue.length).toBeGreaterThan(0);
+  await unmount();
+  expect(mockMappers.size).toBe(0);
 });

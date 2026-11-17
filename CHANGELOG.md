@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Toggling `static` or `autoSleep` on a mounted `LiveChart` no longer changes
+  React effect dependency counts on native Reanimated 4.7. Disabled demand loops
+  unsubscribe from inputs and invalidate pending frames before restarting.
+
 ### Added
 
 - `ReferenceLine.offAxis` (`"pin"` | `"hide"`, default `"pin"`) controls what
