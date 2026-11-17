@@ -547,7 +547,7 @@ describe("LiveChart", () => {
       />,
     );
     // The custom-rendered tag is floated as an RN view (built-in tag suppressed).
-    expect(screen.queryByTestId("custom-ref")).toBeTruthy();
+    expect(screen.queryByTestId("custom-ref", { includeHiddenElements: true })).toBeTruthy();
   });
 
   it("replaces only an off-axis reference-line tag", async () => {
@@ -567,7 +567,7 @@ describe("LiveChart", () => {
         }
       />,
     );
-    expect(screen.getByTestId("off-axis-target")).toBeTruthy();
+    expect(screen.getByTestId("off-axis-target", { includeHiddenElements: true })).toBeTruthy();
 
   });
 

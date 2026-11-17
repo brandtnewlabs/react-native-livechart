@@ -281,6 +281,11 @@ provided; everything else has a default.
 
 </ParamField>
 
+`ReferenceLine.offAxis` defaults to `"pin"`. Set it to `"hide"` to hide a Form-A line,
+its built-in pills, and both kinds of custom tag outside the visible range. Hidden tags have
+no touch or accessibility targets. Pair with `excludeFromRange: true` when the line should
+not expand the automatic Y range. See [Hiding off-screen pills](/guides/reference-lines-and-bands#hiding-off-screen-pills-offaxis).
+
 <ParamField body="renderReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
   Render a reference line's tag as a custom **React Native** element instead of the
   built-in Skia pill / gutter label — the same model as `renderMarker` /
@@ -768,6 +773,17 @@ range written by `priceScroll` or the axis-scale gesture, gliding the right edge
   hides and `onScrub` clears until recorded data re-enters. `badge.followViewEdge`
   pins indicators to the edge only when the latest recorded point leaves the
   visible time window. Candle indicators continue to use candle prices.
+</ParamField>
+
+<ParamField body="windowBufferSeconds" type="number" default="0">
+  Right-edge buffer in seconds, added past now on top of `windowBuffer`. Unlike
+  the fraction, this duration does not shrink when the visible window is pinched.
+  Negative values are treated as `0`. While following live, the total padding is
+  `windowBuffer * zoomedWindow + Math.max(0, windowBufferSeconds)` seconds.
+  Its pixel width changes with zoom. If the padding fills the entire visible
+  window, recorded data moves offscreen; choose `zoom.minTimeWindow` accordingly.
+  In line mode it also drives tip omission and scrub clamping the same way a
+  positive `windowBuffer` does.
 </ParamField>
 
 <ParamField body="nowOverride" type="number">
