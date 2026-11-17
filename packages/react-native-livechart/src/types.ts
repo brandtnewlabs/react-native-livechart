@@ -159,8 +159,11 @@ export interface ReferenceLine {
    * What a Form-A line with a `badge` / `valueBadge` does once its value leaves
    * the visible range: `"pin"` its tags to the nearest plot edge with a chevron,
    * or `"hide"` the line and its tags until the value scrolls back into view.
-   * `"hide"` also suppresses `renderOffAxisReferenceLine` for the line. Lines
-   * without a badge are always hidden off-screen. Default `"pin"`.
+   * `"hide"` also hides custom `renderReferenceLine` / `renderOffAxisReferenceLine`
+   * tags and their touch/accessibility targets while off-screen. Plain built-in
+   * lines without a badge always hide off-screen; custom tags pin by default.
+   * Pair with `excludeFromRange: true` to keep a line out of automatic Y fitting.
+   * Default `"pin"`.
    */
   offAxis?: "pin" | "hide";
   /**
@@ -2739,6 +2742,14 @@ export interface LiveChartCoreProps {
    */
   windowBuffer?: number;
   /**
+   * Right-edge buffer in seconds, added past now on top of {@link windowBuffer}.
+   * Unlike the fraction, this duration does not shrink when the visible window
+   * is pinched. Negative values are treated as `0`. This reserves time, not a
+   * fixed pixel width; keep the total buffer below the zoomed window to keep
+   * recorded data visible. Default `0`.
+   */
+  windowBufferSeconds?: number;
+  /**
    * Override the engine's "now" (unix seconds). Pass the latest data timestamp to
    * treat the most recent point as the current time — combine with `windowBuffer={0}`
    * and `timeWindow = maxT - minT` to fill the canvas edge-to-edge with historical data.
@@ -3258,7 +3269,8 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
   /**
    * Authoritative history start (Unix seconds). While following without a zoom
    * override, grows the window to keep this time at the left edge, including
-   * `windowBuffer` (must be < 1). Pan/zoom overrides remain usable; resetZoom()
+   * `windowBuffer` (must be in [0, 1)) and `windowBufferSeconds`.
+   * Pan/zoom overrides remain usable; resetZoom()
    * restores following. A non-finite or future start falls back to timeWindow.
    */
   historyStartTime?: number;

@@ -149,15 +149,27 @@ scrolls back into view.
 ```tsx
 referenceLines={[
   // context: hides off-screen
-  { id: "liq", value: 61200, label: "Liq. price", badge: true, valueBadge: true, offAxis: "hide" },
+  { id: "liq", value: 61200, label: "Liq. price", badge: true, valueBadge: true, excludeFromRange: true, offAxis: "hide" },
   // draggable order: keeps pinning so it stays grabbable
   { id: "limit", value: 64850, label: "Limit", badge: true, valueBadge: true, draggable: true },
 ]}
 ```
 
 A hidden line has no tap or drag target, is left out of grouping counts, and also suppresses
-`renderOffAxisReferenceLine`. In-range rendering is unchanged. Lines without a badge are always
-hidden off-screen, so `offAxis` only affects lines with `badge`, `valueBadge`, or `offAxisBadge`.
+custom tags from both `renderReferenceLine` and `renderOffAxisReferenceLine`, including their
+interactive and accessibility descendants. Custom views stay mounted for measurement;
+visibility follows the live range on the UI thread. In-range rendering is unchanged.
+Plain built-in lines without `badge`, `valueBadge`, or `offAxisBadge` always hide off-screen;
+custom tags pin by default even without a badge.
+
+Use `excludeFromRange: true` when the line should not expand the automatic Y range to include
+itself. `offAxis` changes visibility, not range fitting. The option works on both chart
+components; grouping, built-in press callbacks, and dragging remain single-series features.
+
+In the example app's **Reference lines & bands** demo, enable **Off-axis target** and compare
+**Pin** / **Hide** with **Above**, **In range**, and **Below**. Try **Custom** and **Custom off-axis**
+tags, tap a visible tag to increment the counter, and use **Stack tags** / **Second target** on
+`LiveChart` to inspect collisions.
 
 ## Separate price pills (`valueBadge`)
 
@@ -480,6 +492,8 @@ tags all participate. Tags pack within the full canvas, not just the plot, so a
 tag on a line at the plot's top or bottom edge stays centered on its line and
 spills into the inset instead of being pushed off it. `radius` is the
 minimum center-to-center spacing; measured heights plus a 2 px gap take precedence.
+Tall or densely stacked tags can occupy the bottom time-axis area; axis labels are not
+reserved obstacles. Use collapse mode or more chart height if those labels must stay clear.
 Count-pill `badge` and `format` settings apply only to `mode: "collapse"`.
 
 The visible live value badge reserves its actual drawn rectangle, including its
