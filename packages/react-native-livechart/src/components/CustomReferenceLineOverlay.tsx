@@ -1,7 +1,8 @@
 import { scheduleOnUI } from "react-native-worklets";
 import { useEffect } from "react";
-import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
+import { StyleSheet, View, type ViewProps, type LayoutChangeEvent } from "react-native";
 import Animated, {
+  useAnimatedProps,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -205,11 +206,23 @@ function CustomReferenceLineView({
 
   const tagOffsetY = useDerivedValue(() => tagStack?.get().offsets[index] ?? 0);
   const anchor = resolveAnchor(line);
+  const visible = useDerivedValue(() => {
+    const currentEdge = edge.get();
+    return y.get() >= 0 && engine.canvasWidth.get() > 0
+      && (!offAxisOnly || currentEdge !== "in")
+      && (line.offAxis !== "hide" || currentEdge === "in");
+  });
+  // Keep the tag mounted for measurement, but remove invisible descendants
+  // from touch dispatch and accessibility on the same UI-thread update.
+  const animatedProps = useAnimatedProps<ViewProps>(() => ({
+    pointerEvents: visible.get() ? "box-none" : "none",
+    accessibilityElementsHidden: !visible.get(),
+    importantForAccessibility: visible.get() ? "auto" : "no-hide-descendants",
+  }));
   const animatedStyle = useAnimatedStyle(() => {
     const yy = y.get();
     const s = size.get();
     const w = engine.canvasWidth.get();
-    const visible = yy >= 0 && w > 0 && (!offAxisOnly || edge.get() !== "in");
     const x1 = padding.left;
     const x2 = w - padding.right;
     let tx: number;
@@ -217,7 +230,7 @@ function CustomReferenceLineView({
     else if (anchor === "center") tx = (x1 + x2) / 2 - s.width / 2;
     else tx = x1 + ANCHOR_INSET;
     return {
-      opacity: visible ? 1 : 0,
+      opacity: visible.get() ? 1 : 0,
       transform: [{ translateX: tx }, { translateY: yy + tagOffsetY.get() - s.height / 2 }],
     };
   });
@@ -237,7 +250,7 @@ function CustomReferenceLineView({
 
   return (
     <Animated.View
-      pointerEvents="box-none"
+      animatedProps={animatedProps}
       onLayout={onLayout}
       style={[styles.anchor, animatedStyle]}
     >
