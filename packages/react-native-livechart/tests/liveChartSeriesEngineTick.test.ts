@@ -229,6 +229,65 @@ describe("tickLiveChartSeriesEngineFrame", () => {
     expect(s.timestamp).toBe(2003);
   });
 
+  it.each([
+    { windowBuffer: undefined, padding: 5 },
+    { windowBuffer: 0.1, padding: 8 },
+  ])("preserves $padding seconds of live padding as the clock advances", ({ windowBuffer, padding }) => {
+    const s = baseMulti();
+    for (const nowSeconds of [1000, 1003, 1012]) {
+      tickLiveChartSeriesEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 30,
+        smoothing: 0.08,
+        exaggerate: false,
+        referenceValue: undefined,
+        windowBuffer,
+        windowBufferSeconds: 5,
+        series: [
+          { id: "a", data: [{ time: nowSeconds, value: 1 }], value: 1 },
+          { id: "b", data: [{ time: nowSeconds, value: 2 }], value: 2 },
+        ],
+        nowSeconds,
+      });
+      expect(s.timestamp).toBe(nowSeconds + padding);
+      expect(s.liveEdge).toBe(nowSeconds + padding);
+      expect(s.displayWindow).toBe(30);
+    }
+  });
+
+  it.each([
+    { windowBuffer: undefined, windows: [2856, 2952], edges: [3856, 3952] },
+    { windowBuffer: 0.04, windows: [2975, 3075], edges: [3975, 4075] },
+  ])("keeps history start on the left with seconds padding and fraction $windowBuffer", ({ windowBuffer, windows, edges }) => {
+    const s = baseMulti();
+    [3760, 3856].forEach((nowOverride, frame) => {
+      tickLiveChartSeriesEngineFrame(s, {
+        dt: 16.67,
+        canvasWidth: 200,
+        canvasHeight: 100,
+        timeWindow: 60,
+        smoothing: 0.08,
+        exaggerate: false,
+        referenceValue: undefined,
+        nowOverride,
+        historyStartTime: 1000,
+        windowBuffer,
+        windowBufferSeconds: 96,
+        series: [
+          { id: "a", data: [{ time: 1000, value: 1 }, { time: nowOverride, value: 2 }], value: 2 },
+          { id: "b", data: [{ time: 1400, value: 3 }, { time: nowOverride, value: 4 }], value: 4 },
+        ],
+        nowSeconds: 1000,
+      });
+      expect(s.fullHistoryWindow).toBe(windows[frame]);
+      expect(s.liveEdge).toBe(edges[frame]);
+      expect(s.timestamp).toBe(edges[frame]);
+      expect(s.timestamp - s.displayWindow).toBe(1000);
+    });
+  });
+
   it("excludes hidden series from Y-range", () => {
     const s = baseMulti();
     tickLiveChartSeriesEngineFrame(s, {

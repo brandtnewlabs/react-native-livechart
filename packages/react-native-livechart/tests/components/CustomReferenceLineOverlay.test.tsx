@@ -219,8 +219,8 @@ describe("CustomReferenceLineOverlay", () => {
         eng={engine({ canvasHeight: 0 })}
       />,
     );
-    // Still mounted (opacity 0), exercising the raw < 0 branch.
-    expect(getByTestId("rl-0")).toBeTruthy();
+    // Still mounted for measurement, but excluded from accessibility.
+    expect(getByTestId("rl-0", { includeHiddenElements: true })).toBeTruthy();
   });
 
   it("keeps an off-axis renderer mounted with its live edge context", async () => {

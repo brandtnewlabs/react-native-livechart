@@ -187,3 +187,22 @@ it("measures the value with its own font without moving the price-column anchor"
   expect(l.valueBadge!.h).toBe(26);
   expect(l.valueBadge!.y + l.valueBadge!.h / 2).toBe(l.y);
 });
+
+describe("offAxis", () => {
+  const line: ReferenceLine = { value: 200, label: "TP", badge: true, valueBadge: true };
+  it("pins a badged line to the nearest edge by default and with \"pin\"", () => {
+    for (const l of [layout(line), layout({ ...line, offAxis: "pin" })]) {
+      expect(l.visible).toBe(true);
+      expect(l.offAxis).toBe(true);
+    }
+  });
+  it("hides a badged line and both pills with \"hide\" until it is back in range", () => {
+    const hidden = layout({ ...line, offAxis: "hide" });
+    expect(hidden.visible).toBe(false);
+    expect(hidden.valueBadge).toBeNull();
+    expect(layout({ ...line, offAxis: "hide" }, -50).visible).toBe(false);
+    const back = layout({ ...line, offAxis: "hide" }, 50);
+    expect(back.visible).toBe(true);
+    expect(back.offAxis).toBe(false);
+  });
+});
