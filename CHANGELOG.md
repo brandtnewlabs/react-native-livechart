@@ -7,11 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Toggling `static` or `autoSleep` on a mounted `LiveChart` no longer changes
-  React effect dependency counts on native Reanimated 4.7. Disabled demand loops
-  unsubscribe from inputs and invalidate pending frames before restarting.
+## [4.31.0] — 2026-11-17
 
 ### Added
 
@@ -41,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   centered on its line instead of being pushed inwards off it. Tags near an edge
   can now extend into the top or bottom inset by up to half their height, and
   further when stacked.
+
+### Fixed
+
+- Toggling `static` or `autoSleep` on a mounted `LiveChart` keeps React effect
+  dependencies stable on native Reanimated 4.7. Disabled demand loops
+  unsubscribe from inputs and invalidate pending frames before restarting.
 
 ## [4.30.2] — 2026-11-04
 
@@ -1909,6 +1911,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.31.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.31.0
 [4.30.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.2
 [4.30.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.1
 [4.30.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.0
