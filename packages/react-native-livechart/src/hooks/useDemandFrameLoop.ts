@@ -1,14 +1,11 @@
 import { useCallback, useEffect } from "react";
-import { useAnimatedReaction, useSharedValue } from "react-native-reanimated";
-import { scheduleOnUI } from "react-native-worklets";
+import { startMapper, stopMapper, useSharedValue } from "react-native-reanimated";
+import { scheduleOnUI, type WorkletFunction } from "react-native-worklets";
 
 import { MAX_FRAME_DELTA_MS } from "../constants";
 
 /** Wait through several unchanged frames, rather than mistaking one quiet frame for rest. */
 export const IDLE_SETTLE_MS = 160;
-
-function noInputs() { "worklet"; return null; }
-function noReaction() { "worklet"; }
 
 export function nextQuietTime(previous: number, changed: boolean, dt: number): number {
   "worklet";
@@ -56,14 +53,6 @@ export function useDemandFrameLoop(
     requestAnimationFrame(step);
   }, [enabled, mounted, running, generation, quietTime, tick]);
 
-  useAnimatedReaction(
-    // Pass the worklet itself: Reanimated extracts SharedValue subscriptions
-    // from its closure. Wrapping it in () => prepare() hides those inputs.
-    enabled ? prepare : noInputs,
-    enabled ? wake : noReaction,
-    [enabled, enabled ? prepare : noInputs, enabled ? wake : noReaction],
-  );
-
   useEffect(() => {
     if (!enabled) return;
     scheduleOnUI(() => {
@@ -73,7 +62,19 @@ export function useDemandFrameLoop(
       mounted.set(true);
       wake();
     });
+    // Native Reanimated 4.7 derives reaction-effect dependencies from worklet
+    // closures, ignoring explicit dependencies. Swapping in an empty worklet
+    // when disabled changes that dependency count. Own the mapper lifetime with
+    // a fixed React dependency list instead, and unsubscribe entirely when off.
+    // Object.values supports both legacy object and newer array closure formats.
+    const inputs = Object.values((prepare as WorkletFunction).__closure ?? {});
+    const mapper = startMapper(() => {
+      "worklet";
+      prepare();
+      wake();
+    }, inputs);
     return () => {
+      stopMapper(mapper);
       scheduleOnUI(() => {
         "worklet";
         mounted.set(false);
@@ -81,7 +82,7 @@ export function useDemandFrameLoop(
         running.set(false);
       });
     };
-  }, [enabled, generation, mounted, running, wake]);
+  }, [enabled, generation, mounted, running, wake, prepare]);
 
   return wake;
 }
