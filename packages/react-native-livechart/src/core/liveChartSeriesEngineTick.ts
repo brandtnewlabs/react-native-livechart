@@ -70,6 +70,8 @@ export interface MultiEngineTickInput {
   presentationTime?: number;
   /** Right-edge buffer as a fraction of the time window. */
   windowBuffer?: number;
+  /** Right-edge buffer in seconds. Does not scale with the visible window. */
+  windowBufferSeconds?: number;
   paused?: boolean;
   /**
    * Settle the framing in this one frame instead of easing into it: the time
@@ -125,13 +127,16 @@ export function tickLiveChartSeriesEngineFrame(
   "worklet";
   const baseNow = input.presentationTime ?? input.nowOverride ?? input.nowSeconds ?? Date.now() / 1000;
   const buffer = input.windowBuffer ?? 0;
+  const bufferSeconds = Math.max(0, input.windowBufferSeconds ?? 0);
   const start = input.historyStartTime;
+  // Absolute seconds sit past now, so the unzoomed span grows by that duration and
+  // the history start stays on the left edge.
   const fullWindow = start != null && Number.isFinite(start) && start < baseNow &&
-    buffer >= 0 && buffer < 1 ? (baseNow - start) / (1 - buffer) : null;
+    buffer >= 0 && buffer < 1 ? (baseNow + bufferSeconds - start) / (1 - buffer) : null;
   state.currentTime = baseNow;
   state.fullHistoryWindow = fullWindow;
   const liveWindow = input.viewWindow ?? fullWindow ?? input.timeWindow;
-  const liveEdge = baseNow + buffer * liveWindow;
+  const liveEdge = baseNow + buffer * liveWindow + bufferSeconds;
   state.liveEdge = liveEdge;
   const viewEnd = input.viewEnd;
   // Earliest first-point time across visible series — the floor a frozen edge

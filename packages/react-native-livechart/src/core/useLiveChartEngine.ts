@@ -88,6 +88,8 @@ export interface EngineConfig {
   yRangeScale?: SharedValue<number>;
   nowOverride?: number;
   windowBuffer?: number;
+  /** Right-edge buffer in seconds. Does not scale with the visible window. */
+  windowBufferSeconds?: number;
   paused?: boolean;
   /**
    * Whether the `timeScroll` gesture is active. Flipping this to `false` while
@@ -301,6 +303,8 @@ export interface EngineFrameRefs {
   fitMaxSV?: SharedValue<number>;
   nowOverrideSV?: SharedValue<number | undefined>;
   windowBufferSV?: SharedValue<number>;
+  /** Preserves the absolute future boundary independently of the zoom window. */
+  windowBufferSecondsSV?: SharedValue<number>;
   pausedSV: SharedValue<boolean>;
   /** Pan-scroll right-edge override (null = follow live). Optional for callers/tests. */
   viewEndSV?: SharedValue<number | null>;
@@ -476,6 +480,7 @@ export function applyLiveChartEngineFrame(
   input.viewRangeFollowsLive = sv.viewRangeFollowsLiveSV?.value ?? false;
   input.nowOverride = sv.nowOverrideSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
+  input.windowBufferSeconds = sv.windowBufferSecondsSV?.value ?? 0;
   input.targetValue = sv.value.value;
   const pointHistory = sv.pointHistory?.value;
   const candleHistory = sv.candleHistory?.value;
@@ -573,6 +578,7 @@ export function useLiveChartEngine(
     yRangeScale,
     nowOverride,
     windowBuffer,
+    windowBufferSeconds,
     paused,
     scrollEnabled,
     allowFutureViewEnd,
@@ -679,6 +685,7 @@ export function useLiveChartEngine(
   const minRangeSV = useDerivedValue(() => minRange);
   const nowOverrideSV = useDerivedValue(() => nowOverride);
   const windowBufferSV = useDerivedValue(() => windowBuffer ?? 0);
+  const windowBufferSecondsSV = useDerivedValue(() => windowBufferSeconds ?? 0);
   const pausedSV = useDerivedValue(() => paused ?? false);
   // Whether time-scroll is active. Drives the return-to-live reaction below
   // (the tick no longer reads it — clearing `viewEnd` is what makes it follow).
@@ -796,6 +803,7 @@ export function useLiveChartEngine(
       fitMaxSV: fitMax,
       nowOverrideSV,
       windowBufferSV,
+      windowBufferSecondsSV,
       pausedSV,
       viewEndSV: viewEnd,
       allowFutureViewEndSV,
@@ -870,6 +878,7 @@ export function useLiveChartEngine(
       fitMin,
       fitMax,
       windowBufferSV,
+      windowBufferSecondsSV,
       yRangeScale,
     ],
   );
@@ -895,6 +904,7 @@ export function useLiveChartEngine(
         modeSV.get(),
         nowOverrideSV.get(),
         windowBufferSV.get(),
+        windowBufferSecondsSV.get(),
         smoothing.get(),
         rangeAnimationSV.get(),
         adaptiveSpeedBoostSV.get(),
@@ -937,7 +947,7 @@ export function useLiveChartEngine(
     },
     // Keep this mapper ahead of path consumers across React config changes.
     [snapConfiguration, timeWindow, viewWindow, viewEnd, viewRange, viewRangeGestureOwned, modeSV,
-      nowOverrideSV, windowBufferSV, smoothing, maxValueSV, minRangeSV,
+      nowOverrideSV, windowBufferSV, windowBufferSecondsSV, smoothing, maxValueSV, minRangeSV,
       nonNegativeSV, yRangeScale, referenceValue, referenceValues,
       rangeAnimationSV, adaptiveSpeedBoostSV, exaggerateSV,
       thresholdRangePoints, thresholdRangeExtendToStart, thresholdRangeExtendToNow,
@@ -987,7 +997,7 @@ export function useLiveChartEngine(
       canvasHeight.get(), timeWindow.get(), smoothing.get(), rangeAnimationSV.get(), adaptiveSpeedBoostSV.get(),
       exaggerateSV.get(), referenceValue.get(), referenceValues.get(), thresholdRangePoints.get(),
       thresholdRangeExtendToStart.get(), thresholdRangeExtendToNow.get(), nonNegativeSV.get(),
-      maxValueSV.get(), minRangeSV.get(), yRangeScale?.get(), nowOverrideSV.get(), windowBufferSV.get(), pausedSV.get(),
+      maxValueSV.get(), minRangeSV.get(), yRangeScale?.get(), nowOverrideSV.get(), windowBufferSV.get(), windowBufferSecondsSV.get(), pausedSV.get(),
       viewEnd.get(), viewWindow.get(), viewRange.get(), viewRangeGestureOwned.get(), viewWindowSmoothingSV.get(), allowFutureViewEndSV.get(), returnT.get(), returnFrom.get(),
       snapSV.get(), modeSV.get(), candleGapsSV.get(), candleGapBridgeNoTradesSV.get(),
       candleGapBridgeUnavailableSV.get(), candleGapBridgeUnknownSV.get(), isFrameLoopActive?.get(),
@@ -995,7 +1005,7 @@ export function useLiveChartEngine(
   }, [pointHistory, candleHistory, data, value, candles, liveCandle, canvasWidth, canvasHeight, timeWindow, smoothing, rangeAnimationSV,
     adaptiveSpeedBoostSV, exaggerateSV, referenceValue, referenceValues, thresholdRangePoints,
     thresholdRangeExtendToStart, thresholdRangeExtendToNow, nonNegativeSV, maxValueSV, minRangeSV, yRangeScale,
-    nowOverrideSV, windowBufferSV, pausedSV, viewEnd, viewWindow, viewRange, viewRangeGestureOwned, viewWindowSmoothingSV, allowFutureViewEndSV, returnT,
+    nowOverrideSV, windowBufferSV, windowBufferSecondsSV, pausedSV, viewEnd, viewWindow, viewRange, viewRangeGestureOwned, viewWindowSmoothingSV, allowFutureViewEndSV, returnT,
     returnFrom, snapSV, modeSV, candleGapsSV, candleGapBridgeNoTradesSV, candleGapBridgeUnavailableSV,
     candleGapBridgeUnknownSV, isFrameLoopActive, keepAwake, wakeSignal]);
 
@@ -1005,10 +1015,14 @@ export function useLiveChartEngine(
     if (!autoSleep || isStatic) return;
     // Gestures need a fresh live boundary BEFORE clamping their first delta.
     if (isFrameLoopActive?.get() !== false) {
-      liveEdge.set((nowOverrideSV.get() ?? Date.now() / 1000) + windowBufferSV.get() * timeWindow.get());
+      liveEdge.set(
+        (nowOverrideSV.get() ?? Date.now() / 1000) +
+          windowBufferSV.get() * timeWindow.get() +
+          Math.max(0, windowBufferSecondsSV.get()),
+      );
     }
     wakeLoop();
-  }, [autoSleep, isStatic, isFrameLoopActive, liveEdge, nowOverrideSV, windowBufferSV, timeWindow, wakeLoop]);
+  }, [autoSleep, isStatic, isFrameLoopActive, liveEdge, nowOverrideSV, windowBufferSV, windowBufferSecondsSV, timeWindow, wakeLoop]);
 
   const legacyActive = !isStatic && !autoSleep;
   const engineFrameCallback = useFrameCallback((frameInfo) => {

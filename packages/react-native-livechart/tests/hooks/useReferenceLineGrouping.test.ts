@@ -114,6 +114,17 @@ describe("useReferenceLineGrouping", () => {
     expect(result.current.groupHidden.get()).toEqual([false, false]);
   });
 
+  it("does not count an off-axis badge line with offAxis: \"hide\"", async () => {
+    const { result } = await setup([
+      { value: 200, badge: true },
+      { value: 300, badge: true, valueBadge: true, offAxis: "hide" },
+      { value: 400, badge: true, offAxis: "pin" },
+    ]);
+    expect(result.current.refGroupResult.get()).toEqual({
+      hidden: [true, false, true], groups: [{ cy: 12, count: 2 }],
+    });
+  });
+
   it.each([0, 40])("does not group before the plot has height (height=%s)", async (height) => {
     const { result } = await setup([{ value: 200, badge: true }, { value: 300, badge: true }], { height });
     expect(result.current.refGroupResult.get()).toEqual({ hidden: [false, false], groups: [] });
