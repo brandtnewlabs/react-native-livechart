@@ -301,7 +301,7 @@ describe("LiveChartSeries", () => {
     }
 
     const screen = await render(<H />);
-    await waitFor(() => expect(screen.getByTestId("series-target")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("series-target", { includeHiddenElements: true })).toBeTruthy());
 
   });
 
@@ -337,7 +337,8 @@ describe("LiveChartSeries", () => {
     }
 
     const screen = await render(<H />);
-    await screen.findByTestId("series-target");
+    // This mount-only fixture has not measured the canvas yet.
+    await screen.findByTestId("series-target", { includeHiddenElements: true });
     const tooltipCanvas = screen.getByTestId(
       "live-chart-series-tooltip-overlay",
     );
@@ -385,7 +386,7 @@ describe("LiveChartSeries", () => {
 
     const screen = await render(<H />);
     await waitFor(() =>
-      expect(screen.getByTestId("series-off-axis-target")).toBeTruthy(),
+      expect(screen.getByTestId("series-off-axis-target", { includeHiddenElements: true })).toBeTruthy(),
     );
 
   });

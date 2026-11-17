@@ -281,6 +281,11 @@ provided; everything else has a default.
 
 </ParamField>
 
+`ReferenceLine.offAxis` defaults to `"pin"`. Set it to `"hide"` to hide a Form-A line,
+its built-in pills, and both kinds of custom tag outside the visible range. Hidden tags have
+no touch or accessibility targets. Pair with `excludeFromRange: true` when the line should
+not expand the automatic Y range. See [Hiding off-screen pills](/guides/reference-lines-and-bands#hiding-off-screen-pills-offaxis).
+
 <ParamField body="renderReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
   Render a reference line's tag as a custom **React Native** element instead of the
   built-in Skia pill / gutter label — the same model as `renderMarker` /

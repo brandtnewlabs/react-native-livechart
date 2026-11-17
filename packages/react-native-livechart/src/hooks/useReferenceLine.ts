@@ -427,9 +427,10 @@ function computeBaseReferenceLineLayout(
   const edge = classifyReferenceEdge(v, dMin, dMax);
 
   // Off-screen: pin the badge to the nearest edge with a chevron (when a badge
-  // is configured); otherwise cull the off-screen line (legacy behavior).
+  // is configured and `offAxis` isn't "hide"); otherwise cull the off-screen
+  // line (legacy behavior).
   if (edge !== "in") {
-    if (!badge && !line.valueBadge) return INVISIBLE;
+    if ((!badge && !line.valueBadge) || line.offAxis === "hide") return INVISIBLE;
     const above = edge === "above";
     const clampedY = above
       ? chartTop + OFF_AXIS_EDGE_INSET

@@ -163,6 +163,11 @@ Horizontal `referenceLines` support `valueBadge: true` or
 apply; this does not add single-series dragging, grouping, or press callbacks to
 `LiveChartSeries`.
 
+`ReferenceLine.offAxis` defaults to `"pin"`. Set it to `"hide"` to hide a Form-A line,
+its built-in pills, and both kinds of custom tag outside the visible range. Hidden tags have
+no touch or accessibility targets. Pair with `excludeFromRange: true` when the line should
+not expand the automatic Y range. See [Hiding off-screen pills](/guides/reference-lines-and-bands#hiding-off-screen-pills-offaxis).
+
 <ParamField body="renderReferenceLine" type="(ctx: ReferenceLineRenderProps) => ReactElement | null">
   Replace a Form-A reference line's built-in Skia badge or gutter label with any
   React Native element. Return `null` or `undefined` for per-line fallback to the
