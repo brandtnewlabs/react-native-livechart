@@ -4135,9 +4135,18 @@ function ChartCustomAnnotations({ model }: { model: LiveChartModel }) {
 
 /** Owns the price/time projection worklets for the custom overlay slot. */
 function ChartCustomConsumerOverlay({ model }: { model: LiveChartModel }) {
-  const { engine, effectivePadding, renderOverlay } = model;
+  const { engine, effectivePadding, renderOverlay, reveal } = model;
   const overlayContext = useChartOverlayContext(engine, effectivePadding);
-  return <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />;
+  const { dotOpacity } = reveal;
+  const revealStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.get() }));
+  return (
+    <Animated.View
+      pointerEvents="box-none"
+      style={[StyleSheet.absoluteFill, revealStyle]}
+    >
+      <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />
+    </Animated.View>
+  );
 }
 
 function ChartCanvas({

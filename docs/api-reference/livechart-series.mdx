@@ -152,7 +152,8 @@ visible. See [right-edge padding](/guides/historical-data#fixed-duration-padding
   time↔pixel bridge. [`ChartOverlayContext`](/api-reference/types#chartoverlaycontext)
   includes the resolved plot rectangle, so custom off-axis tags and connectors can
   stop at the same axis inset as the chart. Return `null` or `undefined` for no
-  overlay. See [Overlay bridge](/guides/overlay-bridge).
+  overlay. The tree stays mounted while loading or empty, and its opacity follows
+  the chart's marker reveal. See [Overlay bridge](/guides/overlay-bridge).
 </ParamField>
 
 ## Reference-line tags

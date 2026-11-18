@@ -3160,6 +3160,8 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * The returned tree is mounted as an RN sibling of the `<Canvas>` (like
    * `renderMarker` / `renderTooltip`), full-bleed with `pointerEvents="box-none"`
    * so empty areas still scrub while an interactive leaf can receive touches.
+   * It stays mounted during loading/empty states, with opacity following the
+   * chart's marker reveal.
    * Single-series only.
    */
   renderOverlay?: (ctx: ChartOverlayContext) => ReactElement | null | undefined;
@@ -3287,6 +3289,8 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
    * and mapping worklets to position React Native UI against this chart's resolved
    * plot bounds (including any axis or explicit inset). The tree mounts full-bleed
    * with `pointerEvents="box-none"`; return `null`/`undefined` for no overlay.
+   * It stays mounted during loading/empty states, with opacity following the
+   * chart's marker reveal.
    */
   renderOverlay?: (ctx: ChartOverlayContext) => ReactElement | null | undefined;
   /**

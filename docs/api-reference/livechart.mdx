@@ -263,7 +263,9 @@ provided; everything else has a default.
   (order / avg-entry / liquidation price tags, custom level lines); return
   `null`/`undefined` for no overlay. The tree mounts full-bleed with
   `pointerEvents="box-none"` so empty areas still scrub. Available on both
-  `LiveChart` and `LiveChartSeries`. See [Overlay bridge](/guides/overlay-bridge).
+  `LiveChart` and `LiveChartSeries`. The tree stays mounted while loading or empty,
+  and its opacity follows the chart's marker reveal.
+  See [Overlay bridge](/guides/overlay-bridge).
 </ParamField>
 
 <ParamField body="referenceLines" type="ReferenceLine[]">
