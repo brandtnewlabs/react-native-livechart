@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.31.1] — 2026-11-19
+
 ### Fixed
 
-- Custom `renderOverlay` content on both charts stays mounted but follows the
-  marker reveal opacity, hiding during loading and empty states instead of
-  flashing stale annotations over the loading shell.
+- On `LiveChart` and `LiveChartSeries`, custom `renderOverlay` content now hides
+  while the chart is loading or empty. It stays mounted and fades in with the
+  markers when data returns, preserving overlay state across the transition.
+
+### Documentation
+
+- The README and docs now highlight Fomo and Morfi as production users and
+  credit brandtnewlabs for maintaining the library and incorporating
+  improvements from both apps.
 
 ## [4.31.0] — 2026-11-17
 
@@ -1917,6 +1925,7 @@ Initial public release.
   compiles it with your own Reanimated/Worklets version. `dist/` contains only `.d.ts`
   declarations — there is no precompiled runtime `dist/*.js`.
 
+[4.31.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.31.1
 [4.31.0]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.31.0
 [4.30.2]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.2
 [4.30.1]: https://github.com/brandtnewlabs/react-native-livechart/releases/tag/v4.30.1
