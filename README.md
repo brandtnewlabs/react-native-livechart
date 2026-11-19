@@ -9,6 +9,9 @@
 [![License: MIT](https://img.shields.io/npm/l/react-native-livechart.svg)](https://github.com/brandtnewlabs/react-native-livechart/blob/main/LICENSE)
 [![Docs](https://img.shields.io/badge/docs-online-3323E6.svg)](https://react-native-livechart.brandtnewlabs.com)
 
+> **[Fomo](https://fomo.family/) and [Morfi](https://morfi.markets/) use react-native-livechart in production.**
+> [brandtnewlabs](https://github.com/brandtnewlabs) maintains the library and brings fixes and features from those apps back to the open-source project.
+
 High-performance **live** line and candlestick charts for React Native, built on **[@shopify/react-native-skia](https://shopify.github.io/react-native-skia/)**, **[react-native-reanimated](https://docs.swmansion.com/react-native-reanimated/)**, and **[react-native-gesture-handler](https://docs.swmansion.com/react-native-gesture-handler/)**. Data and live values flow through Reanimated `SharedValue`s, so the UI thread animates without per-frame JS bridge traffic.
 
 📖 **[Documentation →](https://react-native-livechart.brandtnewlabs.com)**
