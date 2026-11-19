@@ -1221,9 +1221,15 @@ function SeriesCustomConsumerOverlay({
 }: {
   model: LiveChartSeriesModel;
 }) {
-  const { engine, effectivePadding, renderOverlay } = model;
+  const { engine, effectivePadding, renderOverlay, reveal } = model;
   const overlayContext = useChartOverlayContext(engine, effectivePadding);
-  return <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />;
+  return (
+    <ChartOverlayLayer
+      render={renderOverlay!}
+      context={overlayContext}
+      opacity={reveal.dotOpacity}
+    />
+  );
 }
 
 /** Keeps the extra fade mapper opt-in with the per-series tooltip itself. */

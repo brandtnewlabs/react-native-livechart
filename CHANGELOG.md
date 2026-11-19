@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Custom `renderOverlay` content on both charts stays mounted but follows the
+  marker reveal opacity, hiding during loading and empty states instead of
+  flashing stale annotations over the loading shell.
+
 ## [4.31.0] — 2026-11-17
 
 ### Added

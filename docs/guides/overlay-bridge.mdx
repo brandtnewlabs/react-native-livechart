@@ -24,6 +24,13 @@ The returned tree mounts full-bleed over the canvas with `pointerEvents="box-non
 so empty areas still scrub. `renderOverlay` is available on both `LiveChart` and
 `LiveChartSeries`; the same context reports each chart's resolved plot rectangle.
 
+Custom overlays remain mounted during loading and empty states so their local
+state and drawing resources survive. Their opacity follows the chart's marker
+reveal, keeping stale annotations hidden over the loading shell and revealing
+them with the chart's markers when data returns. The reveal controls opacity only.
+If an overlay contains a control that should be disabled while hidden, manage its
+enabled state in the overlay.
+
 ## The easy path — `usePriceY` / `useTimeX`
 
 Render one component per level and call `usePriceY(ctx, price)` — it returns a

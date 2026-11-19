@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
+import Animated, { type SharedValue } from "react-native-reanimated";
 
 import type { ChartOverlayContext } from "../types";
 
@@ -18,15 +19,20 @@ import type { ChartOverlayContext } from "../types";
 export function ChartOverlayLayer({
   render,
   context,
+  opacity,
 }: {
   render: (ctx: ChartOverlayContext) => ReactElement | null | undefined;
   context: ChartOverlayContext;
+  opacity: SharedValue<number>;
 }) {
   const element = render(context);
   if (element == null) return null;
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <Animated.View
+      pointerEvents="box-none"
+      style={[StyleSheet.absoluteFill, { opacity }]}
+    >
       {element}
-    </View>
+    </Animated.View>
   );
 }
