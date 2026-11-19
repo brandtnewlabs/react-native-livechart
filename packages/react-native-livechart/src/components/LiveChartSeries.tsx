@@ -1223,15 +1223,12 @@ function SeriesCustomConsumerOverlay({
 }) {
   const { engine, effectivePadding, renderOverlay, reveal } = model;
   const overlayContext = useChartOverlayContext(engine, effectivePadding);
-  const { dotOpacity } = reveal;
-  const revealStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.get() }));
   return (
-    <Animated.View
-      pointerEvents="box-none"
-      style={[StyleSheet.absoluteFill, revealStyle]}
-    >
-      <ChartOverlayLayer render={renderOverlay!} context={overlayContext} />
-    </Animated.View>
+    <ChartOverlayLayer
+      render={renderOverlay!}
+      context={overlayContext}
+      opacity={reveal.dotOpacity}
+    />
   );
 }
 

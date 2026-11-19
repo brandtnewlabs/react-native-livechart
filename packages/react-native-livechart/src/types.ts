@@ -3161,8 +3161,7 @@ export interface LiveChartProps extends LiveChartCoreProps {
    * `renderMarker` / `renderTooltip`), full-bleed with `pointerEvents="box-none"`
    * so empty areas still scrub while an interactive leaf can receive touches.
    * It stays mounted during loading/empty states, with opacity following the
-   * chart's marker reveal.
-   * Single-series only.
+   * chart's marker reveal. Also available on LiveChartSeries.
    */
   renderOverlay?: (ctx: ChartOverlayContext) => ReactElement | null | undefined;
   /**

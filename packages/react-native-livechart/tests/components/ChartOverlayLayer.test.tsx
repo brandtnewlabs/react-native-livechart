@@ -1,9 +1,12 @@
 import { render } from "@testing-library/react-native";
 import React from "react";
 import { Text } from "react-native";
+import { makeMutable } from "react-native-reanimated";
 
 import { ChartOverlayLayer } from "../../src/components/ChartOverlayLayer";
 import type { ChartOverlayContext } from "../../src/types";
+
+const opacity = makeMutable(1);
 
 // ChartOverlayLayer only forwards the context to `render`; a minimal stub is fine.
 const context = {
@@ -26,6 +29,7 @@ describe("ChartOverlayLayer", () => {
   it("mounts the element the consumer returns", async () => {
     const { getByTestId } = await render(
       <ChartOverlayLayer
+        opacity={opacity}
         context={context}
         render={() => <Text testID="overlay">tag</Text>}
       />,
@@ -35,20 +39,20 @@ describe("ChartOverlayLayer", () => {
 
   it("passes the bridge context to the render callback", async () => {
     const render_ = jest.fn(() => null);
-    await render(<ChartOverlayLayer context={context} render={render_} />);
+    await render(<ChartOverlayLayer opacity={opacity} context={context} render={render_} />);
     expect(render_).toHaveBeenCalledWith(context);
   });
 
   it("renders nothing when the callback returns null", async () => {
     const { toJSON } = await render(
-      <ChartOverlayLayer context={context} render={() => null} />,
+      <ChartOverlayLayer opacity={opacity} context={context} render={() => null} />,
     );
     expect(toJSON()).toBeNull();
   });
 
   it("renders nothing when the callback returns undefined", async () => {
     const { toJSON } = await render(
-      <ChartOverlayLayer context={context} render={() => undefined} />,
+      <ChartOverlayLayer opacity={opacity} context={context} render={() => undefined} />,
     );
     expect(toJSON()).toBeNull();
   });
