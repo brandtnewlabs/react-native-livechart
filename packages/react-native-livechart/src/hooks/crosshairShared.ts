@@ -220,6 +220,14 @@ export interface CrosshairState {
   timeBadge?: SharedValue<TimeBadgeLayout>;
   /** Tap gesture that places/moves the reticle, presses the badge, or dismisses. */
   tapGesture?: ReturnType<typeof Gesture.Tap>;
+
+  // ── Free X/Y crosshair (`scrub.freeCrosshair`) — single-series only. ───────
+  /** Finger Y in canvas px, clamped to the plot (-1 when not scrubbing). */
+  freeY?: SharedValue<number>;
+  /** Right-gutter price pill at {@link freeY} (price-only action-badge layout). */
+  freeBadge?: SharedValue<ActionBadgeLayout>;
+  /** X-axis time pill at the crosshair X. */
+  freeTimeBadge?: SharedValue<TimeBadgeLayout>;
 }
 
 /**

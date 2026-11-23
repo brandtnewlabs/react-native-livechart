@@ -548,6 +548,18 @@ interface ScrubConfig {
   clampToPlot?: boolean; // plain scrub: ignore starts beyond the plot's X bounds and clamp active drags; default false
   hideOverlaysOnScrub?: boolean; // fade markers + reference lines out while scrubbing; default false
   snapToCandles?: boolean; // candle mode: snap the crosshair to candle centers (tick-to-tick); gaps between candles + line mode keep the raw X; default false
+  // Free X/Y crosshair: a horizontal line follows the finger Y with a price pill
+  // in the price-axis gutter (the price at that Y, not the series value) and a
+  // time pill on the time axis. Pills use tooltipBackground/tooltipColor; the
+  // horizontal line uses the crosshair color, width and dash. true = format the
+  // time pill with the chart's formatTime; single-series LiveChart only; default false.
+  freeCrosshair?: boolean | FreeCrosshairConfig;
+}
+// Options for ScrubConfig.freeCrosshair.
+interface FreeCrosshairConfig {
+  // Worklet that formats the time pill (unix seconds in). Omit to use the chart's
+  // formatTime, which is tuned for axis ticks and often too coarse for a single point.
+  formatTime?: (time: number) => string;
 }
 interface PerSeriesTooltipConfig {
   alwaysShow?: boolean;      // pin value pills to visible endpoints while idle; default false

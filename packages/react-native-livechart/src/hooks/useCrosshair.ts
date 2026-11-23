@@ -221,6 +221,11 @@ export function useCrosshair(
   axisScaleActive?: SharedValue<boolean>,
   /** Buffered line charts must not expose synthetic prices in future space. */
   shouldClampToLatestPoint = false,
+  /**
+   * `scrub.freeCrosshair`: track the finger Y during a plain scrub and lay out
+   * a price pill at that Y and a time pill at the crosshair X. `null` = off.
+   */
+  freeCrosshair: { formatTime: ((time: number) => string) | undefined } | null = null,
 ): CrosshairState {
   // Config objects may be recreated without changing the plot geometry. Keep
   // worklet closures and gestures stable until an actual inset changes.
@@ -478,6 +483,82 @@ export function useCrosshair(
   // Cache marker details on JS so ordinary scrub frames only bridge the scalar
   // point. A new selection / marker input carries a fresh payload once.
   const jsScrubMarkers = useRef<Marker[]>([]);
+
+  // ── Free X/Y crosshair ─────────────────────────────────────────────────────
+  // The finger Y is kept in pixels (the line stays under the finger), and the
+  // price is re-read from it each frame so the pill tracks an axis rescale.
+  const hasFreeCrosshair = freeCrosshair !== null;
+  const formatFreeTime = freeCrosshair?.formatTime ?? formatTime;
+  const scrubPointerY = useSharedValue(-1);
+  const freeBadge = useSharedValue(HIDDEN_ACTION_BADGE);
+  const freeTimeBadge = useSharedValue(HIDDEN_TIME_BADGE);
+  /* istanbul ignore next -- worklet (free-crosshair branch only runs on the UI thread) */
+  useAnimatedReaction(
+    () => {
+      "worklet";
+      if (!hasFreeCrosshair) return null;
+      const active = scrubActive.get();
+      const x = scrubX.get();
+      const y = scrubPointerY.get();
+      const canvasWidth = engine.canvasWidth.get();
+      const canvasHeight = engine.canvasHeight.get();
+      if (!active || y < 0) {
+        return { badge: HIDDEN_ACTION_BADGE, timeLayout: HIDDEN_TIME_BADGE };
+      }
+      const price = computeValueAtY(
+        y,
+        engine.displayMin.get(),
+        engine.displayMax.get(),
+        canvasHeight,
+        padding.top,
+        padding.bottom,
+      );
+      const badge =
+        price === null
+          ? HIDDEN_ACTION_BADGE
+          : computeActionBadgeLayout(
+              true,
+              y,
+              formatValue(price),
+              "",
+              canvasWidth,
+              canvasWidth - padding.right,
+              font,
+              badgeMetrics.marginEdge,
+              badgeMetrics.padX,
+              badgeMetrics.padY,
+            );
+      const time = computeScrubTime(
+        true,
+        x,
+        padding,
+        canvasWidth,
+        engine.timestamp.get(),
+        engine.displayWindow.get(),
+      );
+      const timeLayout =
+        time < 0
+          ? HIDDEN_TIME_BADGE
+          : computeTimeBadgeLayout(
+              true,
+              x,
+              formatFreeTime(time),
+              canvasWidth,
+              canvasHeight - padding.bottom + X_AXIS_LABEL_OFFSET_Y,
+              font,
+              badgeMetrics.padX,
+              badgeMetrics.padY,
+              badgeMetrics.marginEdge,
+            );
+      return { badge, timeLayout };
+    },
+    (snapshot) => {
+      "worklet";
+      if (snapshot === null) return;
+      freeBadge.set(snapshot.badge);
+      freeTimeBadge.set(snapshot.timeLayout);
+    },
+  );
 
   // ── Scrub-action lock derivations ──────────────────────────────────────────
   const lockPrice = useSharedValue<number | null>(null);
@@ -877,6 +958,11 @@ export function useCrosshair(
             deferTapHit(downX.get(), downY.get())
           )
             return;
+          if (hasFreeCrosshair) {
+            scrubPointerY.set(
+              clampPlotY(e.y, padding.top, canvasHeightSV.get(), padding.bottom),
+            );
+          }
           startPlainScrub(
             snapCandleX(e.x),
             padding,
@@ -918,6 +1004,11 @@ export function useCrosshair(
             }
             return;
           }
+          if (hasFreeCrosshair && scrubGestureActive.get()) {
+            scrubPointerY.set(
+              clampPlotY(e.y, padding.top, canvasHeightSV.get(), padding.bottom),
+            );
+          }
           updatePlainScrub(
             snapCandleX(e.x),
             padding,
@@ -934,6 +1025,7 @@ export function useCrosshair(
           resetDelayedPanGuard(fingerDown, panActivated, holdBroken);
           // A lock-adjust drag leaves the reticle in place. End the gesture even
           // when its visible selection is hidden outside the recorded window.
+          scrubPointerY.set(-1);
           if (scrubGestureActive.get()) {
             scrubGestureActive.set(false);
             if (hasOnScrub) scheduleOnRN(handleScrubEnd);
@@ -1076,6 +1168,7 @@ export function useCrosshair(
     handleGestureStart,
     handleScrubAction,
     handleScrubEnd,
+    hasFreeCrosshair,
     hasOnGestureEnd,
     hasOnGestureStart,
     hasOnScrub,
@@ -1098,6 +1191,7 @@ export function useCrosshair(
     scrubGestureActive,
     scrubBottomExclude,
     scrubPointerX,
+    scrubPointerY,
     snapToCandles,
     timestampSV,
   ]);
@@ -1122,5 +1216,8 @@ export function useCrosshair(
     actionBadge,
     timeBadge,
     tapGesture,
+    freeY: scrubPointerY,
+    freeBadge,
+    freeTimeBadge,
   };
 }

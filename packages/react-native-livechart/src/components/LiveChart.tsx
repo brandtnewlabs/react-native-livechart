@@ -1196,6 +1196,7 @@ function resolveCrosshairControllerSettings({
         : 0,
     clampToPlot: scrubCfg?.clampToPlot ?? false,
     snapToCandles: scrubCfg?.snapToCandles ?? false,
+    freeCrosshair: scrubCfg?.freeCrosshair ?? null,
   };
 }
 
@@ -2227,6 +2228,7 @@ function useLiveChartController({
     resolveScrubMarkerOptions(scrubCfg, markersSV),
     axisScaleActive,
     shouldOmitTipBeyondData,
+    crosshairSettings.freeCrosshair,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -3749,8 +3751,16 @@ function ChartScrubLayer({
           showTooltip={scrubCfg.tooltip && !customTooltipActive}
           lineTop={crosshair.tooltipLineTop}
           showLine={dimsFuture}
-          selectionDot={dimsFuture ? selectionDot : null}
-          selectionY={crosshair.scrubDotY}
+          // A free crosshair's selection is the intersection under the finger,
+          // so the dot follows the finger Y there, in candle mode too.
+          selectionDot={
+            dimsFuture || scrubCfg.freeCrosshair ? selectionDot : null
+          }
+          selectionY={
+            scrubCfg.freeCrosshair && crosshair.freeY
+              ? crosshair.freeY
+              : crosshair.scrubDotY
+          }
           scrubActive={crosshair.scrubActive}
           selectionColor={selectionColor}
           dimOpacity={dimsFuture ? scrubCfg.dimOpacity : 1}
@@ -4054,6 +4064,46 @@ function ChartScrubActionLayer({ model }: { model: LiveChartModel }) {
   );
 }
 
+/** `scrub.freeCrosshair`: the horizontal line and price pill at the finger's Y,
+ *  plus the time pill at the crosshair X. Reuses the scrub-action reticle
+ *  drawing without its vertical line, which the scrub crosshair already draws.
+ *  Drawn outside the degen shake group like the scrub-action layer. */
+function ChartFreeCrosshairLayer({ model }: { model: LiveChartModel }) {
+  const { scrubCfg, crosshair, engine, effectivePadding, palette, skiaFont } =
+    model;
+  if (
+    !scrubCfg?.freeCrosshair ||
+    !crosshair.freeY ||
+    !crosshair.freeBadge ||
+    !crosshair.freeTimeBadge
+  ) {
+    return null;
+  }
+  return (
+    <ScrubActionOverlay
+      lockActive={crosshair.scrubActive}
+      lockX={crosshair.scrubX}
+      lockY={crosshair.freeY}
+      actionBadge={crosshair.freeBadge}
+      timeBadge={crosshair.freeTimeBadge}
+      engine={engine}
+      padding={effectivePadding}
+      palette={palette}
+      font={skiaFont}
+      icon=""
+      lineColor={scrubCfg.crosshairLineColor}
+      background={scrubCfg.tooltipBackground ?? palette.tooltipBg}
+      iconColor={scrubCfg.tooltipColor ?? palette.tooltipText}
+      showVerticalLine={false}
+      levelDash={scrubCfg.crosshairDash ?? NO_DASH}
+      levelStrokeWidth={scrubCfg.crosshairStrokeWidth}
+    />
+  );
+}
+
+/** Solid line: an empty dash list draws no DashPathEffect. */
+const NO_DASH: number[] = [];
+
 /**
  * RN-backed marker and reference-line slots. Their animated fade mapper is
  * registered only when at least one custom annotation renderer is present.
@@ -4241,6 +4291,7 @@ function ChartCanvas({
         />
       ) : null}
       <ChartScrubActionLayer model={model} />
+      <ChartFreeCrosshairLayer model={model} />
     </Canvas>
   );
 }

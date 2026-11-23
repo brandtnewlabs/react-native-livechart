@@ -83,6 +83,41 @@ A position in a gap between candles keeps the raw finger X, and the option is a 
 mode. Defaults to `false`. The example app's **Candlestick** screen includes a **Snap to
 candles** switch to compare both behaviors.
 
+## Free X/Y crosshair (`freeCrosshair`)
+
+By default the crosshair is a vertical line pinned to the series: the selection follows the
+finger X and reads the value at that time. Set `freeCrosshair` for the full X/Y crosshair of
+pro charting tools — a horizontal line follows the finger's **Y** too, with a price pill in
+the price-axis gutter showing the price at that height (not the series value), and a time pill
+on the time axis marking the crosshair X:
+
+```tsx
+<LiveChart
+  data={data}
+  value={value}
+  scrub={{
+    freeCrosshair: true,
+    tooltip: false, // typical pairing: the axis pills replace the tooltip
+  }}
+  selectionDot={false}
+/>
+```
+
+- The price is re-read from the finger Y each frame, so the pill stays correct if the price
+  scale moves mid-scrub.
+- The pills use `tooltipBackground` / `tooltipColor`; the horizontal line uses the crosshair's
+  `crosshairLineColor`, `crosshairStrokeWidth` and `crosshairDash`.
+- Pair it with `tooltip: false` and `selectionDot={false}` for a guide-only readout, or keep
+  the selection dot: with `freeCrosshair` it marks the crosshair intersection under the finger
+  instead of the series value, in candle mode too.
+- `snapToCandles` still applies to the X axis in candle mode — the vertical line and time pill
+  jump between candles while the horizontal line glides freely.
+- `true` formats the time pill with the chart's `formatTime`; pass
+  `{ formatTime }` with your own worklet when the axis formatter is too coarse for a single
+  point. Single-series `LiveChart` only. Defaults to `false`.
+
+The example app's **Scrubbing** screen includes a **Free crosshair** switch.
+
 ## Customizing the tooltip
 
 The default pill shows the value on the first row and the time on the second, offset to the side of

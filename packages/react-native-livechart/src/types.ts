@@ -1244,6 +1244,27 @@ export interface ScrubConfig {
    * candles keeps the raw finger X; no effect in line mode. Default `false`.
    */
   snapToCandles?: boolean;
+  /**
+   * Free X/Y crosshair. While scrubbing, a horizontal line follows the
+   * finger's Y with a price pill in the price-axis gutter (the price at that
+   * Y, not the line value), and a time pill marks the crosshair X on the time
+   * axis. The pills use `tooltipBackground` / `tooltipColor`; the horizontal
+   * line uses the crosshair line color, width and dash. Pair with
+   * `tooltip: false` and `selectionDot={false}` for a guide-only readout.
+   * `true` formats the time pill with the chart's `formatTime`; an object can
+   * pass its own worklet. Single-series `LiveChart` only. Default `false`.
+   */
+  freeCrosshair?: boolean | FreeCrosshairConfig;
+}
+
+/** Options for {@link ScrubConfig.freeCrosshair}. */
+export interface FreeCrosshairConfig {
+  /**
+   * Worklet that formats the time pill (unix seconds in). Omit to use the
+   * chart's `formatTime`, which is tuned for axis ticks and often too coarse
+   * for a single point.
+   */
+  formatTime?: (time: number) => string;
 }
 
 /**
@@ -2811,7 +2832,9 @@ export interface LiveChartCoreProps {
   /**
    * Selection dot drawn at the scrub intersection while scrubbing. `true` =
    * built-in dot, `false` = hidden, or pass `SelectionDotConfig` (`size`,
-   * `color`, `ring`, or a custom `component`).
+   * `color`, `ring`, or a custom `component`). With `scrub.freeCrosshair` it
+   * marks the crosshair intersection under the finger instead of the series
+   * value, in candle mode too.
    *
    * Defaults differ per chart: `LiveChart` shows it (`true`); `LiveChartSeries`
    * hides it (`false`) — with multiple lines the dot can only track the leading

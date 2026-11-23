@@ -786,6 +786,7 @@ describe("resolveScrub", () => {
     hideOverlaysOnScrub: false,
     clampToPlot: false,
     snapToCandles: false,
+    freeCrosshair: null,
   };
 
   it("returns null for undefined", () => {
@@ -915,6 +916,31 @@ describe("resolveScrub", () => {
     expect(resolveScrub(true)?.snapToCandles).toBe(false);
     expect(resolveScrub({})?.snapToCandles).toBe(false);
     expect(resolveScrub({ snapToCandles: true })?.snapToCandles).toBe(true);
+  });
+
+  it("defaults freeCrosshair to null and off states stay null", () => {
+    expect(resolveScrub(true)?.freeCrosshair).toBeNull();
+    expect(resolveScrub({})?.freeCrosshair).toBeNull();
+    expect(resolveScrub({ freeCrosshair: false })?.freeCrosshair).toBeNull();
+  });
+
+  it("resolves freeCrosshair: true to an empty config (chart formatTime)", () => {
+    expect(resolveScrub({ freeCrosshair: true })?.freeCrosshair).toEqual({
+      formatTime: undefined,
+    });
+  });
+
+  it("carries a freeCrosshair formatTime worklet", () => {
+    const formatTime = (t: number) => String(t);
+    expect(
+      resolveScrub({ freeCrosshair: { formatTime } })?.freeCrosshair,
+    ).toEqual({ formatTime });
+  });
+
+  it("resolves a freeCrosshair object without formatTime", () => {
+    expect(resolveScrub({ freeCrosshair: {} })?.freeCrosshair).toEqual({
+      formatTime: undefined,
+    });
   });
 
   it("carries a custom tooltipBorderRadius", () => {
