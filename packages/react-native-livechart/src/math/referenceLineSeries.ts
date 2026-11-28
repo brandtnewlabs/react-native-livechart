@@ -13,7 +13,7 @@ import { thresholdLineY } from "./threshold";
  */
 export function buildReferenceLineSeriesPoints(
   points: LiveChartPoint[],
-  now: number,
+  viewportEnd: number,
   windowSecs: number,
   displayMin: number,
   displayMax: number,
@@ -23,6 +23,7 @@ export function buildReferenceLineSeriesPoints(
   extendToStart: boolean,
   extendToNow: boolean,
   out?: number[],
+  headTime = viewportEnd,
 ): number[] {
   "worklet";
   const result = out ?? [];
@@ -43,13 +44,13 @@ export function buildReferenceLineSeriesPoints(
     return result;
   }
 
-  const windowStart = now - windowSecs;
+  const windowStart = viewportEnd - windowSecs;
   const firstTime = points[0].time;
   const lastTime = points[points.length - 1].time;
   const startTime = extendToStart
     ? windowStart
     : Math.max(windowStart, firstTime);
-  const endTime = extendToNow ? now : Math.min(now, lastTime);
+  const endTime = extendToNow ? headTime : Math.min(headTime, lastTime);
   if (endTime < startTime) return result;
 
   const startValue = interpolateAtTime(points, startTime);

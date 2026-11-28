@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `LiveChartSeries.timeHorizon` can extend the time axis to a future Unix
+  timestamp while the user holds the plot. A shared progress value controls
+  the reveal and release. The left edge and live data head keep their ordinary
+  positions in time. The Multi-series demo lets you enable time and value
+  range expansion independently on hold.
+
 - `scrub.freeCrosshair` (`boolean | { formatTime? }`) on the single-series
   `LiveChart` opts into a free X/Y crosshair: while scrubbing, a horizontal
   line follows the finger's Y with a price pill in the price-axis gutter (the
@@ -22,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   time pill aligns below any volume band. Both guides and pills share the edge fade.
   Candle focus dimming can be combined with the full crosshair. `onScrub` continues
   to report the selected series value. Default `false`.
+
+### Fixed
+
+- `onVisibleRangeChange` on both charts now coalesces rapid viewport changes
+  to one notification per second and delivers the final settled range. When a change
+  triggers `onReachStart`, the chart reports that range before the paging callback.
+- During a multi-series time horizon reveal, historical reference lines and their
+  values follow the presented data head. Pinned tooltip pills track the series
+  endpoints throughout release.
 
 ## [4.31.1] — 2026-11-19
 

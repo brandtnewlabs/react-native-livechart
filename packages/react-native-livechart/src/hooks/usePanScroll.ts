@@ -35,6 +35,8 @@ export interface PanScrollEngineRefs {
   liveEdge: SharedValue<number>;
   /** Animating visible window width in seconds. */
   displayWindow: SharedValue<number>;
+  /** Ordinary window before any presentation-only future horizon. */
+  navigationWindow?: SharedValue<number>;
   /** Canvas width in px. */
   canvasWidth: SharedValue<number>;
   /** Canvas height in px (for the axis-drag band hit-test). */
@@ -307,7 +309,6 @@ export function usePanScroll({
   const {
     viewEnd,
     liveEdge,
-    displayWindow,
     canvasWidth,
     canvasHeight,
     viewRange,
@@ -318,6 +319,7 @@ export function usePanScroll({
     fitMax,
     viewWindow,
   } = engine;
+  const displayWindow = engine.navigationWindow ?? engine.displayWindow;
   const padLeft = padding.left;
   const padRight = padding.right;
   const padTop = padding.top;

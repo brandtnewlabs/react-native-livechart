@@ -107,7 +107,7 @@ function clamp(value: number, min: number, max: number): number {
  */
 export function computePerSeriesTooltipLayout(
   scrubActive: boolean,
-  scrubX: number,
+  projectedX: number,
   scrubTime: number,
   series: SeriesConfig[],
   displaySeriesValues: number[],
@@ -135,9 +135,8 @@ export function computePerSeriesTooltipLayout(
   const plotBottom = canvasHeight - padding.bottom;
   if (plotRight <= plotLeft || plotBottom <= plotTop) return HIDDEN_TOOLTIP;
 
-  const anchorX = pinned
-    ? plotRight
-    : clamp(scrubX, plotLeft, plotRight);
+  if (pinned && projectedX < plotLeft) return HIDDEN_TOOLTIP;
+  const anchorX = clamp(projectedX, plotLeft, plotRight);
   const activeTime = Math.min(scrubTime, maxTime);
   if (!pinned && activeTime < 0) return HIDDEN_TOOLTIP;
 
@@ -155,6 +154,7 @@ export function computePerSeriesTooltipLayout(
   for (let i = 0; i < renderedSeriesCount; i++) {
     const item = series[i];
     if (item.visible === false || item.data.length === 0) continue;
+    if (pinned && item.data[0].time > maxTime) continue;
     const value = pinned
       ? (displaySeriesValues[i] ?? item.value)
       : valueAtTime(item, activeTime, maxTime, displaySeriesValues[i]);

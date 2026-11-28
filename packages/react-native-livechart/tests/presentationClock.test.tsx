@@ -4,6 +4,9 @@ import { useSharedValue } from "react-native-reanimated";
 import { useLiveChartSeriesEngine } from "../src/core/useLiveChartSeriesEngine";
 import { useMultiSeriesLinePaths } from "../src/hooks/useMultiSeriesLinePaths";
 import { buildLinePoints, lineTipX } from "../src/draw/line";
+import { useReferenceLineSeries } from "../src/hooks/useReferenceLineSeries";
+import { usePanScroll } from "../src/hooks/usePanScroll";
+import { usePinchZoom } from "../src/hooks/usePinchZoom";
 import { MAX_MULTI_SERIES } from "../src/constants";
 import type { SeriesConfig } from "../src/types";
 let mockFrame: (info: { timeSincePreviousFrame: number }) => void;
@@ -46,6 +49,7 @@ jest.mock("react-native-reanimated", () => {
     ) => {
       // Reactions are not needed for this deterministic frame driver.
     },
+    cancelAnimation: jest.fn(),
     useFrameCallback: (fn: (info: { timeSincePreviousFrame: number }) => void) => { mockFrame = fn; return { setActive() {} }; },
   };
 });
@@ -122,4 +126,117 @@ it("uses wall time when both presentation head and numeric override are absent",
     expect(result.current.currentTime.get()).toBe(2000);
     expect(result.current.liveEdge.get()).toBe(2010);
   } finally { clock.mockRestore(); }
+});
+
+it.each([undefined, 976])("reveals a future horizon and restores the viewport with history start %s", async historyStartTime => {
+  const { result, rerender } = await renderHook(({ at }: { at?: number }) => {
+    const progress = useSharedValue(0);
+    const series = useSharedValue<SeriesConfig[]>([{ id: "a", value: 30, data: [
+      { time: 980, value: 20 }, { time: 1050, value: 30 }, { time: 1090, value: 999 },
+    ] }]);
+    const head = useSharedValue<number | undefined>(1050);
+    const engine = useLiveChartSeriesEngine({
+      series, presentationTime: head, historyStartTime, timeWindow: 100,
+      windowBuffer: 0.2, windowBufferSeconds: 6, smoothing: 0.08,
+      timeHorizon: at === undefined ? undefined : { at, progress },
+    });
+    return { engine, progress };
+  }, { initialProps: { at: 1204 } });
+  const { engine, progress } = result.current;
+  engine.canvasWidth.set(320);
+  engine.canvasHeight.set(200);
+  const frame = () => mockFrame({ timeSincePreviousFrame: 16.67 });
+  for (const [phase, edge] of [[0, 1076], [0.25, 1096], [1, 1204], [0.5, 1140], [0, 1076]]) {
+    progress.set(phase);
+    frame();
+    expect(engine.timestamp.get()).toBe(edge);
+    expect(engine.liveEdge.get()).toBe(1076);
+    expect(engine.timeWindow.get()).toBe(edge - 976);
+    expect(engine.displayWindow.get()).toBe(edge - 976);
+    expect(engine.tipTime?.get()).toBe(1050);
+    expect(engine.extremaMaxValue.get()).toBe(30);
+  }
+  progress.set(2);
+  frame();
+  expect(engine.timestamp.get()).toBe(1204);
+  await rerender({ at: undefined });
+  frame();
+  expect(engine.timestamp.get()).toBe(1076);
+  expect(engine.displayWindow.get()).toBe(100);
+});
+
+it("projects historical references into the horizon while sampling and clipping at the presented head", async () => {
+  const points = [{ time: 970, value: 20 }, { time: 1000, value: 30 }, { time: 1100, value: 80 }];
+  const { result } = await renderHook(() => {
+    const progress = useSharedValue(0);
+    const engine = useLiveChartSeriesEngine({
+      series: useSharedValue<SeriesConfig[]>([{ id: "a", value: 30, data: points }]),
+      presentationTime: useSharedValue<number | undefined>(1000),
+      timeWindow: 30, smoothing: 1, allowFutureViewEnd: true, timeHorizon: { at: 1100, progress },
+    });
+    const reference = useReferenceLineSeries(engine, padding, points, true, true);
+    const endedAtHead = useReferenceLineSeries(engine, padding, points.slice(0, 2), false, false);
+    const startsInFuture = useReferenceLineSeries(engine, padding, points.slice(2), false, true);
+    return { engine, reference, endedAtHead, startsInFuture, progress };
+  });
+  const { engine, reference, endedAtHead, startsInFuture, progress } = result.current;
+  engine.canvasWidth.set(260);
+  engine.canvasHeight.set(200);
+  for (const phase of [0, 1, 0.5, 0]) {
+    progress.set(phase);
+    mockFrame({ timeSincePreviousFrame: 16.67 });
+    const headX = lineTipX(engine.timestamp.get(), engine.displayWindow.get(), 1000, 260, padding);
+    expect(reference.currentValue.get()).toBe(30);
+    expect(reference.screenPts.get().at(-2)).toBeCloseTo(headX);
+    expect(reference.screenPts.get().at(-1)).toBeCloseTo(reference.currentY.get());
+    expect(endedAtHead.currentVisible.get()).toBe(true);
+    expect(startsInFuture.screenPts.get()).toEqual([]);
+    expect(startsInFuture.currentVisible.get()).toBe(false);
+  }
+  engine.viewEnd.set(1200);
+  mockFrame({ timeSincePreviousFrame: 16.67 });
+  expect(reference.screenPts.get()).toEqual([]);
+  expect(reference.currentVisible.get()).toBe(false);
+});
+
+it("hands pan and pinch the ordinary viewport while the horizon is fully revealed", async () => {
+  const { result } = await renderHook(() => {
+    const series = useSharedValue<SeriesConfig[]>([{ id: "a", value: 1, data: [{ time: 800, value: 1 }] }]);
+    const progress = useSharedValue(1);
+    const engine = useLiveChartSeriesEngine({
+      series, nowOverride: 1000, timeWindow: 30, smoothing: 1, timeHorizon: { at: 1100, progress },
+    });
+    const minTime = useSharedValue(800);
+    const pan = usePanScroll({ engine, minTime, padding, enabled: true });
+    const pinch = usePinchZoom({ engine, minTime, padding, enabled: true, timeWindow: 30 });
+    return { engine, pan: pan.handlers, pinch: pinch.handlers };
+  });
+  const { engine, pan, pinch } = result.current;
+  engine.canvasWidth.set(200);
+  engine.canvasHeight.set(100);
+  const frame = () => mockFrame({ timeSincePreviousFrame: 16.67 });
+  frame();
+  expect(engine.timestamp.get()).toBe(1100);
+  expect(engine.displayWindow.get()).toBe(130);
+
+  const drag = pan.onChange as (e: { changeX: number }) => void;
+  (pan.onStart as () => void)();
+  for (const end of [998.5, 997, 995.5]) {
+    drag({ changeX: 10 });
+    frame();
+    expect(engine.viewEnd.get()).toBe(end);
+    expect(engine.timestamp.get()).toBe(end);
+    expect(engine.displayWindow.get()).toBe(30);
+  }
+  drag({ changeX: -50 });
+  frame();
+  expect(engine.viewEnd.get()).toBeNull();
+  expect(engine.timestamp.get()).toBe(1100);
+
+  (pinch.onStart as () => void)();
+  const zoom = pinch.onChange as (e: { scale: number; focalX: number; numberOfPointers: number }) => void;
+  zoom({ scale: 2, focalX: 100, numberOfPointers: 2 });
+  frame();
+  expect(engine.displayWindow.get()).toBe(15);
+  expect(engine.timestamp.get()).toBe(992.5);
 });

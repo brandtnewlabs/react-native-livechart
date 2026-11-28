@@ -64,6 +64,17 @@ when width changes. Inline labels and axis badges may need extra space;
   [Replay clock](/guides/multi-series#replay-clock).
 </ParamField>
 
+<ParamField body="timeHorizon" type="{ at: number; progress: SharedValue<number> }">
+  Extend the right edge of the live viewport toward a future Unix timestamp in
+  seconds. A progress of 0 shows the ordinary window, and 1 reaches `at`.
+  The chart keeps the left edge and data head on their ordinary clocks. The
+  horizon applies only while following live with no pinch override, pause or
+  return glide. See [Reveal a future time on hold](/guides/multi-series#reveal-a-future-time-on-hold).
+  This prop controls X independently. To expand Y on the same hold, also supply
+  a `rangeAnimation.transform` worklet driven by the hold progress. The worklet
+  can be used alone for a Y-only hold.
+</ParamField>
+
 ## Growing history window
 
 Both `windowBuffer` and `windowBufferSeconds` are shared with `LiveChart`.
@@ -322,6 +333,8 @@ the same imperative reset exposed by `LiveChart`. See
 <ParamField body="onVisibleRangeChange" type="(range: VisibleRange) => void">
   Called as the visible window changes (~1 Hz) with `{ startSec, endSec,
   following }`. **@experimental.**
+  Rapid changes share one update per second, with a final update for the settled viewport.
+  When a change triggers `onReachStart`, the chart reports that range immediately before calling the loader.
 </ParamField>
 
 <ParamField body="onReachStart" type="() => void">

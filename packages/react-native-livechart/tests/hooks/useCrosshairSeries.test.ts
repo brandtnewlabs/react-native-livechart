@@ -275,7 +275,7 @@ describe("computePerSeriesTooltipLayout", () => {
   it("pins only value pills to live endpoints while idle", () => {
     const layout = computePerSeriesTooltipLayout(
       false,
-      -1,
+      400 - padding.right,
       -1,
       visibleSeries,
       [42, 43, 90],
@@ -540,6 +540,36 @@ describe("useCrosshairSeries (hook)", () => {
     engine.series.set([{ id: "a", value: 9999, data: [{ time: 1060, value: 9999 }] }]);
     expect(result.current.scrubValue.get()).toBeNull();
     expect(prepare()).toBe("__pending__");
+  });
+
+  it("pins the value pill to the projected endpoint on release and follows it as the horizon closes", async () => {
+    const plot = { left: 0, right: 0, top: 0, bottom: 0 };
+    const engine = makeEngine({
+      canvasWidth: { value: 260 }, timestamp: { value: 1100 }, displayWindow: { value: 130 },
+      tipTime: { value: 1000 }, displaySeriesValues: { value: [30] },
+      series: { value: [{ id: "a", value: 30, data: [{ time: 970, value: 20 }, { time: 1000, value: 30 }] }] },
+    });
+    const { result } = await renderHook(() => useCrosshairSeries(
+      engine, plot, true, undefined, 0, undefined, undefined, undefined,
+      { config: tooltipConfig({ alwaysShow: true }), formatValue, formatTime, font, colors: ["blue"], maxTime: engine.tipTime! },
+    ));
+    const handlers = getGestureConfig(result.current.gesture);
+    const layout = () => result.current.tooltipLayout.get().perSeries;
+    (handlers.onStart[0] as (e: { x: number }) => void)({ x: 20 });
+    expect(layout()?.pills[0].anchorX).toBe(20);
+    (handlers.onFinalize[0] as () => void)();
+    expect(layout()?.pinned).toBe(true);
+    for (const [end, width] of [[1100, 130], [1050, 80], [1000, 30]]) {
+      engine.timestamp.set(end);
+      engine.displayWindow.set(width);
+      expect(layout()?.pills[0].anchorX).toBeCloseTo(260 * 30 / width);
+      expect(layout()?.pills[0].value).toBe("30.00");
+    }
+    engine.timestamp.set(1100);
+    expect(layout()).toBeUndefined(); // The whole plot is ahead of the data head.
+    engine.displayWindow.set(130);
+    engine.series.set([{ id: "future", value: 40, data: [{ time: 1010, value: 40 }] }]);
+    expect(layout()).toBeUndefined();
   });
 
   it("ignores native scrub events while the price axis owns the touch", async () => {

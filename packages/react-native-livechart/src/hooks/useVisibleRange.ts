@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef } from "react";
 import {
+  makeMutable,
+  startMapper,
+  stopMapper,
   useAnimatedReaction,
   type SharedValue,
 } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
+import { scheduleOnRN, scheduleOnUI } from "react-native-worklets";
 
 import type { VisibleRange } from "../types";
+import { useLatestCallback } from "./useLatestCallback";
 
 export type { VisibleRange };
 
@@ -30,21 +34,6 @@ export interface UseVisibleRangeOptions {
   onReachStart?: () => void;
 }
 
-/**
- * Throttle key for a visible range: integer seconds of each edge plus the
- * near-start flag. The reaction emits only when this changes, so a live chart
- * (whose right edge slides every frame) notifies at most ~once per second rather
- * than per frame, and `onReachStart` edge-triggers off the trailing flag.
- */
-export function rangeSignature(
-  startSec: number,
-  endSec: number,
-  near: boolean,
-): string {
-  "worklet";
-  return `${Math.round(startSec)}|${Math.round(endSec)}|${near ? 1 : 0}`;
-}
-
 /** Whether the window's left edge is within `threshold` seconds of the oldest data. */
 export function isNearStart(
   winStart: number,
@@ -55,65 +44,101 @@ export function isNearStart(
   return winStart <= minTime + threshold;
 }
 
-/**
- * Bridges the UI-thread visible window to JS paging callbacks. A reaction watches
- * the window edges and `scheduleOnRN`s `onVisibleRangeChange` (throttled) and
- * `onReachStart` (edge-triggered near the oldest data). Inert when both callbacks
- * are absent. Used by both `LiveChart` and `LiveChartSeries`.
- */
+// React Native supplies this monotonic clock. The library builds without DOM types.
+declare const performance: { now(): number };
+
+const RANGE_INTERVAL_MS = 1000;
+
+/** Report the drawn viewport to JS paging callbacks on either chart. */
 export function useVisibleRange({
-  engine,
+  engine: { timestamp, displayWindow, viewEnd },
   minTime,
   onVisibleRangeChange,
   onReachStart,
 }: UseVisibleRangeOptions): void {
-  // Latest callbacks behind refs so the (deps-stable) dispatchers below always
-  // call the current prop without re-subscribing the reaction each render.
-  const rangeCb = useRef(onVisibleRangeChange);
-  const reachCb = useRef(onReachStart);
+  const readRange = useCallback((): VisibleRange => {
+    "worklet";
+    const endSec = timestamp.get();
+    return { startSec: endSec - displayWindow.get(), endSec, following: viewEnd.get() == null };
+  }, [timestamp, displayWindow, viewEnd]);
+  const lastReport = useRef<{ range: VisibleRange; time: number } | null>(null);
+  const emitRange = useLatestCallback((range: VisibleRange) => {
+    const previous = lastReport.current?.range;
+    if (!onVisibleRangeChange) return;
+    if (
+      previous?.startSec === range.startSec &&
+      previous.endSec === range.endSec &&
+      previous.following === range.following
+    ) return;
+    lastReport.current = { range, time: performance.now() };
+    onVisibleRangeChange(range);
+  });
+  const emitReachStart = useLatestCallback((range: VisibleRange) => {
+    if (!onReachStart) return;
+    // Paging loaders read the last reported range synchronously in onReachStart.
+    emitRange(range);
+    onReachStart();
+  });
+  const watchRange = onVisibleRangeChange != null;
+  const watchStart = onReachStart != null;
+
   useEffect(() => {
-    rangeCb.current = onVisibleRangeChange;
-    reachCb.current = onReachStart;
-  }, [onVisibleRangeChange, onReachStart]);
+    if (!watchRange) return;
+    const pending = makeMutable(false);
+    let active = true;
+    let timeout: ReturnType<typeof setTimeout>;
 
-  const emitRange = useCallback(
-    /* istanbul ignore next -- dispatched via scheduleOnRN from the UI thread, not in Jest */
-    (startSec: number, endSec: number, following: boolean) => {
-      rangeCb.current?.({ startSec, endSec, following });
-    },
-    [],
-  );
-  const emitReachStart = useCallback(
-    /* istanbul ignore next -- dispatched via scheduleOnRN from the UI thread, not in Jest */
-    () => {
-      reachCb.current?.();
-    },
-    [],
-  );
+    function deliver(range: VisibleRange) {
+      if (!active) return;
+      emitRange(range);
+    }
 
-  const active = onVisibleRangeChange != null || onReachStart != null;
+    function flush() {
+      // Sample all three fields on the same UI frame, including the final range
+      // when the chart has stopped producing frames during the throttle interval.
+      scheduleOnUI(() => {
+        "worklet";
+        pending.set(false);
+        scheduleOnRN(deliver, readRange());
+      });
+    }
+
+    function requestReport() {
+      if (!active) return;
+      const lastTime = lastReport.current?.time ?? -Infinity;
+      const remaining = RANGE_INTERVAL_MS - (performance.now() - lastTime);
+      // A paging callback can report a newer viewport while the timer is waiting.
+      if (remaining > 0) timeout = setTimeout(requestReport, Math.ceil(remaining));
+      else flush();
+    }
+
+    // Subscribe only to the viewport. Keep one JS request in flight while any
+    // number of pan, zoom, or horizon frames update the range underneath it.
+    const mapper = startMapper(() => {
+      "worklet";
+      if (!pending.get()) {
+        pending.set(true);
+        scheduleOnRN(requestReport);
+      }
+    }, [timestamp, displayWindow, viewEnd]);
+
+    return () => {
+      active = false;
+      lastReport.current = null;
+      stopMapper(mapper);
+      clearTimeout(timeout);
+    };
+  }, [watchRange, timestamp, displayWindow, viewEnd, readRange, emitRange]);
 
   useAnimatedReaction(
-    /* istanbul ignore next -- Reanimated reaction worklet; runs on the UI thread, not in Jest */
     () => {
-      if (!active) return ""; // inert — never changes, so the reaction never fires
-      const end = engine.timestamp.value;
-      const win = engine.displayWindow.value;
-      const start = end - win;
-      return rangeSignature(start, end, isNearStart(start, minTime.value, win));
+      if (!watchStart) return false;
+      const width = displayWindow.get();
+      return isNearStart(timestamp.get() - width, minTime.get(), width);
     },
-    /* istanbul ignore next -- Reanimated reaction; dispatches on the JS thread, not exercised under Jest */
-    (curr, prev) => {
-      if (!active || curr === "" || curr === prev) return;
-      const end = engine.timestamp.value;
-      const win = engine.displayWindow.value;
-      const start = end - win;
-      const following = engine.viewEnd.value == null;
-      const near = isNearStart(start, minTime.value, win);
-      const wasNear = typeof prev === "string" && prev.endsWith("|1");
-      scheduleOnRN(emitRange, start, end, following);
-      if (near && !wasNear) scheduleOnRN(emitReachStart);
+    (near, wasNear) => {
+      if (near && !wasNear) scheduleOnRN(emitReachStart, readRange());
     },
-    [active, emitRange, emitReachStart],
+    [watchStart, timestamp, displayWindow, minTime, readRange, emitReachStart],
   );
 }

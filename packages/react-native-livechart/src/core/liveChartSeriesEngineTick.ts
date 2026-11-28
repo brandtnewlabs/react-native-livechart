@@ -1,6 +1,7 @@
 import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
 import { rangeAnimationSpeed } from "../math/rangeAnimation";
+import { smoothstep } from "../math/squiggly";
 import type { SeriesRangeAnimationConfig, SeriesConfig } from "../types";
 
 export interface MultiEngineTickMutable {
@@ -10,6 +11,8 @@ export interface MultiEngineTickMutable {
   currentTime?: number;
   /** Unzoomed authoritative-history span, including buffer. */
   fullHistoryWindow?: number | null;
+  /** Presentation-only seconds added to the ordinary edge and width when drawing. */
+  horizonExtension?: number;
   /** Untransformed eased bounds, kept separate from presentation output. */
   fittedMin?: number;
   fittedMax?: number;
@@ -68,6 +71,8 @@ export interface MultiEngineTickInput {
   nowOverride?: number;
   /** UI-thread presentation head, with precedence over nowOverride/wall time. */
   presentationTime?: number;
+  timeHorizonAt?: number;
+  timeHorizonProgress?: number;
   /** Right-edge buffer as a fraction of the time window. */
   windowBuffer?: number;
   /** Right-edge buffer in seconds. Does not scale with the visible window. */
@@ -137,6 +142,7 @@ export function tickLiveChartSeriesEngineFrame(
   state.fullHistoryWindow = fullWindow;
   const liveWindow = input.viewWindow ?? fullWindow ?? input.timeWindow;
   const liveEdge = baseNow + buffer * liveWindow + bufferSeconds;
+  state.horizonExtension = 0;
   state.liveEdge = liveEdge;
   const viewEnd = input.viewEnd;
   // Earliest first-point time across visible series — the floor a frozen edge
@@ -202,8 +208,9 @@ export function tickLiveChartSeriesEngineFrame(
 
   // Pinch-zoom: ease toward the zoom override when set, else the configured
   // window (mirrors the single-series tick).
-  const anchoredFollowing = fullWindow != null && input.viewWindow == null &&
-    !scrolledBack && !input.paused && (input.returnT == null || input.returnT >= 1);
+  const following = !scrolledBack && !input.paused && (input.returnT == null || input.returnT >= 1);
+  const unzoomedFollowing = following && input.viewWindow == null;
+  const anchoredFollowing = fullWindow != null && unzoomedFollowing;
   // Park the unzoomed width with a frozen edge. Resuming live restores the exact
   // anchored span; easing a growing target would continuously lose the start.
   const targetWindow = input.viewWindow ??
@@ -212,7 +219,16 @@ export function tickLiveChartSeriesEngineFrame(
     ? targetWindow
     : lerp(state.displayWindow, targetWindow, speed, input.dt);
 
-  const winStart = state.timestamp - state.displayWindow;
+  const at = input.timeHorizonAt;
+  const progress = input.timeHorizonProgress ?? 0;
+  if (at != null && Number.isFinite(at) && at > liveEdge && Number.isFinite(progress) &&
+      progress > 0 && unzoomedFollowing) {
+    state.horizonExtension = (at - liveEdge) * smoothstep(progress);
+  }
+
+  // Fit against the ordinary left edge. Reconstructing it from the extended
+  // edge and width can round past a sample sitting exactly on the boundary.
+  const winStart = anchoredFollowing ? start! : state.timestamp - state.displayWindow;
   const range = state.displayMax - state.displayMin;
 
   // Historical edges use recorded values. An edge parked in or beyond the
@@ -447,7 +463,7 @@ export function tickLiveChartSeriesEngineFrame(
       min: state.fittedMin,
       max: state.fittedMax,
       from: winStart,
-      to: state.timestamp,
+      to: state.timestamp + state.horizonExtension,
     });
     if (
       result &&

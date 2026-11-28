@@ -51,7 +51,8 @@ SDKs, NATS, or any other transport.
 ```
 
 - `onVisibleRangeChange` reports `{ startSec, endSec, following }` about once per second. Store the
-  latest range so the loader knows how much time the next request must cover.
+  latest range so the loader knows how much time the next request must cover. At the paging
+  threshold, the chart reports the triggering range before calling `onReachStart`.
 - `onReachStart` fires once when the visible left edge comes within one window-width of the oldest
   retained row. It re-arms after the retained edge moves far enough into the past.
 

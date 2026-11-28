@@ -158,9 +158,15 @@ export function useCrosshairSeries(
 
   const tooltipLayout = useDerivedValue(() => {
     if (!tooltip) return HIDDEN_TOOLTIP;
+    const active = scrubActive.get();
+    const canvasWidth = engine.canvasWidth.get();
+    const head = tooltip.maxTime.get();
+    const anchorX = !active && tooltip.config.alwaysShow
+      ? lineTipX(engine.timestamp.get(), engine.displayWindow.get(), head, canvasWidth, padding)
+      : scrubX.get();
     return computePerSeriesTooltipLayout(
-      scrubActive.get(),
-      scrubX.get(),
+      active,
+      anchorX,
       scrubTime.get(),
       engine.series.get(),
       engine.displaySeriesValues.get(),
@@ -168,9 +174,9 @@ export function useCrosshairSeries(
       engine.displayMin.get(),
       engine.displayMax.get(),
       padding,
-      engine.canvasWidth.get(),
+      canvasWidth,
       engine.canvasHeight.get(),
-      tooltip.maxTime.get(),
+      head,
       tooltip.formatValue,
       tooltip.formatTime,
       tooltip.font,
