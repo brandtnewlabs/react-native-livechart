@@ -3307,6 +3307,7 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
    * `progress` from 0 (normal viewport) to 1 (right edge at `at`) and back.
    * The left edge follows its ordinary clock and the live tips stay at the
    * data head. Pan, pinch, pause and return-to-live take precedence.
+   * To also expand Y on hold, use the same progress in `rangeAnimation.transform`.
    */
   timeHorizon?: { at: number; progress: SharedValue<number> };
   /**

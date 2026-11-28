@@ -33,7 +33,7 @@ import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
 
-const horizonTiming = { duration: 350, easing: Easing.linear };
+const holdTiming = { duration: 350, easing: Easing.linear };
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
@@ -355,18 +355,33 @@ function useSeriesScrubDemo(
   tooltipAlwaysShow: boolean,
   styledTooltip: boolean,
 ) {
-  const [showHorizon, setShowHorizon] = useState(false);
+  const [zoomX, setZoomX] = useState(false);
+  const [zoomY, setZoomY] = useState(false);
   const [horizonAt, setHorizonAt] = useState(0);
-  const horizonProgress = useSharedValue(0);
-  const chartProps: Pick<LiveChartSeriesProps, "timeHorizon" | "onGestureStart" | "onGestureEnd" | "scrub"> = {
-    timeHorizon: showHorizon ? { at: horizonAt, progress: horizonProgress } : undefined,
-    onGestureStart: showHorizon ? () => {
-      setHorizonAt(Date.now() / 1000 + windowSecs);
-      horizonProgress.set(withTiming(1, horizonTiming));
+  const progress = useSharedValue(0);
+  const zoomOnHold = zoomX || zoomY;
+  useEffect(() => {
+    if (!zoomOnHold) progress.set(0);
+  }, [progress, zoomOnHold]);
+  const widenY = ({ min, max }: { min: number; max: number }) => {
+    "worklet";
+    // At full hold, show twice the fitted span around its current midpoint.
+    const extra = (max - min) * progress.get() / 2;
+    return { min: min - extra, max: max + extra };
+  };
+  const chartProps: Pick<LiveChartSeriesProps,
+    "timeHorizon" | "rangeAnimation" | "onGestureStart" | "onGestureEnd" | "scrub"
+  > = {
+    timeHorizon: zoomX ? { at: horizonAt, progress } : undefined,
+    rangeAnimation: zoomY ? { transform: widenY } : undefined,
+    onGestureStart: zoomOnHold ? () => {
+      if (zoomX) setHorizonAt(Date.now() / 1000 + windowSecs);
+      progress.set(withTiming(1, holdTiming));
     } : undefined,
-    onGestureEnd: showHorizon ? () => horizonProgress.set(withTiming(0, horizonTiming)) : undefined,
+    onGestureEnd: zoomOnHold ? () => progress.set(withTiming(0, holdTiming)) : undefined,
     scrub: {
-      panGestureDelay: showHorizon ? 180 : undefined,
+      panGestureDelay: zoomOnHold ? 180 : undefined,
+      clampToPlot: zoomOnHold,
       dimOpacity: scrubDim,
       seriesTooltip: seriesTooltip
         ? {
@@ -397,7 +412,7 @@ function useSeriesScrubDemo(
         : false,
     },
   };
-  return { showHorizon, setShowHorizon, chartProps };
+  return { zoomX, setZoomX, zoomY, setZoomY, chartProps };
 }
 
 export default function MultiSeriesScreen() {
@@ -585,8 +600,9 @@ export default function MultiSeriesScreen() {
           onChange={setEmpty}
         />
 
-        <ControlRow label="Time axis">
-          <ToggleChip label="Show future on hold" value={scrubDemo.showHorizon} onChange={scrubDemo.setShowHorizon} />
+        <ControlRow label="Zoom out on hold">
+          <ToggleChip label="X · Time" value={scrubDemo.zoomX} onChange={scrubDemo.setZoomX} />
+          <ToggleChip label="Y · Values" value={scrubDemo.zoomY} onChange={scrubDemo.setZoomY} />
         </ControlRow>
 
         <DotLegendControls

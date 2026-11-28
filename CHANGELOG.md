@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LiveChartSeries.timeHorizon` can extend the time axis to a future Unix
   timestamp while the user holds the plot. A shared progress value controls
   the reveal and release. The left edge and live data head keep their ordinary
-  positions in time.
+  positions in time. The Multi-series demo lets you enable time and value
+  range expansion independently on hold.
 
 - `scrub.freeCrosshair` (`boolean | { formatTime? }`) on the single-series
   `LiveChart` opts into a free X/Y crosshair: while scrubbing, a horizontal

@@ -1145,6 +1145,7 @@ uses the same clock. See [Replay clock](/guides/multi-series#replay-clock).
 takes a Unix timestamp in seconds and a UI-thread animation progress. Finite
 progress is clamped to 0–1 and eased with smoothstep. A target at or before the
 buffered live edge, or a non-finite input, leaves the ordinary viewport in use.
+The Y range can expand independently through `rangeAnimation.transform`.
 See [Reveal a future time on hold](/guides/multi-series#reveal-a-future-time-on-hold).
 
 ## LiveChartSeries history start

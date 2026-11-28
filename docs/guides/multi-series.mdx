@@ -103,39 +103,61 @@ future momentum; an offscreen tip cannot spawn a burst.
 
 ## Reveal a future time on hold
 
-To show how long remains until an event ends, pass its Unix timestamp in seconds
-and animate `timeHorizon.progress` when the scrub starts and ends. The chart
-expands the right side of the time axis while the live dots stay at the data
-head. Lifting the finger brings the ordinary time window back. Try **Show future
-on hold** in the Multi-series demo.
+The Multi-series demo has two independent **Zoom out on hold** switches.
+**X · Time** extends the right edge to a future event time while the live dots
+stay at the data head. **Y · Values** doubles the fitted value range around its
+midpoint. Turn on both to reveal both axes, or leave both off for ordinary
+scrubbing. Release returns each selected axis to its ordinary view, including
+any manual Y scale.
 
-<Frame caption="Hold to reveal a future time, then release to return to the live window">
+<Frame caption="Four holds on iOS with live data. Watch the time ticks along the bottom and the values on the right as each hold begins and ends.">
   <video muted loop playsInline controls src="/media/multi-series-time-horizon.mp4" />
 </Frame>
 
+Pass `timeHorizon` only for X and a `rangeAnimation.transform` worklet only
+for Y. The two can read the same shared progress. This example accepts a future
+Unix timestamp in seconds for X and a boolean for Y. With independent switches,
+pass `endsAt={zoomX ? event.endsAt : undefined}` and `zoomY={zoomY}`. For a chart with a target
+value, the Y transform can instead [expand to include that value](#transforming-the-presentation-range).
+
 ```tsx
+import { useEffect } from "react";
 import { Easing, useSharedValue, withTiming } from "react-native-reanimated";
 import { LiveChartSeries, type LiveChartSeriesProps } from "react-native-livechart";
 
-function EventChart({ series, endsAt }: {
+function EventChart({ series, endsAt, zoomY = false }: {
   series: LiveChartSeriesProps["series"];
-  endsAt: number;
+  endsAt?: number; // Omit to keep the ordinary time window.
+  zoomY?: boolean;
 }) {
   const progress = useSharedValue(0);
   const timing = { duration: 350, easing: Easing.linear };
+  const enabled = endsAt !== undefined || zoomY;
+  useEffect(() => {
+    if (!enabled) progress.set(0);
+  }, [enabled, progress]);
+  const widenY = ({ min, max }: { min: number; max: number }) => {
+    "worklet";
+    const extra = (max - min) * progress.get() / 2;
+    return { min: min - extra, max: max + extra };
+  };
   return (
     <LiveChartSeries
       series={series}
-      scrub={{ panGestureDelay: 180 }}
-      timeHorizon={{ at: endsAt, progress }}
-      onGestureStart={() => progress.set(withTiming(1, timing))}
-      onGestureEnd={() => progress.set(withTiming(0, timing))}
+      scrub={enabled ? { panGestureDelay: 180, clampToPlot: true } : true}
+      timeHorizon={endsAt === undefined ? undefined : { at: endsAt, progress }}
+      rangeAnimation={zoomY ? { transform: widenY } : undefined}
+      onGestureStart={enabled ? () => progress.set(withTiming(1, timing)) : undefined}
+      onGestureEnd={enabled ? () => progress.set(withTiming(0, timing)) : undefined}
     />
   );
 }
 ```
 
-The reveal works with a rolling `timeWindow` or an anchored `historyStartTime`,
+With the built-in Y-axis drag enabled, `scrub.clampToPlot` keeps price-gutter
+taps and drags out of the plot's hold callbacks.
+
+The X reveal works with a rolling `timeWindow` or an anchored `historyStartTime`,
 including both forms of right-edge buffer. Pan, pinch, pause and return-to-live
 retain control of the viewport. Keep the horizon mounted through the release
 animation. Removing it restores the ordinary viewport on the next frame.
