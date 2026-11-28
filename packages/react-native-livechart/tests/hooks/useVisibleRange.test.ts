@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react-native";
 import { startMapper, stopMapper, makeMutable } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
-import { isNearStart, useVisibleRange } from "../../src/hooks/useVisibleRange";
+import { isNearStart, useVisibleRange, type VisibleRange } from "../../src/hooks/useVisibleRange";
 
 let mockFrame: () => void;
 let mockReachReaction: () => void;
@@ -47,11 +47,11 @@ describe("visible range notifications", () => {
   });
   afterEach(() => jest.useRealTimers());
 
-  async function setup() {
+  async function setup(oldest = 900) {
     const engine = {
       timestamp: makeMutable(1000), displayWindow: makeMutable(30), viewEnd: makeMutable<number | null>(null),
     };
-    const minTime = makeMutable(900);
+    const minTime = makeMutable(oldest);
     const onReachStart = jest.fn();
     const onVisibleRangeChange = jest.fn();
     const hook = await renderHook(({ enabled }: { enabled: boolean }) => useVisibleRange({
@@ -63,7 +63,7 @@ describe("visible range notifications", () => {
   }
 
   it("coalesces a rapid reveal and release by elapsed time and delivers each settled edge", async () => {
-    const { engine, onReachStart, onVisibleRangeChange } = await setup();
+    const { engine, onReachStart, onVisibleRangeChange } = await setup(800);
     expect(onVisibleRangeChange).toHaveBeenLastCalledWith({ startSec: 970, endSec: 1000, following: true });
     for (const direction of [1, -1]) {
       const callsBefore = onVisibleRangeChange.mock.calls.length;
@@ -76,10 +76,10 @@ describe("visible range notifications", () => {
         mockFrame();
         mockReachReaction();
       }
-      // One timer request per burst, plus the independent near-start transition on reveal.
-      expect(jest.mocked(scheduleOnRN).mock.calls.length - bridgeCallsBefore).toBe(direction === 1 ? 2 : 1);
+      // One timer request per burst while the oldest point stays outside the paging threshold.
+      expect(jest.mocked(scheduleOnRN).mock.calls.length - bridgeCallsBefore).toBe(1);
       expect(onVisibleRangeChange).toHaveBeenCalledTimes(callsBefore);
-      expect(onReachStart).toHaveBeenCalledTimes(1);
+      expect(onReachStart).not.toHaveBeenCalled();
       jest.advanceTimersByTime(659);
       expect(onVisibleRangeChange).toHaveBeenCalledTimes(callsBefore);
       jest.advanceTimersByTime(1);
@@ -90,6 +90,54 @@ describe("visible range notifications", () => {
     }
     jest.advanceTimersByTime(5000);
     expect(onVisibleRangeChange).toHaveBeenCalledTimes(3);
+  });
+
+  it("publishes the crossing frame before the loader reads the cached range during a fast pan", async () => {
+    const { engine, onReachStart, onVisibleRangeChange } = await setup();
+    const atPageRequest: VisibleRange[] = [];
+    onReachStart.mockImplementation(() => {
+      atPageRequest.push(onVisibleRangeChange.mock.lastCall?.[0]);
+    });
+
+    engine.timestamp.set(965);
+    engine.viewEnd.set(965);
+    mockFrame();
+    mockReachReaction();
+    jest.advanceTimersByTime(20);
+    engine.timestamp.set(930);
+    engine.viewEnd.set(930);
+    mockFrame();
+    mockReachReaction();
+    mockReachReaction();
+
+    const crossing = { startSec: 900, endSec: 930, following: false };
+    expect(atPageRequest).toEqual([crossing]);
+    jest.advanceTimersByTime(2000);
+    expect(onVisibleRangeChange.mock.calls).toEqual([
+      [{ startSec: 970, endSec: 1000, following: true }],
+      [crossing],
+    ]);
+
+    engine.timestamp.set(1000);
+    engine.viewEnd.set(null);
+    mockFrame();
+    mockReachReaction();
+    jest.advanceTimersByTime(300);
+    engine.timestamp.set(955);
+    engine.viewEnd.set(955);
+    mockFrame();
+    mockReachReaction();
+    expect(atPageRequest).toEqual([crossing, { startSec: 925, endSec: 955, following: false }]);
+
+    engine.timestamp.set(950);
+    engine.viewEnd.set(950);
+    mockFrame();
+    mockReachReaction();
+    jest.advanceTimersByTime(999);
+    expect(onVisibleRangeChange).toHaveBeenLastCalledWith(atPageRequest[1]);
+    jest.advanceTimersByTime(1);
+    expect(onVisibleRangeChange).toHaveBeenLastCalledWith({ startSec: 920, endSec: 950, following: false });
+    expect(onReachStart).toHaveBeenCalledTimes(2);
   });
 
   it("delivers a sub-second change and cancels trailing work on disable or unmount", async () => {

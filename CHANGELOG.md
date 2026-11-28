@@ -32,7 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `onVisibleRangeChange` on both charts now coalesces rapid viewport changes
-  to one notification per second and delivers the final settled range.
+  to one notification per second and delivers the final settled range. When a change
+  triggers `onReachStart`, the chart reports that range before the paging callback.
+- During a multi-series time horizon reveal, historical reference lines and their
+  values follow the presented data head. Pinned tooltip pills track the series
+  endpoints throughout release.
 
 ## [4.31.1] — 2026-11-19
 

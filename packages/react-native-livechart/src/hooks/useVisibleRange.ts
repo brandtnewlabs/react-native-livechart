@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   makeMutable,
   startMapper,
@@ -44,6 +44,9 @@ export function isNearStart(
   return winStart <= minTime + threshold;
 }
 
+// React Native supplies this monotonic clock. The library builds without DOM types.
+declare const performance: { now(): number };
+
 const RANGE_INTERVAL_MS = 1000;
 
 /** Report the drawn viewport to JS paging callbacks on either chart. */
@@ -53,8 +56,29 @@ export function useVisibleRange({
   onVisibleRangeChange,
   onReachStart,
 }: UseVisibleRangeOptions): void {
-  const emitRange = useLatestCallback((range: VisibleRange) => onVisibleRangeChange?.(range));
-  const emitReachStart = useLatestCallback(() => onReachStart?.());
+  const readRange = useCallback((): VisibleRange => {
+    "worklet";
+    const endSec = timestamp.get();
+    return { startSec: endSec - displayWindow.get(), endSec, following: viewEnd.get() == null };
+  }, [timestamp, displayWindow, viewEnd]);
+  const lastReport = useRef<{ range: VisibleRange; time: number } | null>(null);
+  const emitRange = useLatestCallback((range: VisibleRange) => {
+    const previous = lastReport.current?.range;
+    if (!onVisibleRangeChange) return;
+    if (
+      previous?.startSec === range.startSec &&
+      previous.endSec === range.endSec &&
+      previous.following === range.following
+    ) return;
+    lastReport.current = { range, time: performance.now() };
+    onVisibleRangeChange(range);
+  });
+  const emitReachStart = useLatestCallback((range: VisibleRange) => {
+    if (!onReachStart) return;
+    // Paging loaders read the last reported range synchronously in onReachStart.
+    emitRange(range);
+    onReachStart();
+  });
   const watchRange = onVisibleRangeChange != null;
   const watchStart = onReachStart != null;
 
@@ -62,12 +86,10 @@ export function useVisibleRange({
     if (!watchRange) return;
     const pending = makeMutable(false);
     let active = true;
-    let lastReport = -Infinity;
     let timeout: ReturnType<typeof setTimeout>;
 
     function deliver(range: VisibleRange) {
       if (!active) return;
-      lastReport = performance.now();
       emitRange(range);
     }
 
@@ -77,19 +99,16 @@ export function useVisibleRange({
       scheduleOnUI(() => {
         "worklet";
         pending.set(false);
-        const endSec = timestamp.get();
-        scheduleOnRN(deliver, {
-          startSec: endSec - displayWindow.get(),
-          endSec,
-          following: viewEnd.get() == null,
-        });
+        scheduleOnRN(deliver, readRange());
       });
     }
 
     function requestReport() {
       if (!active) return;
-      const remaining = RANGE_INTERVAL_MS - (performance.now() - lastReport);
-      if (remaining > 0) timeout = setTimeout(flush, remaining);
+      const lastTime = lastReport.current?.time ?? -Infinity;
+      const remaining = RANGE_INTERVAL_MS - (performance.now() - lastTime);
+      // A paging callback can report a newer viewport while the timer is waiting.
+      if (remaining > 0) timeout = setTimeout(requestReport, Math.ceil(remaining));
       else flush();
     }
 
@@ -105,10 +124,11 @@ export function useVisibleRange({
 
     return () => {
       active = false;
+      lastReport.current = null;
       stopMapper(mapper);
       clearTimeout(timeout);
     };
-  }, [watchRange, timestamp, displayWindow, viewEnd, emitRange]);
+  }, [watchRange, timestamp, displayWindow, viewEnd, readRange, emitRange]);
 
   useAnimatedReaction(
     () => {
@@ -117,8 +137,8 @@ export function useVisibleRange({
       return isNearStart(timestamp.get() - width, minTime.get(), width);
     },
     (near, wasNear) => {
-      if (near && !wasNear) scheduleOnRN(emitReachStart);
+      if (near && !wasNear) scheduleOnRN(emitReachStart, readRange());
     },
-    [watchStart, timestamp, displayWindow, minTime, emitReachStart],
+    [watchStart, timestamp, displayWindow, minTime, readRange, emitReachStart],
   );
 }

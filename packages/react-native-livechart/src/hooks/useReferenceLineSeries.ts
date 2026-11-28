@@ -17,7 +17,7 @@ export interface ReferenceLineSeriesGeometry {
   screenPts: SharedValue<number[]>;
   /** Whether any series segment crosses the visible plot. */
   visible: SharedValue<boolean>;
-  /** Series value at the chart's current right edge. */
+  /** Series value at the presented data head. */
   currentValue: SharedValue<number>;
   /** Canvas Y coordinate of {@link currentValue}. */
   currentY: SharedValue<number>;
@@ -46,6 +46,7 @@ export function useReferenceLineSeries(
     cacheRef.current = { a: [], b: [], tick: false };
   }
 
+  const headTime = engine.tipTime ?? engine.timestamp;
   const screenPts = useDerivedValue(() => {
     const cache = cacheRef.current!;
     cache.tick = !cache.tick;
@@ -61,6 +62,7 @@ export function useReferenceLineSeries(
       extendToStart,
       extendToNow,
       cache.tick ? cache.a : cache.b,
+      headTime.get(),
     );
   });
 
@@ -74,7 +76,7 @@ export function useReferenceLineSeries(
   );
 
   const currentValue = useDerivedValue(
-    () => interpolateAtTime(points, engine.timestamp.get()) ?? NaN,
+    () => interpolateAtTime(points, headTime.get()) ?? NaN,
   );
   const currentY = useDerivedValue(() =>
     thresholdLineY(
@@ -88,10 +90,12 @@ export function useReferenceLineSeries(
   );
   const currentVisible = useDerivedValue(() => {
     if (points.length === 0) return false;
-    if (!extendToStart && points[0].time > engine.timestamp.get()) {
+    const head = headTime.get();
+    if (head < engine.timestamp.get() - engine.displayWindow.get()) return false;
+    if (!extendToStart && points[0].time > head) {
       return false;
     }
-    if (!extendToNow && points[points.length - 1].time < engine.timestamp.get()) {
+    if (!extendToNow && points[points.length - 1].time < head) {
       return false;
     }
     return thresholdVisible(

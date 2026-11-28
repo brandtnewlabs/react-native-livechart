@@ -4,6 +4,7 @@ import { useSharedValue } from "react-native-reanimated";
 import { useLiveChartSeriesEngine } from "../src/core/useLiveChartSeriesEngine";
 import { useMultiSeriesLinePaths } from "../src/hooks/useMultiSeriesLinePaths";
 import { buildLinePoints, lineTipX } from "../src/draw/line";
+import { useReferenceLineSeries } from "../src/hooks/useReferenceLineSeries";
 import { usePanScroll } from "../src/hooks/usePanScroll";
 import { usePinchZoom } from "../src/hooks/usePinchZoom";
 import { MAX_MULTI_SERIES } from "../src/constants";
@@ -162,6 +163,40 @@ it.each([undefined, 976])("reveals a future horizon and restores the viewport wi
   frame();
   expect(engine.timestamp.get()).toBe(1076);
   expect(engine.displayWindow.get()).toBe(100);
+});
+
+it("projects historical references into the horizon while sampling and clipping at the presented head", async () => {
+  const points = [{ time: 970, value: 20 }, { time: 1000, value: 30 }, { time: 1100, value: 80 }];
+  const { result } = await renderHook(() => {
+    const progress = useSharedValue(0);
+    const engine = useLiveChartSeriesEngine({
+      series: useSharedValue<SeriesConfig[]>([{ id: "a", value: 30, data: points }]),
+      presentationTime: useSharedValue<number | undefined>(1000),
+      timeWindow: 30, smoothing: 1, allowFutureViewEnd: true, timeHorizon: { at: 1100, progress },
+    });
+    const reference = useReferenceLineSeries(engine, padding, points, true, true);
+    const endedAtHead = useReferenceLineSeries(engine, padding, points.slice(0, 2), false, false);
+    const startsInFuture = useReferenceLineSeries(engine, padding, points.slice(2), false, true);
+    return { engine, reference, endedAtHead, startsInFuture, progress };
+  });
+  const { engine, reference, endedAtHead, startsInFuture, progress } = result.current;
+  engine.canvasWidth.set(260);
+  engine.canvasHeight.set(200);
+  for (const phase of [0, 1, 0.5, 0]) {
+    progress.set(phase);
+    mockFrame({ timeSincePreviousFrame: 16.67 });
+    const headX = lineTipX(engine.timestamp.get(), engine.displayWindow.get(), 1000, 260, padding);
+    expect(reference.currentValue.get()).toBe(30);
+    expect(reference.screenPts.get().at(-2)).toBeCloseTo(headX);
+    expect(reference.screenPts.get().at(-1)).toBeCloseTo(reference.currentY.get());
+    expect(endedAtHead.currentVisible.get()).toBe(true);
+    expect(startsInFuture.screenPts.get()).toEqual([]);
+    expect(startsInFuture.currentVisible.get()).toBe(false);
+  }
+  engine.viewEnd.set(1200);
+  mockFrame({ timeSincePreviousFrame: 16.67 });
+  expect(reference.screenPts.get()).toEqual([]);
+  expect(reference.currentVisible.get()).toBe(false);
 });
 
 it("hands pan and pinch the ordinary viewport while the horizon is fully revealed", async () => {

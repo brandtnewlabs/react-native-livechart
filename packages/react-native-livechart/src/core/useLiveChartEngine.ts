@@ -163,6 +163,8 @@ export interface ChartEngineLayout {
   canvasWidth: SharedValue<number>;
   canvasHeight: SharedValue<number>;
   timestamp: SharedValue<number>;
+  /** Presented tip time, clamped to the viewport edge; absent uses timestamp. */
+  tipTime?: SharedValue<number>;
 }
 
 /**
@@ -256,8 +258,6 @@ export interface MultiEngineState
   /** Live-tail presentation only; source history and explicit replay stay exact. */
   smoothRecordedTail?: SharedValue<boolean>;
   seriesOpacities: SharedValue<number[]>;
-  /** Presented tip time, clamped to the viewport edge; absent uses timestamp. */
-  tipTime?: SharedValue<number>;
 }
 
 export type EngineState = SingleEngineState | MultiEngineState;
