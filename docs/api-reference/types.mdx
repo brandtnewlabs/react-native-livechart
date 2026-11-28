@@ -529,7 +529,7 @@ interface ScrubConfig {
   // LiveChartSeries only: opt-in Morfi-style time + per-series value pills.
   // false/omitted preserves the existing guide-only default.
   seriesTooltip?: boolean | PerSeriesTooltipConfig;
-  dimTarget?: "future" | "otherCandles"; // default "future"; otherCandles hides the scrub line/dot in candle mode, falls back to future in line mode
+  dimTarget?: "future" | "otherCandles"; // default "future"; otherCandles hides the scrub line/dot in candle mode unless freeCrosshair is on, falls back to future in line mode
   dimOpacity?: number; // opacity of the selected dim target; clamped to [0, 1]; default 0.3
   dimFadeMs?: number; // otherCandles fade-in/out duration; default 60; 0 = instant
   crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
@@ -552,7 +552,9 @@ interface ScrubConfig {
   // in the price-axis gutter (the price at that Y, not the series value) and a
   // time pill on the time axis. Pills use tooltipBackground/tooltipColor; the
   // horizontal line uses the crosshair color, width and dash. true = format the
-  // time pill with the chart's formatTime; single-series LiveChart only; default false.
+  // time pill with the chart's formatTime. Price follows yAxis.side; time aligns below volume.
+  // Both guides and pills share the edge fade, including with otherCandles. onScrub reads
+  // the selected series value. Single-series LiveChart only; default false.
   freeCrosshair?: boolean | FreeCrosshairConfig;
 }
 // Options for ScrubConfig.freeCrosshair.

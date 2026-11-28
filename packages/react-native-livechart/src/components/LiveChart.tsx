@@ -204,6 +204,7 @@ import { CustomTooltipOverlay } from "./CustomTooltipOverlay";
 import { BadgeOverlay } from "./BadgeOverlay";
 import { ChartOverlayLayer } from "./ChartOverlayLayer";
 import { CrosshairOverlay } from "./CrosshairOverlay";
+import { FreeCrosshairOverlay } from "./FreeCrosshairOverlay";
 import { DegenParticlesOverlay } from "./DegenParticlesOverlay";
 import { DotOverlay } from "./DotOverlay";
 import { LeftEdgeFade } from "./LeftEdgeFade";
@@ -945,26 +946,18 @@ function resolveLiveChartInteractionConfig({
   timeScrollEnabled: boolean;
   scrubCfg: ReturnType<typeof resolveScrub>;
 }) {
-  const crosshairChartOpts = isCandle
-    ? {
-        mode,
-        candles: candlesEngine,
-        liveCandle: liveEngine,
-        candleWidthSecs: candleWidth,
-        gaps: candleGapsCfg?.gaps,
-        bridgeNoTrades: Boolean(candleGapsCfg?.styles["no-trades"].bridge),
-        bridgeUnavailable: Boolean(candleGapsCfg?.styles.unavailable.bridge),
-        bridgeUnknown: Boolean(candleGapsCfg?.styles.unknown.bridge),
-      }
-    : lineGapsCfg
-      ? {
-          mode,
-          gaps: lineGapsCfg.gaps,
-          bridgeNoTrades: Boolean(lineGapsCfg.styles["no-trades"].bridge),
-          bridgeUnavailable: Boolean(lineGapsCfg.styles.unavailable.bridge),
-          bridgeUnknown: Boolean(lineGapsCfg.styles.unknown.bridge),
-        }
-      : undefined;
+  const gaps = isCandle ? candleGapsCfg : lineGapsCfg;
+  const crosshairChartOpts = {
+    mode,
+    candles: isCandle ? candlesEngine : undefined,
+    liveCandle: isCandle ? liveEngine : undefined,
+    candleWidthSecs: isCandle ? candleWidth : undefined,
+    gaps: gaps?.gaps,
+    bridgeNoTrades: Boolean(gaps?.styles["no-trades"].bridge),
+    bridgeUnavailable: Boolean(gaps?.styles.unavailable.bridge),
+    bridgeUnknown: Boolean(gaps?.styles.unknown.bridge),
+    freeCrosshair: scrubCfg?.freeCrosshair != null,
+  };
   const scrollGestureMode =
     typeof timeScroll === "object"
       ? (timeScroll.gesture ?? "holdToScrub")
@@ -1196,7 +1189,6 @@ function resolveCrosshairControllerSettings({
         : 0,
     clampToPlot: scrubCfg?.clampToPlot ?? false,
     snapToCandles: scrubCfg?.snapToCandles ?? false,
-    freeCrosshair: scrubCfg?.freeCrosshair ?? null,
   };
 }
 
@@ -2228,7 +2220,6 @@ function useLiveChartController({
     resolveScrubMarkerOptions(scrubCfg, markersSV),
     axisScaleActive,
     shouldOmitTipBeyondData,
-    crosshairSettings.freeCrosshair,
   );
 
   // Capture only the shared value in the worklets below. Referencing
@@ -3718,6 +3709,8 @@ function ChartScrubLayer({
     renderTooltip,
     canvasMode,
   } = model;
+  if (!scrubCfg) return null;
+
   // A custom tooltip is an RN overlay (sibling of <Canvas>), so the built-in
   // Skia tooltip is suppressed here while it's active — the line pill in line
   // mode, and the OHLC stack in candle mode (see the stack gate below).
@@ -3725,9 +3718,27 @@ function ChartScrubLayer({
   // `otherCandles` is candle-only. If a consumer switches this chart to line
   // mode without also rewriting its scrub config, preserve the standard line
   // scrub (guide, selection dot, and trailing fade).
-  const dimsFuture = !isCandle || scrubCfg?.dimTarget === "future";
+  const dimsFuture = !isCandle || scrubCfg.dimTarget === "future";
 
-  if (!scrubCfg) return null;
+  const showGuide = dimsFuture || crosshair.freeY !== undefined;
+  const guides = crosshair.freeY ? (
+    <FreeCrosshairOverlay
+      active={crosshair.scrubActive}
+      x={crosshair.scrubX}
+      y={crosshair.freeY}
+      time={crosshair.scrubTime}
+      engine={model.engine}
+      padding={effectivePadding}
+      volumeBandHeight={model.volumeBandHeight}
+      side={model.yAxisCfg?.side ?? "right"}
+      font={skiaFont}
+      metrics={model.metricsCfg.badge}
+      palette={palette}
+      scrub={scrubCfg}
+      formatValue={model.formatValue}
+      formatTime={scrubCfg.freeCrosshair?.formatTime ?? model.formatTime}
+    />
+  ) : null;
 
   // Extend the scrub dim past the plot's right edge to fully cover the live dot
   // (with its halo) and pulse ring, all centered on that edge. The gutter
@@ -3739,63 +3750,54 @@ function ChartScrubLayer({
 
   return (
     <Group transform={degen?.shakeTransform}>
-      {scrubCfg && (
-        <CrosshairOverlay
-          scrubX={crosshair.scrubX}
-          crosshairOpacity={crosshair.crosshairOpacity}
-          tooltipLayout={crosshair.tooltipLayout}
-          engine={model.engine}
-          padding={effectivePadding}
-          palette={palette}
-          font={skiaFont}
-          showTooltip={scrubCfg.tooltip && !customTooltipActive}
-          lineTop={crosshair.tooltipLineTop}
-          showLine={dimsFuture}
-          // A free crosshair's selection is the intersection under the finger,
-          // so the dot follows the finger Y there, in candle mode too.
-          selectionDot={
-            dimsFuture || scrubCfg.freeCrosshair ? selectionDot : null
-          }
-          selectionY={
-            scrubCfg.freeCrosshair && crosshair.freeY
-              ? crosshair.freeY
-              : crosshair.scrubDotY
-          }
-          scrubActive={crosshair.scrubActive}
-          selectionColor={selectionColor}
-          dimOpacity={dimsFuture ? scrubCfg.dimOpacity : 1}
-          liveDotExtent={liveDotExtent}
-          crosshairLineColor={scrubCfg.crosshairLineColor}
-          crosshairStrokeWidth={scrubCfg.crosshairStrokeWidth}
-          crosshairOvershoot={scrubCfg.crosshairOvershoot}
-          crosshairFade={scrubCfg.crosshairFade}
-          crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
-          crosshairLineCap={scrubCfg.crosshairLineCap}
-          crosshairDash={scrubCfg.crosshairDash}
-          crosshairDimColor={
-            dimsFuture ? scrubCfg.crosshairDimColor : undefined
-          }
-          tooltipBackground={scrubCfg.tooltipBackground}
-          tooltipColor={scrubCfg.tooltipColor}
-          tooltipBorderColor={scrubCfg.tooltipBorderColor}
-          tooltipBorderRadius={scrubCfg.tooltipBorderRadius}
-          tooltipShowValue={scrubCfg.tooltipShowValue}
-          tooltipShowTime={scrubCfg.tooltipShowTime}
-          opaqueCanvas={canvasMode === "opaque"}
-        >
-          {/* Candle charts render a multi-line OHLC tooltip; the line
-              chart falls back to CrosshairOverlay's default value/time
-              body. Composed as children rather than a JSX-valued prop.
-              Suppressed when a custom `renderTooltip` owns the readout. */}
-          {isCandle && !customTooltipActive ? (
-            <MultiSeriesTooltipStack
-              tooltipLayout={crosshair.tooltipLayout}
-              font={skiaFont}
-              palette={palette}
-            />
-          ) : null}
-        </CrosshairOverlay>
-      )}
+      <CrosshairOverlay
+        scrubX={crosshair.scrubX}
+        crosshairOpacity={crosshair.crosshairOpacity}
+        tooltipLayout={crosshair.tooltipLayout}
+        engine={model.engine}
+        padding={effectivePadding}
+        palette={palette}
+        font={skiaFont}
+        showTooltip={scrubCfg.tooltip && !customTooltipActive}
+        lineTop={crosshair.tooltipLineTop}
+        guides={guides}
+        showLine={showGuide}
+        selectionDot={showGuide ? selectionDot : null}
+        selectionY={crosshair.freeY ?? crosshair.scrubDotY}
+        scrubActive={crosshair.scrubActive}
+        selectionColor={selectionColor}
+        dimOpacity={dimsFuture ? scrubCfg.dimOpacity : 1}
+        liveDotExtent={liveDotExtent}
+        crosshairLineColor={scrubCfg.crosshairLineColor}
+        crosshairStrokeWidth={scrubCfg.crosshairStrokeWidth}
+        crosshairOvershoot={scrubCfg.crosshairOvershoot}
+        crosshairFade={scrubCfg.crosshairFade}
+        crosshairFadeDistance={scrubCfg.crosshairFadeDistance}
+        crosshairLineCap={scrubCfg.crosshairLineCap}
+        crosshairDash={scrubCfg.crosshairDash}
+        crosshairDimColor={
+          dimsFuture ? scrubCfg.crosshairDimColor : undefined
+        }
+        tooltipBackground={scrubCfg.tooltipBackground}
+        tooltipColor={scrubCfg.tooltipColor}
+        tooltipBorderColor={scrubCfg.tooltipBorderColor}
+        tooltipBorderRadius={scrubCfg.tooltipBorderRadius}
+        tooltipShowValue={scrubCfg.tooltipShowValue}
+        tooltipShowTime={scrubCfg.tooltipShowTime}
+        opaqueCanvas={canvasMode === "opaque"}
+      >
+        {/* Candle charts render a multi-line OHLC tooltip; the line
+            chart falls back to CrosshairOverlay's default value/time
+            body. Composed as children rather than a JSX-valued prop.
+            Suppressed when a custom `renderTooltip` owns the readout. */}
+        {isCandle && !customTooltipActive ? (
+          <MultiSeriesTooltipStack
+            tooltipLayout={crosshair.tooltipLayout}
+            font={skiaFont}
+            palette={palette}
+          />
+        ) : null}
+      </CrosshairOverlay>
     </Group>
   );
 }
@@ -4064,46 +4066,6 @@ function ChartScrubActionLayer({ model }: { model: LiveChartModel }) {
   );
 }
 
-/** `scrub.freeCrosshair`: the horizontal line and price pill at the finger's Y,
- *  plus the time pill at the crosshair X. Reuses the scrub-action reticle
- *  drawing without its vertical line, which the scrub crosshair already draws.
- *  Drawn outside the degen shake group like the scrub-action layer. */
-function ChartFreeCrosshairLayer({ model }: { model: LiveChartModel }) {
-  const { scrubCfg, crosshair, engine, effectivePadding, palette, skiaFont } =
-    model;
-  if (
-    !scrubCfg?.freeCrosshair ||
-    !crosshair.freeY ||
-    !crosshair.freeBadge ||
-    !crosshair.freeTimeBadge
-  ) {
-    return null;
-  }
-  return (
-    <ScrubActionOverlay
-      lockActive={crosshair.scrubActive}
-      lockX={crosshair.scrubX}
-      lockY={crosshair.freeY}
-      actionBadge={crosshair.freeBadge}
-      timeBadge={crosshair.freeTimeBadge}
-      engine={engine}
-      padding={effectivePadding}
-      palette={palette}
-      font={skiaFont}
-      icon=""
-      lineColor={scrubCfg.crosshairLineColor}
-      background={scrubCfg.tooltipBackground ?? palette.tooltipBg}
-      iconColor={scrubCfg.tooltipColor ?? palette.tooltipText}
-      showVerticalLine={false}
-      levelDash={scrubCfg.crosshairDash ?? NO_DASH}
-      levelStrokeWidth={scrubCfg.crosshairStrokeWidth}
-    />
-  );
-}
-
-/** Solid line: an empty dash list draws no DashPathEffect. */
-const NO_DASH: number[] = [];
-
 /**
  * RN-backed marker and reference-line slots. Their animated fade mapper is
  * registered only when at least one custom annotation renderer is present.
@@ -4291,7 +4253,6 @@ function ChartCanvas({
         />
       ) : null}
       <ChartScrubActionLayer model={model} />
-      <ChartFreeCrosshairLayer model={model} />
     </Canvas>
   );
 }

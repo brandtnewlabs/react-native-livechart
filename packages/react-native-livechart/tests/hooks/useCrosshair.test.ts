@@ -1287,6 +1287,24 @@ describe("useCrosshair (hook)", () => {
 });
 
 describe("memoized crosshair callbacks", () => {
+  it("tracks finger height inside the plot and clears it on release for free scrubbing", async () => {
+    const { result } = await renderHook(() =>
+      useCrosshair(makeEngine(), padding, palette, formatValue, formatTime, font, true,
+        undefined, { mode: "line", freeCrosshair: true }),
+    );
+    const state = result.current;
+    setScrubbing(state, true);
+    expect(state.freeY?.get()).toBe(80);
+    const update = getGestureConfig(state.gesture).onUpdate[0] as
+      (event: { x: number; y: number }) => void;
+    update({ x: 160, y: -20 });
+    expect(state.freeY?.get()).toBe(padding.top);
+    update({ x: 160, y: 400 });
+    expect(state.freeY?.get()).toBe(300 - padding.bottom);
+    setScrubbing(state, false);
+    expect(state.freeY?.get()).toBe(-1);
+  });
+
   it("ignores native scrub events while the price axis owns the touch", async () => {
     const blocked = withSharedValueAccessors({ value: { value: true } }).value as unknown as SharedValue<boolean>;
     const { result } = await renderHook(() => useCrosshair(

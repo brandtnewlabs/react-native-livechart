@@ -224,10 +224,6 @@ export interface CrosshairState {
   // ── Free X/Y crosshair (`scrub.freeCrosshair`) — single-series only. ───────
   /** Finger Y in canvas px, clamped to the plot (-1 when not scrubbing). */
   freeY?: SharedValue<number>;
-  /** Right-gutter price pill at {@link freeY} (price-only action-badge layout). */
-  freeBadge?: SharedValue<ActionBadgeLayout>;
-  /** X-axis time pill at the crosshair X. */
-  freeTimeBadge?: SharedValue<TimeBadgeLayout>;
 }
 
 /**
@@ -848,12 +844,13 @@ export function computeActionBadgeLayout(
   priceText: string,
   icon: string,
   canvasWidth: number,
-  /** Plot's right edge (= canvasWidth - padding.right) — where the level line ends. */
-  plotRight: number,
+  /** Plot edge adjacent to the price axis. */
+  plotEdge: number,
   font: SkFont,
   marginEdge: number,
   padX: number,
   padY: number,
+  side: "left" | "right" = "right",
 ): ActionBadgeLayout {
   "worklet";
   if (!locked || canvasWidth <= 0) return HIDDEN_ACTION_BADGE;
@@ -865,15 +862,16 @@ export function computeActionBadgeLayout(
   const pillH = font.getSize() + padY * 2;
   const r = pillH / 2;
   const top = lockY - pillH / 2;
-  const rightEdge = canvasWidth - marginEdge;
+  const leftAxis = side === "left";
+  const edge = leftAxis ? marginEdge : canvasWidth - marginEdge;
 
   const fm = font.getMetrics();
   const textY = lockY - (fm.ascent + fm.descent) / 2;
 
   // Price pill (the readout) sits in the price-axis gutter, anchored to the edge.
   let priceW = 0;
-  let priceX = rightEdge;
-  let priceTextX = rightEdge;
+  let priceX = edge;
+  let priceTextX = edge;
   if (hasPrice) {
     // Size the pill to the text's ACTUAL visual bounds (+ pad each side), then
     // position the text origin so the *ink* — not the advance box — is centered:
@@ -889,19 +887,19 @@ export function computeActionBadgeLayout(
     // while a reticle is shown). See the price-pill centering tests.
     const bounds = font.measureText(priceText);
     priceW = bounds.width + padX * 2;
-    priceX = rightEdge - priceW;
+    priceX = leftAxis ? edge : edge - priceW;
     priceTextX = priceX + padX - bounds.x;
   }
 
-  // Circular icon button: left of the price pill, or — when alone (icon-only) —
-  // anchored to the plot's right edge so it stays attached to the level line.
-  let iconCx = plotRight;
+  // The action button sits on the plot-facing side of the pill.
+  let iconCx = plotEdge;
   if (hasIcon && hasPrice) {
-    iconCx = priceX - ACTION_BADGE_GAP - r;
+    const gapToCenter = ACTION_BADGE_GAP + r;
+    iconCx = leftAxis ? priceX + priceW + gapToCenter : priceX - gapToCenter;
   }
 
-  const unionLeft = hasIcon ? iconCx - r : priceX;
-  const unionRight = hasPrice ? rightEdge : iconCx + r;
+  const unionLeft = hasPrice && (leftAxis || !hasIcon) ? priceX : iconCx - r;
+  const unionRight = hasPrice && (!leftAxis || !hasIcon) ? priceX + priceW : iconCx + r;
 
   return {
     x: unionLeft,

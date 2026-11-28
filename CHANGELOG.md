@@ -18,7 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uses the crosshair's color, width and dash. `true` formats the time pill with
   the chart's `formatTime`; an object can pass its own worklet. With it, the
   selection dot marks the crosshair intersection under the finger instead of
-  the series value, in candle mode too. Default `false`.
+  the series value, in candle mode too. The price pill follows `yAxis.side` and the
+  time pill aligns below any volume band. Both guides and pills share the edge fade.
+  Candle focus dimming can be combined with the full crosshair. `onScrub` continues
+  to report the selected series value. Default `false`.
 
 ## [4.31.1] — 2026-11-19
 
