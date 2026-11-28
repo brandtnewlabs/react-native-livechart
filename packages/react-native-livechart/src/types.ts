@@ -2853,6 +2853,7 @@ export interface LiveChartCoreProps {
   /**
    * Called as the visible time window changes (throttled to ~1 Hz), with the
    * window's edges in unix seconds and whether the chart is at the live edge.
+   * Rapid changes are coalesced and the final settled range is delivered.
    * Useful for paging data sources alongside `timeScroll` / `zoom`.
    *
    * @experimental

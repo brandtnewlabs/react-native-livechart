@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Candle focus dimming can be combined with the full crosshair. `onScrub` continues
   to report the selected series value. Default `false`.
 
+### Fixed
+
+- `onVisibleRangeChange` on both charts now coalesces rapid viewport changes
+  to one notification per second and delivers the final settled range.
+
 ## [4.31.1] — 2026-11-19
 
 ### Fixed

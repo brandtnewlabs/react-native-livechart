@@ -103,6 +103,8 @@ export interface MultiEngineFrameRefs {
   presentationTimeSV?: SharedValue<number | undefined>;
   timeHorizon?: LiveChartSeriesProps["timeHorizon"];
   horizonExtensionSV?: SharedValue<number>;
+  /** Drawn viewport, including the horizon. Frame easing and gestures use the ordinary pair. */
+  presentedViewport?: Pick<MultiEngineState, "timestamp" | "displayWindow">;
   historyStartTimeSV?: FrameParameter<number | undefined>;
   currentTimeSV?: SharedValue<number>;
   fullHistoryWindowSV?: SharedValue<number | null>;
@@ -255,7 +257,6 @@ export function applyLiveChartSeriesEngineFrame(
   state.fittedMax = sv.fittedMaxSV?.value ?? state.fittedMax;
   state.displayWindow = sv.displayWindow.value;
   state.timestamp = sv.timestamp.value;
-  state.horizonExtension = sv.horizonExtensionSV?.value ?? state.horizonExtension;
   state.liveEdge = sv.liveEdgeSV?.value ?? 0;
   state.displayValues = displayValues;
   state.opacities = opacities;
@@ -311,7 +312,12 @@ export function applyLiveChartSeriesEngineFrame(
   if (sv.fittedMaxSV) sv.fittedMaxSV.value = state.fittedMax;
   sv.displayWindow.value = state.displayWindow;
   sv.timestamp.value = state.timestamp;
-  if (sv.horizonExtensionSV) sv.horizonExtensionSV.value = state.horizonExtension!;
+  const extension = state.horizonExtension!;
+  if (sv.horizonExtensionSV) sv.horizonExtensionSV.value = extension;
+  if (sv.presentedViewport) {
+    sv.presentedViewport.timestamp.value = state.timestamp + extension;
+    sv.presentedViewport.displayWindow.value = state.displayWindow + extension;
+  }
   if (sv.liveEdgeSV) sv.liveEdgeSV.value = state.liveEdge;
   if (sv.currentTimeSV) sv.currentTimeSV.value = state.currentTime!;
   if (sv.fullHistoryWindowSV) sv.fullHistoryWindowSV.value = state.fullHistoryWindow ?? null;
@@ -350,14 +356,16 @@ export function useLiveChartSeriesEngine(
   config: MultiSeriesEngineConfig,
 ): MultiEngineState & ChartEngineScroll & {
   currentTime: SharedValue<number>;
+  navigationWindow: SharedValue<number>;
   fullHistoryWindow: SharedValue<number | null>;
 } {
   // Pinch-zoom window-width override (null = follow the configured window).
   // Declared first so `timeWindow` folds it in — see useLiveChartEngine.
   const viewWindow = useSharedValue<number | null>(null);
   const fullHistoryWindow = useSharedValue<number | null>(null);
-  const displayWindow = useSharedValue(config.timeWindow);
+  const navigationWindow = useSharedValue(config.timeWindow);
   const horizonExtension = useSharedValue(0);
+  const displayWindow = useSharedValue(config.timeWindow);
   const baseTimeWindow = config.timeWindow;
   const timeWindow = useDerivedValue(() => {
     // During a reveal, select ticks across the whole painted span. Ordinary
@@ -399,6 +407,7 @@ export function useLiveChartSeriesEngine(
   const canvasHeight = useSharedValue(0);
   // Seed once; overwritten by the frame callback on the first tick.
   const [initialTimestamp] = useState(() => Date.now() / 1000);
+  const navigationEnd = useSharedValue(initialTimestamp);
   const timestamp = useSharedValue(initialTimestamp);
   const currentTime = useSharedValue(initialTimestamp);
   const tipTime = useDerivedValue(() => Math.min(timestamp.value, currentTime.value));
@@ -461,8 +470,9 @@ export function useLiveChartSeriesEngine(
     displayMax,
     fittedMinSV,
     fittedMaxSV,
-    displayWindow,
-    timestamp,
+    displayWindow: navigationWindow,
+    timestamp: navigationEnd,
+    presentedViewport: { timestamp, displayWindow },
     canvasWidth,
     canvasHeight,
     timeWindow: configuredTimeWindow,
@@ -545,6 +555,7 @@ export function useLiveChartSeriesEngine(
     displayMin,
     displayMax,
     displayWindow,
+    navigationWindow,
     timeWindow,
     canvasWidth,
     canvasHeight,

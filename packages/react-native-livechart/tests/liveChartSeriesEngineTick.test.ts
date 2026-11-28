@@ -850,9 +850,10 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       const horizon = { timeHorizonAt: 1100, timeHorizonProgress: 1 };
       tickLiveChartSeriesEngineFrame(ordinary, input({}));
       tickLiveChartSeriesEngineFrame(revealed, input(horizon));
-      expect(revealed.timestamp - ordinary.timestamp).toBe(100);
+      expect(revealed.horizonExtension).toBe(100);
       tickLiveChartSeriesEngineFrame(ordinary, input(overrides));
       tickLiveChartSeriesEngineFrame(revealed, input({ ...horizon, ...overrides }));
+      expect(revealed.horizonExtension).toBe(0);
       expect(revealed.timestamp).toBe(ordinary.timestamp);
       expect(revealed.displayWindow).toBe(ordinary.displayWindow);
     });
@@ -865,6 +866,40 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       tickLiveChartSeriesEngineFrame(state, input({ ...horizon, viewWindow: 20 }));
       expect(state.displayWindow).toBe(20);
       expect(state.timestamp).toBe(1000);
+    });
+
+    it("keeps a boundary sample in the fitted range throughout a fractional reveal", () => {
+      const state = baseMulti();
+      const transform = jest.fn(({ min, max }: { min: number; max: number }) => ({ min, max }));
+      const frame = input({
+        nowSeconds: 1050, historyStartTime: 1000, windowBuffer: 0.2, smoothing: 1,
+        series: [{ id: "a", value: 20, data: [{ time: 1000, value: 100 }, { time: 1050, value: 20 }] }],
+        rangeAnimation: { transform }, timeHorizonAt: 1110,
+      });
+      for (const progress of [0, 0.9, 1, 0.9, 0]) {
+        tickLiveChartSeriesEngineFrame(state, { ...frame, timeHorizonProgress: progress });
+        expect(state.extremaMaxTime).toBe(1000);
+        expect(state.extremaMaxValue).toBe(100);
+        expect(state.displayMax).toBeCloseTo(109.6);
+        expect(transform).toHaveBeenLastCalledWith(expect.objectContaining({
+          from: 1000, to: state.timestamp + state.horizonExtension!,
+        }));
+      }
+    });
+
+    it("resumes the reveal when rolling history evicts a parked edge", () => {
+      const state = baseMulti();
+      const retained = [{ time: 900, value: 1 }, { time: 980, value: 2 }];
+      const frame = input({ viewEnd: 950, timeHorizonAt: 1100, timeHorizonProgress: 1 });
+      const tickWith = (data: typeof retained) => tickLiveChartSeriesEngineFrame(state, {
+        ...frame, series: [{ id: "a", value: 2, data }],
+      });
+      tickWith(retained);
+      expect(state.timestamp).toBe(950);
+      expect(state.horizonExtension).toBe(0);
+      tickWith(retained.slice(1));
+      expect(state.timestamp).toBe(1000);
+      expect(state.horizonExtension).toBe(100);
     });
 
     it("freezes the right edge at viewEnd when scrolled back", () => {

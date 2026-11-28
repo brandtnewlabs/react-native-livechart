@@ -551,6 +551,7 @@ range written by `priceScroll` or the axis-scale gesture, gliding the right edge
   Called as the visible window changes (throttled to ~1 Hz) with
   `{ startSec, endSec, following }`. Useful for paging a data source alongside
   `timeScroll` / `zoom`. **@experimental.**
+  Rapid changes share one update per second. The last update includes the settled viewport.
 </ParamField>
 
 <ParamField body="onReachStart" type="() => void">

@@ -25,6 +25,8 @@ export interface PinchZoomEngineRefs {
    * `timeWindow` would otherwise lag a fast pinch and the focal anchor would drift).
    */
   displayWindow: SharedValue<number>;
+  /** Ordinary window before any presentation-only future horizon. */
+  navigationWindow?: SharedValue<number>;
   /** Canvas width in px. */
   canvasWidth: SharedValue<number>;
 }
@@ -169,7 +171,7 @@ export function usePinchZoom({
   onZoomStart,
   overscroll = 0,
 }: UsePinchZoomOptions): ReturnType<typeof Gesture.Pinch> {
-  const { viewWindow, viewEnd, liveEdge, displayWindow, canvasWidth } = engine;
+  const { viewWindow, viewEnd, liveEdge, displayWindow, navigationWindow, canvasWidth } = engine;
   const padLeft = padding.left;
   const padRight = padding.right;
 
@@ -189,7 +191,7 @@ export function usePinchZoom({
         cancelAnimation(viewEnd);
         cancelAnimation(viewWindow);
         const edge = liveEdge.get();
-        startWindow.set(displayWindow.get());
+        startWindow.set((navigationWindow ?? displayWindow).get());
         startViewEnd.set(viewEnd.get() ?? edge);
         onZoomStart?.();
       };
@@ -230,6 +232,7 @@ export function usePinchZoom({
         viewWindow.set(newWin);
         // Track the displayed window 1:1 (bypass the frame-loop lerp lag) so the
         // focal anchor is pixel-accurate during the gesture.
+        navigationWindow?.set(newWin);
         displayWindow.set(newWin);
         // Unlike the pan (see nextViewEnd), snapping to `null` mid-gesture is safe
         // here: the pinch maps cumulative scale/focal from a gesture-START snapshot
@@ -250,6 +253,7 @@ export function usePinchZoom({
   }, [
     canvasWidth,
     displayWindow,
+    navigationWindow,
     enabled,
     fullHistoryWindow,
     liveEdge,

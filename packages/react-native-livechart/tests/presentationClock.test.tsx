@@ -4,6 +4,8 @@ import { useSharedValue } from "react-native-reanimated";
 import { useLiveChartSeriesEngine } from "../src/core/useLiveChartSeriesEngine";
 import { useMultiSeriesLinePaths } from "../src/hooks/useMultiSeriesLinePaths";
 import { buildLinePoints, lineTipX } from "../src/draw/line";
+import { usePanScroll } from "../src/hooks/usePanScroll";
+import { usePinchZoom } from "../src/hooks/usePinchZoom";
 import { MAX_MULTI_SERIES } from "../src/constants";
 import type { SeriesConfig } from "../src/types";
 let mockFrame: (info: { timeSincePreviousFrame: number }) => void;
@@ -46,6 +48,7 @@ jest.mock("react-native-reanimated", () => {
     ) => {
       // Reactions are not needed for this deterministic frame driver.
     },
+    cancelAnimation: jest.fn(),
     useFrameCallback: (fn: (info: { timeSincePreviousFrame: number }) => void) => { mockFrame = fn; return { setActive() {} }; },
   };
 });
@@ -146,7 +149,7 @@ it.each([undefined, 976])("reveals a future horizon and restores the viewport wi
     progress.set(phase);
     frame();
     expect(engine.timestamp.get()).toBe(edge);
-    expect(engine.liveEdge.get()).toBe(edge);
+    expect(engine.liveEdge.get()).toBe(1076);
     expect(engine.timeWindow.get()).toBe(edge - 976);
     expect(engine.displayWindow.get()).toBe(edge - 976);
     expect(engine.tipTime?.get()).toBe(1050);
@@ -159,4 +162,46 @@ it.each([undefined, 976])("reveals a future horizon and restores the viewport wi
   frame();
   expect(engine.timestamp.get()).toBe(1076);
   expect(engine.displayWindow.get()).toBe(100);
+});
+
+it("hands pan and pinch the ordinary viewport while the horizon is fully revealed", async () => {
+  const { result } = await renderHook(() => {
+    const series = useSharedValue<SeriesConfig[]>([{ id: "a", value: 1, data: [{ time: 800, value: 1 }] }]);
+    const progress = useSharedValue(1);
+    const engine = useLiveChartSeriesEngine({
+      series, nowOverride: 1000, timeWindow: 30, smoothing: 1, timeHorizon: { at: 1100, progress },
+    });
+    const minTime = useSharedValue(800);
+    const pan = usePanScroll({ engine, minTime, padding, enabled: true });
+    const pinch = usePinchZoom({ engine, minTime, padding, enabled: true, timeWindow: 30 });
+    return { engine, pan: pan.handlers, pinch: pinch.handlers };
+  });
+  const { engine, pan, pinch } = result.current;
+  engine.canvasWidth.set(200);
+  engine.canvasHeight.set(100);
+  const frame = () => mockFrame({ timeSincePreviousFrame: 16.67 });
+  frame();
+  expect(engine.timestamp.get()).toBe(1100);
+  expect(engine.displayWindow.get()).toBe(130);
+
+  const drag = pan.onChange as (e: { changeX: number }) => void;
+  (pan.onStart as () => void)();
+  for (const end of [998.5, 997, 995.5]) {
+    drag({ changeX: 10 });
+    frame();
+    expect(engine.viewEnd.get()).toBe(end);
+    expect(engine.timestamp.get()).toBe(end);
+    expect(engine.displayWindow.get()).toBe(30);
+  }
+  drag({ changeX: -50 });
+  frame();
+  expect(engine.viewEnd.get()).toBeNull();
+  expect(engine.timestamp.get()).toBe(1100);
+
+  (pinch.onStart as () => void)();
+  const zoom = pinch.onChange as (e: { scale: number; focalX: number; numberOfPointers: number }) => void;
+  zoom({ scale: 2, focalX: 100, numberOfPointers: 2 });
+  frame();
+  expect(engine.displayWindow.get()).toBe(15);
+  expect(engine.timestamp.get()).toBe(992.5);
 });

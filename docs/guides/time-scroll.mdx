@@ -289,7 +289,8 @@ To lazily page in history as the user scrolls/zooms back, two callbacks report t
 ```
 
 - **`onVisibleRangeChange`** fires (throttled to ~1 Hz) with the window's `startSec` / `endSec` and
-  whether the chart is `following` the live edge.
+  whether the chart is `following` the live edge. A rapid pan, zoom, or time-horizon animation
+  reports the latest range once per second and delivers the settled viewport even if motion stops.
 - **`onReachStart`** is a **one-shot edge trigger**: it fires once when the left edge comes within one
   window-width of the earliest retained point, then re-arms after you move back out — the cue to load
   the next page of older data. When the fetched data extends `data` / `candles` further back, it can

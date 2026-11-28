@@ -333,6 +333,7 @@ the same imperative reset exposed by `LiveChart`. See
 <ParamField body="onVisibleRangeChange" type="(range: VisibleRange) => void">
   Called as the visible window changes (~1 Hz) with `{ startSec, endSec,
   following }`. **@experimental.**
+  Rapid changes share one update per second. The last update includes the settled viewport.
 </ParamField>
 
 <ParamField body="onReachStart" type="() => void">
