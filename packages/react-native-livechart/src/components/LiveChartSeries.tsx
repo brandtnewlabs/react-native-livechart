@@ -581,6 +581,7 @@ function useLiveChartSeriesController(props: LiveChartSeriesProps) {
     nowOverride,
     presentationTime,
     historyStartTime,
+    timeHorizon: props.timeHorizon,
   });
   const { layoutHeight, onLayout } = useCanvasLayout(engine);
   const linePaths = useMultiSeriesLinePaths(

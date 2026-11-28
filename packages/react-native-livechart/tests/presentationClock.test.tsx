@@ -123,3 +123,40 @@ it("uses wall time when both presentation head and numeric override are absent",
     expect(result.current.liveEdge.get()).toBe(2010);
   } finally { clock.mockRestore(); }
 });
+
+it.each([undefined, 976])("reveals a future horizon and restores the viewport with history start %s", async historyStartTime => {
+  const { result, rerender } = await renderHook(({ at }: { at?: number }) => {
+    const progress = useSharedValue(0);
+    const series = useSharedValue<SeriesConfig[]>([{ id: "a", value: 30, data: [
+      { time: 980, value: 20 }, { time: 1050, value: 30 }, { time: 1090, value: 999 },
+    ] }]);
+    const head = useSharedValue<number | undefined>(1050);
+    const engine = useLiveChartSeriesEngine({
+      series, presentationTime: head, historyStartTime, timeWindow: 100,
+      windowBuffer: 0.2, windowBufferSeconds: 6, smoothing: 0.08,
+      timeHorizon: at === undefined ? undefined : { at, progress },
+    });
+    return { engine, progress };
+  }, { initialProps: { at: 1204 } });
+  const { engine, progress } = result.current;
+  engine.canvasWidth.set(320);
+  engine.canvasHeight.set(200);
+  const frame = () => mockFrame({ timeSincePreviousFrame: 16.67 });
+  for (const [phase, edge] of [[0, 1076], [0.25, 1096], [1, 1204], [0.5, 1140], [0, 1076]]) {
+    progress.set(phase);
+    frame();
+    expect(engine.timestamp.get()).toBe(edge);
+    expect(engine.liveEdge.get()).toBe(edge);
+    expect(engine.timeWindow.get()).toBe(edge - 976);
+    expect(engine.displayWindow.get()).toBe(edge - 976);
+    expect(engine.tipTime?.get()).toBe(1050);
+    expect(engine.extremaMaxValue.get()).toBe(30);
+  }
+  progress.set(2);
+  frame();
+  expect(engine.timestamp.get()).toBe(1204);
+  await rerender({ at: undefined });
+  frame();
+  expect(engine.timestamp.get()).toBe(1076);
+  expect(engine.displayWindow.get()).toBe(100);
+});

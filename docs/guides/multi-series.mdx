@@ -101,6 +101,45 @@ clamped to that head. Degen bursts use the same dot position and ignore queued
 future momentum; an offscreen tip cannot spawn a burst.
 
 
+## Reveal a future time on hold
+
+To show how long remains until an event ends, pass its Unix timestamp in seconds
+and animate `timeHorizon.progress` when the scrub starts and ends. The chart
+expands the right side of the time axis while the live dots stay at the data
+head. Lifting the finger brings the ordinary time window back. Try **Show future
+on hold** in the Multi-series demo.
+
+<Frame caption="Hold to reveal a future time, then release to return to the live window">
+  <video muted loop playsInline controls src="/media/multi-series-time-horizon.mp4" />
+</Frame>
+
+```tsx
+import { Easing, useSharedValue, withTiming } from "react-native-reanimated";
+import { LiveChartSeries, type LiveChartSeriesProps } from "react-native-livechart";
+
+function EventChart({ series, endsAt }: {
+  series: LiveChartSeriesProps["series"];
+  endsAt: number;
+}) {
+  const progress = useSharedValue(0);
+  const timing = { duration: 350, easing: Easing.linear };
+  return (
+    <LiveChartSeries
+      series={series}
+      scrub={{ panGestureDelay: 180 }}
+      timeHorizon={{ at: endsAt, progress }}
+      onGestureStart={() => progress.set(withTiming(1, timing))}
+      onGestureEnd={() => progress.set(withTiming(0, timing))}
+    />
+  );
+}
+```
+
+The reveal works with a rolling `timeWindow` or an anchored `historyStartTime`,
+including both forms of right-edge buffer. Pan, pinch, pause and return-to-live
+retain control of the viewport. Keep the horizon mounted through the release
+animation. Removing it restores the ordinary viewport on the next frame.
+
 ## All history
 
 Set the authoritative start once to keep the complete history in a growing live

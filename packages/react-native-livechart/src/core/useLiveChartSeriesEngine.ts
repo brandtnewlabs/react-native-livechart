@@ -10,7 +10,7 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 import { MS_PER_FRAME_60FPS, RETURN_TO_LIVE_MS } from "../constants";
-import type { LiveChartPoint, SeriesRangeAnimationConfig, SeriesConfig } from "../types";
+import type { LiveChartSeriesProps, LiveChartPoint, SeriesRangeAnimationConfig, SeriesConfig } from "../types";
 import {
   tickLiveChartSeriesEngineFrame,
   type MultiEngineTickInput,
@@ -36,6 +36,7 @@ export interface MultiSeriesEngineConfig {
   yRangeScale?: SharedValue<number>;
   nowOverride?: number;
   presentationTime?: SharedValue<number | undefined>;
+  timeHorizon?: LiveChartSeriesProps["timeHorizon"];
   windowBuffer?: number;
   /** Right-edge buffer in seconds. Does not scale with the visible window. */
   windowBufferSeconds?: number;
@@ -100,6 +101,8 @@ export interface MultiEngineFrameRefs {
   yRangeScaleSV?: SharedValue<number>;
   nowOverrideSV?: FrameParameter<number | undefined>;
   presentationTimeSV?: SharedValue<number | undefined>;
+  timeHorizon?: LiveChartSeriesProps["timeHorizon"];
+  horizonExtensionSV?: SharedValue<number>;
   historyStartTimeSV?: FrameParameter<number | undefined>;
   currentTimeSV?: SharedValue<number>;
   fullHistoryWindowSV?: SharedValue<number | null>;
@@ -252,6 +255,7 @@ export function applyLiveChartSeriesEngineFrame(
   state.fittedMax = sv.fittedMaxSV?.value ?? state.fittedMax;
   state.displayWindow = sv.displayWindow.value;
   state.timestamp = sv.timestamp.value;
+  state.horizonExtension = sv.horizonExtensionSV?.value ?? state.horizonExtension;
   state.liveEdge = sv.liveEdgeSV?.value ?? 0;
   state.displayValues = displayValues;
   state.opacities = opacities;
@@ -286,6 +290,8 @@ export function applyLiveChartSeriesEngineFrame(
   input.yRangeScale = sv.yRangeScaleSV?.value ?? 1;
   input.nowOverride = sv.nowOverrideSV?.value;
   input.presentationTime = sv.presentationTimeSV?.value;
+  input.timeHorizonAt = sv.timeHorizon?.at;
+  input.timeHorizonProgress = sv.timeHorizon?.progress.value;
   input.historyStartTime = sv.historyStartTimeSV?.value;
   input.windowBuffer = sv.windowBufferSV?.value ?? 0;
   input.windowBufferSeconds = sv.windowBufferSecondsSV?.value ?? 0;
@@ -305,6 +311,7 @@ export function applyLiveChartSeriesEngineFrame(
   if (sv.fittedMaxSV) sv.fittedMaxSV.value = state.fittedMax;
   sv.displayWindow.value = state.displayWindow;
   sv.timestamp.value = state.timestamp;
+  if (sv.horizonExtensionSV) sv.horizonExtensionSV.value = state.horizonExtension!;
   if (sv.liveEdgeSV) sv.liveEdgeSV.value = state.liveEdge;
   if (sv.currentTimeSV) sv.currentTimeSV.value = state.currentTime!;
   if (sv.fullHistoryWindowSV) sv.fullHistoryWindowSV.value = state.fullHistoryWindow ?? null;
@@ -349,7 +356,15 @@ export function useLiveChartSeriesEngine(
   // Declared first so `timeWindow` folds it in — see useLiveChartEngine.
   const viewWindow = useSharedValue<number | null>(null);
   const fullHistoryWindow = useSharedValue<number | null>(null);
-  const timeWindow = useDerivedValue(() => viewWindow.value ?? fullHistoryWindow.value ?? config.timeWindow);
+  const displayWindow = useSharedValue(config.timeWindow);
+  const horizonExtension = useSharedValue(0);
+  const baseTimeWindow = config.timeWindow;
+  const timeWindow = useDerivedValue(() => {
+    // During a reveal, select ticks across the whole painted span. Ordinary
+    // zoom and preset transitions select ticks from their destination (#126).
+    if (horizonExtension.value > 0) return displayWindow.value;
+    return viewWindow.value ?? fullHistoryWindow.value ?? baseTimeWindow;
+  });
   // These are React props, not UI-thread signals. The registered frame and
   // return-to-live worklets capture a fresh snapshot when props change. Keeping
   // them as plain values avoids one native mutable and mapper per parameter.
@@ -380,7 +395,6 @@ export function useLiveChartSeriesEngine(
   const displayMax = useSharedValue(1);
   const fittedMinSV = useSharedValue<number | undefined>(undefined);
   const fittedMaxSV = useSharedValue<number | undefined>(undefined);
-  const displayWindow = useSharedValue(config.timeWindow);
   const canvasWidth = useSharedValue(0);
   const canvasHeight = useSharedValue(0);
   // Seed once; overwritten by the frame callback on the first tick.
@@ -466,6 +480,8 @@ export function useLiveChartSeriesEngine(
     yRangeScaleSV: config.yRangeScale,
     nowOverrideSV,
     presentationTimeSV: config.presentationTime,
+    timeHorizon: config.timeHorizon,
+    horizonExtensionSV: horizonExtension,
     currentTimeSV: currentTime,
     windowBufferSV,
     windowBufferSecondsSV,

@@ -1139,6 +1139,14 @@ presentation head or viewport edge, whichever is earlier. The scrub time limit
 uses the same clock. See [Replay clock](/guides/multi-series#replay-clock).
 
 
+## LiveChartSeries time horizon
+
+`LiveChartSeriesProps.timeHorizon?: { at: number; progress: SharedValue<number> }`
+takes a Unix timestamp in seconds and a UI-thread animation progress. Finite
+progress is clamped to 0–1 and eased with smoothstep. A target at or before the
+buffered live edge, or a non-finite input, leaves the ordinary viewport in use.
+See [Reveal a future time on hold](/guides/multi-series#reveal-a-future-time-on-hold).
+
 ## LiveChartSeries history start
 
 `LiveChartSeriesProps.historyStartTime?: number` is an authoritative Unix-second

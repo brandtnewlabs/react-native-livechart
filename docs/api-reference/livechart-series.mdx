@@ -64,6 +64,14 @@ when width changes. Inline labels and axis badges may need extra space;
   [Replay clock](/guides/multi-series#replay-clock).
 </ParamField>
 
+<ParamField body="timeHorizon" type="{ at: number; progress: SharedValue<number> }">
+  Extend the right edge of the live viewport toward a future Unix timestamp in
+  seconds. A progress of 0 shows the ordinary window, and 1 reaches `at`.
+  The chart keeps the left edge and data head on their ordinary clocks. The
+  horizon applies only while following live with no pinch override, pause or
+  return glide. See [Reveal a future time on hold](/guides/multi-series#reveal-a-future-time-on-hold).
+</ParamField>
+
 ## Growing history window
 
 Both `windowBuffer` and `windowBufferSeconds` are shared with `LiveChart`.

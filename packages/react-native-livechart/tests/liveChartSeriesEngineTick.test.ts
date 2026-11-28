@@ -839,6 +839,34 @@ describe("tickLiveChartSeriesEngineFrame", () => {
       expect(s.timestamp).toBe(1003);
     });
 
+    it.each([
+      { viewEnd: 950 }, { viewEnd: 1100, allowFutureViewEnd: true }, { paused: true },
+      { viewWindow: 20 }, { returnFrom: 950, returnT: 0.5 },
+      { timeHorizonAt: 1000 }, { timeHorizonAt: Infinity }, { timeHorizonAt: NaN },
+      { timeHorizonProgress: -1 }, { timeHorizonProgress: NaN },
+    ])("restores ordinary navigation and fitting when the horizon is inactive: %o", overrides => {
+      const ordinary = baseMulti();
+      const revealed = baseMulti();
+      const horizon = { timeHorizonAt: 1100, timeHorizonProgress: 1 };
+      tickLiveChartSeriesEngineFrame(ordinary, input({}));
+      tickLiveChartSeriesEngineFrame(revealed, input(horizon));
+      expect(revealed.timestamp - ordinary.timestamp).toBe(100);
+      tickLiveChartSeriesEngineFrame(ordinary, input(overrides));
+      tickLiveChartSeriesEngineFrame(revealed, input({ ...horizon, ...overrides }));
+      expect(revealed.timestamp).toBe(ordinary.timestamp);
+      expect(revealed.displayWindow).toBe(ordinary.displayWindow);
+    });
+
+    it("keeps the width written by a pinch starting during a horizon reveal", () => {
+      const state = baseMulti();
+      const horizon = { timeHorizonAt: 1100, timeHorizonProgress: 1 };
+      tickLiveChartSeriesEngineFrame(state, input(horizon));
+      state.displayWindow = 20; // usePinchZoom writes the displayed and requested width together
+      tickLiveChartSeriesEngineFrame(state, input({ ...horizon, viewWindow: 20 }));
+      expect(state.displayWindow).toBe(20);
+      expect(state.timestamp).toBe(1000);
+    });
+
     it("freezes the right edge at viewEnd when scrolled back", () => {
       const s = baseMulti();
       tickLiveChartSeriesEngineFrame(s, input({ viewEnd: 950 }));

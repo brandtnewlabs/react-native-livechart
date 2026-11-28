@@ -1,6 +1,7 @@
 import { MOTION_METRICS_DEFAULTS } from "../constants";
 import { lerp } from "../math/lerp";
 import { rangeAnimationSpeed } from "../math/rangeAnimation";
+import { smoothstep } from "../math/squiggly";
 import type { SeriesRangeAnimationConfig, SeriesConfig } from "../types";
 
 export interface MultiEngineTickMutable {
@@ -10,6 +11,8 @@ export interface MultiEngineTickMutable {
   currentTime?: number;
   /** Unzoomed authoritative-history span, including buffer. */
   fullHistoryWindow?: number | null;
+  /** Seconds added to the displayed right edge and width on the previous frame. */
+  horizonExtension?: number;
   /** Untransformed eased bounds, kept separate from presentation output. */
   fittedMin?: number;
   fittedMax?: number;
@@ -68,6 +71,8 @@ export interface MultiEngineTickInput {
   nowOverride?: number;
   /** UI-thread presentation head, with precedence over nowOverride/wall time. */
   presentationTime?: number;
+  timeHorizonAt?: number;
+  timeHorizonProgress?: number;
   /** Right-edge buffer as a fraction of the time window. */
   windowBuffer?: number;
   /** Right-edge buffer in seconds. Does not scale with the visible window. */
@@ -137,6 +142,15 @@ export function tickLiveChartSeriesEngineFrame(
   state.fullHistoryWindow = fullWindow;
   const liveWindow = input.viewWindow ?? fullWindow ?? input.timeWindow;
   const liveEdge = baseNow + buffer * liveWindow + bufferSeconds;
+  // Easing, pause and navigation start from the ordinary viewport, including
+  // when a caller removes the horizon or changes its deadline mid-animation.
+  const previousExtension = state.horizonExtension ?? 0;
+  if (previousExtension > 0) {
+    state.timestamp -= previousExtension;
+    // The pinch recognizer writes its new width directly before this tick.
+    if (state.displayWindow !== input.viewWindow) state.displayWindow -= previousExtension;
+  }
+  state.horizonExtension = 0;
   state.liveEdge = liveEdge;
   const viewEnd = input.viewEnd;
   // Earliest first-point time across visible series — the floor a frozen edge
@@ -211,6 +225,20 @@ export function tickLiveChartSeriesEngineFrame(
   state.displayWindow = snap || anchoredFollowing
     ? targetWindow
     : lerp(state.displayWindow, targetWindow, speed, input.dt);
+
+  const at = input.timeHorizonAt;
+  const progress = input.timeHorizonProgress ?? 0;
+  if (at != null && Number.isFinite(at) && at > liveEdge && Number.isFinite(progress) &&
+      progress > 0 && viewEnd == null && input.viewWindow == null &&
+      !input.paused && (input.returnT == null || input.returnT >= 1)) {
+    // Extend only the right side. History, live tips and range fitting still
+    // use the same left edge and presentation clock as the unextended frame.
+    const extension = (at - liveEdge) * smoothstep(progress);
+    state.horizonExtension = extension;
+    state.liveEdge += extension;
+    state.timestamp += extension;
+    state.displayWindow += extension;
+  }
 
   const winStart = state.timestamp - state.displayWindow;
   const range = state.displayMax - state.displayMin;

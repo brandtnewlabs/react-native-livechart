@@ -11,14 +11,17 @@ import {
   formatTime,
   LiveChartSeries,
   type LegendConfig,
+  type LiveChartSeriesProps,
   type MultiSeriesDotConfig,
   type ReferenceLineRenderProps,
   type SeriesConfig,
 } from "react-native-livechart";
 import Animated, {
+  Easing,
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
+  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
 import { ACCENT, TIME_WINDOWS } from "../../demo-lib/shared";
@@ -29,6 +32,8 @@ import { DeferredControls } from "../../demo-lib/DeferredControls";
 import { Chip, ChipRow, ControlRow, ToggleChip } from "../../demo-lib/ChipRow";
 import { demoStyles } from "../../demo-lib/styles";
 import { APP_THEME } from "../../demo-lib/theme";
+
+const horizonTiming = { duration: 350, easing: Easing.linear };
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
@@ -343,6 +348,58 @@ function ChartSettingsControls(props: ChartSettingsControlsProps) {
   );
 }
 
+function useSeriesScrubDemo(
+  windowSecs: number,
+  scrubDim: number,
+  seriesTooltip: boolean,
+  tooltipAlwaysShow: boolean,
+  styledTooltip: boolean,
+) {
+  const [showHorizon, setShowHorizon] = useState(false);
+  const [horizonAt, setHorizonAt] = useState(0);
+  const horizonProgress = useSharedValue(0);
+  const chartProps: Pick<LiveChartSeriesProps, "timeHorizon" | "onGestureStart" | "onGestureEnd" | "scrub"> = {
+    timeHorizon: showHorizon ? { at: horizonAt, progress: horizonProgress } : undefined,
+    onGestureStart: showHorizon ? () => {
+      setHorizonAt(Date.now() / 1000 + windowSecs);
+      horizonProgress.set(withTiming(1, horizonTiming));
+    } : undefined,
+    onGestureEnd: showHorizon ? () => horizonProgress.set(withTiming(0, horizonTiming)) : undefined,
+    scrub: {
+      panGestureDelay: showHorizon ? 180 : undefined,
+      dimOpacity: scrubDim,
+      seriesTooltip: seriesTooltip
+        ? {
+            alwaysShow: tooltipAlwaysShow,
+            formatSeriesValue: (value) => {
+              "worklet";
+              return `${value.toFixed(2)}%`;
+            },
+            formatTimeRange: (from, to) => {
+              "worklet";
+              return `${formatTime(from)} – ${formatTime(to)}`;
+            },
+            ...(styledTooltip
+              ? {
+                  guideColor: "#f59e0b",
+                  guideDashPattern: [2, 4],
+                  timePillBackground: "#1e293b",
+                  timePillColor: "#fbbf24",
+                  timePillBorderColor: "#f59e0b",
+                  seriesPillBackground: "#1e293b",
+                  seriesPillLabelColor: "#94a3b8",
+                  seriesPillValueColor: "#f8fafc",
+                  seriesPillBorderColor: "#334155",
+                  seriesPillRadius: 10,
+                }
+              : null),
+          }
+        : false,
+    },
+  };
+  return { showHorizon, setShowHorizon, chartProps };
+}
+
 export default function MultiSeriesScreen() {
   const seriesVisibilityRef = useRef<Record<string, boolean>>({});
   const emptySeries = useSharedValue<SeriesConfig[]>([]);
@@ -369,6 +426,7 @@ export default function MultiSeriesScreen() {
     "both",
   );
 
+  const scrubDemo = useSeriesScrubDemo(windowSecs, scrubDim, seriesTooltip, tooltipAlwaysShow, styledTooltip);
   const readoutText = useSharedValue("—");
 
   const [pulse, setPulse] = useState(true);
@@ -492,36 +550,7 @@ export default function MultiSeriesScreen() {
             emptyText="No series"
             dot={dotConfig}
             legend={legendConfig}
-            scrub={{
-              dimOpacity: scrubDim,
-              seriesTooltip: seriesTooltip
-                ? {
-                    alwaysShow: tooltipAlwaysShow,
-                    formatSeriesValue: (value) => {
-                      "worklet";
-                      return `${value.toFixed(2)}%`;
-                    },
-                    formatTimeRange: (from, to) => {
-                      "worklet";
-                      return `${formatTime(from)} – ${formatTime(to)}`;
-                    },
-                    ...(styledTooltip
-                      ? {
-                          guideColor: "#f59e0b",
-                          guideDashPattern: [2, 4],
-                          timePillBackground: "#1e293b",
-                          timePillColor: "#fbbf24",
-                          timePillBorderColor: "#f59e0b",
-                          seriesPillBackground: "#1e293b",
-                          seriesPillLabelColor: "#94a3b8",
-                          seriesPillValueColor: "#f8fafc",
-                          seriesPillBorderColor: "#334155",
-                          seriesPillRadius: 10,
-                        }
-                      : null),
-                  }
-                : false,
-            }}
+            {...scrubDemo.chartProps}
             onSeriesToggle={
               empty
                 ? undefined
@@ -555,6 +584,10 @@ export default function MultiSeriesScreen() {
           value={empty}
           onChange={setEmpty}
         />
+
+        <ControlRow label="Time axis">
+          <ToggleChip label="Show future on hold" value={scrubDemo.showHorizon} onChange={scrubDemo.setShowHorizon} />
+        </ControlRow>
 
         <DotLegendControls
           dots={dots}

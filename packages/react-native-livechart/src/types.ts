@@ -3303,6 +3303,13 @@ export interface LiveChartSeriesProps extends LiveChartCoreProps {
    */
   historyStartTime?: number;
   /**
+   * Reveal a future Unix-second timestamp while following live. Animate
+   * `progress` from 0 (normal viewport) to 1 (right edge at `at`) and back.
+   * The left edge follows its ordinary clock and the live tips stay at the
+   * data head. Pan, pinch, pause and return-to-live take precedence.
+   */
+  timeHorizon?: { at: number; progress: SharedValue<number> };
+  /**
    * Shared-range easing plus an optional reversible UI-thread presentation
    * transform. See {@link SeriesRangeAnimationConfig}; recorded values remain unchanged.
    */
