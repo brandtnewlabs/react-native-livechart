@@ -110,6 +110,8 @@ export {
 } from "./crosshairShared";
 
 export interface CrosshairChartOpts {
+  /** Track finger Y for the optional free-crosshair guides. */
+  freeCrosshair?: boolean;
   mode: "line" | "candle";
   candles?: SharedValue<CandlePoint[]>;
   liveCandle?: SharedValue<CandlePoint | null>;
@@ -230,6 +232,8 @@ export function useCrosshair(
     [top, right, bottom, left],
   );
   const scrubPointerX = useSharedValue(-1);
+  const scrubPointerY = useSharedValue(-1);
+  const hasFreeCrosshair = chartOpts?.freeCrosshair ?? false;
   const scrubGestureActive = useSharedValue(false);
   // Tracks whether the active scrub phase actually began, so a tap that never
   // activates doesn't emit a spurious onGestureEnd.
@@ -877,6 +881,11 @@ export function useCrosshair(
             deferTapHit(downX.get(), downY.get())
           )
             return;
+          if (hasFreeCrosshair) {
+            scrubPointerY.set(
+              clampPlotY(e.y, padding.top, canvasHeightSV.get(), padding.bottom),
+            );
+          }
           startPlainScrub(
             snapCandleX(e.x),
             padding,
@@ -918,6 +927,11 @@ export function useCrosshair(
             }
             return;
           }
+          if (hasFreeCrosshair && scrubGestureActive.get()) {
+            scrubPointerY.set(
+              clampPlotY(e.y, padding.top, canvasHeightSV.get(), padding.bottom),
+            );
+          }
           updatePlainScrub(
             snapCandleX(e.x),
             padding,
@@ -934,6 +948,7 @@ export function useCrosshair(
           resetDelayedPanGuard(fingerDown, panActivated, holdBroken);
           // A lock-adjust drag leaves the reticle in place. End the gesture even
           // when its visible selection is hidden outside the recorded window.
+          scrubPointerY.set(-1);
           if (scrubGestureActive.get()) {
             scrubGestureActive.set(false);
             if (hasOnScrub) scheduleOnRN(handleScrubEnd);
@@ -1076,6 +1091,7 @@ export function useCrosshair(
     handleGestureStart,
     handleScrubAction,
     handleScrubEnd,
+    hasFreeCrosshair,
     hasOnGestureEnd,
     hasOnGestureStart,
     hasOnScrub,
@@ -1098,6 +1114,7 @@ export function useCrosshair(
     scrubGestureActive,
     scrubBottomExclude,
     scrubPointerX,
+    scrubPointerY,
     snapToCandles,
     timestampSV,
   ]);
@@ -1122,5 +1139,6 @@ export function useCrosshair(
     actionBadge,
     timeBadge,
     tapGesture,
+    freeY: hasFreeCrosshair ? scrubPointerY : undefined,
   };
 }

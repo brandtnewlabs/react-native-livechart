@@ -253,6 +253,8 @@ export interface ResolvedScrubConfig {
   clampToPlot: boolean;
   /** Candle mode: quantize the scrub X to the hovered candle's center. */
   snapToCandles: boolean;
+  /** Free X/Y crosshair; null keeps the vertical-only crosshair. */
+  freeCrosshair: { formatTime: ((time: number) => string) | undefined } | null;
 }
 
 export interface ResolvedPerSeriesTooltipConfig {
@@ -1107,6 +1109,7 @@ const SCRUB_DEFAULTS: ResolvedScrubConfig = {
   hideOverlaysOnScrub: false,
   clampToPlot: false,
   snapToCandles: false,
+  freeCrosshair: null,
 };
 
 const PER_SERIES_TOOLTIP_DEFAULTS: ResolvedPerSeriesTooltipConfig = {
@@ -1196,6 +1199,16 @@ export function resolveScrub(
       0,
       resolved.crosshairFadeDistance,
     );
+    const freeCrosshair =
+      typeof prop === "object" ? prop.freeCrosshair : undefined;
+    resolved.freeCrosshair = freeCrosshair
+      ? {
+          formatTime:
+            typeof freeCrosshair === "object"
+              ? freeCrosshair.formatTime
+              : undefined,
+        }
+      : null;
   }
   return resolved;
 }

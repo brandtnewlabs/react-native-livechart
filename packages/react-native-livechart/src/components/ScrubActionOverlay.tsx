@@ -17,6 +17,9 @@ import type {
 } from "../hooks/crosshairShared";
 import type { LiveChartPalette } from "../types";
 
+/** Default dash for the horizontal level line. */
+const LEVEL_DASH = [4, 4];
+
 /**
  * Scrub-action ("order ticket") overlay: the locked reticle (a horizontal price
  * level line + a faint vertical line crossing at the reticle) and the right-gutter
@@ -41,6 +44,9 @@ export function ScrubActionOverlay({
   lineColor,
   background,
   iconColor,
+  showVerticalLine = true,
+  levelDash = LEVEL_DASH,
+  levelStrokeWidth = 1,
 }: {
   lockActive: SharedValue<boolean>;
   lockX: SharedValue<number>;
@@ -55,6 +61,12 @@ export function ScrubActionOverlay({
   lineColor?: string;
   background?: string;
   iconColor?: string;
+  /** Draw the faint vertical line. Off when another crosshair already draws it. Default true. */
+  showVerticalLine?: boolean;
+  /** Dash intervals for the horizontal level line; omit for `[4, 4]`. */
+  levelDash?: number[];
+  /** Horizontal level line width in px. Default 1. */
+  levelStrokeWidth?: number;
 }) {
   const opacity = useDerivedValue(() => (lockActive.value ? 1 : 0), [lockActive]);
 
@@ -126,12 +138,19 @@ export function ScrubActionOverlay({
 
   return (
     <Group opacity={opacity}>
-      <Line p1={hLeft} p2={hRight} color={levelColor} strokeWidth={1}>
-        <DashPathEffect intervals={[4, 4]} />
+      <Line
+        p1={hLeft}
+        p2={hRight}
+        color={levelColor}
+        strokeWidth={levelStrokeWidth}
+      >
+        {levelDash.length > 0 ? <DashPathEffect intervals={levelDash} /> : null}
       </Line>
-      <Line p1={vTop} p2={vBottom} color={levelColor} strokeWidth={1}>
-        <DashPathEffect intervals={[2, 4]} />
-      </Line>
+      {showVerticalLine ? (
+        <Line p1={vTop} p2={vBottom} color={levelColor} strokeWidth={1}>
+          <DashPathEffect intervals={[2, 4]} />
+        </Line>
+      ) : null}
 
       {/* Circular icon button (the action). */}
       <Group opacity={iconOpacity}>

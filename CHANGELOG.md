@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `scrub.freeCrosshair` (`boolean | { formatTime? }`) on the single-series
+  `LiveChart` opts into a free X/Y crosshair: while scrubbing, a horizontal
+  line follows the finger's Y with a price pill in the price-axis gutter (the
+  price at that Y, not the series value — re-read each frame so an axis rescale
+  mid-scrub keeps it right), and a time pill marks the crosshair X on the time
+  axis. The pills use `tooltipBackground` / `tooltipColor`; the horizontal line
+  uses the crosshair's color, width and dash. `true` formats the time pill with
+  the chart's `formatTime`; an object can pass its own worklet. With it, the
+  selection dot marks the crosshair intersection under the finger instead of
+  the series value, in candle mode too. The price pill follows `yAxis.side` and the
+  time pill aligns below any volume band. Both guides and pills share the edge fade.
+  Candle focus dimming can be combined with the full crosshair. `onScrub` continues
+  to report the selected series value. Default `false`.
+
 ## [4.31.1] — 2026-11-19
 
 ### Fixed

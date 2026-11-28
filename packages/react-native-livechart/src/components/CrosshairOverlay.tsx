@@ -26,6 +26,8 @@ type CrosshairOverlayProps = {
   palette: LiveChartPalette;
   font: SkFont;
   showTooltip?: boolean;
+  /** Additional guides drawn under the selection dot with the same edge fade. */
+  guides?: ReactNode;
   /** Optional custom tooltip body rendered in place of the default value/time
    *  text (e.g. the multi-line candle stack). Passed as children so it composes
    *  instead of being threaded through as a JSX-valued prop. */
@@ -94,6 +96,7 @@ export function CrosshairOverlay({
   palette,
   font,
   showTooltip = true,
+  guides,
   children,
   renderTooltip,
   lineTop,
@@ -209,6 +212,7 @@ export function CrosshairOverlay({
       />
       <CrosshairVisibleLayer
         opacity={visibleOpacity}
+        guides={guides}
         p1={p1}
         p2={p2}
         palette={palette}
@@ -314,6 +318,7 @@ function CrosshairDimLayer({
 
 function CrosshairVisibleLayer({
   opacity,
+  guides,
   p1,
   p2,
   palette,
@@ -349,6 +354,7 @@ function CrosshairVisibleLayer({
   tooltipColor,
 }: {
   opacity: SharedValue<number>;
+  guides?: ReactNode;
   p1: SharedValue<{ x: number; y: number }>;
   p2: SharedValue<{ x: number; y: number }>;
   palette: LiveChartPalette;
@@ -385,6 +391,7 @@ function CrosshairVisibleLayer({
 }) {
   return (
     <Group opacity={opacity}>
+      {guides}
       <CrosshairLine
         show={showLine}
         p1={p1}

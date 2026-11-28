@@ -4,7 +4,7 @@ import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import { View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
-import { useSharedValue, type SharedValue } from "react-native-reanimated";
+import { makeMutable, useSharedValue, type SharedValue } from "react-native-reanimated";
 import type { TestInstance } from "test-renderer";
 import { LiveChart } from "../src/components/LiveChart";
 import { getAllByHostType } from "./rntl14";
@@ -14,6 +14,7 @@ import * as badgeHooks from "../src/hooks/useBadge";
 import * as candlePathHooks from "../src/hooks/useCandlePaths";
 import * as chartPathHooks from "../src/hooks/useChartPaths";
 import * as chartOverlayHooks from "../src/hooks/useChartOverlayContext";
+import * as crosshairHooks from "../src/hooks/useCrosshair";
 import * as degenHooks from "../src/hooks/useDegen";
 import * as panHooks from "../src/hooks/usePanScroll";
 import * as tradeStreamHooks from "../src/hooks/useTradeStream";
@@ -1672,6 +1673,78 @@ it("passes original data sources through the reveal bridge for range revisions",
   expect(config.candlesChangeSource).not.toBe(config.candles);
   expect(config.candlesChangeSource!.get()).toHaveLength(2);
   spy.mockRestore();
+});
+
+describe("free crosshair", () => {
+  const useActualCrosshair = crosshairHooks.useCrosshair;
+  const guideColor = "#123abc";
+  const priceFormat = (price: number) => `price ${price.toFixed(1)}`;
+  const timeFormat = (time: number) => `time ${time}`;
+
+  // Seed a held gesture before mount. The Jest mapper evaluates each drawing
+  // primitive once, so its host props expose the resulting native coordinates.
+  function holdScrub(x: number) {
+    jest.spyOn(crosshairHooks, "useCrosshair").mockImplementation((...args) => {
+      const [engine] = args;
+      engine.canvasWidth.set(400);
+      engine.canvasHeight.set(300);
+      engine.displayMin.set(0);
+      engine.displayMax.set(100);
+      const state = useActualCrosshair(...args);
+      state.freeY?.set(110);
+      return {
+        ...state,
+        scrubActive: makeMutable(true),
+        scrubX: makeMutable(x),
+        scrubTime: makeMutable(123),
+      };
+    });
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each(["left", "right"] as const)("aligns pills with the %s price axis and the time axis below volume", async (side) => {
+    holdScrub(120);
+    const screen = await render(
+      <VolumeCandleHarness
+        volume={{ maxHeight: 60 }}
+        insets={{ left: 50, right: 50, top: 10, bottom: 90 }}
+        yAxis={{ side }}
+        metrics={{ badge: { marginEdge: 4, padX: 10 } }}
+        formatValue={priceFormat}
+        scrub={{ freeCrosshair: { formatTime: timeFormat }, tooltip: false }}
+      />,
+    );
+    const views = getAllByHostType(screen, View);
+    // The plot extends from 10 to 210. At y=110 the finger reads 50.
+    const price = views.find(node => node.props.text?.value === "price 50.0");
+    const time = views.find(node => node.props.text?.value === "time 123");
+    // Mock font has 7px glyphs and zero left bearing.
+    expect(price?.props.x.value).toBe(side === "left" ? 14 : 400 - 14 - 10 * 7);
+    expect(time?.props.y.value).toBe(300 - 90 + 60 + 19);
+  });
+
+  it("keeps both guides in the same edge-faded group during candle focus and removes them when disabled", async () => {
+    // Right edge 350, held 5px inside a 20px fade.
+    holdScrub(345);
+    const props = {
+      dimTarget: "otherCandles" as const, crosshairLineColor: guideColor,
+      crosshairFadeDistance: 20, tooltip: false,
+    };
+    const screen = await render(
+      <CandleHarness insets={{ right: 50 }} scrub={{ ...props, freeCrosshair: true }} />,
+    );
+    const guides = getAllByHostType(screen, View).filter(node => node.props.color === guideColor);
+    expect(guides).toHaveLength(2);
+    const vertical = guides.find(node => node.props.p1.value.x === 345)!;
+    const horizontal = guides.find(node => node.props.p1.value.y === 110)!;
+    const fadedGroup = vertical.parent!;
+    expect(fadedGroup.props.opacity.value).toBeCloseTo(0.25);
+    expect(fadedGroup.queryAll(node => node === horizontal)).toHaveLength(1);
+
+    await screen.rerender(<CandleHarness insets={{ right: 50 }} scrub={props} />);
+    expect(getAllByHostType(screen, View).filter(node => node.props.color === guideColor)).toHaveLength(0);
+  });
 });
 
 describe("series plot clip", () => {

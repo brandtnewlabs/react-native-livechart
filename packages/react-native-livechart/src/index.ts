@@ -69,6 +69,7 @@ export type {
   DotRingConfig,
   EmptyStateMetrics,
   FontConfig,
+  FreeCrosshairConfig,
   FontWeight,
   GradientConfig,
   GridMetrics,

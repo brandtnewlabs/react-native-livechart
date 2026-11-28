@@ -529,7 +529,7 @@ interface ScrubConfig {
   // LiveChartSeries only: opt-in Morfi-style time + per-series value pills.
   // false/omitted preserves the existing guide-only default.
   seriesTooltip?: boolean | PerSeriesTooltipConfig;
-  dimTarget?: "future" | "otherCandles"; // default "future"; otherCandles hides the scrub line/dot in candle mode, falls back to future in line mode
+  dimTarget?: "future" | "otherCandles"; // default "future"; otherCandles hides the scrub line/dot in candle mode unless freeCrosshair is on, falls back to future in line mode
   dimOpacity?: number; // opacity of the selected dim target; clamped to [0, 1]; default 0.3
   dimFadeMs?: number; // otherCandles fade-in/out duration; default 60; 0 = instant
   crosshairLineColor?: string; crosshairDimColor?: string; // crosshairDimColor = legacy colored mask
@@ -548,6 +548,20 @@ interface ScrubConfig {
   clampToPlot?: boolean; // plain scrub: ignore starts beyond the plot's X bounds and clamp active drags; default false
   hideOverlaysOnScrub?: boolean; // fade markers + reference lines out while scrubbing; default false
   snapToCandles?: boolean; // candle mode: snap the crosshair to candle centers (tick-to-tick); gaps between candles + line mode keep the raw X; default false
+  // Free X/Y crosshair: a horizontal line follows the finger Y with a price pill
+  // in the price-axis gutter (the price at that Y, not the series value) and a
+  // time pill on the time axis. Pills use tooltipBackground/tooltipColor; the
+  // horizontal line uses the crosshair color, width and dash. true = format the
+  // time pill with the chart's formatTime. Price follows yAxis.side; time aligns below volume.
+  // Both guides and pills share the edge fade, including with otherCandles. onScrub reads
+  // the selected series value. Single-series LiveChart only; default false.
+  freeCrosshair?: boolean | FreeCrosshairConfig;
+}
+// Options for ScrubConfig.freeCrosshair.
+interface FreeCrosshairConfig {
+  // Worklet that formats the time pill (unix seconds in). Omit to use the chart's
+  // formatTime, which is tuned for axis ticks and often too coarse for a single point.
+  formatTime?: (time: number) => string;
 }
 interface PerSeriesTooltipConfig {
   alwaysShow?: boolean;      // pin value pills to visible endpoints while idle; default false

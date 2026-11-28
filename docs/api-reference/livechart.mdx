@@ -363,7 +363,10 @@ not expand the automatic Y range. See [Hiding off-screen pills](/guides/referenc
   Set `markers: true` (or `{ radius: 24 }`) to include marker details in
   `renderTooltip` and `onScrub`. Off by default. See
   [Inspecting markers while scrubbing](/guides/markers-and-trades#inspecting-markers-while-scrubbing).
-  Crosshair scrubbing on drag. `crosshairFadeDistance` controls the visible
+  Set `freeCrosshair: true` to track both drag coordinates. The price pill follows
+  `yAxis.side` and the time pill aligns with the time axis below any volume band.
+  Both guides and pills share the live-edge fade. See [Free X/Y crosshair](/guides/scrubbing#free-xy-crosshair-freecrosshair).
+  `crosshairFadeDistance` controls the visible
   line/dot/tooltip fade near the live edge, and `crosshairLineCap` selects a
   `"butt"`, `"round"`, or `"square"` vertical-line cap. See
   [Scrubbing](/guides/scrubbing#crosshair-width-line-cap-overshoot-and-edge-fade).
@@ -372,11 +375,12 @@ not expand the automatic Y range. See [Hiding off-screen pills](/guides/referenc
 <ParamField body="selectionDot" type="boolean | SelectionDotConfig" default="true">
   Dot drawn at the scrub intersection while scrubbing. `false` hides it; pass a
   config to set `size` / `color` / `ring`, or `{ component }` for a fully custom
-  Skia dot. See [Scrubbing](/guides/scrubbing#selection-dot).
+  Skia dot. With `scrub.freeCrosshair`, the dot follows the finger height in line and candle mode. See [Scrubbing](/guides/scrubbing#selection-dot).
 </ParamField>
 
 <ParamField body="onScrub" type="(point: ScrubPoint | null) => void">
-  Fires on the JS thread while scrubbing; `null` when it ends. With
+  Fires on the JS thread while scrubbing and receives `null` when it ends.
+  With `freeCrosshair`, `point.value` still reports the selected series value. With
   `scrub.markers` enabled, `point.markers` contains all timestamp matches,
   including `data`, or `[]` when none match. Omitted when disabled. Marker
   payloads are transferred only when the selection or marker input changes;

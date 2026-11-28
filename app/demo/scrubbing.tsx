@@ -255,6 +255,8 @@ function TooltipControls(props: TooltipControlsProps) {
 }
 
 type CrosshairControlsProps = {
+  freeCrosshair: boolean;
+  setFreeCrosshair: Dispatch<SetStateAction<boolean>>;
   crosshairDash: boolean;
   setCrosshairDash: Dispatch<SetStateAction<boolean>>;
   thickCrosshair: boolean;
@@ -279,6 +281,11 @@ function CrosshairControls(props: CrosshairControlsProps) {
   return (
     <>
       <ControlRow label="Crosshair">
+        <ToggleChip
+          label="Free X/Y"
+          value={props.freeCrosshair}
+          onChange={props.setFreeCrosshair}
+        />
         <ToggleChip
           label="Dashed"
           value={props.crosshairDash}
@@ -353,12 +360,14 @@ type ScrubSettings = {
   crosshairFadeDistance: number;
   crosshairLineCap: CrosshairLineCapChoice;
   styledTooltip: boolean;
+  freeCrosshair: boolean;
 };
 
 function resolveScrub(settings: ScrubSettings): ScrubConfig | boolean {
   if (settings.scrubMode === "off") return false;
   return {
     tooltip: settings.scrubMode !== "noTooltip",
+    freeCrosshair: settings.freeCrosshair,
     dimOpacity: settings.dimOpacity,
     panGestureDelay: settings.panGestureDelay,
     clampToPlot: settings.clampToPlot,
@@ -408,6 +417,9 @@ export default function ScrubbingScreen() {
   // pill can read value-only / time-only / both.
   const [timeRow, setTimeRow] = useState(true);
   const [roundedTip, setRoundedTip] = useState(false);
+  // Free X/Y crosshair: horizontal line + axis pills under the finger
+  // (scrub.freeCrosshair).
+  const [freeCrosshair, setFreeCrosshair] = useState(false);
   const [crosshairDash, setCrosshairDash] = useState(false);
   const [thickCrosshair, setThickCrosshair] = useState(false);
   const [crosshairOvershootEnabled, setCrosshairOvershootEnabled] =
@@ -504,6 +516,7 @@ export default function ScrubbingScreen() {
     crosshairFadeDistance,
     crosshairLineCap,
     styledTooltip,
+    freeCrosshair,
   });
 
   // The `boolean | SelectionDotConfig` idiom: `true` = built-in dot, `false` =
@@ -595,6 +608,8 @@ export default function ScrubbingScreen() {
         setDotMode={setDotMode}
       />
       <CrosshairControls
+        freeCrosshair={freeCrosshair}
+        setFreeCrosshair={setFreeCrosshair}
         crosshairDash={crosshairDash}
         setCrosshairDash={setCrosshairDash}
         thickCrosshair={thickCrosshair}
